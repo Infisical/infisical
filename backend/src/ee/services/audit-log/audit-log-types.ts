@@ -4430,6 +4430,7 @@ interface UpdateCmekEvent {
     name?: string;
     description?: string;
     hasDeleteProtection?: boolean;
+    isPublicKeyPublished?: boolean;
   };
 }
 

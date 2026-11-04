@@ -24,6 +24,7 @@ export type TUpdabteCmekByIdDTO = {
   isDisabled?: boolean;
   description?: string;
   hasDeleteProtection?: boolean;
+  isPublicKeyPublished?: boolean;
 };
 
 export type TListCmeksByProjectIdDTO = {

@@ -2809,7 +2809,9 @@ export const KMS = {
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
     isDisabled: "The flag to enable or disable this key.",
-    hasDeleteProtection: "Enable or disable delete protection for this key."
+    hasDeleteProtection: "Enable or disable delete protection for this key.",
+    isPublicKeyPublished:
+      "Publish this key's public key as a JWKS at an unauthenticated URL, so third parties can verify its signatures. Only sign-verify keys using RSA, ECC or ED25519 can be published."
   },
   ROTATE_KEY: {
     keyId: "The ID of the key to be rotated."
@@ -2847,6 +2849,16 @@ export const KMS = {
 
   GET_PUBLIC_KEY: {
     keyId: "The ID of the key to get the public key for. The key must be for signing and verifying."
+  },
+
+  GET_JWKS: {
+    keyId: "The ID of the key whose published public key to return."
+  },
+
+  PUBLIC_JWKS: {
+    kid: "The kid of this key in its published JWKS. Put it in the header of tokens signed with this key. Null for keys that can't publish their public key.",
+    jwksUrl:
+      "The unauthenticated URL serving this key's public key as a JWKS. Null unless the key's public key is published, or when the instance's SITE_URL is unset."
   },
 
   GET_PRIVATE_KEY: {

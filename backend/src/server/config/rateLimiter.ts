@@ -97,6 +97,14 @@ export const oidcIssuerLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// Verifiers fetch a published JWKS anonymously, so it is limited per IP
+export const kmsJwksLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => req.realIp
+};
+
 // Gateways report load every 10s (6/min each), so 10 leaves room for tick drift and a restart
 // landing in the same window without leaving headroom for a flood. Keyed by the reporting gateway
 // rather than by IP, because the write limiter's IP key is shared: ~100 gateways behind one NAT

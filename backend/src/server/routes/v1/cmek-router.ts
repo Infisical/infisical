@@ -5,14 +5,16 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KMS } from "@app/lib/api-docs";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { kmsJwksLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { canPublishCmekPublicKey, getCmekJwkKid, getCmekJwksUrl } from "@app/services/cmek/cmek-fns";
 import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -30,12 +32,32 @@ const CmekSchema = KmsKeysSchema.merge(InternalKmsSchema.pick({ version: true, e
   .omit({
     isReserved: true
   })
-  .extend({ algorithm: z.string(), encryptionAlgorithm: z.string().describe(openApiHidden()) });
+  .extend({
+    algorithm: z.string(),
+    encryptionAlgorithm: z.string().describe(openApiHidden()),
+    kid: z.string().nullable().describe(KMS.PUBLIC_JWKS.kid),
+    jwksUrl: z.string().nullable().describe(KMS.PUBLIC_JWKS.jwksUrl)
+  });
 
-const withAlgorithmAlias = <T extends { encryptionAlgorithm: string }>(key: T) => ({
+const toCmekResponse = <
+  T extends {
+    id: string;
+    keyUsage: string;
+    encryptionAlgorithm: string;
+    version: number;
+    isPublicKeyPublished?: boolean | null;
+  }
+>(
+  key: T
+) => ({
   ...key,
-  algorithm: key.encryptionAlgorithm
+  algorithm: key.encryptionAlgorithm,
+  kid: canPublishCmekPublicKey(key) ? getCmekJwkKid(key.id, key.version) : null,
+  jwksUrl: key.isPublicKeyPublished ? getCmekJwksUrl(key.id) : null
 });
+
+// Short, so unpublishing a key reaches verifiers' caches within minutes
+const JWKS_CACHE_CONTROL = "public, max-age=300";
 
 const MAX_KMS_PAYLOAD_BYTES = 1024 * 1024;
 // AES-GCM ciphertext carries a 12-byte IV, 16-byte auth tag, and 3-byte version blob on top of the plaintext,
@@ -194,7 +216,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         })
         .catch(() => {});
 
-      return { key: withAlgorithmAlias(cmek) };
+      return { key: toCmekResponse(cmek) };
     }
   });
 
@@ -217,7 +239,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         name: keyNameSchema.optional().describe(KMS.UPDATE_KEY.name),
         isDisabled: z.boolean().optional().describe(KMS.UPDATE_KEY.isDisabled),
         description: keyDescriptionSchema.describe(KMS.UPDATE_KEY.description),
-        hasDeleteProtection: z.boolean().optional().describe(KMS.UPDATE_KEY.hasDeleteProtection)
+        hasDeleteProtection: z.boolean().optional().describe(KMS.UPDATE_KEY.hasDeleteProtection),
+        isPublicKeyPublished: z.boolean().optional().describe(KMS.UPDATE_KEY.isPublicKeyPublished)
       }),
       response: {
         200: z.object({
@@ -248,7 +271,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key: withAlgorithmAlias(cmek) };
+      return { key: toCmekResponse(cmek) };
     }
   });
 
@@ -294,7 +317,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key: withAlgorithmAlias(cmek) };
+      return { key: toCmekResponse(cmek) };
     }
   });
 
@@ -339,7 +362,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key: withAlgorithmAlias(cmek) };
+      return { key: toCmekResponse(cmek) };
     }
   });
 
@@ -394,7 +417,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { keys: cmeks.map(withAlgorithmAlias), totalCount };
+      return { keys: cmeks.map(toCmekResponse), totalCount };
     }
   });
 
@@ -438,7 +461,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key: withAlgorithmAlias(key) };
+      return { key: toCmekResponse(key) };
     }
   });
 
@@ -486,7 +509,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { key: withAlgorithmAlias(key) };
+      return { key: toCmekResponse(key) };
     }
   });
 
@@ -592,6 +615,56 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       });
 
       return { publicKey };
+    }
+  });
+
+  // Unauthenticated and shaped by RFC 7517 rather than the house envelope, because verifiers fetch it directly
+  server.route({
+    method: "GET",
+    url: "/keys/:keyId/jwks.json",
+    config: {
+      rateLimit: kmsJwksLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getKmsKeyPublicJwks",
+      tags: [ApiDocsTags.KmsSigning],
+      description:
+        "Get a key's published public key as a JWKS. Requires no authentication, so verifiers can fetch it directly. Returns 404 unless the key's public key is published and the key is enabled.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.GET_JWKS.keyId)
+      }),
+      response: {
+        200: z.object({
+          keys: z
+            .object({
+              kty: z.string(),
+              use: z.string(),
+              kid: z.string(),
+              alg: z.string().optional(),
+              n: z.string().optional(),
+              e: z.string().optional(),
+              crv: z.string().optional(),
+              x: z.string().optional(),
+              y: z.string().optional()
+            })
+            .array()
+        }),
+        304: z.void()
+      }
+    },
+    handler: async (req, reply) => {
+      const jwks = await server.services.cmek.getPublicJwks(req.params.keyId);
+      const etag = `"${crypto.nativeCrypto.createHash("sha256").update(JSON.stringify(jwks)).digest("base64url")}"`;
+
+      void reply.header("Cache-Control", JWKS_CACHE_CONTROL).header("ETag", etag);
+
+      if (req.headers["if-none-match"]?.split(",").some((tag) => tag.trim() === etag)) {
+        void reply.code(304).send();
+        return;
+      }
+
+      return jwks;
     }
   });
 

@@ -147,7 +147,8 @@ const CmekPolicyActionSchema = z.object({
   [ProjectPermissionCmekActions.GenerateMac]: z.boolean().optional(),
   [ProjectPermissionCmekActions.VerifyMac]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Rotate]: z.boolean().optional(),
-  [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional()
+  [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.PublishPublicKey]: z.boolean().optional()
 });
 
 const DynamicSecretPolicyActionSchema = z.object({
@@ -1720,6 +1721,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canVerifyMac = action.includes(ProjectPermissionCmekActions.VerifyMac);
       const canRotate = action.includes(ProjectPermissionCmekActions.Rotate);
       const canExportPrivateKey = action.includes(ProjectPermissionCmekActions.ExportPrivateKey);
+      const canPublishPublicKey = action.includes(ProjectPermissionCmekActions.PublishPublicKey);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -1737,6 +1739,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRotate) formVal[subject]![0][ProjectPermissionCmekActions.Rotate] = true;
       if (canExportPrivateKey)
         formVal[subject]![0][ProjectPermissionCmekActions.ExportPrivateKey] = true;
+      if (canPublishPublicKey)
+        formVal[subject]![0][ProjectPermissionCmekActions.PublishPublicKey] = true;
       return;
     }
 
@@ -2239,6 +2243,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Export Private Key",
         value: ProjectPermissionCmekActions.ExportPrivateKey,
         description: "Export the private key from KMS (sensitive operation)"
+      },
+      {
+        label: "Publish Public Key",
+        value: ProjectPermissionCmekActions.PublishPublicKey,
+        description: "Publish a sign-verify key's public key at an unauthenticated JWKS URL"
       }
     ]
   },
