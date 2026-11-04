@@ -42,7 +42,16 @@ export default function Example() {
                   { value: "acme", label: "Acme Corp" },
                   { value: "globex", label: "Globex" }
                 ],
-                onChange: setOrg
+                onChange: setOrg,
+                actions: [
+                  {
+                    label: "Organization settings",
+                    link: linkOptions({
+                      to: "/design-system/components/$group/$component",
+                      params: { group: "navigation", component: "top-bar" }
+                    })
+                  }
+                ]
               }
             },
             { label: "Secrets Management" },
