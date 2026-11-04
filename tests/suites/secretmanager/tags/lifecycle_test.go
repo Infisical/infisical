@@ -47,10 +47,11 @@ func TestSecretTag_Lifecycle(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		known := secretmanager.CreateTag(t, proj, "known")
+		missing := uuid.NewString()
 		body := api.CreateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"}
 		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
 		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue, body.Secrets[0].TagIds = "TAGGED", "v", &[]string{known}
-		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue, body.Secrets[1].TagIds = "UNKNOWN_TAG", "v", &[]string{uuid.NewString()}
+		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue, body.Secrets[1].TagIds = "UNKNOWN_TAG", "v", &[]string{missing}
 
 		// Action
 		res, err := tn.Admin.API.CreateManySecretsV4WithResponse(t.Context(), body)
@@ -58,7 +59,7 @@ func TestSecretTag_Lifecycle(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "batch create returned %s", res.Body)
-		require.Equal(t, "Tag not found. Found known", apierr.Message(res.Body))
+		require.Equal(t, "Tag not found in this project: '"+missing+"'", apierr.Message(res.Body))
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
 }

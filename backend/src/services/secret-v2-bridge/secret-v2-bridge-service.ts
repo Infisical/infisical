@@ -740,7 +740,7 @@ export const secretV2BridgeServiceFactory = ({
           conflicts: [{ secretKey: inputSecret.secretName, newSecretName: inputSecret.newSecretName }],
           environment,
           secretPath,
-          message: `Secret with the new name '${inputSecret.newSecretName}' already exists in path '${secretPath}' of environment '${environment}'`
+          message: "Secret with the new name already exists"
         });
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Edit,
@@ -2649,6 +2649,7 @@ export const secretV2BridgeServiceFactory = ({
         throwIfReadOnlySecretEdits({
           storedSecrets: secretsToUpdateInDB,
           updates: secretsToUpdate,
+          decryptValue: (encryptedValue) => secretManagerDecryptor({ cipherTextBlob: encryptedValue }).toString(),
           environment,
           secretPath
         });
@@ -2713,9 +2714,9 @@ export const secretV2BridgeServiceFactory = ({
               conflicts,
               environment,
               secretPath,
-              message: `Secret with new name already exists: ${conflicts
-                .map((el) => `'${el.newSecretName}'`)
-                .join(", ")} in path '${secretPath}' of environment '${environment}'`
+              message: `Secret with new name already exists: ${secretsWithNewName
+                .map((el) => el.newSecretName)
+                .join(", ")}`
             });
           }
 
@@ -2799,8 +2800,9 @@ export const secretV2BridgeServiceFactory = ({
         const inputSecretsForUpdate = await Promise.all(
           secretsToUpdate.map(async (el) => {
             const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
-            const shouldUpdateValue = !originalSecret.isRotatedSecret && typeof el.secretValue !== "undefined";
-            const shouldUpdateName = !originalSecret.isRotatedSecret && el.newSecretName;
+            const isReadOnly = originalSecret.isRotatedSecret || originalSecret.isHoneyTokenSecret;
+            const shouldUpdateValue = !isReadOnly && typeof el.secretValue !== "undefined";
+            const shouldUpdateName = !isReadOnly && el.newSecretName;
 
             if (shouldUpdateName && el.newSecretName && originalSecret.type === SecretType.Shared) {
               secretKeyUpdates.push({

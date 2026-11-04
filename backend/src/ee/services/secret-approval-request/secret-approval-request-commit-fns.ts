@@ -168,13 +168,14 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
 
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey(
-      {
-        type: KmsDataKey.SecretManager,
-        projectId
-      },
-      providedTx
-    );
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey(
+        {
+          type: KmsDataKey.SecretManager,
+          projectId
+        },
+        providedTx
+      );
 
     const project = await projectDAL.findById(projectId, providedTx);
 
@@ -263,6 +264,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
       throwIfReadOnlySecretEdits({
         storedSecrets: secretsToUpdateStoredInDB,
         updates: secretsToUpdate,
+        decryptValue: (encryptedValue) => secretManagerDecryptor({ cipherTextBlob: encryptedValue }).toString(),
         environment,
         secretPath
       });
