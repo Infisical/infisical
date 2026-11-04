@@ -2,11 +2,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertTitle,
+  Button,
   Field,
   FieldContent,
   FieldDescription,
@@ -56,6 +67,9 @@ import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance"
 import {
   buildRenewalFormDefaults,
   buildRenewalRequestAttributes,
+  capTtlToDays,
+  getRemovedCertificateNames,
+  getRemovedCertificateNamesFromCsr,
   unionUsageOptions
 } from "./certificateRenewalUtils";
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
@@ -76,6 +90,7 @@ import { ValidityField } from "./ValidityField";
 const formSchema = z
   .object({
     keySource: z.nativeEnum(CertificateRenewalKeySource),
+    reissue: z.boolean().default(false),
     csr: z.string().trim().optional(),
     ttl: z.string().trim().min(1, "TTL is required"),
     subjectAttributes: z
@@ -210,6 +225,129 @@ const EXTERNAL_TEMPLATE_OPTIONS_STEP: WizardStep = {
     "The issuing certificate authority takes validity, key usages, extended key usages and basic constraints from its own certificate template, so they cannot be set here."
 };
 
+const REISSUE_STEP_COPY: Partial<Record<RenewalStepKey, Partial<WizardStep>>> = {
+  setup: {
+    shortDescription: "Order and key pair",
+    subtitle: "Choose the DigiCert order and the key pair.",
+    rightDescription: "Reissuing puts the new certificate on the same DigiCert order."
+  },
+  csr: {
+    shortDescription: "CSR",
+    subtitle: "Provide the CSR for this reissue.",
+    rightDescription:
+      "The subject and key are taken from the CSR you provide, so there are no separate subject or key usage fields."
+  },
+  options: {
+    shortDescription: "Algorithms and key usage",
+    subtitle: "Set algorithms and key usages within the profile's policy."
+  }
+};
+
+type TChoiceOption<T extends string> = {
+  value: T;
+  label: string;
+  description: string;
+  isDisabled?: boolean;
+  disabledReason?: string;
+};
+
+const ChoiceCards = <T extends string>({
+  label,
+  idPrefix,
+  value,
+  onChange,
+  options
+}: {
+  label: string;
+  idPrefix: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: TChoiceOption<T>[];
+}) => {
+  const [openReasonFor, setOpenReasonFor] = useState<T | null>(null);
+
+  return (
+    <Field>
+      <FieldLabel>{label}</FieldLabel>
+      <FieldContent>
+        <RadioGroup value={value} onValueChange={(next) => onChange(next as T)} className="gap-2">
+          {options.map((option) => {
+            const card = (
+              <FieldLabel
+                key={option.value}
+                htmlFor={`${idPrefix}-${option.value}`}
+                variant="project"
+              >
+                <Field orientation="horizontal" className="items-center gap-3">
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="text-sm font-medium text-foreground">{option.label}</p>
+                    <p className="text-xs text-muted">
+                      {option.isDisabled
+                        ? "Not available for this certificate."
+                        : option.description}
+                    </p>
+                  </div>
+                  {option.isDisabled && (
+                    <span id={`${idPrefix}-${option.value}-reason`} className="sr-only">
+                      {option.disabledReason}
+                    </span>
+                  )}
+                  <RadioGroupItem
+                    id={`${idPrefix}-${option.value}`}
+                    value={option.value}
+                    disabled={option.isDisabled}
+                    aria-describedby={
+                      option.isDisabled ? `${idPrefix}-${option.value}-reason` : undefined
+                    }
+                    className="sr-only"
+                  />
+                </Field>
+              </FieldLabel>
+            );
+            if (!option.isDisabled) return card;
+            return (
+              <Tooltip
+                key={option.value}
+                open={openReasonFor === option.value}
+                onOpenChange={(isReasonOpen) =>
+                  setOpenReasonFor(isReasonOpen ? option.value : null)
+                }
+              >
+                <TooltipTrigger
+                  asChild
+                  onClick={(event) => {
+                    // Radix closes a tooltip on click and never opens one on tap.
+                    event.preventDefault();
+                    setOpenReasonFor(option.value);
+                  }}
+                >
+                  {/* The disabled radio drops pointer events and focus, so the wrapper carries the hover and focus. */}
+                  {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                  <span tabIndex={0} className="block">
+                    {card}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-80">
+                  {option.disabledReason}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </RadioGroup>
+      </FieldContent>
+    </Field>
+  );
+};
+
+const REISSUE_MAX_VALIDITY_DAYS = 199;
+
+const REISSUE_VALIDITY_DESCRIPTION = `Same as the current certificate, up to ${REISSUE_MAX_VALIDITY_DAYS} days. DigiCert also caps it at the end of the order.`;
+
+enum DigiCertOrderChoice {
+  NewOrder = "new-order",
+  Reissue = "reissue"
+}
+
 const STEP_FIELDS: Record<RenewalStepKey, string[]> = {
   setup: ["keySource"],
   csr: ["csr", "ttl"],
@@ -245,13 +383,25 @@ const SUBJECT_ISSUER_FIELDS = new Set([
   "altNames"
 ]);
 
+const NameRemovalWarning = ({ names }: { names: string[] }) => (
+  <Alert variant="warning">
+    <TriangleAlertIcon />
+    <AlertTitle>DigiCert will revoke the current certificate</AlertTitle>
+    <AlertDescription>
+      This reissue removes {names.join(", ")}. Once the new certificate is issued, DigiCert revokes
+      the current certificate and any earlier reissues and duplicates on this order within 72 hours.
+    </AlertDescription>
+  </Alert>
+);
+
 export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
 
   const isOpen = Boolean(popUp?.renewCertificate?.isOpen);
-  const { certificateId } = (popUp?.renewCertificate?.data as { certificateId?: string }) ?? {};
+  const { certificateId, canRevoke = true } =
+    (popUp?.renewCertificate?.data as { certificateId?: string; canRevoke?: boolean }) ?? {};
 
   const { data: certificateData } = useGetCertificateById(
     isOpen && certificateId ? certificateId : ""
@@ -302,6 +452,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     handleSubmit,
     reset,
     watch,
+    getValues,
     setValue,
     trigger,
     clearErrors,
@@ -316,6 +467,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       ),
     defaultValues: {
       keySource: CertificateRenewalKeySource.New,
+      reissue: false,
       ttl: "",
       subjectAttributes: [],
       subjectAltNames: [],
@@ -327,6 +479,35 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   });
 
   const keySource = watch("keySource");
+  const isReissueAvailable =
+    certificate?.externalMetadata?.type === CaType.DIGICERT &&
+    caSupportsCapability(
+      (profile?.certificateAuthority?.externalType as CaType | undefined) ?? CaType.INTERNAL,
+      CaCapability.REISSUE_CERTIFICATES
+    );
+  const isReissuing = isReissueAvailable && watch("reissue");
+  const getReissueRemovedNames = () => {
+    if (!isReissuing || !certificate) return [];
+    if (keySource === CertificateRenewalKeySource.Csr) {
+      return getRemovedCertificateNamesFromCsr({ certificate, csr: watch("csr") });
+    }
+    return getRemovedCertificateNames({
+      certificate,
+      formData: {
+        subjectAttributes: watch("subjectAttributes"),
+        subjectAltNames: watch("subjectAltNames")
+      },
+      constraints
+    });
+  };
+  const removedNames = getReissueRemovedNames();
+  const nameRemovalError =
+    removedNames.length && !canRevoke
+      ? "Removing or changing a name on a reissue revokes the current certificate, and you don't have permission to revoke it."
+      : undefined;
+  const [pendingNameRemovalRenewal, setPendingNameRemovalRenewal] =
+    useState<RenewalFormData | null>(null);
+  const [isConfirmingNameRemoval, setIsConfirmingNameRemoval] = useState(false);
   const watchedIsCA = watch("basicConstraints.isCA") || false;
   const sanTypesInForm = (watch("subjectAltNames") ?? []).map((san) => san.type).join(",");
   const watchedKeyUsages = Object.keys(watch("keyUsages") ?? {})
@@ -477,6 +658,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     validateStep: async (fields) => {
       // Leaving a step reveals the findings on its own fields; entering it must stay quiet.
       policy.reveal(fields);
+      if (nameRemovalError && (fields.includes("subjectAltNames") || fields.includes("csr")))
+        return false;
       if (!(await trigger(fields as (keyof RenewalFormData)[]))) return false;
       return policy.findBlockedFields(fields).length === 0;
     }
@@ -489,9 +672,15 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
           key === "options" && isExternalTemplateProfile
             ? EXTERNAL_TEMPLATE_OPTIONS_STEP
             : STEP_META[key];
-        return hasOriginatingRequest ? { ...meta, ...(REPLAYED_STEP_COPY[key] ?? {}) } : meta;
+        const replayedMeta = hasOriginatingRequest
+          ? { ...meta, ...(REPLAYED_STEP_COPY[key] ?? {}) }
+          : meta;
+        const showsReissueCopy = key === "setup" ? isReissueAvailable : isReissuing;
+        return showsReissueCopy
+          ? { ...replayedMeta, ...(REISSUE_STEP_COPY[key] ?? {}) }
+          : replayedMeta;
       }),
-    [stepKeys, isExternalTemplateProfile, hasOriginatingRequest]
+    [stepKeys, isExternalTemplateProfile, hasOriginatingRequest, isReissueAvailable, isReissuing]
   );
 
   const subjectIssuerChanges = useMemo(
@@ -516,8 +705,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   );
 
   const [isSeeded, setIsSeeded] = useState(false);
-  const [openReasonFor, setOpenReasonFor] = useState<CertificateRenewalKeySource | null>(null);
   const seededCertificateIdRef = useRef<string | null>(null);
+  const seededTtlRef = useRef("");
+  const newOrderTtlRef = useRef("");
   useEffect(() => {
     if (!isOpen) {
       seededCertificateIdRef.current = null;
@@ -534,6 +724,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
     seededCertificateIdRef.current = certificate.id;
     const renewalDefaults = buildRenewalFormDefaults(certificate, constraints, renewalPreview);
+    seededTtlRef.current = renewalDefaults.ttl ?? "";
+    newOrderTtlRef.current = "";
     // Seed the rows the policy requires so they are visible as fields from the start.
     const seeded = withRequiredRows(
       buildPolicyRules(policyData),
@@ -542,6 +734,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     );
     reset({
       ...renewalDefaults,
+      reissue: getValues("reissue"),
       subjectAttributes: seeded.subjectAttributes,
       subjectAltNames: seeded.subjectAltNames
     });
@@ -555,13 +748,62 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     renewalPreview,
     constraints,
     policyData,
-    reset
+    reset,
+    getValues
   ]);
+
+  useEffect(() => {
+    if (!isSeeded || !seededTtlRef.current) return;
+    if (isReissuing) {
+      newOrderTtlRef.current = getValues("ttl");
+      setValue("ttl", capTtlToDays(seededTtlRef.current, REISSUE_MAX_VALIDITY_DAYS));
+      return;
+    }
+    setValue("ttl", newOrderTtlRef.current || seededTtlRef.current);
+  }, [isSeeded, isReissuing, getValues, setValue]);
 
   const closeWizard = () => {
     handlePopUpToggle("renewCertificate", false);
     reset();
     setStep(0);
+  };
+
+  const submitRenewal = async (formData: RenewalFormData) => {
+    if (!certificateId) return;
+
+    const attributes = buildRenewalRequestAttributes({
+      formData,
+      constraints,
+      isExternalTemplateProfile
+    });
+    const result = await renewCertificate({
+      certificateId,
+      renewalKeySource: formData.keySource,
+      ...(formData.keySource === CertificateRenewalKeySource.Csr && { csr: formData.csr }),
+      ...(isReissuing && { externalConfiguration: { reissue: true } }),
+      attributes: isReissuing ? { ...attributes, ttl: undefined } : attributes
+    });
+
+    let notificationText = `Certificate renewal submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`;
+    if (isReissuing) {
+      notificationText = `Certificate reissue submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`;
+    } else if (result.certificate) {
+      notificationText = "Certificate renewed successfully";
+    }
+    createNotification({ text: notificationText, type: "success" });
+
+    closeWizard();
+
+    if (currentOrg?.id && currentProject?.id && result.certificateId && result.certificate) {
+      navigate({
+        to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
+        params: {
+          orgId: currentOrg.id,
+          certificateId: result.certificateId
+        },
+        ...(applicationName && { search: { fromApplication: applicationName } })
+      });
+    }
   };
 
   const onFormSubmit = async (formData: RenewalFormData) => {
@@ -581,35 +823,31 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       return;
     }
 
-    const result = await renewCertificate({
-      certificateId,
-      renewalKeySource: formData.keySource,
-      ...(formData.keySource === CertificateRenewalKeySource.Csr && { csr: formData.csr }),
-      attributes: buildRenewalRequestAttributes({
-        formData,
-        constraints,
-        isExternalTemplateProfile
-      })
-    });
+    if (nameRemovalError) {
+      const namesStep = stepKeys.indexOf(
+        keySource === CertificateRenewalKeySource.Csr ? "csr" : "subject"
+      );
+      if (namesStep >= 0) setStep(namesStep);
+      createNotification({ text: nameRemovalError, type: "error" });
+      return;
+    }
 
-    createNotification({
-      text: result.certificate
-        ? "Certificate renewed successfully"
-        : `Certificate renewal submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`,
-      type: "success"
-    });
+    if (removedNames.length) {
+      setPendingNameRemovalRenewal(formData);
+      return;
+    }
 
-    closeWizard();
+    await submitRenewal(formData);
+  };
 
-    if (currentOrg?.id && currentProject?.id && result.certificateId && result.certificate) {
-      navigate({
-        to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
-        params: {
-          orgId: currentOrg.id,
-          certificateId: result.certificateId
-        },
-        ...(applicationName && { search: { fromApplication: applicationName } })
-      });
+  const confirmNameRemoval = async () => {
+    if (!pendingNameRemovalRenewal) return;
+    setIsConfirmingNameRemoval(true);
+    try {
+      await submitRenewal(pendingNameRemovalRenewal);
+    } finally {
+      setIsConfirmingNameRemoval(false);
+      setPendingNameRemovalRenewal(null);
     }
   };
 
@@ -646,96 +884,63 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       isOpen={isOpen}
       onOpenChange={(open) => (open ? handlePopUpToggle("renewCertificate", true) : closeWizard())}
       icon={<RefreshCw className="h-5 w-5" />}
-      title="Renew certificate"
+      title={isReissuing ? "Reissue Certificate" : "Renew Certificate"}
       description={certificate?.commonName || certificate?.friendlyName || "Certificate"}
       steps={steps}
       activeStep={step}
       onStepChange={setStep}
       docsHref={PkiDocsUrls.applications.certificateRenewal}
-      submitLabel="Renew certificate"
+      submitLabel={isReissuing ? "Reissue Certificate" : "Renew Certificate"}
       onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
       onBack={goBack}
       onContinue={goNext}
-      isSubmitting={isSubmitting}
+      isSubmitting={isSubmitting || isConfirmingNameRemoval}
       isSubmitDisabled={!certificate || !isSeeded}
       isContinueDisabled={!certificate || !isSeeded}
     >
       {currentStepKey === "setup" && (
-        <Controller
-          control={control}
-          name="keySource"
-          render={({ field: { onChange, value } }) => (
-            <Field>
-              <FieldLabel>Key pair</FieldLabel>
-              <FieldContent>
-                <RadioGroup value={value} onValueChange={onChange} className="gap-2">
-                  {keySourceOptions.map((option) => {
-                    const card = (
-                      <FieldLabel
-                        key={option.value}
-                        htmlFor={`key-source-${option.value}`}
-                        variant="project"
-                      >
-                        <Field orientation="horizontal" className="items-center gap-3">
-                          <div className="min-w-0 flex-1 text-left">
-                            <p className="text-sm font-medium text-foreground">{option.label}</p>
-                            <p className="text-xs text-muted">
-                              {option.isDisabled
-                                ? "Not available for this certificate."
-                                : option.description}
-                            </p>
-                          </div>
-                          {option.isDisabled && (
-                            <span id={`key-source-${option.value}-reason`} className="sr-only">
-                              {option.disabledReason}
-                            </span>
-                          )}
-                          <RadioGroupItem
-                            id={`key-source-${option.value}`}
-                            value={option.value}
-                            disabled={option.isDisabled}
-                            aria-describedby={
-                              option.isDisabled ? `key-source-${option.value}-reason` : undefined
-                            }
-                            className="sr-only"
-                          />
-                        </Field>
-                      </FieldLabel>
-                    );
-                    if (!option.isDisabled) return card;
-                    return (
-                      <Tooltip
-                        key={option.value}
-                        open={openReasonFor === option.value}
-                        onOpenChange={(isReasonOpen) =>
-                          setOpenReasonFor(isReasonOpen ? option.value : null)
-                        }
-                      >
-                        <TooltipTrigger
-                          asChild
-                          onClick={(event) => {
-                            // Radix closes a tooltip on click and never opens one on tap.
-                            event.preventDefault();
-                            setOpenReasonFor(option.value);
-                          }}
-                        >
-                          {/* The disabled radio drops pointer events and focus, so the wrapper carries the hover and focus. */}
-                          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-                          <span tabIndex={0} className="block">
-                            {card}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-80">
-                          {option.disabledReason}
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </RadioGroup>
-              </FieldContent>
-            </Field>
+        <div className="space-y-6">
+          {isReissueAvailable && (
+            <Controller
+              control={control}
+              name="reissue"
+              render={({ field: { onChange, value } }) => (
+                <ChoiceCards
+                  label="DigiCert order"
+                  idPrefix="digicert-order"
+                  value={value ? DigiCertOrderChoice.Reissue : DigiCertOrderChoice.NewOrder}
+                  onChange={(choice) => onChange(choice === DigiCertOrderChoice.Reissue)}
+                  options={[
+                    {
+                      value: DigiCertOrderChoice.NewOrder,
+                      label: "Place a new order",
+                      description: "Issues the certificate on a new DigiCert order."
+                    },
+                    {
+                      value: DigiCertOrderChoice.Reissue,
+                      label: "Reissue the existing order",
+                      description:
+                        "Issues the certificate on the same DigiCert order, so it can't outlast the order. For longer coverage, place a new order. Removing or changing a name revokes the current certificate and any earlier copies on the order within 72 hours."
+                    }
+                  ]}
+                />
+              )}
+            />
           )}
-        />
+          <Controller
+            control={control}
+            name="keySource"
+            render={({ field: { onChange, value } }) => (
+              <ChoiceCards
+                label="Key pair"
+                idPrefix="key-source"
+                value={value}
+                onChange={onChange}
+                options={keySourceOptions}
+              />
+            )}
+          />
+        </div>
       )}
 
       {currentStepKey === "csr" && (
@@ -752,7 +957,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                   {...field}
                   value={value ?? ""}
                   spellCheck={false}
-                  isError={Boolean(error)}
+                  isError={Boolean(error || nameRemovalError)}
                   placeholder="-----BEGIN CERTIFICATE REQUEST-----"
                   rows={12}
                   className="w-full font-mono text-xs"
@@ -760,13 +965,20 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                 <FieldDescription>
                   The subject, key, and extensions are taken from this CSR.
                 </FieldDescription>
-                <FieldError errors={[error]} />
+                <FieldError
+                  errors={[error ?? (nameRemovalError ? { message: nameRemovalError } : undefined)]}
+                />
               </Field>
             )}
           />
+          {removedNames.length > 0 && !nameRemovalError && (
+            <NameRemovalWarning names={removedNames} />
+          )}
           <ValidityField
             control={control}
             label="Validity (TTL)"
+            isReadOnly={isReissuing}
+            description={isReissuing ? REISSUE_VALIDITY_DESCRIPTION : undefined}
             hint={policy.ttlHint}
             policyError={policy.ttlError}
             revealPolicyError={policy.isRevealed("ttl")}
@@ -781,6 +993,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               control={control}
               allowedAttributeTypes={selectableSubjectAttributeTypes}
               error={
+                (!constraints.shouldShowSanSection && nameRemovalError) ||
                 (formState.errors as { subjectAttributes?: { message?: string } }).subjectAttributes
                   ?.message
               }
@@ -797,6 +1010,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               control={control}
               allowedSanTypes={selectableSanTypes}
               error={
+                nameRemovalError ??
                 (formState.errors as { subjectAltNames?: { message?: string } }).subjectAltNames
                   ?.message
               }
@@ -807,6 +1021,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
             />
+          )}
+          {removedNames.length > 0 && !nameRemovalError && (
+            <NameRemovalWarning names={removedNames} />
           )}
           <IssuerModifiedNotice fields={subjectIssuerChanges} />
         </div>
@@ -832,7 +1049,12 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               control={control}
               className="mb-4"
               label="Validity (TTL)"
-              description="The renewed certificate is valid for this long, starting now."
+              isReadOnly={isReissuing}
+              description={
+                isReissuing
+                  ? REISSUE_VALIDITY_DESCRIPTION
+                  : "The renewed certificate is valid for this long, starting now."
+              }
               hint={policy.ttlHint}
               policyError={policy.ttlError}
               revealPolicyError={policy.isRevealed("ttl")}
@@ -897,6 +1119,34 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
           <IssuerModifiedNotice fields={optionsIssuerChanges} />
         </div>
       )}
+      <AlertDialog
+        open={pendingNameRemovalRenewal !== null}
+        isPending={isConfirmingNameRemoval}
+        onOpenChange={(open) => {
+          if (!open) setPendingNameRemovalRenewal(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reissue without {removedNames.join(", ")}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Once the new certificate is issued, DigiCert revokes the current certificate and any
+              earlier reissues and duplicates on this order within 72 hours.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="danger"
+              size="sm"
+              isPending={isConfirmingNameRemoval}
+              onClick={confirmNameRemoval}
+            >
+              Reissue Certificate
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </CertificateWizardSheet>
   );
 };

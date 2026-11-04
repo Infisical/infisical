@@ -160,7 +160,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
 
     try {
       const session = await createSession.mutateAsync({
-        accessBundles: [accessBundle.name],
+        accessBundle: accessBundle.name,
         ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset,
         label: label || undefined
       });

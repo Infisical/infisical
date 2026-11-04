@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { AwsAcmValidationMethod } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-enums";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-enums";
 
 export const AwsAcmPublicCaExternalMetadataSchema = z.object({
   type: z.literal(CaType.AWS_ACM_PUBLIC_CA),
@@ -15,8 +16,11 @@ export type TAwsAcmPublicCaExternalMetadata = z.infer<typeof AwsAcmPublicCaExter
 
 export const DigiCertExternalMetadataSchema = z.object({
   type: z.literal(CaType.DIGICERT),
-  orderId: z.number().int().positive().safe()
+  orderId: z.number().int().positive().safe(),
+  certificateId: z.number().int().positive().safe().optional()
 });
+
+const DigiCertImportExternalMetadataSchema = DigiCertExternalMetadataSchema.omit({ certificateId: true });
 
 export type TDigiCertExternalMetadata = z.infer<typeof DigiCertExternalMetadataSchema>;
 
@@ -35,13 +39,17 @@ export const ExternalMetadataSchema = z.discriminatedUnion("type", [
 
 export type TExternalMetadata = z.infer<typeof ExternalMetadataSchema>;
 
-export const ImportExternalMetadataSchema = z.discriminatedUnion("type", [DigiCertExternalMetadataSchema]);
+export const ImportExternalMetadataSchema = z.discriminatedUnion("type", [DigiCertImportExternalMetadataSchema]);
 
 export type TImportExternalMetadata = z.infer<typeof ImportExternalMetadataSchema>;
 
 type TCertificateImportVerifierDeps = {
   digicertFns: {
-    assertOrderMatchesCertificate: (args: { caId: string; orderId: number; serialNumber: string }) => Promise<void>;
+    assertOrderMatchesCertificate: (args: {
+      caId: string;
+      orderId: number;
+      certificatePem: string;
+    }) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
   };
 };
 
@@ -49,18 +57,25 @@ type TCertificateImportLinkage = {
   externalMetadataSchema: z.ZodTypeAny | null;
   referenceLabel?: string;
   verifyCertificate?: (
-    args: { caId: string; externalMetadata: TImportExternalMetadata; serialNumber: string },
+    args: { caId: string; externalMetadata: TImportExternalMetadata; certificatePem: string },
     deps: TCertificateImportVerifierDeps
-  ) => Promise<void>;
+  ) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
 };
 
 export const CertificateImportLinkageMap: Partial<Record<CaType, TCertificateImportLinkage>> = {
   [CaType.INTERNAL]: { externalMetadataSchema: null },
   [CaType.DIGICERT]: {
-    externalMetadataSchema: DigiCertExternalMetadataSchema,
+    externalMetadataSchema: DigiCertImportExternalMetadataSchema,
     referenceLabel: "DigiCert order ID",
-    verifyCertificate: ({ caId, externalMetadata, serialNumber }, { digicertFns }) =>
-      digicertFns.assertOrderMatchesCertificate({ caId, orderId: externalMetadata.orderId, serialNumber })
+    verifyCertificate: ({ caId, externalMetadata, certificatePem }, { digicertFns }) =>
+      digicertFns.assertOrderMatchesCertificate({ caId, orderId: externalMetadata.orderId, certificatePem })
+  }
+};
+
+export const CertificateReissueMap: Partial<Record<CaType, { orderSchema: z.ZodTypeAny; maxValidityDays: number }>> = {
+  [CaType.DIGICERT]: {
+    orderSchema: DigiCertExternalMetadataSchema,
+    maxValidityDays: DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS
   }
 };
 
