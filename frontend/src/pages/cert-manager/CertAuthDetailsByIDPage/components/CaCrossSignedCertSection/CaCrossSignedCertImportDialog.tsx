@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as x509 from "@peculiar/x509";
@@ -39,6 +39,7 @@ type Props = {
   caId: string;
   caName: string;
   isReplace: boolean;
+  currentCertificateChain?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
@@ -128,6 +129,7 @@ export const CaCrossSignedCertImportDialog = ({
   caId,
   caName,
   isReplace,
+  currentCertificateChain,
   isOpen,
   onOpenChange
 }: Props) => {
@@ -147,6 +149,15 @@ export const CaCrossSignedCertImportDialog = ({
     resolver: zodResolver(schema),
     defaultValues: { certificate: "", certificateChain: "" }
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        certificate: "",
+        certificateChain: isReplace ? (currentCertificateChain ?? "") : ""
+      });
+    }
+  }, [isOpen]);
 
   const certificateText = watch("certificate").trim();
   const certificateChainText = watch("certificateChain").trim();

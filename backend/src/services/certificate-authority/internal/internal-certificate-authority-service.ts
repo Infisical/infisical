@@ -6,6 +6,8 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
+import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -73,7 +75,6 @@ import { buildLocalCaSigner, TCaSigner } from "../ca-signer";
 import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-config-dal";
 import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
-import { TCertificateAuthorityCrossSignedCertDALFactory } from "../certificate-authority-cross-signed-cert-dal";
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
@@ -89,7 +90,6 @@ import {
   getCaCertChain, // TODO: consider rename
   getCaCertChains,
   getCaSigner,
-  assertCrossSignedCertsAllowSubCa,
   getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
   signatureAlgorithmToAlgCfg,

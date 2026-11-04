@@ -16,7 +16,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("publicKeyFingerprint").notNullable();
       t.datetime("notBefore").notNullable();
       t.datetime("notAfter").notNullable();
-      t.integer("maxSubCaDepth").nullable();
+      t.integer("maxPathLength").nullable();
       t.timestamps(true, true, true);
     });
 

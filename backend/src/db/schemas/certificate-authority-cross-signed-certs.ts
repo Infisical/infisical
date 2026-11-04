@@ -19,7 +19,7 @@ export const CertificateAuthorityCrossSignedCertsSchema = z.object({
   publicKeyFingerprint: z.string(),
   notBefore: z.date(),
   notAfter: z.date(),
-  maxSubCaDepth: z.number().nullable().optional(),
+  maxPathLength: z.number().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

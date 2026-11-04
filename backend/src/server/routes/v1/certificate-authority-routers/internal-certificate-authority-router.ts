@@ -541,7 +541,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       operationId: "importCaCrossSignedCertificate",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description:
-        "Import or replace the cross-signed certificate of an internal CA. Certificates the CA and the CAs under it issue afterwards carry it in their chain. Certificates already issued keep their chain.",
+        "Import or replace the cross-signed certificate of an internal CA. Certificates the CA and its internal sub-CAs issue afterwards carry it in their chain. An intermediate CA signed through sign-intermediate gets the CA's own chain without it. Certificates already issued keep their chain.",
       params: z.object({
         caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.caId)
       }),
@@ -607,7 +607,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       hide: false,
       operationId: "getCaCrossSignedCertificate",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
-      description: "Get the cross-signed certificate of an internal CA. Returns null when the CA has none.",
+      description:
+        "Get the cross-signed certificate of an internal CA. `crossSignedCertificate` is null when the CA has none.",
       params: z.object({
         caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CROSS_SIGNED_CERT.caId)
       }),
@@ -650,7 +651,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       }),
       response: {
         200: z.object({
-          crossSignedCertificate: CaCrossSignedCertResponseSchema
+          crossSignedCertificate: CaCrossSignedCertResponseSchema.omit({ certificate: true, certificateChain: true })
         })
       }
     },

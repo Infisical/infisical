@@ -145,7 +145,9 @@ If a cross-signed certificate isn't valid yet, the CA adds it to chains only fro
 
 ## Certificate chains with a cross-signed certificate
 
-While the cross-signed certificate is valid, each certificate the CA issues or renews carries a chain in which the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported.
+While the cross-signed certificate is valid, each certificate the CA issues or renews carries a chain in which the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported. This applies to certificates issued for applications, through the API, and through ACME, by the CA and its internal sub-CAs.
+
+Signing an external intermediate CA's CSR returns the CA's own chain, without the cross-signed certificate. Clients that only trust the old root reject certificates under that intermediate CA.
 
 ### Chain order
 

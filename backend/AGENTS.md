@@ -1201,7 +1201,7 @@ failure is logged, never thrown, so the original outcome stands.
 ### Cross-signed CA certificates and issued chains
 
 An internal CA holds at most one cross-signed certificate (`certificate_authority_cross_signed_certs`),
-managed by `certificate-authority-cross-signed-cert-service.ts`. Every leaf issuance path builds its stored chain with `getIssuedCaCertChain` (`certificate-authority-fns.ts`),
+managed by `ee/services/certificate-authority-cross-signed-cert/`. Every leaf issuance path builds its stored chain with `getIssuedCaCertChain` (`certificate-authority-fns.ts`),
 which swaps in the copy. Trust-anchor endpoints (CA certificate download, AIA, EST cacerts, SCEP GetCACert)
 keep using `getCaCertChain`, so they still return the self-signed CA.
 
