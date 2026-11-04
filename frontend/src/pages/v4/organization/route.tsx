@@ -7,7 +7,10 @@ import { V4OrganizationLayout } from "./V4OrganizationLayout";
 export const Route = createFileRoute("/v4/organizations/$orgId")({
   beforeLoad: async ({ context, params, location }) => {
     const { isV4AppEnabled, V4_DEMO_ORG_ID } = await import("../mode");
-    if (params.orgId === V4_DEMO_ORG_ID) return { v4Mode: "demo" as const };
+    if (params.orgId === V4_DEMO_ORG_ID) {
+      const { demoAdapters } = await import("../data/demo");
+      return { v4Mode: "demo" as const, adapters: demoAdapters };
+    }
     if (!(await isV4AppEnabled())) {
       throw redirect({ href: location.href.replace(/^\/v4/, ""), replace: true });
     }
@@ -17,7 +20,8 @@ export const Route = createFileRoute("/v4/organizations/$orgId")({
       params,
       location
     });
-    return { ...session, organizationId, v4Mode: "live" as const };
+    const { liveAdapters } = await import("../data/live");
+    return { ...session, organizationId, v4Mode: "live" as const, adapters: liveAdapters };
   },
   component: V4OrganizationLayout,
   pendingComponent: lazyRouteComponent(() => import("../V4PageLoader"), "V4PageLoader")
