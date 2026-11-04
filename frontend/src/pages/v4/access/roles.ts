@@ -59,6 +59,21 @@ export const orgRoleName = (
 export const ORG_BUILT_IN_ROLES = ["admin", "member", "no-access"];
 export const PROJECT_BUILT_IN_ROLES = ["admin", "member", "viewer", "no-access"];
 
+export const roleOptions = (
+  roles: readonly { slug: string; name: string; description?: string | null }[]
+) =>
+  roles.map((role) => ({
+    value: role.slug,
+    label: role.name,
+    description: role.description || "No description"
+  }));
+
+export const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 export const formatDate = (value?: string | Date | null) =>
   value ? format(new Date(value), "MMM d, yyyy") : "";
 
