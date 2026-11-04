@@ -124,10 +124,10 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
                   .boolean()
                   .optional()
                   .describe("Whether Infisical stores the certificate's private key."),
-                metadata: z
-                  .array(z.object({ key: z.string(), value: z.string() }))
+                canRead: z
+                  .boolean()
                   .optional()
-                  .describe("Key-value metadata attached to the certificate."),
+                  .describe("Whether the requesting actor has read permission on the certificate."),
                 subjectOrganization: z.string().nullable().optional(),
                 subjectOrganizationalUnit: z.string().nullable().optional(),
                 subjectCountry: z.string().nullable().optional(),

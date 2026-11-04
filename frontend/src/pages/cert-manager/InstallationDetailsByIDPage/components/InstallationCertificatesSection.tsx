@@ -1,6 +1,5 @@
 /* eslint-disable no-nested-ternary */
 import { ReactNode, useState } from "react";
-import { subject } from "@casl/ability";
 import { format } from "date-fns";
 import { BoxIcon, EyeIcon, FileOutputIcon, MoreHorizontalIcon } from "lucide-react";
 
@@ -30,12 +29,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionSub,
-  useProject,
-  useProjectPermission
-} from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { getInstancePinningLink } from "@app/helpers/project";
 import { TPkiInstallationCert, useDownloadCertPkcs12 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -55,7 +49,7 @@ type Props = {
 
 export const InstallationCertificatesSection = ({ certificates, emptyState }: Props) => {
   const { currentProject } = useProject();
-  const { permission, hasProjectRole } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
   const [assignTargetId, setAssignTargetId] = useState<string | null>(null);
 
@@ -133,16 +127,7 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                 const expiryDetails = cert.notAfter
                   ? getCertValidUntilBadgeDetails(cert.notAfter)
                   : null;
-                const canReadCertificate = permission.can(
-                  ProjectPermissionCertificateActions.Read,
-                  subject(ProjectPermissionSub.Certificates, {
-                    commonName: cert.commonName ?? undefined,
-                    altNames: cert.altNames?.split(",").map((s) => s.trim()),
-                    serialNumber: cert.serialNumber ?? undefined,
-                    friendlyName: cert.friendlyName ?? undefined,
-                    metadata: cert.metadata
-                  })
-                );
+                const canReadCertificate = Boolean(cert.canRead);
 
                 return (
                   <TableRow key={cert.certificateId} linked>

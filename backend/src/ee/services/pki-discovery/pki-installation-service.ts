@@ -1,8 +1,9 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionCertificateActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub
@@ -119,8 +120,22 @@ export const pkiInstallationServiceFactory = ({
     const { connectionId } = (installation.locationDetails as TPkiInstallationLocationDetails | null) ?? {};
     const connection = connectionId ? await appConnectionDAL.findById(connectionId) : undefined;
 
+    const certificates = installation.certificates.map(({ metadata, ...cert }) => ({
+      ...cert,
+      canRead: permission.can(
+        ProjectPermissionCertificateActions.Read,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: cert.commonName ?? undefined,
+          altNames: cert.altNames?.split(",").map((s: string) => s.trim()),
+          serialNumber: cert.serialNumber ?? undefined,
+          friendlyName: cert.friendlyName ?? undefined,
+          metadata
+        })
+      )
+    }));
+
     return {
-      ...sanitizePkiInstallation(installation),
+      ...sanitizePkiInstallation({ ...installation, certificates }),
       connection: connection && connection.orgId === actorOrgId ? { id: connection.id, name: connection.name } : null
     };
   };

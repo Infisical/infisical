@@ -167,7 +167,7 @@ export type TPkiInstallationCert = {
   altNames?: string | null;
   applicationId?: string | null;
   hasPrivateKey?: boolean;
-  metadata?: { key: string; value: string }[];
+  canRead?: boolean;
 };
 
 export type TPkiDiscoveryScan = {
