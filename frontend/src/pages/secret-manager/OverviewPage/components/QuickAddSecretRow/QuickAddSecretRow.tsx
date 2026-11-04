@@ -235,10 +235,11 @@ export const QuickAddSecretRow = ({
       }}
     >
       <TableCell
+        isTopAligned
         className={
           isMultiEnvironmentView
-            ? "sticky left-0 z-10 w-10 max-w-10 min-w-10 bg-container p-0 align-top group-hover:bg-container-hover"
-            : "w-10 max-w-10 min-w-10 p-0 align-top"
+            ? "sticky left-0 z-10 w-10 max-w-10 min-w-10 bg-container p-0 group-hover:bg-container-hover"
+            : "w-10 max-w-10 min-w-10 p-0"
         }
       >
         <div className="flex h-10 items-center justify-center">
@@ -246,10 +247,11 @@ export const QuickAddSecretRow = ({
         </div>
       </TableCell>
       <TableCell
+        isTopAligned
         className={
           isMultiEnvironmentView
-            ? "sticky left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container align-top group-hover:bg-container-hover lg:w-96 lg:max-w-96 lg:min-w-96"
-            : "w-60 max-w-60 min-w-60 border-r align-top lg:w-96 lg:max-w-96 lg:min-w-96"
+            ? "sticky left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container group-hover:bg-container-hover lg:w-96 lg:max-w-96 lg:min-w-96"
+            : "w-60 max-w-60 min-w-60 border-r lg:w-96 lg:max-w-96 lg:min-w-96"
         }
       >
         <form ref={formRef} id="quick-add-secret-form" onSubmit={handleSubmit}>
@@ -290,7 +292,8 @@ export const QuickAddSecretRow = ({
         </form>
       </TableCell>
       <TableCell
-        className={isMultiEnvironmentView ? "p-0 align-top" : "align-top"}
+        isTopAligned
+        className={isMultiEnvironmentView ? "p-0" : undefined}
         colSpan={environments.length}
       >
         <div

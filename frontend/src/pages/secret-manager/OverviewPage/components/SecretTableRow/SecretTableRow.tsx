@@ -469,8 +469,9 @@ export const SecretTableRow = ({
       >
         {(isSingleEnvView || !isExpanded) && (
           <TableCell
+            isTopAligned
             className={twMerge(
-              "w-10 max-w-10 min-w-10 p-0 align-top",
+              "w-10 max-w-10 min-w-10 p-0",
               !isSingleEnvView && "sticky left-0 z-10",
               !singleEnvPendingAction &&
                 "bg-container transition-colors duration-75 group-hover:bg-container-hover",
@@ -735,20 +736,21 @@ export const SecretTableRow = ({
             (isSingleEnvOverrideActive || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
           )}
         >
-          <TableCell className="align-top">
+          <TableCell isTopAligned>
             <div className="flex h-7 items-center">
               <GitBranchIcon className="size-4 text-override-foreground" />
             </div>
           </TableCell>
           <TableCell
+            isTopAligned
             className={twMerge(
-              "border-r align-top text-override-foreground",
+              "border-r text-override-foreground",
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
             <div className="flex min-h-7 items-center">{secretKey}</div>
           </TableCell>
-          <TableCell className="max-w-0 align-top">
+          <TableCell isTopAligned className="max-w-0">
             <SecretOverrideRow
               isSingleEnvView
               secretName={secretKey}
@@ -942,7 +944,7 @@ export const SecretTableRow = ({
                             <TableCell
                               className={hasOverride ? "border-l border-l-override" : undefined}
                             />
-                            <TableCell colSpan={2} className="max-w-0 align-top">
+                            <TableCell isTopAligned colSpan={2} className="max-w-0">
                               <SecretOverrideRow
                                 secretName={secretKey}
                                 environment={slug}

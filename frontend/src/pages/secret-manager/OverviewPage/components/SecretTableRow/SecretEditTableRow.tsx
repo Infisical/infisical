@@ -2342,9 +2342,10 @@ export const SecretEditTableRow = ({
     return (
       <>
         <TableCell
+          isTopAligned
           isTruncatable
           className={twMerge(
-            "cursor-text border-r align-top",
+            "cursor-text border-r",
             isOverride && "border-l border-b-border/50 border-l-override"
           )}
           onClick={(event) => {
@@ -2362,10 +2363,8 @@ export const SecretEditTableRow = ({
           </div>
         </TableCell>
         <TableCell
-          className={twMerge(
-            "relative w-full max-w-0 align-top",
-            isOverride && "border-b-border/50"
-          )}
+          isTopAligned
+          className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}
         >
           <div data-table-row-filter-contents className="flex w-full flex-col gap-y-2 !filter-none">
             {valueContent}
@@ -2378,10 +2377,10 @@ export const SecretEditTableRow = ({
   return (
     <>
       <TableCell
+        isTopAligned
         isTruncatable
         className={twMerge(
           TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
-          "align-top",
           isOverride && "border-l border-b-border/50 border-l-override"
         )}
       >
@@ -2391,8 +2390,9 @@ export const SecretEditTableRow = ({
         </div>
       </TableCell>
       <TableCell
+        isTopAligned
         colSpan={2}
-        className={twMerge("max-w-0 align-top", isOverride && "border-b-border/50")}
+        className={twMerge("max-w-0", isOverride && "border-b-border/50")}
       >
         <div
           data-table-row-filter-contents
