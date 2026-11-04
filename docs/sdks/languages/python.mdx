@@ -1306,7 +1306,10 @@ response = client.agent_vault.access_bundles.grant(
 
 #### Revoke access
 
-Revoke an access bundle from users, machine identities, or groups. Pass at least one ID, and at most 100 in total. If you revoke the last grant that gives someone the access bundle, their sessions for the bundle stop getting credentials, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes.
+Revoke an access bundle from users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
+
+- If someone with the **Member** role no longer has any grant on the access bundle, their sessions for the bundle stop getting credentials, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes
+- Admins can use every access bundle without a grant, so their sessions keep getting credentials after you revoke their grants (to stop one of their agents, [revoke its session](#revoke-session))
 
 ```python
 response = client.agent_vault.access_bundles.revoke(
