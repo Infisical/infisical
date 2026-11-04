@@ -1,4 +1,4 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { vi } from "vitest";
 
 import {
@@ -194,6 +194,13 @@ describe("secret rotation alert provider", () => {
   });
 
   describe("listing a project's rotation alerts without naming a rotation", () => {
+    // A CASL error is what the permission-denied audit hook records, with the action and subject it names.
+    const expectAuditableReadDenial = async (result: Promise<void>) => {
+      const error = await result.catch((err: unknown) => err);
+      expect(error).toBeInstanceOf(ForbiddenError);
+      expect(error).toMatchObject({ action: "read", subjectType: "secret-rotation" });
+    };
+
     const listInput = {
       action: AlertPermissionAction.Read,
       orgId: "org-1",
@@ -206,9 +213,7 @@ describe("secret rotation alert provider", () => {
       const { provider } = buildProvider({
         rules: [{ action: "read", subject: "secret-rotation", conditions: { environment: "staging" } }]
       });
-      await expect(provider.assertPermission(listInput)).rejects.toThrow(
-        "requires permission to read every secret rotation"
-      );
+      await expectAuditableReadDenial(provider.assertPermission(listInput));
     });
 
     test("is refused when a deny rule narrows an otherwise project-wide read", async () => {
@@ -218,9 +223,7 @@ describe("secret rotation alert provider", () => {
           { action: "read", subject: "secret-rotation", inverted: true, conditions: { environment: "prod" } }
         ]
       });
-      await expect(provider.assertPermission(listInput)).rejects.toThrow(
-        "requires permission to read every secret rotation"
-      );
+      await expectAuditableReadDenial(provider.assertPermission(listInput));
     });
 
     test("is allowed when the caller can read every rotation in the project", async () => {

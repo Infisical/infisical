@@ -15,7 +15,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-events";
 import { SECRET_ROTATION_NAME_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TAlertPayload } from "../alert-channel-types";
@@ -207,10 +207,13 @@ export const secretRotationAlertProviderFactory = ({
       const canReadEveryRotation =
         readRules.some((rule) => !rule.inverted && !rule.conditions) && !readRules.some((rule) => rule.inverted);
       if (!canReadEveryRotation) {
-        throw new ForbiddenRequestError({
-          message:
-            "Listing secret rotation alerts for the whole project requires permission to read every secret rotation in it. Pass a rotation's ID to list its alerts."
-        });
+        // Built by hand because throwUnlessCan passes a partial read, and a CASL error is what the
+        // permission-denied audit hook records.
+        const denial = ForbiddenError.from(permission);
+        denial.action = ProjectPermissionSecretRotationActions.Read;
+        denial.subject = ProjectPermissionSub.SecretRotation;
+        denial.subjectType = ProjectPermissionSub.SecretRotation;
+        throw denial;
       }
       return;
     }
