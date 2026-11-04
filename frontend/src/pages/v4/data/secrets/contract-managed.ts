@@ -1,3 +1,5 @@
+import type { AppConnection } from "@app/hooks/api/appConnections/enums";
+import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import type {
   TCreateHoneyTokenDTO,
   TCreateHoneyTokenResponse,
@@ -19,6 +21,7 @@ import type {
   TUpdateSecretRotationV2DTO,
   TViewSecretRotationGeneratedCredentialsResponse
 } from "@app/hooks/api/secretRotationsV2/types";
+import type { TCreateSecretSyncDTO, TSecretSync } from "@app/hooks/api/secretSyncs/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
 
@@ -47,4 +50,11 @@ export type SecretsManagedAdapter = {
   useRevokeHoneyToken: V4Mutation<TRevokeHoneyTokenDTO>;
   useUpdateProxiedService: V4Mutation<TUpdateProxiedServiceDTO>;
   useDeleteProxiedService: V4Mutation<TDeleteProxiedServiceDTO>;
+  useSecretSyncs: (projectId: string) => V4QueryResult<TSecretSync[]>;
+  useCreateSecretSync: V4Mutation<TCreateSecretSyncDTO>;
+  useSyncConnections: (
+    app: AppConnection,
+    projectId: string,
+    options?: { enabled?: boolean }
+  ) => V4QueryResult<TAvailableAppConnection[]>;
 };

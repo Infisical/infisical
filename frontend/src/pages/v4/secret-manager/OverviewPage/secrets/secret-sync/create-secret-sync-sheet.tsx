@@ -40,13 +40,16 @@ import { Switch } from "@app/components/v4/ui/switch";
 import { SmallText } from "@app/components/v4/ui/text";
 import {
   POPULAR_SECRET_SYNCS,
+  SECRET_SYNC_CONNECTION_MAP,
   SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP,
   SECRET_SYNC_MAP
 } from "@app/helpers/secretSyncs";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs/enums";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { getSecretSyncDestinationColValues } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/helpers";
 
+import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import type { FlowFeedback, FlowScope } from "../flows";
 import {
@@ -61,8 +64,8 @@ import type { RowActionTone } from "../row-actions/types";
 import { SYNC_VIEWS, SyncConnections } from "./destination-fields";
 import {
   IMPORT_CAPABLE_SYNCS,
-  LOCAL_SYNC_CONNECTIONS,
   type LocalSecretSync,
+  type LocalSyncConnection,
   PORTED_SYNCS
 } from "./sync-model";
 
@@ -971,7 +974,19 @@ export function CreateSecretSyncSheet({
   const [step, setStep] = useState(0);
   const [discard, setDiscard] = useState<"close" | "provider">();
   const [confirming, setConfirming] = useState(false);
-  const [connections, setConnections] = useState(LOCAL_SYNC_CONNECTIONS);
+  const [addedConnections, setAddedConnections] = useState<LocalSyncConnection[]>([]);
+  const connectionApp = destination ? SECRET_SYNC_CONNECTION_MAP[destination] : AppConnection.AWS;
+  const loadedConnections = useV4Adapter("secrets").useSyncConnections(connectionApp, scope.project, {
+    enabled: Boolean(destination)
+  }).data;
+  const connections = [
+    ...(loadedConnections ?? []).map((connection) => ({
+      id: connection.id,
+      name: connection.name,
+      app: connectionApp
+    })),
+    ...addedConnections
+  ];
   const form = useForm<FieldValues>({
     resolver: zodResolver(SecretSyncFormSchema),
     mode: "onChange",
@@ -1129,7 +1144,7 @@ export function CreateSecretSyncSheet({
     <SyncConnections
       value={{
         connections,
-        addConnection: (connection) => setConnections((list) => [...list, connection])
+        addConnection: (connection) => setAddedConnections((list) => [...list, connection])
       }}
     >
       <FormProvider {...form}>

@@ -59,6 +59,8 @@ import type { TCreateDynamicSecretDTO } from "@app/hooks/api/dynamicSecret/types
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import type { TProxiedServiceCredentialInput } from "@app/hooks/api/proxiedServices/types";
 import type { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
+import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
+import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import type {
   TCreateSecretRotationV2DTO,
   TUpdateSecretRotationV2DTO
@@ -448,7 +450,26 @@ export const OverviewPage = () => {
     );
   };
   const commits: LocalCommit[] = [];
-  const syncs: LocalSecretSync[] = [];
+  const syncs = (adapter.useSecretSyncs(projectId).data ?? []).map(
+    (sync): LocalSecretSync => ({
+      id: sync.id,
+      name: sync.name,
+      destination: sync.destination,
+      project: sync.projectId,
+      environment: sync.environment?.slug ?? "",
+      path: sync.folder?.path ?? "/",
+      status: sync.syncStatus,
+      autoSync: sync.isAutoSyncEnabled,
+      lastSyncedAt: sync.lastSyncedAt ? new Date(sync.lastSyncedAt).toISOString() : undefined,
+      lastSyncMessage: sync.lastSyncMessage ?? undefined,
+      description: sync.description ?? undefined,
+      connectionId: sync.connection.id,
+      connectionName: sync.connection.name,
+      destinationConfig: sync.destinationConfig as Record<string, unknown>,
+      syncOptions: sync.syncOptions as Record<string, unknown>
+    })
+  );
+  const createSecretSync = adapter.useCreateSecretSync();
   const noEnvironments = projectQuery.isPending ? false : !projectEnvironments.length;
   const legacy = Boolean(projectQuery.data) && projectQuery.data?.version !== ProjectVersion.V3;
   const failed = Boolean(overview.error);
@@ -1883,10 +1904,33 @@ export const OverviewPage = () => {
             initial={single ? { environment: activeEnvironment, path } : undefined}
             syncs={syncs}
             resources={resources}
-            onCreate={(_sync, feedback) => {
-              setSyncOpen(false);
-              pushToast({ tone: "ok", ...feedback });
-            }}
+            onCreate={(sync, feedback) =>
+              createSecretSync
+                .mutateAsync({
+                  projectId,
+                  destination: sync.destination as SecretSync,
+                  name: sync.name,
+                  description: sync.description,
+                  connectionId: sync.connectionId ?? "",
+                  environment: sync.environment,
+                  secretPath: sync.path,
+                  isAutoSyncEnabled: sync.autoSync,
+                  destinationConfig: sync.destinationConfig,
+                  syncOptions: sync.syncOptions
+                } as TCreateSecretSyncDTO)
+                .then(
+                  () => {
+                    setSyncOpen(false);
+                    pushToast({ tone: "ok", ...feedback });
+                  },
+                  (error: unknown) =>
+                    pushToast({
+                      tone: "bad",
+                      title: "Failed to create secret sync",
+                      description: errorText(error)
+                    })
+                )
+            }
             onToast={(tone, feedback) => pushToast({ tone, ...feedback })}
           />
           <ReviewSheet

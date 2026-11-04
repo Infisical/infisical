@@ -14,6 +14,7 @@ import {
   updateSecrets,
   useStore
 } from "./demo-store";
+import { DEMO_SYNC_CONNECTIONS, demoSync } from "./demo-syncs";
 import { type DemoSecret, envOf } from "./fixtures";
 
 const fakeValue = (key: string) =>
@@ -357,5 +358,39 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
       proxiedServices: state.proxiedServices.filter((entry) => entry.id !== serviceId)
     }));
     return {};
+  }),
+  useSecretSyncs: (projectId) => {
+    const state = useStore().use();
+    return {
+      data: state.secretSyncs.filter((sync) => sync.projectId === projectId),
+      isPending: false,
+      error: null
+    };
+  },
+  useCreateSecretSync: demoMutation((store, dto) => {
+    if (store.get().secretSyncs.some((sync) => sync.name === dto.name))
+      throw new Error(`A secret sync with the name "${dto.name}" already exists in this project.`);
+    const sync = {
+      ...demoSync({
+        name: dto.name,
+        description: dto.description,
+        destination: dto.destination,
+        connectionId: dto.connectionId,
+        environment: envOf(dto.environment),
+        path: dto.secretPath,
+        status: null,
+        isAutoSyncEnabled: Boolean(dto.isAutoSyncEnabled),
+        destinationConfig: dto.destinationConfig,
+        syncOptions: dto.syncOptions
+      }),
+      projectId: dto.projectId
+    };
+    store.update((state) => ({ ...state, secretSyncs: [...state.secretSyncs, sync] }));
+    return {};
+  }),
+  useSyncConnections: (app) => ({
+    data: DEMO_SYNC_CONNECTIONS.filter((connection) => connection.app === app),
+    isPending: false,
+    error: null
   })
 };

@@ -29,9 +29,11 @@ import type { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { SecretRotation, SecretRotationStatus } from "@app/hooks/api/secretRotationsV2/enums";
 import type { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2/types";
 import type { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
+import { seedSecretSyncs } from "./demo-syncs";
 
 type Scope = { projectId: string; environment: string; path: string };
 export type DemoSecret = SecretV3RawSanitized & { projectId: string; path: string };
@@ -52,6 +54,7 @@ export type SecretsFixtures = {
   approvals: TSecretApprovalRequest[];
   versionHistory: Record<string, DemoVersion[]>;
   leases: Record<string, TDynamicSecretLease[]>;
+  secretSyncs: TSecretSync[];
 };
 export type DemoVersion = {
   version: number;
@@ -583,6 +586,7 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     ],
     dynamicSecrets,
     leases: seedLeases(dynamicSecrets),
+    secretSyncs: seedSecretSyncs(envOf),
     rotations: [
       rotation("/", "dev", "payments-app-db-creds", "payments-postgres", [
         "APP_DB_USERNAME",

@@ -33,7 +33,8 @@ const emptied = (fixtures: SecretsFixtures): SecretsFixtures => ({
   dynamicSecrets: [],
   rotations: [],
   honeyTokens: [],
-  proxiedServices: []
+  proxiedServices: [],
+  secretSyncs: []
 });
 
 const stores = {

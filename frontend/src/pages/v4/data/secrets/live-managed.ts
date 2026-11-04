@@ -1,3 +1,4 @@
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
   useCreateHoneyToken,
   useResetHoneyToken,
@@ -18,6 +19,8 @@ import {
   useUpdateSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useViewSecretRotationV2GeneratedCredentials } from "@app/hooks/api/secretRotationsV2/queries";
+import { useCreateSecretSync } from "@app/hooks/api/secretSyncs/mutations";
+import { useListSecretSyncs } from "@app/hooks/api/secretSyncs/queries";
 
 import type { SecretsManagedAdapter } from "./contract-managed";
 
@@ -36,5 +39,9 @@ export const secretsManagedLive: SecretsManagedAdapter = {
   useResetHoneyToken,
   useRevokeHoneyToken,
   useUpdateProxiedService,
-  useDeleteProxiedService
+  useDeleteProxiedService,
+  useSecretSyncs: (projectId) => useListSecretSyncs(projectId),
+  useCreateSecretSync,
+  useSyncConnections: (app, projectId, options) =>
+    useListAvailableAppConnections(app, projectId, { enabled: options?.enabled })
 };
