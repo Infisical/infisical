@@ -92,6 +92,7 @@ Exports: Button, buttonVariants. Source TypeScript defines the API.
 ## Accessibility
 
 - Use a real button for an action and asChild with an anchor for navigation. Name icon-only buttons. Native disabled removes activation, while loading remains focusable and exposes busy/disabled semantics.
+- The rendered button defaults to type button, so a Button inside a form never submits it by accident. Set type submit on the one Button that submits; an explicit type always wins. With asChild, Button sets no type and forwards only the one you pass, so an anchor child never gets a type attribute.
 
 ## Use cases
 
@@ -349,6 +350,60 @@ export default function Example() {
         <figcaption className="text-muted-foreground text-xs">{"Icon only"}</figcaption>
       </figure>
     </div>
+  );
+}
+```
+
+### Inside a form
+
+Save this example at `src/pages/design-system/examples/button/form-type.tsx`; its relative imports are generated for that exact path. States: default, success.
+
+Registry items used: @infisical/button, @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import { Field } from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+
+export default function Example() {
+  const [name, setName] = useState("payments-api");
+  const [saved, setSaved] = useState(0);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSaved((count) => count + 1);
+          }}
+        >
+          <Field label="Identity name">
+            <Input value={name} onChange={(event) => setName(event.target.value)} />
+          </Field>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setName(`identity-${Date.now() % 10000}`)}
+            >
+              Generate name
+            </Button>
+            <Button type="submit" variant="primary" size="sm">
+              Save
+            </Button>
+            <span role="status" className="text-sm">
+              {saved ? `Saved ${saved} ${saved === 1 ? "time" : "times"}` : "Not saved yet"}
+            </span>
+          </div>
+        </form>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {"Generate keeps the default type; Save sets type submit"}
+      </figcaption>
+    </figure>
   );
 }
 ```

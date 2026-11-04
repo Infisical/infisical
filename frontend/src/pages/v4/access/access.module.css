@@ -1,0 +1,84 @@
+.blockedCheck {
+  display: inline-flex;
+}
+.muted {
+  color: var(--v4-muted);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.roles {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  min-width: 0;
+}
+.groupRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v4-space-12);
+}
+.rowHint {
+  display: inline-flex;
+  color: var(--v4-muted);
+  opacity: 0;
+  transition: opacity var(--v4-duration-fast) var(--v4-ease-fade);
+}
+tr:is(:hover, :focus-within) .rowHint {
+  opacity: 1;
+}
+.roleSelect {
+  display: block;
+  width: 100%;
+  max-width: 256px;
+}
+.removeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-4);
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--v4-space-12) var(--v4-space-12) var(--v4-space-12) var(--v4-space-24);
+  border: var(--v4-size-control-border) solid var(--v4-line);
+  list-style: disc;
+}
+.removeList > li > span {
+  margin-inline-end: var(--v4-space-8);
+}
+.removeList > li[data-ignored] > span {
+  text-decoration: line-through;
+}
+button.rowHint {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+.fabDock {
+  position: sticky;
+  bottom: 0;
+  height: 0;
+  pointer-events: none;
+}
+.fabDock[data-active] {
+  height: calc(var(--v4-space-48) + var(--v4-space-16));
+}
+.fabDock > * {
+  pointer-events: auto;
+}
+.labelHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+}
+.labelHint .rowHint {
+  opacity: 1;
+}

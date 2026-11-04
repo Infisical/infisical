@@ -1,0 +1,249 @@
+import { useState } from "react";
+import { subject } from "@casl/ability";
+import { useParams } from "@tanstack/react-router";
+
+import { Badge } from "@app/components/v4/ui/badge";
+import { Button } from "@app/components/v4/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@app/components/v4/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@app/components/v4/ui/dropdown-menu";
+import { EmptyState } from "@app/components/v4/ui/empty";
+import { Icon } from "@app/components/v4/ui/icon";
+import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
+import { Loader } from "@app/components/v4/ui/loader";
+import { PageHeader } from "@app/components/v4/ui/page-header";
+import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import { supportsAssumePrivileges } from "@app/helpers/project";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { ProjectAccessControlTabs } from "@app/types/project";
+
+import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
+import { accessLinks } from "../links";
+import { useGo } from "../navigation";
+import { useProjectPermission } from "../permissions";
+import { formatDate } from "../roles";
+import { failed, saved, toast } from "../toast";
+import { AccessRestricted, Muted } from "../ui";
+import { personName, PROJECT_TYPE } from "./member-access";
+import { type AssumeTarget, AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
+import { MemberRolesSection } from "./member-roles";
+
+import styles from "./project.module.css";
+
+const ROUTE =
+  "/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId";
+
+const CopyValue = ({ value, what }: { value: string; what: string }) => {
+  const [copied, setCopied] = useState(false);
+  const label = copied ? `${what} copied` : `Copy ${what.toLowerCase()} to clipboard`;
+  return (
+    <span className={styles.copyValue}>
+      <span className={styles.wrap}>{value}</span>
+      <Tooltip content={label}>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          icon={copied ? "check" : "copy"}
+          iconOnly
+          onClick={() => {
+            navigator.clipboard?.writeText(value).catch(() => undefined);
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 2000);
+          }}
+        >
+          {label}
+        </Button>
+      </Tooltip>
+    </span>
+  );
+};
+
+export const ProjectMemberDetail = () => {
+  const { orgId, projectId, membershipId } = useParams({ from: ROUTE });
+  const access = useV4Adapter("access");
+  const go = useGo();
+  const session = useV4Session();
+  const { permission, isPending: permissionPending } = useProjectPermission(projectId);
+  const query = access.useProjectUser(projectId, membershipId, PROJECT_TYPE);
+  const removeUsers = access.useRemoveProjectUsers();
+  const [removing, setRemoving] = useState(false);
+  const [assuming, setAssuming] = useState<AssumeTarget>();
+  const listHref = accessLinks.project(orgId, projectId, ProjectAccessControlTabs.Member);
+  const breadcrumb = [{ label: "Project users", href: listHref }];
+
+  if (permissionPending || query.isPending) return <Loader size="page" label="Loading user" />;
+  if (!permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member))
+    return (
+      <Stack gap={24}>
+        <PageHeader breadcrumb={breadcrumb} title="Project user" />
+        <AccessRestricted requirement="read Member" />
+      </Stack>
+    );
+
+  const member = query.data;
+  if (!member)
+    return (
+      <Stack gap={24}>
+        <PageHeader breadcrumb={breadcrumb} title="Project user" />
+        <EmptyState
+          title="User not found"
+          description="This membership may have been removed or is no longer available."
+        />
+      </Stack>
+    );
+
+  const { user } = member;
+  const isSelf = user.email === session.user.email;
+  const name = personName(user) ?? user.email;
+  const canAssume =
+    supportsAssumePrivileges(PROJECT_TYPE) &&
+    permission.can(
+      ProjectPermissionMemberActions.AssumePrivileges,
+      subject(ProjectPermissionSub.Member, { userEmail: user.email })
+    );
+  const canDelete = permission.can(
+    ProjectPermissionMemberActions.Delete,
+    ProjectPermissionSub.Member
+  );
+
+  const remove = async () => {
+    setRemoving(false);
+    try {
+      await removeUsers.mutateAsync({
+        orgId,
+        usernames: [user.username],
+        projectId,
+        projectType: PROJECT_TYPE
+      });
+      saved("Successfully removed user from project");
+      go(listHref);
+    } catch (error) {
+      failed("Failed to remove user from project", error);
+    }
+  };
+
+  return (
+    <Stack gap={24}>
+      <PageHeader
+        breadcrumb={breadcrumb}
+        title={name}
+        description="Configure and manage project access control"
+        actions={
+          isSelf ? (
+            <Tooltip
+              side="right"
+              content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
+            >
+              <Badge tone="info">
+                <Icon name="info" size={12} />
+                Your project membership
+              </Badge>
+            </Tooltip>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" iconRight="more">
+                  Options
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    navigator.clipboard?.writeText(user.id).catch(() => undefined);
+                    toast({ tone: "neutral", title: "User ID copied to clipboard" });
+                  }}
+                >
+                  <Icon name="copy" />
+                  Copy user ID
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canAssume}
+                  onSelect={() => setAssuming({ id: user.id, type: ActorType.USER })}
+                >
+                  <Icon name="user" />
+                  Assume privileges
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={!canDelete}
+                  onSelect={() => setRemoving(true)}
+                >
+                  <Icon name="trash" />
+                  Remove user from project
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        }
+      />
+      <DetailLayout
+        asideLabel="Details"
+        aside={
+          <Card>
+            <CardHeader>
+              <CardTitle>Details</CardTitle>
+              <CardDescription>User membership details</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className={styles.details}>
+                <div>
+                  <dt>Name</dt>
+                  <dd>{personName(user) ?? <Muted>-</Muted>}</dd>
+                </div>
+                <div>
+                  <dt>ID</dt>
+                  <dd>
+                    <CopyValue value={user.id} what="User ID" />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Email</dt>
+                  <dd>
+                    <CopyValue value={user.email} what="User email" />
+                  </dd>
+                </div>
+                {user.username !== user.email && (
+                  <div>
+                    <dt>Username</dt>
+                    <dd>{user.username}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>Joined project</dt>
+                  <dd>{formatDate(member.createdAt)}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        }
+      >
+        <MemberRolesSection member={member} orgId={orgId} projectId={projectId} isSelf={isSelf} />
+      </DetailLayout>
+      <RemoveMemberDialog
+        name={removing ? name : undefined}
+        onOpenChange={(next) => !next && setRemoving(false)}
+        onConfirm={remove}
+      />
+      <AssumePrivilegesDialog
+        projectId={projectId}
+        target={assuming}
+        onOpenChange={(next) => !next && setAssuming(undefined)}
+      />
+    </Stack>
+  );
+};

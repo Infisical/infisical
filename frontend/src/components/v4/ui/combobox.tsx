@@ -16,6 +16,7 @@ import {
 import { Icon } from "./icon";
 import { MultiSelect } from "./multi-select";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Spinner } from "./spinner";
 
 import controlStyles from "./controls.module.css";
 import menu from "./menu.module.css";
@@ -45,6 +46,8 @@ export type ComboboxProps = SharedComboboxProps &
         defaultValue?: string;
         onChange?: (value: string) => void;
         onValueChange?: (value: string) => void;
+        onSearch?: (query: string) => void;
+        loading?: boolean;
       }
     | {
         multiple: true;
@@ -53,6 +56,8 @@ export type ComboboxProps = SharedComboboxProps &
         onChange?: (value: string[]) => void;
         onValueChange?: (value: string[]) => void;
         clearable?: boolean;
+        onSearch?: never;
+        loading?: never;
       }
   );
 export function Combobox({
@@ -70,6 +75,8 @@ export function Combobox({
     onCreate,
     className
   } = props;
+  const onSearch = props.multiple ? undefined : props.onSearch;
+  const loading = !props.multiple && Boolean(props.loading);
   const field = useFieldControlAttributes(props);
   const [internal, setInternal] = React.useState<string | string[]>(
     props.defaultValue ?? (props.multiple ? [] : "")
@@ -124,16 +131,24 @@ export function Combobox({
   const changeQuery = (next: string) => {
     creation.cancel();
     setQuery(next);
+    onSearch?.(next);
   };
   const changeOpen = (next: boolean) => {
     creation.cancel();
     setOpen(next);
-    if (!next) setQuery("");
+    if (next || !query) return;
+    setQuery("");
+    onSearch?.("");
   };
-  const selectedOption = options.find((option) => option.value === selected[0]);
-  const filtered = options.filter((option) =>
-    `${option.label} ${option.meta ?? ""}`.toLowerCase().includes(query.toLowerCase())
-  );
+  const [picked, setPicked] = React.useState<ComboboxOption>();
+  const selectedOption =
+    options.find((option) => option.value === selected[0]) ??
+    (picked?.value === selected[0] ? picked : undefined);
+  const filtered = onSearch
+    ? options
+    : options.filter((option) =>
+        `${option.label} ${option.meta ?? ""}`.toLowerCase().includes(query.toLowerCase())
+      );
   const canCreate =
     onCreate &&
     query.trim() &&
@@ -255,9 +270,15 @@ export function Combobox({
             onKeyDown={(event) => {
               if (event.nativeEvent.isComposing || event.keyCode === 229) event.stopPropagation();
             }}
+            trailing={loading ? <Spinner /> : undefined}
           />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
+          <CommandList aria-busy={loading || undefined}>
+            {!onSearch && <CommandEmpty>{emptyText}</CommandEmpty>}
+            {onSearch && !filtered.length && (
+              <p role="status" data-slot="combobox-status" className={menu.empty}>
+                {loading ? "Searching…" : emptyText}
+              </p>
+            )}
             <CommandGroup>
               {filtered.map((option) => (
                 <CommandItem
@@ -266,6 +287,7 @@ export function Combobox({
                   disabled={option.disabled || disabled}
                   data-checked={selected.includes(option.value)}
                   onSelect={() => {
+                    setPicked(option);
                     apply([option.value]);
                     changeOpen(false);
                   }}
@@ -276,7 +298,7 @@ export function Combobox({
               ))}
               {canCreate && (
                 <CommandItem
-                  disabled={creating || disabled}
+                  disabled={creating || loading || disabled}
                   value={`create:${query}`}
                   onSelect={() => {
                     creation.create(query.trim());
