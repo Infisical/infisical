@@ -91,7 +91,7 @@ export const ValidateClickHouseConnectionCredentialsSchema = z.discriminatedUnio
 export const CreateClickHouseConnectionSchema = ValidateClickHouseConnectionCredentialsSchema.and(
   GenericCreateAppConnectionFieldsSchema(AppConnection.ClickHouse, {
     supportsPlatformManagedCredentials: false,
-    supportsGateways: false
+    supportsGateways: true
   })
 );
 
@@ -104,7 +104,7 @@ export const UpdateClickHouseConnectionSchema = z
   .and(
     GenericUpdateAppConnectionFieldsSchema(AppConnection.ClickHouse, {
       supportsPlatformManagedCredentials: false,
-      supportsGateways: false
+      supportsGateways: true
     })
   );
 

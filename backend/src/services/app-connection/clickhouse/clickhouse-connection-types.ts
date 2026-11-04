@@ -19,7 +19,7 @@ export type TValidateClickHouseConnectionCredentialsSchema = typeof ValidateClic
 
 export type TClickHouseConnectionConfig = DiscriminativePick<
   TClickHouseConnectionInput,
-  "method" | "app" | "credentials"
+  "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
 > & {
   orgId: string;
 };

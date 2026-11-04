@@ -4,7 +4,12 @@ import { gunzipSync } from "node:zlib";
 
 import { ClickHouseClient, createClient, parseError } from "@clickhouse/client";
 
-import { BadRequestError } from "@app/lib/errors";
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { buildUncachedSsrfSafeAgent } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -56,49 +61,94 @@ export const executeClickHouseStatement = async (client: ClickHouseClient, query
   throw parseError(errorText);
 };
 
-type TCreateClickHouseClientOptions = {
-  authCredentials?: { username: string; password: string };
-  validateConnection?: boolean;
-};
+const buildUrl = (sslEnabled: boolean, host: string, port: number) =>
+  `${sslEnabled ? "https" : "http"}://${isIPv6(host) ? `[${host}]` : host}:${port}`;
 
-export const createClickHouseClient = async (
+const runWithClient = async <T>(
   credentials: TClickHouseConnection["credentials"],
-  options?: TCreateClickHouseClientOptions
+  url: string,
+  agentOptions: Parameters<typeof buildUncachedSsrfSafeAgent>[1],
+  operation: (client: ClickHouseClient) => Promise<T>
 ) => {
-  const { host } = credentials;
-  const url = `${credentials.sslEnabled ? "https" : "http"}://${isIPv6(host) ? `[${host}]` : host}:${credentials.port}`;
-
-  const { username, password } = options?.authCredentials ?? credentials;
-
   const client = createClient({
     url,
-    username,
-    password,
+    username: credentials.username,
+    password: credentials.password,
     database: credentials.database,
     request_timeout: REQUEST_TIMEOUT_MS,
-    // pins DNS to the validated IPs, and carries the TLS options the client's own tls config can't express
+    // carries the TLS options the client's own tls config can't express
     http_agent: await buildUncachedSsrfSafeAgent(url, {
       ca: credentials.sslCertificate,
-      rejectUnauthorized: credentials.sslRejectUnauthorized
+      rejectUnauthorized: credentials.sslRejectUnauthorized,
+      ...agentOptions
     })
   });
 
-  if (options?.validateConnection) {
-    try {
-      await executeClickHouseStatement(client, "SELECT 1");
-    } catch (error) {
-      await client.close();
-      throw error;
-    }
+  try {
+    return await operation(client);
+  } finally {
+    await client.close();
   }
-
-  return client;
 };
 
-export const validateClickHouseConnectionCredentials = async (config: TClickHouseConnectionConfig) => {
+export const executeWithClickHouseClient = async <T>(
+  config: { credentials: TClickHouseConnection["credentials"]; gatewayId?: string | null },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  operation: (client: ClickHouseClient) => Promise<T>
+): Promise<T> => {
+  const { credentials, gatewayId } = config;
+
+  if (gatewayId) {
+    const [targetHost] = await verifyHostInputValidity({
+      host: credentials.host,
+      isGateway: true,
+      isDynamicSecret: false
+    });
+    const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost,
+      targetPort: credentials.port
+    });
+
+    // Falling through to the direct path here would silently bypass the gateway the connection is
+    // pinned to and dial the target host from the platform instead.
+    if (!platformConnectionDetails) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
+    }
+
+    return withGatewayV2Proxy(
+      // the proxy listens locally, so there is nothing to validate or pin, but TLS still verifies the real host
+      (proxyPort) =>
+        runWithClient(
+          credentials,
+          buildUrl(credentials.sslEnabled, "localhost", proxyPort),
+          { allowPrivateIps: true, servername: credentials.host },
+          operation
+        ),
+      {
+        protocol: GatewayProxyProtocol.Tcp,
+        ...platformConnectionDetails
+      }
+    );
+  }
+
+  // the agent pins DNS to the IPs that pass validation
+  return runWithClient(
+    credentials,
+    buildUrl(credentials.sslEnabled, credentials.host, credentials.port),
+    {},
+    operation
+  );
+};
+
+export const validateClickHouseConnectionCredentials = async (
+  config: TClickHouseConnectionConfig,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+) => {
   try {
-    const client = await createClickHouseClient(config.credentials, { validateConnection: true });
-    await client.close();
+    await executeWithClickHouseClient(config, gatewayV2Service, (client) =>
+      executeClickHouseStatement(client, "SELECT 1")
+    );
 
     return config.credentials;
   } catch (err) {

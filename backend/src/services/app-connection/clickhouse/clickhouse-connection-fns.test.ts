@@ -2,11 +2,51 @@ import { Readable } from "node:stream";
 import { gzipSync } from "node:zlib";
 
 import { ClickHouseClient } from "@clickhouse/client";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { executeClickHouseStatement } from "./clickhouse-connection-fns";
+import { NotFoundError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 
-vi.mock("@app/lib/validator", () => ({ buildUncachedSsrfSafeAgent: vi.fn() }));
+import { executeClickHouseStatement, executeWithClickHouseClient } from "./clickhouse-connection-fns";
+
+const state = vi.hoisted(() => ({ agentRequests: [] as unknown[][], proxyOptions: [] as unknown[] }));
+
+vi.mock("@app/lib/validator", () => ({
+  buildUncachedSsrfSafeAgent: async (...args: unknown[]) => {
+    state.agentRequests.push(args);
+    return undefined;
+  }
+}));
+vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({
+  verifyHostInputValidity: async ({ host }: { host: string }) => [host]
+}));
+vi.mock("@app/lib/gateway-v2/gateway-v2", () => ({
+  withGatewayV2Proxy: async (callback: (port: number) => Promise<unknown>, options: unknown) => {
+    state.proxyOptions.push(options);
+    return callback(54321);
+  }
+}));
+
+const CREDENTIALS = {
+  host: "clickhouse.example.com",
+  port: 8443,
+  database: "default",
+  username: "manager",
+  password: "manager-password",
+  sslEnabled: true,
+  sslRejectUnauthorized: true
+};
+const GATEWAY_ID = "3c90c3cc-0d44-4b50-8888-8dd25736052a";
+
+const gatewayReturning = (details: unknown) => {
+  const getPlatformConnectionDetailsByGatewayId = vi.fn(async () => details);
+  return {
+    getPlatformConnectionDetailsByGatewayId,
+    gatewayV2Service: { getPlatformConnectionDetailsByGatewayId } as unknown as Parameters<
+      typeof executeWithClickHouseClient
+    >[1]
+  };
+};
 
 const respondWith = (body: Buffer, statusCode: number, headers: Record<string, string> = {}) =>
   ({
@@ -38,5 +78,68 @@ describe("executeClickHouseStatement", () => {
 
     expect(bomb.length).toBeLessThan(1024 * 1024);
     await expect(executeClickHouseStatement(response, "SELECT 1")).rejects.toThrow("couldn't read");
+  });
+});
+
+describe("executeWithClickHouseClient", () => {
+  beforeEach(() => {
+    state.agentRequests = [];
+    state.proxyOptions = [];
+  });
+
+  it("connects directly through an agent pinned to the host when there is no gateway", async () => {
+    const { gatewayV2Service } = gatewayReturning(undefined);
+
+    await executeWithClickHouseClient({ credentials: CREDENTIALS }, gatewayV2Service, async () => undefined);
+
+    expect(state.agentRequests).toEqual([
+      ["https://clickhouse.example.com:8443", { ca: undefined, rejectUnauthorized: true }]
+    ]);
+  });
+
+  it("brackets IPv6 hosts in the URL", async () => {
+    const { gatewayV2Service } = gatewayReturning(undefined);
+
+    await executeWithClickHouseClient(
+      { credentials: { ...CREDENTIALS, host: "2001:db8::10" } },
+      gatewayV2Service,
+      async () => undefined
+    );
+
+    expect(state.agentRequests[0][0]).toBe("https://[2001:db8::10]:8443");
+  });
+
+  it("connects through the gateway proxy and still verifies TLS against the real host", async () => {
+    const { gatewayV2Service, getPlatformConnectionDetailsByGatewayId } = gatewayReturning({ relayHost: "relay" });
+
+    await executeWithClickHouseClient(
+      { credentials: CREDENTIALS, gatewayId: GATEWAY_ID },
+      gatewayV2Service,
+      async () => undefined
+    );
+
+    expect(getPlatformConnectionDetailsByGatewayId).toHaveBeenCalledWith({
+      gatewayId: GATEWAY_ID,
+      targetHost: "clickhouse.example.com",
+      targetPort: 8443
+    });
+    expect(state.proxyOptions).toEqual([{ protocol: GatewayProxyProtocol.Tcp, relayHost: "relay" }]);
+    expect(state.agentRequests).toEqual([
+      [
+        "https://localhost:54321",
+        { ca: undefined, rejectUnauthorized: true, allowPrivateIps: true, servername: "clickhouse.example.com" }
+      ]
+    ]);
+  });
+
+  it("refuses to connect directly when the gateway is missing", async () => {
+    const { gatewayV2Service } = gatewayReturning(undefined);
+    const operation = vi.fn();
+
+    await expect(
+      executeWithClickHouseClient({ credentials: CREDENTIALS, gatewayId: GATEWAY_ID }, gatewayV2Service, operation)
+    ).rejects.toThrow(NotFoundError);
+    expect(operation).not.toHaveBeenCalled();
+    expect(state.agentRequests).toEqual([]);
   });
 });
