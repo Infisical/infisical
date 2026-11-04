@@ -40,8 +40,6 @@ import {
   TUpdateSessionLabelDTO
 } from "./agent-vault-session-types";
 
-// V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
-export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
 export const AGENT_VAULT_SESSION_DEFAULT_TTL = "7d";
 export const AGENT_VAULT_SESSION_TTL_NEVER = "never";
 // Past roughly 1e8 days the expiry overflows Date and Postgres rejects the row as a 500. A century is
@@ -120,7 +118,7 @@ export const agentVaultSessionServiceFactory = ({
   const mintSession = async ({
     projectId,
     ctx,
-    accessBundles,
+    accessBundle,
     services = [],
     actorName,
     actorEmail,
@@ -129,6 +127,8 @@ export const agentVaultSessionServiceFactory = ({
     label
   }: TMintSessionDTO) => {
     const caller = requireSessionActor(ctx);
+    // The rest of mint, the junction table and resolve all work on a list; a session holds at most one bundle.
+    const accessBundles = accessBundle ? [accessBundle] : [];
     const ttl = resolveSessionTtl(requestedTtl, Boolean(onBehalfOf));
 
     const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
@@ -147,12 +147,6 @@ export const agentVaultSessionServiceFactory = ({
       throw new ForbiddenRequestError({
         message: "Only an Agent Vault admin can send services with a session. Name an access bundle instead."
       });
-    }
-    if (accessBundles.length > AGENT_VAULT_MAX_SESSION_BUNDLES) {
-      throw new BadRequestError({ message: "A session carries one access bundle. Name only one." });
-    }
-    if (new Set(accessBundles).size !== accessBundles.length) {
-      throw new BadRequestError({ message: "You've named the same access bundle more than once. Name it only once." });
     }
 
     const preparedInlineServices = prepareInlineServices(services);
@@ -305,11 +299,7 @@ export const agentVaultSessionServiceFactory = ({
         label: session.label ?? null,
         expiresAt: session.expiresAt ?? null,
         createdAt: session.createdAt,
-        accessBundles: accessBundles.map((name, position) => ({
-          id: bundlesByName.get(name)!.id,
-          name,
-          position
-        })),
+        accessBundle: accessBundle ? { id: bundlesByName.get(accessBundle)!.id, name: accessBundle } : null,
         services: insertedInlineServices
           .sort((a, b) => a.position - b.position)
           .map((row) => toInlineServiceSummary(row))

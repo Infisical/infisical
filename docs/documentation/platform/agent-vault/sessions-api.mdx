@@ -52,10 +52,10 @@ Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   -H "Authorization: Bearer <access-token>" \
   -H "Content-Type: application/json" \
-  -d '{"accessBundles": ["<access-bundle-name>"], "ttl": "1h", "label": "nightly deploy"}'
+  -d '{"accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
 ```
 
-- `accessBundles` takes a list, but a session can have only one access bundle, so the list must have exactly one name (unless an admin sends [inline services](/documentation/platform/agent-vault/inline-services) instead)
+- `accessBundle` is the name of the access bundle the session carries (an admin can leave it out and send [inline services](/documentation/platform/agent-vault/inline-services) instead)
 - `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
 - `label` is optional and describes what the session is for, in up to 128 characters (see [Label a session](/documentation/platform/agent-vault/sessions#label-a-session))
 
@@ -143,7 +143,7 @@ In Agent Vault, go to **Sessions** and select **All Sessions**. Find the session
 
 <AccordionGroup>
   <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to you&quot;">
-    The machine identity doesn't have a grant on the access bundle, or the name in `accessBundles` is wrong. Check the name on the **Access Bundles** page, and [grant the bundle](#step-1-set-up-a-machine-identity) to the machine identity.
+    The machine identity doesn't have a grant on the access bundle, or the name in `accessBundle` is wrong. Check the name on the **Access Bundles** page, and [grant the bundle](#step-1-set-up-a-machine-identity) to the machine identity.
   </Accordion>
   <Accordion title="Creating or revoking a session fails with 401 after your code has run for a while">
     The machine identity's access token expired. [Log in again](#step-2-log-in-as-the-machine-identity) to get a new access token. Sessions you already created keep working, because a session doesn't depend on the access token that created it.

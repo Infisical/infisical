@@ -194,31 +194,26 @@ export const SessionDetailSheet = ({
                     />
                   </Detail>
                 )}
-                {session.accessBundles.length > 0 && (
+                {session.accessBundle && (
                   <Detail>
-                    <DetailLabel>
-                      {session.accessBundles.length === 1 ? "Access Bundle" : "Access Bundles"}
-                    </DetailLabel>
-                    <DetailValue className="flex flex-col gap-1">
-                      {session.accessBundles.map((bundle) =>
-                        bundle.id ? (
-                          <Link
-                            key={bundle.id}
-                            to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                            params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
-                            className="group flex w-fit max-w-full items-start gap-2"
-                          >
-                            <PackageIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-                            <span className="min-w-0 group-hover:underline group-hover:underline-offset-2">
-                              {bundle.name}
-                            </span>
-                          </Link>
-                        ) : (
-                          <span key={bundle.name} className="flex items-start gap-2 text-muted">
-                            <PackageIcon className="mt-0.5 size-4 shrink-0" />
-                            <span className="min-w-0">{bundle.name} (deleted)</span>
+                    <DetailLabel>Access Bundle</DetailLabel>
+                    <DetailValue>
+                      {session.accessBundle.id ? (
+                        <Link
+                          to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                          params={{ orgId: currentOrg.id, accessBundleId: session.accessBundle.id }}
+                          className="group flex w-fit max-w-full items-start gap-2"
+                        >
+                          <PackageIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+                          <span className="min-w-0 group-hover:underline group-hover:underline-offset-2">
+                            {session.accessBundle.name}
                           </span>
-                        )
+                        </Link>
+                      ) : (
+                        <span className="flex items-start gap-2 text-muted">
+                          <PackageIcon className="mt-0.5 size-4 shrink-0" />
+                          <span className="min-w-0">{session.accessBundle.name} (deleted)</span>
+                        </span>
                       )}
                     </DetailValue>
                   </Detail>
