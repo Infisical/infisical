@@ -31,7 +31,10 @@ export default function Example() {
           items={[
             {
               label: org === "acme" ? "Acme Corp" : "Globex",
-              link: linkOptions({ to: "/design-system", hash: "breadcrumb" }),
+              link: linkOptions({
+                to: "/design-system/components/$group/$component",
+                params: { group: "navigation", component: "breadcrumb" }
+              }),
               switcher: {
                 label: "Switch organization",
                 value: org,

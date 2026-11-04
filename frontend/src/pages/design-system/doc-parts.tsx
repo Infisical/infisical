@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useId, useState } from "react";
+import { useRouterState } from "@tanstack/react-router";
 
 import { AnimatedCollapse } from "@app/components/v4/ui/animated-collapse";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -87,15 +88,8 @@ export const RuleMeta = ({ id, detect }: { id: string; detect: DetectSummary }) 
   </p>
 );
 
-export const useLocationHash = () => {
-  const [hash, setHash] = useState(() => window.location.hash);
-  useEffect(() => {
-    const follow = () => setHash(window.location.hash);
-    window.addEventListener("hashchange", follow);
-    return () => window.removeEventListener("hashchange", follow);
-  }, []);
-  return hash;
-};
+export const useLocationHash = () =>
+  useRouterState({ select: (state) => (state.location.hash ? `#${state.location.hash}` : "") });
 
 export const useScrollToAnchor = (anchor: string | undefined) => {
   useEffect(() => {

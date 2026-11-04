@@ -17,7 +17,10 @@ export default function Example() {
           <div className="flex items-start gap-3">
             <ProviderIcon icon="Infisical.png" alt="" size="xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <CardLink to="/design-system" hash="detail">
+              <CardLink
+                to="/design-system/components/$group/$component"
+                params={{ group: "data-display", component: "detail" }}
+              >
                 Detail
               </CardLink>
               <SmallText muted>
@@ -47,7 +50,11 @@ export default function Example() {
           <div className="flex items-start gap-3">
             <ProviderIcon icon="Kafka.png" alt="" size="xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <CardLink to="/design-system" hash="detail" disabled>
+              <CardLink
+                to="/design-system/components/$group/$component"
+                params={{ group: "data-display", component: "detail" }}
+                disabled
+              >
                 Unreleased page
               </CardLink>
               <SmallText muted>Opens once the page ships.</SmallText>

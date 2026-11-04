@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { type LinkOptions, useNavigate } from "@tanstack/react-router";
 import { Palette } from "lucide-react";
 
 import { componentCatalog } from "@app/components/v4/catalog";
@@ -21,7 +22,7 @@ export type PaletteControls = {
   groups: readonly {
     title: string;
     icon: IconName;
-    pages: readonly { id: string; title: string }[];
+    pages: readonly { id: string; title: string; link: LinkOptions }[];
   }[];
 };
 
@@ -34,13 +35,10 @@ const kindOf = (group: string): CommandMenuItemKind => {
   return "component";
 };
 
-const goTo = (page: string, example?: string) => {
-  window.location.hash = example ? `#${page}/${example}` : `#${page}`;
-};
-
 export const WorkbenchPalette = ({ open, onOpenChange, toggleTheme, groups }: PaletteControls) => {
   const accent = useAccentPanel();
   const shell = useAppShell();
+  const navigate = useNavigate();
   const [recentIds, setRecentIds] = useState<string[]>(() => {
     try {
       return JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]") as string[];
@@ -60,7 +58,7 @@ export const WorkbenchPalette = ({ open, onOpenChange, toggleTheme, groups }: Pa
   const index = useMemo(() => {
     const aliases = Object.entries(required.aliases as Record<string, string>);
     const pageItem = (
-      page: { id: string; title: string },
+      page: { id: string; title: string; link: LinkOptions },
       group: { title: string; icon: IconName }
     ): CommandMenuItem => {
       const entry = componentCatalog.find((item) => item.id === page.id);
@@ -76,7 +74,7 @@ export const WorkbenchPalette = ({ open, onOpenChange, toggleTheme, groups }: Pa
         ],
         onSelect: () => {
           remember(`page:${page.id}`);
-          goTo(page.id);
+          navigate(page.link as Parameters<typeof navigate>[0]);
         }
       };
     };
@@ -84,6 +82,9 @@ export const WorkbenchPalette = ({ open, onOpenChange, toggleTheme, groups }: Pa
       label: group.title,
       items: group.pages.map((page) => pageItem(page, group))
     }));
+    const pageLinks = new Map(
+      groups.flatMap((group) => group.pages.map((page) => [page.id, page.link]))
+    );
     const examples: CommandMenuItem[] = componentCatalog.flatMap((entry) =>
       entry.examples.map((example) => ({
         id: `example:${entry.id}:${example.id}`,
@@ -93,12 +94,14 @@ export const WorkbenchPalette = ({ open, onOpenChange, toggleTheme, groups }: Pa
         keywords: [entry.title, entry.id, example.id],
         onSelect: () => {
           remember(`example:${entry.id}:${example.id}`);
-          goTo(entry.id, example.id);
+          navigate({ ...pageLinks.get(entry.id), hash: example.id } as Parameters<
+            typeof navigate
+          >[0]);
         }
       }))
     );
     return { pageGroups, examples };
-  }, [groups]);
+  }, [groups, navigate]);
   const actions: CommandMenuItem[] = [
     {
       id: "action:theme",
