@@ -1,3 +1,4 @@
+import { ProjectMembershipRole } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
@@ -24,6 +25,19 @@ type TAlertRecipientResolverDep = {
 type TResolvableRecipient = { principalType: string; principalId: string };
 
 type TResolveScope = { orgId: string; projectId?: string | null };
+
+type TProjectMemberRole = {
+  role: string;
+  isTemporary?: boolean | null;
+  temporaryAccessEndTime?: Date | string | null;
+};
+
+const holdsActiveAdminRole = (roles: TProjectMemberRole[], now: Date) =>
+  roles.some(
+    (role) =>
+      role.role === ProjectMembershipRole.Admin &&
+      (!role.isTemporary || (role.temporaryAccessEndTime && new Date(role.temporaryAccessEndTime) > now))
+  );
 
 export type TAlertRecipientResolver = ReturnType<typeof alertRecipientResolverFactory>;
 
@@ -65,25 +79,32 @@ export const alertRecipientResolverFactory = ({
       });
     }
 
-    const wantsProjectMembers =
+    const wantsPrincipal = (principalType: AlertPrincipalType) =>
       Boolean(scope.projectId) &&
       [...rowsByChannel.values()].some((rows) =>
-        rows.some(
-          (recipient) =>
-            recipient.principalType === AlertPrincipalType.PROJECT_MEMBERS && recipient.principalId === scope.projectId
-        )
+        rows.some((recipient) => recipient.principalType === principalType && recipient.principalId === scope.projectId)
       );
+    const wantsProjectMembers = wantsPrincipal(AlertPrincipalType.PROJECT_MEMBERS);
+    const wantsProjectAdmins = wantsPrincipal(AlertPrincipalType.PROJECT_ADMINS);
     const projectMemberIds = new Set<string>();
-    if (wantsProjectMembers && scope.projectId) {
+    const projectAdminIds = new Set<string>();
+    if ((wantsProjectMembers || wantsProjectAdmins) && scope.projectId) {
       // Direct members and members through a project group, so "everyone in the project" matches who
       // the scope check below lets through.
       const [directMembers, projectGroupMembers] = await Promise.all([
         projectMembershipDAL.findAllProjectMembers(scope.projectId),
         groupProjectDAL.findAllProjectGroupMembers(scope.projectId)
       ]);
+      const now = new Date();
       [...directMembers, ...projectGroupMembers].forEach((member) => {
-        projectMemberIds.add(member.user.id);
-        allUserIds.add(member.user.id);
+        if (wantsProjectMembers) {
+          projectMemberIds.add(member.user.id);
+          allUserIds.add(member.user.id);
+        }
+        if (wantsProjectAdmins && holdsActiveAdminRole(member.roles as TProjectMemberRole[], now)) {
+          projectAdminIds.add(member.user.id);
+          allUserIds.add(member.user.id);
+        }
       });
     }
 
@@ -115,6 +136,11 @@ export const alertRecipientResolverFactory = ({
           case AlertPrincipalType.PROJECT_MEMBERS:
             if (scope.projectId && recipient.principalId === scope.projectId) {
               projectMemberIds.forEach((userId) => userIds.add(userId));
+            }
+            break;
+          case AlertPrincipalType.PROJECT_ADMINS:
+            if (scope.projectId && recipient.principalId === scope.projectId) {
+              projectAdminIds.forEach((userId) => userIds.add(userId));
             }
             break;
           case AlertPrincipalType.EMAIL:

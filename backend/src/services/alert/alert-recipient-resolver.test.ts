@@ -3,6 +3,8 @@ import { AlertPrincipalType } from "./alert-types";
 
 type TUser = { id: string; email: string | null; firstName: string | null };
 
+type TMemberRole = { role: string; isTemporary?: boolean; temporaryAccessEndTime?: Date };
+
 // Builds a resolver whose DALs reflect a chosen "current membership" so we can assert that a
 // user/group removed from the scope after channel config stops receiving alerts at send time.
 const buildResolver = (opts: {
@@ -15,9 +17,11 @@ const buildResolver = (opts: {
   effectiveProjectGroupIds?: string[]; // groups currently holding a project membership
   projectMemberUserIds?: string[]; // users a project member listing returns
   projectGroupMemberUserIds?: string[]; // users a project group member listing returns
+  projectMemberRoles?: Record<string, TMemberRole[]>; // userId -> roles on either listing (defaults to member)
   verifiedDomains?: string[];
 }) => {
   const usersById = new Map(opts.users.map((u) => [u.id, u]));
+  const rolesFor = (id: string) => opts.projectMemberRoles?.[id] ?? [{ role: "member" }];
   return alertRecipientResolverFactory({
     userDAL: {
       find: async ({ $in }: { $in: { id: string[] } }) =>
@@ -60,10 +64,12 @@ const buildResolver = (opts: {
       })
     } as never,
     projectMembershipDAL: {
-      findAllProjectMembers: async () => (opts.projectMemberUserIds ?? []).map((id) => ({ user: { id } }))
+      findAllProjectMembers: async () =>
+        (opts.projectMemberUserIds ?? []).map((id) => ({ user: { id }, roles: rolesFor(id) }))
     } as never,
     groupProjectDAL: {
-      findAllProjectGroupMembers: async () => (opts.projectGroupMemberUserIds ?? []).map((id) => ({ user: { id } }))
+      findAllProjectGroupMembers: async () =>
+        (opts.projectGroupMemberUserIds ?? []).map((id) => ({ user: { id }, roles: rolesFor(id) }))
     } as never,
     emailDomainDAL: {
       find: async () => (opts.verifiedDomains ?? []).map((domain) => ({ domain }))
@@ -354,5 +360,75 @@ describe("alert recipient resolver — all project members", () => {
     );
 
     expect(result.get("c1")).toHaveLength(1);
+  });
+});
+
+describe("alert recipient resolver — project admins", () => {
+  const projectAdmins = new Map([
+    ["c1", [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "proj-1" }]]
+  ]);
+  const emailsOf = (result: Awaited<ReturnType<ReturnType<typeof buildResolver>["resolveMany"]>>) =>
+    result
+      .get("c1")
+      ?.map((r) => r.email)
+      .sort();
+
+  test("expands to the project's admins and skips other members", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2")],
+      projectMemberUserIds: ["u1", "u2"],
+      projectMemberRoles: { u1: [{ role: "admin" }] },
+      effectiveProjectUserIds: ["u1", "u2"]
+    });
+
+    expect(emailsOf(await resolver.resolveMany(projectAdmins, { orgId: "org-1", projectId: "proj-1" }))).toEqual([
+      "u1@example.com"
+    ]);
+  });
+
+  test("includes users who are admins only through a group", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2")],
+      projectMemberUserIds: ["u1"],
+      projectGroupMemberUserIds: ["u2"],
+      projectMemberRoles: { u2: [{ role: "admin" }] },
+      effectiveProjectUserIds: ["u1", "u2"]
+    });
+
+    expect(emailsOf(await resolver.resolveMany(projectAdmins, { orgId: "org-1", projectId: "proj-1" }))).toEqual([
+      "u2@example.com"
+    ]);
+  });
+
+  test("skips an admin whose temporary access has ended, keeps one whose access is still running", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2")],
+      projectMemberUserIds: ["u1", "u2"],
+      projectMemberRoles: {
+        u1: [{ role: "admin", isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) }],
+        u2: [{ role: "admin", isTemporary: true, temporaryAccessEndTime: new Date(Date.now() + 60_000) }]
+      },
+      effectiveProjectUserIds: ["u1", "u2"]
+    });
+
+    expect(emailsOf(await resolver.resolveMany(projectAdmins, { orgId: "org-1", projectId: "proj-1" }))).toEqual([
+      "u2@example.com"
+    ]);
+  });
+
+  test("ignores a project admins recipient that names another project", async () => {
+    const resolver = buildResolver({
+      users: [user("u1")],
+      projectMemberUserIds: ["u1"],
+      projectMemberRoles: { u1: [{ role: "admin" }] },
+      effectiveProjectUserIds: ["u1"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([["c1", [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "other-project" }]]]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(result.get("c1")).toEqual([]);
   });
 });
