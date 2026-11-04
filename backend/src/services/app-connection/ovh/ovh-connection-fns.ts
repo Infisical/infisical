@@ -66,9 +66,7 @@ const normalizeOvhOkmsDomain = (okmsDomain: string) => {
   }
 
   if (url.protocol !== "https:") {
-    throw new BadRequestError({
-      message: "OVHcloud KMS domain must be a valid URL (e.g. https://eu-west-rbx.okms.ovh.net)"
-    });
+    throw new BadRequestError({ message: "OVHcloud KMS domain must use https" });
   }
 
   return normalized;
