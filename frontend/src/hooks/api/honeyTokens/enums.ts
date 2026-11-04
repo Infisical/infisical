@@ -13,10 +13,12 @@ export enum HoneyTokenManagedBy {
   Organization = "organization"
 }
 
-export enum HoneyTokenManagedUnavailableReason {
-  NotConfigured = "not-configured",
+export enum AwsHoneyTokenDeploymentUnavailableReason {
+  InstanceNotConfigured = "instance-not-configured",
   IncompleteAwsCredentials = "incomplete-aws-credentials",
-  InvalidRoleArn = "invalid-role-arn"
+  InvalidRoleArn = "invalid-role-arn",
+  AccountNotConnected = "account-not-connected",
+  StackVerificationPending = "stack-verification-pending"
 }
 
 export enum HoneyTokenConfigStatus {

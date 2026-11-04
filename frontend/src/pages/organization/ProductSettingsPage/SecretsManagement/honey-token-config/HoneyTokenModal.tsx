@@ -79,10 +79,9 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
   const [, isCommandCopied, setCommandCopied] = useTimedReset<boolean>({ initialState: false });
 
   const { data: appConnections = [], isPending: isLoadingConnections } = useListAppConnections();
-  const { data: configResponse } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
+  const { data: existingConfig } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
     retry: false
   });
-  const existingConfig = configResponse?.config;
   const { mutateAsync: upsertConfig, isPending: isSaving } = useUpsertHoneyTokenConfig();
   const { mutateAsync: testConnection, isPending: isTestingConnection } =
     useTestHoneyTokenConnection();

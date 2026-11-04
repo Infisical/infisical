@@ -1,7 +1,7 @@
 import { OrderByDirection } from "@app/lib/types";
 
 import { TAwsHoneyTokenCredentials } from "./aws/honey-token-aws-types";
-import { HoneyTokenManagedUnavailableReason, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenType } from "./honey-token-enums";
 import { TAwsHoneyTokenConfig, TAwsHoneyTokenRowConfig } from "./honey-token-types";
 
 export type THoneyTokenCreateInput = {
@@ -49,9 +49,4 @@ export type THoneyTokenTestConnectionResponseByType = {
     status: string | null;
     stackName: string;
   };
-};
-
-export type THoneyTokenInstanceAvailability = {
-  isAvailable: boolean;
-  unavailableReason: HoneyTokenManagedUnavailableReason | null;
 };

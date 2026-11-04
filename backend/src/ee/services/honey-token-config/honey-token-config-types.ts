@@ -10,7 +10,6 @@ import {
 import { HoneyTokenType } from "../honey-token/honey-token-enums";
 import {
   THoneyTokenConfigByType,
-  THoneyTokenInstanceAvailability,
   THoneyTokenTestConnectionResponseByType
 } from "../honey-token/honey-token-provider-types";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -38,7 +37,6 @@ export type THoneyTokenConfigProviderTestConnectionInput = {
 
 export type THoneyTokenConfigProviderGetConfigInput = {
   orgId: string;
-  includeDecryptedConfig: boolean;
 };
 
 export type THoneyTokenConfigProvider<T extends HoneyTokenType = HoneyTokenType> = {
@@ -47,7 +45,6 @@ export type THoneyTokenConfigProvider<T extends HoneyTokenType = HoneyTokenType>
     input: THoneyTokenConfigProviderTestConnectionInput
   ) => Promise<THoneyTokenTestConnectionResponseByType[T]>;
   getConfig: (input: THoneyTokenConfigProviderGetConfigInput) => Promise<THoneyTokenConfigWithDecrypted | undefined>;
-  getInstanceAvailability: () => THoneyTokenInstanceAvailability;
 };
 
 export type THoneyTokenConfigServiceUpsertInput<T extends HoneyTokenType = HoneyTokenType> = {

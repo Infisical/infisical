@@ -13,12 +13,6 @@ export enum HoneyTokenManagedBy {
   Organization = "organization"
 }
 
-export enum HoneyTokenManagedUnavailableReason {
-  NotConfigured = "not-configured",
-  IncompleteAwsCredentials = "incomplete-aws-credentials",
-  InvalidRoleArn = "invalid-role-arn"
-}
-
 export enum HoneyTokenEventType {
   AWS = "aws"
 }

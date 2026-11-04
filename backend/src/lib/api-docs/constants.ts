@@ -5197,14 +5197,13 @@ export const HONEY_TOKENS = {
   }
 };
 
-export const HONEY_TOKEN_CONFIGS = {
-  GET: {
-    config:
-      "Your organization's own account setup for this honey token type, or null if it has not been connected. Its `status` is `COMPLETE` once the setup is verified.",
-    decryptedConfig:
-      "The saved setup settings, including the webhook signing key. Only returned to members who can set up honey tokens; null for everyone else.",
-    instanceAvailable: "Whether this instance can create honey tokens in its own AWS account.",
-    instanceUnavailableReason:
-      "Why instance-managed honey tokens are unavailable, or null when they are available. `not-configured` means the instance has no managed signing key; `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set; `invalid-role-arn` means the managed role ARN is not an IAM role ARN."
+export const AWS_HONEY_TOKENS = {
+  LIST_DEPLOYMENT_OPTIONS: {
+    deploymentOptions:
+      "The AWS accounts a honey token can be created in, and whether each one can be used now. Send the chosen `managedBy` as `config.managedBy` when creating the honey token.",
+    managedBy:
+      "Who manages the AWS account. `instance` is the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud). `organization` is the AWS account your organization connected in Organization Settings.",
+    unavailableReason:
+      "Why this AWS account cannot be used now, or null when it can. For `instance`: `instance-not-configured` means the instance has no managed signing key, `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set, and `invalid-role-arn` means the managed role ARN is not an IAM role ARN. For `organization`: `account-not-connected` means your organization has not connected an AWS account, and `stack-verification-pending` means the CloudFormation stack is not verified yet."
   }
 };

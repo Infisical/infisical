@@ -26,7 +26,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { THoneyTokenConfigDALFactory } from "../../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
 import { TLicenseServiceFactory } from "../../license/license-service";
-import { HoneyTokenManagedBy, HoneyTokenManagedUnavailableReason, HoneyTokenType } from "../honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "../honey-token-enums";
 import type { THoneyTokenCredentialTarget } from "../honey-token-service-types";
 import { AwsHoneyTokenConfigSchema } from "../honey-token-types";
 import {
@@ -36,6 +36,10 @@ import {
   TTestAwsHoneyTokenConnectionInput,
   TUpsertAwsHoneyTokenConfigInput
 } from "./honey-token-aws-config-types";
+import {
+  AwsHoneyTokenDeploymentUnavailableReason,
+  TAwsHoneyTokenInstanceUnavailableReason
+} from "./honey-token-aws-enums";
 import { AwsHoneyTokenDecryptedCredentialsSchema, TAwsHoneyTokenDecryptedCredentials } from "./honey-token-aws-types";
 
 type TConfigProviderDep = {
@@ -109,23 +113,23 @@ export const verifyAwsStackDeployment = async ({
 
 // Only what can be checked without calling AWS. Credentials that are present but wrong still surface
 // as an AWS error when a managed token is created.
-export const getManagedHoneyTokenUnavailableReason = (): HoneyTokenManagedUnavailableReason | null => {
+export const getManagedHoneyTokenUnavailableReason = (): TAwsHoneyTokenInstanceUnavailableReason | null => {
   const appCfg = getAppConfig();
 
   if (!appCfg.HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY) {
-    return HoneyTokenManagedUnavailableReason.NotConfigured;
+    return AwsHoneyTokenDeploymentUnavailableReason.InstanceNotConfigured;
   }
 
   // One half of a key pair would otherwise fall through to the default credential chain unnoticed.
   if (
     Boolean(appCfg.HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID) !== Boolean(appCfg.HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY)
   ) {
-    return HoneyTokenManagedUnavailableReason.IncompleteAwsCredentials;
+    return AwsHoneyTokenDeploymentUnavailableReason.IncompleteAwsCredentials;
   }
 
   // A user ARN here is an easy mistake, and AWS only reports it as a generic AssumeRole denial.
   if (appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN && !IAM_ROLE_ARN_REGEX.test(appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN)) {
-    return HoneyTokenManagedUnavailableReason.InvalidRoleArn;
+    return AwsHoneyTokenDeploymentUnavailableReason.InvalidRoleArn;
   }
 
   return null;
@@ -406,8 +410,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
   };
 
   const getConfig = async ({
-    orgId,
-    includeDecryptedConfig
+    orgId
   }: TGetAwsHoneyTokenConfigInput): Promise<THoneyTokenConfigWithDecrypted | undefined> => {
     const config = await honeyTokenConfigDAL.findOne({
       orgId,
@@ -415,9 +418,6 @@ export const honeyTokenAwsConfigProviderFactory = ({
     });
     if (!config) {
       return undefined;
-    }
-    if (!includeDecryptedConfig) {
-      return { ...config, decryptedConfig: null };
     }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -432,10 +432,5 @@ export const honeyTokenAwsConfigProviderFactory = ({
     return { ...config, decryptedConfig };
   };
 
-  const getInstanceAvailability = () => {
-    const unavailableReason = getManagedHoneyTokenUnavailableReason();
-    return { isAvailable: !unavailableReason, unavailableReason };
-  };
-
-  return { upsertConfig, testConnection, getConfig, getInstanceAvailability };
+  return { upsertConfig, testConnection, getConfig };
 };

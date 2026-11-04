@@ -1,6 +1,7 @@
 import {
+  AwsHoneyTokenDeploymentUnavailableReason,
   HoneyTokenConfigStatus,
-  HoneyTokenManagedUnavailableReason,
+  HoneyTokenManagedBy,
   HoneyTokenType
 } from "@app/hooks/api/honeyTokens/enums";
 
@@ -21,12 +22,9 @@ export type THoneyTokenConfig = {
   } | null;
 };
 
-export type THoneyTokenConfigResponse = {
-  config: THoneyTokenConfig | null;
-  instance: {
-    isAvailable: boolean;
-    unavailableReason: HoneyTokenManagedUnavailableReason | null;
-  };
+export type TAwsHoneyTokenDeploymentOption = {
+  managedBy: HoneyTokenManagedBy;
+  unavailableReason: AwsHoneyTokenDeploymentUnavailableReason | null;
 };
 
 export type TUpsertHoneyTokenConfigDTO = {

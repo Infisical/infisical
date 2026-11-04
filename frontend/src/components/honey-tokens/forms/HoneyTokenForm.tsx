@@ -8,13 +8,9 @@ import { Button, SheetFooter, Stepper, StepperList, StepperStep } from "@app/com
 import { useOrganization, useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { useGetHoneyTokenConfig } from "@app/hooks/api/honeyToken";
+import { useListAwsHoneyTokenDeploymentOptions } from "@app/hooks/api/honeyToken";
 import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
-import {
-  HoneyTokenConfigStatus,
-  HoneyTokenManagedBy,
-  HoneyTokenType
-} from "@app/hooks/api/honeyTokens/enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
@@ -88,15 +84,21 @@ export const HoneyTokenForm = ({
 
   const isUpdate = Boolean(honeyToken);
   const {
-    data: honeyTokenConfig,
-    isError: isConfigError,
-    isFetching: isFetchingConfig,
-    refetch: refetchConfig
-  } = useGetHoneyTokenConfig(type, {
+    data: deploymentOptions,
+    isError: isDeploymentOptionsError,
+    isFetching: isFetchingDeploymentOptions,
+    refetch: refetchDeploymentOptions
+  } = useListAwsHoneyTokenDeploymentOptions({
     enabled: !isUpdate,
     // The setup page opens in a new tab, so returning here has to pick up the new setup status.
     refetchOnWindowFocus: "always"
   });
+  const isDeploymentOptionAvailable = (managedBy: HoneyTokenManagedBy) =>
+    Boolean(
+      deploymentOptions?.some(
+        (option) => option.managedBy === managedBy && !option.unavailableReason
+      )
+    );
   const formTabs = isUpdate ? FORM_TABS.filter((tab) => tab.key !== "configuration") : FORM_TABS;
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
@@ -122,18 +124,18 @@ export const HoneyTokenForm = ({
   });
 
   useEffect(() => {
-    if (!honeyTokenConfig) return;
+    if (!deploymentOptions) return;
     formMethods.clearErrors("managedBy");
     if (formMethods.getFieldState("managedBy").isDirty) return;
 
     // An org that connected its own account most likely wants its tokens there. An unusable option is
     // left unselected, so the user opens the list and finds why it is disabled and how to set it up.
-    if (honeyTokenConfig.config?.status === HoneyTokenConfigStatus.Complete) {
+    if (isDeploymentOptionAvailable(HoneyTokenManagedBy.Organization)) {
       formMethods.setValue("managedBy", HoneyTokenManagedBy.Organization);
-    } else if (isInfisicalCloud() && honeyTokenConfig.instance.isAvailable) {
+    } else if (isInfisicalCloud() && isDeploymentOptionAvailable(HoneyTokenManagedBy.Instance)) {
       formMethods.setValue("managedBy", HoneyTokenManagedBy.Instance);
     }
-  }, [honeyTokenConfig]);
+  }, [deploymentOptions]);
 
   const onSubmit = async ({ environment, managedBy, ...formData }: THoneyTokenForm) => {
     if (honeyToken) {
@@ -204,9 +206,9 @@ export const HoneyTokenForm = ({
     if (!isValid || formTabs[index].key !== "configuration") return isValid;
 
     // Without the options the form cannot tell whether the selected AWS account is usable.
-    if (!honeyTokenConfig) {
+    if (!deploymentOptions) {
       formMethods.setError("managedBy", {
-        message: isConfigError
+        message: isDeploymentOptionsError
           ? "Couldn't load where this honey token can be created."
           : "Still loading where this honey token can be created. Try again in a moment."
       });
@@ -215,11 +217,11 @@ export const HoneyTokenForm = ({
 
     if (
       formMethods.getValues("managedBy") === HoneyTokenManagedBy.Organization &&
-      honeyTokenConfig?.config?.status !== HoneyTokenConfigStatus.Complete
+      !isDeploymentOptionAvailable(HoneyTokenManagedBy.Organization)
     ) {
       formMethods.setError("managedBy", {
         message:
-          isInfisicalCloud() && honeyTokenConfig?.instance.isAvailable
+          isInfisicalCloud() && isDeploymentOptionAvailable(HoneyTokenManagedBy.Instance)
             ? "Finish connecting your AWS account, or choose Infisical Managed."
             : "Finish connecting your AWS account to create a honey token."
       });
@@ -321,10 +323,10 @@ export const HoneyTokenForm = ({
       {currentStep.key === "configuration" && (
         <HoneyTokenConfigurationFields
           environments={environments}
-          honeyTokenConfig={honeyTokenConfig}
-          isConfigError={isConfigError}
-          isRetryingConfig={isFetchingConfig}
-          onRetryConfig={() => refetchConfig()}
+          deploymentOptions={deploymentOptions}
+          isDeploymentOptionsError={isDeploymentOptionsError}
+          isRetryingDeploymentOptions={isFetchingDeploymentOptions}
+          onRetryDeploymentOptions={() => refetchDeploymentOptions()}
         />
       )}
       {currentStep.key === "mapping" && <HoneyTokenMappingFields />}

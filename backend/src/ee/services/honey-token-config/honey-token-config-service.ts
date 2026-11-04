@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
+import { honeyTokenAwsConfigServiceFactory } from "../honey-token/aws/honey-token-aws-config-service";
 import { HoneyTokenType } from "../honey-token/honey-token-enums";
 import {
   getHoneyTokenConfigProvidersByType,
@@ -115,23 +116,23 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
       actorAuthMethod: orgPermission.authMethod,
       actorOrgId: orgPermission.orgId
     });
-    // Any org member can read the setup status, since creating a honey token in a project depends on it.
-    // Only those who can set it up see the decrypted settings, which hold the webhook signing key.
-    const canSetUp = permission.can(OrgPermissionHoneyTokenActions.Setup, OrgPermissionSubjects.HoneyTokens);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionHoneyTokenActions.Setup,
+      OrgPermissionSubjects.HoneyTokens
+    );
 
     const providerType = assertSupportedHoneyTokenType(type);
     const provider = honeyTokenConfigProviderByType[providerType];
     if (!provider) {
       throw new BadRequestError({ message: "Unsupported honey token type" });
     }
-
-    const config = await provider.getConfig({ orgId: orgPermission.orgId, includeDecryptedConfig: canSetUp });
-    return { config, instance: provider.getInstanceAvailability() };
+    return provider.getConfig({ orgId: orgPermission.orgId });
   };
 
   return {
     upsertConfig,
     testConnection,
-    getConfig
+    getConfig,
+    aws: honeyTokenAwsConfigServiceFactory(deps)
   };
 };

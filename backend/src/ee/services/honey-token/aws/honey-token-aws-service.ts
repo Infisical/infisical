@@ -4,10 +4,14 @@ import { logger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
-import { HoneyTokenManagedBy, HoneyTokenManagedUnavailableReason, HoneyTokenType } from "../honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "../honey-token-enums";
 import { isValidHoneyTokenSignature } from "../honey-token-fns";
 import { THoneyTokenProviderHooks, THoneyTokenProviderHooksDep } from "../honey-token-service-types";
 import { AwsHoneyTokenConfigSchema, getHoneyTokenManagedBy } from "../honey-token-types";
+import {
+  AwsHoneyTokenDeploymentUnavailableReason,
+  TAwsHoneyTokenInstanceUnavailableReason
+} from "./honey-token-aws-enums";
 import {
   createAwsIamHoneyTokenCredentials,
   getManagedHoneyTokenUnavailableReason,
@@ -16,12 +20,12 @@ import {
   verifyAwsStackDeployment
 } from "./honey-token-aws-fns";
 
-const MANAGED_UNAVAILABLE_MESSAGES: Record<HoneyTokenManagedUnavailableReason, string> = {
-  [HoneyTokenManagedUnavailableReason.NotConfigured]:
+const MANAGED_UNAVAILABLE_MESSAGES: Record<TAwsHoneyTokenInstanceUnavailableReason, string> = {
+  [AwsHoneyTokenDeploymentUnavailableReason.InstanceNotConfigured]:
     "the instance administrator has not set HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY.",
-  [HoneyTokenManagedUnavailableReason.IncompleteAwsCredentials]:
+  [AwsHoneyTokenDeploymentUnavailableReason.IncompleteAwsCredentials]:
     "HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID and HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY must be set together.",
-  [HoneyTokenManagedUnavailableReason.InvalidRoleArn]:
+  [AwsHoneyTokenDeploymentUnavailableReason.InvalidRoleArn]:
     "HONEY_TOKEN_MANAGED_AWS_ROLE_ARN must be an IAM role ARN (arn:aws:iam::<account-id>:role/<name>)."
 };
 

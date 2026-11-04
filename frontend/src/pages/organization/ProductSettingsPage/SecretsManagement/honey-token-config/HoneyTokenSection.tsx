@@ -25,10 +25,9 @@ import { HoneyTokenModal } from "./HoneyTokenModal";
 export const HoneyTokenSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["honeyTokenModal"] as const);
 
-  const { data: configResponse } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
+  const { data: existingConfig } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
     retry: false
   });
-  const existingConfig = configResponse?.config;
   const { mutateAsync: testConnection, isPending: isTesting } = useTestHoneyTokenConnection();
 
   const hasConfig = Boolean(existingConfig);

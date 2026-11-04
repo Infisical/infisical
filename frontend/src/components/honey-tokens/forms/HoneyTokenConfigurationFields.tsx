@@ -20,26 +20,29 @@ import {
   useOrgPermission
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { THoneyTokenConfigResponse } from "@app/hooks/api/honeyToken";
-import { HoneyTokenConfigStatus, HoneyTokenManagedBy } from "@app/hooks/api/honeyTokens/enums";
+import { TAwsHoneyTokenDeploymentOption } from "@app/hooks/api/honeyToken";
+import {
+  AwsHoneyTokenDeploymentUnavailableReason,
+  HoneyTokenManagedBy
+} from "@app/hooks/api/honeyTokens/enums";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 import { THoneyTokenForm } from "./schemas";
 
 type Props = {
   environments?: ProjectEnv[];
-  honeyTokenConfig?: THoneyTokenConfigResponse;
-  isConfigError?: boolean;
-  isRetryingConfig?: boolean;
-  onRetryConfig?: () => void;
+  deploymentOptions?: TAwsHoneyTokenDeploymentOption[];
+  isDeploymentOptionsError?: boolean;
+  isRetryingDeploymentOptions?: boolean;
+  onRetryDeploymentOptions?: () => void;
 };
 
 export const HoneyTokenConfigurationFields = ({
   environments,
-  honeyTokenConfig,
-  isConfigError,
-  isRetryingConfig,
-  onRetryConfig
+  deploymentOptions,
+  isDeploymentOptionsError,
+  isRetryingDeploymentOptions,
+  onRetryDeploymentOptions
 }: Props) => {
   const { control, setValue, clearErrors } = useFormContext<THoneyTokenForm>();
   const { currentOrg } = useOrganization();
@@ -49,13 +52,21 @@ export const HoneyTokenConfigurationFields = ({
     OrgPermissionHoneyTokenActions.Setup,
     OrgPermissionSubjects.HoneyTokens
   );
-  const isManagedAvailable = Boolean(honeyTokenConfig?.instance.isAvailable);
-  const organizationAccountStatus = honeyTokenConfig?.config?.status ?? null;
-  const isOrganizationAccountReady = organizationAccountStatus === HoneyTokenConfigStatus.Complete;
+  const instanceOption = deploymentOptions?.find(
+    (option) => option.managedBy === HoneyTokenManagedBy.Instance
+  );
+  const organizationOption = deploymentOptions?.find(
+    (option) => option.managedBy === HoneyTokenManagedBy.Organization
+  );
+  const isManagedAvailable = Boolean(instanceOption && !instanceOption.unavailableReason);
+  const isOrganizationAccountReady = Boolean(
+    organizationOption && !organizationOption.unavailableReason
+  );
   const isSetupActionShown =
-    Boolean(honeyTokenConfig) && !isOrganizationAccountReady && canSetUpOrganizationAccount;
+    Boolean(deploymentOptions) && !isOrganizationAccountReady && canSetUpOrganizationAccount;
   const setupActionLabel =
-    organizationAccountStatus === HoneyTokenConfigStatus.VerificationPending
+    organizationOption?.unavailableReason ===
+    AwsHoneyTokenDeploymentUnavailableReason.StackVerificationPending
       ? "Finish AWS Account Setup"
       : "Connect AWS Account";
 
@@ -176,7 +187,7 @@ export const HoneyTokenConfigurationFields = ({
           </Field>
         )}
       />
-      {isConfigError && !honeyTokenConfig && (
+      {isDeploymentOptionsError && !deploymentOptions && (
         <Alert variant="danger">
           <AlertTriangle />
           <AlertDescription className="text-xs">
@@ -185,8 +196,8 @@ export const HoneyTokenConfigurationFields = ({
               <Button
                 variant="danger"
                 size="xs"
-                isPending={isRetryingConfig}
-                onClick={onRetryConfig}
+                isPending={isRetryingDeploymentOptions}
+                onClick={onRetryDeploymentOptions}
               >
                 Retry
               </Button>
