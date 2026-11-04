@@ -1,30 +1,36 @@
 ---
 title: "Cross-signed CA certificates"
 sidebarTitle: "Cross-signing"
-description: "Have your old CA sign an internal CA's certificate so clients that only trust the old root accept certificates from the new CA."
+description: "Move certificate issuance from your old CA to Infisical before every client trusts your Infisical root."
 ---
-
-When you move certificate issuance from an old CA to an internal CA, devices and clients that only trust the old root reject certificates from the new CA until you add the new root to their trust stores. A cross-signed certificate lets you issue from the new CA while that rollout is still in progress.
-
-A cross-signed certificate is a copy of an internal CA's certificate with the same subject and public key, signed by your old CA. Every new certificate the CA issues carries the cross-signed certificate in its chain, so each client can verify the certificate against the root it trusts:
-
-- If a client trusts your old root, it verifies the certificate through the cross-signed certificate
-- If a client trusts your internal root, it verifies the certificate the same way it does today
 
 <Info>
   This page is for product admins setting up PKI infrastructure. Teams issuing certificates should see [Applications](/documentation/platform/pki/applications/overview).
 </Info>
 
+If you're moving certificate issuance from another CA to Infisical, your clients trust that old CA's root today. The old CA can be Active Directory Certificate Services, another vendor's private CA, or a CA you run yourself. Your clients reject certificates from an Infisical [internal CA](/documentation/platform/pki/ca/private-ca) until you add the Infisical root to their trust stores, and updating every trust store can take a long time.
+
+A cross-signed certificate lets you start issuing from Infisical before every trust store is updated. It's a copy of your Infisical CA's certificate, signed by your old CA. Every new certificate the Infisical CA issues carries the cross-signed certificate in its chain, so clients accept the certificate whichever root they trust:
+
+- If a client only trusts your old root, it verifies the certificate through the cross-signed certificate
+- If a client trusts your Infisical root, it verifies the certificate the same way it would without cross-signing
+
+A migration with cross-signing has three steps:
+
+1. [Cross-sign the Infisical CA](#step-1-cross-sign-the-infisical-ca) with your old CA
+2. [Issue certificates from Infisical](#step-2-issue-from-infisical-and-roll-out-the-infisical-root) while you add the Infisical root to your clients' trust stores
+3. [Remove the cross-signed certificate](#step-3-remove-the-cross-signed-certificate) once every client trusts the Infisical root
+
 ## Prerequisites
 
-- An active [internal CA](/documentation/platform/pki/ca/private-ca), either a root or an intermediate
-- Access to the old CA, so you can have it sign a CSR as a CA certificate
+- An active [internal CA](/documentation/platform/pki/ca/private-ca) in Infisical, either a root or an intermediate
+- Access to your old CA, so you can have it sign a CSR as a CA certificate
 - The Enterprise plan
 - The **Product Admin** role in Certificate Management (see [access control](/documentation/platform/pki/concepts/access-control))
 
-## Set up a cross-signed certificate
+## Step 1: Cross-sign the Infisical CA
 
-Each internal CA holds one cross-signed certificate. Cross-sign your root CA if you can, so certificates from every CA under it carry the cross-signed certificate.
+Each internal CA holds one cross-signed certificate. Cross-sign your Infisical root CA if you can, so certificates from every CA under it carry the cross-signed certificate.
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -36,13 +42,13 @@ Each internal CA holds one cross-signed certificate. Cross-sign your root CA if 
         On the **Cross-Signed Certificate** card, select **Generate CSR**, then copy the CSR or select **Download**. The CSR uses the CA's current key and subject, so nothing about the CA changes.
       </Step>
       <Step>
-        Have the old CA sign the CSR as a CA certificate. For an example with OpenSSL, see [Sign the CSR with OpenSSL](#sign-the-csr-with-openssl).
+        Have your old CA [sign the CSR](#sign-the-csr-with-the-old-ca).
       </Step>
       <Step>
         Back on the **Cross-Signed Certificate** card, select **Import Certificate**.
       </Step>
       <Step>
-        Paste the signed certificate into **Certificate**. In **Certificate Chain**, paste the old CA's certificates, starting with the CA that signed the cross-signed certificate and ending with its root. If the old root signed it directly, paste the old root's certificate.
+        Paste the signed certificate into **Certificate**. In **Certificate Chain**, paste the old CA's certificates, starting with the CA that signed the cross-signed certificate and ending with the old root. If the old root signed the cross-signed certificate directly, paste only the old root's certificate.
       </Step>
       <Step>
         Select **Import**.
@@ -57,7 +63,7 @@ Each internal CA holds one cross-signed certificate. Cross-sign your root CA if 
       --header 'Authorization: Bearer <access-token>' | jq -r '.csr' > <ca-name>.csr
     ```
 
-    Have the old CA sign the CSR as a CA certificate, as in [Sign the CSR with OpenSSL](#sign-the-csr-with-openssl). Then call [the endpoint to import a cross-signed certificate](/api-reference/endpoints/certificate-authorities/internal/import-cross-signed-cert) with the signed certificate and the old CA's certificates, starting with the CA that signed the cross-signed certificate and ending with its root:
+    Have your old CA [sign the CSR](#sign-the-csr-with-the-old-ca). Then call [the endpoint to import a cross-signed certificate](/api-reference/endpoints/certificate-authorities/internal/import-cross-signed-cert) with the signed certificate and the old CA's certificates, starting with the CA that signed the cross-signed certificate and ending with the old root:
 
     ```bash
     curl --location --request PUT 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/cross-signed-certificate' \
@@ -73,19 +79,9 @@ Each internal CA holds one cross-signed certificate. Cross-sign your root CA if 
   </Tab>
 </Tabs>
 
-The import fails if any of the following is true:
+### Sign the CSR with the old CA
 
-- The subject or the public key doesn't match the CA
-- The certificate's subject key identifier doesn't match the CA's
-- The certificate is self-signed or has expired
-- The certificate isn't a CA certificate, allows fewer CA levels below it than the CAs under the CA need, or can't sign certificates
-- The certificate is the CA's own certificate rather than the cross-signed certificate the old CA signed
-- **Certificate Chain** doesn't start with the CA that signed the certificate or doesn't end with the old CA's root
-- The certificates in **Certificate Chain** aren't in order, each signed by the next one
-- A certificate in **Certificate Chain** isn't a CA certificate, can't sign certificates, or allows fewer CA levels below it than the cross-signed certificate and the CAs under it need
-- A certificate in **Certificate Chain** isn't valid yet, has expired, or expires before the cross-signed certificate
-
-### Sign the CSR with OpenSSL
+The old CA has to sign the CSR as a CA certificate that can sign certificates, and keep the subject, key identifier, and path length from the CSR.
 
 If your old CA is a key and certificate you hold, you can sign the CSR with OpenSSL. Replace the file names with your own, and set `-days` so the cross-signed certificate doesn't outlast the old CA's certificate:
 
@@ -97,13 +93,61 @@ openssl x509 -req -in <ca-name>.csr \
   -out cross-signed.pem
 ```
 
+## Step 2: Issue from Infisical and roll out the Infisical root
+
+Issue certificates from the Infisical CA through your [applications](/documentation/platform/pki/applications/overview), and while you do, add the Infisical root certificate to your clients' trust stores:
+
+<Steps>
+  <Step>
+    Go to **Certificate Authorities** and select your Infisical root CA.
+  </Step>
+  <Step>
+    In **CA Certificates**, open the options menu on the current certificate and select **Download CA Certificate**. The download is the root CA's own certificate, not the cross-signed certificate.
+  </Step>
+  <Step>
+    Add the downloaded certificate to the trust store of each client that verifies certificates from Infisical.
+  </Step>
+</Steps>
+
+If your internal CA chains to a root you manage outside Infisical, add that root's certificate to trust stores instead.
+
+If devices enroll through [EST](/documentation/platform/pki/applications/enrollment-methods/est) or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep), they never receive the cross-signed certificate, so they can't present a chain that leads to the old root. Before you move those devices to Infisical, add the Infisical root to the servers that check the devices' certificates when they connect, such as RADIUS or VPN servers. Those servers keep their own trust stores, which EST and SCEP don't change.
+
+## Step 3: Remove the cross-signed certificate
+
+Once every client trusts the Infisical root, remove the cross-signed certificate. Each certificate keeps the chain it was issued with, so removing the cross-signed certificate changes only the certificates the CA issues or renews afterwards.
+
+<Tabs>
+  <Tab title="Infisical UI">
+    In the options menu on the **Cross-Signed Certificate** card, select **Remove**.
+  </Tab>
+  <Tab title="API">
+    Call [the endpoint to delete a cross-signed certificate](/api-reference/endpoints/certificate-authorities/internal/delete-cross-signed-cert).
+  </Tab>
+</Tabs>
+
+## Replace the cross-signed certificate before it expires
+
+If your migration takes longer than the cross-signed certificate is valid, clients that only trust the old root reject a certificate once the cross-signed certificate in its chain expires. Certificates the CA issues after that date don't carry the cross-signed certificate, so those clients reject them too.
+
+To keep those clients working, replace the cross-signed certificate with a new one from your old CA before it expires, or keep certificate lifetimes inside its validity period. The **Cross-Signed Certificate** card shows a warning from 30 days before the expiry date.
+
+<Tabs>
+  <Tab title="Infisical UI">
+    In the options menu on the **Cross-Signed Certificate** card, select **Replace** and import the new cross-signed certificate.
+  </Tab>
+  <Tab title="API">
+    Import the new cross-signed certificate the same way as in [step 1](#step-1-cross-sign-the-infisical-ca).
+  </Tab>
+</Tabs>
+
+If a cross-signed certificate isn't valid yet, the CA adds it to chains only from its start date, so certificates the CA issues before then carry no cross-signed certificate.
+
 ## Certificate chains with a cross-signed certificate
 
-Certificates issued while the cross-signed certificate is valid carry a chain where the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported. This applies to every way a certificate is issued or renewed, such as the API and ACME. If the cross-signed certificate's validity period starts in the future, the CA adds it to chains only from that date.
+While the cross-signed certificate is valid, each certificate the CA issues or renews carries a chain in which the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported.
 
-<Warning>
-  EST and SCEP return only the issued certificate. Devices that enroll through them build the chain from the CA certificates those protocols return, which don't include the cross-signed certificate, so clients that only trust the old root reject those devices' certificates.
-</Warning>
+### Chain order
 
 If you cross-sign a root CA, a certificate from an intermediate CA under it carries this chain:
 
@@ -116,32 +160,13 @@ If you cross-sign an intermediate CA, a certificate from that CA carries this ch
 1. The cross-signed certificate of the intermediate CA
 2. The old CA's certificates up to its root
 
-[Certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview) send the root at the end of each certificate's chain as its CA certificate, so for a certificate that carries the cross-signed certificate, syncs send the old CA's root. Syncs with **Include Root CA** turned off still send the cross-signed certificate.
-
-If the cross-signed certificate or a certificate in its chain has a path length limit, you can't add CAs under the CA deeper than that limit allows. To add them, replace the cross-signed certificate with one that allows more levels, or remove it first.
-
 <Note>
-  If you cross-sign an intermediate CA, the chain doesn't include the intermediate CA's certificate signed by your internal root. Clients that only trust your internal root reject these certificates unless they already have the intermediate CA's certificate or download it from the certificate's Authority Information Access URL. To issue certificates that clients of either root accept, cross-sign the root CA instead.
+  If you cross-sign an intermediate CA, the chain doesn't include the intermediate CA's certificate signed by your Infisical root. Clients that only trust your Infisical root reject these certificates unless they already have the intermediate CA's certificate or download it from the certificate's Authority Information Access URL. To issue certificates that clients of either root accept, cross-sign the root CA instead.
 </Note>
 
-## What stays the same
+### Certificate syncs
 
-Downloading the CA certificate, the EST `cacerts` endpoint, and the SCEP `GetCACert` operation still return the CA's own certificate, not the cross-signed certificate.
-
-## Replace, remove, or let the cross-signed certificate expire
-
-Each certificate keeps the chain it was issued with. Replacing, removing, or letting the cross-signed certificate expire changes only the certificates the CA issues or renews afterwards.
-
-In the options menu on the **Cross-Signed Certificate** card:
-
-- **Replace:** Select **Replace** and import the new cross-signed certificate (certificates issued afterwards carry the new one). If the new one's validity starts in the future, certificates issued until then don't carry a cross-signed certificate.
-- **Remove:** Select **Remove** (certificates issued afterwards don't carry the cross-signed certificate, so clients that only trust the old root reject them).
-
-Certificates issued after the cross-signed certificate expires don't carry it. Clients that only trust the old root reject a certificate once the cross-signed certificate in its chain expires. Replace the cross-signed certificate before it expires, or keep certificate lifetimes inside its validity period.
-
-From 30 days before the cross-signed certificate expires, the **Cross-Signed Certificate** card shows a warning.
-
-To replace the cross-signed certificate through the API, import a new one the same way you imported the first one. To remove it, call [the endpoint to delete a cross-signed certificate](/api-reference/endpoints/certificate-authorities/internal/delete-cross-signed-cert).
+[Certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview) send the root at the end of a certificate's chain as the CA certificate. If the certificate carries the cross-signed certificate, that root is the old CA's root. If **Include Root CA in Chain** is off, the sync leaves out only the old root, so the chain it sends still includes the cross-signed certificate.
 
 ## What's next?
 
