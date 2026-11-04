@@ -411,6 +411,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
               <Link
                 to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
                 params={{ orgId: currentOrg.id, projectId }}
+                search={{ selectedTab: "tab-session-logs" }}
               >
                 Go to Settings
               </Link>
@@ -464,6 +465,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <Link
               to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
               params={{ orgId: currentOrg.id, projectId }}
+              search={{ selectedTab: "tab-session-logs" }}
             >
               Go to Settings
             </Link>
@@ -584,6 +586,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                   <Link
                     to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
                     params={{ orgId: currentOrg.id, projectId }}
+                    search={{ selectedTab: "tab-session-logs" }}
                   >
                     Go to Settings
                   </Link>

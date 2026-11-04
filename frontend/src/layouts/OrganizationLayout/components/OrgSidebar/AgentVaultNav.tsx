@@ -32,6 +32,7 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProjectNavList } from "./ProjectNavLink";
+import { AGENT_VAULT_SETTINGS_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
@@ -86,7 +87,9 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       label: "Settings",
       icon: Settings,
       pathSuffix: "settings",
-      alertVariant: isAdmin ? settingsAlert : undefined
+      alertVariant: isAdmin ? settingsAlert : undefined,
+      // Members only see General, so they go straight to it instead of a submenu with one entry.
+      submenu: isAdmin ? AGENT_VAULT_SETTINGS_SUBMENU : undefined
     }
   ];
 
