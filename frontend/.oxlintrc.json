@@ -395,9 +395,11 @@
           {
             "group": [
               "@app/components/v4",
-              "@app/components/v4/**"
+              "@app/components/v4/**",
+              "@app/pages/v4",
+              "@app/pages/v4/**"
             ],
-            "message": "v4 is incubating. Only src/pages/design-system and src/components/v4 may import it."
+            "message": "v4 is incubating. Only src/pages/v4, src/pages/design-system and src/components/v4 may import it."
           }
         ]
       }
@@ -1251,7 +1253,8 @@
     {
       "files": [
         "src/components/v4/**/*.{ts,tsx}",
-        "src/pages/design-system/**/*.{ts,tsx}"
+        "src/pages/design-system/**/*.{ts,tsx}",
+        "src/pages/v4/**/*.{ts,tsx}"
       ],
       "rules": {
         "no-restricted-imports": [
@@ -1264,6 +1267,27 @@
                   "**/UpgradePlanModal/*"
                 ],
                 "message": "Use the shared UpgradeGate with a product or capability intent."
+              },
+              {
+                "group": [
+                  "@app/components/v2",
+                  "@app/components/v2/**",
+                  "@app/components/v3",
+                  "@app/components/v3/**",
+                  "!@app/components/v3/platform/ThemeProvider/ThemeProvider",
+                  "@app/layouts/**",
+                  "@app/views/**",
+                  "@app/pages/**",
+                  "!@app/pages/v4/**",
+                  "!@app/pages/**/*.utils",
+                  "!@app/pages/**/helpers",
+                  "!@app/pages/**/parseNestedJson",
+                  "@fortawesome/*",
+                  "react-icons",
+                  "react-icons/*"
+                ],
+                "allowTypeImports": true,
+                "message": "v4 code never imports v3 UI, layouts or pages. Use src/components/v4, and hooks/api, context, helpers or lib for data and logic."
               }
             ]
           }

@@ -20,5 +20,11 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts", "scripts/generate-ui.ts", "scripts/ui-info.ts", "scripts/check-v4.ts"]
+  "include": [
+    "vite.config.ts",
+    "scripts/generate-ui.ts",
+    "scripts/ui-info.ts",
+    "scripts/check-v4.ts",
+    "scripts/v4-bundle-fence.ts"
+  ]
 }

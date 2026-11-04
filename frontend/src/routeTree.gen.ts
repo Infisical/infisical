@@ -16,6 +16,7 @@ import { Route as rootRoute } from './pages/root'
 import { Route as publicShareSecretPageLegacyRouteImport } from './pages/public/ShareSecretPage/legacy-route'
 import { Route as middlewaresRestrictLoginSignupImport } from './pages/middlewares/restrict-login-signup'
 import { Route as middlewaresAuthenticateImport } from './pages/middlewares/authenticate'
+import { Route as v4RouteImport } from './pages/v4/route'
 import { Route as designSystemRouteImport } from './pages/design-system/route'
 import { Route as authCliRedirectPageRouteImport } from './pages/auth/CliRedirectPage/route'
 import { Route as indexImport } from './pages/index'
@@ -29,6 +30,7 @@ import { Route as authAccountRecoveryEmailPageRouteImport } from './pages/auth/A
 import { Route as authPasswordSetupPageRouteImport } from './pages/auth/PasswordSetupPage/route'
 import { Route as userLayoutImport } from './pages/user/layout'
 import { Route as organizationLayoutImport } from './pages/organization/layout'
+import { Route as v4OrganizationRouteImport } from './pages/v4/organization/route'
 import { Route as publicViewSharedSecretByIDPageRouteImport } from './pages/public/ViewSharedSecretByIDPage/route'
 import { Route as publicViewSecretRequestByIDPageRouteImport } from './pages/public/ViewSecretRequestByIDPage/route'
 import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPage/route'
@@ -46,6 +48,7 @@ import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/rout
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam-access-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
+import { Route as v4OrganizationProjectsPageRouteImport } from './pages/v4/organization/ProjectsPage/route'
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
 import { Route as agentVaultAgentVaultOAuthCallbackPageRouteImport } from './pages/agent-vault/AgentVaultOAuthCallbackPage/route'
 import { Route as adminWelcomePageRouteImport } from './pages/admin/WelcomePage/route'
@@ -445,6 +448,12 @@ const middlewaresAuthenticateRoute = middlewaresAuthenticateImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const v4RouteRoute = v4RouteImport.update({
+  id: '/v4',
+  path: '/v4',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const designSystemRouteRoute = designSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
@@ -553,6 +562,12 @@ const AuthenticateInjectOrgDetailsAdminRoute =
 const organizationLayoutRoute = organizationLayoutImport.update({
   id: '/_org-layout',
   getParentRoute: () => middlewaresInjectOrgDetailsRoute,
+} as any)
+
+const v4OrganizationRouteRoute = v4OrganizationRouteImport.update({
+  id: '/organizations/$orgId',
+  path: '/organizations/$orgId',
+  getParentRoute: () => v4RouteRoute,
 } as any)
 
 const publicViewSharedSecretByIDPageRouteRoute =
@@ -669,6 +684,13 @@ const AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute =
     id: '/integrations',
     path: '/integrations',
     getParentRoute: () => organizationLayoutRoute,
+  } as any)
+
+const v4OrganizationProjectsPageRouteRoute =
+  v4OrganizationProjectsPageRouteImport.update({
+    id: '/projects',
+    path: '/projects',
+    getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
 const authProviderErrorPageRouteRoute = authProviderErrorPageRouteImport.update(
@@ -2786,6 +2808,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof designSystemRouteImport
       parentRoute: typeof rootRoute
     }
+    '/v4': {
+      id: '/v4'
+      path: '/v4'
+      fullPath: '/v4'
+      preLoaderRoute: typeof v4RouteImport
+      parentRoute: typeof rootRoute
+    }
     '/_authenticate': {
       id: '/_authenticate'
       path: ''
@@ -2989,6 +3018,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof publicViewSharedSecretByIDPageRouteImport
       parentRoute: typeof rootRoute
     }
+    '/v4/organizations/$orgId': {
+      id: '/v4/organizations/$orgId'
+      path: '/organizations/$orgId'
+      fullPath: '/v4/organizations/$orgId'
+      preLoaderRoute: typeof v4OrganizationRouteImport
+      parentRoute: typeof v4RouteImport
+    }
     '/_authenticate/_inject-org-details/_org-layout': {
       id: '/_authenticate/_inject-org-details/_org-layout'
       path: ''
@@ -3044,6 +3080,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/login/provider/error'
       preLoaderRoute: typeof authProviderErrorPageRouteImport
       parentRoute: typeof RestrictLoginSignupLoginImport
+    }
+    '/v4/organizations/$orgId/projects': {
+      id: '/v4/organizations/$orgId/projects'
+      path: '/projects'
+      fullPath: '/v4/organizations/$orgId/projects'
+      preLoaderRoute: typeof v4OrganizationProjectsPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
     }
     '/_authenticate/_inject-org-details/_org-layout/integrations': {
       id: '/_authenticate/_inject-org-details/_org-layout/integrations'
@@ -4926,6 +4969,28 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
+interface v4OrganizationRouteRouteChildren {
+  v4OrganizationProjectsPageRouteRoute: typeof v4OrganizationProjectsPageRouteRoute
+}
+
+const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
+  v4OrganizationProjectsPageRouteRoute: v4OrganizationProjectsPageRouteRoute,
+}
+
+const v4OrganizationRouteRouteWithChildren =
+  v4OrganizationRouteRoute._addFileChildren(v4OrganizationRouteRouteChildren)
+
+interface v4RouteRouteChildren {
+  v4OrganizationRouteRoute: typeof v4OrganizationRouteRouteWithChildren
+}
+
+const v4RouteRouteChildren: v4RouteRouteChildren = {
+  v4OrganizationRouteRoute: v4OrganizationRouteRouteWithChildren,
+}
+
+const v4RouteRouteWithChildren =
+  v4RouteRoute._addFileChildren(v4RouteRouteChildren)
+
 interface AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteChildren {
   secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute: typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute: typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
@@ -6306,6 +6371,7 @@ export interface FileRoutesByFullPath {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/design-system': typeof designSystemRouteRoute
+  '/v4': typeof v4RouteRouteWithChildren
   '': typeof organizationLayoutRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
   '/password-setup': typeof authPasswordSetupPageRouteRoute
@@ -6333,12 +6399,14 @@ export interface FileRoutesByFullPath {
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/admin': typeof adminLayoutRouteWithChildren
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
   '/admin/setup': typeof adminSetupPageRouteRoute
   '/admin/welcome': typeof adminWelcomePageRouteRoute
   '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/admin/': typeof adminGeneralPageRouteRoute
@@ -6606,6 +6674,7 @@ export interface FileRoutesByTo {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/design-system': typeof designSystemRouteRoute
+  '/v4': typeof v4RouteRouteWithChildren
   '': typeof organizationLayoutRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
   '/password-setup': typeof authPasswordSetupPageRouteRoute
@@ -6631,11 +6700,13 @@ export interface FileRoutesByTo {
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/admin': typeof adminGeneralPageRouteRoute
   '/admin/setup': typeof adminSetupPageRouteRoute
   '/admin/welcome': typeof adminWelcomePageRouteRoute
   '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
@@ -6878,6 +6949,7 @@ export interface FileRoutesById {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/design-system': typeof designSystemRouteRoute
+  '/v4': typeof v4RouteRouteWithChildren
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
@@ -6907,6 +6979,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout': typeof organizationLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/admin': typeof AuthenticateInjectOrgDetailsAdminRouteWithChildren
   '/_authenticate/personal-settings/_layout': typeof userLayoutRouteWithChildren
@@ -6915,6 +6988,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/welcome': typeof adminWelcomePageRouteRoute
   '/_authenticate/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -7191,6 +7265,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cli-redirect'
     | '/design-system'
+    | '/v4'
     | ''
     | '/share-secret'
     | '/password-setup'
@@ -7218,12 +7293,14 @@ export interface FileRouteTypes {
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
+    | '/v4/organizations/$orgId'
     | '/admin'
     | '/personal-settings/'
     | '/admin/setup'
     | '/admin/welcome'
     | '/agent-vault/oauth/callback'
     | '/login/provider/error'
+    | '/v4/organizations/$orgId/projects'
     | '/integrations'
     | '/pam/access'
     | '/admin/'
@@ -7490,6 +7567,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cli-redirect'
     | '/design-system'
+    | '/v4'
     | ''
     | '/share-secret'
     | '/password-setup'
@@ -7515,11 +7593,13 @@ export interface FileRouteTypes {
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
+    | '/v4/organizations/$orgId'
     | '/admin'
     | '/admin/setup'
     | '/admin/welcome'
     | '/agent-vault/oauth/callback'
     | '/login/provider/error'
+    | '/v4/organizations/$orgId/projects'
     | '/integrations'
     | '/pam/access'
     | '/admin/access-management'
@@ -7760,6 +7840,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cli-redirect'
     | '/design-system'
+    | '/v4'
     | '/_authenticate'
     | '/_restrict-login-signup'
     | '/share-secret'
@@ -7789,6 +7870,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
+    | '/v4/organizations/$orgId'
     | '/_authenticate/_inject-org-details/_org-layout'
     | '/_authenticate/_inject-org-details/admin'
     | '/_authenticate/personal-settings/_layout'
@@ -7797,6 +7879,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/welcome'
     | '/_authenticate/agent-vault/oauth/callback'
     | '/_restrict-login-signup/login/provider/error'
+    | '/v4/organizations/$orgId/projects'
     | '/_authenticate/_inject-org-details/_org-layout/integrations'
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
     | '/_authenticate/_inject-org-details/pam/access'
@@ -8072,6 +8155,7 @@ export interface RootRouteChildren {
   indexRoute: typeof indexRoute
   authCliRedirectPageRouteRoute: typeof authCliRedirectPageRouteRoute
   designSystemRouteRoute: typeof designSystemRouteRoute
+  v4RouteRoute: typeof v4RouteRouteWithChildren
   middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
   middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
   publicShareSecretPageLegacyRouteRoute: typeof publicShareSecretPageLegacyRouteRoute
@@ -8084,6 +8168,7 @@ const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
   authCliRedirectPageRouteRoute: authCliRedirectPageRouteRoute,
   designSystemRouteRoute: designSystemRouteRoute,
+  v4RouteRoute: v4RouteRouteWithChildren,
   middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
   middlewaresRestrictLoginSignupRoute:
     middlewaresRestrictLoginSignupRouteWithChildren,
@@ -8108,6 +8193,7 @@ export const routeTree = rootRoute
         "/",
         "/cli-redirect",
         "/design-system",
+        "/v4",
         "/_authenticate",
         "/_restrict-login-signup",
         "/share-secret",
@@ -8124,6 +8210,12 @@ export const routeTree = rootRoute
     },
     "/design-system": {
       "filePath": "design-system/route.tsx"
+    },
+    "/v4": {
+      "filePath": "v4/route.tsx",
+      "children": [
+        "/v4/organizations/$orgId"
+      ]
     },
     "/_authenticate": {
       "filePath": "middlewares/authenticate.tsx",
@@ -8280,6 +8372,13 @@ export const routeTree = rootRoute
     "/shared/secret/$secretId": {
       "filePath": "public/ViewSharedSecretByIDPage/route.tsx"
     },
+    "/v4/organizations/$orgId": {
+      "filePath": "v4/organization/route.tsx",
+      "parent": "/v4",
+      "children": [
+        "/v4/organizations/$orgId/projects"
+      ]
+    },
     "/_authenticate/_inject-org-details/_org-layout": {
       "filePath": "organization/layout.tsx",
       "parent": "/_authenticate/_inject-org-details",
@@ -8323,6 +8422,10 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/login/provider/error": {
       "filePath": "auth/ProviderErrorPage/route.tsx",
       "parent": "/_restrict-login-signup/login"
+    },
+    "/v4/organizations/$orgId/projects": {
+      "filePath": "v4/organization/ProjectsPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
     },
     "/_authenticate/_inject-org-details/_org-layout/integrations": {
       "filePath": "",
