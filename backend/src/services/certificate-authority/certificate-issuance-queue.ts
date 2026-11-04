@@ -5,7 +5,7 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
@@ -44,6 +44,7 @@ import { TCertificateRequestDALFactory } from "../certificate-request/certificat
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TRenewCertificateDTO } from "../certificate-v3/certificate-v3-types";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
@@ -79,6 +80,7 @@ import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { assertCaSupportsCustomExtensions } from "./certificate-authority-maps";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
+import { TDigiCertCertificateRequestMetadata } from "./digicert/digicert-certificate-authority-types";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
 import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
@@ -144,6 +146,7 @@ export type TIssueCertificateFromProfileJobData = {
   keyUsages?: string[];
   extendedKeyUsages?: string[];
   isRenewal?: boolean;
+  externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
   originalCertificateId?: string;
   certificateRequestId?: string;
   csr?: string;
@@ -168,7 +171,7 @@ type TCertificateIssuanceQueueFactoryDep = {
     TKmsServiceFactory,
     "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
   >;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
@@ -397,6 +400,7 @@ export const certificateIssuanceQueueFactory = ({
       keyUsages,
       extendedKeyUsages,
       isRenewal,
+      externalConfiguration,
       originalCertificateId,
       certificateRequestId,
       csr,
@@ -878,6 +882,10 @@ export const certificateIssuanceQueueFactory = ({
           const parsedMetadata = DigiCertExternalMetadataSchema.safeParse(originalCert?.externalMetadata);
           if (parsedMetadata.success) {
             renewalOfOrderId = parsedMetadata.data.orderId;
+          } else if (externalConfiguration?.reissue) {
+            throw new BadRequestError({
+              message: "This certificate has no DigiCert order to reissue. Place a new order instead."
+            });
           } else {
             logger.warn(
               `DigiCert renewal requested but previous certificate has no DigiCert order reference in externalMetadata — falling back to a new order [originalCertificateId=${originalCertificateId}]`
@@ -890,54 +898,110 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const digicertResult = await digicertFns.orderCertificate({
+        const digicertRequest = {
           caId,
           commonName: commonName || "",
           altNames: altNames?.map((san) => san.value) || [],
           signatureAlgorithm,
           keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
-          ttl,
-          ...(csr && { csr }),
-          ...(renewalOfOrderId !== undefined && { renewalOfOrderId })
-        });
+          ...(csr && { csr })
+        };
 
-        if (await isCancelled()) {
-          logger.info(
-            `Cancelled after DigiCert order — order placed at CA but will not be tracked locally [certificateRequestId=${certificateRequestId}]`
-          );
-          return;
-        }
-
-        let encryptedPrivateKey: Buffer | undefined;
-        if (digicertResult.privateKey) {
+        const encryptPrivateKey = async (privateKey: string) => {
           const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
             projectId: ca.projectId,
             projectDAL,
             kmsService
           });
           const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
-          const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(digicertResult.privateKey) });
-          encryptedPrivateKey = cipherTextBlob;
-        }
-
-        const metadataWithRenewal = {
-          ...digicertResult.metadata,
+          const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(privateKey) });
+          return cipherTextBlob;
+        };
+        const withRenewalMetadata = (metadata: TDigiCertCertificateRequestMetadata) => ({
+          ...metadata,
           digicert: {
-            ...digicertResult.metadata.digicert,
+            ...metadata.digicert,
             ...(isRenewal && originalCertificateId ? { isRenewal: true, originalCertificateId } : {})
           }
-        };
-
-        const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
-          metadata: JSON.stringify(metadataWithRenewal),
-          ...(encryptedPrivateKey && { encryptedPrivateKey })
         });
 
-        if (!transitioned) {
-          logger.info(
-            `Skipping DigiCert validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
-          );
+        const isReissue = Boolean(
+          externalConfiguration?.reissue && renewalOfOrderId !== undefined && originalCertificateId
+        );
+        let encryptedPrivateKey: Buffer | undefined;
+        let isReissueHandedOff = false;
+
+        const digicertResult =
+          isReissue && renewalOfOrderId !== undefined && originalCertificateId
+            ? await digicertFns
+                .reissueCertificate({
+                  ...digicertRequest,
+                  orderId: renewalOfOrderId,
+                  ttl,
+                  originalCertificateId,
+                  onBeforeSubmit: async ({ metadata, privateKey }) => {
+                    encryptedPrivateKey = privateKey ? await encryptPrivateKey(privateKey) : undefined;
+                    const transitioned = await certificateRequestDAL.transitionToPendingValidation(
+                      certificateRequestId,
+                      {
+                        metadata: JSON.stringify(withRenewalMetadata(metadata)),
+                        ...(encryptedPrivateKey && { encryptedPrivateKey })
+                      }
+                    );
+                    if (!transitioned) throw new CertificateRequestCancelledError();
+                    isReissueHandedOff = true;
+                  }
+                })
+                .catch(async (error: unknown) => {
+                  if (!isReissueHandedOff || error instanceof BadRequestError) throw error;
+                  logger.warn(
+                    error,
+                    `DigiCert did not confirm the reissue, leaving it to the order poller [certificateRequestId=${certificateRequestId}] [orderId=${renewalOfOrderId}]`
+                  );
+                  await setPending(
+                    `DigiCert didn't confirm the reissue on order #${renewalOfOrderId}. Checking the order for the result.`
+                  );
+                  return null;
+                })
+            : await digicertFns.orderCertificate({
+                ...digicertRequest,
+                ttl,
+                ...(renewalOfOrderId !== undefined && { renewalOfOrderId })
+              });
+
+        if (!digicertResult) {
+          certificateExistsAfterThisJob = false;
           return;
+        }
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled after DigiCert order — order placed at CA but will not be tracked locally [certificateRequestId=${certificateRequestId}]`
+          );
+          if (isReissue) await digicertFns.cancelReissue({ caId, orderId: digicertResult.orderId });
+          return;
+        }
+
+        if (isReissue) {
+          if (digicertResult.immediateCertificateId) {
+            await certificateRequestDAL.updateById(certificateRequestId, {
+              metadata: JSON.stringify(withRenewalMetadata(digicertResult.metadata))
+            });
+          }
+        } else {
+          if (digicertResult.privateKey) encryptedPrivateKey = await encryptPrivateKey(digicertResult.privateKey);
+
+          const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
+            metadata: JSON.stringify(withRenewalMetadata(digicertResult.metadata)),
+            ...(encryptedPrivateKey && { encryptedPrivateKey })
+          });
+
+          if (!transitioned) {
+            logger.info(
+              `Skipping DigiCert validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
+            );
+            return;
+          }
         }
 
         if (digicertResult.immediateCertificateId) {

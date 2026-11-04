@@ -2426,7 +2426,10 @@ export const CERTIFICATES = {
     csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
     attributes:
       "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
-    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
+    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain.",
+    externalConfiguration: "Options for certificates issued by an external certificate authority.",
+    reissue:
+      "Whether to reissue the certificate on its current order with the issuing CA instead of placing a new order. Defaults to `false`. Only for CAs that support reissuing (currently DigiCert), and `ttl` can't be set. If the reissue removes or changes a name, the CA revokes the current certificate (DigiCert within 72 hours), so you also need permission to revoke it."
   },
   RENEWAL_PREVIEW: {
     id: "The ID of the certificate to preview a renewal for.",
@@ -4999,8 +5002,9 @@ export const AGENT_VAULT = {
 
   SESSION: {
     sessionId: "The ID of the session.",
-    accessBundles:
-      "The access bundle this session carries, by name. A list that accepts one name at most. Leave it out to start a session with services of its own only.",
+    accessBundle:
+      "The name of the access bundle this session carries. Leave it out to start a session with services of its own only.",
+    accessBundleRead: "The access bundle this session carries. Null for a session with services of its own only.",
     inlineServices:
       "Services this session carries itself, alongside its access bundle's or without one. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:

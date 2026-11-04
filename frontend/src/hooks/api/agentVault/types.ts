@@ -256,7 +256,6 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
 export type TAgentVaultSessionAccessBundle = {
   id: string | null;
   name: string;
-  position: number;
 };
 
 /** A service an admin sent with the session itself. Its secrets are never returned. */
@@ -301,7 +300,7 @@ export type TAgentVaultSession = {
   expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
-  accessBundles: TAgentVaultSessionAccessBundle[];
+  accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionInlineService[];
 };
 
@@ -351,7 +350,7 @@ export type TAgentVaultMintedSession = {
   token: string;
   expiresAt: string | null;
   createdAt: string;
-  accessBundles: TAgentVaultSessionAccessBundle[];
+  accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionInlineService[];
 };
 
@@ -500,7 +499,7 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
 };
 
 export type TCreateAgentVaultSessionDTO = {
-  accessBundles: string[];
+  accessBundle: string;
   ttl: string;
   label?: string;
 };

@@ -54,7 +54,7 @@ Start the agent with the session token from the response, as [Step 4 of Create s
 
 ## Combine inline services with an access bundle
 
-To give a session an access bundle as well as inline services, name the access bundle in `accessBundles` in the same request. A session can have only one access bundle.
+To give a session an access bundle as well as inline services, name the access bundle in `accessBundle` in the same request. A session can have only one access bundle.
 
 When you create the session, Infisical compares the host patterns of the inline services with each other and with the access bundle's services, using the same [host conflict rules](/documentation/platform/agent-vault/http-apis#host-conflicts) as for the services in one access bundle:
 
