@@ -111,6 +111,9 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		// https although the server listens on plain http: nothing dials SITE_URL, and a
 		// delegated approval system refuses a callback URL that is not https.
 		"SITE_URL": fmt.Sprintf("https://%s:%d", self, port),
+		// The release images ship a separate OpenSSL for ML-DSA under /opt/openssl-pqc;
+		// backend/Dockerfile does not, and its system OpenSSL already has ML-DSA.
+		"PQC_OPENSSL_BIN_PATH": "/usr/bin/openssl",
 	}
 	if m.runModes != "" {
 		env["INFISICAL_RUN_MODES"] = m.runModes
