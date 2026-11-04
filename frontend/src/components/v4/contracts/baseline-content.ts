@@ -842,7 +842,7 @@ export const baselineContent = [
     title: "Card",
     group: "Data display",
     summary: "Group one resource or task with its own header, content and actions.",
-    sourceFiles: ["src/components/v4/ui/card.tsx"],
+    sourceFiles: ["src/components/v4/ui/card.tsx", "src/components/v4/ui/row-link.module.css"],
     exports: [
       "Card",
       "CardAction",
@@ -850,17 +850,21 @@ export const baselineContent = [
       "CardDescription",
       "CardFooter",
       "CardHeader",
+      "CardLink",
       "CardTitle"
     ],
-    referenceNames: ["Card"],
+    referenceNames: ["Card", "CardLink"],
     behavior: [
-      "Card offers framed and plain shells, a flush body and named title/description/action/footer slots. Framed (the default) is a borderless tint frame around a bordered inset surface: frame, then the line border, then the inset ground, then content. Only the inset carries a border, so header band, inner surface and footer band read as one card: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. With footerPlacement frame and the title, description and footer props, the header and body sit together on the inner surface with its own line border, and the footer is a band in the frame below it, padded by the frame pad, never a separate box. Plain is a single surface with one line border and no frame. The header band holds labels only: the title, with optional badges in it and an action. It never holds a framed icon or media tile; put those in the body. A footerPlacement of frame moves the footer out of the inner surface into a matching band of the frame below it, for a stats or status row under the content. Title, description, body and footer share one text column, and the action centres on the title line."
+      "Card offers framed and plain shells, a flush body and named title/description/action/footer slots. Framed (the default) is a borderless tint frame around a bordered inset surface: frame, then the line border, then the inset ground, then content. Only the inset carries a border, so header band, inner surface and footer band read as one card: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. With footerPlacement frame and the title, description and footer props, the header and body sit together on the inner surface with its own line border, and the footer is a band in the frame below it, padded by the frame pad, never a separate box. Plain is a single surface with one line border and no frame. The header band holds labels only: the title, with optional badges in it and an action. It never holds a framed icon or media tile; put those in the body. A footerPlacement of frame moves the footer out of the inner surface into a matching band of the frame below it, for a stats or status row under the content. Title, description, body and footer share one text column, and the action centres on the title line.",
+      "CardLink makes the whole Card a link with RowLink's semantics. It is TanStack Router's createLink over one real anchor, so to, params, search and hash are typed and the href is real, and an absolute URL in to renders a plain external href. Put it around the card's name; its ::after covers the Card, which becomes the positioning context through :has() and takes a translucent ink hover. Buttons, inputs, other links, tooltip triggers and anything marked data-row-interactive inside the Card sit above the overlay and keep their own click. Unlike RowLink, the text wraps instead of truncating. disabled renders a muted span with no href and no overlay, so the Card stays visible and does not navigate."
     ],
     accessibility: [
-      "Choose the heading level through the composed title; actions remain native controls with their own names."
+      "Choose the heading level through the composed title; actions remain native controls with their own names.",
+      "A Card with a CardLink has one link target: middle-click and Ctrl, Cmd or Shift-click open it in a new tab or window, and copy link and the status bar work. Keyboard focus lands on the link and draws the ink focus ring around the whole Card. A disabled CardLink has role link and aria-disabled true."
     ],
     limitations: [
-      "Card adds no navigation role and does not choose a semantic heading level for title content."
+      "Card adds no navigation role and does not choose a semantic heading level for title content.",
+      "Use one CardLink per Card; a second stretched target would cover the first. Do not also put a RowLink in the same Card."
     ],
     examples: [
       {
@@ -868,6 +872,12 @@ export const baselineContent = [
         title: "Framed and plain",
         module: "./examples/card/default.tsx",
         states: ["default"]
+      },
+      {
+        id: "link",
+        title: "Whole-card link",
+        module: "./examples/card/link.tsx",
+        states: ["default", "disabled", "keyboard"]
       }
     ],
     coverage: [
@@ -932,12 +942,14 @@ export const baselineContent = [
         {
           id: "card-usage",
           when: "A resource card contains an Edit action and other independent controls.",
-          do: "Keep navigation on the title link and actions on their own buttons.",
-          avoid: "Make the whole card a button that contains nested links, switches or buttons.",
+          do: "Keep navigation on the title link, as a CardLink when the whole card should open it, and actions on their own buttons.",
+          avoid:
+            "Make the whole card a button or wrap it in an anchor that contains nested links, switches or buttons.",
           reason: "Nested interactive targets create conflicting click and keyboard behavior.",
           evidence: [
             "src/components/v4/ui/card.tsx",
-            "src/pages/design-system/examples/card/default.tsx"
+            "src/pages/design-system/examples/card/default.tsx",
+            "src/pages/design-system/examples/card/link.tsx"
           ],
           detect: {
             by: "review",
@@ -985,6 +997,7 @@ export const baselineContent = [
         kind: "static",
         command: "npm run type:check"
       },
+      { kind: "runtime", command: "npm test -- src/components/v4/ui/card.test.tsx" },
       {
         kind: "browser",
         command: "npm run dev; open /design-system#card and verify the documented interaction."

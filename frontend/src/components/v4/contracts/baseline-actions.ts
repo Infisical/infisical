@@ -19,7 +19,8 @@ export const baselineActions = [
       "The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. icon-row is the table row action: a size-target-row (28px) box with a size-glyph (16px) glyph, separate from icon-sm so field and nested actions keep their 12 and 14px glyphs. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target."
     ],
     accessibility: [
-      "Use a real button for an action and asChild with an anchor for navigation. Name icon-only buttons. Native disabled removes activation, while loading remains focusable and exposes busy/disabled semantics."
+      "Use a real button for an action and asChild with an anchor for navigation. Name icon-only buttons. Native disabled removes activation, while loading remains focusable and exposes busy/disabled semantics.",
+      "The rendered button defaults to type button, so a Button inside a form never submits it by accident. Set type submit on the one Button that submits; an explicit type always wins. With asChild, Button sets no type and forwards only the one you pass, so an anchor child never gets a type attribute."
     ],
     limitations: [
       "The owner runs the operation and updates loading. Button does not start requests, show result notifications or impose a destructive confirmation.",
@@ -49,6 +50,12 @@ export const baselineActions = [
         title: "Icons and links",
         module: "./examples/button/composition.tsx",
         states: ["default"]
+      },
+      {
+        id: "form-type",
+        title: "Inside a form",
+        module: "./examples/button/form-type.tsx",
+        states: ["default", "success"]
       }
     ],
     coverage: [
