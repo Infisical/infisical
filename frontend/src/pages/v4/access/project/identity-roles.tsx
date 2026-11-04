@@ -50,6 +50,7 @@ import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
 import { identitySubject, type ProjectIdentityMembership } from "./identity-common";
+import { useProjectScope } from "./scope";
 import {
   draftOf,
   DurationBadge,
@@ -294,14 +295,13 @@ const EditRoleDialog = ({
 };
 
 export const IdentityRoleDetailsSection = ({
-  orgId,
   projectId,
   membership
 }: {
-  orgId: string;
   projectId: string;
   membership: ProjectIdentityMembership;
 }) => {
+  const scope = useProjectScope();
   const go = useGo();
   const { permission } = useProjectPermission(projectId);
   const { data: roles = [] } = useV4Adapter("access").useProjectRoles(projectId);
@@ -376,9 +376,7 @@ export const IdentityRoleDetailsSection = ({
             rowActions={rowActions}
             getRowId={(grant) => grant.id}
             rowLabel={grantLabel}
-            onRowActivate={(grant) =>
-              go(accessLinks.projectRole(orgId, projectId, grantSlug(grant)))
-            }
+            onRowActivate={(grant) => go(accessLinks.projectRole(scope, grantSlug(grant)))}
           />
         ) : (
           <EmptyState

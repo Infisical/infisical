@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useParams } from "@tanstack/react-router";
 import { UserRoundXIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
@@ -24,17 +23,16 @@ import { formatDate } from "../roles";
 import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
 import { GroupModal, RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
-import { PROJECT_TYPE } from "./member-access";
+import { useProjectScope } from "./scope";
 
 import styles from "../access.module.css";
 
-const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/access-management";
-
 export const ProjectGroupsTab = () => {
-  const { orgId, projectId } = useParams({ from: ROUTE });
+  const scope = useProjectScope();
+  const { projectId } = scope;
   const go = useGo();
   const { permission } = useProjectPermission(projectId);
-  const groups = useV4Adapter("access").useProjectGroups(projectId, PROJECT_TYPE);
+  const groups = useV4Adapter("access").useProjectGroups(projectId, scope.projectType);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<TGroupMembership>();
   const canCreate = permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
@@ -121,7 +119,7 @@ export const ProjectGroupsTab = () => {
           loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          onRowActivate={(row) => go(accessLinks.projectGroup(orgId, projectId, row.group.id))}
+          onRowActivate={(row) => go(accessLinks.projectGroup(scope, row.group.id))}
           empty={
             list.search.trim() ? (
               <EmptyState

@@ -55,7 +55,8 @@ import { useGo } from "../navigation";
 import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
-import { PROJECT_TYPE, type ProjectRoleOption, useMemberRoleAccess } from "./member-access";
+import { type ProjectRoleOption, useMemberRoleAccess } from "./member-access";
+import { useProjectScope } from "./scope";
 import {
   draftOf,
   DurationBadge,
@@ -261,15 +262,14 @@ const EditRoleDialog = ({
 
 export const MemberRolesSection = ({
   member,
-  orgId,
   projectId,
   isSelf
 }: {
   member: TWorkspaceUser;
-  orgId: string;
   projectId: string;
   isSelf: boolean;
 }) => {
+  const scope = useProjectScope();
   const go = useGo();
   const updateRoles = useV4Adapter("access").useUpdateProjectUserRoles();
   const { canEdit } = useMemberRoleAccess(projectId, member.user.email);
@@ -283,7 +283,7 @@ export const MemberRolesSection = ({
       await updateRoles.mutateAsync({
         membershipId: member.id,
         projectId,
-        projectType: PROJECT_TYPE,
+        projectType: scope.projectType,
         roles: toRolesDto(drafts)
       });
       saved(message);
@@ -358,9 +358,7 @@ export const MemberRolesSection = ({
               rowActions={isSelf ? undefined : rowActions}
               getRowId={(grant) => grant.id}
               rowLabel={(grant) => grantLabel(grant)}
-              onRowActivate={(grant) =>
-                go(accessLinks.projectRole(orgId, projectId, grantSlug(grant)))
-              }
+              onRowActivate={(grant) => go(accessLinks.projectRole(scope, grantSlug(grant)))}
             />
           ) : (
             <EmptyState

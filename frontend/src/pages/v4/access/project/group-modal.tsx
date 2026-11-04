@@ -32,7 +32,7 @@ import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { failed, saved } from "../toast";
-import { PROJECT_TYPE } from "./member-access";
+import { useProjectScope } from "./scope";
 
 import styles from "./group.module.css";
 
@@ -42,11 +42,12 @@ const GROUP_PAGE_SIZE = 100;
 
 const Content = ({ projectId, onClose }: { projectId: string; onClose: () => void }) => {
   const orgId = useOrgId();
+  const scope = useProjectScope();
   const go = useGo();
   const access = useV4Adapter("access");
   const orgGroups = access.useOrgGroups({ organizationId: orgId, limit: GROUP_PAGE_SIZE });
-  const projectGroups = access.useProjectGroups(projectId, PROJECT_TYPE);
-  const roles = access.useProjectRoles(projectId, PROJECT_TYPE);
+  const projectGroups = access.useProjectGroups(projectId, scope.projectType);
+  const roles = access.useProjectRoles(projectId, scope.projectType);
   const addGroup = access.useAddProjectGroup();
   const [groupId, setGroupId] = useState<string>();
   const [role, setRole] = useState<string>();
@@ -63,7 +64,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
     if (!groupId || !role) return;
     setPending(true);
     try {
-      await addGroup.mutateAsync({ projectId, projectType: PROJECT_TYPE, groupId, role });
+      await addGroup.mutateAsync({ projectId, projectType: scope.projectType, groupId, role });
       saved("Successfully added group to project");
       onClose();
     } catch (error) {
@@ -211,6 +212,7 @@ export const RemoveGroupDialog = ({
   onOpenChange: (open: boolean) => void;
   onRemoved?: () => void;
 }) => {
+  const scope = useProjectScope();
   const removeGroup = useV4Adapter("access").useRemoveProjectGroup();
   return (
     <AlertDialog open={Boolean(group)} onOpenChange={onOpenChange}>
@@ -232,7 +234,7 @@ export const RemoveGroupDialog = ({
                 await removeGroup.mutateAsync({
                   groupId: group.id,
                   projectId,
-                  projectType: PROJECT_TYPE
+                  projectType: scope.projectType
                 });
                 saved("Successfully removed group from project");
                 onRemoved?.();

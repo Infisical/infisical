@@ -176,8 +176,11 @@ export const OrgIdentitiesTab = () => {
 
   const projectHref = (row: Row) => {
     if (!row.project) return accessLinks.org(orgId);
-    if (row.project.type === ProjectType.SecretManager)
-      return accessLinks.projectIdentity(orgId, row.project.id, row.identity.id);
+    if (row.project.type === ProjectType.SecretManager || row.project.type === ProjectType.KMS)
+      return accessLinks.projectIdentity(
+        { orgId, projectId: row.project.id, projectType: row.project.type },
+        row.identity.id
+      );
     return `/v4/organizations/${orgId}${projectBase(row.project.type, row.project.id)}/access-management?selectedTab=${ProjectAccessControlTabs.Identities}`;
   };
   const isProjectScoped = (row: Row) => row.scope === SearchIdentitiesScope.ProjectScope;

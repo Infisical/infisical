@@ -20,22 +20,17 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { identityAuthToNameMap } from "@app/hooks/api/identities/constants";
 import type { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import type { Identity, IdentityProjectMembershipV2 } from "@app/hooks/api/identities/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { V4_DEMO_ORG_ID } from "../../mode";
 import { failed, saved } from "../toast";
+import { useProjectScope } from "./scope";
 
 import styles from "./identity.module.css";
 
 export const DELETE_PROTECTED = "Delete protection is enabled";
 export const ASSUME_HINT =
   "Assume the privileges of this machine identity, allowing you to replicate their access behavior.";
-
-export const PROJECT_LIST_ROUTE =
-  "/v4/organizations/$orgId/projects/secret-management/$projectId/access-management";
-export const PROJECT_IDENTITY_ROUTE =
-  "/v4/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId";
 
 export type ProjectIdentityMembership = Pick<
   IdentityProjectMembershipV2,
@@ -94,6 +89,7 @@ export const AssumePrivilegesDialog = ({
   identityId?: string;
   onOpenChange: (open: boolean) => void;
 }) => {
+  const { projectType } = useProjectScope();
   const assume = useV4Adapter("access").useAssumeProjectPrivileges();
   const [pending, setPending] = useState(false);
   const run = async () => {
@@ -105,7 +101,7 @@ export const AssumePrivilegesDialog = ({
       onOpenChange(false);
       if (orgId !== V4_DEMO_ORG_ID)
         window.location.assign(
-          getProjectHomePage(ProjectType.SecretManager, [])
+          getProjectHomePage(projectType, [])
             .replace("$orgId", orgId)
             .replace("$projectId", projectId)
         );
