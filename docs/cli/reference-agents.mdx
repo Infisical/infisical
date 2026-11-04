@@ -8,18 +8,24 @@ This is the [CLI reference](/cli/reference) in Markdown. Each command has the sa
 
 Anchors on that page can also point to a command's argument, flag, or environment variable, such as `#secrets-manager-run--flag-path`. Here, the part before `--` is the command's heading, and the item is listed under it: `#secrets-manager-run--flag-path` is the `--path` flag under `#secrets-manager-run`.
 
-Some commands moved, so links to the CLI reference can use anchors that no longer exist. Each old anchor below maps to a new one, and so do the anchors that start with it: `#<old>-<rest>` is now `#<new>-<rest>`. If more than one old anchor matches, the longest one applies.
+Some commands moved, so links to the CLI reference can use anchors that no longer exist. Each old anchor below maps to a new one, and so do the anchors that start with it: `#<old>-<rest>` is now `#<new>-<rest>`. If more than one old anchor matches, the longest one applies. If the argument or flag after `--` no longer exists, use the command's anchor, the part before `--`.
 
 - `#sm` is now `#secrets-manager`
 - `#sm-projects-list` is now `#secrets-manager-projects-get`
 - `#sm-secrets-folders` is now `#secrets-manager-folders`
 - `#sm-secrets-set` is now `#secrets-manager-secrets-create`
+- `#sm-secrets-folders-create--flag-name` is now `#secrets-manager-folders-create--arg-name`
+- `#sm-secrets-folders-delete--flag-name` is now `#secrets-manager-folders-delete--arg-name`
+- `#sm-secrets-generate-example-env` is now `#secrets-manager-secrets`
 - `#dynamic-secrets` is now `#secrets-manager-dynamic-secrets`
 - `#export` is now `#secrets-manager-export`
 - `#run` is now `#secrets-manager-run`
 - `#secrets` is now `#secrets-manager-secrets`
 - `#secrets-agent-proxy` is now `#secrets-manager-agent-proxy`
 - `#secrets-folders` is now `#secrets-manager-folders`
+- `#secrets-folders-create--flag-name` is now `#secrets-manager-folders-create--arg-name`
+- `#secrets-folders-delete--flag-name` is now `#secrets-manager-folders-delete--arg-name`
+- `#secrets-generate-example-env` is now `#secrets-manager-secrets`
 - `#secrets-set` is now `#secrets-manager-secrets-create`
 
 ## Global flags
