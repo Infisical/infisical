@@ -132,6 +132,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "countCasByOrgId"
     | "countInternalCasByOrgId"
+    | "findMaxSubCaDepth"
   >;
   internalCertificateAuthorityDAL: Pick<
     TInternalCertificateAuthorityDALFactory,
@@ -143,7 +144,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   >;
   certificateAuthorityCrossSignedCertDAL: Pick<
     TCertificateAuthorityCrossSignedCertDALFactory,
-    "findValidInCaHierarchy" | "findUnexpiredInCaHierarchyWithDepth"
+    "findValidInCaHierarchy" | "lockCaHierarchyAndFindUnexpired"
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
@@ -1672,15 +1673,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const resolvedParentCaId = parentCaId ?? parentCa?.id;
-    if (resolvedParentCaId && resolvedParentCaId !== ca.internalCa.parentCaId) {
-      await assertCrossSignedCertsAllowSubCa({
-        parentCaId: resolvedParentCaId,
-        projectId: ca.projectId,
-        certificateAuthorityCrossSignedCertDAL,
-        projectDAL,
-        kmsService
-      });
-    }
+    const isParentChanging = Boolean(resolvedParentCaId) && resolvedParentCaId !== ca.internalCa.parentCaId;
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -1721,6 +1714,16 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     await certificateAuthorityCertDAL.transaction(async (tx) => {
+      if (isParentChanging && resolvedParentCaId) {
+        await assertCrossSignedCertsAllowSubCa({
+          parentCaId: resolvedParentCaId,
+          attachedCaId: ca.id,
+          certificateAuthorityDAL,
+          certificateAuthorityCrossSignedCertDAL,
+          tx
+        });
+      }
+
       const newCaCert = await certificateAuthorityCertDAL.create(
         {
           caId: ca.id,

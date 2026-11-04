@@ -309,7 +309,8 @@ export const certManagerExportServiceFactory = ({
               serialNumber: sourceCrossSignedCert.serialNumber,
               publicKeyFingerprint: sourceCrossSignedCert.publicKeyFingerprint,
               notBefore: sourceCrossSignedCert.notBefore,
-              notAfter: sourceCrossSignedCert.notAfter
+              notAfter: sourceCrossSignedCert.notAfter,
+              maxSubCaDepth: sourceCrossSignedCert.maxSubCaDepth
             },
             tx
           );

@@ -383,13 +383,13 @@ export type TGetCaCertChainDTO = {
 
 export type TAssertCrossSignedCertsAllowSubCaDTO = {
   parentCaId: string;
-  projectId: string;
+  attachedCaId: string;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findMaxSubCaDepth">;
   certificateAuthorityCrossSignedCertDAL: Pick<
     TCertificateAuthorityCrossSignedCertDALFactory,
-    "findUnexpiredInCaHierarchyWithDepth"
+    "lockCaHierarchyAndFindUnexpired"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  tx: Knex;
 };
 
 export type TBuildIssuedCertificateChainDTO = {

@@ -415,10 +415,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findMaxSubCaDepth = async (caId: string) => {
+  const findMaxSubCaDepth = async (caId: string, tx?: Knex) => {
     try {
-      const result = (await db
-
+      const result = (await (tx || db)
         .withRecursive("sub_cas", (cte) => {
           void cte
             .select("caId", db.raw("1 as depth"))

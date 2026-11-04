@@ -780,6 +780,52 @@ describe("validateCrossSignedCertificate", () => {
     ).rejects.toThrow("Certificate 1 in the chain (Legacy Issuing CA) can't sign certificates");
   });
 
+  it("doesn't count a same-name copy as a CA level", async () => {
+    const sameNameLegacyKeys = await generateKeys();
+    const sameNameLegacyRoot = await createCaCert({
+      subject: "CN=Corp Root CA",
+      issuer: "CN=Corp Root CA",
+      publicKey: sameNameLegacyKeys.publicKey,
+      signingKey: sameNameLegacyKeys.privateKey,
+      pathLength: 0
+    });
+    const crossSigned = await crossSignRoot(sameNameLegacyKeys.privateKey, "CN=Corp Root CA");
+
+    const { maxSubCaDepth } = await validate({ certificate: crossSigned, certificateChain: sameNameLegacyRoot });
+
+    expect(maxSubCaDepth).toBe(0);
+  });
+
+  it("accepts a key rollover certificate in the middle of the chain", async () => {
+    const newLegacyRootKeys = await generateKeys();
+    const rolloverCert = await createCaCert({
+      subject: "CN=Legacy Root CA",
+      issuer: "CN=Legacy Root CA",
+      publicKey: newLegacyRootKeys.publicKey,
+      signingKey: legacyRootKeys.privateKey
+    });
+    const crossSigned = await crossSignRoot(newLegacyRootKeys.privateKey, "CN=Legacy Root CA");
+
+    const { crossSignedCertChainPem } = await validate({
+      certificate: crossSigned,
+      certificateChain: `${rolloverCert}\n${legacyRoot}`
+    });
+
+    expect(crossSignedCertChainPem.match(/BEGIN CERTIFICATE/g)).toHaveLength(2);
+  });
+
+  it("returns the CA levels the copy and its chain allow below the CA", async () => {
+    const issuingCaWithPathLengthTwo = await createLegacyIntermediate({ pathLength: 2 });
+    const crossSigned = await crossSignRoot(legacyIntermediateKeys.privateKey, "CN=Legacy Issuing CA");
+
+    const { maxSubCaDepth } = await validate({
+      certificate: crossSigned,
+      certificateChain: `${issuingCaWithPathLengthTwo}\n${legacyRoot}`
+    });
+
+    expect(maxSubCaDepth).toBe(1);
+  });
+
   it("accepts a copy with a complete, ordered chain", async () => {
     const crossSigned = await crossSignRoot(legacyIntermediateKeys.privateKey, "CN=Legacy Issuing CA");
 
@@ -794,107 +840,37 @@ describe("validateCrossSignedCertificate", () => {
 });
 
 describe("assertCrossSignedCertsAllowSubCa", () => {
-  const SIGNING_ALGORITHM = { name: "ECDSA", hash: "SHA-256" };
-
-  const generateKeys = () =>
-    crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
-      "sign",
-      "verify"
-    ]) as Promise<CryptoKeyPair>;
-
-  const createCaCert = async (
-    subject: string,
-    issuer: string,
-    keys: CryptoKeyPair,
-    signingKey: CryptoKey,
-    pathLength?: number
-  ) =>
-    (
-      await x509.X509CertificateGenerator.create({
-        serialNumber: "01",
-        subject,
-        issuer,
-        notBefore: new Date(Date.now() - 60 * 1000),
-        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        publicKey: keys.publicKey,
-        signingKey,
-        signingAlgorithm: SIGNING_ALGORITHM,
-        extensions: [new x509.BasicConstraintsExtension(true, pathLength, true)]
-      })
-    ).toString("pem");
-
-  const assertAllowed = (rows: { certificate: string; chain: string; depth: number }[]) =>
+  const assertAllowed = (rows: { depth: number; maxSubCaDepth: number | null }[], attachedCaSubCaDepth = 0) =>
     assertCrossSignedCertsAllowSubCa({
       parentCaId: "parent-ca",
-      projectId: "project-1",
+      attachedCaId: "attached-ca",
+      certificateAuthorityDAL: { findMaxSubCaDepth: vi.fn().mockResolvedValue(attachedCaSubCaDepth) },
       certificateAuthorityCrossSignedCertDAL: {
-        findUnexpiredInCaHierarchyWithDepth: vi.fn().mockResolvedValue(
-          rows.map(({ certificate, chain, depth }) => ({
-            caId: "root-ca",
-            caName: "corp-root-ca",
-            depth,
-            encryptedCertificate: Buffer.from(certificate),
-            encryptedCertificateChain: Buffer.from(chain)
-          }))
-        )
-      },
-      projectDAL: {
-        findOne: vi.fn().mockResolvedValue({ id: "project-1", orgId: "org-1", kmsCertificateKeyId: "kms-key-1" }),
-        updateById: vi.fn(),
-        transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(undefined))
-      } as never,
-      kmsService: {
-        decryptWithKmsKey: vi
+        lockCaHierarchyAndFindUnexpired: vi
           .fn()
-          .mockResolvedValue(async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => Buffer.from(cipherTextBlob)),
-        generateKmsKey: vi.fn()
-      } as never
+          .mockResolvedValue(rows.map((row) => ({ ...row, caId: "root-ca", caName: "corp-root-ca" })))
+      },
+      tx: {} as never
     });
 
-  let rootKeys: CryptoKeyPair;
-  let legacyRootKeys: CryptoKeyPair;
-  let legacyRoot: string;
-
-  beforeAll(async () => {
-    rootKeys = await generateKeys();
-    legacyRootKeys = await generateKeys();
-    legacyRoot = await createCaCert(
-      "CN=Legacy Root CA",
-      "CN=Legacy Root CA",
-      legacyRootKeys,
-      legacyRootKeys.privateKey
-    );
-  });
-
-  it("allows a sub-CA when no cross-signed certificate is above it", async () => {
+  it("allows a sub-CA when no cross-signed certificate above it has a limit", async () => {
     await expect(assertAllowed([])).resolves.toBeUndefined();
+    await expect(assertAllowed([{ depth: 3, maxSubCaDepth: null }])).resolves.toBeUndefined();
   });
 
-  it("allows a sub-CA within the cross-signed certificate's path length", async () => {
-    const copy = await createCaCert("CN=Corp Root CA", "CN=Legacy Root CA", rootKeys, legacyRootKeys.privateKey, 1);
-    await expect(assertAllowed([{ certificate: copy, chain: legacyRoot, depth: 0 }])).resolves.toBeUndefined();
+  it("allows a sub-CA within the cross-signed certificate's limit", async () => {
+    await expect(assertAllowed([{ depth: 0, maxSubCaDepth: 1 }])).resolves.toBeUndefined();
   });
 
-  it("refuses a sub-CA deeper than the cross-signed certificate's path length", async () => {
-    const copy = await createCaCert("CN=Corp Root CA", "CN=Legacy Root CA", rootKeys, legacyRootKeys.privateKey, 1);
-    await expect(assertAllowed([{ certificate: copy, chain: legacyRoot, depth: 1 }])).rejects.toThrow(
+  it("refuses a sub-CA deeper than the cross-signed certificate allows", async () => {
+    await expect(assertAllowed([{ depth: 1, maxSubCaDepth: 1 }])).rejects.toThrow(
       "The cross-signed certificate of CA 'corp-root-ca' doesn't allow another CA level below it"
     );
   });
 
-  it("refuses a sub-CA that a certificate in the old chain doesn't leave room for", async () => {
-    const legacyIssuingKeys = await generateKeys();
-    const legacyIssuing = await createCaCert(
-      "CN=Legacy Issuing CA",
-      "CN=Legacy Root CA",
-      legacyIssuingKeys,
-      legacyRootKeys.privateKey,
-      1
+  it("counts the CAs already under the CA being attached", async () => {
+    await expect(assertAllowed([{ depth: 0, maxSubCaDepth: 1 }], 1)).rejects.toThrow(
+      "doesn't allow another CA level below it"
     );
-    const copy = await createCaCert("CN=Corp Root CA", "CN=Legacy Issuing CA", rootKeys, legacyIssuingKeys.privateKey);
-
-    await expect(
-      assertAllowed([{ certificate: copy, chain: `${legacyIssuing}\n${legacyRoot}`, depth: 0 }])
-    ).rejects.toThrow("doesn't allow another CA level below it");
   });
 });

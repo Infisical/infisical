@@ -14,28 +14,30 @@ export type TCertificateAuthorityCrossSignedCertDALFactory = ReturnType<
 export const certificateAuthorityCrossSignedCertDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.CertificateAuthorityCrossSignedCert);
 
-  const crossSignedCertsInCaHierarchy = (caId: string) =>
-    db
-      .withRecursive("ca_hierarchy", (cte) => {
-        void cte
-          .select("caId", "parentCaId", db.raw("0 as depth"))
-          .from(TableName.InternalCertificateAuthority)
-          .where("caId", caId)
-          .union((builder) => {
-            void builder
-              .select("ica.caId", "ica.parentCaId", db.raw("ca_hierarchy.depth + 1"))
-              .from({ ica: TableName.InternalCertificateAuthority })
-              .innerJoin("ca_hierarchy", "ca_hierarchy.parentCaId", "ica.caId")
-              .where("ca_hierarchy.depth", "<", MAX_CA_HIERARCHY_DEPTH);
-          });
-      })
+  const caHierarchyQuery = (knex: Knex, caId: string) =>
+    knex.withRecursive("ca_hierarchy", (cte) => {
+      void cte
+        .select("caId", "parentCaId", knex.raw("0 as depth"))
+        .from(TableName.InternalCertificateAuthority)
+        .where("caId", caId)
+        .union((builder) => {
+          void builder
+            .select("ica.caId", "ica.parentCaId", knex.raw("ca_hierarchy.depth + 1"))
+            .from({ ica: TableName.InternalCertificateAuthority })
+            .innerJoin("ca_hierarchy", "ca_hierarchy.parentCaId", "ica.caId")
+            .where("ca_hierarchy.depth", "<", MAX_CA_HIERARCHY_DEPTH);
+        });
+    });
+
+  const crossSignedCertsInCaHierarchy = (knex: Knex, caId: string) =>
+    caHierarchyQuery(knex, caId)
       .from(TableName.CertificateAuthorityCrossSignedCert)
       .join("ca_hierarchy", "ca_hierarchy.caId", `${TableName.CertificateAuthorityCrossSignedCert}.caId`)
       .where(`${TableName.CertificateAuthorityCrossSignedCert}.notAfter`, ">", new Date());
 
   const findValidInCaHierarchy = async (caId: string, publicKeyFingerprints: string[]) => {
     try {
-      const crossSignedCerts = await crossSignedCertsInCaHierarchy(caId)
+      const crossSignedCerts = await crossSignedCertsInCaHierarchy(db, caId)
         .whereIn(`${TableName.CertificateAuthorityCrossSignedCert}.publicKeyFingerprint`, publicKeyFingerprints)
         .where(`${TableName.CertificateAuthorityCrossSignedCert}.notBefore`, "<=", new Date())
         .select(selectAllTableCols(TableName.CertificateAuthorityCrossSignedCert));
@@ -46,9 +48,14 @@ export const certificateAuthorityCrossSignedCertDALFactory = (db: TDbClient) => 
     }
   };
 
-  const findUnexpiredInCaHierarchyWithDepth = async (caId: string) => {
+  const lockCaHierarchyAndFindUnexpired = async (caId: string, tx: Knex) => {
     try {
-      const crossSignedCerts = await crossSignedCertsInCaHierarchy(caId)
+      const hierarchyCaIds = (await caHierarchyQuery(tx, caId).select("caId").from("ca_hierarchy")).map(
+        ({ caId: hierarchyCaId }: { caId: string }) => hierarchyCaId
+      );
+      await tx(TableName.CertificateAuthority).whereIn("id", hierarchyCaIds).orderBy("id").forUpdate().select("id");
+
+      const crossSignedCerts = await crossSignedCertsInCaHierarchy(tx, caId)
         .join(
           TableName.CertificateAuthority,
           `${TableName.CertificateAuthority}.id`,
@@ -57,12 +64,12 @@ export const certificateAuthorityCrossSignedCertDALFactory = (db: TDbClient) => 
         .select(
           selectAllTableCols(TableName.CertificateAuthorityCrossSignedCert),
           "ca_hierarchy.depth",
-          db.ref("name").withSchema(TableName.CertificateAuthority).as("caName")
+          tx.ref("name").withSchema(TableName.CertificateAuthority).as("caName")
         );
 
       return crossSignedCerts as (TCertificateAuthorityCrossSignedCerts & { depth: number; caName: string })[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindUnexpiredCaCrossSignedCertsInCaHierarchy" });
+      throw new DatabaseError({ error, name: "LockCaHierarchyAndFindUnexpiredCrossSignedCerts" });
     }
   };
 
@@ -83,7 +90,7 @@ export const certificateAuthorityCrossSignedCertDALFactory = (db: TDbClient) => 
   return {
     ...orm,
     findValidInCaHierarchy,
-    findUnexpiredInCaHierarchyWithDepth,
+    lockCaHierarchyAndFindUnexpired,
     findByCaIdForUpdate
   };
 };

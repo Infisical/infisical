@@ -150,7 +150,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
 
     const subCaDepth = await certificateAuthorityDAL.findMaxSubCaDepth(ca.id);
 
-    const { crossSignedCertObj, crossSignedCertChainPem } = await validateCrossSignedCertificate({
+    const { crossSignedCertObj, crossSignedCertChainPem, maxSubCaDepth } = await validateCrossSignedCertificate({
       caCertificate: caCert,
       caCertificateChain: caCertChain,
       subCaDepth,
@@ -178,6 +178,13 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       async (tx) => {
         const existingCrossSignedCert = await certificateAuthorityCrossSignedCertDAL.findByCaIdForUpdate(ca.id, tx);
 
+        if (maxSubCaDepth !== null && (await certificateAuthorityDAL.findMaxSubCaDepth(ca.id, tx)) > maxSubCaDepth) {
+          throw new BadRequestError({
+            message:
+              "This certificate allows fewer CA levels below it than the CAs under this CA need. Have the old CA keep the path length from the CSR."
+          });
+        }
+
         const [upsertedCrossSignedCert] = await certificateAuthorityCrossSignedCertDAL.upsert(
           [
             {
@@ -188,7 +195,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
               serialNumber: crossSignedCertObj.serialNumber,
               publicKeyFingerprint: getPublicKeyFingerprint(crossSignedCertObj),
               notBefore: crossSignedCertObj.notBefore,
-              notAfter: crossSignedCertObj.notAfter
+              notAfter: crossSignedCertObj.notAfter,
+              maxSubCaDepth
             }
           ],
           "caId",
