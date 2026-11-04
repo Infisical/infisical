@@ -1241,8 +1241,11 @@ bundle = client.agent_vault.access_bundles.delete(
 List the users, machine identities, and groups that an access bundle is granted to.
 
 ```python
+from infisical_sdk import AgentVaultMemberType
+
 grantees = client.agent_vault.access_bundles.list_grantees(
     access_bundle_id="<access-bundle-id>",
+    actor_type=AgentVaultMemberType.USER, # Optional
     search="jsmith", # Optional
     limit=20, # Optional
     offset=0 # Optional
@@ -1251,6 +1254,7 @@ grantees = client.agent_vault.access_bundles.list_grantees(
 
 **Parameters:**
 - `access_bundle_id` (str): the ID of the access bundle
+- `actor_type` (Union[AgentVaultMemberType, str], optional): `AgentVaultMemberType.USER` (`"user"`), `AgentVaultMemberType.MACHINE_IDENTITY` (`"machineIdentity"`), or `AgentVaultMemberType.GROUP` (`"group"`), to list only that kind of grantee (defaults to listing all three)
 - `search` (str, optional): text to find in names, usernames, and email addresses
 - `limit` (int, optional): the maximum number of grantees to return, from 1 to 100 (defaults to `20`)
 - `offset` (int, optional): the number of grantees to skip (defaults to `0`)
@@ -1263,8 +1267,11 @@ grantees = client.agent_vault.access_bundles.list_grantees(
 List the Agent Vault members that an access bundle isn't granted to yet.
 
 ```python
+from infisical_sdk import AgentVaultMemberType
+
 members = client.agent_vault.access_bundles.list_available_grantees(
     access_bundle_id="<access-bundle-id>",
+    actor_type=AgentVaultMemberType.USER, # Optional
     search="jsmith", # Optional
     limit=20, # Optional
     offset=0 # Optional
@@ -1273,6 +1280,7 @@ members = client.agent_vault.access_bundles.list_available_grantees(
 
 **Parameters:**
 - `access_bundle_id` (str): the ID of the access bundle
+- `actor_type` (Union[AgentVaultMemberType, str], optional): `AgentVaultMemberType.USER` (`"user"`), `AgentVaultMemberType.MACHINE_IDENTITY` (`"machineIdentity"`), or `AgentVaultMemberType.GROUP` (`"group"`), to list only that kind of member (defaults to listing all three)
 - `search` (str, optional): text to find in names, usernames, and email addresses
 - `limit` (int, optional): the maximum number of members to return, from 1 to 100 (defaults to `20`)
 - `offset` (int, optional): the number of members to skip (defaults to `0`)
