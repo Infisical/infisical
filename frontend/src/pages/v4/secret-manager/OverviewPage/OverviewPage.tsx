@@ -56,20 +56,21 @@ import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import type { TCreateDynamicSecretDTO } from "@app/hooks/api/dynamicSecret/types";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import type { TProxiedServiceCredentialInput } from "@app/hooks/api/proxiedServices/types";
 import type { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
-import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
-import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import type {
   TCreateSecretRotationV2DTO,
   TUpdateSecretRotationV2DTO
 } from "@app/hooks/api/secretRotationsV2/types";
-import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
+import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { withoutDefaults } from "../search-defaults";
 import { useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
 import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
@@ -448,25 +449,23 @@ export const OverviewPage = () => {
         })
     );
   };
-  const syncs = (adapter.useSecretSyncs(projectId).data ?? []).map(
-    (sync): LocalSecretSync => ({
-      id: sync.id,
-      name: sync.name,
-      destination: sync.destination,
-      project: sync.projectId,
-      environment: sync.environment?.slug ?? "",
-      path: sync.folder?.path ?? "/",
-      status: sync.syncStatus,
-      autoSync: sync.isAutoSyncEnabled,
-      lastSyncedAt: sync.lastSyncedAt ? new Date(sync.lastSyncedAt).toISOString() : undefined,
-      lastSyncMessage: sync.lastSyncMessage ?? undefined,
-      description: sync.description ?? undefined,
-      connectionId: sync.connection.id,
-      connectionName: sync.connection.name,
-      destinationConfig: sync.destinationConfig as Record<string, unknown>,
-      syncOptions: sync.syncOptions as Record<string, unknown>
-    })
-  );
+  const syncs = (adapter.useSecretSyncs(projectId).data ?? []).map((sync): LocalSecretSync => ({
+    id: sync.id,
+    name: sync.name,
+    destination: sync.destination,
+    project: sync.projectId,
+    environment: sync.environment?.slug ?? "",
+    path: sync.folder?.path ?? "/",
+    status: sync.syncStatus,
+    autoSync: sync.isAutoSyncEnabled,
+    lastSyncedAt: sync.lastSyncedAt ? new Date(sync.lastSyncedAt).toISOString() : undefined,
+    lastSyncMessage: sync.lastSyncMessage ?? undefined,
+    description: sync.description ?? undefined,
+    connectionId: sync.connection.id,
+    connectionName: sync.connection.name,
+    destinationConfig: sync.destinationConfig as Record<string, unknown>,
+    syncOptions: sync.syncOptions as Record<string, unknown>
+  }));
   const createSecretSync = adapter.useCreateSecretSync();
   const noEnvironments = projectQuery.isPending ? false : !projectEnvironments.length;
   const legacy = Boolean(projectQuery.data) && projectQuery.data?.version !== ProjectVersion.V3;
@@ -515,7 +514,13 @@ export const OverviewPage = () => {
   }, [editingFolder, deletingFolder, deleting, flowOpen, rowAction, overlayOpen]);
 
   const updateSearch = (patch: Partial<typeof search>) =>
-    routerNavigate({ search: (previous) => ({ ...previous, ...patch }) });
+    routerNavigate({
+      search: (previous) =>
+        withoutDefaults(
+          { ...previous, ...patch },
+          { secretPath: "/", search: "", environments: [] }
+        )
+    });
   const setEnvironmentIds = (value: string[] | ((current: string[]) => string[])) =>
     updateSearch({
       environments: typeof value === "function" ? value(environmentIds) : value

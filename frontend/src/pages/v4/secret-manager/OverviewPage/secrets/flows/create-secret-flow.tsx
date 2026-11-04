@@ -32,13 +32,7 @@ import type { Scope } from "../../secrets-model";
 import { NEXT_PHASE } from "../overview-cells";
 import { ReferenceEditor } from "../secret-references";
 import { PasswordGenerator } from "./password-generator";
-import {
-  DiscardDialog,
-  environmentLabel,
-  folderExists,
-  Gate,
-  secretsAt
-} from "./shared";
+import { DiscardDialog, environmentLabel, folderExists, Gate, secretsAt } from "./shared";
 import type { AddFlowProps, NewResource } from "./types";
 
 import styles from "./flows.module.css";

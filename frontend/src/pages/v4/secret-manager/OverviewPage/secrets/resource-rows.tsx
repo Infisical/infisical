@@ -117,7 +117,11 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
         <>
           <Badge tone="outline">{item.provider}</Badge>
           {item.status && (
-            <Tooltip content={item.statusDetails ?? "The provider returned an error while revoking leases."}>
+            <Tooltip
+              content={
+                item.statusDetails ?? "The provider returned an error while revoking leases."
+              }
+            >
               <Badge tone={item.status === "deleting" ? "warn" : "bad"}>
                 <Icon icon={TriangleAlertIcon} />
                 {item.status === "deleting" ? "Revoking" : "Deletion failed"}

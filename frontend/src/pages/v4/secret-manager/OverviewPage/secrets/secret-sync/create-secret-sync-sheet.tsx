@@ -976,9 +976,13 @@ export function CreateSecretSyncSheet({
   const [confirming, setConfirming] = useState(false);
   const [addedConnections, setAddedConnections] = useState<LocalSyncConnection[]>([]);
   const connectionApp = destination ? SECRET_SYNC_CONNECTION_MAP[destination] : AppConnection.AWS;
-  const loadedConnections = useV4Adapter("secrets").useSyncConnections(connectionApp, scope.project, {
-    enabled: Boolean(destination)
-  }).data;
+  const loadedConnections = useV4Adapter("secrets").useSyncConnections(
+    connectionApp,
+    scope.project,
+    {
+      enabled: Boolean(destination)
+    }
+  ).data;
   const connections = [
     ...(loadedConnections ?? []).map((connection) => ({
       id: connection.id,

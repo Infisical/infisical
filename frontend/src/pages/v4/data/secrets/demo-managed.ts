@@ -50,14 +50,16 @@ const rotationById = (store: DemoStore, rotationId: string) => {
   return rotation;
 };
 
-const inScope = (
-  entry: { projectId: string; environment: { slug: string }; folder: { path: string } },
-  keys: string[]
-) => (secret: DemoSecret) =>
-  secret.projectId === entry.projectId &&
-  secret.env === entry.environment.slug &&
-  secret.path === entry.folder.path &&
-  keys.includes(secret.key);
+const inScope =
+  (
+    entry: { projectId: string; environment: { slug: string }; folder: { path: string } },
+    keys: string[]
+  ) =>
+  (secret: DemoSecret) =>
+    secret.projectId === entry.projectId &&
+    secret.env === entry.environment.slug &&
+    secret.path === entry.folder.path &&
+    keys.includes(secret.key);
 
 const renameMapped = (
   store: DemoStore,
@@ -71,7 +73,7 @@ const renameMapped = (
   });
 
 const valuesOf = (store: DemoStore, rotation: TSecretRotationV2) => {
-  const secrets = store.get().secrets;
+  const { secrets } = store.get();
   return Object.fromEntries(
     Object.entries(rotation.secretsMapping as Record<string, string>).map(([field, key]) => [
       field,
@@ -87,8 +89,7 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
     const rotation = state.rotations.find((entry) => entry.id === rotationId);
     if (!rotation || options?.enabled === false)
       return { data: undefined, isPending: true, error: null };
-    const history = (rotation as TSecretRotationV2 & { retired?: Record<string, string> })
-      .retired;
+    const history = (rotation as TSecretRotationV2 & { retired?: Record<string, string> }).retired;
     return {
       data: {
         activeIndex: 0,
@@ -137,7 +138,8 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
       secrets: [
         ...state.secrets,
         ...Object.entries(mapping).map(([field, key]) => {
-          const configured = parameters[field] ?? (field === "username" ? parameters.username1 : "");
+          const configured =
+            parameters[field] ?? (field === "username" ? parameters.username1 : "");
           return scopedSecret(
             scope,
             key,
@@ -191,7 +193,7 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
       const { username1, username2 } = parameters;
       const value =
         field === "username" && typeof username1 === "string" && typeof username2 === "string"
-          ? [username1, username2].find((name) => name !== secret.value) ?? username1
+          ? ([username1, username2].find((name) => name !== secret.value) ?? username1)
           : fakeValue(secret.key);
       return { ...secret, value, version: secret.version + 1, updatedAt: timestamp };
     });

@@ -233,16 +233,14 @@ export function RotationActions({
   useEffect(() => {
     if (!validating) return;
     const rotationType = SECRET_ROTATION_MAP[rotationTypeOf(validating)].name;
-    checkCredentials
-      .mutateAsync(target(validating))
-      .then(
-        () =>
-          onToast("ok", {
-            title: "Credentials are valid",
-            description: `The current rotated credentials for ${validating.name} authenticated to ${rotationType}.`
-          }),
-        failed("Credentials check failed")
-      );
+    checkCredentials.mutateAsync(target(validating)).then(
+      () =>
+        onToast("ok", {
+          title: "Credentials are valid",
+          description: `The current rotated credentials for ${validating.name} authenticated to ${rotationType}.`
+        }),
+      failed("Credentials check failed")
+    );
     onClose();
   }, [validating]);
 
@@ -270,25 +268,26 @@ export function RotationActions({
   };
 
   const reconcile = () => {
-    reconcileRotation
-      .mutateAsync(target(rotation) as TReconcileLocalAccountRotationDTO)
-      .then(
-        (result) =>
-          onToast(result.reconciled ? "ok" : "neutral", {
-            title: result.reconciled
-              ? `${reconcileTypeName(type)} rotation reconciled`
-              : `${reconcileTypeName(type)} rotation not reconciled`,
-            description: result.message
-          }),
-        failed(`Failed to reconcile ${reconcileTypeName(type)} rotation`)
-      );
+    reconcileRotation.mutateAsync(target(rotation) as TReconcileLocalAccountRotationDTO).then(
+      (result) =>
+        onToast(result.reconciled ? "ok" : "neutral", {
+          title: result.reconciled
+            ? `${reconcileTypeName(type)} rotation reconciled`
+            : `${reconcileTypeName(type)} rotation not reconciled`,
+          description: result.message
+        }),
+      failed(`Failed to reconcile ${reconcileTypeName(type)} rotation`)
+    );
     onClose();
   };
 
   const update = (updated: RotationResource) => {
-    onApply((current) => current.map((resource) => (resource.id === rotation.id ? updated : resource)), {
-      title: `Successfully updated ${rotationType} rotation`
-    });
+    onApply(
+      (current) => current.map((resource) => (resource.id === rotation.id ? updated : resource)),
+      {
+        title: `Successfully updated ${rotationType} rotation`
+      }
+    );
   };
 
   const remove = ({

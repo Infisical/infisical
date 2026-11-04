@@ -33,8 +33,8 @@ import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
-import { type DemoFolderAccess, seedFolderAccess } from "./demo-access";
-import { type DemoCommit, seedDemoCommits } from "./demo-commits";
+import { type DemoFolderAccess, seedFolderAccess } from "./demo-access-seed";
+import { type DemoCommit, seedDemoCommits } from "./demo-commits-seed";
 import { seedSecretSyncs } from "./demo-syncs";
 
 type Scope = { projectId: string; environment: string; path: string };
@@ -84,7 +84,8 @@ const environments: ProjectEnv[] = [
   { id: "env-prod", name: "Production", slug: "prod" }
 ];
 const all = environments.map((environment) => environment.slug);
-export const envOf = (slug: string) => environments.find((environment) => environment.slug === slug)!;
+export const envOf = (slug: string) =>
+  environments.find((environment) => environment.slug === slug)!;
 
 const project = (id: string, description: string): Project => ({
   __v: 0,
@@ -231,7 +232,7 @@ const dynamicSecret = (
     password: "fake-password",
     creationStatement:
       "CREATE USER \"{{username}}\" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';",
-    revocationStatement: "DROP USER \"{{username}}\";",
+    revocationStatement: 'DROP USER "{{username}}";',
     renewStatement: "ALTER USER \"{{username}}\" VALID UNTIL '{{expiration}}';"
   },
   usernameTemplate: "{{randomUsername}}",

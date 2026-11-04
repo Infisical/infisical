@@ -28,6 +28,7 @@ import {
 
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { withoutDefaults } from "../search-defaults";
 
 const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/approval";
 
@@ -393,12 +394,7 @@ const ChangeRequests = ({
     return { ...base, state: working === request.id ? "pending" : "new" };
   });
   return (
-    <ApprovalQueue
-      requests={requests}
-      onApprove={approve}
-      onView={onView}
-      onRetry={approve}
-    />
+    <ApprovalQueue requests={requests} onApprove={approve} onView={onView} onRetry={approve} />
   );
 };
 
@@ -411,8 +407,13 @@ export const SecretApprovalsPage = () => {
   const { data: project } = secrets.useProject(projectId);
   const tab = selectedTab || TabSection.SecretApprovalRequests;
   const base = `/v4/organizations/${orgId}/projects/secret-management/${projectId}/approval`;
+  const approvalSearch = (nextTab: string, nextRequestId: string) =>
+    withoutDefaults(
+      { selectedTab: nextTab, requestId: nextRequestId },
+      { selectedTab: TabSection.SecretApprovalRequests, requestId: "" }
+    );
   const hrefFor = (id: string) =>
-    `${base}?${new URLSearchParams({ selectedTab: TabSection.SecretApprovalRequests, requestId: id })}`;
+    `${base}?${new URLSearchParams(approvalSearch(TabSection.SecretApprovalRequests, id))}`;
   const environmentName = (slug: string) =>
     project?.environments.find((environment) => environment.slug === slug)?.name ?? slug;
   if (tab === TabSection.SecretApprovalRequests && requestId)
@@ -440,7 +441,7 @@ export const SecretApprovalsPage = () => {
           <Tabs
             label="Approval sections"
             value={tab}
-            onValueChange={(next) => navigate({ search: { selectedTab: next, requestId: "" } })}
+            onValueChange={(next) => navigate({ search: approvalSearch(next, "") })}
             tabs={[
               {
                 value: TabSection.SecretApprovalRequests,
@@ -460,7 +461,7 @@ export const SecretApprovalsPage = () => {
           hrefFor={hrefFor}
           onView={(id) =>
             navigate({
-              search: { selectedTab: TabSection.SecretApprovalRequests, requestId: id }
+              search: approvalSearch(TabSection.SecretApprovalRequests, id)
             })
           }
         />

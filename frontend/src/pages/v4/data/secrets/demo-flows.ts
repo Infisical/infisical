@@ -262,7 +262,9 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
         dynamicAt(dto.projectSlug, dto.environmentSlug, dto.path, dto.dynamicSecretName)
       );
     if (!entry) throw new Error("Dynamic secret not found");
-    const expireAt = new Date(Date.now() + (ms(dto.ttl ?? entry.defaultTTL) || 3600000)).toISOString();
+    const expireAt = new Date(
+      Date.now() + (ms(dto.ttl ?? entry.defaultTTL) || 3600000)
+    ).toISOString();
     const lease = {
       id: crypto.randomUUID(),
       version: 1,

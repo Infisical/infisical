@@ -7,27 +7,9 @@ import type {
 import { CommitType } from "@app/hooks/api/secretApprovalRequest/types";
 
 import type { SecretsCommitsAdapter } from "./contract-commits";
+import type { DemoCommit, DemoCommitChange, Snapshot } from "./demo-commits-seed";
 import { type DemoStore, now, updateSecrets, useStore } from "./demo-store";
 import type { DemoSecret } from "./fixtures";
-
-type Snapshot = { name: string; value?: string; comment?: string; description?: string };
-
-export type DemoCommitChange = {
-  type: "secret" | "folder";
-  before?: Snapshot;
-  after?: Snapshot;
-};
-
-export type DemoCommit = {
-  id: string;
-  projectId: string;
-  environment: string;
-  path: string;
-  message: string;
-  actor: string;
-  createdAt: string;
-  changes: DemoCommitChange[];
-};
 
 const nameOf = (change: DemoCommitChange) => (change.after ?? change.before)?.name ?? "";
 
@@ -75,12 +57,11 @@ const toCommit = (commit: DemoCommit): Commit => {
   };
 };
 
-const inFolder = (scope: { projectId: string; environment: string; directory: string }) => (
-  commit: DemoCommit
-) =>
-  commit.projectId === scope.projectId &&
-  commit.environment === scope.environment &&
-  commit.path === scope.directory;
+const inFolder =
+  (scope: { projectId: string; environment: string; directory: string }) => (commit: DemoCommit) =>
+    commit.projectId === scope.projectId &&
+    commit.environment === scope.environment &&
+    commit.path === scope.directory;
 
 const invert = (change: DemoCommitChange): DemoCommitChange => ({
   type: change.type,
@@ -146,51 +127,6 @@ const applyChanges = (store: DemoStore, commit: DemoCommit, changes: DemoCommitC
     });
 };
 
-export const seedDemoCommits = (secrets: DemoSecret[]): DemoCommit[] => {
-  const at = (key: string) =>
-    secrets.find(
-      (secret) =>
-        secret.projectId === "payments-api" &&
-        secret.env === "dev" &&
-        secret.path === "/" &&
-        secret.key === key
-    );
-  const snapshot = (key: string): Snapshot => ({
-    name: key,
-    value: at(key)?.value,
-    comment: at(key)?.comment
-  });
-  const scope = { projectId: "payments-api", environment: "dev", path: "/" };
-  return [
-    {
-      ...scope,
-      id: "3f9c2a1e-6b7d-4c8e-9a0f-1d2e3f4a5b6c",
-      message: "Add base service configuration",
-      actor: "Sarah Lin",
-      createdAt: "2026-10-20T16:05:00.000Z",
-      changes: ["FEATURE_FLAGS", "REDIS_URL"].map((key) => ({
-        type: "secret" as const,
-        after: snapshot(key)
-      }))
-    },
-    {
-      ...scope,
-      id: "8a7b6c5d-4e3f-4a1b-8c9d-0e1f2a3b4c5d",
-      message: "Lower log level for incident review",
-      actor: "Marcus Webb",
-      createdAt: "2026-10-28T09:41:00.000Z",
-      changes: [
-        {
-          type: "secret",
-          before: { ...snapshot("LOG_LEVEL"), value: "debug" },
-          after: snapshot("LOG_LEVEL")
-        },
-        { type: "folder", after: { name: "workers", description: "" } }
-      ]
-    }
-  ];
-};
-
 export const recordDemoCommit = (store: DemoStore, commit: Omit<DemoCommit, "id" | "createdAt">) =>
   store.update((state) => ({
     ...state,
@@ -223,7 +159,9 @@ export const secretsCommitsDemo: SecretsCommitsAdapter = {
             .includes(query)
       )
       .sort((a, b) =>
-        sort === "desc" ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt)
+        sort === "desc"
+          ? b.createdAt.localeCompare(a.createdAt)
+          : a.createdAt.localeCompare(b.createdAt)
       )
       .map(toCommit);
     return {
@@ -278,9 +216,7 @@ export const secretsCommitsDemo: SecretsCommitsAdapter = {
     const state = useStore().use();
     const commit = state.commits.find((entry) => entry.id === commitId);
     if (!commit) return { data: undefined, isPending: Boolean(commitId), error: null };
-    const changes = laterThan(state.commits, commit).flatMap((later) =>
-      later.changes.map(invert)
-    );
+    const changes = laterThan(state.commits, commit).flatMap((later) => later.changes.map(invert));
     return {
       data: [
         {

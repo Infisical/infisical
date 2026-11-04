@@ -164,7 +164,6 @@ const byAdminThenName = (a: Actor, b: Actor) =>
 const toggle = <T,>(values: T[], value: T) =>
   values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value];
 
-
 function TierOptions({
   activeTier,
   onSelectTier

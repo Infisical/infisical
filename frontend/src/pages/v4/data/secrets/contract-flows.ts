@@ -74,43 +74,45 @@ type SecretScopedMutation<TVariables, TData> = (secretId: string) => {
 export type SecretsFlowsAdapter = SecretsManagedAdapter &
   SecretsCommitsAdapter &
   SecretsAccessAdapter & {
-  useDynamicSecretDetails: (
-    dto: TDetailsDynamicSecretDTO
-  ) => V4QueryResult<TDynamicSecret & { inputs: unknown }>;
-  useCreateDynamicSecret: V4Mutation<TCreateDynamicSecretDTO>;
-  useUpdateDynamicSecret: V4Mutation<TUpdateDynamicSecretDTO>;
-  useDeleteDynamicSecret: V4Mutation<TDeleteDynamicSecretDTO>;
-  useDynamicSecretLeases: (dto: TListDynamicSecretLeaseDTO) => V4QueryResult<TDynamicSecretLease[]>;
-  useCreateDynamicSecretLease: V4Mutation<
-    TCreateDynamicSecretLeaseDTO,
-    { lease: TDynamicSecretLease; data: unknown }
-  >;
-  useRenewDynamicSecretLease: V4Mutation<TRenewDynamicSecretLeaseDTO>;
-  useRevokeDynamicSecretLease: V4Mutation<TRevokeDynamicSecretLeaseDTO>;
-  useSecretVersions: (dto: GetSecretVersionsDTO) => V4QueryResult<SecretVersions[]>;
-  useSecretVersionValue: (
-    dto: TGetSecretVersionValue,
-    options?: { enabled?: boolean }
-  ) => V4QueryResult<string>;
-  useRedactSecretVersion: V4Mutation<{ versionId: string; secretId: string }>;
-  useSecretAccessList: (dto: TGetSecretAccessListDTO) => V4QueryResult<TSecretAccessList>;
-  useCreateSharedSecret: V4Mutation<TCreateSharedSecretRequest, TCreatedSharedSecret>;
-  useCreateReminder: SecretScopedMutation<CreateReminderDTO, Reminder>;
-  useDeleteReminder: SecretScopedMutation<DeleteReminderDTO, Reminder>;
-  useProjectFolders: (projectId: string) => V4QueryResult<TProjectEnvironmentsFolders>;
-  useSecretsAt: (
-    dto: TGetProjectSecretsDTO & { options?: { enabled?: boolean } }
-  ) => V4QueryResult<SecretV3RawSanitized[]>;
-  useCreateSecretBatch: V4Mutation<TCreateSecretBatchDTO>;
-  useUpdateSecretBatch: V4Mutation<TUpdateSecretBatchDTO>;
-  useMoveSecrets: V4Mutation<
-    TMoveSecretsDTO,
-    { isSourceUpdated: boolean; isDestinationUpdated: boolean }
-  >;
-  useMoveFolder: V4Mutation<TMoveFolderDTO, TMoveFolderResponse>;
-  useCreateCommit: V4Mutation<TCreateCommitDTO, TCreateCommitResponse>;
-  useDeleteEnvironment: V4Mutation<DeleteEnvironmentDTO>;
-  useCreateSecretImport: V4Mutation<TCreateSecretImportDTO>;
-  useDeleteSecretImport: V4Mutation<TDeleteSecretImportDTO>;
-  useResyncSecretImport: V4Mutation<TResyncSecretReplicationDTO>;
-};
+    useDynamicSecretDetails: (
+      dto: TDetailsDynamicSecretDTO
+    ) => V4QueryResult<TDynamicSecret & { inputs: unknown }>;
+    useCreateDynamicSecret: V4Mutation<TCreateDynamicSecretDTO>;
+    useUpdateDynamicSecret: V4Mutation<TUpdateDynamicSecretDTO>;
+    useDeleteDynamicSecret: V4Mutation<TDeleteDynamicSecretDTO>;
+    useDynamicSecretLeases: (
+      dto: TListDynamicSecretLeaseDTO
+    ) => V4QueryResult<TDynamicSecretLease[]>;
+    useCreateDynamicSecretLease: V4Mutation<
+      TCreateDynamicSecretLeaseDTO,
+      { lease: TDynamicSecretLease; data: unknown }
+    >;
+    useRenewDynamicSecretLease: V4Mutation<TRenewDynamicSecretLeaseDTO>;
+    useRevokeDynamicSecretLease: V4Mutation<TRevokeDynamicSecretLeaseDTO>;
+    useSecretVersions: (dto: GetSecretVersionsDTO) => V4QueryResult<SecretVersions[]>;
+    useSecretVersionValue: (
+      dto: TGetSecretVersionValue,
+      options?: { enabled?: boolean }
+    ) => V4QueryResult<string>;
+    useRedactSecretVersion: V4Mutation<{ versionId: string; secretId: string }>;
+    useSecretAccessList: (dto: TGetSecretAccessListDTO) => V4QueryResult<TSecretAccessList>;
+    useCreateSharedSecret: V4Mutation<TCreateSharedSecretRequest, TCreatedSharedSecret>;
+    useCreateReminder: SecretScopedMutation<CreateReminderDTO, Reminder>;
+    useDeleteReminder: SecretScopedMutation<DeleteReminderDTO, Reminder>;
+    useProjectFolders: (projectId: string) => V4QueryResult<TProjectEnvironmentsFolders>;
+    useSecretsAt: (
+      dto: TGetProjectSecretsDTO & { options?: { enabled?: boolean } }
+    ) => V4QueryResult<SecretV3RawSanitized[]>;
+    useCreateSecretBatch: V4Mutation<TCreateSecretBatchDTO>;
+    useUpdateSecretBatch: V4Mutation<TUpdateSecretBatchDTO>;
+    useMoveSecrets: V4Mutation<
+      TMoveSecretsDTO,
+      { isSourceUpdated: boolean; isDestinationUpdated: boolean }
+    >;
+    useMoveFolder: V4Mutation<TMoveFolderDTO, TMoveFolderResponse>;
+    useCreateCommit: V4Mutation<TCreateCommitDTO, TCreateCommitResponse>;
+    useDeleteEnvironment: V4Mutation<DeleteEnvironmentDTO>;
+    useCreateSecretImport: V4Mutation<TCreateSecretImportDTO>;
+    useDeleteSecretImport: V4Mutation<TDeleteSecretImportDTO>;
+    useResyncSecretImport: V4Mutation<TResyncSecretReplicationDTO>;
+  };

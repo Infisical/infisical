@@ -41,4 +41,3 @@ export const fakeLeaseData = (
       .map((field) => [field.key, fakeOutputValue(field.key, name, expireAt)])
   );
 };
-

@@ -144,9 +144,9 @@ export function FolderActions({
       permission: after.permission,
       type: toGrantType(after)
     };
-    return ((before ? actor.update : actor.create).mutateAsync as (dto: object) => Promise<unknown>)(
-      dto
-    );
+    return (
+      (before ? actor.update : actor.create).mutateAsync as (dto: object) => Promise<unknown>
+    )(dto);
   };
   const applyAccess = (update: (current: AccessState) => AccessState) => {
     const next = update(access);

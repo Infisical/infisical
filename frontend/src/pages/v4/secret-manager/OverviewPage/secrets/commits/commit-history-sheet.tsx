@@ -45,7 +45,6 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 import type { Commit } from "@app/hooks/api/folderCommits/types";
 
 import { useV4Adapter } from "../../../../data/adapters";
-
 import { environmentLabel, Gate } from "../flows/shared";
 import { ActionButton } from "../overview-cells";
 import type { OverlayHostProps } from "../row-actions/types";
@@ -225,7 +224,11 @@ export function CommitHistorySheet({
   }
 
   const environment = shown ?? scope.visibleEnvironments[0] ?? { value: "", label: "" };
-  const folder = { projectId: scope.project, environment: environment.value, directory: scope.path };
+  const folder = {
+    projectId: scope.project,
+    environment: environment.value,
+    directory: scope.path
+  };
   const changeScope = { project: scope.project, environment: environment.value, path: scope.path };
   const envName = environment.label || environmentLabel(environment.value);
   const history = adapter.useCommitHistory({
@@ -262,7 +265,10 @@ export function CommitHistorySheet({
       toCommitChange(changeScope, {
         id: change.id,
         type: change.folderVersionId || change.folderName ? "folder" : "secret",
-        action: change.changeType === "add" ? "create" : (change.changeType as "create" | "update" | "delete"),
+        action:
+          change.changeType === "add"
+            ? "create"
+            : (change.changeType as "create" | "update" | "delete"),
         name: change.secretKey ?? change.folderName ?? "Unnamed",
         versions: change.versions as unknown as { version: number }[]
       })
@@ -558,7 +564,10 @@ export function CommitHistorySheet({
 
   if (view.name === "restore" && commit) {
     const folders = [...(preview ?? [])]
-      .sort((x, y) => Number(y.folderId === details?.folderId) - Number(x.folderId === details?.folderId))
+      .sort(
+        (x, y) =>
+          Number(y.folderId === details?.folderId) - Number(x.folderId === details?.folderId)
+      )
       .map((item) => ({
         path: item.folderPath,
         changes: item.changes
