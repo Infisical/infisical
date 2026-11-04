@@ -940,6 +940,38 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findSharedKeyInFolders = async ({ folderIds, key }: { folderIds: string[]; key: string }) => {
+    try {
+      const rows = await db
+        .replicaNode()(TableName.SecretV2)
+        .where(`${TableName.SecretV2}.key`, key)
+        .where(`${TableName.SecretV2}.type`, SecretType.Shared)
+        .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(db.ref("folderId").withSchema(TableName.SecretV2))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+
+      const tagSlugsByFolderId = new Map<string, string[]>();
+      rows.forEach(({ folderId, tagSlug }) => {
+        const tagSlugs = tagSlugsByFolderId.get(folderId) ?? [];
+        if (tagSlug) tagSlugs.push(tagSlug);
+        tagSlugsByFolderId.set(folderId, tagSlugs);
+      });
+      return Array.from(tagSlugsByFolderId, ([folderId, tagSlugs]) => ({ folderId, tagSlugs }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find shared secret key in folders" });
+    }
+  };
+
   const findBySecretKeys = async (
     folderId: string,
     query: Array<{ key: string; type: SecretType.Shared } | { key: string; type: SecretType.Personal; userId: string }>,
@@ -1856,6 +1888,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findByFolderIds,
     findMetadataByFolderIds,
     findBySecretKeys,
+    findSharedKeyInFolders,
     upsertSecretReferences,
     findReferencedSecretReferences,
     findSecretReferencesByProjectId,
