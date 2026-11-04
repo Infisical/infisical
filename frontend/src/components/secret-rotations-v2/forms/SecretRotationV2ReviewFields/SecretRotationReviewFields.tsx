@@ -5,6 +5,15 @@ import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms
 import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { DetailGroup, DetailGroupHeader } from "@app/components/v3";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
+import {
+  ALERT_EVENT_TYPE_LABELS,
+  ALERT_PROJECT_RECIPIENT_LABELS,
+  AlertChannelType,
+  AlertEventType,
+  AlertPrincipalType,
+  TAlertChannelRecipient,
+  TChannelForm
+} from "@app/hooks/api/alerts";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
@@ -68,7 +77,88 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationReviewFields
 };
 
-export const SecretRotationV2ReviewFields = () => {
+const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+
+const describeRecipientType = (principalType: AlertPrincipalType, count: number) => {
+  switch (principalType) {
+    case AlertPrincipalType.ProjectMembers:
+    case AlertPrincipalType.ProjectAdmins:
+      return ALERT_PROJECT_RECIPIENT_LABELS[principalType];
+    case AlertPrincipalType.User:
+      return pluralize(count, "user");
+    case AlertPrincipalType.Group:
+      return pluralize(count, "group");
+    case AlertPrincipalType.Email:
+      return pluralize(count, "email");
+    default:
+      return "";
+  }
+};
+
+const describeRecipients = (recipients: TAlertChannelRecipient[]) =>
+  Object.values(AlertPrincipalType)
+    .map((principalType) => ({
+      principalType,
+      count: recipients.filter((recipient) => recipient.principalType === principalType).length
+    }))
+    .filter(({ count }) => count > 0)
+    .map(({ principalType, count }) => describeRecipientType(principalType, count))
+    .join(", ");
+
+const describeChannel = (channel: TChannelForm) => {
+  switch (channel.channelType) {
+    case AlertChannelType.Email:
+      return describeRecipients(channel.recipients);
+    case AlertChannelType.Slack:
+      return "Slack incoming webhook";
+    case AlertChannelType.Webhook:
+      return channel.url;
+    case AlertChannelType.PagerDuty:
+      return "PagerDuty Events API v2";
+    default:
+      return "";
+  }
+};
+
+const FailureAlertReview = ({
+  isFailureAlertEnabled,
+  channels,
+  isFailureAlertUnavailable
+}: {
+  isFailureAlertEnabled: boolean;
+  channels: TChannelForm[];
+  isFailureAlertUnavailable: boolean;
+}) => {
+  if (isFailureAlertUnavailable) {
+    return (
+      <span className="text-sm text-muted">Not loaded. Saving leaves the alert unchanged.</span>
+    );
+  }
+
+  if (!isFailureAlertEnabled) {
+    return <span className="text-sm text-muted">No alert</span>;
+  }
+
+  return (
+    <>
+      <ReviewField label="Event">
+        {ALERT_EVENT_TYPE_LABELS[AlertEventType.SecretRotationFailed]}
+      </ReviewField>
+      {channels.map((channel) => (
+        <ReviewField key={channel.id ?? channel.name} label={channel.name}>
+          {describeChannel(channel)}
+          {channel.enabled ? "" : " (disabled)"}
+        </ReviewField>
+      ))}
+    </>
+  );
+};
+
+type Props = {
+  isFailureAlertUnavailable?: boolean;
+};
+
+export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable = false }: Props) => {
   const { watch } = useFormContext<TSecretRotationV2Form>();
 
   const {
@@ -79,7 +169,9 @@ export const SecretRotationV2ReviewFields = () => {
     name,
     description,
     rotationInterval,
-    rotateAtUtc
+    rotateAtUtc,
+    isFailureAlertEnabled,
+    channels
   } = watch();
 
   const Component = COMPONENT_MAP[type];
@@ -106,6 +198,16 @@ export const SecretRotationV2ReviewFields = () => {
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <ReviewField label="Name">{name}</ReviewField>
           <ReviewField label="Description">{description}</ReviewField>
+        </div>
+      </DetailGroup>
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-1">Alerts</DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-2">
+          <FailureAlertReview
+            isFailureAlertEnabled={isFailureAlertEnabled}
+            channels={channels}
+            isFailureAlertUnavailable={isFailureAlertUnavailable}
+          />
         </div>
       </DetailGroup>
     </div>

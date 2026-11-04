@@ -9,6 +9,7 @@ import { MongoDBCredentialsRotationSchema } from "@app/components/secret-rotatio
 import { MsSqlCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mssql-credentials-rotation-schema";
 import { MySqlCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mysql-credentials-rotation-schema";
 import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/postgres-credentials-rotation-schema";
+import { channelFormSchema, TChannelForm } from "@app/hooks/api/alerts";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
@@ -36,6 +37,32 @@ import { StripeApiKeyRotationSchema } from "./stripe-api-key-rotation-schema";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key-rotation-schema";
 import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
 import { WindowsLocalAccountRotationSchema } from "./windows-local-account-rotation-schema";
+
+const FailureAlertChannelsSchema = z
+  .array(channelFormSchema)
+  .min(1, "At least one channel is required");
+
+// Channels are only checked while the alert is on, so a hidden, half-filled channel can't block
+// saving the rotation.
+const FailureAlertSchema = z
+  .object({
+    isFailureAlertEnabled: z.boolean(),
+    channels: z.custom<TChannelForm[]>()
+  })
+  .superRefine(({ isFailureAlertEnabled, channels }, ctx) => {
+    if (!isFailureAlertEnabled) return;
+
+    const result = FailureAlertChannelsSchema.safeParse(channels);
+    if (result.success) return;
+
+    result.error.issues.forEach((issue) => {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: issue.message,
+        path: ["channels", ...issue.path]
+      });
+    });
+  });
 
 export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
   z
@@ -72,7 +99,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         StripeApiKeyRotationSchema,
         GcpServiceAccountKeyRotationSchema
       ]),
-      z.object({ id: z.string().optional() })
+      z.object({ id: z.string().optional() }).and(FailureAlertSchema)
     )
     .superRefine((val, ctx) => {
       if (isUpdate) return;

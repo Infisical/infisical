@@ -3,6 +3,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
+import { SecretRotationV2AlertsFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2AlertsFields";
 import { SecretRotationV2ConfigurationFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ConfigurationFields";
 import { SecretRotationV2DetailsFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2DetailsFields";
 import { SecretRotationV2ParametersFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ParametersFields";
@@ -13,12 +14,26 @@ import {
   DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   SheetFooter,
+  Spinner,
   Stepper,
   StepperList,
   StepperStep
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { IS_ROTATION_DUAL_CREDENTIALS, SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
+import {
+  AlertChannelType,
+  AlertEventType,
+  AlertPrincipalType,
+  AlertResourceType,
+  TAlert,
+  TChannelForm,
+  toChannelForm,
+  toChannelInput,
+  useCreateAlert,
+  useListAlerts,
+  useUpdateAlert
+} from "@app/hooks/api/alerts";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import {
   SecretRotation,
@@ -30,6 +45,7 @@ import {
   useUpdateSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { buildNextChannel, DEFAULT_ALERT_NAMES } from "@app/views/Alerts";
 
 import { SecretRotationV2FormSchema, TSecretRotationV2Form } from "./schemas";
 
@@ -43,6 +59,11 @@ type Props = {
   environments?: ProjectEnv[];
   secretRotation?: TSecretRotationV2;
   initialFormData?: Partial<TSecretRotationV2Form>;
+};
+
+type ContentProps = Props & {
+  failureAlert?: TAlert;
+  isFailureAlertUnavailable: boolean;
 };
 
 type FormStep = {
@@ -109,6 +130,18 @@ const FORM_STEPS: FormStep[] = [
     fields: ["name", "description"]
   },
   {
+    name: "Alerts",
+    key: "alerts",
+    shortDescription: "Failure notifications",
+    title: "Set up failure alerts",
+    subtitle:
+      "Choose where Infisical sends a notice when this rotation fails. You can skip this step.",
+    rightLabel: "Alerts",
+    rightDescription:
+      "Infisical sends a notice to every enabled channel when a scheduled rotation fails. You can change these channels later from the rotation's edit form.",
+    fields: ["isFailureAlertEnabled", "channels"]
+  },
+  {
     name: "Review",
     key: "review",
     shortDescription: "Confirm configuration",
@@ -123,7 +156,15 @@ const FORM_STEPS: FormStep[] = [
 
 const DEFAULT_ROTATION_INTERVAL = 30;
 
-export const SecretRotationV2Form = ({
+const buildProjectAdminsChannel = (projectId: string): TChannelForm => ({
+  ...buildNextChannel([], AlertChannelType.Email),
+  recipients: [{ principalType: AlertPrincipalType.ProjectAdmins, principalId: projectId }]
+});
+
+const serializeChannels = (channels: TChannelForm[]) =>
+  JSON.stringify(channels.map(toChannelInput));
+
+const SecretRotationV2FormContent = ({
   type,
   onComplete,
   onCancel,
@@ -132,10 +173,14 @@ export const SecretRotationV2Form = ({
   secretPath,
   secretRotation,
   environments,
-  initialFormData
-}: Props) => {
+  initialFormData,
+  failureAlert,
+  isFailureAlertUnavailable
+}: ContentProps) => {
   const createSecretRotation = useCreateSecretRotationV2();
   const updateSecretRotation = useUpdateSecretRotationV2();
+  const createAlert = useCreateAlert();
+  const updateAlert = useUpdateAlert();
   const { currentProject } = useProject();
   const { name: rotationType } = SECRET_ROTATION_MAP[type];
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
@@ -147,7 +192,11 @@ export const SecretRotationV2Form = ({
       ? {
           ...secretRotation,
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
-          secretPath
+          secretPath,
+          isFailureAlertEnabled: failureAlert?.enabled ?? false,
+          channels: failureAlert
+            ? failureAlert.channels.map(toChannelForm)
+            : [buildProjectAdminsChannel(currentProject.id)]
         }
       : {
           type,
@@ -159,6 +208,8 @@ export const SecretRotationV2Form = ({
           },
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
+          isFailureAlertEnabled: true,
+          channels: [buildProjectAdminsChannel(currentProject.id)],
           ...((rotationOption?.template as object) ?? {}),
           ...(initialFormData as object)
         }) as Partial<TSecretRotationV2Form>,
@@ -180,7 +231,50 @@ export const SecretRotationV2Form = ({
     return () => onDirtyChange?.(false);
   }, [hasUnsavedChanges, onDirtyChange]);
 
-  const onSubmit = async ({ environment, connection, ...formData }: TSecretRotationV2Form) => {
+  const saveFailureAlert = async (
+    rotation: TSecretRotationV2,
+    isFailureAlertEnabled: boolean,
+    channels: TChannelForm[]
+  ) => {
+    if (isFailureAlertUnavailable) return;
+
+    if (failureAlert) {
+      if (isFailureAlertEnabled) {
+        const hasChannelChanges =
+          serializeChannels(channels) !==
+          serializeChannels(failureAlert.channels.map(toChannelForm));
+        if (failureAlert.enabled && !hasChannelChanges) return;
+        await updateAlert.mutateAsync({
+          alertId: failureAlert.id,
+          enabled: true,
+          channels: channels.map(toChannelInput)
+        });
+      } else if (failureAlert.enabled) {
+        await updateAlert.mutateAsync({ alertId: failureAlert.id, enabled: false });
+      }
+      return;
+    }
+
+    if (!isFailureAlertEnabled) return;
+    await createAlert.mutateAsync({
+      name: DEFAULT_ALERT_NAMES[AlertEventType.SecretRotationFailed],
+      resourceType: AlertResourceType.SecretRotation,
+      resourceId: rotation.id,
+      eventType: AlertEventType.SecretRotationFailed,
+      projectId: rotation.projectId,
+      enabled: true,
+      condition: null,
+      channels: channels.map(toChannelInput)
+    });
+  };
+
+  const onSubmit = async ({
+    environment,
+    connection,
+    isFailureAlertEnabled,
+    channels,
+    ...formData
+  }: TSecretRotationV2Form) => {
     const mutation = secretRotation
       ? updateSecretRotation.mutateAsync({
           rotationId: secretRotation.id,
@@ -195,10 +289,19 @@ export const SecretRotationV2Form = ({
         });
     const rotation = await mutation;
 
-    createNotification({
-      text: `Successfully ${secretRotation ? "updated" : "created"} ${rotationType} rotation`,
-      type: "success"
-    });
+    try {
+      await saveFailureAlert(rotation, isFailureAlertEnabled, channels);
+      createNotification({
+        text: `Successfully ${secretRotation ? "updated" : "created"} ${rotationType} rotation`,
+        type: "success"
+      });
+    } catch {
+      // MutationCache reports why the alert request failed; this only says the rotation itself was saved.
+      createNotification({
+        text: "Rotation saved, but its failure alert was not. Edit the rotation to try again.",
+        type: "warning"
+      });
+    }
     onComplete(rotation);
   };
 
@@ -296,7 +399,18 @@ export const SecretRotationV2Form = ({
               {selectedStepIndex === 1 && <SecretRotationV2ParametersFields />}
               {selectedStepIndex === 2 && <SecretRotationV2SecretsMappingFields />}
               {selectedStepIndex === 3 && <SecretRotationV2DetailsFields />}
-              {selectedStepIndex === 4 && <SecretRotationV2ReviewFields />}
+              {selectedStepIndex === 4 && (
+                <SecretRotationV2AlertsFields
+                  projectId={currentProject.id}
+                  rotationId={secretRotation?.id}
+                  isAlertUnavailable={isFailureAlertUnavailable}
+                />
+              )}
+              {selectedStepIndex === 5 && (
+                <SecretRotationV2ReviewFields
+                  isFailureAlertUnavailable={isFailureAlertUnavailable}
+                />
+              )}
             </div>
           </div>
 
@@ -349,5 +463,43 @@ export const SecretRotationV2Form = ({
         }
       />
     </FormProvider>
+  );
+};
+
+export const SecretRotationV2Form = (props: Props) => {
+  const { secretRotation } = props;
+  const isEditMode = Boolean(secretRotation);
+
+  const {
+    data: alerts,
+    isPending,
+    isError
+  } = useListAlerts(
+    {
+      resourceType: AlertResourceType.SecretRotation,
+      resourceId: secretRotation?.id,
+      projectId: secretRotation?.projectId
+    },
+    { enabled: isEditMode }
+  );
+
+  // The alert goes into the default values rather than a later resetField, which ignores fields
+  // that aren't registered yet, and the Alerts step mounts near the end.
+  if (isEditMode && isPending) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" label="Loading secret rotation" />
+      </div>
+    );
+  }
+
+  return (
+    <SecretRotationV2FormContent
+      {...props}
+      failureAlert={alerts?.find(
+        (alert) => alert.eventType === AlertEventType.SecretRotationFailed
+      )}
+      isFailureAlertUnavailable={isEditMode && isError}
+    />
   );
 };
