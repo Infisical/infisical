@@ -1,51 +1,89 @@
-import { type ComponentType, lazy, Suspense } from "react";
+import { useState } from "react";
 
-import { Loader } from "@app/components/v4/ui/loader";
+import { Select } from "@app/components/v4/ui/select";
 
+import { accessViews } from "./access-views";
 import { ComparisonSlider } from "./comparison-slider";
-import { SecretsScenarios } from "./compositions/secrets-scenarios";
 import { PageHeading } from "./doc-parts";
 import { type ComparisonPage, comparisonPages } from "./navigation";
 
-const shots = import.meta.glob<string>("./assets/comparisons/*.webp", {
+const shots = import.meta.glob<string>("./assets/comparisons/**/*.webp", {
   eager: true,
   import: "default",
   query: "?url"
 });
 const shot = (screen: string, theme: "light" | "dark") =>
   shots[`./assets/comparisons/${screen}-${theme}.webp`];
+const before = (screen: string) => ({ light: shot(screen, "light"), dark: shot(screen, "dark") });
 
-const AccessComparison = lazy(() =>
-  import("./compositions/access/views").then((module) => ({ default: module.AccessComparison }))
-);
+const secretsScenarios = [
+  { value: "overview", label: "Overview" },
+  { value: "compare", label: "Compare environments" },
+  { value: "permissions", label: "Permissions" },
+  { value: "loading", label: "Loading" },
+  { value: "error", label: "Overview error" },
+  { value: "empty", label: "Empty project" },
+  { value: "no-environments", label: "No environments" },
+  { value: "legacy", label: "Legacy engine" },
+  { value: "large", label: "Large dataset" }
+];
 
-const screens: Record<string, ComponentType> = {
-  shell: lazy(() => import("./compositions/shell")),
-  home: lazy(() => import("./compositions/home")),
-  secrets: lazy(() => import("./compositions/secrets")),
-  access: lazy(() => import("./compositions/access")),
-  settings: lazy(() => import("./compositions/settings")),
-  approvals: lazy(() => import("./compositions/approvals")),
-  certificates: lazy(() => import("./compositions/certificates")),
-  kms: lazy(() => import("./compositions/kms")),
-  connections: lazy(() => import("./compositions/connections")),
-  identities: lazy(() => import("./compositions/identities")),
-  "audit-logs": lazy(() => import("./compositions/audit-logs")),
-  "secret-scanning": lazy(() => import("./compositions/secret-scanning"))
+const SecretsComparison = ({ title, href }: { title: string; href: string }) => {
+  const [scenario, setScenario] = useState("overview");
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-muted-foreground text-sm">Demo data scenario</span>
+        <Select
+          label="Secrets scenario"
+          value={scenario}
+          options={secretsScenarios}
+          onChange={setScenario}
+        />
+      </div>
+      <ComparisonSlider
+        title={title}
+        before={before("secrets")}
+        href={scenario === "overview" ? href : `${href}?scenario=${scenario}`}
+      />
+    </>
+  );
+};
+
+const AccessComparison = () => {
+  const [viewId, setViewId] = useState(accessViews[0].value);
+  const view = accessViews.find((item) => item.value === viewId) ?? accessViews[0];
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-muted-foreground text-sm">Page or flow</span>
+        <div style={{ width: 360 }}>
+          <Select
+            label="Access control page or flow"
+            value={viewId}
+            options={accessViews.map(({ value, label }) => ({ value, label }))}
+            onChange={setViewId}
+          />
+        </div>
+        {view.overlay && (
+          <span className="text-muted-foreground text-xs">
+            The v4 page can&apos;t open this from its URL. Open it from the page.
+          </span>
+        )}
+      </div>
+      <ComparisonSlider
+        key={view.value}
+        title={`Access control, ${view.label}`}
+        before={before(`access/${view.value}`)}
+        href={view.href}
+      />
+    </>
+  );
 };
 
 export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
   const entry = comparisonPages.find((item) => item.id === page);
   if (!entry) return null;
-  const Screen = screens[entry.screen];
-  const comparison = (
-    <ComparisonSlider
-      title={entry.title}
-      before={{ light: shot(entry.screen, "light"), dark: shot(entry.screen, "dark") }}
-      After={Screen}
-      start={"start" in entry ? entry.start : undefined}
-    />
-  );
   return (
     <div>
       <PageHeading title={entry.title} />
@@ -54,15 +92,19 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
         style={{ maxWidth: "var(--v4-size-measure-prose)" }}
       >
         {entry.description} Before is the current app on main with seeded data, captured at 1706 by
-        971. After is the live v4 page built from this design system: it follows the workbench theme
-        and accent. Drag the handle or use the arrow keys, or switch to the live view to click
-        through it.
+        971. After is the routed v4 demo page, following the workbench theme. Drag the handle or use
+        the arrow keys, or open it live, full width, to click through it.
       </p>
-      <Suspense fallback={<Loader size="page" label="Loading the v4 page" />}>
-        {entry.screen === "secrets" && <SecretsScenarios>{comparison}</SecretsScenarios>}
-        {entry.screen === "access" && <AccessComparison After={Screen} />}
-        {entry.screen !== "secrets" && entry.screen !== "access" && comparison}
-      </Suspense>
+      {entry.screen === "secrets" && <SecretsComparison title={entry.title} href={entry.href} />}
+      {entry.screen === "access" && <AccessComparison />}
+      {entry.screen !== "secrets" && entry.screen !== "access" && (
+        <ComparisonSlider
+          title={entry.title}
+          before={before(entry.screen)}
+          href={entry.href}
+          start={"start" in entry ? entry.start : undefined}
+        />
+      )}
     </div>
   );
 };

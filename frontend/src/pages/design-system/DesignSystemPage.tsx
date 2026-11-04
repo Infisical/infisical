@@ -1,4 +1,4 @@
-import { startTransition, Suspense, useEffect, useMemo, useState } from "react";
+import { startTransition, Suspense, useEffect, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 
 import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
@@ -36,7 +36,6 @@ import {
 } from "./navigation";
 import { OverviewPage } from "./OverviewPage";
 import { RulesPage } from "./RulesPage";
-import { WorkbenchContext } from "./workbench-context";
 import { WorkbenchPalette } from "./workbench-palette";
 
 const pullRequest = "https://github.com/Infisical/infisical/pull/8753";
@@ -208,77 +207,68 @@ export const DesignSystemPage = () => {
     return () => cancelAnimationFrame(frame);
   }, [currentPage, example]);
   const nextTheme = theme === "dark" ? "light" : "dark";
-  const workbench = useMemo(
-    () => ({
-      theme: { value: themeChoice, onChange: setTheme },
-      openSearch: () => setPaletteOpen(true)
-    }),
-    [themeChoice]
-  );
   return (
     <V4Scope className="flex h-dvh flex-col overflow-clip" theme={theme}>
-      <WorkbenchContext value={workbench}>
-        <AccentPanelProvider>
-          <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
-            Skip to content
-          </a>
-          <AppShell>
-            <WorkbenchBar
-              breadcrumb={workbenchCrumbs(currentPage)}
-              search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
-              account={{
-                label: "Workbench",
-                name: "Infisical 2.0 workbench",
-                email: `Design system v${tokens.version}`,
-                items: [
-                  { label: "Overview", icon: "home", onSelect: () => openLink("#overview") },
-                  { label: "Rules", icon: "file", onSelect: () => openLink("#rules") },
-                  { type: "separator" },
-                  {
-                    label: "Pull request on GitHub",
-                    icon: "git",
-                    href: pullRequest,
-                    external: true
-                  },
-                  { label: "Documentation", icon: "file", href: documentation, external: true }
-                ],
-                theme: workbench.theme
-              }}
-            />
-            <Sidebar label="Design system" sections={sidebarSections} current={currentPage} />
-            <AppInset>
-              <Suspense
-                fallback={
-                  <Loader
-                    size="page"
-                    label={`Loading ${documentationPages.find((page) => page.id === currentPage)?.title ?? "the page"}`}
-                  />
-                }
+      <AccentPanelProvider>
+        <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
+          Skip to content
+        </a>
+        <AppShell>
+          <WorkbenchBar
+            breadcrumb={workbenchCrumbs(currentPage)}
+            search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
+            account={{
+              label: "Workbench",
+              name: "Infisical 2.0 workbench",
+              email: `Design system v${tokens.version}`,
+              items: [
+                { label: "Overview", icon: "home", onSelect: () => openLink("#overview") },
+                { label: "Rules", icon: "file", onSelect: () => openLink("#rules") },
+                { type: "separator" },
+                {
+                  label: "Pull request on GitHub",
+                  icon: "git",
+                  href: pullRequest,
+                  external: true
+                },
+                { label: "Documentation", icon: "file", href: documentation, external: true }
+              ],
+              theme: { value: themeChoice, onChange: setTheme }
+            }}
+          />
+          <Sidebar label="Design system" sections={sidebarSections} current={currentPage} />
+          <AppInset>
+            <Suspense
+              fallback={
+                <Loader
+                  size="page"
+                  label={`Loading ${documentationPages.find((page) => page.id === currentPage)?.title ?? "the page"}`}
+                />
+              }
+            >
+              <div
+                key={currentPage}
+                id={currentPage}
+                data-document-view="human"
+                tabIndex={-1}
+                className="min-w-0 flex-1 outline-none"
               >
-                <div
-                  key={currentPage}
-                  id={currentPage}
-                  data-document-view="human"
-                  tabIndex={-1}
-                  className="min-w-0 flex-1 outline-none"
-                >
-                  <PageGutter>
-                    <article>
-                      <PageContent page={currentPage} />
-                    </article>
-                  </PageGutter>
-                </div>
-              </Suspense>
-            </AppInset>
-            <WorkbenchPalette
-              open={paletteOpen}
-              onOpenChange={setPaletteOpen}
-              groups={navigationGroups}
-              toggleTheme={() => setTheme(nextTheme)}
-            />
-          </AppShell>
-        </AccentPanelProvider>
-      </WorkbenchContext>
+                <PageGutter>
+                  <article>
+                    <PageContent page={currentPage} />
+                  </article>
+                </PageGutter>
+              </div>
+            </Suspense>
+          </AppInset>
+          <WorkbenchPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            groups={navigationGroups}
+            toggleTheme={() => setTheme(nextTheme)}
+          />
+        </AppShell>
+      </AccentPanelProvider>
     </V4Scope>
   );
 };
