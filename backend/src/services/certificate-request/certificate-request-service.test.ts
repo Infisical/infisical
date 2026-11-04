@@ -68,6 +68,7 @@ describe("CertificateRequestService", () => {
   const mockCertificateProfileDAL = { findById: vi.fn() };
   const mockCertificateAuthorityDAL = { findById: vi.fn(), findByIdWithAssociatedCa: vi.fn() };
   const mockAuditLogService = { createCollapsedAuditLog: vi.fn() };
+  const mockDigicertFns = { cancelPendingRequest: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,7 +85,8 @@ describe("CertificateRequestService", () => {
       identityDAL: mockIdentityDAL as any,
       certificateProfileDAL: mockCertificateProfileDAL as any,
       certificateAuthorityDAL: mockCertificateAuthorityDAL as any,
-      auditLogService: mockAuditLogService
+      auditLogService: mockAuditLogService,
+      digicertFns: mockDigicertFns
     });
   });
 
@@ -940,6 +942,59 @@ describe("CertificateRequestService", () => {
         previousPendingMessage: "Performing DNS-01 challenge",
         applicationId: null,
         applicationName: null
+      });
+    });
+
+    describe("a request waiting on CA validation", () => {
+      const caId = "550e8400-e29b-41d4-a716-446655440300";
+      const metadata = JSON.stringify({ digicert: { orderId: 7001, previousCertificateId: 50001 } });
+      const validationRow = {
+        id: requestId,
+        status: CertificateRequestStatus.PENDING_VALIDATION,
+        projectId,
+        applicationId: null,
+        altNames: null,
+        commonName: "test.example.com",
+        pendingMessage: "Awaiting CA validation",
+        caId,
+        metadata
+      };
+
+      const cancelValidationRow = async (externalCaType: CaType) => {
+        (mockCertificateRequestDAL.findById as any).mockResolvedValue(validationRow);
+        (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+        (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue({
+          ...validationRow,
+          status: CertificateRequestStatus.FAILED
+        });
+        (mockUserDAL.findById as any).mockResolvedValue({ username: "john.smith" });
+        (mockCertificateAuthorityDAL.findByIdWithAssociatedCa as any).mockResolvedValue({
+          id: caId,
+          externalCa: { type: externalCaType }
+        });
+
+        return service.cancelCertificateRequest(cancelInput);
+      };
+
+      it("hands the request to DigiCert so a pending reissue is cancelled there", async () => {
+        await cancelValidationRow(CaType.DIGICERT);
+
+        expect(mockDigicertFns.cancelPendingRequest).toHaveBeenCalledWith({ caId, metadata });
+      });
+
+      it("leaves other CAs alone", async () => {
+        await cancelValidationRow(CaType.ACME);
+
+        expect(mockDigicertFns.cancelPendingRequest).not.toHaveBeenCalled();
+      });
+
+      it("keeps the request open when DigiCert does not cancel the reissue", async () => {
+        mockDigicertFns.cancelPendingRequest.mockRejectedValueOnce(
+          new Error("DigiCert didn't cancel the reissue on order 7001, so the request is still open.")
+        );
+
+        await expect(cancelValidationRow(CaType.DIGICERT)).rejects.toThrow("so the request is still open");
+        expect(mockCertificateRequestDAL.transitionFromPending).not.toHaveBeenCalled();
       });
     });
 

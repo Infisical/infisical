@@ -1,3 +1,5 @@
+import * as x509 from "@peculiar/x509";
+
 import {
   certKeyAlgorithms,
   SIGNATURE_ALGORITHMS_OPTIONS
@@ -139,6 +141,7 @@ export const buildRenewalFormDefaults = (
   renewalPreview?: TCertificateRenewalPreview
 ): RenewalFormData => ({
   keySource: CertificateRenewalKeySource.New,
+  reissue: false,
   csr: "",
   ttl: deriveTtlFromCertificate(cert),
   subjectAttributes: renewalPreview?.hasOriginatingRequest
@@ -272,4 +275,84 @@ export const buildRenewalRequestAttributes = ({
   }
 
   return attributes;
+};
+
+export const getRemovedCertificateNames = ({
+  certificate,
+  formData,
+  constraints
+}: {
+  certificate: Pick<TCertificate, "commonName" | "altNames">;
+  formData: Pick<RenewalFormData, "subjectAttributes" | "subjectAltNames">;
+  constraints: Pick<TemplateConstraints, "shouldShowSubjectSection" | "shouldShowSanSection">;
+}): string[] => {
+  const normalize = (names: (string | null | undefined)[]) =>
+    names.map((name) => name?.trim().toLowerCase()).filter((name): name is string => Boolean(name));
+  const originalAltNames = (certificate.altNames ?? "").split(",");
+  const requestedNames = new Set(
+    normalize([
+      constraints.shouldShowSubjectSection
+        ? getAttributeValue(formData.subjectAttributes, CertSubjectAttributeType.COMMON_NAME)
+        : certificate.commonName,
+      ...(constraints.shouldShowSanSection
+        ? (formData.subjectAltNames ?? []).map((san) => san.value)
+        : originalAltNames)
+    ])
+  );
+  return [...new Set(normalize([certificate.commonName, ...originalAltNames]))].filter(
+    (name) => !requestedNames.has(name)
+  );
+};
+
+export const capTtlToDays = (ttl: string, maxDays: number) => {
+  const days = /^(\d+)d$/.exec(ttl)?.[1];
+  return days && Number(days) > maxDays ? `${maxDays}d` : ttl;
+};
+
+const CSR_SAN_TYPES: Record<string, CertSubjectAlternativeNameType> = {
+  dns: CertSubjectAlternativeNameType.DNS_NAME,
+  ip: CertSubjectAlternativeNameType.IP_ADDRESS,
+  email: CertSubjectAlternativeNameType.EMAIL,
+  url: CertSubjectAlternativeNameType.URI,
+  upn: CertSubjectAlternativeNameType.UPN
+};
+
+const parseCsrNames = (csrPem: string) => {
+  try {
+    const csr = new x509.Pkcs10CertificateRequest(csrPem.trim());
+    const sanExtension = csr.extensions.find(
+      (extension): extension is x509.SubjectAlternativeNameExtension =>
+        extension instanceof x509.SubjectAlternativeNameExtension
+    );
+    return {
+      commonName: csr.subjectName.getField("CN")[0],
+      altNames: (sanExtension?.names.items ?? []).flatMap((name) =>
+        CSR_SAN_TYPES[name.type] ? [{ type: CSR_SAN_TYPES[name.type], value: name.value }] : []
+      )
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const getRemovedCertificateNamesFromCsr = ({
+  certificate,
+  csr
+}: {
+  certificate: Pick<TCertificate, "commonName" | "altNames">;
+  csr?: string;
+}): string[] => {
+  const csrNames = csr?.trim() ? parseCsrNames(csr) : null;
+  if (!csrNames) return [];
+
+  return getRemovedCertificateNames({
+    certificate,
+    formData: {
+      subjectAttributes: csrNames.commonName
+        ? [{ type: CertSubjectAttributeType.COMMON_NAME, value: csrNames.commonName }]
+        : [],
+      subjectAltNames: csrNames.altNames
+    },
+    constraints: { shouldShowSubjectSection: true, shouldShowSanSection: true }
+  });
 };

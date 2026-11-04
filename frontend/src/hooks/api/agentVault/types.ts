@@ -256,7 +256,25 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
 export type TAgentVaultSessionAccessBundle = {
   id: string | null;
   name: string;
-  position: number;
+};
+
+/** A service an admin sent with the session itself. Its secrets are never returned. */
+export type TAgentVaultSessionInlineService = {
+  id: string;
+  // The name it was sent with, or its first host when it was sent without one.
+  name: string;
+  type: AgentVaultServiceType;
+  serverUrl: string | null;
+  transport: AgentVaultMcpTransport | null;
+  hostPattern: string;
+  allowedMethods: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes: string[] | null;
+  credential:
+    | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
+    | { type: AgentVaultCredentialType.Basic }
+    | { type: AgentVaultCredentialType.Passthrough };
+  customHeaders: { name: string; prefix: string }[];
+  substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
 };
 
 export type TAgentVaultSessionActor =
@@ -282,7 +300,8 @@ export type TAgentVaultSession = {
   expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
-  accessBundles: TAgentVaultSessionAccessBundle[];
+  accessBundle: TAgentVaultSessionAccessBundle | null;
+  services: TAgentVaultSessionInlineService[];
 };
 
 export type TAgentVaultDelegation = {
@@ -331,7 +350,8 @@ export type TAgentVaultMintedSession = {
   token: string;
   expiresAt: string | null;
   createdAt: string;
-  accessBundles: TAgentVaultSessionAccessBundle[];
+  accessBundle: TAgentVaultSessionAccessBundle | null;
+  services: TAgentVaultSessionInlineService[];
 };
 
 export type TAgentVaultProxy = {
@@ -479,7 +499,7 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
 };
 
 export type TCreateAgentVaultSessionDTO = {
-  accessBundles: string[];
+  accessBundle: string;
   ttl: string;
   label?: string;
 };

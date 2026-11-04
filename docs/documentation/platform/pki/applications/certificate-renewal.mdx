@@ -6,7 +6,7 @@ description: "Manually renew a certificate, and change its subject, names, valid
 
 Certificates expire, and the details they carry go out of date. A manual renewal issues a replacement for a certificate you already have, and lets you correct it at the same time: add a name the service now answers to, extend the validity, or decide whether the replacement keeps the current key pair.
 
-This is the counterpart to automatic renewal, which reissues a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
+This is the counterpart to automatic renewal, which renews a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
 
 <Note>
   A certificate can be renewed when it was issued from a [certificate profile](/documentation/platform/pki/applications/enrollment-methods/api), is still active, and hasn't already been renewed. Certificates obtained through [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) are renewed by the client that requested them, not from here.
@@ -77,11 +77,27 @@ Reuse is available for certificates issued with an Infisical-managed key pair. A
 
 Renewing a certificate as it stands needs only permission to issue from its certificate profile. Changing any of the properties above additionally needs **Edit** on certificates, so a role scoped to issuance alone can keep certificates current without being able to alter what they contain.
 
+A [DigiCert reissue](#reissuing-a-digicert-certificate) that removes or changes a name also needs permission to revoke the certificate, because DigiCert revokes the previous one.
+
 ### Renewing from a signing request
 
 When you supply a CSR, that request is the source of truth for the subject and the key, so there are no separate fields for them. The validity, the basic constraints and the custom extensions are set alongside it, and custom extensions keep their current values unless you change them.
 
 Sending a property the CSR already carries is rejected rather than quietly ignored, so a renewal never silently discards something you asked for.
+
+## Reissuing a DigiCert certificate
+
+If a [DigiCert CA](/documentation/platform/pki/ca/digicert-direct) issued the certificate, you can reissue it on the same DigiCert order instead of placing a new order. A reissue uses the order you already paid for, for example to replace an exposed key or to change the names on the certificate. On the first step of the renewal, select **Reissue the existing order** under **DigiCert order**.
+
+A reissue requests the same validity as the current certificate, capped at 199 days and at the end of the order, so the **Validity (TTL)** field is read-only and the API rejects `ttl`. The profile's policy still applies to it, so a validity the policy doesn't allow is flagged before you submit. If you need a certificate that lasts longer than the order, select **Place a new order** instead.
+
+If you add a name that DigiCert hasn't validated yet, validate it in DigiCert CertCentral within 24 hours. Otherwise the reissue is canceled and the request fails.
+
+Automatic renewal always places a new order. To reissue on the existing order, renew the certificate manually.
+
+<Warning>
+  If the reissue removes or changes a name, DigiCert revokes the previous certificate and any earlier copies on the order within 72 hours, so you also need permission to revoke the certificate.
+</Warning>
 
 ## Renewing a certificate
 
@@ -95,7 +111,7 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
         Open the **Options** menu and choose **Renew Now**.
       </Step>
       <Step title="Choose how the key pair is handled">
-        Pick one of the three options above. If you chose **Use a CSR**, paste it on the next step and you're done.
+        Pick one of the three options above. For a DigiCert certificate, also choose whether to [place a new order or reissue the existing one](#reissuing-a-digicert-certificate). If you chose **Use a CSR**, paste it on the next step and you're done.
       </Step>
       <Step title="Adjust the subject and names">
         The subject attributes and alternative names are filled in from the current certificate. Change only what should differ.
@@ -133,6 +149,8 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
 
     `renewalKeySource` accepts `new`, `reuse`, or `csr`. Supply `csr` alongside `renewalKeySource: "csr"`. To clear an attribute, send it as `null`.
 
+    To reissue a DigiCert certificate on its current order, send `"externalConfiguration": { "reissue": true }` and leave out `ttl`.
+
     A request with no body renews the certificate as it is with a new key pair, so existing automation keeps working unchanged.
 
     See the [Renew Certificate endpoint](/api-reference/endpoints/certificates/renew) for the full request and response.
@@ -145,7 +163,7 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
 The renewal produces a new certificate with its own serial number, linked to the one it replaced.
 
 - The previous certificate reports a status of **Renewed** rather than **Active**, and links to its replacement under **Renewed by**. The replacement links back under **Renewed from**.
-- The previous certificate stays valid until its own expiry, so you can roll over on your own schedule. It can't be renewed a second time.
+- The previous certificate stays valid until its own expiry, so you can roll over on your own schedule. The exception is a [DigiCert reissue](#reissuing-a-digicert-certificate) that removes or changes a name: DigiCert revokes the previous certificate within 72 hours. The previous certificate can't be renewed a second time.
 - Because it's no longer the current certificate, it drops out of the active count on the dashboard and out of expiry alerts. Filter the inventory by the **Renewed** status, or open the **Renewed** view, to list every certificate that has been superseded.
 - Metadata carries over to the renewed certificate.
 - Certificate syncs attached to the certificate move to the renewed one and push it to their destinations.
@@ -157,13 +175,13 @@ The renewal produces a new certificate with its own serial number, linked to the
   because it has to stay shorter than the certificate it applies to.
 </Note>
 
-Deploy the renewed certificate before the previous one expires. Renewing doesn't revoke the certificate it replaces, so if the old one was compromised, [revoke it](/documentation/platform/pki/applications/certificates) explicitly.
+Deploy the renewed certificate before the previous one expires. Renewing doesn't revoke the certificate it replaces, so if the old one was compromised, [revoke it](/documentation/platform/pki/applications/certificates) explicitly. The exception is a [DigiCert reissue](#reissuing-a-digicert-certificate) that removes or changes a name, where DigiCert revokes the previous certificate within 72 hours.
 
 ## FAQ
 
 <AccordionGroup>
   <Accordion title="Does renewing revoke the certificate it replaces?">
-    No. The previous certificate stays valid until its own expiry date, which gives you a window to deploy the replacement. If you need the previous certificate to stop being trusted immediately, revoke it, and it will appear in the issuing CA's [CRL](/documentation/platform/pki/ca/crl-distribution).
+    No, unless a [DigiCert reissue](#reissuing-a-digicert-certificate) removes or changes a name. The previous certificate stays valid until its own expiry date, which gives you a window to deploy the replacement. If you need the previous certificate to stop being trusted immediately, revoke it, and it will appear in the issuing CA's [CRL](/documentation/platform/pki/ca/crl-distribution).
   </Accordion>
   <Accordion title="Why is the key algorithm locked when I reuse the key pair?">
     The algorithm is a property of the key itself, so it can't change while the key stays the same. To move from RSA to an elliptic curve key, or to a larger key size, renew with a new key pair.
@@ -178,7 +196,7 @@ Deploy the renewed certificate before the previous one expires. Renewing doesn't
     If a manual renewal fails, Infisical shows the reason when you submit it and records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) that links to the certificate being renewed. If an automatic renewal fails, Infisical records an `automated-renew-certificate-failed` event instead, unless the renewal had already been sent to an external CA, in which case the failure is recorded as `certificate-issuance-failed`.
   </Accordion>
   <Accordion title="Can I renew several certificates at once?">
-    Manual renewal handles one certificate at a time. To keep many certificates current without intervention, enable [automatic renewal](/documentation/platform/pki/applications/certificates) so Infisical reissues them before they expire.
+    Manual renewal handles one certificate at a time. To keep many certificates current without intervention, enable [automatic renewal](/documentation/platform/pki/applications/certificates) so they renew before they expire.
   </Accordion>
 </AccordionGroup>
 

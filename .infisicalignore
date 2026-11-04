@@ -92,3 +92,4 @@ tests/clients/api/api.gen.go:generic-api-key:15672
 backend/src/ee/services/dynamic-secret/providers/sap-ase.test.ts:generic-password:18
 backend/src/services/app-connection/servicenow/servicenow-connection-fns.test.ts:generic-password:29
 tests/fakes/oauth/google_signon.go:private-key:18
+backend/src/ee/services/dynamic-secret/providers/sql-database.test.ts:generic-password:44
