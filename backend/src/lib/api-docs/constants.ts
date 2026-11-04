@@ -2852,7 +2852,17 @@ export const KMS = {
   },
 
   GET_JWKS: {
-    keyId: "The ID of the key whose published public key to return."
+    keyId: "The ID of the key whose published public key to return.",
+    keys: "The key's public key as a JWK, the only entry in the set.",
+    kty: "The key type: RSA for RSA keys, EC for ECC keys, and OKP for ED25519 keys.",
+    use: "Always sig, because the key verifies signatures.",
+    kid: "The key's identifier in the set: the KMS key ID followed by the key version, such as <key-id>:v1. Put it in the kid header of tokens signed with this key, so verifiers can find the key.",
+    alg: "The algorithm the key signs with: ES256, ES384, or ES512 for ECC keys, and EdDSA for ED25519 keys. Left out for RSA keys, which can sign with RS256, RS384, RS512, PS256, PS384, or PS512.",
+    n: "The RSA modulus, base64url encoded.",
+    e: "The RSA public exponent, base64url encoded.",
+    crv: "The curve: P-256, P-384, or P-521 for ECC keys, and Ed25519 for ED25519 keys.",
+    x: "The x coordinate of an ECC public key, or the ED25519 public key itself, base64url encoded.",
+    y: "The y coordinate of an ECC public key, base64url encoded."
   },
 
   PUBLIC_JWKS: {

@@ -122,9 +122,16 @@ const getStatusBadgeProps = (
 const getJwksUrl = ({ id, jwksUrl }: TCmek) =>
   jwksUrl ?? `${window.location.origin}/api/v1/kms/keys/${id}/jwks.json`;
 
-const copyToClipboard = (value: string, label: string) => {
-  navigator.clipboard.writeText(value);
-  createNotification({ type: "info", text: `${label} copied to clipboard` });
+const copyToClipboard = async (value: string, label: string) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    createNotification({ type: "info", text: `${label} copied to clipboard` });
+  } catch {
+    createNotification({
+      type: "error",
+      text: `Couldn't copy the ${label}. Allow clipboard access in your browser and try again.`
+    });
+  }
 };
 
 const KeyAction = ({

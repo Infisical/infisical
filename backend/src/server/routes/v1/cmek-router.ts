@@ -638,17 +638,18 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           keys: z
             .object({
-              kty: z.string(),
-              use: z.string(),
-              kid: z.string(),
-              alg: z.string().optional(),
-              n: z.string().optional(),
-              e: z.string().optional(),
-              crv: z.string().optional(),
-              x: z.string().optional(),
-              y: z.string().optional()
+              kty: z.string().describe(KMS.GET_JWKS.kty),
+              use: z.string().describe(KMS.GET_JWKS.use),
+              kid: z.string().describe(KMS.GET_JWKS.kid),
+              alg: z.string().optional().describe(KMS.GET_JWKS.alg),
+              n: z.string().optional().describe(KMS.GET_JWKS.n),
+              e: z.string().optional().describe(KMS.GET_JWKS.e),
+              crv: z.string().optional().describe(KMS.GET_JWKS.crv),
+              x: z.string().optional().describe(KMS.GET_JWKS.x),
+              y: z.string().optional().describe(KMS.GET_JWKS.y)
             })
             .array()
+            .describe(KMS.GET_JWKS.keys)
         }),
         304: z.void()
       }
