@@ -4166,16 +4166,22 @@ const OverviewPageContent = () => {
                 </Tooltip>
               </>
             )}
-            {canManageCurrentFolderAccess && (
-              <Button
-                variant="ghost"
-                size="xs"
-                className="mr-1.5 shrink-0"
-                onClick={handleCurrentFolderAccessOpen}
-              >
-                <UsersIcon />
-                Manage Access
-              </Button>
+            {isSingleEnvView && (
+              <Tooltip open={canManageCurrentFolderAccess ? false : undefined}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="mr-1.5 shrink-0"
+                    isDisabled={!canManageCurrentFolderAccess}
+                    onClick={handleCurrentFolderAccessOpen}
+                  >
+                    <UsersIcon />
+                    Manage Access
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Access Restricted</TooltipContent>
+              </Tooltip>
             )}
           </div>
           {tableView === "no-environments" && (
@@ -4741,7 +4747,9 @@ const OverviewPageContent = () => {
                               onToggleFolderDelete={(name: string) =>
                                 handlePopUpOpen("deleteFolder", { name })
                               }
-                              onToggleFolderAccess={handleFolderAccessOpen}
+                              onToggleFolderAccess={
+                                isSingleEnvView ? handleFolderAccessOpen : undefined
+                              }
                               canManageFolderAccess={canManageFolderAccessInRow(folderName)}
                               canEditFolder={canEditFolders}
                               canDeleteFolder={canDeleteFolders}
