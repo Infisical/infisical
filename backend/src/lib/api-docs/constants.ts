@@ -1967,7 +1967,9 @@ export const FOLDER_ACCESS = {
       "Whether the folder access is temporary. Omit the type object for permanent access. The full-access role must be permanent.",
     temporaryMode: "Type of temporary access given. Types: relative.",
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
-    temporaryAccessStartTime: "ISO time the temporary access starts."
+    temporaryAccessStartTime: "ISO time the temporary access starts.",
+    isPermissionRecursive:
+      "Whether the folder access also applies to every folder below this one. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false."
   },
   UPDATE: {
     projectId: "The ID of the project the folder is in.",
@@ -1981,7 +1983,9 @@ export const FOLDER_ACCESS = {
       "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged. The full-access role must be permanent, so making an access temporary also requires lowering its role.",
     temporaryMode: "Type of temporary access given. Types: relative.",
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
-    temporaryAccessStartTime: "ISO time the temporary access starts."
+    temporaryAccessStartTime: "ISO time the temporary access starts.",
+    isPermissionRecursive:
+      "Whether the folder access also applies to every folder below this one. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders."
   },
   DELETE: {
     projectId: "The ID of the project the folder is in.",

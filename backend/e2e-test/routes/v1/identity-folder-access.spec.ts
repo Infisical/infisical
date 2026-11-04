@@ -19,9 +19,9 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
+import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
-import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 const projectId = seedData1.project.id;
@@ -144,7 +144,8 @@ describe("Identity folder access CRUD", () => {
         secretPath: "/identity-folder-access",
         isTemporary: true,
         temporaryMode: TemporaryPermissionMode.Relative,
-        temporaryRange: "1d"
+        temporaryRange: "1d",
+        isPermissionRecursive: false
       })
     );
     expect(new Date(created.temporaryAccessStartTime).toISOString()).toBe(temporaryAccessStartTime);
@@ -183,6 +184,59 @@ describe("Identity folder access CRUD", () => {
     expect(deleteRes.json().folderAccess.id).toBe(created.id);
 
     expect(await testDb(TableName.AdditionalPrivilege).where({ id: created.id })).toEqual([]);
+  });
+
+  test("recursive folder access: create, keep on a role change, turn off", async () => {
+    const createRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(),
+      headers: authHeaders(),
+      body: { ...folderTarget, permission: SecretFolderRole.Read, isPermissionRecursive: true }
+    });
+    expect(createRes.statusCode).toBe(200);
+    const created = createRes.json().folderAccess;
+
+    try {
+      expect(created.isPermissionRecursive).toBe(true);
+      expect((await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).first())?.isRecursiveFolder).toBe(
+        true
+      );
+
+      const roleOnlyRes = await testServer.inject({
+        method: "PATCH",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Edit }
+      });
+      expect(roleOnlyRes.statusCode).toBe(200);
+      expect(roleOnlyRes.json().folderAccess).toEqual(
+        expect.objectContaining({ permission: SecretFolderRole.Edit, isPermissionRecursive: true })
+      );
+
+      const offRes = await testServer.inject({
+        method: "PATCH",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...folderTarget, isPermissionRecursive: false }
+      });
+      expect(offRes.statusCode).toBe(200);
+      expect(offRes.json().folderAccess).toEqual(
+        expect.objectContaining({ permission: SecretFolderRole.Edit, isPermissionRecursive: false })
+      );
+      expect((await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).first())?.isRecursiveFolder).toBe(
+        false
+      );
+
+      const deleteRes = await testServer.inject({
+        method: "DELETE",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...folderTarget }
+      });
+      expect(deleteRes.statusCode).toBe(200);
+    } finally {
+      await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).del();
+    }
   });
 
   describe("group removal reaps folder grants", () => {

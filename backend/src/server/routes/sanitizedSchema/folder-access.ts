@@ -14,6 +14,7 @@ export const SanitizedFolderAccessSchema = z.object({
   temporaryRange: z.string().nullable(),
   temporaryAccessStartTime: z.date().nullable(),
   temporaryAccessEndTime: z.date().nullable(),
+  isPermissionRecursive: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -18,6 +18,7 @@ import {
   assertFullAccessIsPermanent,
   assertGrantTargetEligible,
   assertManageFolderAccess,
+  assertManageFolderSubtree,
   assertReadActorGrantsAccess,
   computeTemporaryFields,
   getFolderAccessPermission,
@@ -101,6 +102,7 @@ export const folderPermissionServiceFactory = ({
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
+    if (dto.isPermissionRecursive) assertManageFolderSubtree(callerPermission, folder);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
@@ -124,6 +126,7 @@ export const folderPermissionServiceFactory = ({
             folderId: folder.id,
             role: dto.role,
             [actorField]: target.actorId,
+            isRecursiveFolder: Boolean(dto.isPermissionRecursive),
             ...computeTemporaryFields(dto.type)
           },
           tx
@@ -164,12 +167,14 @@ export const folderPermissionServiceFactory = ({
         (dto.role ?? existing.role) as SecretFolderRole,
         dto.type === undefined ? existing.isTemporary : dto.type.isTemporary
       );
+      if (existing.isRecursiveFolder || dto.isPermissionRecursive) assertManageFolderSubtree(callerPermission, folder);
 
       const doc = await additionalPrivilegeDAL.updateById(
         existing.id,
         {
           ...(dto.role ? { role: dto.role } : {}),
-          ...(dto.type === undefined ? {} : computeTemporaryFields(dto.type))
+          ...(dto.type === undefined ? {} : computeTemporaryFields(dto.type)),
+          ...(dto.isPermissionRecursive === undefined ? {} : { isRecursiveFolder: dto.isPermissionRecursive })
         },
         tx
       );

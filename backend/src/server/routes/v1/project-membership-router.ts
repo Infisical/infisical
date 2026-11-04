@@ -73,6 +73,7 @@ const toSecretFolderAccessAuditMetadata = (
   environment: folderAccess.environment,
   secretPath: folderAccess.secretPath,
   permission: folderAccess.permission,
+  isPermissionRecursive: folderAccess.isPermissionRecursive,
   ...actor,
   isTemporary: folderAccess.isTemporary,
   ...(folderAccess.isTemporary
@@ -815,7 +816,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       body: z.object({
         ...folderAccessFolderFields(FOLDER_ACCESS.CREATE),
         permission: z.nativeEnum(SecretFolderRole).describe(FOLDER_ACCESS.CREATE.permission),
-        type: folderAccessCreateTypeSchema.optional()
+        type: folderAccessCreateTypeSchema.optional(),
+        isPermissionRecursive: z.boolean().optional().describe(FOLDER_ACCESS.CREATE.isPermissionRecursive)
       }),
       response: {
         200: z.object({
@@ -832,7 +834,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         secretPath: req.body.secretPath,
         target: { actorId: req.params.userId, actorType: ActorType.USER },
         role: req.body.permission,
-        type: req.body.type
+        type: req.body.type,
+        isPermissionRecursive: req.body.isPermissionRecursive
       });
 
       await server.services.auditLog.createAuditLog({
@@ -881,11 +884,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         .object({
           ...folderAccessFolderFields(FOLDER_ACCESS.UPDATE),
           permission: z.nativeEnum(SecretFolderRole).optional().describe(FOLDER_ACCESS.UPDATE.permission),
-          type: folderAccessUpdateTypeSchema.optional()
+          type: folderAccessUpdateTypeSchema.optional(),
+          isPermissionRecursive: z.boolean().optional().describe(FOLDER_ACCESS.UPDATE.isPermissionRecursive)
         })
         .refine(
-          (body) => body.permission !== undefined || body.type !== undefined,
-          "Provide at least one of 'permission' or 'type' to update"
+          (body) =>
+            body.permission !== undefined || body.type !== undefined || body.isPermissionRecursive !== undefined,
+          "Provide at least one of 'permission', 'type' or 'isPermissionRecursive' to update"
         ),
       response: {
         200: z.object({
@@ -902,7 +907,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         secretPath: req.body.secretPath,
         target: { actorId: req.params.userId, actorType: ActorType.USER },
         role: req.body.permission,
-        type: req.body.type
+        type: req.body.type,
+        isPermissionRecursive: req.body.isPermissionRecursive
       });
 
       await server.services.auditLog.createAuditLog({
