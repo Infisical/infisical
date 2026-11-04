@@ -20,6 +20,7 @@ export const registerOidcIssuerRouter = async (server: FastifyZodProvider) => {
       rateLimit: oidcIssuerLimit
     },
     schema: {
+      operationId: "getOidcIssuerDiscoveryDocument",
       hide: true,
       params: OrgParamsSchema,
       response: {
@@ -47,6 +48,7 @@ export const registerOidcIssuerRouter = async (server: FastifyZodProvider) => {
       rateLimit: oidcIssuerLimit
     },
     schema: {
+      operationId: "getOidcIssuerJwks",
       hide: true,
       params: OrgParamsSchema,
       response: {

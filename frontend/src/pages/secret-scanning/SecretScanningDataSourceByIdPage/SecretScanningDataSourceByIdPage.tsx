@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
@@ -71,11 +70,9 @@ const PageContent = () => {
       type: params.type as SecretScanningDataSource
     })
   });
-  const { selectedTab = DataSourceTab.Findings } = useSearch({
+  const { selectedTab = DataSourceTab.Findings, resourceId } = useSearch({
     from: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.id
   });
-
-  const [findingsResourceId, setFindingsResourceId] = useState<string | null>(null);
 
   const canReadFindings = permission.can(
     ProjectPermissionSecretScanningFindingActions.Read,
@@ -132,10 +129,13 @@ const PageContent = () => {
       search: { selectedTab: tab }
     });
 
-  const handleViewResourceFindings = (resourceId: string) => {
-    setFindingsResourceId(resourceId);
-    handleTabChange(DataSourceTab.Findings);
-  };
+  const handleFindingsResourceChange = (nextResourceId: string | null) =>
+    navigate({
+      to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
+      params: { orgId, type, dataSourceId },
+      search: { selectedTab: DataSourceTab.Findings, resourceId: nextResourceId ?? undefined },
+      replace: true
+    });
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(dataSource.id);
@@ -220,13 +220,7 @@ const PageContent = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <Tabs
-            value={selectedTab}
-            onValueChange={(tab) => {
-              setFindingsResourceId(null);
-              handleTabChange(tab as DataSourceTab);
-            }}
-          >
+          <Tabs value={selectedTab} onValueChange={(tab) => handleTabChange(tab as DataSourceTab)}>
             <TabsList variant="ss" aria-label="Data source sections">
               <TabsTrigger value={DataSourceTab.Findings}>
                 Findings
@@ -246,18 +240,16 @@ const PageContent = () => {
                 a={ProjectPermissionSub.SecretScanningFindings}
               >
                 <SecretScanningFindingsTable
-                  key={`${dataSource.id}-${findingsResourceId ?? "all"}`}
+                  key={dataSource.id}
                   dataSource={dataSource}
-                  initialResourceId={findingsResourceId ?? undefined}
+                  resourceId={resourceId ?? null}
+                  onResourceIdChange={handleFindingsResourceChange}
                   description="Secrets detected in this data source."
                 />
               </ProjectPermissionCan>
             </TabsContent>
             <TabsContent value={DataSourceTab.Resources}>
-              <SecretScanningResourcesTable
-                dataSource={dataSource}
-                onViewFindings={handleViewResourceFindings}
-              />
+              <SecretScanningResourcesTable dataSource={dataSource} />
             </TabsContent>
             <TabsContent value={DataSourceTab.ScanHistory}>
               <SecretScanningScanTable dataSource={dataSource} />

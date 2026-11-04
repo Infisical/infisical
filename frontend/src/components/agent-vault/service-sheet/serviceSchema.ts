@@ -105,6 +105,28 @@ const AGENT_VAULT_MAX_HOST_PATTERN_LENGTH = 1024;
 
 const MAX_SERVER_URL_LENGTH = 2048;
 
+export enum McpToolScope {
+  All = "all",
+  Selected = "selected"
+}
+
+// Mirrors agent-vault-tool-name-schemas.ts on the backend: the MCP spec's recommended tool name characters, held as
+// a must. The proxy compares names exactly.
+export const MAX_ALLOWED_TOOLS = 500;
+const MAX_TOOL_NAME_LENGTH = 128;
+
+// Not trimmed: names are exact and case-sensitive, so a stray space is refused rather than quietly dropped.
+export const toolNameError = (name: string): string | null => {
+  if (!name) return "Enter a tool name.";
+  if (name.length > MAX_TOOL_NAME_LENGTH) {
+    return `A tool name can be at most ${MAX_TOOL_NAME_LENGTH} characters.`;
+  }
+  if (!/^[A-Za-z0-9_.-]+$/.test(name)) {
+    return "A tool name can only contain letters, numbers, underscores (_), hyphens (-), and dots (.).";
+  }
+  return null;
+};
+
 export const serverUrlError = (value: string): string | null => {
   const trimmed = value.trim();
   if (!trimmed) return "Enter the server URL.";
@@ -188,6 +210,7 @@ export enum ServiceStep {
   Template = "template",
   Details = "details",
   Credential = "credential",
+  Tools = "tools",
   Review = "review"
 }
 
@@ -204,6 +227,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "customHeaders",
     "substitutions"
   ],
+  [ServiceStep.Tools]: [],
   [ServiceStep.Review]: []
 };
 
@@ -220,6 +244,7 @@ export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "oauthClientSecret",
     "customHeaders"
   ],
+  [ServiceStep.Tools]: ["toolScope", "allowedTools"],
   [ServiceStep.Review]: []
 };
 
@@ -287,6 +312,9 @@ export const buildServiceSchema = (
       // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
       pathDraft: z.string(),
+      // Kept while All is chosen, so switching back restores the picks. Only Selected sends them.
+      toolScope: z.nativeEnum(McpToolScope),
+      allowedTools: z.array(z.string()),
       credentialType: z.nativeEnum(AgentVaultCredentialType),
       // Checked in superRefine, only while Bearer is selected: switching away hides these fields but keeps them.
       headerName: z.string().trim().optional(),
@@ -384,6 +412,33 @@ export const buildServiceSchema = (
             }
           });
         }
+      }
+
+      if (isMcp && data.toolScope === McpToolScope.Selected) {
+        if (data.allowedTools.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["allowedTools"],
+            message: "Select at least one tool, or turn on All Tools."
+          });
+        } else if (data.allowedTools.length > MAX_ALLOWED_TOOLS) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["allowedTools"],
+            message: `You can select at most ${MAX_ALLOWED_TOOLS} tools.`
+          });
+        }
+        const seenTools = new Set<string>();
+        data.allowedTools.forEach((name) => {
+          const nameError = toolNameError(name);
+          let message: string | null = null;
+          if (nameError) message = name ? `"${name}": ${nameError}` : nameError;
+          else if (seenTools.has(name)) message = `"${name}" is listed twice.`;
+          seenTools.add(name);
+          if (message) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["allowedTools"], message });
+          }
+        });
       }
 
       if (!isMcp) addHostIssues(data.hosts, ctx, ["hosts"]);

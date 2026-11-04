@@ -706,6 +706,7 @@
                 "pages": [
                   "documentation/platform/agent-vault/guides/modal",
                   "documentation/platform/agent-vault/guides/daytona",
+                  "documentation/platform/agent-vault/guides/e2b",
                   {
                     "group": "Kubernetes",
                     "icon": "/images/stack/kubernetes.png",
@@ -738,6 +739,7 @@
                       "documentation/platform/agent-vault/sessions-cli",
                       "documentation/platform/agent-vault/sessions-api",
                       "documentation/platform/agent-vault/sessions-on-behalf-of-users",
+                      "documentation/platform/agent-vault/inline-services",
                       "documentation/platform/agent-vault/session-logs"
                     ]
                   },
@@ -4607,6 +4609,7 @@
                     "group": "Proxies",
                     "pages": [
                       "api-reference/endpoints/agent-vault-proxies/list",
+                      "api-reference/endpoints/agent-vault-proxies/get-ca",
                       "api-reference/endpoints/agent-vault-proxies/create",
                       "api-reference/endpoints/agent-vault-proxies/update",
                       "api-reference/endpoints/agent-vault-proxies/delete",

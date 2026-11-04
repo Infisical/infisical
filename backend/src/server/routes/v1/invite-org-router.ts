@@ -79,6 +79,25 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      const projects = req.body.projectIds?.length
+        ? await server.services.project.getProjectNamesByIds({
+            orgId: req.permission.orgId,
+            projectIds: req.body.projectIds
+          })
+        : undefined;
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.INVITE_ORG_MEMBERS,
+          metadata: {
+            inviteeEmails: req.body.inviteeEmails,
+            organizationRoleSlug: req.body.organizationRoleSlug,
+            projects
+          }
+        }
+      });
+
       // Best-effort: the org invite already succeeded, so a product-side failure must not fail
       // the request. Failures are still reported back so the client can tell the inviter.
       const failedProjectIds: string[] = [];

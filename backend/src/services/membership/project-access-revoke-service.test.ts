@@ -44,7 +44,9 @@ const build = (opts?: { projectRows?: TRow[]; resourceRows?: TRow[] }) => {
         )
       )
     },
-    projectDAL: { find: vi.fn().mockResolvedValue([{ id: PROJECT_A }, { id: PROJECT_B }, { id: PROJECT_C }]) },
+    projectDAL: {
+      findIncludingExpired: vi.fn().mockResolvedValue([{ id: PROJECT_A }, { id: PROJECT_B }, { id: PROJECT_C }])
+    },
     projectKeyDAL: { delete: vi.fn().mockResolvedValue([]) },
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue([]) },
     applicationMembershipCleanupService: {
@@ -107,7 +109,7 @@ describe("projectAccessRevokeService", () => {
       { scope: AccessScope.Project, $in: { scopeOrgId: orgIds, actorUserId: [USER_ID] } },
       tx
     );
-    expect(deps.projectDAL.find).toHaveBeenCalledWith({ $in: { orgId: orgIds } }, { tx });
+    expect(deps.projectDAL.findIncludingExpired).toHaveBeenCalledWith({ $in: { orgId: orgIds } }, { tx });
     expect(deps.applicationMembershipCleanupService.cleanupActorsApplicationMembershipsInProjects).toHaveBeenCalledWith(
       { projectIds: allProjects, userIds: [USER_ID], identityIds: [] },
       tx
@@ -195,7 +197,7 @@ describe("projectAccessRevokeService", () => {
 
   test("skips the per-project reaps when the orgs hold no projects", async () => {
     const { service, deps } = build();
-    deps.projectDAL.find.mockResolvedValue([]);
+    deps.projectDAL.findIncludingExpired.mockResolvedValue([]);
 
     const { revoked } = await service.revokeActorsInOrgs({ orgIds: [ORG_ID], userIds: [USER_ID] }, tx);
 
