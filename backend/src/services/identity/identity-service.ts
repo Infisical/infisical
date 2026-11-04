@@ -152,7 +152,8 @@ export const identityServiceFactory = ({
         const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
         if (identitiesUsed >= identityLimit) {
           throw new BadRequestError({
-            message: "Can't create machine identity: identity limit reached. Every member and machine identity counts toward your plan's limit. Upgrade your plan or remove an unused identity."
+            message:
+              "Can't create machine identity: identity limit reached. Every member and machine identity counts toward your plan's limit. Upgrade your plan or remove an unused identity."
           });
         }
       }
