@@ -5,6 +5,7 @@ import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
+  AgentVaultMemberType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
@@ -166,6 +167,7 @@ export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
 
 export type TListMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
+  actorType?: AgentVaultMemberType;
   search?: string;
   limit: number;
   offset: number;

@@ -1,7 +1,7 @@
 ARG INFISICAL_CLI_VERSION=0.44.12
 
 FROM debian:trixie-slim AS oracle
-RUN apt-get update && apt-get install -y unzip wget ca-certificates \
+RUN apt-get update && apt-get install -y --no-install-recommends unzip wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Own stage so the 127 MB fetch caches independently and runs in parallel. Better
@@ -21,36 +21,63 @@ RUN ARCH=$(dpkg --print-architecture) && \
     wget -q "$ORACLE_URL" && \
     echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
     mkdir -p /opt/oracle && \
-    unzip "$ORACLE_ZIP" -d /opt/oracle && \
+    unzip -q "$ORACLE_ZIP" -d /opt/oracle && \
     rm "$ORACLE_ZIP"
 
-FROM node:26.12.1-trixie-slim
-
-# ? Setup a test SoftHSM module. In production a real HSM is used.
-
-ARG SOFTHSM2_VERSION=2.5.0
-
-ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
-    SOFTHSM2_SOURCES=/tmp/softhsm2
-
-# Install all build and runtime dependencies
-ARG INFISICAL_CLI_VERSION
-RUN apt-get update && apt-get install -y \
+# Compilers for SoftHSM2 and OpenSSL live only in these stages; the dev image gets the
+# installed output, not the sources, object files or autotools.
+FROM node:26.12.1-trixie-slim AS native-tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     autoconf \
     automake \
-    git \
     libtool \
+    pkg-config \
     libssl-dev \
+    perl \
+    git \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# ? Setup a test SoftHSM module. In production a real HSM is used.
+FROM native-tools AS softhsm
+ARG SOFTHSM2_VERSION=2.5.0
+RUN git clone --depth 1 --branch ${SOFTHSM2_VERSION} https://github.com/opendnssec/SoftHSMv2.git /tmp/softhsm2 \
+    && cd /tmp/softhsm2 \
+    && sh autogen.sh \
+    && ./configure --prefix=/usr/local --disable-gost \
+    && make -j"$(nproc)" \
+    && make install DESTDIR=/out
+
+# OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
+FROM native-tools AS openssl-pqc
+WORKDIR /tmp/openssl-pqc-build
+RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
+    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
+    && tar -xf openssl-3.5.6.tar.gz \
+    && cd openssl-3.5.6 \
+    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
+    && make -j"$(nproc)" \
+    && make install_sw
+
+FROM node:26.12.1-trixie-slim
+
+ARG SOFTHSM2_VERSION=2.5.0
+ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION}
+
+# python3, make and g++ stay because npm compiles native modules (pkcs11js, odbc, re2, ...)
+# in this image. ca-certificates is listed because --no-install-recommends drops it.
+ARG INFISICAL_CLI_VERSION
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     python3 \
     make \
     g++ \
+    git \
     openssh-client \
     openssl \
     curl \
-    wget \
-    perl \
-    pkg-config \
     libaio1t64 \
     unixodbc \
     unixodbc-dev \
@@ -61,7 +88,7 @@ RUN apt-get update && apt-get install -y \
     smbclient \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && test -n "$INFISICAL_CLI_VERSION" \
-    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y --no-install-recommends infisical="$INFISICAL_CLI_VERSION" \
     && rm -rf /var/lib/apt/lists/*
 
 # Create libaio symlink for Oracle Instant Client
@@ -72,36 +99,17 @@ RUN ARCH=$(dpkg --print-architecture) && \
       ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1; \
     fi
 
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+# The driver lives under the architecture's multiarch directory, so read its path from the package.
+RUN TDS_DRIVER="$(dpkg -L tdsodbc | grep '/odbc/libtdsodbc\.so$')" \
+    && test -f "$TDS_DRIVER" \
+    && printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = %s\nSetup = %s\nFileUsage = 1\n" "$TDS_DRIVER" "$TDS_DRIVER" > /etc/odbcinst.ini
 
-# Build and install SoftHSM2
-RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES}
-WORKDIR ${SOFTHSM2_SOURCES}
-
-RUN git checkout ${SOFTHSM2_VERSION} -b ${SOFTHSM2_VERSION} \
-    && sh autogen.sh \
-    && ./configure --prefix=/usr/local --disable-gost \
-    && make \
-    && make install
-
-WORKDIR /root
-RUN rm -fr ${SOFTHSM2_SOURCES}
+COPY --from=softhsm /out/usr/local /usr/local
+COPY --from=openssl-pqc /opt/openssl-pqc /opt/openssl-pqc
 
 # Oracle Instant Client for OracleDB mTLS (Wallet) support
 COPY --from=oracle /opt/oracle /opt/oracle
 RUN echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && ldconfig
-
-# Build OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
-WORKDIR /tmp/openssl-pqc-build
-RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
-    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
-    && tar -xf openssl-3.5.6.tar.gz \
-    && cd openssl-3.5.6 \
-    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
-    && make -j"$(nproc)" \
-    && make install_sw \
-    && cd / \
-    && rm -rf /tmp/openssl-pqc-build
 
 # ? App setup
 
@@ -113,7 +121,8 @@ COPY package-lock.json package-lock.json
 COPY dev-entrypoint.sh dev-entrypoint.sh
 RUN chmod +x dev-entrypoint.sh
 
-RUN npm install
+# The cache mount keeps npm's download cache (about 400 MB) out of the image.
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 

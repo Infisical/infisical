@@ -331,7 +331,7 @@ export const SampleSessionTable = ({ onOpen }: { onOpen: () => void }) => (
     <TableHeader>
       <TableRow>
         <TableHead>Identity</TableHead>
-        <TableHead>Access Bundle</TableHead>
+        <TableHead>Access</TableHead>
         <TableHead>Created</TableHead>
         <TableHead>Expires</TableHead>
         <TableHead>Status</TableHead>

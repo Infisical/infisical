@@ -134,7 +134,7 @@ type TPamAccountServiceFactoryDep = {
   >;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg"
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
   pamAccessRequestService: Pick<
@@ -638,6 +638,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       return true;
     }
 
+    await gatewayPoolService.assertGatewayBindingInOrg({
+      gatewayId: gateway.gatewayId ?? gateway.templateGatewayId,
+      gatewayPoolId: gateway.gatewayPoolId ?? gateway.templateGatewayPoolId,
+      orgId
+    });
+
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: effectiveGatewayId,
@@ -749,7 +755,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     await validateGatewayAttachment(
       deps,
       effectiveGatewayId,
-      effectiveGatewayId ? null : (gatewayPoolId ?? template.gatewayPoolId),
+      gatewayPoolId ?? (effectiveGatewayId ? null : template.gatewayPoolId),
       ctx,
       { inheritedFrom: gatewayId ? undefined : `Account template '${template.name}'` }
     );
@@ -940,7 +946,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       await validateGatewayAttachment(
         deps,
         effectiveGatewayId,
-        effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId),
+        gatewayPoolId ?? (effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId)),
         ctx,
         {
           previousGatewayId: existing.gatewayId ?? existing.templateGatewayId,

@@ -36,6 +36,7 @@ import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription"
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultTrafficPolicy,
+  isServiceHostsPolicy,
   useCreateAgentVaultProxy,
   useUpdateAgentVaultProxy
 } from "@app/hooks/api/agentVault";
@@ -49,9 +50,9 @@ const TRAFFIC_POLICY_CHOICES = [
     description: "Allow requests to reach any host."
   },
   {
-    value: AgentVaultTrafficPolicy.BundleHosts,
-    title: "Access bundle hosts only",
-    description: "Only allow requests to reach hosts specified in access bundles."
+    value: AgentVaultTrafficPolicy.ServiceHosts,
+    title: "Service hosts only",
+    description: "Only allow requests to reach hosts that the session's services cover."
   }
 ];
 
@@ -74,10 +75,10 @@ const schema = z
           .max(300, "Poll interval must be at most 300 seconds")
       )
   })
-  // Only under the bundle-hosts policy, where the field is on screen: an any-host proxy ignores the
+  // Only under the service-hosts policy, where the field is on screen: an any-host proxy ignores the
   // list, and a stale value in a hidden field would block Save with an error nothing shows.
   .superRefine((data, ctx) => {
-    if (data.trafficPolicy !== AgentVaultTrafficPolicy.BundleHosts) return;
+    if (data.trafficPolicy !== AgentVaultTrafficPolicy.ServiceHosts) return;
     addHostListIssues(data.allowedHosts, ctx, ["allowedHosts"]);
   });
 
@@ -143,7 +144,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
     formState: { isSubmitting }
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  const isBundleOnly = watch("trafficPolicy") === AgentVaultTrafficPolicy.BundleHosts;
+  const isServiceHostsOnly = watch("trafficPolicy") === AgentVaultTrafficPolicy.ServiceHosts;
 
   const saveDelayNote = (() => {
     if (!shownProxy?.heartbeat) return null;
@@ -158,7 +159,10 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
     reset({
       name: proxy?.name ?? "",
       description: proxy?.description ?? "",
-      trafficPolicy: proxy?.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
+      trafficPolicy:
+        proxy && isServiceHostsPolicy(proxy.trafficPolicy)
+          ? AgentVaultTrafficPolicy.ServiceHosts
+          : AgentVaultTrafficPolicy.AnyHost,
       allowedHosts: proxy?.allowedHosts ?? "",
       pollInterval: proxy?.pollInterval ?? 60
     });
@@ -227,7 +231,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
           </Field>
         )}
       />
-      {isBundleOnly && (
+      {isServiceHostsOnly && (
         <Controller
           control={control}
           name="allowedHosts"

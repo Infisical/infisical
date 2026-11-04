@@ -50,6 +50,11 @@ import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-sessio
 import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
+import { TAgentVaultSessionInlineServiceDALFactory } from "../agent-vault-session/agent-vault-session-inline-service-dal";
+import {
+  parseInlineServiceSecrets,
+  toResolvedInlineService
+} from "../agent-vault-session/agent-vault-session-inline-service-fns";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
@@ -59,7 +64,9 @@ import {
   AgentVaultServiceType,
   AgentVaultTrafficPolicy,
   AgentVaultVariableReferenceField,
-  TAgentVaultMemberProvidedField
+  TAgentVaultMemberProvidedField,
+  toStoredTrafficPolicy,
+  toTrafficPolicyView
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import {
@@ -74,7 +81,7 @@ import {
   RESOURCE_TYPE_AGENT_VAULT_PROXY
 } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { generateProxyRootCa, parseRootCaCertificate } from "./agent-vault-ca-fns";
+import { generateProxyRootCa, getRootCaFingerprint, parseRootCaCertificate } from "./agent-vault-ca-fns";
 import { TAgentVaultProxyDALFactory } from "./agent-vault-proxy-dal";
 import {
   TAgentVaultProxyConfig,
@@ -110,6 +117,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "findForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
+  agentVaultSessionInlineServiceDAL: Pick<TAgentVaultSessionInlineServiceDALFactory, "findBySessionId">;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "identityCoversUser">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
@@ -168,6 +176,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultVariableDAL,
   agentVaultPersonalValueDAL,
   agentVaultSessionDAL,
+  agentVaultSessionInlineServiceDAL,
   agentVaultDelegationDAL,
   agentVaultSessionLogConfigDAL,
   membershipDAL,
@@ -190,7 +199,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const toConfig = (proxy: TAgentVaultProxies): TAgentVaultProxyConfig => ({
-    trafficPolicy: proxy.trafficPolicy as AgentVaultTrafficPolicy,
+    trafficPolicy: toStoredTrafficPolicy(proxy.trafficPolicy as AgentVaultTrafficPolicy),
     allowedHosts: proxy.allowedHosts ?? null,
     pollInterval: proxy.pollInterval
   });
@@ -205,11 +214,15 @@ export const agentVaultProxyServiceFactory = ({
     rootCaExpiresAt: proxy.rootCaExpiresAt ?? null
   });
 
-  const toAdminView = (proxy: TAgentVaultProxies) => ({
-    ...toMemberView(proxy),
-    ...toConfig(proxy),
-    createdAt: proxy.createdAt
-  });
+  const toAdminView = (proxy: TAgentVaultProxies) => {
+    const config = toConfig(proxy);
+    return {
+      ...toMemberView(proxy),
+      ...config,
+      trafficPolicy: toTrafficPolicyView(config.trafficPolicy),
+      createdAt: proxy.createdAt
+    };
+  };
 
   const $authorize = async (
     { projectId, ctx }: TAgentVaultProxyScoped,
@@ -313,6 +326,27 @@ export const agentVaultProxyServiceFactory = ({
     return { proxies: proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy))), totalCount };
   };
 
+  // A proxy started with its own CA reports only that CA's fingerprint, so the certificate Infisical holds is not
+  // the one it serves and can't be handed out as if it were.
+  const getProxyCa = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
+    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Read);
+    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const servesOwnCa = new ConflictError({
+      message: `Proxy '${proxy.name}' serves its own certificate authority. Use the certificate you passed to it with --ca-cert.`
+    });
+    // Rows without a certificate predate stored CAs and proxy tokens. A rotation stores a CA and issues a token.
+    if (!proxy.rootCaCertificate) {
+      throw new ConflictError({
+        message: proxy.rootCaFingerprint
+          ? `Proxy '${proxy.name}' was set up before Infisical stored its certificate authority, so it serves the ca.crt in its data directory. To manage the CA from Infisical, rotate the proxy token and restart the proxy with it.`
+          : `Proxy '${proxy.name}' has no certificate authority yet. Rotate its proxy token, then start the proxy with the new token.`
+      });
+    }
+    const held = parseRootCaCertificate(proxy.rootCaCertificate);
+    if (proxy.rootCaFingerprint && proxy.rootCaFingerprint !== held.fingerprint) throw servesOwnCa;
+    return { ca: { certificate: proxy.rootCaCertificate, fingerprint: held.fingerprint, expiresAt: held.expiresAt } };
+  };
+
   const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({
     type: ctx.actor,
     id: ctx.actorId,
@@ -351,7 +385,7 @@ export const agentVaultProxyServiceFactory = ({
             projectId,
             name,
             description,
-            trafficPolicy: settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
+            trafficPolicy: toStoredTrafficPolicy(settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost),
             allowedHosts: settings.allowedHosts ?? null,
             pollInterval: settings.pollInterval ?? 60,
             tokenVersion: 1,
@@ -388,6 +422,12 @@ export const agentVaultProxyServiceFactory = ({
     const proxy = await $findProxyOr404({ projectId, proxyId });
 
     const { stored, reported } = await $newRootCa(proxy.projectId);
+    // The fingerprint is the only record that a proxy serves its own CA, and its next start reports that CA again.
+    // Overwriting it here would make the CA download hand out the new CA, which the proxy never serves. A row with no
+    // certificate predates stored CAs, and its next start serves the CA stored here.
+    const servesOwnCa =
+      Boolean(proxy.rootCaCertificate && proxy.rootCaFingerprint) &&
+      proxy.rootCaFingerprint !== getRootCaFingerprint(proxy.rootCaCertificate as string);
 
     const rotated = await agentVaultProxyDAL.transaction(async (tx) => {
       const updated = await agentVaultProxyDAL.updateById(
@@ -397,7 +437,7 @@ export const agentVaultProxyServiceFactory = ({
           heartbeat: null,
           heartbeatTTL: null,
           ...stored,
-          ...reported
+          ...(servesOwnCa ? {} : reported)
         },
         tx
       );
@@ -423,7 +463,11 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     try {
-      const updated = await agentVaultProxyDAL.updateById(proxy.id, { name, ...settings });
+      const updated = await agentVaultProxyDAL.updateById(proxy.id, {
+        name,
+        ...settings,
+        ...(settings.trafficPolicy && { trafficPolicy: toStoredTrafficPolicy(settings.trafficPolicy) })
+      });
       return toAdminView(updated);
     } catch (err) {
       if (isUniqueViolation(err)) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
@@ -748,7 +792,7 @@ export const agentVaultProxyServiceFactory = ({
 
   // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach a bundle resolve
   // would not. Returns the bundles the session reaches now, null for every bundle: its owner's, and on a user's behalf
-  // only those the user reaches too.
+  // only those the user reaches too. Also whether the owner is an admin now, which inline services need.
   const $authorizeSessionOwner = async (session: TAgentVaultSessions, orgId: string) => {
     if (session.revokedAt) throw new UnauthorizedError({ message: "This session has been revoked" });
     if (session.expiresAt && session.expiresAt <= new Date()) {
@@ -825,7 +869,10 @@ export const agentVaultProxyServiceFactory = ({
           actor,
           groupIds: liveGroupIds
         });
-    return onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach;
+    return {
+      accessBundleIds: onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach,
+      isOwnerAdmin: isAdmin
+    };
   };
 
   const $authorizeSession = async ({ proxyId, orgId, sessionToken }: TAuthorizeSessionDTO) => {
@@ -838,19 +885,23 @@ export const agentVaultProxyServiceFactory = ({
       throw new NotFoundError({ message: "Session not found" });
     }
 
-    const accessBundleIds = await $authorizeSessionOwner(session, orgId);
-    return { session, proxy, accessBundleIds };
+    const { accessBundleIds, isOwnerAdmin } = await $authorizeSessionOwner(session, orgId);
+    return { session, proxy, accessBundleIds, isOwnerAdmin };
   };
 
   /** Resolve services and decrypt their credentials. The proxy's JWT authorizes; the session token is a selector. */
   const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
-    const { session, proxy, accessBundleIds } = await $authorizeSession({ proxyId, orgId, sessionToken });
+    const { session, proxy, accessBundleIds, isOwnerAdmin } = await $authorizeSession({ proxyId, orgId, sessionToken });
 
     const rows = await agentVaultResolveDAL.findResolvableServices({
       sessionId: session.id,
       projectId: session.projectId,
       accessBundleIds
     });
+    // Starting a session with inline services is an admin's call, and like a grant it is re-checked on every resolve: an
+    // owner who is no longer an admin keeps the session's bundle, if it has one, and loses its inline services until
+    // they are an admin again.
+    const inlineServiceRows = isOwnerAdmin ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id) : [];
 
     // A token that expires before the proxy's next poll is refreshed now, which also keeps proxies that can't
     // refresh on their own working. The proxy gives up on resolve after 15 seconds, and one refresh can wait on
@@ -939,6 +990,7 @@ export const agentVaultProxyServiceFactory = ({
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
       rows.some((row) => row.encryptedCredential || row.memberProvidedFields?.length) ||
+      inlineServiceRows.some((row) => row.encryptedSecrets) ||
       customHeaderRows.length > 0 ||
       substitutionRows.length > 0 ||
       sessionLogKeyNeeded;
@@ -980,7 +1032,7 @@ export const agentVaultProxyServiceFactory = ({
       personalValuesMissing: false
     }));
 
-    const services = await $applyPersonalValues({
+    const bundleServices = await $applyPersonalValues({
       sessionId: session.id,
       projectId: session.projectId,
       owner: personalValuesOwner(session),
@@ -994,6 +1046,23 @@ export const agentVaultProxyServiceFactory = ({
       decryptValue: $decryptValue,
       decryptJson: $decryptJson
     });
+
+    // Never expanded: an inline service's values were sent exactly as they are. After the bundle's services, so a host a
+    // later bundle edit shares with one goes to the bundle's service, which the Go matcher picks on a tie by order.
+    const inlineServices = inlineServiceRows.flatMap((row) => {
+      const resolved = toResolvedInlineService(
+        row,
+        row.encryptedSecrets ? parseInlineServiceSecrets($decryptJson(row.encryptedSecrets)) : null
+      );
+      if (!resolved) {
+        logger.warn(
+          `agentVaultResolve: inline service has no secrets to send, leaving it out [sessionId=${session.id}] [inlineServiceId=${row.id}]`
+        );
+        return [];
+      }
+      return [resolved];
+    });
+    const services = [...bundleServices, ...inlineServices];
 
     // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
     const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
@@ -1017,7 +1086,7 @@ export const agentVaultProxyServiceFactory = ({
     const sessionLogs = $sessionLogs();
 
     logger.info(
-      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}] [personalValuesMissing=${services.filter((service) => service.personalValuesMissing).length}]`
+      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}] [inlineServices=${inlineServices.length}] [personalValuesMissing=${services.filter((service) => service.personalValuesMissing).length}]`
     );
 
     return {
@@ -1093,7 +1162,7 @@ export const agentVaultProxyServiceFactory = ({
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
     }
 
-    const accessBundleIds = await $authorizeSessionOwner(session, project.orgId);
+    const { accessBundleIds } = await $authorizeSessionOwner(session, project.orgId);
 
     const rows = await agentVaultResolveDAL.findSessionSkills({
       sessionId: session.id,
@@ -1149,6 +1218,7 @@ export const agentVaultProxyServiceFactory = ({
   return {
     getProxyForAuth,
     listProxies,
+    getProxyCa,
     createProxy,
     rotateProxyToken,
     updateProxy,

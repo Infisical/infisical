@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+
 import { TSecretSyncPayload } from "../secret-sync-payload";
 import { CloudflareWorkersVariableType } from "./cloudflare-workers-constants";
 import { CloudflareWorkersSyncFns } from "./cloudflare-workers-fns";
@@ -26,6 +28,12 @@ const syncWith = (variableType?: CloudflareWorkersVariableType, syncOptions: Rec
     syncOptions: { disableSecretDeletion: false, ...syncOptions },
     connection: { credentials: { apiToken: "token", accountId: "account-id" } }
   }) as unknown as TCloudflareWorkersSyncWithCredentials;
+
+// These cases never reach the version fallback, which is the only user of the key store.
+const syncSecrets = (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) =>
+  CloudflareWorkersSyncFns.syncSecrets(secretSync, payload, {
+    keyStore: { acquireLock: vi.fn() } as unknown as Pick<TKeyStoreFactory, "acquireLock">
+  });
 
 const payloadOf = (secrets: Record<string, string>) =>
   ({
@@ -57,10 +65,7 @@ describe("CloudflareWorkersSyncFns", () => {
       { type: "kv_namespace", name: "CACHE" }
     ]);
 
-    await CloudflareWorkersSyncFns.syncSecrets(
-      syncWith(CloudflareWorkersVariableType.Text),
-      payloadOf({ API_KEY: "key", NEW_VAR: "new" })
-    );
+    await syncSecrets(syncWith(CloudflareWorkersVariableType.Text), payloadOf({ API_KEY: "key", NEW_VAR: "new" }));
 
     expect(patch).toHaveBeenCalledTimes(1);
     expect(patch.mock.calls[0][0]).toMatch(/\/workers\/scripts\/my-worker\/settings$/);
@@ -74,10 +79,7 @@ describe("CloudflareWorkersSyncFns", () => {
 
   it("rejects values that are not JSON before calling Cloudflare", async () => {
     await expect(
-      CloudflareWorkersSyncFns.syncSecrets(
-        syncWith(CloudflareWorkersVariableType.Json),
-        payloadOf({ VALID: '{"a":1}', BROKEN: "not json" })
-      )
+      syncSecrets(syncWith(CloudflareWorkersVariableType.Json), payloadOf({ VALID: '{"a":1}', BROKEN: "not json" }))
     ).rejects.toThrow("cannot be synced as Cloudflare Workers JSON variables: BROKEN.");
 
     expect(get).not.toHaveBeenCalled();
@@ -87,7 +89,7 @@ describe("CloudflareWorkersSyncFns", () => {
     stubWorker([{ type: "kv_namespace", name: "CACHE" }]);
 
     await expect(
-      CloudflareWorkersSyncFns.syncSecrets(syncWith(CloudflareWorkersVariableType.Text), payloadOf({ CACHE: "value" }))
+      syncSecrets(syncWith(CloudflareWorkersVariableType.Text), payloadOf({ CACHE: "value" }))
     ).rejects.toThrow(
       "same name as another binding on the Cloudflare Worker, such as a KV namespace or a service: CACHE."
     );
@@ -103,9 +105,9 @@ describe("CloudflareWorkersSyncFns", () => {
   ])("fails a %s sync before writing when a key exists as another type", async (variableType, binding, listed) => {
     stubWorker([binding]);
 
-    await expect(
-      CloudflareWorkersSyncFns.syncSecrets(syncWith(variableType), payloadOf({ CONFIG: '{"a":2}', NEW_KEY: "{}" }))
-    ).rejects.toThrow(`already exist on the Cloudflare Worker as a different type: ${listed}.`);
+    await expect(syncSecrets(syncWith(variableType), payloadOf({ CONFIG: '{"a":2}', NEW_KEY: "{}" }))).rejects.toThrow(
+      `already exist on the Cloudflare Worker as a different type: ${listed}.`
+    );
 
     expect(patch).not.toHaveBeenCalled();
   });
@@ -116,7 +118,7 @@ describe("CloudflareWorkersSyncFns", () => {
       { type: "json", name: "CONFIG", json: { a: 1 } }
     ]);
 
-    await CloudflareWorkersSyncFns.syncSecrets(syncWith(), payloadOf({ API_URL: "new", CONFIG: "{}", NEW_KEY: "n" }));
+    await syncSecrets(syncWith(), payloadOf({ API_URL: "new", CONFIG: "{}", NEW_KEY: "n" }));
 
     expect(patch).toHaveBeenCalledTimes(1);
     expect(patch.mock.calls[0][0]).toMatch(/\/secrets-bulk$/);
@@ -128,7 +130,7 @@ describe("CloudflareWorkersSyncFns", () => {
   it("updates same-name text variables as they are when the toggle is on", async () => {
     stubWorker([{ type: "plain_text", name: "API_URL", text: "old" }]);
 
-    await CloudflareWorkersSyncFns.syncSecrets(
+    await syncSecrets(
       syncWith(CloudflareWorkersVariableType.Secret, { syncNonSecretBindings: true }),
       payloadOf({ API_URL: "new" })
     );
