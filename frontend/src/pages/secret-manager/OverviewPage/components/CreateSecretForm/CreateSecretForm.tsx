@@ -585,7 +585,7 @@ export const CreateSecretForm = ({
       const failedEnvSlugs = new Set(failedRequests.map(({ env }) => env.slug));
       const failedSecretIndexes = [
         ...new Set(failedRequests.map(({ secretIndex }) => secretIndex))
-      ];
+      ].sort((a, b) => a - b);
       setValue(
         "environments",
         selectedEnv.filter((env) => failedEnvSlugs.has(env.slug))

@@ -206,10 +206,12 @@ const BulkTagDialogContent = ({
       const allSucceeded = results.every((r) => r.status === "fulfilled");
       const someSucceeded = results.some((r) => r.status === "fulfilled");
 
-      const updatedEnvs = environments
-        .filter((env) =>
-          results.some((r) => r.status === "fulfilled" && r.value.environment === env.slug)
+      const failedEnvs = environments
+        .filter(
+          (env) =>
+            !results.some((r) => r.status === "fulfilled" && r.value.environment === env.slug)
         )
+        .filter((env) => secretsByEnv[env.slug])
         .map((env) => env.name);
 
       if (allSucceeded) {
@@ -234,7 +236,7 @@ const BulkTagDialogContent = ({
       } else if (someSucceeded) {
         createNotification({
           type: "warning",
-          text: `Tags updated only in ${updatedEnvs.join(", ")}. The other environments were not changed.`
+          text: `Tag update partially completed. The following environments could not be processed: ${failedEnvs.join(", ")}.`
         });
       }
     } finally {

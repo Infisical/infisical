@@ -860,6 +860,7 @@ const ImportSecretsContent = ({
       const approvalEnvs: string[] = [];
       const approvalEnvSlugs: string[] = [];
       const failedEnvs: string[] = [];
+      const rejectedEnvErrors: unknown[] = [];
       const partialEnvs: string[] = [];
       const partialEnvSlugs: string[] = [];
 
@@ -886,6 +887,7 @@ const ImportSecretsContent = ({
         } else if (result.status === "rejected") {
           failureCount += 1;
           failedEnvs.push(selectedEnvs[idx].name);
+          rejectedEnvErrors.push(result.reason);
         }
       });
 
@@ -931,8 +933,10 @@ const ImportSecretsContent = ({
         });
       }
 
-      // A flat import's failures are single batch requests the global handler already toasted
-      if (failedEnvs.length && nestedImport) {
+      // A flat import's batch failures were already toasted by the global handler, so it shows only
+      // what failed before any write, such as reading the existing secrets
+      if (!nestedImport) showSecretWriteErrors(rejectedEnvErrors.map((error) => ({ error })));
+      else if (failedEnvs.length) {
         createNotification({
           type: "error",
           text: `Failed to upload secrets into ${failedEnvs.join(", ")}`

@@ -122,18 +122,10 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
       )
     );
 
-    const renamedEnvNames = secretsToRename.flatMap((secret, index) =>
-      results[index].status === "fulfilled"
-        ? [environments.find((env) => env.slug === secret.env)?.name ?? secret.env]
-        : []
-    );
-    if (renamedEnvNames.length) {
+    if (results.every((result) => result.status === "fulfilled")) {
       createNotification({
         type: "success",
-        text:
-          renamedEnvNames.length === secretsToRename.length
-            ? "Successfully renamed the secret"
-            : `Renamed the secret in ${renamedEnvNames.join(", ")}`
+        text: "Successfully renamed the secret"
       });
     }
 
