@@ -65,6 +65,7 @@ import { Route as adminWelcomePageRouteImport } from './pages/admin/WelcomePage/
 import { Route as adminSetupPageRouteImport } from './pages/admin/SetupPage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
 import { Route as v4SecretScanningSecretScanningFindingsPageRouteImport } from './pages/v4/secret-scanning/SecretScanningFindingsPage/route'
+import { Route as v4SecretScanningSecretScanningDataSourcesPageRouteImport } from './pages/v4/secret-scanning/SecretScanningDataSourcesPage/route'
 import { Route as v4OrganizationRoleByIDPageRouteImport } from './pages/v4/organization/RoleByIDPage/route'
 import { Route as v4OrganizationNotPortedPageProjectsRouteImport } from './pages/v4/organization/NotPortedPage/projects/route'
 import { Route as v4OrganizationUserDetailsByIDPageRouteImport } from './pages/v4/organization/UserDetailsByIDPage/route'
@@ -847,6 +848,13 @@ const v4SecretScanningSecretScanningFindingsPageRouteRoute =
   v4SecretScanningSecretScanningFindingsPageRouteImport.update({
     id: '/secret-scanning/findings',
     path: '/secret-scanning/findings',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
+const v4SecretScanningSecretScanningDataSourcesPageRouteRoute =
+  v4SecretScanningSecretScanningDataSourcesPageRouteImport.update({
+    id: '/secret-scanning/data-sources',
+    path: '/secret-scanning/data-sources',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -3518,6 +3526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4OrganizationRoleByIDPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/secret-scanning/data-sources': {
+      id: '/v4/organizations/$orgId/secret-scanning/data-sources'
+      path: '/secret-scanning/data-sources'
+      fullPath: '/v4/organizations/$orgId/secret-scanning/data-sources'
+      preLoaderRoute: typeof v4SecretScanningSecretScanningDataSourcesPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/secret-scanning/findings': {
       id: '/v4/organizations/$orgId/secret-scanning/findings'
       path: '/secret-scanning/findings'
@@ -5481,6 +5496,7 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationIdentityDetailsByIDPageRouteRoute: typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   v4OrganizationUserDetailsByIDPageRouteRoute: typeof v4OrganizationUserDetailsByIDPageRouteRoute
   v4OrganizationRoleByIDPageRouteRoute: typeof v4OrganizationRoleByIDPageRouteRoute
+  v4SecretScanningSecretScanningDataSourcesPageRouteRoute: typeof v4SecretScanningSecretScanningDataSourcesPageRouteRoute
   v4SecretScanningSecretScanningFindingsPageRouteRoute: typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
   v4CertManagerCertificateDetailsByIDPageRouteRoute: typeof v4CertManagerCertificateDetailsByIDPageRouteRoute
 }
@@ -5503,6 +5519,8 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
   v4OrganizationUserDetailsByIDPageRouteRoute:
     v4OrganizationUserDetailsByIDPageRouteRoute,
   v4OrganizationRoleByIDPageRouteRoute: v4OrganizationRoleByIDPageRouteRoute,
+  v4SecretScanningSecretScanningDataSourcesPageRouteRoute:
+    v4SecretScanningSecretScanningDataSourcesPageRouteRoute,
   v4SecretScanningSecretScanningFindingsPageRouteRoute:
     v4SecretScanningSecretScanningFindingsPageRouteRoute,
   v4CertManagerCertificateDetailsByIDPageRouteRoute:
@@ -6966,6 +6984,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning/data-sources': typeof v4SecretScanningSecretScanningDataSourcesPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
   '/organizations/$orgId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren
   '/organizations/$orgId/access-management': typeof organizationAccessManagementPageRouteRoute
@@ -7292,6 +7311,7 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning/data-sources': typeof v4SecretScanningSecretScanningDataSourcesPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
   '/organizations/$orgId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren
   '/organizations/$orgId/access-management': typeof organizationAccessManagementPageRouteRoute
@@ -7605,6 +7625,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning/data-sources': typeof v4SecretScanningSecretScanningDataSourcesPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/access-management': typeof organizationAccessManagementPageRouteRoute
@@ -7945,6 +7966,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/members/$membershipId'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
+    | '/v4/organizations/$orgId/secret-scanning/data-sources'
     | '/v4/organizations/$orgId/secret-scanning/findings'
     | '/organizations/$orgId'
     | '/organizations/$orgId/access-management'
@@ -8270,6 +8292,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/members/$membershipId'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
+    | '/v4/organizations/$orgId/secret-scanning/data-sources'
     | '/v4/organizations/$orgId/secret-scanning/findings'
     | '/organizations/$orgId'
     | '/organizations/$orgId/access-management'
@@ -8581,6 +8604,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/members/$membershipId'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
+    | '/v4/organizations/$orgId/secret-scanning/data-sources'
     | '/v4/organizations/$orgId/secret-scanning/findings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/access-management'
@@ -9105,6 +9129,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/identities/$identityId",
         "/v4/organizations/$orgId/members/$membershipId",
         "/v4/organizations/$orgId/roles/$roleId",
+        "/v4/organizations/$orgId/secret-scanning/data-sources",
         "/v4/organizations/$orgId/secret-scanning/findings",
         "/v4/organizations/$orgId/cert-manager/certificates/$certificateId"
       ]
@@ -9293,6 +9318,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/roles/$roleId": {
       "filePath": "v4/organization/RoleByIDPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/secret-scanning/data-sources": {
+      "filePath": "v4/secret-scanning/SecretScanningDataSourcesPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/secret-scanning/findings": {
