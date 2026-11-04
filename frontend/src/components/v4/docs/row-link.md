@@ -105,11 +105,26 @@ import { ProviderIcon } from "../../../../components/v4/ui/provider-icon";
 import { RowLink } from "../../../../components/v4/ui/row-link";
 import { SmallText } from "../../../../components/v4/ui/text";
 
-type Page = { id: string; title: string; icon: string; status: string; ready: boolean };
+type Page = {
+  id: string;
+  group: string;
+  title: string;
+  icon: string;
+  status: string;
+  ready: boolean;
+};
 const pages: Page[] = [
-  { id: "detail", title: "Detail", icon: "Infisical.png", status: "Data display", ready: true },
+  {
+    id: "detail",
+    group: "data-display",
+    title: "Detail",
+    icon: "Infisical.png",
+    status: "Data display",
+    ready: true
+  },
   {
     id: "documentation-link-badge",
+    group: "navigation",
     title: "Documentation link badge",
     icon: "GitHub.png",
     status: "Navigation",
@@ -117,6 +132,7 @@ const pages: Page[] = [
   },
   {
     id: "provider-icon",
+    group: "data-display",
     title: "Provider icon",
     icon: "Amazon Web Services.png",
     status: "Data display",
@@ -124,6 +140,7 @@ const pages: Page[] = [
   },
   {
     id: "unreleased",
+    group: "patterns",
     title: "Unreleased page, not linked yet",
     icon: "Kafka.png",
     status: "Draft",
@@ -141,7 +158,12 @@ export default function Example() {
       render: (row) => (
         <div className="flex min-w-0 items-center gap-2">
           <ProviderIcon icon={row.icon} alt="" />
-          <RowLink to="/design-system" hash={row.id} disabled={!row.ready} title={row.title}>
+          <RowLink
+            to="/design-system/components/$group/$component"
+            params={{ group: row.group, component: row.id }}
+            disabled={!row.ready}
+            title={row.title}
+          >
             {row.title}
           </RowLink>
         </div>
@@ -192,7 +214,10 @@ export default function Example() {
             <div className="flex items-center gap-3">
               <ProviderIcon icon="Infisical.png" alt="" size="xl" />
               <div className="min-w-0 flex-1">
-                <RowLink to="/design-system" hash="detail">
+                <RowLink
+                  to="/design-system/components/$group/$component"
+                  params={{ group: "data-display", component: "detail" }}
+                >
                   Detail
                 </RowLink>
                 <SmallText muted>

@@ -22,7 +22,9 @@ export const sidebarDefinition = {
     "Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.",
     "Pass scope to show a product, project or settings level instead of the top level: a back row (chevron-left and the parent's name, named Back to the parent) above that scope's sections. The back row calls onNavigate with scope.back, so the host moves up one level and passes the parent scope, or none for the top level. Spaces show only at the top level.",
     "A scope change slides the rows in over duration-moderate on ease-standard, from the right going deeper and from the left going back; with reduced motion it only fades. In the rail the back row is the first icon, with a Back to tooltip.",
-    "A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail."
+    "A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail.",
+    "Pass levels for routed, nested navigation: each level has an id, a label and its sections, and every level but the top names its parent. A row declares its route as link, built with linkOptions so to and params are typed against the route tree, and renders as a TanStack Link. A row with level instead opens that level in place (the drill-in chevron comes with it) and a level with a parent gets a back row named for the parent that goes up one level, so a person can browse another level without leaving the page.",
+    "With links, route matches pick the current row: a link matches its route and every route below it unless its activeOptions set exact, params must match, and when several rows match the most specific wins (an exact match, then the longest path). The level holding the current row shows, it follows every navigation (back and forward, deep links, reload), and drill-in rows on the way to it carry the holds-current ink. current is only the fallback when no route matches."
   ],
   accessibility: [
     "A drillIn row keeps its name and adds the description Opens section (aria-description), so assistive tech hears the drill-in before activating it.",
@@ -34,7 +36,8 @@ export const sidebarDefinition = {
     "The corner buttons are named (Collapse sidebar or Expand sidebar, Help, and What's new with its unread count) and carry tooltips; the toggle reports aria-expanded."
   ],
   limitations: [
-    "The host owns routing: rows call onNavigate or follow href, and the host passes the current id back.",
+    "Without links the host owns routing: rows call onNavigate or follow href, and the host passes the current id back. Links need a RouterProvider above the Sidebar.",
+    "Levels show one level at a time, so a row's children stay a single level of pages; deeper structure is another level.",
     "The person's account and the organization menu live in the TopBar, not here."
   ],
   examples: [
@@ -49,6 +52,12 @@ export const sidebarDefinition = {
       title: "Scoped navigation",
       module: "./examples/sidebar/scopes.tsx",
       states: ["default", "controlled", "keyboard"]
+    },
+    {
+      id: "routes",
+      title: "Routed levels",
+      module: "./examples/sidebar/routes.tsx",
+      states: ["default", "keyboard"]
     }
   ],
   coverage: [
@@ -66,6 +75,18 @@ export const sidebarDefinition = {
       shown: [
         { value: "top level", exampleId: "scopes", label: "Top level" },
         { value: "scoped", exampleId: "scopes", label: "Project scope with a back row" }
+      ]
+    },
+    {
+      axis: "navigation source",
+      expected: ["local state", "routes"],
+      shown: [
+        { value: "local state", exampleId: "scopes", label: "Top level" },
+        {
+          value: "routes",
+          exampleId: "routes",
+          label: "Routed levels, the current route's level open"
+        }
       ]
     },
     {
@@ -106,6 +127,23 @@ export const sidebarDefinition = {
         detect: {
           by: "review",
           how: "Open a scoped composition and confirm the back row names the breadcrumb's parent crumb and returns to it."
+        }
+      },
+      {
+        id: "sidebar-routes",
+        when: "The pages behind the sidebar are routes.",
+        do: "Give each row a link built with linkOptions and pass the navigation as levels, so route matches pick the current row and the level that shows.",
+        avoid:
+          "Mirror the route in local state, pass current by hand beside links, or drill in with a hash.",
+        reason:
+          "One source for where the person is keeps the sidebar, the breadcrumb and back and forward in step.",
+        evidence: [
+          "src/components/v4/ui/sidebar.tsx",
+          "src/pages/design-system/examples/sidebar/routes.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Open a routed page directly by URL and confirm its row is current and its level shows, then go back and forward."
         }
       },
       {
@@ -166,7 +204,8 @@ export const sidebarDefinition = {
     },
     {
       kind: "browser",
-      command: "npm run dev; open /design-system#sidebar and exercise the documented interaction."
+      command:
+        "npm run dev; open /design-system/components/navigation/sidebar and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;
