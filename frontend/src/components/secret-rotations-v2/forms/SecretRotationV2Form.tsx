@@ -3,7 +3,10 @@ import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { SecretRotationV2AlertsFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2AlertsFields";
+import {
+  canManageFailureAlert,
+  SecretRotationV2AlertsFields
+} from "@app/components/secret-rotations-v2/forms/SecretRotationV2AlertsFields";
 import { SecretRotationV2ConfigurationFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ConfigurationFields";
 import { SecretRotationV2DetailsFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2DetailsFields";
 import { SecretRotationV2ParametersFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ParametersFields";
@@ -19,7 +22,7 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { IS_ROTATION_DUAL_CREDENTIALS, SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   AlertChannelType,
@@ -182,6 +185,7 @@ const SecretRotationV2FormContent = ({
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { name: rotationType } = SECRET_ROTATION_MAP[type];
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
   const { rotationOption } = useSecretRotationV2Option(type);
@@ -234,9 +238,10 @@ const SecretRotationV2FormContent = ({
   const saveFailureAlert = async (
     rotation: TSecretRotationV2,
     isFailureAlertEnabled: boolean,
-    channels: TChannelForm[]
+    channels: TChannelForm[],
+    canManage: boolean
   ) => {
-    if (isFailureAlertUnavailable) return;
+    if (isFailureAlertUnavailable || !canManage) return;
 
     if (failureAlert) {
       if (isFailureAlertEnabled) {
@@ -290,7 +295,16 @@ const SecretRotationV2FormContent = ({
     const rotation = await mutation;
 
     try {
-      await saveFailureAlert(rotation, isFailureAlertEnabled, channels);
+      await saveFailureAlert(
+        rotation,
+        isFailureAlertEnabled,
+        channels,
+        canManageFailureAlert(permission, {
+          environment: environment.slug,
+          secretPath: formData.secretPath,
+          connectionId: connection.id
+        })
+      );
       createNotification({
         text: `Successfully ${secretRotation ? "updated" : "created"} ${rotationType} rotation`,
         type: "success"
