@@ -107,6 +107,7 @@ import {
   TDispatchSecretCreateSideEffectsDTO,
   TDispatchSecretMoveSideEffectsDTO,
   TGetASecretDTO,
+  TGetSecretKeyEnvironmentsDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
   TGetSecretsMultiEnvDTO,
@@ -1334,6 +1335,55 @@ export const secretV2BridgeServiceFactory = ({
     );
 
     return secrets;
+  };
+
+  const getSecretKeyEnvironments = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    environments,
+    path,
+    secretKey
+  }: TGetSecretKeyEnvironmentsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    // the folder lookup ignores empty segments, so check permissions against the same canonical path
+    const secretPath = `/${path.split("/").filter(Boolean).join("/")}`;
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!folders.length) return [];
+
+    const folderEnvironments = new Map(folders.map((folder) => [folder.id, folder.environment.slug]));
+    const matches = await secretDAL.findSharedKeyInFolders({
+      folderIds: folders.map((folder) => folder.id),
+      key: secretKey
+    });
+
+    const existingEnvironments = new Set<string>();
+    matches.forEach(({ folderId, tagSlugs }) => {
+      const environment = folderEnvironments.get(folderId);
+      if (
+        environment &&
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath,
+          secretName: secretKey,
+          secretTags: tagSlugs
+        })
+      ) {
+        existingEnvironments.add(environment);
+      }
+    });
+
+    return environments.filter((environment) => existingEnvironments.has(environment));
   };
 
   const getSecrets = async (dto: TGetSecretsDTO) => {
@@ -3961,6 +4011,7 @@ export const secretV2BridgeServiceFactory = ({
     deleteManySecret: withSecretMetrics(deleteManySecret, { duration: "write", write: "delete" }),
     getSecrets: withSecretMetrics(getSecrets, { duration: "read" }),
     getSecretByName,
+    getSecretKeyEnvironments,
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,

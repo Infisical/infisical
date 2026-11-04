@@ -1,6 +1,7 @@
-- **Name**: A descriptive name for the connection.
-- **Description** (optional): A note for future reference.
-- **Workspace URL**: The URL of your Databricks workspace.
-- **Client ID**: The Client ID of the Databricks service principal created for Infisical.
-- **Client Secret**: The [secret generated](#generate-a-secret) for that service principal.
+- **Name**: A descriptive name for the connection
+- **Description** (optional): A note for future reference
+- **Gateway**: The Gateway or Gateway pool to route requests through if your Databricks workspace isn't reachable from the internet; otherwise leave it as **Internet Gateway**
+- **Workspace URL**: The URL of your Databricks workspace
+- **Client ID**: The Client ID of the Databricks service principal created for Infisical
+- **Client Secret**: The [secret generated](#generate-a-secret) for that service principal
 - **Scopes** (optional): The scopes you [selected for that secret](#generate-a-secret) (leave empty if the secret has the `all-apis` scope or no scopes)

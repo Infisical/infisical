@@ -9,7 +9,8 @@ import {
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultProxyConfig = {
-  trafficPolicy: AgentVaultTrafficPolicy;
+  // The name proxies understand; the admin API calls bundle-hosts service-hosts.
+  trafficPolicy: AgentVaultTrafficPolicy.AnyHost | AgentVaultTrafficPolicy.BundleHosts;
   allowedHosts: string | null;
   pollInterval: number;
 };
@@ -87,7 +88,8 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
 export type TResolvedService = {
   id: string;
   name: string;
-  accessBundleName: string;
+  // Null for a service sent inline with the session, which belongs to no bundle.
+  accessBundleName: string | null;
   type: AgentVaultServiceType;
   hostPattern: string;
   allowedMethods: string[] | null;

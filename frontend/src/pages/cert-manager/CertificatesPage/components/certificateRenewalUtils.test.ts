@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
-import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import {
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-import { buildRenewalFormDefaults, buildRenewalRequestAttributes } from "./certificateRenewalUtils";
+import {
+  buildRenewalFormDefaults,
+  buildRenewalRequestAttributes,
+  capTtlToDays,
+  getRemovedCertificateNames
+} from "./certificateRenewalUtils";
 
 const certificate = {
   id: "cert-1",
@@ -71,6 +79,61 @@ describe("buildRenewalFormDefaults", () => {
   });
 });
 
+describe("getRemovedCertificateNames", () => {
+  const reissuedCertificate = {
+    commonName: "example.com",
+    altNames: "example.com,www.example.com"
+  };
+  const shownSections = { shouldShowSubjectSection: true, shouldShowSanSection: true };
+  const formWith = (commonName: string, altNames: string[]) => ({
+    subjectAttributes: [{ type: CertSubjectAttributeType.COMMON_NAME, value: commonName }],
+    subjectAltNames: altNames.map((value) => ({
+      type: CertSubjectAlternativeNameType.DNS_NAME,
+      value
+    }))
+  });
+
+  it("lists nothing when every name is kept, ignoring case and order", () => {
+    expect(
+      getRemovedCertificateNames({
+        certificate: reissuedCertificate,
+        formData: formWith("Example.com", ["new.example.com", "WWW.example.com", "example.com"]),
+        constraints: shownSections
+      })
+    ).toEqual([]);
+  });
+
+  it("lists an alternative name that is dropped", () => {
+    expect(
+      getRemovedCertificateNames({
+        certificate: reissuedCertificate,
+        formData: formWith("example.com", ["example.com"]),
+        constraints: shownSections
+      })
+    ).toEqual(["www.example.com"]);
+  });
+
+  it("lists the common name when it changes", () => {
+    expect(
+      getRemovedCertificateNames({
+        certificate: { commonName: "example.com", altNames: "www.example.com" },
+        formData: formWith("other.example.com", ["www.example.com"]),
+        constraints: shownSections
+      })
+    ).toEqual(["example.com"]);
+  });
+
+  it("keeps the current names of a section the policy hides", () => {
+    expect(
+      getRemovedCertificateNames({
+        certificate: reissuedCertificate,
+        formData: formWith("example.com", []),
+        constraints: { shouldShowSubjectSection: true, shouldShowSanSection: false }
+      })
+    ).toEqual([]);
+  });
+});
+
 describe("buildRenewalRequestAttributes", () => {
   it("submits policy-required usages even when their checkboxes were never toggled", () => {
     const formData = {
@@ -91,5 +154,16 @@ describe("buildRenewalRequestAttributes", () => {
 
     expect(attributes.keyUsages).toEqual(["key_agreement", "digital_signature"]);
     expect(attributes.extendedKeyUsages).toEqual(["client_auth"]);
+  });
+});
+
+describe("capTtlToDays", () => {
+  it("caps a longer lifetime at the limit", () => {
+    expect(capTtlToDays("365d", 199)).toBe("199d");
+  });
+
+  it("keeps a lifetime within the limit", () => {
+    expect(capTtlToDays("85d", 199)).toBe("85d");
+    expect(capTtlToDays("12h", 199)).toBe("12h");
   });
 });

@@ -33,7 +33,10 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { AgentVaultHostPatternSchema } from "./agent-vault-schemas";
 
 const ProxyConfigSchema = z.object({
-  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  // Proxies still get the old name: a released CLI lets every host through under a value it doesn't know.
+  trafficPolicy: z
+    .enum([AgentVaultTrafficPolicy.AnyHost, AgentVaultTrafficPolicy.BundleHosts])
+    .describe(AGENT_VAULT.PROXY.trafficPolicyProxy),
   allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval)
 });
@@ -159,7 +162,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .object({
               id: z.string().uuid(),
               name: z.string(),
-              accessBundleName: z.string(),
+              accessBundleName: z.string().nullable(),
               type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
               hostPattern: z.string(),
               allowedMethods: z.string().array().nullable(),
