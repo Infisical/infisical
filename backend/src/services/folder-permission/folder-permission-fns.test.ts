@@ -91,22 +91,25 @@ describe("resolveFolder", () => {
   });
 
   test("returns the folder id and canonical path and environment slug", async () => {
-    const folder = { id: "folder-1", path: "/app", isReserved: false, environment: { slug: "dev" } };
+    const folder = { id: "folder-1", path: "/app", isReserved: false, environment: { slug: "dev" }, envId: "env-1" };
     await expect(resolveFolder("project-1", "dev", "/app/", stubSecretFolderDAL(folder))).resolves.toEqual({
       id: "folder-1",
       path: "/app",
-      environmentSlug: "dev"
+      environmentSlug: "dev",
+      envId: "env-1"
     });
   });
 });
 
 describe("assertRecursiveFolderIsRoot", () => {
   test("allows the root folder", () => {
-    expect(() => assertRecursiveFolderIsRoot({ id: "folder-id", path: "/", environmentSlug: "dev" })).not.toThrow();
+    expect(() =>
+      assertRecursiveFolderIsRoot({ id: "folder-id", path: "/", environmentSlug: "dev", envId: "env-id" })
+    ).not.toThrow();
   });
 
   test.each(["/a", "/a/b"])("rejects %s, naming the path and environment", (path) => {
-    const folder = { id: "folder-id", path, environmentSlug: "dev" };
+    const folder = { id: "folder-id", path, environmentSlug: "dev", envId: "env-id" };
 
     expect(() => assertRecursiveFolderIsRoot(folder)).toThrow(BadRequestError);
     expect(() => assertRecursiveFolderIsRoot(folder)).toThrow(
@@ -116,7 +119,7 @@ describe("assertRecursiveFolderIsRoot", () => {
 });
 
 describe("assertManageFolderSubtree", () => {
-  const folder = (path: string) => ({ id: "folder-id", path, environmentSlug: "dev" });
+  const folder = (path: string) => ({ id: "folder-id", path, environmentSlug: "dev", envId: "env-id" });
 
   const manageAccessRole = (secretPath: string) => ({
     role: ProjectMembershipRole.Custom,

@@ -998,6 +998,8 @@ export const INSIGHTS = {
     folderEnvironment: "The slug of the environment the folder is in.",
     folderSecretPath: "The path of the folder.",
     folderRole: "The access level granted on the folder: list, read, edit, manage or full-access.",
+    folderIsPermissionRecursive:
+      "Whether the folder access also applies to every folder below the granted folder. Only folder access on the root folder '/' can be recursive.",
     totalCount: "The number of actors the caller can page through.",
     unusedAccessFrom:
       "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Nothing is listed before then, since reads from before tracking began are unknown. Results are recomputed once a day."
@@ -2003,9 +2005,9 @@ export const FOLDER_ACCESS = {
     limit: "The number of users to return, counting both lists together.",
     search: "The text string that user names and email addresses will be filtered by.",
     users:
-      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.",
     usersWithoutAccess:
-      "The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+      "The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.",
     totalCount: "The number of users of the project that match the search, with and without access together."
   },
   LIST_IDENTITIES: {
@@ -2017,9 +2019,9 @@ export const FOLDER_ACCESS = {
     limit: "The number of machine identities to return, counting both lists together.",
     search: "The text string that machine identity names will be filtered by.",
     identities:
-      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.",
     identitiesWithoutAccess:
-      "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+      "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.",
     totalCount:
       "The number of machine identities of the project that match the search, with and without access together."
   },

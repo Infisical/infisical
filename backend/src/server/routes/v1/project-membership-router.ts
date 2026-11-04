@@ -855,7 +855,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           projectId: req.params.projectId,
           actorType: ActorType.USER,
           permission: folderAccess.permission,
-          isTemporary: folderAccess.isTemporary
+          isTemporary: folderAccess.isTemporary,
+          isPermissionRecursive: folderAccess.isPermissionRecursive
         }
       });
 
@@ -928,7 +929,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           projectId: req.params.projectId,
           actorType: ActorType.USER,
           permission: folderAccess.permission,
-          isTemporary: folderAccess.isTemporary
+          isTemporary: folderAccess.isTemporary,
+          isPermissionRecursive: folderAccess.isPermissionRecursive
         }
       });
 
@@ -989,7 +991,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           projectId: req.params.projectId,
           actorType: ActorType.USER,
           permission: folderAccess.permission,
-          isTemporary: folderAccess.isTemporary
+          isTemporary: folderAccess.isTemporary,
+          isPermissionRecursive: folderAccess.isPermissionRecursive
         }
       });
 

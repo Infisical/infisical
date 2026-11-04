@@ -68,7 +68,7 @@ export const resolveFolder = async (
   if (folder.isReserved) {
     throw new BadRequestError({ message: "Folder access cannot be granted on a reserved system folder." });
   }
-  return { id: folder.id, path: folder.path, environmentSlug: folder.environment.slug };
+  return { id: folder.id, path: folder.path, environmentSlug: folder.environment.slug, envId: folder.envId };
 };
 
 // fetched before the folder is resolved so a caller without project access gets a permission error
@@ -229,7 +229,7 @@ export const toFolderGrant = (
     | "updatedAt"
   >,
   projectId: string,
-  folder: TResolvedFolder
+  folder: Pick<TResolvedFolder, "id" | "path" | "environmentSlug">
 ): TFolderGrant => ({
   id: row.id,
   projectId,

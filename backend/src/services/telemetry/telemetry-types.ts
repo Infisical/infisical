@@ -1925,6 +1925,7 @@ export type TFolderAccessGrantEvent = {
     actorType: ActorType.USER | ActorType.IDENTITY;
     permission: SecretFolderRole;
     isTemporary: boolean;
+    isPermissionRecursive: boolean;
   };
 };
 

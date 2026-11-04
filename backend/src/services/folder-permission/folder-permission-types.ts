@@ -21,6 +21,7 @@ export type TResolvedFolder = {
   id: string;
   path: string;
   environmentSlug: string;
+  envId: string;
 };
 
 export type TCreateFolderGrantDTO = {
@@ -147,4 +148,5 @@ export type TFolderAccessEntry<TActor extends TProjectMemberActor> = {
   actor: TActor;
   membership: TFolderAccessMembership;
   grant: TAdditionalPrivileges | null;
+  inheritedGrant: TAdditionalPrivileges | null;
 };

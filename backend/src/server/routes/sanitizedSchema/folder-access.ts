@@ -38,12 +38,14 @@ export const SanitizedFolderAccessUserSchema = z.object({
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
   membership: SanitizedFolderAccessMembershipSchema,
-  folderRBACAccess: SanitizedFolderAccessSchema.nullable()
+  folderRBACAccess: SanitizedFolderAccessSchema.nullable(),
+  inheritedFolderRBACAccess: SanitizedFolderAccessSchema.nullable()
 });
 
 export const SanitizedFolderAccessIdentitySchema = z.object({
   identityId: z.string().uuid(),
   name: z.string(),
   membership: SanitizedFolderAccessMembershipSchema,
-  folderRBACAccess: SanitizedFolderAccessSchema.nullable()
+  folderRBACAccess: SanitizedFolderAccessSchema.nullable(),
+  inheritedFolderRBACAccess: SanitizedFolderAccessSchema.nullable()
 });

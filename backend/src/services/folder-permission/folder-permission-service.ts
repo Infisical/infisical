@@ -50,7 +50,7 @@ type TFolderPermissionServiceFactoryDep = {
     TAdditionalPrivilegeDALFactory,
     "findOne" | "find" | "create" | "updateById" | "deleteById" | "transaction"
   >;
-  secretFolderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
+  secretFolderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
   folderPermissionDAL: Pick<
     TFolderPermissionDALFactory,
@@ -74,6 +74,7 @@ type TFolderAccessItem<TActor extends TProjectMemberActor> = {
   actor: TActor;
   membership: TFolderAccessMembership;
   folderRBACAccess: TFolderGrant | null;
+  inheritedFolderRBACAccess: TFolderGrant | null;
 };
 
 export type TFolderPermissionServiceFactory = ReturnType<typeof folderPermissionServiceFactory>;
@@ -252,6 +253,16 @@ export const folderPermissionServiceFactory = ({
     });
   };
 
+  const $resolveRootFolder = async (folder: TResolvedFolder): Promise<TResolvedFolder> => {
+    const root = await secretFolderDAL.findOne({ envId: folder.envId, parentId: null });
+    if (!root) {
+      throw new NotFoundError({
+        message: `Root folder not found in environment with slug '${folder.environmentSlug}'`
+      });
+    }
+    return { id: root.id, path: "/", environmentSlug: folder.environmentSlug, envId: folder.envId };
+  };
+
   const $listFolderAccessActors = async <TActor extends TProjectMemberActor>(
     dto: TListFolderAccessActorsDTO,
     {
@@ -276,15 +287,23 @@ export const folderPermissionServiceFactory = ({
 
     const page = { limit, offset, search };
     const actorField = actorType === ActorType.USER ? "actorUserId" : "actorIdentityId";
+    const rootFolder = folder.path === "/" ? folder : await $resolveRootFolder(folder);
     // grants stay out of the cached folder access so a grant or revoke is visible on the very next request
     const [folderAccess, grants] = await Promise.all([
       $getFolderAccess<TActor>({ projectId, orgId, folder, actorType, page }, () =>
         fetchMembers({ projectId, orgId }, page)
       ),
-      additionalPrivilegeDAL.find({ projectId, folderId: folder.id, $notNull: [actorField] })
+      additionalPrivilegeDAL.find({
+        projectId,
+        $in: { folderId: [...new Set([folder.id, rootFolder.id])] },
+        $notNull: [actorField]
+      })
     ]);
-    const grantByActorId = new Map(
-      grants.filter((grant) => grant.role).map((grant) => [grant[actorField] as string, grant])
+    const byActorId = (rows: typeof grants) =>
+      new Map(rows.filter((grant) => grant.role).map((grant) => [grant[actorField] as string, grant]));
+    const grantByActorId = byActorId(grants.filter((grant) => grant.folderId === folder.id));
+    const inheritedGrantByActorId = byActorId(
+      grants.filter((grant) => grant.folderId !== folder.id && grant.isRecursiveFolder)
     );
 
     // the page is one slice of the project roster; the split only says which of the two lists each of
@@ -292,14 +311,21 @@ export const folderPermissionServiceFactory = ({
     const { withAccess, withoutAccess } = splitFolderAccess({
       folderAccess,
       grantByActorId,
+      inheritedGrantByActorId,
       actorIdOf,
       now: new Date()
     });
 
-    const toItem = ({ actor, membership, grant }: TFolderAccessEntry<TActor>): TFolderAccessItem<TActor> => ({
+    const toItem = ({
       actor,
       membership,
-      folderRBACAccess: grant ? toFolderGrant(grant, projectId, folder) : null
+      grant,
+      inheritedGrant
+    }: TFolderAccessEntry<TActor>): TFolderAccessItem<TActor> => ({
+      actor,
+      membership,
+      folderRBACAccess: grant ? toFolderGrant(grant, projectId, folder) : null,
+      inheritedFolderRBACAccess: inheritedGrant ? toFolderGrant(inheritedGrant, projectId, rootFolder) : null
     });
 
     return {
@@ -310,14 +336,20 @@ export const folderPermissionServiceFactory = ({
   };
 
   const listFolderAccessUsers = async (dto: TListFolderAccessActorsDTO) => {
-    const toUser = ({ actor, membership, folderRBACAccess }: TFolderAccessItem<TProjectMemberUser>) => ({
+    const toUser = ({
+      actor,
+      membership,
+      folderRBACAccess,
+      inheritedFolderRBACAccess
+    }: TFolderAccessItem<TProjectMemberUser>) => ({
       userId: actor.userId,
       username: actor.username,
       email: actor.email,
       firstName: actor.firstName,
       lastName: actor.lastName,
       membership,
-      folderRBACAccess
+      folderRBACAccess,
+      inheritedFolderRBACAccess
     });
 
     const result = await $listFolderAccessActors<TProjectMemberUser>(dto, {
@@ -334,11 +366,17 @@ export const folderPermissionServiceFactory = ({
   };
 
   const listFolderAccessIdentities = async (dto: TListFolderAccessActorsDTO) => {
-    const toIdentity = ({ actor, membership, folderRBACAccess }: TFolderAccessItem<TProjectMemberIdentity>) => ({
+    const toIdentity = ({
+      actor,
+      membership,
+      folderRBACAccess,
+      inheritedFolderRBACAccess
+    }: TFolderAccessItem<TProjectMemberIdentity>) => ({
       identityId: actor.identityId,
       name: actor.name,
       membership,
-      folderRBACAccess
+      folderRBACAccess,
+      inheritedFolderRBACAccess
     });
 
     const result = await $listFolderAccessActors<TProjectMemberIdentity>(dto, {
