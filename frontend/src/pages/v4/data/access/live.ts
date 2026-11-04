@@ -65,6 +65,7 @@ import {
   useDeleteOrgIdentity,
   useUpdateOrgIdentity
 } from "@app/hooks/api/orgIdentity/mutations";
+import { useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import {
   useCreateProjectIdentity,
   useDeleteProjectIdentity
@@ -211,6 +212,7 @@ export const accessLive: AccessAdapter = {
   useRemoveProjectIdentity: useDeleteProjectIdentityMembership,
   useCreateProjectManagedIdentity: useCreateProjectIdentity,
   useDeleteProjectManagedIdentity: useDeleteProjectIdentity,
+  useUpdateProjectManagedIdentity: useUpdateProjectIdentity,
 
   useProjectGroups: useListWorkspaceGroups,
   useProjectGroup: useGetWorkspaceGroupMembershipDetails,

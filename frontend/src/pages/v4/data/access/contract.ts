@@ -65,6 +65,7 @@ import type {
   useDeleteOrgIdentity,
   useUpdateOrgIdentity
 } from "@app/hooks/api/orgIdentity/mutations";
+import type { useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import type {
   useCreateProjectIdentity,
   useDeleteProjectIdentity
@@ -230,6 +231,7 @@ export type AccessAdapter = {
   useRemoveProjectIdentity: MutationOf<typeof useDeleteProjectIdentityMembership>;
   useCreateProjectManagedIdentity: MutationOf<typeof useCreateProjectIdentity>;
   useDeleteProjectManagedIdentity: MutationOf<typeof useDeleteProjectIdentity>;
+  useUpdateProjectManagedIdentity: MutationOf<typeof useUpdateProjectIdentity>;
 
   useProjectGroups: QueryOf<typeof useListWorkspaceGroups>;
   useProjectGroup: QueryOf<typeof useGetWorkspaceGroupMembershipDetails>;

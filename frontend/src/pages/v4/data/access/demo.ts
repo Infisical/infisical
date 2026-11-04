@@ -1593,6 +1593,25 @@ export const accessDemo: AccessAdapter = {
       toTIdentity(removed)
     );
   }),
+  useUpdateProjectManagedIdentity: demoMutation((dto, state) => {
+    const current = identityOf(state, dto.identityId)!;
+    const next = {
+      ...current,
+      name: dto.name ?? current.name,
+      hasDeleteProtection: dto.hasDeleteProtection ?? current.hasDeleteProtection,
+      metadata: dto.metadata
+        ? dto.metadata.map((item) => ({ ...item, id: newId() }))
+        : current.metadata,
+      updatedAt: stamp()
+    };
+    return done(
+      {
+        ...state,
+        identities: state.identities.map((entry) => (entry.id === next.id ? next : entry))
+      },
+      toTIdentity(next)
+    );
+  }),
 
   useProjectGroups: demoQuery("project-groups", (state, projectId: string) =>
     membershipsOf(state, "group", projectId).map((entry) => groupMembership(state, entry))
