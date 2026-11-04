@@ -20,6 +20,7 @@ import {
   assertManageFolderAccess,
   assertManageFolderSubtree,
   assertReadActorGrantsAccess,
+  assertRecursiveFolderIsRoot,
   computeTemporaryFields,
   getFolderAccessPermission,
   resolveFolder,
@@ -102,7 +103,10 @@ export const folderPermissionServiceFactory = ({
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
-    if (dto.isPermissionRecursive) assertManageFolderSubtree(callerPermission, folder);
+    if (dto.isPermissionRecursive) {
+      assertRecursiveFolderIsRoot(folder);
+      assertManageFolderSubtree(callerPermission, folder);
+    }
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
@@ -149,6 +153,7 @@ export const folderPermissionServiceFactory = ({
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
+    if (dto.isPermissionRecursive) assertRecursiveFolderIsRoot(folder);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);

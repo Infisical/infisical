@@ -1969,7 +1969,7 @@ export const FOLDER_ACCESS = {
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts.",
     isPermissionRecursive:
-      "Whether the folder access also applies to every folder below this one. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false."
+      "Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on the whole environment. Defaults to false."
   },
   UPDATE: {
     projectId: "The ID of the project the folder is in.",
@@ -1985,7 +1985,7 @@ export const FOLDER_ACCESS = {
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts.",
     isPermissionRecursive:
-      "Whether the folder access also applies to every folder below this one. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders."
+      "Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders."
   },
   DELETE: {
     projectId: "The ID of the project the folder is in.",

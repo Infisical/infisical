@@ -17,6 +17,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import {
   assertFullAccessIsPermanent,
   assertManageFolderSubtree,
+  assertRecursiveFolderIsRoot,
   computeTemporaryFields,
   recursiveFolderPathGlob,
   resolveFolder
@@ -107,6 +108,21 @@ describe("recursiveFolderPathGlob", () => {
     ["/a/b", "/a/b/**"]
   ])("builds the subtree glob for %s", (path, glob) => {
     expect(recursiveFolderPathGlob(path)).toBe(glob);
+  });
+});
+
+describe("assertRecursiveFolderIsRoot", () => {
+  test("allows the root folder", () => {
+    expect(() => assertRecursiveFolderIsRoot({ id: "folder-id", path: "/", environmentSlug: "dev" })).not.toThrow();
+  });
+
+  test.each(["/a", "/a/b"])("rejects %s, naming the path and environment", (path) => {
+    const folder = { id: "folder-id", path, environmentSlug: "dev" };
+
+    expect(() => assertRecursiveFolderIsRoot(folder)).toThrow(BadRequestError);
+    expect(() => assertRecursiveFolderIsRoot(folder)).toThrow(
+      `Folder access on '${path}' in environment with slug 'dev'`
+    );
   });
 });
 

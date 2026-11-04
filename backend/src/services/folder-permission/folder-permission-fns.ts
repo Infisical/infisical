@@ -120,6 +120,14 @@ export const assertManageFolderAccess = (
 
 export const recursiveFolderPathGlob = (folderPath: string) => `${folderPath.replace(/\/$/, "")}/**`;
 
+export const assertRecursiveFolderIsRoot = (folder: TResolvedFolder) => {
+  if (folder.path !== "/") {
+    throw new BadRequestError({
+      message: `Folder access on '${folder.path}' in environment with slug '${folder.environmentSlug}' cannot apply to subfolders. Only folder access on the root folder '/' can apply to subfolders. Grant access on this folder only, or grant it on '/'.`
+    });
+  }
+};
+
 export const assertManageFolderSubtree = (
   callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
   folder: TResolvedFolder
