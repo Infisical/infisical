@@ -79,6 +79,7 @@ import { Route as adminEncryptionPageRouteImport } from './pages/admin/Encryptio
 import { Route as adminCachingPageRouteImport } from './pages/admin/CachingPage/route'
 import { Route as adminAuthenticationPageRouteImport } from './pages/admin/AuthenticationPage/route'
 import { Route as adminAccessManagementPageRouteImport } from './pages/admin/AccessManagementPage/route'
+import { Route as v4RedirectsSecretScanningIndexRedirectRouteImport } from './pages/v4/redirects/SecretScanningIndexRedirect/route'
 import { Route as v4OrganizationProjectsPageRouteImport } from './pages/v4/organization/ProjectsPage/route'
 import { Route as v4RedirectsAgentVaultIndexRedirectRouteImport } from './pages/v4/redirects/AgentVaultIndexRedirect/route'
 import { Route as adminGeneralPageRouteImport } from './pages/admin/GeneralPage/route'
@@ -947,6 +948,13 @@ const adminAccessManagementPageRouteRoute =
     id: '/access-management',
     path: '/access-management',
     getParentRoute: () => adminLayoutRoute,
+  } as any)
+
+const v4RedirectsSecretScanningIndexRedirectRouteRoute =
+  v4RedirectsSecretScanningIndexRedirectRouteImport.update({
+    id: '/secret-scanning/',
+    path: '/secret-scanning/',
+    getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
 const v4OrganizationProjectsPageRouteRoute =
@@ -3465,6 +3473,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4OrganizationProjectsPageRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
+    '/v4/organizations/$orgId/secret-scanning/': {
+      id: '/v4/organizations/$orgId/secret-scanning/'
+      path: '/secret-scanning'
+      fullPath: '/v4/organizations/$orgId/secret-scanning'
+      preLoaderRoute: typeof v4RedirectsSecretScanningIndexRedirectRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': {
       id: '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
       path: '/access-management'
@@ -5522,6 +5537,7 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationSettingsPageRouteRoute: typeof v4OrganizationSettingsPageRouteRoute
   V4OrganizationsOrgIdProjectsRoute: typeof V4OrganizationsOrgIdProjectsRouteWithChildren
   v4RedirectsAgentVaultIndexRedirectRouteRoute: typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
+  v4RedirectsSecretScanningIndexRedirectRouteRoute: typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   v4CertManagerInventoryPageRouteRoute: typeof v4CertManagerInventoryPageRouteRoute
   v4OrganizationGroupDetailsByIDPageRouteRoute: typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   v4OrganizationIdentityDetailsByIDPageRouteRoute: typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
@@ -5545,6 +5561,8 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     V4OrganizationsOrgIdProjectsRouteWithChildren,
   v4RedirectsAgentVaultIndexRedirectRouteRoute:
     v4RedirectsAgentVaultIndexRedirectRouteRoute,
+  v4RedirectsSecretScanningIndexRedirectRouteRoute:
+    v4RedirectsSecretScanningIndexRedirectRouteRoute,
   v4CertManagerInventoryPageRouteRoute: v4CertManagerInventoryPageRouteRoute,
   v4OrganizationGroupDetailsByIDPageRouteRoute:
     v4OrganizationGroupDetailsByIDPageRouteRoute,
@@ -7009,6 +7027,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof adminGeneralPageRouteRoute
   '/v4/organizations/$orgId/agent-vault': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   '/v4/organizations/$orgId/projects/': typeof v4OrganizationProjectsPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning': typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
@@ -7338,6 +7357,7 @@ export interface FileRoutesByTo {
   '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/v4/organizations/$orgId/agent-vault': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning': typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
@@ -7654,6 +7674,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout/': typeof adminGeneralPageRouteRoute
   '/v4/organizations/$orgId/agent-vault/': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   '/v4/organizations/$orgId/projects/': typeof v4OrganizationProjectsPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning/': typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': typeof adminAccessManagementPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': typeof adminAuthenticationPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/caching': typeof adminCachingPageRouteRoute
@@ -7997,6 +8018,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/v4/organizations/$orgId/agent-vault'
     | '/v4/organizations/$orgId/projects/'
+    | '/v4/organizations/$orgId/secret-scanning'
     | '/admin/access-management'
     | '/admin/authentication'
     | '/admin/caching'
@@ -8325,6 +8347,7 @@ export interface FileRouteTypes {
     | '/design-system/components/$group/$component'
     | '/v4/organizations/$orgId/agent-vault'
     | '/v4/organizations/$orgId/projects'
+    | '/v4/organizations/$orgId/secret-scanning'
     | '/admin/access-management'
     | '/admin/authentication'
     | '/admin/caching'
@@ -8639,6 +8662,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout/'
     | '/v4/organizations/$orgId/agent-vault/'
     | '/v4/organizations/$orgId/projects/'
+    | '/v4/organizations/$orgId/secret-scanning/'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/caching'
@@ -9173,6 +9197,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/settings",
         "/v4/organizations/$orgId/projects",
         "/v4/organizations/$orgId/agent-vault/",
+        "/v4/organizations/$orgId/secret-scanning/",
         "/v4/organizations/$orgId/cert-manager/inventory",
         "/v4/organizations/$orgId/groups/$groupId",
         "/v4/organizations/$orgId/identities/$identityId",
@@ -9325,6 +9350,10 @@ export const routeTree = rootRoute
     "/v4/organizations/$orgId/projects/": {
       "filePath": "v4/organization/ProjectsPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
+    },
+    "/v4/organizations/$orgId/secret-scanning/": {
+      "filePath": "v4/redirects/SecretScanningIndexRedirect/route.tsx",
+      "parent": "/v4/organizations/$orgId"
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/access-management": {
       "filePath": "admin/AccessManagementPage/route.tsx",
