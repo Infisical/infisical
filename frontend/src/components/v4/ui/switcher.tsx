@@ -1,4 +1,14 @@
-import { type ReactElement, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  type ReactElement,
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from "react";
+import { createLink, type LinkOptions } from "@tanstack/react-router";
 
 import { useControllableState } from "../lib/use-controllable-state";
 import {
@@ -34,6 +44,7 @@ export interface SwitcherAction {
   shortcut?: string;
   danger?: boolean;
   disabled?: boolean;
+  link?: LinkOptions;
   onSelect?: () => void;
 }
 export type SwitcherActionDivider = { type: "separator" } | { type: "label"; label: ReactNode };
@@ -60,6 +71,76 @@ export interface SwitcherProps {
   onOpenChange?: (open: boolean) => void;
   className?: string;
 }
+
+function ActionAnchor({
+  ref,
+  ...props
+}: ComponentPropsWithoutRef<"a"> & { ref?: Ref<HTMLAnchorElement> }) {
+  return <a ref={ref} {...props} />;
+}
+
+const ActionLink = createLink(ActionAnchor);
+
+const SwitcherActionItem = ({
+  action,
+  index,
+  close
+}: {
+  action: SwitcherAction;
+  index: number;
+  close: () => void;
+}) => {
+  const item = useRef<HTMLDivElement>(null);
+  const clicked = useRef(false);
+  const content = (
+    <>
+      {action.icon && <Icon name={action.icon} />}
+      {action.label}
+      {action.shortcut && <Kbd>{action.shortcut}</Kbd>}
+    </>
+  );
+  const shared = {
+    value: `action-${index}`,
+    keywords: [action.label],
+    disabled: action.disabled,
+    "data-danger": action.danger || undefined
+  };
+  if (!action.link || action.disabled)
+    return (
+      <CommandItem
+        {...shared}
+        onSelect={() => {
+          action.onSelect?.();
+          close();
+        }}
+      >
+        {content}
+      </CommandItem>
+    );
+  return (
+    <CommandItem
+      {...shared}
+      ref={item}
+      asChild
+      onSelect={() => {
+        // A pointer click already reached the link; Enter arrives here first and is routed through it.
+        if (!clicked.current) item.current?.click();
+        clicked.current = false;
+        close();
+      }}
+    >
+      <ActionLink
+        {...action.link}
+        tabIndex={-1}
+        onClick={() => {
+          clicked.current = true;
+        }}
+      >
+        {content}
+      </ActionLink>
+    </CommandItem>
+  );
+};
 
 const syncActiveOption = (root: HTMLDivElement) => {
   const list = root.querySelector<HTMLElement>("[cmdk-list]");
@@ -232,21 +313,7 @@ export const Switcher = ({
                   <CommandGroup key={index} heading={action.label} />
                 )
               ) : (
-                <CommandItem
-                  key={index}
-                  value={`action-${index}`}
-                  keywords={[action.label]}
-                  disabled={action.disabled}
-                  data-danger={action.danger || undefined}
-                  onSelect={() => {
-                    action.onSelect?.();
-                    close();
-                  }}
-                >
-                  {action.icon && <Icon name={action.icon} />}
-                  {action.label}
-                  {action.shortcut && <Kbd>{action.shortcut}</Kbd>}
-                </CommandItem>
+                <SwitcherActionItem key={index} action={action} index={index} close={close} />
               )
             )}
           </CommandList>

@@ -188,12 +188,16 @@ function CommandItem({
       className={cn(menu.row, className)}
       {...props}
     >
-      {checkable && (
-        <span className={menu.indicator} data-command="">
-          <Icon name="check" />
-        </span>
+      {checkable ? (
+        <>
+          <span className={menu.indicator} data-command="">
+            <Icon name="check" />
+          </span>
+          {children}
+        </>
+      ) : (
+        children
       )}
-      {children}
     </CommandPrimitive.Item>
   );
 }
