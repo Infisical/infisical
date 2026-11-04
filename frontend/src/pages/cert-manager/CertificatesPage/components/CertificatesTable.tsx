@@ -1314,7 +1314,8 @@ export const CertificatesTable = ({
                                         e.stopPropagation();
                                         handlePopUpOpen("renewCertificate", {
                                           certificateId: certificate.id,
-                                          commonName: certificate.commonName
+                                          commonName: certificate.commonName,
+                                          canRevoke: canDeleteCertificate
                                         });
                                       }}
                                     >

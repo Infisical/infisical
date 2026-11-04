@@ -47,7 +47,7 @@ import {
 type TPamAccountHeartbeatServiceFactoryDep = {
   pamAccountDAL: TPamAccountDALFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: TPermissionServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -159,6 +159,12 @@ export const pamAccountHeartbeatServiceFactory = ({
         return { status, message: err instanceof Error ? err.message : "Unable to validate credentials" };
       }
     }
+
+    await gatewayPoolService.assertGatewayBindingInOrg({
+      gatewayId: account.gatewayId ?? account.templateGatewayId,
+      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+      orgId
+    });
 
     // The shared connection test only reaches these over TCP; the rotation handlers hold the real probe.
     if (isWindowsRotatableType(accountType)) {

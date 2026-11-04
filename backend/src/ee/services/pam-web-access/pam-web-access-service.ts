@@ -82,7 +82,10 @@ type TPamWebAccessServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "runWithPoolFailover">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveEffectiveGatewayId" | "runWithPoolFailover" | "assertGatewayBindingInOrg"
+  >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
   mfaSessionService: Pick<
@@ -534,6 +537,11 @@ export const pamWebAccessServiceFactory = ({
         sessionDurationCapMs = Math.min(sessionDurationCapMs, launchAccessRemainingMs);
       }
 
+      await gatewayPoolService.assertGatewayBindingInOrg({
+        gatewayId: account.gatewayId ?? account.templateGatewayId,
+        gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+        orgId
+      });
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
         gatewayId: account.gatewayId ?? account.templateGatewayId,
         gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId

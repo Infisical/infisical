@@ -1642,11 +1642,11 @@ export const SecretEditTableRow = ({
         onConfirm={handleDeleteSecret}
       />
 
-      <div className="flex w-full cursor-text items-center space-x-2">
+      <div className="flex w-full cursor-text items-start space-x-2">
         {secretValueHidden && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <EyeOffIcon className="size-4 text-secret" />
+              <EyeOffIcon className="my-1.5 size-4 shrink-0 text-secret" />
             </TooltipTrigger>
             <TooltipContent>
               You do not have access to view the current value
@@ -1656,7 +1656,7 @@ export const SecretEditTableRow = ({
         )}
         <div
           className={twMerge(
-            "relative grow pr-2",
+            "relative grow py-1 pr-2",
             isFieldActive && !isBatchMode && "pr-16",
             isFieldActive && isBatchMode && "pr-6"
           )}
@@ -1708,7 +1708,7 @@ export const SecretEditTableRow = ({
         </div>
         {!isDirtyState && !isFieldActive && (
           <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
-            <div className="flex items-center gap-1">
+            <div className="flex h-7 items-center gap-1">
               {skipMultilineEncoding && !isImportedSecret && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1725,7 +1725,7 @@ export const SecretEditTableRow = ({
         {revokedProjectFolderGrant && !isDirtyState && (
           <div
             className={twMerge(
-              "ml-auto flex shrink-0 items-center",
+              "ml-auto flex h-7 shrink-0 items-center",
               isSingleEnvView &&
                 "mr-(--action-bar-offset) transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-(--action-bar-offset) [@media(hover:hover)]:group-hover:mr-(--action-bar-offset)",
               isSingleEnvView && isFieldActive && "mr-8"
@@ -2404,6 +2404,7 @@ export const SecretEditTableRow = ({
     return (
       <>
         <TableCell
+          isTopAligned
           isTruncatable
           className={twMerge(
             "cursor-text border-r",
@@ -2415,7 +2416,7 @@ export const SecretEditTableRow = ({
             event.currentTarget.querySelector("input")?.focus();
           }}
         >
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-h-7 min-w-0 items-center gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <span className="inline-flex min-w-0">{nameInput}</span>
               {annotationSlot}
@@ -2424,6 +2425,7 @@ export const SecretEditTableRow = ({
           </div>
         </TableCell>
         <TableCell
+          isTopAligned
           className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}
         >
           <div data-table-row-filter-contents className="flex w-full flex-col gap-y-2 !filter-none">
@@ -2437,6 +2439,7 @@ export const SecretEditTableRow = ({
   return (
     <>
       <TableCell
+        isTopAligned
         isTruncatable
         className={twMerge(
           TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
@@ -2448,10 +2451,14 @@ export const SecretEditTableRow = ({
           {annotationSlot}
         </div>
       </TableCell>
-      <TableCell colSpan={2} className={twMerge("max-w-0", isOverride && "border-b-border/50")}>
+      <TableCell
+        isTopAligned
+        colSpan={2}
+        className={twMerge("max-w-0", isOverride && "border-b-border/50")}
+      >
         <div
           data-table-row-filter-contents
-          className="relative flex w-full flex-col gap-y-2 py-1.5 !filter-none"
+          className="relative flex w-full flex-col gap-y-2 py-0.5 !filter-none"
         >
           {valueContent}
         </div>

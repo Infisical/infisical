@@ -64,7 +64,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
       -H "Authorization: Bearer <access-token>" \
       -H "Content-Type: application/json" \
-      -d '{"accessBundles": ["<access-bundle-name>"], "ttl": "1h", "label": "nightly deploy"}'
+      -d '{"accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
     ```
 
     The response includes the session token.

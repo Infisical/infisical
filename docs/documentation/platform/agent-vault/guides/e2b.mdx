@@ -260,7 +260,7 @@ def run_in_sandbox(command: str) -> str:
     created = requests.post(
         f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
         headers=headers,
-        json={"accessBundles": [ACCESS_BUNDLE], "ttl": "20m"},
+        json={"accessBundle": ACCESS_BUNDLE, "ttl": "20m"},
         timeout=30,
     )
     created.raise_for_status()
@@ -359,7 +359,7 @@ export async function runInSandbox(command: string): Promise<string> {
   // can't lose access mid-run.
   const { session } = await infisical("/api/v1/agent-vault/sessions", {
     token: accessToken,
-    body: { accessBundles: [ACCESS_BUNDLE], ttl: "20m" },
+    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" },
   });
 
   let sandbox: Sandbox | undefined;
