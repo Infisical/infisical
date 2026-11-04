@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
 import { PencilIcon, ServerIcon, WrenchIcon } from "lucide-react";
 
 import {
@@ -36,16 +35,16 @@ import { useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
 import { RoleListRoleSheet, type RoleSheetMode } from "./role-list-role-sheet";
+import { useProjectScope } from "./scope";
 
 import shared from "../access.module.css";
 import styles from "./tokens-roles.module.css";
 
 type ProjectRoleRow = Omit<TProjectRole, "permissions">;
 
-const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/access-management";
-
 export const ProjectRolesTab = () => {
-  const { orgId, projectId } = useParams({ from: ROUTE });
+  const scope = useProjectScope();
+  const { projectId } = scope;
   const go = useGo();
   const access = useV4Adapter("access");
   const { permission } = useProjectPermission(projectId);
@@ -63,8 +62,7 @@ export const ProjectRolesTab = () => {
 
   const openSheet = (mode: RoleSheetMode) =>
     setSheet((current) => ({ open: true, mode, key: current.key + 1 }));
-  const openRole = (role: ProjectRoleRow) =>
-    go(accessLinks.projectRole(orgId, projectId, role.slug));
+  const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
 
   const list = usePagedList<ProjectRoleRow>({
     rows: roles,

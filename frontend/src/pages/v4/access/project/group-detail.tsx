@@ -54,17 +54,17 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
-import { useOrgId, useProjectPermission } from "../permissions";
+import { useProjectPermission } from "../permissions";
 import { formatDate, formatDateTime } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, ListToolbar, RESTRICTED, type Sort } from "../ui";
 import { RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
-import { personName, PROJECT_TYPE } from "./member-access";
+import { personName } from "./member-access";
+import { useProjectScope } from "./scope";
 
 import styles from "./group.module.css";
 
-const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId";
 const ASSUME_CONFIRM = "assume";
 
 type Member = {
@@ -84,7 +84,7 @@ const AssumeMemberDialog = ({
   member?: Member;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const orgId = useOrgId();
+  const scope = useProjectScope();
   const assume = useV4Adapter("access").useAssumeProjectPrivileges();
   const isIdentity = member?.type === GroupMemberType.MACHINE_IDENTITY;
   const noun = isIdentity ? "machine identity" : "user";
@@ -98,7 +98,7 @@ const AssumeMemberDialog = ({
       });
       saved(`${isIdentity ? "Machine identity" : "User"} privilege assumption has started`);
       onOpenChange(false);
-      window.location.assign(accessLinks.project(orgId, projectId));
+      window.location.assign(accessLinks.project(scope));
     } catch (error) {
       failed("Failed to assume privileges", error);
     }
@@ -195,8 +195,9 @@ const GroupMembersTable = ({
         }
   );
 
+  const scope = useProjectScope();
   const assumeBlocked = (member: Member) => {
-    if (!supportsAssumePrivileges(PROJECT_TYPE)) return RESTRICTED;
+    if (!supportsAssumePrivileges(scope.projectType)) return RESTRICTED;
     const allowed =
       member.type === GroupMemberType.USER
         ? permission.can(
@@ -363,13 +364,15 @@ const BackLink = ({ href }: { href: string }) => (
 );
 
 export const ProjectGroupDetail = () => {
-  const { orgId, projectId, groupId } = useParams({ from: ROUTE });
-  const { username } = useSearch({ from: ROUTE });
+  const scope = useProjectScope();
+  const { projectId } = scope;
+  const { groupId = "" } = useParams({ strict: false });
+  const { username } = useSearch({ strict: false });
   const go = useGo();
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
-  const query = useV4Adapter("access").useProjectGroup(projectId, groupId, PROJECT_TYPE);
+  const query = useV4Adapter("access").useProjectGroup(projectId, groupId, scope.projectType);
   const [removing, setRemoving] = useState(false);
-  const back = accessLinks.project(orgId, projectId, ProjectAccessControlTabs.Groups);
+  const back = accessLinks.project(scope, ProjectAccessControlTabs.Groups);
 
   if (permissionPending || query.isPending) return <Loader size="page" label="Loading group" />;
   if (!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups))

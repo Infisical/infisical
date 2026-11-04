@@ -21,8 +21,8 @@ import { sanitizeDuplicateRolePermissions } from "@app/pages/project/RoleDetails
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
-import { useOrgId } from "../permissions";
 import { failed, saved } from "../toast";
+import { useProjectScope } from "./scope";
 
 export type RoleSheetMode =
   | { kind: "create" }
@@ -43,7 +43,7 @@ export const RoleListRoleSheet = ({
   mode: RoleSheetMode;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const orgId = useOrgId();
+  const scope = useProjectScope();
   const go = useGo();
   const access = useV4Adapter("access");
   const createRole = access.useCreateProjectRole();
@@ -85,7 +85,7 @@ export const RoleListRoleSheet = ({
       });
       saved(`Project role "${name}" ${duplicate ? "duplicated" : "created"}`);
       onOpenChange(false);
-      go(accessLinks.projectRole(orgId, projectId, role.slug));
+      go(accessLinks.projectRole(scope, role.slug));
     } catch (error) {
       failed(
         duplicate ? "Failed to duplicate project role" : "Failed to create project role",

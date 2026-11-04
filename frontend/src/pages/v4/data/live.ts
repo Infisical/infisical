@@ -4,6 +4,7 @@ import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
 import { kmsLive } from "./kms/live";
 import { orgLive } from "./org/live";
+import { projectsLive } from "./projects/live";
 import { secretScanningLive } from "./secret-scanning/live";
 import { secretsLive } from "./secrets/live";
 
@@ -14,5 +15,6 @@ export const liveAdapters: V4Adapters = {
   secretScanning: secretScanningLive,
   secrets: secretsLive,
   certificates: certificatesLive,
-  access: accessLive
+  access: accessLive,
+  projects: projectsLive
 };

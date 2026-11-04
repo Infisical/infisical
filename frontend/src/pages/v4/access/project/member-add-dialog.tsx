@@ -22,7 +22,8 @@ import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { useV4Adapter } from "../../data/adapters";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved } from "../toast";
-import { personName, PROJECT_TYPE, useMemberRoleAccess } from "./member-access";
+import { personName, useMemberRoleAccess } from "./member-access";
+import { useProjectScope } from "./scope";
 
 export const AddMemberDialog = ({
   projectId,
@@ -34,10 +35,11 @@ export const AddMemberDialog = ({
   onOpenChange: (open: boolean) => void;
 }) => {
   const orgId = useOrgId();
+  const scope = useProjectScope();
   const access = useV4Adapter("access");
   const { permission: orgPermission } = useOrgPermission();
   const members = access.useProjectUsers(projectId);
-  const availableUsers = access.useAvailableProjectUsers(projectId, PROJECT_TYPE);
+  const availableUsers = access.useAvailableProjectUsers(projectId, scope.projectType);
   const project = access.useProject(projectId);
   const { assignable } = useMemberRoleAccess(projectId);
   const addUsers = access.useAddProjectUsers();
@@ -91,7 +93,7 @@ export const AddMemberDialog = ({
         usernames: users,
         orgId,
         projectId,
-        projectType: PROJECT_TYPE,
+        projectType: scope.projectType,
         roleSlugs: roles
       });
       saved("Successfully added user to the project");

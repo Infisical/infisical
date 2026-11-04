@@ -12,8 +12,8 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useOrgId } from "../permissions";
 import { failed, saved } from "../toast";
+import { useProjectScope } from "./scope";
 
 export type AssumeTarget = { id: string; type: ActorType.USER | ActorType.IDENTITY };
 
@@ -26,7 +26,7 @@ export const AssumePrivilegesDialog = ({
   target?: AssumeTarget;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const orgId = useOrgId();
+  const scope = useProjectScope();
   const assume = useV4Adapter("access").useAssumeProjectPrivileges();
   const noun = target?.type === ActorType.IDENTITY ? "machine identity" : "user";
   const confirm = async () => {
@@ -35,7 +35,7 @@ export const AssumePrivilegesDialog = ({
       await assume.mutateAsync({ actorId: target.id, actorType: target.type, projectId });
       saved(`${noun === "user" ? "User" : "Machine identity"} privilege assumption has started`);
       onOpenChange(false);
-      window.location.assign(accessLinks.project(orgId, projectId));
+      window.location.assign(accessLinks.project(scope));
     } catch (error) {
       failed("Failed to assume privileges", error);
     }

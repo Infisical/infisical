@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useParams } from "@tanstack/react-router";
 
 import {
   AlertDialog,
@@ -32,18 +31,17 @@ import { useProjectPermission } from "../permissions";
 import { formatDateTime } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, ListToolbar, Muted, RESTRICTED, usePagedList } from "../ui";
+import { useProjectScope } from "./scope";
 import { ServiceTokenCreateSheet } from "./service-token-create-sheet";
 
 import shared from "../access.module.css";
 import styles from "./tokens-roles.module.css";
 
-const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/access-management";
-
 const expiryOf = (token: ServiceToken) =>
   token.expiresAt ? new Date(token.expiresAt).getTime() : undefined;
 
 export const ServiceTokensTab = () => {
-  const { projectId } = useParams({ from: ROUTE });
+  const { projectId } = useProjectScope();
   const access = useV4Adapter("access");
   const { permission } = useProjectPermission(projectId);
   const tokens = access.useServiceTokens({ workspaceID: projectId });
