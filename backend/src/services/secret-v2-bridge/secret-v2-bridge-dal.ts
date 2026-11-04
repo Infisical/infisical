@@ -35,7 +35,7 @@ export const SecretServiceCacheKeys = {
     requestParamsHash: string;
   }) => {
     const { projectId, version, actorId, permissionFingerprint, permissionHash, requestParamsHash } = arg;
-    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal:v${version}:get-secrets-service-layer-bin:${actorId}-${permissionFingerprint}-${permissionHash}-${requestParamsHash}`;
+    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal:v${version}:get-secrets-service-layer-zstd:${actorId}-${permissionFingerprint}-${permissionHash}-${requestParamsHash}`;
   }
 };
 
@@ -48,6 +48,7 @@ interface TSecretV2DalArg {
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
+export const LARGE_SECRET_CACHE_LOG_BYTES = 1024 * 1024;
 
 const SECRET_V2_COLUMNS = Object.keys(SecretsV2Schema.shape) as (keyof TSecretsV2)[];
 
