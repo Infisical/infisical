@@ -1,7 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiCertificateInstallations } from "@app/db/schemas";
+import {
+  TableName,
+  TCertificates,
+  TPkiCertificateInstallationCerts,
+  TPkiCertificateInstallations,
+  TResourceMetadata
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
@@ -229,7 +235,7 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
 
       if (!installation) return null;
 
-      const certLinks = await (tx || db.replicaNode())(TableName.PkiCertificateInstallationCert)
+      const certLinks = (await (tx || db.replicaNode())(TableName.PkiCertificateInstallationCert)
         .select(
           selectAllTableCols(TableName.PkiCertificateInstallationCert),
           `${TableName.Certificate}.commonName`,
@@ -256,14 +262,35 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
         )
         .leftJoin(TableName.CertificateSecret, `${TableName.CertificateSecret}.certId`, `${TableName.Certificate}.id`)
         .where(`${TableName.PkiCertificateInstallationCert}.installationId`, id)
-        .orderBy(`${TableName.PkiCertificateInstallationCert}.lastSeenAt`, "desc");
+        .orderBy(
+          `${TableName.PkiCertificateInstallationCert}.lastSeenAt`,
+          "desc"
+        )) as (TPkiCertificateInstallationCerts &
+        Pick<
+          TCertificates,
+          | "commonName"
+          | "serialNumber"
+          | "notBefore"
+          | "notAfter"
+          | "status"
+          | "deletedAt"
+          | "friendlyName"
+          | "fingerprintSha256"
+          | "altNames"
+          | "applicationId"
+          | "subjectOrganization"
+          | "subjectOrganizationalUnit"
+          | "subjectCountry"
+          | "subjectState"
+          | "subjectLocality"
+        > & { privateKeyRef: string | null })[];
 
       const certificateIds = certLinks.map((link) => link.certificateId);
       const metadataRows = certificateIds.length
         ? await knex(TableName.ResourceMetadata)
             .select("certificateId", "key", "value")
             .whereIn("certificateId", certificateIds)
-        : [];
+        : ([] as Pick<TResourceMetadata, "certificateId" | "key" | "value">[]);
 
       return {
         ...installation,

@@ -176,7 +176,7 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" sideOffset={2}>
                           <DropdownMenuItem
-                            isDisabled={!canReadCertificate}
+                            isDisabled={!canReadCertificate || !cert.serialNumber}
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePopUpOpen("certificateExport", {
@@ -190,7 +190,7 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                             Export Certificate
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            isDisabled={!canReadCertificate}
+                            isDisabled={!canReadCertificate || !cert.serialNumber}
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePopUpOpen("certificateCert", {
