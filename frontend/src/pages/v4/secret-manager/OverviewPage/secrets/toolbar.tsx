@@ -1,6 +1,5 @@
 import { type ReactNode, useRef, useState } from "react";
 import {
-  ChevronsLeftRightEllipsisIcon,
   ClipboardPasteIcon,
   FilterIcon,
   FingerprintIcon,
@@ -223,12 +222,6 @@ export function AddNewMenu({
         )}
         {item("dynamic", "Add dynamic secret", <Icon icon={FingerprintIcon} />)}
         {item("rotation", "Add secret rotation", <Icon name="sync" />)}
-        {item(
-          "proxy",
-          "Add proxied service",
-          <Icon icon={ChevronsLeftRightEllipsisIcon} />,
-          "Select a single environment to add a proxied service"
-        )}
         {item("honey", "Add honey token", <Icon icon={HexagonIcon} />)}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
