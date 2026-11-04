@@ -319,6 +319,8 @@ export type TSecretReferenceTraceNode = {
   value?: string;
   environment: string;
   secretPath: string;
+  projectSlug?: string;
+  exists?: boolean;
   children: TSecretReferenceTraceNode[];
 };
 
