@@ -362,7 +362,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
         <Button
           type="submit"
           form="new-project-form"
-          variant="project"
+          variant={selectedProjectType === ProjectType.AgentVault ? "av" : "project"}
           isPending={isSubmitting}
           isDisabled={isSubmitting}
         >

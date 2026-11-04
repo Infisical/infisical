@@ -76,7 +76,7 @@ export const SessionDetailSheet = ({
         {!session && isPending && (
           <Empty className="m-4 border">
             <EmptyHeader>
-              <Spinner size="sm" />
+              <Spinner size="sm" className="fill-product-av" />
             </EmptyHeader>
           </Empty>
         )}

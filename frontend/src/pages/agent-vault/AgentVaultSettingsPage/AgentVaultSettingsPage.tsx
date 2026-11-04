@@ -29,14 +29,16 @@ export const AgentVaultSettingsPage = () => {
             : "View this project's name and ID."
         }
       />
-      <div className="flex flex-col gap-8">
-        {isAdmin && <SessionLogAlerts />}
-        {isAdmin && <SessionLogSection />}
-        <div>
-          <ProjectOverviewChangeSection />
-          {isAdmin && <DeleteProjectSection />}
-        </div>
-      </div>
+      <ProjectOverviewChangeSection />
+      {isAdmin && (
+        <>
+          <div className="mb-6 flex flex-col gap-8">
+            <SessionLogAlerts />
+            <SessionLogSection />
+          </div>
+          <DeleteProjectSection />
+        </>
+      )}
     </div>
   );
 };

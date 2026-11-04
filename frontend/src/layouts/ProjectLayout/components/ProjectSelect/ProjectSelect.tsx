@@ -115,6 +115,8 @@ const ProjectSelectInner = () => {
     return null;
   }
 
+  const isAgentVault = currentWorkspace.type === ProjectType.AgentVault;
+
   return (
     <NavbarBlock className="min-w-16">
       <NavbarSwitcher
@@ -135,9 +137,11 @@ const ProjectSelectInner = () => {
           }}
           className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
-          <ProjectIcon className="size-[14px] shrink-0 text-project" />
+          <ProjectIcon
+            className={`size-[14px] shrink-0 ${isAgentVault ? "text-product-av" : "text-project"}`}
+          />
           <span className="truncate">{currentWorkspace?.name}</span>
-          <Badge variant="project" className="hidden lg:inline-flex">
+          <Badge variant={isAgentVault ? "av" : "project"} className="hidden lg:inline-flex">
             Project
           </Badge>
         </Link>
