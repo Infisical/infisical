@@ -7,6 +7,7 @@ import type { SidebarHelp } from "@app/components/v4/ui/sidebar";
 import type { TopBarAccount } from "@app/components/v4/ui/top-bar";
 
 import { useV4Session } from "../data/session/contract";
+import { useClearThemeOverride } from "../useV4Theme";
 
 const announcementItems: Announcement[] = [
   {
@@ -27,6 +28,7 @@ const announcementItems: Announcement[] = [
 export const useShellChrome = () => {
   const { user } = useV4Session();
   const { theme, setTheme } = useTheme();
+  const clearThemeOverride = useClearThemeOverride();
   const [unseen, setUnseen] = useState(() => announcementItems.map((item) => item.id));
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const openAnnouncements = () => setAnnouncementsOpen(true);
@@ -37,7 +39,13 @@ export const useShellChrome = () => {
       { label: "Personal settings", icon: "user" },
       { label: "Invite users", icon: "user-plus" }
     ],
-    theme: { value: theme, onChange: (value) => setTheme(value, "profile-menu") },
+    theme: {
+      value: theme,
+      onChange: (value) => {
+        setTheme(value, "profile-menu");
+        clearThemeOverride();
+      }
+    },
     endItems: [
       { label: "Copy token", icon: "copy" },
       { type: "separator" },
