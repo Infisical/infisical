@@ -67,6 +67,7 @@ import { Route as userPersonalSettingsPageRouteImport } from './pages/user/Perso
 import { Route as v4SecretScanningSecretScanningFindingsPageRouteImport } from './pages/v4/secret-scanning/SecretScanningFindingsPage/route'
 import { Route as v4OrganizationRoleByIDPageRouteImport } from './pages/v4/organization/RoleByIDPage/route'
 import { Route as v4OrganizationNotPortedPageProjectsRouteImport } from './pages/v4/organization/NotPortedPage/projects/route'
+import { Route as v4RedirectsPamAccessRedirectRouteImport } from './pages/v4/redirects/PamAccessRedirect/route'
 import { Route as v4OrganizationUserDetailsByIDPageRouteImport } from './pages/v4/organization/UserDetailsByIDPage/route'
 import { Route as v4OrganizationIdentityDetailsByIDPageRouteImport } from './pages/v4/organization/IdentityDetailsByIDPage/route'
 import { Route as v4OrganizationGroupDetailsByIDPageRouteImport } from './pages/v4/organization/GroupDetailsByIDPage/route'
@@ -78,6 +79,7 @@ import { Route as adminCachingPageRouteImport } from './pages/admin/CachingPage/
 import { Route as adminAuthenticationPageRouteImport } from './pages/admin/AuthenticationPage/route'
 import { Route as adminAccessManagementPageRouteImport } from './pages/admin/AccessManagementPage/route'
 import { Route as v4OrganizationProjectsPageRouteImport } from './pages/v4/organization/ProjectsPage/route'
+import { Route as v4RedirectsAgentVaultIndexRedirectRouteImport } from './pages/v4/redirects/AgentVaultIndexRedirect/route'
 import { Route as adminGeneralPageRouteImport } from './pages/admin/GeneralPage/route'
 import { Route as redirectsSettingsOauthCallbackRedirectImport } from './pages/redirects/settings-oauth-callback-redirect'
 import { Route as organizationSecretSharingPageSecretSharingRedirectRouteImport } from './pages/organization/SecretSharingPage/SecretSharingRedirectRoute'
@@ -864,6 +866,13 @@ const v4OrganizationNotPortedPageProjectsRouteRoute =
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
+const v4RedirectsPamAccessRedirectRouteRoute =
+  v4RedirectsPamAccessRedirectRouteImport.update({
+    id: '/pam/access',
+    path: '/pam/access',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
 const v4OrganizationUserDetailsByIDPageRouteRoute =
   v4OrganizationUserDetailsByIDPageRouteImport.update({
     id: '/members/$membershipId',
@@ -937,6 +946,13 @@ const v4OrganizationProjectsPageRouteRoute =
     id: '/',
     path: '/',
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
+const v4RedirectsAgentVaultIndexRedirectRouteRoute =
+  v4RedirectsAgentVaultIndexRedirectRouteImport.update({
+    id: '/agent-vault/',
+    path: '/agent-vault/',
+    getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
 const adminGeneralPageRouteRoute = adminGeneralPageRouteImport.update({
@@ -3427,6 +3443,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof adminGeneralPageRouteImport
       parentRoute: typeof adminLayoutImport
     }
+    '/v4/organizations/$orgId/agent-vault/': {
+      id: '/v4/organizations/$orgId/agent-vault/'
+      path: '/agent-vault'
+      fullPath: '/v4/organizations/$orgId/agent-vault'
+      preLoaderRoute: typeof v4RedirectsAgentVaultIndexRedirectRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/projects/': {
       id: '/v4/organizations/$orgId/projects/'
       path: '/'
@@ -3502,6 +3525,13 @@ declare module '@tanstack/react-router' {
       path: '/members/$membershipId'
       fullPath: '/v4/organizations/$orgId/members/$membershipId'
       preLoaderRoute: typeof v4OrganizationUserDetailsByIDPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
+    '/v4/organizations/$orgId/pam/access': {
+      id: '/v4/organizations/$orgId/pam/access'
+      path: '/pam/access'
+      fullPath: '/v4/organizations/$orgId/pam/access'
+      preLoaderRoute: typeof v4RedirectsPamAccessRedirectRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
     '/v4/organizations/$orgId/projects/$': {
@@ -5476,10 +5506,12 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationIntegrationsPageRouteRoute: typeof v4OrganizationIntegrationsPageRouteRoute
   v4OrganizationSettingsPageRouteRoute: typeof v4OrganizationSettingsPageRouteRoute
   V4OrganizationsOrgIdProjectsRoute: typeof V4OrganizationsOrgIdProjectsRouteWithChildren
+  v4RedirectsAgentVaultIndexRedirectRouteRoute: typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   v4CertManagerInventoryPageRouteRoute: typeof v4CertManagerInventoryPageRouteRoute
   v4OrganizationGroupDetailsByIDPageRouteRoute: typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   v4OrganizationIdentityDetailsByIDPageRouteRoute: typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   v4OrganizationUserDetailsByIDPageRouteRoute: typeof v4OrganizationUserDetailsByIDPageRouteRoute
+  v4RedirectsPamAccessRedirectRouteRoute: typeof v4RedirectsPamAccessRedirectRouteRoute
   v4OrganizationRoleByIDPageRouteRoute: typeof v4OrganizationRoleByIDPageRouteRoute
   v4SecretScanningSecretScanningFindingsPageRouteRoute: typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
   v4CertManagerCertificateDetailsByIDPageRouteRoute: typeof v4CertManagerCertificateDetailsByIDPageRouteRoute
@@ -5495,6 +5527,8 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
   v4OrganizationSettingsPageRouteRoute: v4OrganizationSettingsPageRouteRoute,
   V4OrganizationsOrgIdProjectsRoute:
     V4OrganizationsOrgIdProjectsRouteWithChildren,
+  v4RedirectsAgentVaultIndexRedirectRouteRoute:
+    v4RedirectsAgentVaultIndexRedirectRouteRoute,
   v4CertManagerInventoryPageRouteRoute: v4CertManagerInventoryPageRouteRoute,
   v4OrganizationGroupDetailsByIDPageRouteRoute:
     v4OrganizationGroupDetailsByIDPageRouteRoute,
@@ -5502,6 +5536,8 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     v4OrganizationIdentityDetailsByIDPageRouteRoute,
   v4OrganizationUserDetailsByIDPageRouteRoute:
     v4OrganizationUserDetailsByIDPageRouteRoute,
+  v4RedirectsPamAccessRedirectRouteRoute:
+    v4RedirectsPamAccessRedirectRouteRoute,
   v4OrganizationRoleByIDPageRouteRoute: v4OrganizationRoleByIDPageRouteRoute,
   v4SecretScanningSecretScanningFindingsPageRouteRoute:
     v4SecretScanningSecretScanningFindingsPageRouteRoute,
@@ -6953,6 +6989,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/projects': typeof V4OrganizationsOrgIdProjectsRouteWithChildren
   '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/admin/': typeof adminGeneralPageRouteRoute
+  '/v4/organizations/$orgId/agent-vault': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   '/v4/organizations/$orgId/projects/': typeof v4OrganizationProjectsPageRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
@@ -6964,6 +7001,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
+  '/v4/organizations/$orgId/pam/access': typeof v4RedirectsPamAccessRedirectRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
@@ -7279,6 +7317,7 @@ export interface FileRoutesByTo {
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
+  '/v4/organizations/$orgId/agent-vault': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
@@ -7290,6 +7329,7 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
+  '/v4/organizations/$orgId/pam/access': typeof v4RedirectsPamAccessRedirectRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
@@ -7592,6 +7632,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/projects': typeof V4OrganizationsOrgIdProjectsRouteWithChildren
   '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/': typeof adminGeneralPageRouteRoute
+  '/v4/organizations/$orgId/agent-vault/': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   '/v4/organizations/$orgId/projects/': typeof v4OrganizationProjectsPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': typeof adminAccessManagementPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': typeof adminAuthenticationPageRouteRoute
@@ -7603,6 +7644,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
+  '/v4/organizations/$orgId/pam/access': typeof v4RedirectsPamAccessRedirectRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
@@ -7932,6 +7974,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/projects'
     | '/design-system/components/$group/$component'
     | '/admin/'
+    | '/v4/organizations/$orgId/agent-vault'
     | '/v4/organizations/$orgId/projects/'
     | '/admin/access-management'
     | '/admin/authentication'
@@ -7943,6 +7986,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
+    | '/v4/organizations/$orgId/pam/access'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/findings'
@@ -8257,6 +8301,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/pam/access'
     | '/design-system/components/$group/$component'
+    | '/v4/organizations/$orgId/agent-vault'
     | '/v4/organizations/$orgId/projects'
     | '/admin/access-management'
     | '/admin/authentication'
@@ -8268,6 +8313,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
+    | '/v4/organizations/$orgId/pam/access'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/findings'
@@ -8568,6 +8614,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/projects'
     | '/design-system/components/$group/$component'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/'
+    | '/v4/organizations/$orgId/agent-vault/'
     | '/v4/organizations/$orgId/projects/'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
@@ -8579,6 +8626,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
+    | '/v4/organizations/$orgId/pam/access'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/findings'
@@ -9100,10 +9148,12 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/integrations",
         "/v4/organizations/$orgId/settings",
         "/v4/organizations/$orgId/projects",
+        "/v4/organizations/$orgId/agent-vault/",
         "/v4/organizations/$orgId/cert-manager/inventory",
         "/v4/organizations/$orgId/groups/$groupId",
         "/v4/organizations/$orgId/identities/$identityId",
         "/v4/organizations/$orgId/members/$membershipId",
+        "/v4/organizations/$orgId/pam/access",
         "/v4/organizations/$orgId/roles/$roleId",
         "/v4/organizations/$orgId/secret-scanning/findings",
         "/v4/organizations/$orgId/cert-manager/certificates/$certificateId"
@@ -9243,6 +9293,10 @@ export const routeTree = rootRoute
       "filePath": "admin/GeneralPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
     },
+    "/v4/organizations/$orgId/agent-vault/": {
+      "filePath": "v4/redirects/AgentVaultIndexRedirect/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
     "/v4/organizations/$orgId/projects/": {
       "filePath": "v4/organization/ProjectsPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
@@ -9285,6 +9339,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/members/$membershipId": {
       "filePath": "v4/organization/UserDetailsByIDPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/pam/access": {
+      "filePath": "v4/redirects/PamAccessRedirect/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/projects/$": {

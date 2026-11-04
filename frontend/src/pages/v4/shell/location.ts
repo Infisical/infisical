@@ -2,8 +2,10 @@ import { urlSlugToProjectType } from "@app/helpers/project";
 import type { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
+  agentVaultSections,
   kmsSections,
   orgSections,
+  pamSections,
   pkiSections,
   productOf,
   productSections,
@@ -51,6 +53,16 @@ const locate = (path: string, isSubOrganization: boolean): Omit<ShellLocation, "
       level: "scanning",
       sections: scanningSections,
       product: urlSlugToProjectType("secret-scanning")!
+    };
+  }
+  if (/^\/pam(\/|$)/.test(path)) {
+    return { level: "pam", sections: pamSections, product: urlSlugToProjectType("pam")! };
+  }
+  if (/^\/agent-vault(\/|$)/.test(path)) {
+    return {
+      level: "agent-vault",
+      sections: agentVaultSections,
+      product: urlSlugToProjectType("agent-vault")!
     };
   }
   const product = urlSlugToProjectType(

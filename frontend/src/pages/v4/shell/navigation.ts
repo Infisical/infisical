@@ -1,7 +1,16 @@
 import type { IconName } from "@app/components/v4/ui/icon";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-export type ShellLevel = "org" | "settings" | "product" | "project" | "pki" | "kms" | "scanning";
+export type ShellLevel =
+  | "org"
+  | "settings"
+  | "product"
+  | "project"
+  | "pki"
+  | "kms"
+  | "scanning"
+  | "pam"
+  | "agent-vault";
 
 export type ShellNavItem = {
   id: string;
@@ -47,8 +56,8 @@ export const productOf = (type: ProjectType) =>
 export const productHome = (product: ShellProduct) => {
   if (product.type === ProjectType.CertificateManager) return "/cert-manager/overview";
   if (product.type === ProjectType.SecretScanning) return "/secret-scanning/data-sources";
-  if (product.type === ProjectType.PAM) return "/pam/access";
-  if (product.type === ProjectType.AgentVault) return "/agent-vault";
+  if (product.type === ProjectType.PAM) return "/pam/accounts";
+  if (product.type === ProjectType.AgentVault) return "/agent-vault/sessions";
   return `/projects/${product.slug}`;
 };
 
@@ -238,4 +247,52 @@ export const scanningSections: readonly ShellNavSection[] = [
     ]
   },
   { label: "Administration", items: [access(scanning), audit(scanning), settings(scanning)] }
+];
+
+const pam = "/pam";
+export const pamSections: readonly ShellNavSection[] = [
+  { items: [{ id: "accounts", label: "Accounts", icon: "folder-open", path: `${pam}/accounts` }] },
+  {
+    label: "Manage",
+    items: [
+      { id: "templates", label: "Account templates", icon: "file", path: `${pam}/templates` },
+      { id: "discovery", label: "Discovery", icon: "search", path: `${pam}/discovery` }
+    ]
+  },
+  {
+    label: "Monitor",
+    items: [
+      { id: "sessions", label: "Sessions", icon: "monitor", path: `${pam}/sessions` },
+      {
+        id: "approval-requests",
+        label: "Approval requests",
+        icon: "inbox",
+        path: `${pam}/approval-requests`
+      },
+      audit(pam)
+    ]
+  },
+  { label: "Configure", items: [access(pam)] }
+];
+
+const agentVault = "/agent-vault";
+export const agentVaultSections: readonly ShellNavSection[] = [
+  {
+    items: [
+      { id: "sessions", label: "Sessions", icon: "user", path: `${agentVault}/sessions` },
+      {
+        id: "access-bundles",
+        label: "Access bundles",
+        icon: "folder",
+        path: `${agentVault}/access-bundles`
+      },
+      { id: "variables", label: "Variables", icon: "key", path: `${agentVault}/variables` },
+      { id: "skills", label: "Skills", icon: "file", path: `${agentVault}/skills` }
+    ]
+  },
+  {
+    label: "Infrastructure",
+    items: [{ id: "proxies", label: "Proxies", icon: "machine", path: `${agentVault}/proxies` }]
+  },
+  { label: "Administration", items: [access(agentVault), audit(agentVault), settings(agentVault)] }
 ];
