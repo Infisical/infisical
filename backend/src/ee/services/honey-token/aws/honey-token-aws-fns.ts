@@ -4,7 +4,8 @@ import {
   CreateUserCommand,
   DeleteAccessKeyCommand,
   DeleteUserCommand,
-  IAMClient
+  IAMClient,
+  NoSuchEntityException
 } from "@aws-sdk/client-iam";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -132,28 +133,23 @@ export const revokeAwsIamHoneyTokenCredentials = async ({
   const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
   const iam = new IAMClient({ credentials: awsCredentials, region });
 
-  try {
-    await iam.send(
-      new DeleteAccessKeyCommand({
-        UserName: iamUserName,
-        AccessKeyId: accessKeyId
-      })
-    );
-  } catch (err) {
-    logger.info(
-      { err, iamUserName, accessKeyId },
-      "Skipping AWS access key deletion for honey token because it may already be deleted"
-    );
-  }
+  // NoSuchEntity means a previous attempt or a manual cleanup already removed it. Anything else
+  // (throttling, a role that lost iam:DeleteUser) has to surface so the caller can retry, or the IAM user is
+  // silently left behind.
+  const ignoreMissing = (resource: string) => (err: unknown) => {
+    if (err instanceof NoSuchEntityException) {
+      logger.info(`Honey token AWS ${resource} already deleted [iamUserName=${iamUserName}]`);
+      return;
+    }
+    throw new BadRequestError({
+      message: `Failed to delete the honey token's AWS ${resource} for IAM user '${iamUserName}': ${(err as Error).message}`
+    });
+  };
 
-  try {
-    await iam.send(new DeleteUserCommand({ UserName: iamUserName }));
-  } catch (err) {
-    logger.info(
-      { err, iamUserName, accessKeyId },
-      "Skipping AWS IAM user deletion for honey token because it may already be deleted"
-    );
-  }
+  await iam
+    .send(new DeleteAccessKeyCommand({ UserName: iamUserName, AccessKeyId: accessKeyId }))
+    .catch(ignoreMissing("access key"));
+  await iam.send(new DeleteUserCommand({ UserName: iamUserName })).catch(ignoreMissing("user"));
 };
 
 export const parseAwsHoneyTokenDecryptedCredentials = (value: unknown): TAwsHoneyTokenDecryptedCredentials => {
