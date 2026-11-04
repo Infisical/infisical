@@ -1,4 +1,5 @@
+import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
 import { kmsLive } from "./kms/live";
 
-export const liveAdapters: V4Adapters = { kms: kmsLive };
+export const liveAdapters: V4Adapters = { kms: kmsLive, access: accessLive };
