@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  SecretType,
   TableName,
   TFolderCheckpointResources,
   TFolderCheckpoints,
@@ -46,6 +47,11 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
           `${TableName.FolderCheckpointResources}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
+        .where((qb) => {
+          void qb
+            .whereNull(`${TableName.SecretVersionV2}.id`)
+            .orWhere(`${TableName.SecretVersionV2}.type`, SecretType.Shared);
+        })
         .select(selectAllTableCols(TableName.FolderCheckpointResources))
         .select(
           db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),

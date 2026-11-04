@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  SecretType,
   TableName,
   TFolderCommitChanges,
   TFolderCommits,
@@ -105,6 +106,11 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
           if (projectId) {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
           }
+        })
+        .where((qb) => {
+          void qb
+            .whereNull(`${TableName.SecretVersionV2}.id`)
+            .orWhere(`${TableName.SecretVersionV2}.type`, SecretType.Shared);
         })
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .select(
