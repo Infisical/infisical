@@ -67,21 +67,26 @@ const buildUrl = (sslEnabled: boolean, host: string, port: number) =>
 
 const runWithClient = async <T>(
   credentials: TClickHouseConnection["credentials"],
-  url: string,
-  agentOptions: Parameters<typeof buildUncachedSsrfSafeAgent>[1],
-  operation: (client: ClickHouseClient) => Promise<T>
+  operation: (client: ClickHouseClient) => Promise<T>,
+  proxyPort?: number
 ) => {
+  const targetUrl = buildUrl(credentials.sslEnabled, credentials.host, credentials.port);
+  const isProxied = proxyPort !== undefined;
+  const url = isProxied ? buildUrl(credentials.sslEnabled, "localhost", proxyPort) : targetUrl;
+
   const client = createClient({
     url,
     username: credentials.username,
     password: credentials.password,
     database: credentials.database,
     request_timeout: REQUEST_TIMEOUT_MS,
-    // carries the TLS options the client's own tls config can't express
+    // through the gateway's local proxy, requests and TLS still name the real server, and there is
+    // nothing to validate or pin. Direct connections pin DNS to the IPs that pass validation.
+    ...(isProxied && { http_headers: { Host: new URL(targetUrl).host } }),
     http_agent: await buildUncachedSsrfSafeAgent(url, {
       ca: credentials.sslCertificate,
       rejectUnauthorized: credentials.sslRejectUnauthorized,
-      ...agentOptions
+      ...(isProxied && { allowPrivateIps: true, servername: credentials.host })
     })
   });
 
@@ -117,29 +122,13 @@ export const executeWithClickHouseClient = async <T>(
       throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
     }
 
-    return withGatewayV2Proxy(
-      // the proxy listens locally, so there is nothing to validate or pin, but TLS still verifies the real host
-      (proxyPort) =>
-        runWithClient(
-          credentials,
-          buildUrl(credentials.sslEnabled, "localhost", proxyPort),
-          { allowPrivateIps: true, servername: credentials.host },
-          operation
-        ),
-      {
-        protocol: GatewayProxyProtocol.Tcp,
-        ...platformConnectionDetails
-      }
-    );
+    return withGatewayV2Proxy((proxyPort) => runWithClient(credentials, operation, proxyPort), {
+      protocol: GatewayProxyProtocol.Tcp,
+      ...platformConnectionDetails
+    });
   }
 
-  // the agent pins DNS to the IPs that pass validation
-  return runWithClient(
-    credentials,
-    buildUrl(credentials.sslEnabled, credentials.host, credentials.port),
-    {},
-    operation
-  );
+  return runWithClient(credentials, operation);
 };
 
 export const validateClickHouseConnectionCredentials = async (
