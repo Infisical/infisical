@@ -106,13 +106,16 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
     enabled: hasFolderRbacPlan
   });
   const {
-    data: folderAccess,
+    data,
     isPending: isQueryPending,
-    isError,
+    isError: isQueryError,
     refetch
   } = actor.type === "user" ? userAccess : identityAccess;
-  // a disabled query stays pending, so without the plan the card falls through to its empty state
+  // a disabled query stays pending and keeps grants cached from before a plan change, so without
+  // the plan its state is ignored and the card shows the plan-gated empty state
+  const folderAccess = hasFolderRbacPlan ? data : undefined;
   const isPending = hasFolderRbacPlan && isQueryPending;
+  const isError = hasFolderRbacPlan && isQueryError;
 
   const deleteUserAccess = useDeleteUserFolderAccess();
   const deleteIdentityAccess = useDeleteIdentityFolderAccess();
@@ -348,13 +351,22 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
               </Table>
             ) : (
               <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
-                  <EmptyDescription>
-                    Grant access to a folder to override {actor.type === "user" ? "their" : "its"}{" "}
-                    project roles within it
-                  </EmptyDescription>
-                </EmptyHeader>
+                {hasFolderRbacPlan ? (
+                  <EmptyHeader>
+                    <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
+                    <EmptyDescription>
+                      Grant access to a folder to override {actor.type === "user" ? "their" : "its"}{" "}
+                      project roles within it
+                    </EmptyDescription>
+                  </EmptyHeader>
+                ) : (
+                  <EmptyHeader>
+                    <EmptyTitle>Folder access controls aren&apos;t on your plan</EmptyTitle>
+                    <EmptyDescription>
+                      Upgrade to grant this {actorNoun} access to specific folders
+                    </EmptyDescription>
+                  </EmptyHeader>
+                )}
                 {!hideActions && (
                   <EmptyContent>
                     <Button

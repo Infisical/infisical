@@ -4169,16 +4169,20 @@ const OverviewPageContent = () => {
             {isSingleEnvView && (
               <Tooltip open={canManageCurrentFolderAccess ? false : undefined}>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="xs"
+                  <span
+                    tabIndex={canManageCurrentFolderAccess ? undefined : 0}
                     className="mr-1.5 shrink-0"
-                    isDisabled={!canManageCurrentFolderAccess}
-                    onClick={handleCurrentFolderAccessOpen}
                   >
-                    <UsersIcon />
-                    Manage Access
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      isDisabled={!canManageCurrentFolderAccess}
+                      onClick={handleCurrentFolderAccessOpen}
+                    >
+                      <UsersIcon />
+                      Manage Access
+                    </Button>
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent>Access Restricted</TooltipContent>
               </Tooltip>
