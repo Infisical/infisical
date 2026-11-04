@@ -72,6 +72,7 @@ import { Route as v4RedirectsPamAccessRedirectRouteImport } from './pages/v4/red
 import { Route as v4OrganizationUserDetailsByIDPageRouteImport } from './pages/v4/organization/UserDetailsByIDPage/route'
 import { Route as v4OrganizationIdentityDetailsByIDPageRouteImport } from './pages/v4/organization/IdentityDetailsByIDPage/route'
 import { Route as v4OrganizationGroupDetailsByIDPageRouteImport } from './pages/v4/organization/GroupDetailsByIDPage/route'
+import { Route as v4CertManagerDashboardPageRouteImport } from './pages/v4/cert-manager/DashboardPage/route'
 import { Route as v4CertManagerInventoryPageRouteImport } from './pages/v4/cert-manager/InventoryPage/route'
 import { Route as adminIntegrationsPageRouteImport } from './pages/admin/IntegrationsPage/route'
 import { Route as adminEnvironmentPageRouteImport } from './pages/admin/EnvironmentPage/route'
@@ -81,6 +82,7 @@ import { Route as adminAuthenticationPageRouteImport } from './pages/admin/Authe
 import { Route as adminAccessManagementPageRouteImport } from './pages/admin/AccessManagementPage/route'
 import { Route as v4RedirectsSecretScanningIndexRedirectRouteImport } from './pages/v4/redirects/SecretScanningIndexRedirect/route'
 import { Route as v4OrganizationProjectsPageRouteImport } from './pages/v4/organization/ProjectsPage/route'
+import { Route as v4CertManagerIndexPageRouteImport } from './pages/v4/cert-manager/IndexPage/route'
 import { Route as v4RedirectsAgentVaultIndexRedirectRouteImport } from './pages/v4/redirects/AgentVaultIndexRedirect/route'
 import { Route as adminGeneralPageRouteImport } from './pages/admin/GeneralPage/route'
 import { Route as redirectsSettingsOauthCallbackRedirectImport } from './pages/redirects/settings-oauth-callback-redirect'
@@ -903,6 +905,13 @@ const v4OrganizationGroupDetailsByIDPageRouteRoute =
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
+const v4CertManagerDashboardPageRouteRoute =
+  v4CertManagerDashboardPageRouteImport.update({
+    id: '/cert-manager/overview',
+    path: '/cert-manager/overview',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
 const v4CertManagerInventoryPageRouteRoute =
   v4CertManagerInventoryPageRouteImport.update({
     id: '/cert-manager/inventory',
@@ -962,6 +971,13 @@ const v4OrganizationProjectsPageRouteRoute =
     id: '/',
     path: '/',
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
+const v4CertManagerIndexPageRouteRoute =
+  v4CertManagerIndexPageRouteImport.update({
+    id: '/cert-manager/',
+    path: '/cert-manager/',
+    getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
 const v4RedirectsAgentVaultIndexRedirectRouteRoute =
@@ -3466,6 +3482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4RedirectsAgentVaultIndexRedirectRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/cert-manager/': {
+      id: '/v4/organizations/$orgId/cert-manager/'
+      path: '/cert-manager'
+      fullPath: '/v4/organizations/$orgId/cert-manager'
+      preLoaderRoute: typeof v4CertManagerIndexPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/projects/': {
       id: '/v4/organizations/$orgId/projects/'
       path: '/'
@@ -3527,6 +3550,13 @@ declare module '@tanstack/react-router' {
       path: '/cert-manager/inventory'
       fullPath: '/v4/organizations/$orgId/cert-manager/inventory'
       preLoaderRoute: typeof v4CertManagerInventoryPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
+    '/v4/organizations/$orgId/cert-manager/overview': {
+      id: '/v4/organizations/$orgId/cert-manager/overview'
+      path: '/cert-manager/overview'
+      fullPath: '/v4/organizations/$orgId/cert-manager/overview'
+      preLoaderRoute: typeof v4CertManagerDashboardPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
     '/v4/organizations/$orgId/groups/$groupId': {
@@ -5537,8 +5567,10 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationSettingsPageRouteRoute: typeof v4OrganizationSettingsPageRouteRoute
   V4OrganizationsOrgIdProjectsRoute: typeof V4OrganizationsOrgIdProjectsRouteWithChildren
   v4RedirectsAgentVaultIndexRedirectRouteRoute: typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
+  v4CertManagerIndexPageRouteRoute: typeof v4CertManagerIndexPageRouteRoute
   v4RedirectsSecretScanningIndexRedirectRouteRoute: typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   v4CertManagerInventoryPageRouteRoute: typeof v4CertManagerInventoryPageRouteRoute
+  v4CertManagerDashboardPageRouteRoute: typeof v4CertManagerDashboardPageRouteRoute
   v4OrganizationGroupDetailsByIDPageRouteRoute: typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   v4OrganizationIdentityDetailsByIDPageRouteRoute: typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   v4OrganizationUserDetailsByIDPageRouteRoute: typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -5561,9 +5593,11 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     V4OrganizationsOrgIdProjectsRouteWithChildren,
   v4RedirectsAgentVaultIndexRedirectRouteRoute:
     v4RedirectsAgentVaultIndexRedirectRouteRoute,
+  v4CertManagerIndexPageRouteRoute: v4CertManagerIndexPageRouteRoute,
   v4RedirectsSecretScanningIndexRedirectRouteRoute:
     v4RedirectsSecretScanningIndexRedirectRouteRoute,
   v4CertManagerInventoryPageRouteRoute: v4CertManagerInventoryPageRouteRoute,
+  v4CertManagerDashboardPageRouteRoute: v4CertManagerDashboardPageRouteRoute,
   v4OrganizationGroupDetailsByIDPageRouteRoute:
     v4OrganizationGroupDetailsByIDPageRouteRoute,
   v4OrganizationIdentityDetailsByIDPageRouteRoute:
@@ -7026,6 +7060,7 @@ export interface FileRoutesByFullPath {
   '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/admin/': typeof adminGeneralPageRouteRoute
   '/v4/organizations/$orgId/agent-vault': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
+  '/v4/organizations/$orgId/cert-manager': typeof v4CertManagerIndexPageRouteRoute
   '/v4/organizations/$orgId/projects/': typeof v4OrganizationProjectsPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning': typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
@@ -7035,6 +7070,7 @@ export interface FileRoutesByFullPath {
   '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -7356,6 +7392,7 @@ export interface FileRoutesByTo {
   '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/v4/organizations/$orgId/agent-vault': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
+  '/v4/organizations/$orgId/cert-manager': typeof v4CertManagerIndexPageRouteRoute
   '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning': typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
@@ -7365,6 +7402,7 @@ export interface FileRoutesByTo {
   '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -7673,6 +7711,7 @@ export interface FileRoutesById {
   '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/': typeof adminGeneralPageRouteRoute
   '/v4/organizations/$orgId/agent-vault/': typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
+  '/v4/organizations/$orgId/cert-manager/': typeof v4CertManagerIndexPageRouteRoute
   '/v4/organizations/$orgId/projects/': typeof v4OrganizationProjectsPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/': typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': typeof adminAccessManagementPageRouteRoute
@@ -7682,6 +7721,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout/environment': typeof adminEnvironmentPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -8017,6 +8057,7 @@ export interface FileRouteTypes {
     | '/design-system/components/$group/$component'
     | '/admin/'
     | '/v4/organizations/$orgId/agent-vault'
+    | '/v4/organizations/$orgId/cert-manager'
     | '/v4/organizations/$orgId/projects/'
     | '/v4/organizations/$orgId/secret-scanning'
     | '/admin/access-management'
@@ -8026,6 +8067,7 @@ export interface FileRouteTypes {
     | '/admin/environment'
     | '/admin/integrations'
     | '/v4/organizations/$orgId/cert-manager/inventory'
+    | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -8346,6 +8388,7 @@ export interface FileRouteTypes {
     | '/pam/access'
     | '/design-system/components/$group/$component'
     | '/v4/organizations/$orgId/agent-vault'
+    | '/v4/organizations/$orgId/cert-manager'
     | '/v4/organizations/$orgId/projects'
     | '/v4/organizations/$orgId/secret-scanning'
     | '/admin/access-management'
@@ -8355,6 +8398,7 @@ export interface FileRouteTypes {
     | '/admin/environment'
     | '/admin/integrations'
     | '/v4/organizations/$orgId/cert-manager/inventory'
+    | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -8661,6 +8705,7 @@ export interface FileRouteTypes {
     | '/design-system/components/$group/$component'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/'
     | '/v4/organizations/$orgId/agent-vault/'
+    | '/v4/organizations/$orgId/cert-manager/'
     | '/v4/organizations/$orgId/projects/'
     | '/v4/organizations/$orgId/secret-scanning/'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
@@ -8670,6 +8715,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout/environment'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/integrations'
     | '/v4/organizations/$orgId/cert-manager/inventory'
+    | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -9197,8 +9243,10 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/settings",
         "/v4/organizations/$orgId/projects",
         "/v4/organizations/$orgId/agent-vault/",
+        "/v4/organizations/$orgId/cert-manager/",
         "/v4/organizations/$orgId/secret-scanning/",
         "/v4/organizations/$orgId/cert-manager/inventory",
+        "/v4/organizations/$orgId/cert-manager/overview",
         "/v4/organizations/$orgId/groups/$groupId",
         "/v4/organizations/$orgId/identities/$identityId",
         "/v4/organizations/$orgId/members/$membershipId",
@@ -9347,6 +9395,10 @@ export const routeTree = rootRoute
       "filePath": "v4/redirects/AgentVaultIndexRedirect/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
+    "/v4/organizations/$orgId/cert-manager/": {
+      "filePath": "v4/cert-manager/IndexPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
     "/v4/organizations/$orgId/projects/": {
       "filePath": "v4/organization/ProjectsPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
@@ -9381,6 +9433,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/cert-manager/inventory": {
       "filePath": "v4/cert-manager/InventoryPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/cert-manager/overview": {
+      "filePath": "v4/cert-manager/DashboardPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/groups/$groupId": {

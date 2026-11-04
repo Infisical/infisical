@@ -49,6 +49,8 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "v4/secret-scanning/SecretScanningDataSourcesPage/route.tsx"
     ),
     route("/secret-scanning/findings", "v4/secret-scanning/SecretScanningFindingsPage/route.tsx"),
+    route("/cert-manager/", "v4/cert-manager/IndexPage/route.tsx"),
+    route("/cert-manager/overview", "v4/cert-manager/DashboardPage/route.tsx"),
     route("/cert-manager/inventory", "v4/cert-manager/InventoryPage/route.tsx"),
     route(
       "/cert-manager/certificates/$certificateId",
