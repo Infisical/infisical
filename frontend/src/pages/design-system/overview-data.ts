@@ -11,12 +11,6 @@ export const comparisonQuicklinks: {
   status: PortStatus;
 }[] = [
   {
-    page: "compare-shell",
-    icon: "sidebar",
-    summary: "Top band outside the content card, sidebar corner and reworked menus.",
-    status: "Redesign"
-  },
-  {
     page: "compare-home",
     icon: "home",
     summary: "Products as a card grid with their counts in the card frame band.",

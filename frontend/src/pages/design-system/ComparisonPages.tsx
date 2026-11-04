@@ -102,12 +102,7 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
       {entry.screen === "secrets" && <SecretsComparison title={entry.title} href={entry.href} />}
       {entry.screen === "access" && <AccessComparison />}
       {entry.screen !== "secrets" && entry.screen !== "access" && (
-        <ComparisonSlider
-          title={entry.title}
-          before={before(entry.screen)}
-          href={entry.href}
-          start={"start" in entry ? entry.start : undefined}
-        />
+        <ComparisonSlider title={entry.title} before={before(entry.screen)} href={entry.href} />
       )}
     </div>
   );

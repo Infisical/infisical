@@ -10,14 +10,13 @@ export type ComparisonSliderProps = {
   title: string;
   before: { light?: string; dark?: string };
   href: string;
-  start?: number;
 };
 
 const clamp = (value: number) => Math.min(100, Math.max(0, value));
 
-export const ComparisonSlider = ({ title, before, href, start = 50 }: ComparisonSliderProps) => {
+export const ComparisonSlider = ({ title, before, href }: ComparisonSliderProps) => {
   const theme = useV4Theme() ?? "light";
-  const [position, setPosition] = useState(start);
+  const [position, setPosition] = useState(50);
   const stage = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const [scale, setScale] = useState(1);
@@ -56,7 +55,7 @@ export const ComparisonSlider = ({ title, before, href, start = 50 }: Comparison
         <Button asChild variant="outline" size="sm">
           <a href={frameSrc}>Live, full width</a>
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => setPosition(start)}>
+        <Button variant="ghost" size="sm" onClick={() => setPosition(50)}>
           Reset
         </Button>
       </div>
