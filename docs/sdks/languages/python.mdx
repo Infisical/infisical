@@ -1304,7 +1304,7 @@ response = client.agent_vault.access_bundles.grant(
 
 Revoke an access bundle from users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
 
-- If someone with the **Member** role no longer has any grant on the access bundle, their sessions for the bundle stop getting credentials, and so do the sessions that machine identities created on their behalf, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes
+- If someone with the **Member** role no longer has any grant on the access bundle, the proxy stops attaching the bundle's credentials to their sessions and to the sessions that machine identities created on their behalf, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes (a session's inline services keep working, so to stop every credential, [revoke the session](#revoke-session))
 - Admins can use every access bundle without a grant, so their sessions keep getting credentials after you revoke their grants (to stop one of their agents, [revoke its session](#revoke-session))
 
 ```python
