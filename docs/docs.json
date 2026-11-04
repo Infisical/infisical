@@ -714,7 +714,8 @@
                       "documentation/platform/agent-vault/guides/kubernetes-setup"
                     ]
                   },
-                  "documentation/platform/agent-vault/guides/docker"
+                  "documentation/platform/agent-vault/guides/docker",
+                  "documentation/platform/agent-vault/guides/cursor"
                 ]
               },
               {

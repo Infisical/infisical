@@ -364,6 +364,8 @@ LiteLLM
 Fireworks
 Cohere
 Cursor
+Cursor Cloud Agents
+Superserve
 DeepSeek
 Gemini
 Grok
