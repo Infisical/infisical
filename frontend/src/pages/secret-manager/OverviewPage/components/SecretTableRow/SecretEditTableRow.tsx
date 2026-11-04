@@ -1057,6 +1057,10 @@ export const SecretEditTableRow = ({
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
   );
 
+  useEffect(() => {
+    if (isDirtyState || hasPendingValueChange) setIsResolvedValueOpen.off();
+  }, [isDirtyState, hasPendingValueChange]);
+
   const handleEditSecret = async ({
     secretValue,
     newKey,
