@@ -631,7 +631,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         <Empty className="border">
           <EmptyHeader>
             {(isOpening || isStillSearching || isStillLoading) && (
-              <Spinner size="sm" className="fill-product-av" />
+              <Spinner size="sm" variant="av" />
             )}
             {noRecordsLiveState && <LiveStateBadge state={noRecordsLiveState} />}
             <EmptyTitle>{noRecordsTitle}</EmptyTitle>
@@ -735,7 +735,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                 <TableCell colSpan={COLUMN_COUNT} className="text-center text-xs text-muted">
                   {isFetchingNextPage && (
                     <span className="flex items-center justify-center gap-2">
-                      <Spinner size="xs" className="fill-product-av" />
+                      <Spinner size="xs" variant="av" />
                       Loading more
                     </span>
                   )}

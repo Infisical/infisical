@@ -324,7 +324,7 @@ const SkillSheetBody = ({
       return (
         <Empty className="m-4 border">
           <EmptyHeader>
-            <Spinner size="sm" className="fill-product-av" />
+            <Spinner size="sm" variant="av" />
           </EmptyHeader>
         </Empty>
       );
