@@ -1,9 +1,9 @@
 import type { MouseEvent, ReactNode } from "react";
-import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
+import { type LinkOptions, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 
 import type { BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Sidebar, type SidebarSection } from "@app/components/v4/ui/sidebar";
+import { Sidebar, type SidebarLevel, type SidebarSection } from "@app/components/v4/ui/sidebar";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 
 import { useV4Session } from "../data/session/contract";
@@ -11,11 +11,13 @@ import { V4_DEMO_ORG_ID } from "../mode";
 import { useShellChrome } from "./chrome";
 import { resolveShellLocation } from "./location";
 import {
+  orgSections,
   products,
   productHome,
   productOf,
+  productSections,
   projectBase,
-  type ShellNavItem,
+  settingsSections,
   type ShellNavSection
 } from "./navigation";
 
@@ -53,27 +55,68 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     session.organization.isSubOrganization
   );
   const go = (href: string) => navigate({ href });
-  const href = (item: Pick<ShellNavItem, "path" | "search">) =>
-    `${base}${item.path}${item.search ? `?${new URLSearchParams(item.search)}` : ""}`;
-  const toSidebar = (sections: readonly ShellNavSection[]): readonly SidebarSection[] =>
+  const toSidebar = (
+    level: string,
+    sections: readonly ShellNavSection[],
+    opens: Record<string, string> = {}
+  ): readonly SidebarSection[] =>
     sections.map((section) => ({
       label: section.label,
       items: section.items.map((item) => ({
-        id: item.id,
+        id: `${level}:${item.id}`,
         label: item.label,
         icon: item.icon,
         count: item.count,
-        drillIn: item.drillIn,
-        href: href(item)
+        ...(opens[item.id]
+          ? { level: opens[item.id] }
+          : {
+              link: {
+                to: `${base}${item.path}`,
+                search: item.search,
+                activeOptions: { exact: item.id === "home", includeSearch: Boolean(item.search) }
+              } as LinkOptions
+            })
       }))
     }));
 
   const product = at.product ? productOf(at.product) : undefined;
   const project = session.projects.find((entry) => entry.id === at.projectId);
-  const back =
-    product && at.projectId
-      ? { label: product.label, path: `/projects/${product.slug}` }
-      : { label: session.organization.name, path: "/projects" };
+  const levels: SidebarLevel[] = [
+    {
+      id: "org",
+      label: session.organization.name,
+      sections: toSidebar("org", orgSections, { settings: "settings" })
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      parent: "org",
+      sections: toSidebar("settings", settingsSections(session.organization.isSubOrganization))
+    }
+  ];
+  if (product && (at.level === "product" || at.projectId)) {
+    levels.push({
+      id: "product",
+      label: product.label,
+      parent: "org",
+      sections: toSidebar("product", productSections(product))
+    });
+  }
+  if (at.projectId) {
+    levels.push({
+      id: at.level,
+      label: project?.name ?? at.projectId,
+      parent: "product",
+      sections: toSidebar(at.level, at.sections)
+    });
+  } else if (at.level === "pki" || at.level === "scanning") {
+    levels.push({
+      id: at.level,
+      label: product?.label ?? at.level,
+      parent: "org",
+      sections: toSidebar(at.level, at.sections)
+    });
+  }
 
   const orgCrumb: BreadcrumbCrumb = {
     label: session.organization.name,
@@ -154,17 +197,8 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       <TopBar breadcrumb={breadcrumb} account={chrome.account} />
       <Sidebar
         label="Main"
-        sections={at.level === "org" ? toSidebar(at.sections) : undefined}
-        scope={
-          at.level === "org"
-            ? undefined
-            : {
-                id: at.level,
-                back: { id: `back-${at.level}`, label: back.label, href: href(back) },
-                sections: toSidebar(at.sections)
-              }
-        }
-        current={at.current?.id}
+        levels={levels}
+        current={at.current ? `${at.level}:${at.current.id}` : undefined}
         help={chrome.help}
         announcements={chrome.announcements}
       />
