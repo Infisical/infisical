@@ -348,6 +348,7 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 - **The certificate file:** `/etc/agent-vault/ca.pem` combines the proxy's certificate with the image's own certificates, because `SSL_CERT_FILE` replaces the certificates a tool trusts instead of adding to them
 - **The `agent` user:** the spawn hook runs the worker as the user ID `2000`, so the image installs Cursor's CLI in that user's home directory
+- **The repository:** unlike Cursor-hosted Cloud Agents, workers start with an empty `/workspace`, so the agent needs to clone the repository during the run, unless you add a clone to the entrypoint. Either way, `git` clones through the proxy, so the GitHub service in your access bundle needs to cover `github.com` as well as `api.github.com`
 
 ### Build the controller's image
 
@@ -705,7 +706,7 @@ Agent Vault protects the credentials that the agent's commands use, such as toke
 - **The worker's connection to Cursor:** the proxy only supports HTTP/1.1, and the worker connects to Cursor over HTTP/2, so the worker reaches Cursor directly
 - **The worker's Cursor token:** the worker needs a Cursor token to connect to the pool, so the token is on the worker, but it only serves that worker's run, and the team's API key stays in the controller
 
-Don't start workers with `--sync-dashboard-secrets`, which passes your Cursor secrets to the worker as environment variables, and don't put credentials in the worker's image.
+Don't start workers with `--sync-dashboard-secrets`, which passes your Cursor secrets to the worker as environment variables, or with `--clone-git-repos` or `--mint-github-token`, which give the worker a GitHub token. Don't put credentials in the worker's image either.
 
 ### Sessions that outlive their workers
 
