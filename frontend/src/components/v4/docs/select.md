@@ -82,6 +82,7 @@ Exports: Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScro
 ## Accessibility
 
 - Provide a persistent label. Connect invalid feedback with aria-describedby and preserve disabled semantics.
+- Select forwards aria-label and aria-labelledby to its trigger, in both the options form and the composed form, so a Select outside a Field still gets an accessible name. aria-label wins over label, and an aria-labelledby set on SelectTrigger itself wins over the one on Select.
 
 ## Use cases
 
@@ -300,6 +301,51 @@ export default function Example() {
           </Field>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Invalid"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Named without a Field
+
+Save this example at `src/pages/design-system/examples/select/accessible-name.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Select } from "../../../../components/v4/ui/select";
+
+const options = [
+  { value: "dev", label: "Development" },
+  { value: "staging", label: "Staging" },
+  { value: "prod", label: "Production" }
+];
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Select options={options} defaultValue="staging" aria-label="Environment" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"aria-label, no visible label"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="flex flex-col gap-2">
+            <span id="select-name-heading">Compare against</span>
+            <Select
+              options={options}
+              placeholder="Choose an environment"
+              aria-labelledby="select-name-heading"
+            />
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"aria-labelledby a visible heading"}
+        </figcaption>
       </figure>
     </div>
   );

@@ -23,7 +23,7 @@ export type ApprovalQueueProps = {
   current?: string;
   onApprove: (id: string) => void;
   onView?: (id: string) => void;
-  onUndo: (id: string) => void;
+  onUndo?: (id: string) => void;
   onRetry: (id: string) => void;
   historyHref?: string;
 };
@@ -58,7 +58,7 @@ export const ApprovalQueue = ({
           const pending = request.state === "pending";
           let actions: React.ReactNode;
           if (request.state === "resolved")
-            actions = (
+            actions = onUndo && (
               <Button variant="link" size="sm" onClick={() => onUndo(request.id)}>
                 Undo
               </Button>
