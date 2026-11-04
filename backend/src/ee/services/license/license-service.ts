@@ -228,9 +228,9 @@ export const licenseServiceFactory = ({
         KeyStorePrefixes.LicenseCloudPlanLastKnown(orgId),
         KeyStoreTtls.LicenseCloudPlanLastKnownInSeconds,
         JSON.stringify({ plan: currentPlan, fetchedAt: Date.now() })
-      ),
-      keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlanFallback(orgId))
+      )
     ]);
+    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlanFallback(orgId));
 
     return currentPlan;
   };
