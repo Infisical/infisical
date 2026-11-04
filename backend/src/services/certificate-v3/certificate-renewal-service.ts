@@ -20,7 +20,10 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
-import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  caSupportsCapability,
+  CERTIFICATE_AUTHORITIES_TYPE_MAP
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   TProfileCustomExtension,
@@ -68,7 +71,8 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import {
   assertCanEditCertificate,
-  assertCanEditCertificateResult
+  assertCanEditCertificateResult,
+  assertCanRevokeCertificate
 } from "../certificate-common/certificate-permission-fns";
 import { TCertificateQuotaDeps } from "../certificate-common/certificate-quota-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
@@ -80,6 +84,7 @@ import {
   validateCertificateRequestLicense,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
+import { CertificateReissueMap } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import {
@@ -752,7 +757,8 @@ export const certificateRenewalServiceFactory = ({
     keySource,
     originalSignatureAlgorithm,
     originalKeyAlgorithm,
-    profileCustomExtensions
+    profileCustomExtensions,
+    maxTtlDays
   }: {
     originalCert: TCertificates;
     policy: Parameters<TCertificatePolicyServiceFactory["validateRequestAgainstPolicy"]>[0];
@@ -763,6 +769,7 @@ export const certificateRenewalServiceFactory = ({
     originalSignatureAlgorithm?: CertSignatureAlgorithm;
     originalKeyAlgorithm?: CertKeyAlgorithm;
     profileCustomExtensions?: TProfileCustomExtension[] | null;
+    maxTtlDays?: number;
   }) => {
     const originalTtl = certificateSpanToTtl(originalCert.notBefore, originalCert.notAfter);
 
@@ -804,7 +811,8 @@ export const certificateRenewalServiceFactory = ({
       });
     }
 
-    const ttl = mergedRequest.validity?.ttl || originalTtl;
+    const requestedTtl = mergedRequest.validity?.ttl || originalTtl;
+    const ttl = maxTtlDays && ms(requestedTtl) > ms(`${maxTtlDays}d`) ? `${maxTtlDays}d` : requestedTtl;
     const certificateRequest = { ...mergedRequest, validity: { ttl } };
 
     const validationResult = certificatePolicyService.validateRequestAgainstPolicy(policy, certificateRequest, {
@@ -1089,7 +1097,8 @@ export const certificateRenewalServiceFactory = ({
     removeRootsFromChain,
     renewalKeySource: requestedKeySource,
     csr,
-    attributes
+    attributes,
+    externalConfiguration
   }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
     internal?: boolean;
   }): Promise<TCertificateIssuanceResponse> => {
@@ -1143,6 +1152,25 @@ export const certificateRenewalServiceFactory = ({
           tx
         );
 
+        if (externalConfiguration?.reissue) {
+          if (!(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))) {
+            const reissuingCaNames = Object.values(CaType)
+              .filter((type) => caSupportsCapability(type, CaCapability.REISSUE_CERTIFICATES))
+              .map((type) => CERTIFICATE_AUTHORITIES_TYPE_MAP[type]);
+            throw new BadRequestError({
+              message: `Reissue is only available for certificates issued by these CAs: ${reissuingCaNames.join(", ")}.`
+            });
+          }
+          if (attributes?.ttl) {
+            throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
+          }
+          if (!CertificateReissueMap[caType]?.orderSchema.safeParse(originalCert.externalMetadata).success) {
+            throw new BadRequestError({
+              message: "This certificate has no order with its CA to reissue. Place a new order instead."
+            });
+          }
+        }
+
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
           policy,
@@ -1152,10 +1180,35 @@ export const certificateRenewalServiceFactory = ({
           keySource,
           originalSignatureAlgorithm,
           originalKeyAlgorithm,
-          profileCustomExtensions: profile?.defaults?.customExtensions
+          profileCustomExtensions: profile?.defaults?.customExtensions,
+          maxTtlDays:
+            externalConfiguration?.reissue && caType ? CertificateReissueMap[caType]?.maxValidityDays : undefined
         });
 
         changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });
+
+        if (externalConfiguration?.reissue && !internal) {
+          const requestedNames = new Set(
+            [
+              certificateRequest.commonName,
+              ...(certificateRequest.subjectAlternativeNames ?? []).map((san) => san.value)
+            ]
+              .filter(Boolean)
+              .map((name) => (name as string).trim().toLowerCase())
+          );
+          const isRemovingName = [originalCert.commonName, ...(originalCert.altNames?.split(",") ?? [])]
+            .filter(Boolean)
+            .some((name) => !requestedNames.has((name as string).trim().toLowerCase()));
+          if (isRemovingName) {
+            await assertCanRevokeCertificate({
+              certificate: originalCert,
+              ...actorCtx,
+              permissionService,
+              resourceMetadataDAL,
+              tx
+            });
+          }
+        }
 
         if (renewalAuth?.projectPermission) {
           assertCanEditCertificateResult({
@@ -1477,6 +1530,7 @@ export const certificateRenewalServiceFactory = ({
         state: renewalRequest.state,
         locality: renewalRequest.locality,
         isRenewal: true,
+        ...(externalConfiguration && { externalConfiguration }),
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id,
         basicConstraints: renewalBasicConstraints,
