@@ -10,6 +10,13 @@ const MAX_KEYS = 3;
 
 type TIssuerKey = { id: string; createdAt: Date };
 
+// Customers copy this into their provider, so its shape can never change. The prefix keeps it from matching a
+// credential set up for a future use of the issuer.
+export const getAppConnectionOidcSubject = (connectionId: string) => `app-connection:${connectionId}`;
+
+export const getOidcIssuerUrl = (siteUrl: string, orgId: string) =>
+  `${siteUrl}/api/v1/oidc-issuer/organizations/${orgId}`;
+
 // Keys are oldest first: previous, current, next. The next key is published a full signing period before it
 // takes over, so a provider that cached the JWKS already has it.
 export const getSigningKey = <T extends TIssuerKey>(keys: T[]): T | undefined => keys[keys.length - 2];

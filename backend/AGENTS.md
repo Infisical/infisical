@@ -285,6 +285,7 @@ Auth extraction happens in `src/server/plugins/auth/`:
 **Auth modes** (defined in `AuthMode` enum):
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
+  A TLS Certificate Auth token may carry an RFC 8705 `cnf` (`x5t#S256`) claim. `fnValidateIdentityAccessTokenFast` and renewal then reject it unless the proxy-forwarded client certificate matches (`assertCertificateBinding`).
 - **SCIM_TOKEN** — SCIM provisioning tokens
 - **OAUTH** — delegated user tokens from the `oauth-client` module. Same JWT shape and session binding as
   `JWT`, told apart by an `oauthClientId` claim. See [Delegated OAuth tokens](#delegated-oauth-tokens).
@@ -296,6 +297,71 @@ Auth extraction happens in `src/server/plugins/auth/`:
 If you encounter `API_KEY` or `SERVICE_TOKEN` in existing code, do not replicate them in new routes or services. All new machine authentication should use `IDENTITY_ACCESS_TOKEN`.
 
 Token detection logic in `inject-identity.ts` checks `x-api-key` header first, then parses `Authorization: Bearer` and inspects JWT `authTokenType` field to determine mode.
+
+#### SSO session binding
+
+A session minted by a SAML, OIDC or LDAP login carries `issuingRootOrgId`, the root org whose IdP
+issued it (`processProviderCallback` sets it; own-credential sessions never have it). An org that
+enforces SSO admits only sessions its own IdP issued: `validateOrgSSO` compares the claim with the
+org's root org on every user permission check, reading it from `userAuthInfo` in the request context
+(only when the check is for the requester), so it covers `selectOrganization`, OAuth consent, and a
+session that was already open when enforcement was turned on. Members who can bypass SSO are let
+through, and a token with no claim (issued before it existed) is taken at its auth method. Enforcement
+is org policy, not a permission: the permission service reads `authEnforced`, `googleSsoAuthEnforced`
+and `bypassOrgAuthEnabled` per request from the root org (`getOrgSsoPolicy`, through the same
+`orgFindById` request memo the auth layer fills), never from `permissionDAL.getPermission` or the
+cached project permission, so a change applies on the next request. A sub-org has no enforcement of its
+own and follows its root, and only a root org role can bypass it, so a sub-org admin role exempts no
+one. The project permission cache holds only that role-derived bypass answer.
+
+**Every path that issues or re-issues a user token must carry the claim forward** (MFA, refresh,
+signup, org deletion, delegated OAuth codes and tokens). A dropped claim reads as a pre-claim token
+and passes every org's enforcement. `selectOrganization` audits the refusal
+(`SELECT_ORGANIZATION_REFUSED`) by catching the `FOREIGN_SSO_SESSION_ERROR_NAME` error
+`getOrgPermission` throws.
+
+#### MFA for SSO logins
+
+`organizations.ssoMfaTrust` (`SsoMfaTrust` enum, `none` or `signal`) lets a SAML or OIDC login satisfy the
+org's MFA enforcement with the MFA the IdP already performed. The SAML and OIDC callbacks derive one verdict
+per login with `matchIdpMfaSignal` (`services/auth/idp-mfa-signal.ts`): the OIDC claim named by
+`oidc_configs.mfaClaimName` contains `mfa`, the SAML `AuthnContextClassRef` is a class whose definition asserts
+two factors (possession-only classes such as `Smartcard`, `SoftwarePKI` and `TimeSyncToken` are not defaults), or the
+attribute named by `saml_configs.mfaSignalAttribute` contains `mfa` or `multipleauthn`. A null attribute name
+means the provider's default: Entra ID's `authnmethodsreferences` for `azure-saml`, because Entra reports a push
+or TOTP login as `Password` in `AuthnContextClassRef` and puts `multipleauthn` only there, and `amr` for every
+other provider. The OIDC claim name defaults to `amr`, and the
+per-config allowlists extend the built-in values rather than replace them. The verdict travels on the org-less
+session token as `idpMfaOrgId`, the root org whose SSO config produced it (absent when the IdP did not signal
+MFA). A first login that still has to verify its mailbox carries it on the signup token instead, and
+`completeAccount` copies it onto the session it mints. `selectOrganization` (`auth-login-service.ts`) applies it
+through `isIdpMfaTrusted` (`auth-fns.ts`), the only reader of the setting. Rules that must hold:
+
+- Enforcement is decided once per selection against the root org (`actorRootOrgId`), so moving between a root
+  org and its sub-orgs never re-prompts.
+- `isIdpMfaTrusted` refuses every non-SSO auth method, so password, Google and LDAP logins (break-glass
+  accounts) always get the Infisical challenge.
+- The proof only counts for the root org whose IdP produced it. A user in two orgs could otherwise tune one
+  org's allowlist to accept a single factor and carry that verdict into the other, so the token stores the org
+  id rather than a boolean and selection requires it to equal the selected root org.
+- The trust only applies while `enforceMfa` is on, and then it waives the whole challenge, including the user's
+  personal `isMfaEnabled`: passing an enforced challenge turns that flag on (`Mfa.tsx` calls `activateMfa`), so
+  honoring it would make the trust dead for anyone who ever logged in before it was enabled. Personal MFA in an
+  org that does not enforce it is still prompted. Like the admin SSO bypass, the setting can be stored at any
+  time, before enforcement is on or before any SSO config exists; `updateOrg` only requires the plan to allow
+  MFA enforcement for `signal`, and like `authEnforced` it needs `Sso.Edit`, not just `Settings.Edit`.
+- `isMfaVerified` is never set from the IdP. It still means "proved a factor to Infisical", so step-up
+  (`mfa-step-up-fns.ts`) and PAM MFA are unaffected. OAuth consent (`authorizeConsent`) re-derives the MFA
+  requirement for the client's org and applies the same `isIdpMfaTrusted` waiver, so a session that skipped
+  the login prompt is not refused when authorizing an application.
+- Updating a SAML or OIDC config resets the org's `authEnforced` and `scimEnabled`, except when the update
+  carries only the MFA signal fields (`mfaSignalAttribute` / `mfaAuthnContexts`, `mfaClaimName` /
+  `mfaAmrValues`), which cannot break a login. The SSO modals send only those fields when nothing else changed,
+  so tuning an allowlist on a live, enforced setup does not turn enforcement off.
+- The callback writes a `USER_LOGIN` audit event with the `idpMfa` verdict: `evidence` is what matched and
+  `received` is every value the IdP sent in the fields that were read, so a rejected login shows which value
+  to add to the allowlist. `SELECT_ORGANIZATION` records `mfaSatisfiedBy`, so an admin can see why a login was
+  or wasn't prompted.
 
 #### Delegated OAuth tokens
 
@@ -561,7 +627,8 @@ exists, and every audit entry written from then on records it. `syncSsoUserProfi
 and is called from all three login services right after `ensureSsoAccountVerified`, outside the
 caller's transaction, with its result flowing into the session.
 
-The gate is `organization.authEnforced` **and** a verified alias, and both halves matter. Enforcement
+The gate is `isIdpAuthoritative` (`isIdpAuthoritativeForDomain`: the org enforces SSO and owns the
+asserted domain) **and** a verified alias, and both halves matter. Enforcement on an owned domain
 is the org saying the IdP is authoritative for identity, which is the same claim that already skips
 email verification at signup. The verified alias is the proof that the IdP controls *this* account:
 an unverified alias asserting an unrecognized email is exactly what `isStaleSsoAlias` exists to
@@ -1035,7 +1102,7 @@ Resources whose deletion cascades across many/large tables use a **soft-delete +
 
 Pattern:
 - **Soft-delete columns** on the table: `deleteAfter`, `softDeletedAt`, `deletedByActorType`, `deletedByActorId`, plus a **partial index** `WHERE deleteAfter IS NOT NULL` (tiny, ~zero write cost on the live path). The DELETE handler sets `deleteAfter` (one UPDATE) and returns immediately. Set `deleteAfter = now()` for "real delete" UX (reaped on the next worker tick) or `now + grace` for a restore window. The actor pair follows the same `(actorType, actorId)` pattern used by audit logs — extensible to any `ActorType` without schema changes.
-- **Hide soft-deleted rows from every read.** Override the `ormify` base `findById`/`findOne`/`find` to append `.whereNull("deleteAfter")`, and add explicit `*IncludingExpired` escape hatches used only by the cleanup worker/restore. Patch all custom read queries too — **especially any count feeding a plan/quota limit** (e.g. `countOfOrgProjects`), or soft-deleted rows wrongly count against limits. Free unique columns (e.g. the project slug) on soft-delete so the resource can be recreated immediately.
+- **Hide soft-deleted rows from every read.** Override the `ormify` base `findById`/`findOne`/`find` to append `.whereNull("deleteAfter")`, and add explicit `*IncludingExpired` escape hatches used only by the cleanup worker/restore. Patch all custom read queries too — **especially any count feeding a plan/quota limit** (e.g. `countOfOrgProjects`), or soft-deleted rows wrongly count against limits. For unique columns, keep the value reserved while the row is restorable so a restore brings it back unchanged, and refuse creating or renaming to it with a message naming the pending-deletion holder (environments and Secret Manager projects do this with their slug). On an immediate purge, free it so the resource can be recreated right away (projects rename the slug to `del-<random>`).
 - **`Environment.deleteAfter` ≠ `Project.deleteAfter` — filter both.** The two soft-deletes are independent: soft-deleting a project does NOT soft-delete its environments. Many DALs already filter `Environment.deleteAfter` (from the env soft-delete) — that does **not** exclude a soft-deleted *project*'s data. So any **cron / cross-project enumeration** must also filter `Project.deleteAfter`: the rotation/sync/reminder queue queries, and cross-project listings (project/identity memberships, group projects, org product stats). External side effects are the dangerous case — without it, a soft-deleted project's secrets get rotated, synced, or reminded on during the cleanup window. Per-project reads resolved through `projectDAL.findById` are protected upstream (it returns nothing for a soft-deleted project).
 - **Cron discovery + paced worker** (cron fans out to BullMQ): the cron selects the oldest `LIMIT N` expired rows (`ORDER BY deleteAfter ASC`) and enqueues one job each with a deterministic `jobId` (dedupe → queue stays bounded at ~N; never enqueue the whole backlog). The worker (`concurrency` + `limiter`) does the actual delete, re-reading via the **primary** under a per-resource lock to defeat replica-lag/restore races.
 - **Chunk-deleting child rows: check inbound FKs first.** Reference implementation: `services/secret-v2-bridge/secret-tree-hard-delete-fns.ts` (project/env hard-delete workers).
@@ -1093,6 +1160,55 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 **Never log an outbound URL verbatim — a URL is often itself a credential.** Incoming-webhook providers put the bearer secret in the path (`https://hooks.slack.com/services/T…/B…/<secret>`, Discord, Teams, Telegram) and many APIs accept a token as a query param, so a raw URL in a log line ships a working credential to the log sink. Pass it through `sanitizeUrlForLog` from `@app/lib/logger` first (`src/lib/logger/sanitize-url.ts`): it keeps only the origin, strips userinfo and the fragment, redacts the entire path, and redacts every query value. Token formats can't be recognised reliably, so the path is redacted by default for every host rather than sniffed with heuristics. The global axios response interceptor (`src/lib/config/request.ts`) and `safeRequest`'s dispatch log already do this.
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
+
+### Certificate soft delete
+
+Deleting a certificate goes through `softDeleteCertificates` (`certificate-fns.ts`), which both the delete
+endpoint and the expiry cleanup job (`certificate-cleanup-queue.ts`) call: it stamps `deletedAt`,
+`deletedByActorType` and `deletedByActorId` on the row and, in the same transaction, removes its
+`certificate_bodies`, `certificate_secrets` and PKI collection items and clears the private key copy on
+`certificate_requests.encryptedPrivateKey`. The row itself stays, so the inventory, audit trail and renewal
+chain keep pointing at something. Nothing hard deletes certificates any more, so deleted rows accumulate;
+instance-level hard delete is a possible future option. Things that rely on that:
+
+- **`certificate_syncs` rows are kept.** Linux, Windows and Azure (free-text naming) find what they delivered
+  only through those rows (`syncMetadata.files`, `externalIdentifier`), so the delete queues the auto-sync
+  syncs holding the certificate, the run sees a tracked certificate that is no longer active and removes it
+  from the destination, and the provider untracks the row. A sync with Auto-Sync or "Remove certificates from
+  destination" off keeps the row and the copy until a later run that removes it. The sync's certificate list
+  (`findWithDetails`) hides deleted certificates.
+
+- **Every background or enumeration query filters `whereNull("deletedAt")`**: expiry alerts, auto-renewal,
+  syncs, discovery, HSM connector usage and stats. A new query over `certificates` needs the same filter unless
+  it is deliberately showing deleted rows. Reads the API serves skip deleted certificates by default too:
+  `GET /certificates/:id` returns 404 unless the caller passes `includeDeleted`, and list or search returns
+  them only for a `deleted` status filter or `includeDeleted` (the **All Certificates** view; **Default**
+  hides them), so clients written before soft delete keep seeing what they saw
+  when the row was hard deleted. The one background job that still reads deleted rows is the DigiCert
+  revocation sync: it records an upstream revocation on a deleted certificate (without alerts) so the quota
+  stops counting it.
+- **The licence quota still counts a deleted certificate Infisical issued until it expires or is revoked**,
+  because deleting neither revokes it nor requires it to be expired, so excluding it would let an org free
+  its cap while the certificate stays trusted. Deleted imported and discovered certificates stop counting, as
+  the hard delete used to make them.
+- **CRL and OCSP keep deleted certificates.** Deletion is not revocation, so a revoked certificate stays on
+  the CRL after it is deleted, and revoking a deleted certificate is still allowed.
+- **A deleted certificate is never renewed or changed.** `assertCertificateNotDeleted` guards the renewal
+  entry points and the first attempt of the issuance job, and EST re-enroll and SCEP renewal refuse a deleted
+  client certificate. A renewal the CA already accepted before the delete (an ACM renewal still polling, a
+  DigiCert or GoDaddy order) still completes and links to the deleted original, because the CA has issued
+  that certificate and discarding it would lose it.
+- **A sync can still write a link for a certificate deleted mid-run.** `certificate_syncs` inserts are not
+  filtered on `deletedAt`, so a provider that uploads and then records the link leaves a tracking row, and the
+  sync the delete queued removes that copy from the destination through it.
+- **Cleanup skips certificates a code signing signer uses**, the same rule the delete endpoint enforces.
+- **Deleted certificates are not restored.** Serial numbers stay globally unique
+  (`certificates_serialnumber_unique`), so re-importing a deleted certificate into the same project fails with
+  the deleted message (any other project gets the generic serial conflict, so nothing about it leaks), and
+  rediscovery links the installation to the deleted row instead of creating a new one.
+- **A deleted certificate keeps its HSM key reference** (`keySource`, connector, key label and id), so the
+  record stays true for audits. Deleting the connector detaches deleted rows (`hsmConnectorId` set to null),
+  which is why the key source CHECK requires a connector only while `deletedAt` is null.
 
 ### Certificate revocation: CRL and OCSP
 
@@ -1216,6 +1332,19 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
 - **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
   `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
+- **Every signed token is audit logged** (`issue-oidc-token`, with the connection's ID and name) inside
+  `signToken`, so a new consumer gets it for free and never logs on its own.
+- **Connections sign for their own ID only.** `signToken` takes the connection, not a subject, and builds
+  `app-connection:<id>` itself, and the token is only ever sent to the provider's token endpoint, never
+  returned to a caller. Never let a caller choose the ID: a deleted connection's ID would
+  regain whatever the provider still trusts. So the connection is created first, without a token exchange,
+  and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
+  `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
+  caches the provider's access token in the credentials like the secret-based methods do.
+- **The API returns the values the customer copies.** Connection responses carry
+  `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
+  `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
+  The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
 
 ### Enterprise (EE) Features
 
@@ -1232,6 +1361,13 @@ EE routes register before community routes so they can override/extend endpoints
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/AGENTS.md`](src/ee/services/agent-vault/AGENTS.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
 
 **Secret Scanning** is single-project (see the root `AGENTS.md`): `secret-scanning-v2-project-bootstrap.ts` creates the project with the org when it has a creator to make admin (like PAM and Agent Vault), `secret-scanning-v2-project-resolver.ts` picks the active project and lazily creates it, with every org admin as project admin, for older orgs and for orgs created from the admin console, whose admins are only invited after the org exists, and routes that take `projectId` read `req.internalSecretScanningProjectId`. A data source covers the resources it has rows for (added by a user or discovered from a push); its `config` only says where to look (Bitbucket workspace, GitLab group), never which resources, so scans, "included" state and GitLab account-scope webhooks all key off rows. Stored configs may still carry the old `includeRepos` / `includeProjects` keys, which nothing reads.
+
+**Secret scanning scans and GitHub pull request checks**:
+- A scan's `trigger` (`SecretScanningScanTrigger`) records what started it, separate from `type` (`historical` / `realtime`). `metadata` (jsonb) holds trigger-specific data, is parsed by trigger, and is never returned raw by the API.
+- `secret-scanning-v2-queue.ts` stays provider-agnostic. Provider behavior goes behind optional hooks on the data source factory (`getRealtimeScanReport` / `getScanReport` for reporting a scan back, `processEvent` for webhook events beyond pushes), never behind a provider check in the queue.
+- PR checks are realtime scans with `trigger: pull-request`, gated on `isScanNewCommitsEnabled`. Webhook handlers only enqueue; `processGitHubPullRequestEvent` does the work. The check run is created before the scan, with the scan's ID as its `external_id`, which is how re-runs and skip actions find the scan.
+- Every exit of a PR scan closes its check (including the stuck-scan reaper, which also fails realtime scans left `queued`), since a check left open blocks merging when it is required.
+- Fork PRs aren't scanned: they get a `skipped` check under the same name, unless the commit already has one of our checks (checks belong to the commit, so it would replace a real result).
 
 **Dynamic secret lease secrets needed at revoke time go in `dynamic_secret_leases.encryptedLeaseData`**, never in `externalEntityId` or `config` (both plaintext, and `externalEntityId` is returned by every lease route and logged in audit events). A provider opts in by listing the `create()` `data` keys in `persistedLeaseFields`; the lease service encrypts them with the project's SecretManager key and every revoke path passes them back as `metadata.leaseData`. Lease routes return `SanitizedDynamicSecretLeaseSchema` so the column never reaches a response. Secret *config* fields are listed separately in `DYNAMIC_SECRET_SECRET_FIELDS` (`providers/redact.ts`), as dotted paths so nested secrets work (`clientAuth.clientSecret`): reads strip them via `redactStoredInputs`, and an update that omits one keeps the stored value via `restoreOmittedSecretFields`, because the update merge is shallow.
 

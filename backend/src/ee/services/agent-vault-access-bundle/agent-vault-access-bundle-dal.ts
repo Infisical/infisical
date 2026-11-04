@@ -1,8 +1,15 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { RESOURCE_SCOPE, ResourceType, TableName, TAgentVaultAccessBundles } from "@app/db/schemas";
-import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AccessScope,
+  OrgMembershipStatus,
+  RESOURCE_SCOPE,
+  ResourceType,
+  TableName,
+  TAgentVaultAccessBundles
+} from "@app/db/schemas";
+import { AGENT_VAULT_ACTOR_COLUMN, AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
@@ -37,7 +44,10 @@ export type TAgentVaultAccessBundleActor =
   | { type: AgentVaultMemberType.MachineIdentity; id: string; name: string }
   | { type: AgentVaultMemberType.Group; id: string; name: string };
 
-export type TAgentVaultAccessBundleMemberDetail = TAgentVaultAccessBundleActor & { grantedAt: Date };
+export type TAgentVaultAccessBundleMemberDetail = (
+  | (Extract<TAgentVaultAccessBundleActor, { type: AgentVaultMemberType.User }> & { isOrgMembershipPending: boolean })
+  | Exclude<TAgentVaultAccessBundleActor, { type: AgentVaultMemberType.User }>
+) & { grantedAt: Date };
 
 export type TAgentVaultAccessBundleOrderBy = "name" | "serviceCount" | "createdAt";
 
@@ -225,11 +235,21 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const findMembers = async (
     {
       projectId,
+      orgId,
       accessBundleId,
+      actorType,
       search,
       limit,
       offset
-    }: { projectId: string; accessBundleId: string; search?: string; limit: number; offset: number },
+    }: {
+      projectId: string;
+      orgId: string;
+      accessBundleId: string;
+      actorType?: AgentVaultMemberType;
+      search?: string;
+      limit: number;
+      offset: number;
+    },
     tx?: Knex
   ): Promise<{ members: TAgentVaultAccessBundleMemberDetail[]; totalCount: number }> => {
     try {
@@ -241,6 +261,10 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
           .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
           .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`);
+
+        if (actorType) {
+          void query.whereNotNull(`${TableName.Membership}.${AGENT_VAULT_ACTOR_COLUMN[actorType]}`);
+        }
 
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
@@ -276,7 +300,13 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
           db.ref("email").withSchema(TableName.Users).as("userEmail"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
-          db.ref("name").withSchema(TableName.Groups).as("groupName")
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          // Pinned to this org: membership is unique per (org, actor), and a user can hold several in a sub-org family.
+          db.raw(
+            `EXISTS (SELECT 1 FROM ?? om WHERE om."scope" = ? AND om."scopeOrgId" = ?
+               AND om."actorUserId" = ??."actorUserId" AND om."status" = ?) as "isOrgMembershipPending"`,
+            [TableName.Membership, AccessScope.Organization, orgId, TableName.Membership, OrgMembershipStatus.Invited]
+          )
         )
         // The id breaks ties: createdAt is the transaction's start time, so a bulk grant leaves a hundred rows
         // sharing one, and offset paging would show some twice and others never.
@@ -294,14 +324,21 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         userEmail: string | null;
         identityName: string | null;
         groupName: string | null;
+        isOrgMembershipPending: boolean;
       }[];
 
-      const actorOf = (row: (typeof rows)[number]): TAgentVaultAccessBundleActor => {
+      const memberOf = (row: (typeof rows)[number]): TAgentVaultAccessBundleMemberDetail => {
+        const grantedAt = row.createdAt;
         if (row.identityId) {
-          return { type: AgentVaultMemberType.MachineIdentity, id: row.identityId, name: row.identityName ?? "" };
+          return {
+            type: AgentVaultMemberType.MachineIdentity,
+            id: row.identityId,
+            name: row.identityName ?? "",
+            grantedAt
+          };
         }
         if (row.groupId) {
-          return { type: AgentVaultMemberType.Group, id: row.groupId, name: row.groupName ?? "" };
+          return { type: AgentVaultMemberType.Group, id: row.groupId, name: row.groupName ?? "", grantedAt };
         }
         return {
           type: AgentVaultMemberType.User,
@@ -309,12 +346,14 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           username: row.userUsername ?? "",
           email: row.userEmail,
           firstName: row.userFirstName,
-          lastName: row.userLastName
+          lastName: row.userLastName,
+          isOrgMembershipPending: row.isOrgMembershipPending,
+          grantedAt
         };
       };
 
       return {
-        members: rows.map((row) => ({ ...actorOf(row), grantedAt: row.createdAt })),
+        members: rows.map(memberOf),
         totalCount
       };
     } catch (error) {

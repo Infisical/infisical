@@ -143,9 +143,11 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                       </RowLink>
                     </TableCell>
                     <TableCell>
-                      {expiryDetails ? (
+                      {cert.deletedAt && <Badge variant="neutral">Deleted</Badge>}
+                      {!cert.deletedAt && expiryDetails && (
                         <Badge variant={expiryDetails.variant}>{expiryDetails.label}</Badge>
-                      ) : (
+                      )}
+                      {!cert.deletedAt && !expiryDetails && (
                         <Badge variant="neutral">Unknown</Badge>
                       )}
                     </TableCell>
@@ -188,7 +190,7 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                             Export Certificate
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            isDisabled={!canReadCertificate || !cert.serialNumber}
+                            isDisabled={!canReadCertificate}
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePopUpOpen("certificateCert", {

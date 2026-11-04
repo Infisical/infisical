@@ -5,22 +5,24 @@ export const agentVaultSheetSearchParams = z.object({
   sessionId: z.string().uuid().optional().catch(undefined)
 });
 
-export const useAgentVaultSheetState = () => {
+export const agentVaultSkillSheetSearchParams = z.object({
+  skillId: z.string().uuid().optional().catch(undefined)
+});
+
+export const useAgentVaultSheetState = (param: "sessionId" | "skillId" = "sessionId") => {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as Record<string, unknown>;
-  const sessionId = search.sessionId as string | undefined;
+  const id = search[param] as string | undefined;
 
   return {
-    sessionId,
-    isOpen: Boolean(sessionId),
-    openSheet: (id: string) => {
-      navigate({ search: { ...search, sessionId: id } as any });
+    id,
+    isOpen: Boolean(id),
+    openSheet: (nextId: string) => {
+      navigate({ search: { ...search, [param]: nextId } as any });
     },
     closeSheet: () => {
-      const rest = Object.fromEntries(
-        Object.entries(search).filter(([key]) => key !== "sessionId")
-      );
-      navigate({ search: rest as any });
+      const rest = Object.fromEntries(Object.entries(search).filter(([key]) => key !== param));
+      return navigate({ search: rest as any });
     }
   };
 };

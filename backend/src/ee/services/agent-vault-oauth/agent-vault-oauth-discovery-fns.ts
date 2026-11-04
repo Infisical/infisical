@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
@@ -7,10 +8,16 @@ import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-fns";
 import { AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
 
+// Infisical Cloud never reaches private networks, so only a self-hosted instance is told how to allow them.
+export const privateNetworkHint = () =>
+  getConfig().isCloud
+    ? ""
+    : " If you're self-hosting Infisical, set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to allow it.";
+
 export const OFFLINE_ACCESS_SCOPE = "offline_access";
-// The spec sets no limit. Slack, the largest real server found, lists 30; this only stops a buggy or hostile
+// The spec sets no limit. PostHog, the largest real server found, lists 153; this only stops a buggy or hostile
 // server from making every authorization store and send an enormous scope list.
-export const MAX_OAUTH_SCOPES = 100;
+export const MAX_OAUTH_SCOPES = 200;
 // Each request has its own 10 second timeout, so without an overall budget a server that hangs could hold the
 // request past a 60 second gateway.
 const DISCOVERY_BUDGET_MS = 25_000;
@@ -279,7 +286,7 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
   if (!answered) {
     throw new BadRequestError({
       message: isPrivateAddress
-        ? `Infisical can't reach '${describeServer(serverUrl)}' because it's on a private network. Use a bearer token for this service instead.`
+        ? `Infisical can't reach '${describeServer(serverUrl)}' because it's on a private network. Use a bearer token for this service instead.${privateNetworkHint()}`
         : `Couldn't reach '${describeServer(serverUrl)}'. Check the server URL and that the server is online.`
     });
   }

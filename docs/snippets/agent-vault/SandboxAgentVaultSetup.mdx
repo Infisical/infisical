@@ -7,11 +7,7 @@ import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx
     In Agent Vault, go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
-    Enter a **Name**, such as `sandboxes`, and expand **Advanced Options**. Under **Traffic Policy**, choose **Access bundle hosts only**. Then add any other hosts the agent needs to reach to **Exceptions** (for example, `registry.npmjs.org`).
-
-    <Note>
-    Make sure you select the **Access bundle hosts only** [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). The proxy can reach the internet, so if you leave the traffic policy set to **Any host**, the agent can send requests through the proxy to any host.
-    </Note>
+    Enter a **Name**, such as `sandboxes`.
   </Step>
   <Step>
     Select **Create**, then copy the proxy token from the **Proxy Token** dialog. Infisical shows the token only once.

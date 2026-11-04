@@ -1,3 +1,4 @@
+import * as x509 from "@peculiar/x509";
 import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -6,9 +7,13 @@ import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
-import { signIdentityAccessToken, verifyAccessTokenJwt } from "./identity-access-token-fns";
+import {
+  computeCertificateThumbprint,
+  signIdentityAccessToken,
+  verifyAccessTokenJwt
+} from "./identity-access-token-fns";
 import { identityAccessTokenServiceFactory } from "./identity-access-token-service";
-import { TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
+import { CERTIFICATE_THUMBPRINT_CLAIM, TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
 
 const MAX_AGE = 7_776_000;
 const AUTH_SECRET = "test-auth-secret";
@@ -1144,5 +1149,168 @@ describe("identityAccessTokenServiceFactory", () => {
       "token has been revoked"
     );
     expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).toHaveBeenCalled();
+  });
+});
+
+describe("certificate-bound access tokens", () => {
+  let previousFipsEnabled: string | undefined;
+  let boundPem: string;
+  let otherPem: string;
+  let boundThumbprint: string;
+
+  const makeCertificatePem = async (commonName: string) => {
+    const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: `CN=${commonName}`,
+      notBefore: new Date("2020-01-01T00:00:00Z"),
+      notAfter: new Date("2040-01-01T00:00:00Z"),
+      signingAlgorithm: alg,
+      keys
+    });
+    return cert.toString("pem");
+  };
+
+  const asHeader = (pem: string) => encodeURIComponent(pem);
+
+  const signBoundToken = (overrides: { numUsesLimit?: number } = {}) =>
+    signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: overrides.numUsesLimit ?? 0,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {},
+      cnf: { [CERTIFICATE_THUMBPRINT_CLAIM]: boundThumbprint }
+    }).accessToken;
+
+  beforeAll(async () => {
+    previousFipsEnabled = process.env.FIPS_ENABLED;
+    process.env.FIPS_ENABLED = "false";
+    await crypto.initialize({} as never, {} as never, {} as never);
+    x509.cryptoProvider.set(globalThis.crypto);
+    boundPem = await makeCertificatePem("bound-client");
+    otherPem = await makeCertificatePem("other-client");
+    boundThumbprint = computeCertificateThumbprint(new crypto.nativeCrypto.X509Certificate(boundPem).raw);
+  });
+
+  afterAll(() => {
+    if (previousFipsEnabled === undefined) {
+      delete process.env.FIPS_ENABLED;
+    } else {
+      process.env.FIPS_ENABLED = previousFipsEnabled;
+    }
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW_SECONDS * 1000));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("thumbprint is the base64url SHA-256 of the certificate DER", () => {
+    const der = new crypto.nativeCrypto.X509Certificate(boundPem).raw;
+    expect(boundThumbprint).toBe(crypto.nativeCrypto.createHash("sha256").update(der).digest("base64url"));
+    for (const char of ["+", "/", "="]) expect(boundThumbprint).not.toContain(char);
+  });
+
+  test("accepts a bound token when the matching certificate is presented", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", asHeader(boundPem))
+    ).resolves.toMatchObject({ identityId: "identity-id" });
+  });
+
+  test("uses the leaf when the proxy forwards a full chain", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", asHeader(`${boundPem}\n${otherPem}`))
+    ).resolves.toMatchObject({ identityId: "identity-id" });
+  });
+
+  test("rejects a bound token when no certificate is presented", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1")).rejects.toThrow(
+      "no client certificate was presented"
+    );
+  });
+
+  test("rejects a bound token when a different certificate is presented", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", asHeader(otherPem))).rejects.toThrow(
+      "does not match the certificate the access token is bound to"
+    );
+  });
+
+  test("rejects a bound token when the certificate header cannot be parsed", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", "%E0%A4%A")).rejects.toThrow(
+      "client certificate header could not be read"
+    );
+  });
+
+  test("does not spend a token use when the certificate does not match", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("3");
+    const claims = verifyAccessTokenJwt(signBoundToken({ numUsesLimit: 3 }));
+
+    await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", asHeader(otherPem))).rejects.toThrow();
+    expect(keyStore.decrementIfExists).not.toHaveBeenCalled();
+  });
+
+  test("ignores the certificate header for unbound tokens", async () => {
+    const { service } = createService();
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1", asHeader(otherPem))
+    ).resolves.toMatchObject({ identityId: "identity-id" });
+  });
+
+  test("renewal keeps the binding when the matching certificate is presented", async () => {
+    const { service } = createService();
+
+    const renewed = await service.renewAccessToken({
+      accessToken: signBoundToken(),
+      clientCertificate: asHeader(boundPem)
+    });
+
+    expect(verifyAccessTokenJwt(renewed.accessToken).cnf).toEqual({
+      [CERTIFICATE_THUMBPRINT_CLAIM]: boundThumbprint
+    });
+  });
+
+  test("renewal requires the bound certificate", async () => {
+    const { service } = createService();
+
+    await expect(service.renewAccessToken({ accessToken: signBoundToken() })).rejects.toThrow(
+      "Cannot renew: access token is bound to a client certificate, but no client certificate was presented"
+    );
+    await expect(
+      service.renewAccessToken({ accessToken: signBoundToken(), clientCertificate: asHeader(otherPem) })
+    ).rejects.toThrow("Cannot renew: the presented client certificate does not match");
   });
 });

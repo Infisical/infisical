@@ -642,6 +642,13 @@ describe("buildRenewalPreview", () => {
     expect(buildRenewalPreview(requested, certificate).issuerModifiedFields).toEqual([]);
   });
 
+  it("reports whether the originating request carried a CSR, which a key reuse without the private key needs", () => {
+    expect(buildRenewalPreview(requested, certificate).hasOriginatingCsr).toBe(false);
+    expect(
+      buildRenewalPreview({ ...requested, csr: "-----BEGIN CERTIFICATE REQUEST-----" }, certificate).hasOriginatingCsr
+    ).toBe(true);
+  });
+
   it("does not read a legacy value the form cannot offer as an authority change", () => {
     const legacy = "RSA_2048";
     const { request, issuerModifiedFields } = buildRenewalPreview(

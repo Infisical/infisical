@@ -4,6 +4,7 @@ import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-reac
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
+import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
   Detail,
@@ -19,16 +20,23 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  Spinner
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
+import { InlineServicesHoverCard } from "./InlineServicesHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
+import { inlineServiceTarget } from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionStatusBadge } from "./SessionStatusBadge";
+
+const SHOWN_INLINE_SERVICES = 1;
 
 type Props = {
   session: TAgentVaultSession | undefined;
@@ -47,10 +55,15 @@ export const SessionDetailSheet = ({
   const { currentOrg } = useOrganization();
 
   const isOwnerDeleted = session?.actor.id === null;
+  // The API refuses label edits once the owner, or the user it acts on behalf of, is deleted.
+  const canEditLabel = !isOwnerDeleted && session?.onBehalfOf?.id !== null;
   const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
+  const services = session?.services ?? [];
+  const shownServices = services.slice(0, SHOWN_INLINE_SERVICES);
+  const moreServices = services.slice(SHOWN_INLINE_SERVICES);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -112,36 +125,94 @@ export const SessionDetailSheet = ({
                         )}
                       </DetailValue>
                     </Detail>
-                    <Detail className="min-w-0">
-                      <DetailLabel>
-                        {session.accessBundles.length === 1 ? "Access Bundle" : "Access Bundles"}
-                      </DetailLabel>
-                      <DetailValue className="flex flex-wrap gap-x-4 gap-y-1">
-                        {session.accessBundles.map((bundle) =>
-                          bundle.id ? (
+                    {session.onBehalfOf && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>On Behalf Of</DetailLabel>
+                        <DetailValue
+                          className={twMerge(
+                            "flex items-center gap-2",
+                            !session.onBehalfOf.id && "text-muted"
+                          )}
+                        >
+                          <UserIcon className="size-4 shrink-0 text-muted" />
+                          <span className="truncate">
+                            {memberDisplayName(session.onBehalfOf)}
+                            {!session.onBehalfOf.id && " (deleted)"}
+                          </span>
+                          {session.onBehalfOf.id && (
+                            <span className="truncate text-muted">
+                              {memberSubtitle(session.onBehalfOf)}
+                            </span>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.accessBundle && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Access Bundle</DetailLabel>
+                        <DetailValue className="flex min-w-0">
+                          {session.accessBundle.id ? (
                             <Link
-                              key={bundle.id}
                               to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                              params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                              params={{
+                                orgId: currentOrg.id,
+                                accessBundleId: session.accessBundle.id
+                              }}
                               className="group flex min-w-0 items-center gap-2"
                             >
                               <PackageIcon className="size-4 shrink-0 text-muted" />
                               <span className="truncate group-hover:underline group-hover:underline-offset-2">
-                                {bundle.name}
+                                {session.accessBundle.name}
                               </span>
                             </Link>
                           ) : (
-                            <span
-                              key={bundle.name}
-                              className="flex min-w-0 items-center gap-2 text-muted"
-                            >
+                            <span className="flex min-w-0 items-center gap-2 text-muted">
                               <PackageIcon className="size-4 shrink-0" />
-                              <span className="truncate">{bundle.name} (deleted)</span>
+                              <span className="truncate">
+                                {session.accessBundle.name} (deleted)
+                              </span>
                             </span>
-                          )
-                        )}
-                      </DetailValue>
-                    </Detail>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.services.length > 0 && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Inline Services</DetailLabel>
+                        <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          {shownServices.map((service) => (
+                            <Tooltip key={service.id}>
+                              <TooltipTrigger asChild>
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <ServiceIcon
+                                    hostPattern={service.hostPattern}
+                                    className="size-5"
+                                  />
+                                  <span className="truncate">{service.name}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Sent with this session when it was created, for{" "}
+                                {inlineServiceTarget(service)}
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                          {moreServices.length > 0 && (
+                            <InlineServicesHoverCard services={moreServices}>
+                              <button
+                                type="button"
+                                className="shrink-0 rounded-sm text-muted outline-hidden hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                              >
+                                {/* One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam. */}
+                                <span className="underline decoration-dotted underline-offset-2">
+                                  {`+${moreServices.length} more`}
+                                </span>
+                              </button>
+                            </InlineServicesHoverCard>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
                     <Detail>
                       <DetailLabel>Created</DetailLabel>
                       <DetailValue>
@@ -190,7 +261,7 @@ export const SessionDetailSheet = ({
                       {session.label ?? "No label"}
                     </DetailValue>
                   </Detail>
-                  {!isOwnerDeleted && (
+                  {canEditLabel && (
                     <IconButton
                       variant="ghost"
                       size="xs"

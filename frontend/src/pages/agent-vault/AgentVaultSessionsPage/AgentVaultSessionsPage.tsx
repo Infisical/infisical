@@ -3,9 +3,9 @@ import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
-  BotIcon,
   CircleAlertIcon,
   FilterIcon,
+  GlobeIcon,
   IdCardIcon,
   LogsIcon,
   MoreHorizontalIcon,
@@ -13,12 +13,10 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
-  TriangleAlertIcon,
-  UserIcon
+  TriangleAlertIcon
 } from "lucide-react";
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
-import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import {
   useAgentVaultSetupProgress,
   useOpenAgentVaultSetupStep
@@ -76,7 +74,6 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
-  AgentVaultMemberType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   useGetAgentVaultSession,
@@ -96,11 +93,18 @@ import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSett
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
+import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessionSheet";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
+import { SessionIdentity } from "./components/SessionIdentity";
+import {
+  inlineServicesLabel,
+  toAccessItems,
+  TSessionAccessItem
+} from "./components/sessionInlineServices";
 import { SessionLabel } from "./components/SessionLabel";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
@@ -109,6 +113,12 @@ const STATUS_OPTIONS = [
   AgentVaultSessionStatus.Revoked,
   AgentVaultSessionStatus.Expired
 ];
+
+const accessItemIcon = (item: TSessionAccessItem) =>
+  item.kind === "bundle" ? <PackageIcon /> : <GlobeIcon />;
+
+const accessItemHoverCard = (item: TSessionAccessItem) =>
+  item.kind === "inline" ? <InlineServicesList services={item.services} /> : undefined;
 
 export const AgentVaultSessionsPage = () => {
   const { currentOrg } = useOrganization();
@@ -137,7 +147,7 @@ export const AgentVaultSessionsPage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
-  const { sessionId: openSessionId, openSheet } = useAgentVaultSheetState();
+  const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
   const { data, isPending } = useListAgentVaultSessions({
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
@@ -253,7 +263,7 @@ export const AgentVaultSessionsPage = () => {
         scope={ProjectType.AgentVault}
         icon={IdCardIcon}
         title="Sessions"
-        description="Create sessions that let your agents reach the services in an access bundle."
+        description="Create sessions that let your agents reach the services they need."
       />
 
       <div className="flex flex-col gap-8">
@@ -327,7 +337,7 @@ export const AgentVaultSessionsPage = () => {
               <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
             </CardTitle>
             <CardDescription>
-              A session names the actor who holds it, the access bundle it carries, and when it
+              A session names the actor who holds it, the services it can reach, and when it
               expires.
             </CardDescription>
             <CardAction>
@@ -420,7 +430,7 @@ export const AgentVaultSessionsPage = () => {
                   {/* w-px holds the column to its capped content, so a long label truncates at the column's edge */}
                   <TableHead className="w-px">Label</TableHead>
                   <TableHead>Identity</TableHead>
-                  <TableHead>Access Bundle</TableHead>
+                  <TableHead>Access</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
@@ -455,40 +465,37 @@ export const AgentVaultSessionsPage = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex w-fit items-center gap-2">
-                              {session.actor.type === AgentVaultMemberType.MachineIdentity ? (
-                                <BotIcon className="size-4 text-muted" />
-                              ) : (
-                                <UserIcon className="size-4 text-muted" />
-                              )}
-                              {memberDisplayName(session.actor)}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {session.actor.type === AgentVaultMemberType.MachineIdentity
-                              ? `${session.actor.id ?? "Deleted"} (machine identity)`
-                              : memberSubtitle(session.actor)}
-                          </TooltipContent>
-                        </Tooltip>
+                        <SessionIdentity session={session} />
                       </TableCell>
                       <TableCell>
                         <div className="max-w-72">
                           <OverflowBadgeList
-                            items={session.accessBundles}
-                            getKey={(bundle) => bundle.id ?? bundle.name}
-                            getLabel={(bundle) => bundle.name}
-                            icon={<PackageIcon />}
-                            getClassName={(bundle) => (bundle.id ? undefined : "text-muted")}
-                            getTooltip={(bundle) =>
-                              bundle.id ? bundle.name : `${bundle.name} (deleted)`
+                            items={toAccessItems(session)}
+                            getKey={(item) =>
+                              item.kind === "bundle"
+                                ? `bundle:${item.bundle.id ?? item.bundle.name}`
+                                : "inline"
                             }
-                            getLinkProps={(bundle) =>
-                              bundle.id
+                            getLabel={(item) =>
+                              item.kind === "bundle"
+                                ? item.bundle.name
+                                : inlineServicesLabel(item.services.length)
+                            }
+                            getIcon={accessItemIcon}
+                            getClassName={(item) =>
+                              item.kind === "bundle" && !item.bundle.id ? "text-muted" : undefined
+                            }
+                            getHoverCard={accessItemHoverCard}
+                            getTooltip={(item) =>
+                              item.kind === "bundle" && !item.bundle.id
+                                ? `${item.bundle.name} (deleted)`
+                                : undefined
+                            }
+                            getLinkProps={(item) =>
+                              item.kind === "bundle" && item.bundle.id
                                 ? linkOptions({
                                     to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                                    params: { orgId: currentOrg.id, accessBundleId: bundle.id }
+                                    params: { orgId: currentOrg.id, accessBundleId: item.bundle.id }
                                   })
                                 : undefined
                             }
@@ -499,7 +506,11 @@ export const AgentVaultSessionsPage = () => {
                         {format(new Date(session.createdAt), "MMM dd, yyyy hh:mm a")}
                       </TableCell>
                       <TableCell>
-                        <SessionExpiry expiresAt={session.expiresAt} />
+                        {session.status === AgentVaultSessionStatus.Revoked ? (
+                          <span className="text-muted">—</span>
+                        ) : (
+                          <SessionExpiry expiresAt={session.expiresAt} />
+                        )}
                       </TableCell>
                       <TableCell>
                         <SessionStatusBadge status={session.status} />
@@ -542,8 +553,8 @@ export const AgentVaultSessionsPage = () => {
                                 <LogsIcon />
                                 View Session Logs
                               </DropdownMenuItem>
-                              {/* The API refuses label edits once the session's owner is deleted */}
-                              {session.actor.id !== null && (
+                              {/* The API refuses label edits once the session's owner, or the user it acts on behalf of, is deleted */}
+                              {session.actor.id !== null && session.onBehalfOf?.id !== null && (
                                 <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
                                   <PencilIcon />
                                   {session.label ? "Edit Label" : "Add Label"}

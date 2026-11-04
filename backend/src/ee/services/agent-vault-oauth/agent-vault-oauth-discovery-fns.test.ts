@@ -17,6 +17,8 @@ import {
 import { TOauthHttpClient } from "./agent-vault-oauth-http-fns";
 import { AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
 
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isCloud: false }) }));
+
 vi.mock("@app/lib/logger", async () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
   sanitizeUrlForLog: (
@@ -520,7 +522,7 @@ describe("discovering an MCP server's authorization server", () => {
       }
     };
     await expect(discoverOauthServer(refused, "https://mcp.internal.example.com/mcp")).rejects.toThrow(
-      "Infisical can't reach 'mcp.internal.example.com' because it's on a private network. Use a bearer token for this service instead."
+      "Infisical can't reach 'mcp.internal.example.com' because it's on a private network. Use a bearer token for this service instead. If you're self-hosting Infisical, set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to allow it."
     );
   });
 

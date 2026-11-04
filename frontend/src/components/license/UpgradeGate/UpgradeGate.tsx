@@ -440,10 +440,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -475,10 +474,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -538,10 +536,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
         }}
       >
         <DialogContent
-          overlayClassName="z-[70]"
           key="loading"
           showCloseButton={false}
-          className="z-[70] w-auto gap-0 border-0 bg-transparent p-0 shadow-none"
+          className="w-auto gap-0 border-0 bg-transparent p-0 shadow-none"
           aria-describedby={undefined}
         >
           <DialogTitle className="sr-only">Loading {productName} plans</DialogTitle>
@@ -556,7 +553,6 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={(event) => {
             const action = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(
               "[data-upgrade-cta]:not(:disabled)"
@@ -566,7 +562,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             action.focus({ preventScroll: true });
           }}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -631,10 +627,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={dismissBillingReturn}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <DialogHeader>
             <DialogTitle>Check Billing Status</DialogTitle>
@@ -680,10 +675,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}

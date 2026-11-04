@@ -48,6 +48,16 @@ interface TSecretV2DalArg {
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
+
+const SECRET_V2_COLUMNS = Object.keys(SecretsV2Schema.shape) as (keyof TSecretsV2)[];
+
+// Same output as SecretsV2Schema.parse for a row selected with selectAllTableCols, without parsing every row.
+const pickSecretV2Columns = (row: TSecretsV2) => {
+  const secret: Record<string, unknown> = {};
+  for (const column of SECRET_V2_COLUMNS) secret[column] = row[column];
+  return secret as TSecretsV2;
+};
+
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
@@ -895,7 +905,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         key: "id",
         parentMapper: (el) => ({
           _id: el.id,
-          ...SecretsV2Schema.parse(el),
+          ...pickSecretV2Columns(el),
           isHoneyTokenSecret: Boolean(el.honeyTokenId),
           rotationId: el.rotationId,
           isRotatedSecret: Boolean(el.rotationId)
@@ -927,6 +937,38 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
+    }
+  };
+
+  const findSharedKeyInFolders = async ({ folderIds, key }: { folderIds: string[]; key: string }) => {
+    try {
+      const rows = await db
+        .replicaNode()(TableName.SecretV2)
+        .where(`${TableName.SecretV2}.key`, key)
+        .where(`${TableName.SecretV2}.type`, SecretType.Shared)
+        .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(db.ref("folderId").withSchema(TableName.SecretV2))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+
+      const tagSlugsByFolderId = new Map<string, string[]>();
+      rows.forEach(({ folderId, tagSlug }) => {
+        const tagSlugs = tagSlugsByFolderId.get(folderId) ?? [];
+        if (tagSlug) tagSlugs.push(tagSlug);
+        tagSlugsByFolderId.set(folderId, tagSlugs);
+      });
+      return Array.from(tagSlugsByFolderId, ([folderId, tagSlugs]) => ({ folderId, tagSlugs }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find shared secret key in folders" });
     }
   };
 
@@ -1846,6 +1888,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findByFolderIds,
     findMetadataByFolderIds,
     findBySecretKeys,
+    findSharedKeyInFolders,
     upsertSecretReferences,
     findReferencedSecretReferences,
     findSecretReferencesByProjectId,
