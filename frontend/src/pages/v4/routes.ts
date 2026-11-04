@@ -7,6 +7,11 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       route("/kms/$projectId/overview", "v4/kms/OverviewPage/route.tsx"),
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
+    route("/cert-manager/inventory", "v4/cert-manager/InventoryPage/route.tsx"),
+    route(
+      "/cert-manager/certificates/$certificateId",
+      "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
+    ),
     route("/$", "v4/organization/NotPortedPage/route.tsx")
   ])
 ]);
