@@ -793,6 +793,9 @@ export const AgentVaultProductMemberAddSchema = z
       .describe(AGENT_VAULT.MEMBERSHIP.emails),
     usernames: z
       .string()
+      .trim()
+      .min(1)
+      .max(255)
       .array()
       .default([])
       .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase")
