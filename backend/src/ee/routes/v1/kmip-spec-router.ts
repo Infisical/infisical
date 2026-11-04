@@ -79,6 +79,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipCreate",
       description: "KMIP endpoint for creating managed objects",
       body: z.object({
         algorithm: z.nativeEnum(SymmetricKeyAlgorithm)
@@ -127,6 +128,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipGet",
       description: "KMIP endpoint for getting managed objects",
       body: z.object({
         id: z.string()
@@ -179,6 +181,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipGetAttributes",
       description: "KMIP endpoint for getting attributes of managed object",
       body: z.object({
         id: z.string()
@@ -233,6 +236,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipDestroy",
       description: "KMIP endpoint for destroying managed objects",
       body: z.object({
         id: z.string()
@@ -282,6 +286,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipActivate",
       description: "KMIP endpoint for activating managed object",
       body: z.object({
         id: z.string()
@@ -332,6 +337,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipRevoke",
       description: "KMIP endpoint for revoking managed object",
       body: z.object({
         id: z.string()
@@ -382,6 +388,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipLocate",
       description: "KMIP endpoint for locating managed objects",
       response: {
         200: z.object({
@@ -439,6 +446,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipRegister",
       description: "KMIP endpoint for registering managed object",
       body: z.object({
         key: z.string(),

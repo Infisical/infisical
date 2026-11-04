@@ -121,7 +121,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -184,7 +185,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -246,7 +248,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -284,7 +287,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -349,7 +353,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {

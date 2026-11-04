@@ -3,7 +3,11 @@ title: "Connect KMIP clients"
 description: "Connect a KMIP client to the keys in a KMS project."
 ---
 
-Each KMIP client is registered in one KMS project, and can use only that project's keys. The client authenticates to the [KMIP server](/documentation/platform/kms/kmip-server) with a certificate that Infisical issues for it.
+Each KMIP client is registered in one KMS project, and can use only that project's Encrypt/Decrypt [keys](/documentation/platform/kms/keys). The client authenticates to the [KMIP server](/documentation/platform/kms/kmip-server) with a certificate that Infisical issues for it.
+
+<Tip>
+  A KMIP client can use every Encrypt/Decrypt key in its project, including keys your applications created through the API. To keep KMIP clients away from those keys, register KMIP clients in a KMS project that you use only for KMIP.
+</Tip>
 
 ## Prerequisites
 

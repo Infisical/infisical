@@ -6,9 +6,7 @@ import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { isValidIp } from "@app/lib/ip";
 import { ms } from "@app/lib/ms";
-import { isFQDN } from "@app/lib/validator/validate-url";
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   createDistinguishedName,
@@ -28,6 +26,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { ProjectPermissionKmipActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TKmipClientCertificateDALFactory } from "./kmip-client-certificate-dal";
 import { TKmipClientDALFactory } from "./kmip-client-dal";
+import { getKmipServerAltNameType, KMIP_SERVER_HOSTNAMES_OR_IPS_MESSAGE } from "./kmip-fns";
 import { TKmipOrgConfigDALFactory } from "./kmip-org-config-dal";
 import { TKmipOrgServerCertificateDALFactory } from "./kmip-org-server-certificate-dal";
 import {
@@ -764,21 +763,14 @@ export const kmipServiceFactory = ({
       .split(",")
       .map((name) => name.trim())
       .map((altName) => {
-        if (isFQDN(altName, { allow_wildcard: true })) {
-          return {
-            type: "dns",
-            value: altName
-          };
+        const type = getKmipServerAltNameType(altName);
+        if (!type) {
+          throw new BadRequestError({
+            message: `Cannot issue a KMIP server certificate for "${altName}". ${KMIP_SERVER_HOSTNAMES_OR_IPS_MESSAGE}.`
+          });
         }
 
-        if (isValidIp(altName)) {
-          return {
-            type: "ip",
-            value: altName
-          };
-        }
-
-        throw new Error(`Invalid altName: ${altName}`);
+        return { type, value: altName };
       });
 
     const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
