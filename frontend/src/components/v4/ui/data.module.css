@@ -1210,10 +1210,10 @@ button.rowTitle::after {
   display: flex;
   flex: none;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: var(--v4-space-row-actions-gap);
   width: max-content;
-  margin-inline: auto;
+  margin-inline-start: auto;
 }
 .tableRowActionSlot {
   display: inline-flex;
@@ -1226,6 +1226,7 @@ td.tableActions {
     var(--v4-size-row) + (var(--v4-row-action-slots, 1) - 1) * var(--v4-size-row-action-step)
   );
   padding-inline: var(--v4-space-row-actions-inset);
+  text-align: end;
   background-color: var(--v4-surface);
   border-inline-start: var(--v4-size-control-border) solid var(--v4-line-soft);
   --v4-nested-action-height: var(--v4-size-target-row);

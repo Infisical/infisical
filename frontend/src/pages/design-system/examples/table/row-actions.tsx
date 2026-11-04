@@ -9,7 +9,19 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline } from "@app/components/v4/ui/layout";
-import { TableRowIndicators } from "@app/components/v4/ui/table";
+import {
+  type RowActionList,
+  RowActions as RowActionsGroup,
+  Table,
+  TableActionsCell,
+  TableActionsHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowIndicators
+} from "@app/components/v4/ui/table";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
@@ -74,6 +86,29 @@ export default function RowActions() {
     disabledReason: (row: Row) => (row.rotated ? "Rotated secrets can't be edited" : undefined),
     onSelect: (row: Row) => setStatus(`Editing ${row.name}.`)
   } as const;
+  const say = (text: string) => () => setStatus(text);
+  const mixed: { name: string; inline: RowActionList }[] = [
+    { name: "api", inline: [] },
+    {
+      name: "workers",
+      inline: [{ label: "Edit folder", icon: EditIcon, onSelect: say("Editing workers.") }]
+    },
+    {
+      name: "DATABASE_URL",
+      inline: [
+        { label: "Add reminder", icon: "bell", onSelect: say("Reminder for DATABASE_URL.") },
+        { label: "Edit value", icon: EditIcon, onSelect: say("Editing DATABASE_URL.") },
+        { label: "Copy secret", icon: "copy", onSelect: say("Copied DATABASE_URL.") }
+      ]
+    },
+    {
+      name: "LOG_LEVEL",
+      inline: [
+        { label: "Edit value", icon: EditIcon, onSelect: say("Editing LOG_LEVEL.") },
+        { label: "Copy secret", icon: "copy", onSelect: say("Copied LOG_LEVEL.") }
+      ]
+    }
+  ];
   const sets: { label: string; actions: DataTableRowActions<Row> }[] = [
     { label: "More only, one square cell", actions: { renderMenu: menu } },
     { label: "One inline action and More", actions: { inline: [copy], renderMenu: menu } },
@@ -101,6 +136,35 @@ export default function RowActions() {
             />
           </ExampleCell>
         ))}
+        <ExampleCell align="stretch" label="Mixed counts in one table, each row end-aligned">
+          <Table aria-label="Example folders and secrets, mixed action counts">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableActionsHead slots={4}>Actions</TableActionsHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mixed.map((row) => (
+                <TableRow key={row.name}>
+                  <TableCell>{row.name}</TableCell>
+                  <TableActionsCell slots={4}>
+                    <RowActionsGroup
+                      label={row.name}
+                      inline={row.inline}
+                      menu={
+                        <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+                          <Icon name="eye" />
+                          Open
+                        </DropdownMenuItem>
+                      }
+                    />
+                  </TableActionsCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </ExampleCell>
       </ExampleGrid>
       <p role="status" className="sr-only">
         {status}

@@ -59,7 +59,7 @@ export const floatingActionBarDefinition = {
     use: ["Use FloatingActionBar only for actions on a multiple selection in a list or table."],
     avoid: ["Put a page's own actions in the bar or hide the selection behind it."],
     decision:
-      "Choose FloatingActionBar for bulk actions on a selection. Page actions belong in PageHeader and row actions in the table's sticky actions column.",
+      "Choose FloatingActionBar for bulk actions on a selection. Page actions belong in PageHeader and row actions in the table's actions tail, the sticky last column.",
     rules: [
       {
         id: "floating-action-bar-undo",

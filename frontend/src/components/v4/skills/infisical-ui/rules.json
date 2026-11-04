@@ -1072,10 +1072,10 @@
     },
     {
       "id": "persistent-row-actions",
-      "title": "Row actions are persistent, in the sticky actions column",
+      "title": "Row actions are persistent, in the actions tail",
       "category": "Interaction",
-      "instruction": "Put row-level actions in the table's sticky actions column, visible on every row at rest: DataTable rowActions, or TableActionsCell with RowActions in a native Table. Show at most three inline icon actions (Button icon-row, each with a tooltip and an accessible name that includes the row), then the More menu for everything else. A blocked action stays visible and disabled with its reason. Nothing a hover or focus shows may change a cell's width or the row's layout.",
-      "good": "A secret row with Reminder, Edit value and Copy secret icons and a More menu in a sticky tail cell that keeps one width on every row, hovered or not.",
+      "instruction": "Put row-level actions in the table's actions tail, visible on every row at rest: DataTable rowActions, or TableActionsCell with RowActions in a native Table. Show at most three inline icon actions (Button icon-row, each with a tooltip and an accessible name that includes the row), then the More menu for everything else. A blocked action stays visible and disabled with its reason. Nothing a hover or focus shows may change a cell's width or the row's layout.",
+      "good": "A secret row with Reminder, Edit value and Copy secret icons and a More menu in the actions tail that keeps one width on every row, hovered or not.",
       "avoid": "Copy and More icons that appear inside the value cell on hover and push its content aside, or indicator marks that swap out for actions.",
       "detect": {
         "by": "lint",

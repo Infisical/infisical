@@ -137,7 +137,7 @@ export const baselineActions = [
           {
             value: "icon-row",
             reason:
-              "28px target with a 16px glyph for table row actions. It only makes sense in a table's sticky actions column, so the Table row actions example shows it."
+              "28px target with a 16px glyph for table row actions. It only makes sense in a table's actions tail, the sticky last column, so the Table row actions example shows it."
           }
         ]
       },
@@ -248,7 +248,7 @@ export const baselineActions = [
         {
           id: "button-row-icon-size",
           when: "An icon-only action sits in a table row, a field or a toolbar.",
-          do: "Use icon-row for actions in a Table or DataTable row, in the sticky actions column (DataTable rowActions or RowActions). Keep icon-xs and icon-sm for actions nested in a field or block (InputGroup reveal and copy, Code and Snippet copy, a combobox clear) and for overlay chrome, and icon for a standalone toolbar action.",
+          do: "Use icon-row for actions in a Table or DataTable row, in the actions tail (DataTable rowActions or RowActions). Keep icon-xs and icon-sm for actions nested in a field or block (InputGroup reveal and copy, Code and Snippet copy, a combobox clear) and for overlay chrome, and icon for a standalone toolbar action.",
           avoid:
             "Put icon-xs or icon-sm in a table row, or icon-row in a field slot, a toolbar or a dialog header.",
           reason:

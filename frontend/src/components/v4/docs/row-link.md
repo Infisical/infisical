@@ -33,7 +33,7 @@ Source evidence:
 
 ## Presentation rules
 
-Do: Keep row actions as ordinary buttons in the table's sticky actions column, outside the link.
+Do: Keep row actions as ordinary buttons in the table's actions tail, the sticky last column, outside the link.
 
 Avoid: Wrap the whole row in an anchor.
 

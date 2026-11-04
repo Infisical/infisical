@@ -70,9 +70,9 @@ When a table row has actions, standalone indicator marks or both.
 
 Do: Declare the actions with DataTable rowActions (or TableActionsCell and RowActions in a native Table): up to three inline icon actions, the same on every row, then renderMenu for the rest. Keep marks in TableRowIndicators. Choose which actions and marks a row shows and their order; leave target, glyph, gap, inset and column width to the primitives and tokens.
 
-Avoid: Show actions only on hover, put them inside a value cell, swap marks for actions, add a fourth inline action, hide a blocked action, or set a local width, gap or margin on the tail.
+Avoid: Show actions only on hover, put them inside a value cell, swap marks for actions, add a fourth inline action, hide a blocked action, or set a local width, gap or margin on the actions tail.
 
-Why: Persistent actions in one sticky column never shift the row, line up across rows and stay reachable without a pointer; one owner keeps the tail centered and sized by its contents.
+Why: Persistent actions in one sticky column never shift the row, line up across rows and stay reachable without a pointer; one owner keeps the actions tail end-aligned and sized by its contents.
 
 Checked by: review only. Look for: Measure a row at rest and on hover: the value cell keeps its width, the tail is 40 for one action and 28 wider per further action, and its first and last targets sit the same distance from the divider and the frame edge. Tab reaches every action and a disabled one reads its reason. ui:lint flags a reveal or swap prop and hover-only layout changes in table CSS.
 
@@ -154,10 +154,10 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
 - Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.
 - Row actions are persistent. rowActions adds a sticky tail column, pinned to the inline end, that shows every row's actions at rest: up to three inline icon actions (Button icon-row, the same set on every row, each with a tooltip of its label or its disabled reason) followed by the More menu when renderMenu is set. A blocked action stays in place, disabled, with its reason. Nothing appears on hover, so a hovered row never changes a cell's width or the row's layout.
-- The tail cell centers its actions between equal insets: space-row-actions-inset on each side, inside its line-soft divider and the frame edge, so one action sits 5px clear of each line. Its width follows its contents: size-row (40px, a square) for one action and size-row-action-step (28px) more for each further one, so More alone is 40, one inline action and More is 68, two is 96 and three is 124. The cell keeps the pinned divider, the frame-pad fill, the row's stripe, the hover overlay and the selected surface.
-- Every tail uses this standard by default, whether it comes from rowActions, TableActionsCell or a column with actions true: the tail caps each Button inside it at size-target-row (28px), the row target height, so icon-row targets and a text button such as Open share one height, centered in the row. The cell's inline padding is the same space-row-actions-inset, so a single target reads square and a text button gets the same clearance on each side. Examples and composites set no width, size or padding on the tail.
-- TableRowActions is the centered group inside a tail cell, with targets touching (space-row-actions-gap, 0). For a native Table, TableActionsHead and TableActionsCell take slots, the widest row's action count, and draw the same sticky tail; RowActions renders the inline actions and More inside it. TableRowIndicators lays persistent row marks in size-target-row slots with size-glyph glyphs, pulled so the last glyph lands on the 12px content edge; marks never swap out for actions.
-- The selection column is size-row wide with its Checkbox centered between the frame edge and a persistent line-soft divider on its right, the same line as the pinned actions divider, on the header and every row, at rest, hovered and selected.
+- The actions tail end-aligns its actions, header included: on every row the last action's end edge sits space-row-actions-inset inside the frame edge, whatever the row's action count, so a row with fewer actions than the widest leaves its gap at the start, by the line-soft divider. A single action sits 5px clear of each line. Its width follows its contents: size-row (40px, a square) for one action and size-row-action-step (28px) more for each further one, so More alone is 40, one inline action and More is 68, two is 96 and three is 124. The cell keeps the pinned divider, the frame-pad fill, the row's stripe, the hover overlay and the selected surface.
+- Every actions tail uses this standard by default, whether it comes from rowActions, TableActionsCell or a column with actions true: it caps each Button inside it at size-target-row (28px), the row target height, so icon-row targets and a text button such as Open share one height, centered vertically in the row and end-aligned. The cell's inline padding is the same space-row-actions-inset, so a single target reads square and a text button gets the same clearance on each side. Examples and composites set no width, size or padding on the actions tail.
+- TableRowActions is the end-aligned group inside the actions tail, with targets touching (space-row-actions-gap, 0). For a native Table, TableActionsHead and TableActionsCell take slots, the widest row's action count, and draw the same actions tail; RowActions renders the inline actions and More inside it. TableRowIndicators lays persistent row marks in size-target-row slots with size-glyph glyphs, pulled so the last glyph lands on the 12px content edge; marks never swap out for actions.
+- The selection column is size-row wide with its Checkbox centered between the frame edge and a persistent line-soft divider on its right, the same line as the actions tail divider, on the header and every row, at rest, hovered and selected.
 - Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.
 - With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
 - onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.
@@ -192,7 +192,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - There is no muted row state. Lowered opacity drops text below contrast and carries the state by color alone; mark an inactive row with a Badge in its name cell (for example Deactivated) and, when it cannot be acted on, a selectionDisabledReason.
 - Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
 - Only a final column may be pinned. rowActions.inline takes at most three actions, enforced by its tuple type; everything else goes in renderMenu. Use grow for a flexible resource column; an explicit numeric width takes precedence.
-- A column with actions true remains for tail content that is not icon actions, such as an Open text button; it takes the same sticky, centered cell and 28px target cap, and sizes to its content without a declared width. In a fixed-layout table it holds one target (size-row) unless the column declares a width. Prefer rowActions for icon actions.
+- A column with actions true remains for tail content that is not icon actions, such as an Open text button; it takes the same end-aligned actions tail and 28px target cap, and sizes to its content without a declared width. In a fixed-layout table it holds one target (size-row) unless the column declares a width. Prefer rowActions for icon actions.
 - Use text(row) for full hover text when render returns truncated complex content.
 - The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.
 - onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.
@@ -779,7 +779,19 @@ import {
 import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Inline } from "../../../../components/v4/ui/layout";
-import { TableRowIndicators } from "../../../../components/v4/ui/table";
+import {
+  type RowActionList,
+  RowActions as RowActionsGroup,
+  Table,
+  TableActionsCell,
+  TableActionsHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowIndicators
+} from "../../../../components/v4/ui/table";
 
 type Row = { id: string; name: string; annotated: boolean; rotated: boolean };
 const rows: Row[] = [
@@ -842,6 +854,29 @@ export default function RowActions() {
     disabledReason: (row: Row) => (row.rotated ? "Rotated secrets can't be edited" : undefined),
     onSelect: (row: Row) => setStatus(`Editing ${row.name}.`)
   } as const;
+  const say = (text: string) => () => setStatus(text);
+  const mixed: { name: string; inline: RowActionList }[] = [
+    { name: "api", inline: [] },
+    {
+      name: "workers",
+      inline: [{ label: "Edit folder", icon: EditIcon, onSelect: say("Editing workers.") }]
+    },
+    {
+      name: "DATABASE_URL",
+      inline: [
+        { label: "Add reminder", icon: "bell", onSelect: say("Reminder for DATABASE_URL.") },
+        { label: "Edit value", icon: EditIcon, onSelect: say("Editing DATABASE_URL.") },
+        { label: "Copy secret", icon: "copy", onSelect: say("Copied DATABASE_URL.") }
+      ]
+    },
+    {
+      name: "LOG_LEVEL",
+      inline: [
+        { label: "Edit value", icon: EditIcon, onSelect: say("Editing LOG_LEVEL.") },
+        { label: "Copy secret", icon: "copy", onSelect: say("Copied LOG_LEVEL.") }
+      ]
+    }
+  ];
   const sets: { label: string; actions: DataTableRowActions<Row> }[] = [
     { label: "More only, one square cell", actions: { renderMenu: menu } },
     { label: "One inline action and More", actions: { inline: [copy], renderMenu: menu } },
@@ -872,6 +907,40 @@ export default function RowActions() {
             <figcaption className="text-muted-foreground text-xs">{set.label}</figcaption>
           </figure>
         ))}
+        <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Table aria-label="Example folders and secrets, mixed action counts">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableActionsHead slots={4}>Actions</TableActionsHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mixed.map((row) => (
+                  <TableRow key={row.name}>
+                    <TableCell>{row.name}</TableCell>
+                    <TableActionsCell slots={4}>
+                      <RowActionsGroup
+                        label={row.name}
+                        inline={row.inline}
+                        menu={
+                          <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+                            <Icon name="eye" />
+                            Open
+                          </DropdownMenuItem>
+                        }
+                      />
+                    </TableActionsCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">
+            {"Mixed counts in one table, each row end-aligned"}
+          </figcaption>
+        </figure>
       </div>
       <p role="status" className="sr-only">
         {status}
