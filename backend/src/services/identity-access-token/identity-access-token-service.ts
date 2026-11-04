@@ -8,6 +8,7 @@ import { crypto } from "@app/lib/crypto";
 import { applyJitter } from "@app/lib/dates";
 import { delay } from "@app/lib/delay";
 import { UnauthorizedError } from "@app/lib/errors";
+import { unwrapSettled } from "@app/lib/fn";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { recordTokenRenewalMetric } from "@app/lib/telemetry/metrics";
@@ -479,7 +480,7 @@ export const identityAccessTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
     }
 
-    const [, usesRemainingRaw, trustedIpsPayload] = await Promise.all([
+    const [revokedResult, usesRemainingResult, trustedIpsResult] = await Promise.allSettled([
       assertTokenIsNotRevoked({
         tokenId,
         identityId: token.identityId,
@@ -505,6 +506,8 @@ export const identityAccessTokenServiceFactory = ({
           })
         : null
     ]);
+    unwrapSettled(revokedResult);
+    const usesRemainingRaw = unwrapSettled(usesRemainingResult);
 
     // null means unlimited or the Redis counter was lost; <= 0 means exhausted.
     const remainingFromState = parseUsesRemaining(usesRemainingRaw);
@@ -547,6 +550,7 @@ export const identityAccessTokenServiceFactory = ({
       }
     }
 
+    const trustedIpsPayload = unwrapSettled(trustedIpsResult);
     if (ipAddress && trustedIpsPayload && hasNonWildcardTrustedIps(trustedIpsPayload.accessTokenTrustedIps)) {
       checkIPAgainstBlocklist({
         ipAddress,

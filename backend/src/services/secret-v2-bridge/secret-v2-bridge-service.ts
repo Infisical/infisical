@@ -31,7 +31,7 @@ import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/c
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
-import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
+import { diff, groupBy, takeDistinctKeyScanWindow, unwrapSettled } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -392,7 +392,7 @@ export const secretV2BridgeServiceFactory = ({
       throw new BadRequestError({ message: "Must be user to create personal secret" });
     }
 
-    const [doesSecretExist, tags] = await Promise.all([
+    const [doesSecretExistResult, tagsResult] = await Promise.allSettled([
       secretDAL.findOne({
         key: inputSecret.secretName,
         type: SecretType.Shared,
@@ -400,6 +400,7 @@ export const secretV2BridgeServiceFactory = ({
       }),
       inputSecret.tagIds ? secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : []
     ]);
+    const doesSecretExist = unwrapSettled(doesSecretExistResult);
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
       throw new BadRequestError({
         message: `Secret '${inputSecret.secretName}' already exists in path '${secretPath}' of environment '${environment}'`
@@ -414,6 +415,7 @@ export const secretV2BridgeServiceFactory = ({
 
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
+    const tags = unwrapSettled(tagsResult);
     if ((inputSecret.tagIds || []).length !== tags.length)
       throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
 
@@ -1910,18 +1912,20 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const [folder, { decryptor: secretManagerDecryptor }] = await Promise.all([
+    const [folderResult, cipherPairResult] = await Promise.allSettled([
       folderDAL.findBySecretPath(projectId, environment, path),
       kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       })
     ]);
+    const folder = unwrapSettled(folderResult);
     if (!folder)
       throw new NotFoundError({
         message: `Folder with path '${path}' in environment with slug '${environment}' not found`,
         name: "GetSecretByName"
       });
+    const { decryptor: secretManagerDecryptor } = unwrapSettled(cipherPairResult);
     const folderId = folder.id;
 
     let secretType = type;

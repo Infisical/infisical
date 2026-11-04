@@ -6,6 +6,7 @@ export * from "./array";
 export * from "./buffer";
 export * from "./dates";
 export * from "./object";
+export * from "./promise";
 export * from "./scan-window";
 export * from "./string";
 export * from "./time";

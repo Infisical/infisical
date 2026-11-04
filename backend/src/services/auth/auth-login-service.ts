@@ -22,7 +22,7 @@ import {
   NotFoundError,
   UnauthorizedError
 } from "@app/lib/errors";
-import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
+import { getMinExpiresIn, removeTrailingSlash, unwrapSettled } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -1230,7 +1230,7 @@ export const authLoginServiceFactory = ({
     const cfg = getConfig();
     if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
 
-    const [user, orgMembership, selectedOrg] = await Promise.all([
+    const [userResult, orgMembershipResult, selectedOrgResult] = await Promise.allSettled([
       userDAL.findById(userId),
       // Check user membership in the organization (accept any status — promotion happens after auth)
       orgDAL.findEffectiveOrgMembership({
@@ -1241,15 +1241,18 @@ export const authLoginServiceFactory = ({
       }),
       requestMemoize(requestMemoKeys.orgFindById(organizationId), () => orgDAL.findById(organizationId))
     ]);
+    const user = unwrapSettled(userResult);
     if (!user || !user.isAccepted)
       throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
+    const orgMembership = unwrapSettled(orgMembershipResult);
     if (!orgMembership) {
       throw new ForbiddenRequestError({
         message: `User does not have access to the organization with ID ${organizationId}`
       });
     }
 
+    const selectedOrg = unwrapSettled(selectedOrgResult);
     if (!selectedOrg) {
       throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
     }
@@ -1269,7 +1272,7 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      const [fetchedRootOrg, rootOrgMembership] = await Promise.all([
+      const [rootOrgResult, rootOrgMembershipResult] = await Promise.allSettled([
         requestMemoize(requestMemoKeys.orgFindById(selectedOrg.rootOrgId), () =>
           orgDAL.findById(selectedOrg.rootOrgId as string)
         ),
@@ -1280,13 +1283,14 @@ export const authLoginServiceFactory = ({
           scope: AccessScope.Organization
         })
       ]);
-      rootOrg = fetchedRootOrg;
+      rootOrg = unwrapSettled(rootOrgResult);
       if (!rootOrg) {
         throw new BadRequestError({
           message: "Invalid sub-organization"
         });
       }
 
+      const rootOrgMembership = unwrapSettled(rootOrgMembershipResult);
       if (!rootOrgMembership) {
         throw new ForbiddenRequestError({
           message: "User does not have access to the root organization"

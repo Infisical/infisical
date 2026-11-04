@@ -29,6 +29,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { unwrapSettled } from "@app/lib/fn";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -132,13 +133,15 @@ export const identityOidcAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
-      const [{ decryptor }] = await Promise.all([
+      const [cipherPairResult, blockLocalResult] = await Promise.allSettled([
         kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: identity.orgId
         }),
         blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl)
       ]);
+      const { decryptor } = unwrapSettled(cipherPairResult);
+      unwrapSettled(blockLocalResult);
 
       let caCert = "";
       if (identityOidcAuth.encryptedCaCertificate) {

@@ -6,6 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn/array";
+import { unwrapSettled } from "@app/lib/fn/promise";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
@@ -383,13 +384,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       }),
       requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId))
     ]);
-    if (sessionResult.status === "rejected") throw sessionResult.reason;
-    const session = sessionResult.value;
+    const session = unwrapSettled(sessionResult);
     if (!session) throw sessionNoLongerValid();
     if (accessVersion !== session.accessVersion) throw sessionNoLongerValid();
 
-    if (userResult.status === "rejected") throw userResult.reason;
-    const user = userResult.value;
+    const user = unwrapSettled(userResult);
 
     if (!user || !user.isAccepted) throw sessionNoLongerValid();
 
@@ -436,15 +435,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         requestMemoize(requestMemoKeys.orgFindById(organizationId), () => orgDAL.findById(organizationId)),
         assertActiveOrgMembership(userId, organizationId)
       ]);
-      if (organizationResult.status === "rejected") throw organizationResult.reason;
-
-      const organization = organizationResult.value;
+      const organization = unwrapSettled(organizationResult);
       if (!organization) {
         throw new UnauthorizedError({
           message: `The organization with ID '${organizationId}' no longer exists. Log in again.`
         });
       }
-      if (membershipResult.status === "rejected") throw membershipResult.reason;
+      unwrapSettled(membershipResult);
 
       return {
         orgId: organizationId,
@@ -492,11 +489,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         subOrganizationId: token.subOrganizationId
       })
     ]);
-    if (sessionResult.status === "rejected") throw sessionResult.reason;
-    if (orgScopeResult.status === "rejected") throw orgScopeResult.reason;
-
-    const { user } = sessionResult.value;
-    const { orgId, orgName, rootOrgId, parentOrgId } = orgScopeResult.value;
+    const { user } = unwrapSettled(sessionResult);
+    const { orgId, orgName, rootOrgId, parentOrgId } = unwrapSettled(orgScopeResult);
 
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
   };

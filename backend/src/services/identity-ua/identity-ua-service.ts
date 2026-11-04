@@ -144,16 +144,7 @@ export const identityUaServiceFactory = ({
         slug: clientId
       };
 
-      const clientSecretPrefix = clientSecret.slice(0, 4);
-      const [initialLockout, clientSecretInfo] = await Promise.all([
-        getIdentityLockoutState(lockoutSelector, keyStore),
-        identityUaClientSecretDAL.find({
-          identityUAId: identityUa.id,
-          isClientSecretRevoked: false,
-          clientSecretPrefix
-        })
-      ]);
-      let lockout = initialLockout;
+      let lockout = await getIdentityLockoutState(lockoutSelector, keyStore);
 
       if (lockout && lockout.lockedOut && identityUa.lockoutEnabled) {
         throw new UnauthorizedError({
@@ -166,6 +157,13 @@ export const identityUaServiceFactory = ({
           }
         });
       }
+
+      const clientSecretPrefix = clientSecret.slice(0, 4);
+      const clientSecretInfo = await identityUaClientSecretDAL.find({
+        identityUAId: identityUa.id,
+        isClientSecretRevoked: false,
+        clientSecretPrefix
+      });
 
       let validClientSecretInfo: (typeof clientSecretInfo)[0] | null = null;
       for await (const info of clientSecretInfo) {

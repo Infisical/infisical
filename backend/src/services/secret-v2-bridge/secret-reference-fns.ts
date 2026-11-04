@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import RE2 from "re2";
 
 import { ClientClosedRequestError, ForbiddenRequestError, throwIfClientDisconnected } from "@app/lib/errors";
+import { unwrapSettled } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -260,15 +261,18 @@ export const expandSecretReferencesFactory = ({
     let expandedValue = dto.value;
 
     // Ensure the secret can actually be read before we expand it
-    const [currentSecret, crossProjectSecretSharingEnabled] = await Promise.all([
+    const [currentSecretResult, crossProjectSecretSharingEnabledResult] = await Promise.allSettled([
       fetchSecret(dto.environment, dto.secretPath, dto.secretKey),
       checkCrossProjectAllowed()
     ]);
+    const currentSecret = unwrapSettled(currentSecretResult);
     if (!canExpandValue(dto.environment, dto.secretPath, dto.secretKey, currentSecret.tags)) {
       throw new ForbiddenRequestError({
         message: `You do not have permission to read secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
       });
     }
+
+    const crossProjectSecretSharingEnabled = unwrapSettled(crossProjectSecretSharingEnabledResult);
 
     while (stack.length) {
       const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
@@ -390,19 +394,21 @@ export const expandSecretReferencesFactory = ({
                     // Use the explicit raw DAL when same-project resolution wraps secretDAL
                     // with import-aware behavior.
                     // eslint-disable-next-line no-await-in-loop
-                    const [sourceDecrypt, sourceSecrets] = await Promise.all([
+                    const [sourceDecryptResult, sourceSecretsResult] = await Promise.allSettled([
                       getProjectDecryptor(sourceProjectId),
                       (crossProjectSecretDAL || secretDAL).findByFolderId({
                         folderId: sourceFolder.id,
                         tx
                       })
                     ]);
+                    const sourceDecrypt = unwrapSettled(sourceDecryptResult);
                     if (!sourceDecrypt) {
                       secretCache[crossProjCacheKey] = {};
                       crossProjSecretData = { value: "", tags: [], exists: false };
                       // eslint-disable-next-line no-continue
                       continue;
                     }
+                    const sourceSecrets = unwrapSettled(sourceSecretsResult);
                     throwIfClientDisconnected(abortSignal);
 
                     const crossProjDecrypted = sourceSecrets.reduce<

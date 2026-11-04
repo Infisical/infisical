@@ -8,6 +8,7 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { unwrapSettled } from "@app/lib/fn";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import {
   ActorType,
@@ -382,7 +383,7 @@ export const injectIdentity = fp(
           break;
         }
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
-          const [identity, serverCfg] = await Promise.all([
+          const [identityResult, serverCfgResult] = await Promise.allSettled([
             server.services.identityAccessToken.fnValidateIdentityAccessTokenFast(
               token,
               req.realIp,
@@ -390,6 +391,8 @@ export const injectIdentity = fp(
             ),
             getServerCfg()
           ]);
+          const identity = unwrapSettled(identityResult);
+          const serverCfg = unwrapSettled(serverCfgResult);
           requestContext.set(RequestContextKey.OrgId, identity.orgId);
           requestContext.set(RequestContextKey.OrgName, identity.orgName);
           req.auth = {
