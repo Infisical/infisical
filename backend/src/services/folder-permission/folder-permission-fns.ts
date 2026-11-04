@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 
 import { ActionProjectType, SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
+import { recursiveFolderPathGlob } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionIdentityActions,
@@ -117,8 +118,6 @@ export const assertManageFolderAccess = (
     })
   );
 };
-
-export const recursiveFolderPathGlob = (folderPath: string) => `${folderPath.replace(/\/$/, "")}/**`;
 
 export const assertRecursiveFolderIsRoot = (folder: TResolvedFolder) => {
   if (folder.path !== "/") {

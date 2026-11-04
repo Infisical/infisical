@@ -276,6 +276,28 @@ describe("getActorGrantAbilities folder grants", () => {
     ).toBe(true);
   });
 
+  test("a recursive folder-scoped grant reaches the folders below it", async () => {
+    const abilityAt = async (overrides: object) => {
+      const { service } = createService(
+        [{ roles: [{ role: ProjectMembershipRole.NoAccess }], additionalPrivileges: [] }],
+        [],
+        { folderPrivileges: [folderPrivilege(overrides)] }
+      );
+      const grants = await service.getActorGrantAbilities({
+        scopeData: projectScope,
+        actorId: "identity-1",
+        actorType: ActorType.IDENTITY
+      });
+      return grants[0].permission.can(
+        ProjectPermissionSecretActions.DescribeSecret,
+        subject(ProjectPermissionSub.Secrets, { environment: "dev", secretPath: "/app/deeper" })
+      );
+    };
+
+    expect(await abilityAt({ isRecursiveFolder: true })).toBe(true);
+    expect(await abilityAt({})).toBe(false);
+  });
+
   test("only the allow half reaches the boundary", async () => {
     const { service } = createService(
       [{ roles: [{ role: ProjectMembershipRole.NoAccess }], additionalPrivileges: [] }],

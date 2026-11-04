@@ -12,6 +12,7 @@ import {
   getProjectPermissionFingerprint,
   handlebarsClient,
   interpolatePermissionRules,
+  recursiveFolderPathGlob,
   throwIfMissingSecretReadValueOrDescribePermission,
   validateOrgSSO
 } from "./permission-fns";
@@ -522,5 +523,15 @@ describe("validateOrgSSO session binding", () => {
 
   test("skips the check for a call made without an auth method", () => {
     expect(() => validateOrgSSO({ ...enforcedOrg, actorAuthMethod: null, issuingRootOrgId: "org-b" })).not.toThrow();
+  });
+});
+
+describe("recursiveFolderPathGlob", () => {
+  test.each([
+    ["/", "/**"],
+    ["/a", "/a/**"],
+    ["/a/b", "/a/b/**"]
+  ])("builds the subtree glob for %s", (path, glob) => {
+    expect(recursiveFolderPathGlob(path)).toBe(glob);
   });
 });
