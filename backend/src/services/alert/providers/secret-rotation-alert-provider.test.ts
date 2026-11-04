@@ -7,6 +7,7 @@ import {
   SECRET_ROTATION_RESOURCE_TYPE
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-events";
 
+import { formatUtcDate } from "../alert-format-fns";
 import { AlertPermissionAction, TAlertContext } from "../alert-types";
 import { TSecretRotationWithLocation } from "./secret-rotation-alert-dal";
 import { secretRotationAlertProviderFactory } from "./secret-rotation-alert-provider";
@@ -152,7 +153,7 @@ describe("secret rotation alert provider", () => {
       { label: "Provider", value: "PostgreSQL Credentials" },
       { label: "Environment", value: "Production" },
       { label: "Path", value: "/databases" },
-      { label: "Last Attempt", value: expect.any(String) }
+      { label: "Last Attempt", value: formatUtcDate(ATTEMPTED_AT) }
     ]);
   });
 
