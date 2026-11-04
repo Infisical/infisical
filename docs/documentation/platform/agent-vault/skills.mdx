@@ -61,13 +61,13 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
 
 <Tabs>
   <Tab title="CLI">
-    Log in to the CLI as an admin of the Agent Vault project, then run the following command on the host that has the skill folder, replacing `<project-id>` with the [project's ID](/documentation/platform/agent-vault/projects#find-a-projects-id):
+    Log in to the CLI as an admin of the Agent Vault project, then run the following command on the host that has the skill folder, replacing `<project-id>` with the [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id):
 
     ```bash
     infisical agent-vault skills push ./skills/code-review --project-id <project-id>
     ```
 
-    Instead of `--project-id`, you can set `INFISICAL_AGENT_VAULT_PROJECT_ID`, or [add the project to `.infisical.yaml`](/cli/project-config#set-the-agent-vault-project).
+    Instead of `--project-id`, you can set `INFISICAL_AGENT_VAULT_PROJECT_ID`.
 
     The CLI finds the skill by the `name` in `SKILL.md`. It creates the skill if it doesn't exist yet, and adds a new version if it does.
 

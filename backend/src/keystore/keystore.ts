@@ -30,7 +30,6 @@ export const PgSqlLock = {
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
   CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
-  CreateAgentVaultProject: (rootOrgId: string) => pgAdvisoryLockHashText(`create-agent-vault-project:${rootOrgId}`),
   CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
   CreateAgentVaultSkill: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-skill:${projectId}`),

@@ -83,7 +83,7 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       return server.services.agentVaultOauth.createAuthorization({
         projectId,
         ctx: actorContext(req),

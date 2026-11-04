@@ -27,6 +27,7 @@ agent-vault-session/         mint, revoke, list, get, edit label
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
 agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
+agent-vault-project/         project resolver: projectId lookup and the temporary fallback
 ```
 
 Routes: `ee/routes/v1/agent-vault-routers/`, prefix `/api/v1/agent-vault`. CLI: `packages/cmd/agent_vault*.go`
@@ -42,22 +43,25 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Nothing creates a project at org or sub-org creation, and there is no lazy bootstrap. Signup creates
   `My first project` when the user picks Agent Vault; a migration renamed every existing project from `Agent Vault`
   to `My first project` (slug kept).
-- The cap is `agentVaultProjectLimit`, modelled on `maxCas`: default 3, `null` uncapped (licensed self-hosted),
-  `undefined` (a plan cached before the field existed) counts as 3. It counts Agent Vault projects with
-  `deleteAfter IS NULL` across the root org and its sub-orgs, under an advisory lock on the root org id. The
-  projects stay out of `countOfBillableOrgProjects`; break the exclusion and every org loses a workspace slot.
-- Each handler resolves its project after zod validation: `resolveRequestedProjectId(req, projectId)`
+- There is no limit on how many Agent Vault projects an org holds. The projects stay out of
+  `countOfBillableOrgProjects`; break the exclusion and every org loses a workspace slot.
+- Each handler resolves its project after zod validation: `resolveRequestedProjectId(req, projectId, "query" | "body")`
   (`ee/routes/v1/agent-vault-routers/agent-vault-router-fns.ts`) for lists, creates, project-level routes and lookups
   by name, and `agentVaultProjectResolver.resolveFrom{AccessBundle,Skill,Proxy,Session,Variable,Authorization}` for
   by-id routes, which take the project from the row. A project that is missing,
   soft-deleted, of another type or in another org is a 404 that echoes only the sent id. Pass the resolved id after
-  any spread of `req.body` or `req.query`, never the raw value. There is no preValidation hook.
+  any spread of `req.body` or `req.query`, never the raw value. A `projectId` sent in the place the route does not
+  read is a 400 rather than silently falling back: body routes check the raw query string, and query routes check a
+  flag that the one `preValidation` hook in `registerAgentVaultRouters` sets before zod strips the body. Both go with
+  the fallback.
 - A request without `projectId` falls back to the org's oldest Agent Vault project (`createdAt`, then `id`), and a
   400 when it has none. The fallback is undocumented, logged at info for each use, and goes after 2027-01-04.
 - Org admins enter a project they aren't in through Join as Admin, which is audited and emails the project's
   admins. Nothing joins them silently, and that route is where the `agent_vault_identities` meter moves for them.
-- Leaving a project (`DELETE /projects/:projectId/leave`) deletes the leaver's bundle grants and runs
-  `clearPersonalValuesAfterRevoke` in the same transaction, advisory lock last.
+- Every removal outside Agent Vault's own members route (leaving, the generic project membership routes, a group's
+  removal, org exit) clears personal values through `applicationMembershipCleanupService`, which deletes the
+  actor's grants and then runs `clearPersonalValuesAfterRevoke` for Agent Vault projects only. Callers run it after
+  the project membership delete, since the clear keeps values for anyone still an admin.
 - Invites into an Agent Vault project, at signup and from the org's Members page, go through Agent Vault's member
   service (`addProductMembers`), so they get its audit event and telemetry.
 - The traffic policy defaults to any-host (formerly Allow), in the DB default, the service and the dialog.

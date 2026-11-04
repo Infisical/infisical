@@ -119,9 +119,17 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "findForResolve">;
   agentVaultSessionDAL: Pick<
     TAgentVaultSessionDALFactory,
-    "findByTokenHash" | "findByTokenHashOnPrimary" | "revokeIfActive" | "findByIdOnPrimary" | "findForList"
+    | "findByTokenHash"
+    | "findByTokenHashOnPrimary"
+    | "revokeIfActive"
+    | "findByIdOnPrimary"
+    | "findForList"
+    | "transaction"
   >;
-  agentVaultSessionInlineServiceDAL: Pick<TAgentVaultSessionInlineServiceDALFactory, "findBySessionId">;
+  agentVaultSessionInlineServiceDAL: Pick<
+    TAgentVaultSessionInlineServiceDALFactory,
+    "findBySessionId" | "deleteSecretsBySessionId"
+  >;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "identityCoversUser">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
@@ -1231,22 +1239,33 @@ export const agentVaultProxyServiceFactory = ({
   // resolve, nothing checks the owner can still reach the project, since ending a session is always allowed.
   const revokeSessionByToken = async ({ sessionToken }: TRevokeSessionByTokenDTO) => {
     const session = await agentVaultSessionDAL.findByTokenHashOnPrimary(hashSessionToken(sessionToken));
-    const project = session ? await projectDAL.findById(session.projectId) : undefined;
-    if (!session || !project) {
+    if (!session) {
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
     }
 
-    // revokeIfActive skips a session whose owner was deleted, which already reads as revoked.
-    const revoked = session.revokedAt ? undefined : await agentVaultSessionDAL.revokeIfActive(session.id, new Date());
-    const current = revoked ?? (await agentVaultSessionDAL.findByIdOnPrimary(session.id, session.projectId)) ?? session;
+    // The timestamp comes from the written row: a read-back could land on a replica that has not seen it.
+    const { project, revoked, current, view } = await agentVaultSessionDAL.transaction(async (tx) => {
+      const sessionProject = await projectDAL.findById(session.projectId, tx);
+      if (!sessionProject) {
+        throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+      }
 
-    const {
-      sessions: [view]
-    } = await agentVaultSessionDAL.findForList({
-      projectId: session.projectId,
-      sessionId: session.id,
-      limit: 1,
-      offset: 0
+      // revokeIfActive skips a session whose owner was deleted, which already reads as revoked.
+      const revokedRow = session.revokedAt
+        ? undefined
+        : await agentVaultSessionDAL.revokeIfActive(session.id, new Date(), tx);
+      // Revoked by this call or found already over, the session can't use its inline services' secrets again.
+      await agentVaultSessionInlineServiceDAL.deleteSecretsBySessionId(session.id, tx);
+
+      const currentRow =
+        revokedRow ?? (await agentVaultSessionDAL.findByIdOnPrimary(session.id, session.projectId, tx)) ?? session;
+      const {
+        sessions: [listRow]
+      } = await agentVaultSessionDAL.findForList(
+        { projectId: session.projectId, sessionId: session.id, limit: 1, offset: 0 },
+        tx
+      );
+      return { project: sessionProject, revoked: revokedRow, current: currentRow, view: listRow };
     });
 
     return {

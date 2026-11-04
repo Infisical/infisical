@@ -48,12 +48,12 @@ sequenceDiagram
       <Step>
         Expand **Not in Delegation**, then select **Add** next to each user or group to add. A group covers every member of the group. If someone isn't listed, search for them by name. Changes save as you make them.
 
-        To cover every current and future user in the project instead, turn on **All Agent Vault Members** and select **Allow All Members**.
+        To cover every current and future user in the project instead, turn on **All Project Members** and select **Allow All Members**.
       </Step>
     </Steps>
   </Tab>
   <Tab title="API">
-    Call [the endpoint that sets a delegation](/api-reference/endpoints/agent-vault-delegations/set) with the machine identity's ID and your [project's ID](/documentation/platform/agent-vault/projects#find-a-projects-id):
+    Call [the endpoint that sets a delegation](/api-reference/endpoints/agent-vault-delegations/set) with the machine identity's ID and your [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id):
 
     ```bash
     curl -X PUT "https://app.infisical.com/api/v1/agent-vault/delegations/<machine-identity-id>?projectId=<project-id>" \
@@ -70,7 +70,7 @@ sequenceDiagram
 
 You can add only users and groups that are members of the project. If a user is in the project only through a group, add the group. If a user or group leaves the project, Infisical takes them out of the delegation, and adding them back to the project doesn't add them back to the delegation.
 
-To take a user or group out of the delegation, select **Manage Delegation**, select **In Delegation** on its row, select **Remove**, then select **Remove** again to confirm. If you remove the last user or group, or turn off **All Agent Vault Members**, the machine identity can no longer act on behalf of anyone.
+To take a user or group out of the delegation, select **Manage Delegation**, select **In Delegation** on its row, select **Remove**, then select **Remove** again to confirm. If you remove the last user or group, or turn off **All Project Members**, the machine identity can no longer act on behalf of anyone.
 
 <Warning>
   A delegation lets a machine identity use other people's personal values, so protect who can set one and who can use one:
@@ -81,7 +81,7 @@ To take a user or group out of the delegation, select **Manage Delegation**, sel
 
 ## Create a session on behalf of a user
 
-Log in as the machine identity, as [Step 2 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity) describes. Then call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the ID of your Agent Vault project ([find a project's ID](/documentation/platform/agent-vault/projects#find-a-projects-id)), and name the user in `onBehalfOf`:
+Log in as the machine identity, as [Step 2 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity) describes. Then call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and name the user in `onBehalfOf`:
 
 ```bash
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \

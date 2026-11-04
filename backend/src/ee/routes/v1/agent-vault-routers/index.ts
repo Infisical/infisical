@@ -4,6 +4,7 @@ import { registerAgentVaultMembershipRouter } from "./agent-vault-membership-rou
 import { registerAgentVaultOauthRouter } from "./agent-vault-oauth-router";
 import { registerAgentVaultProxyAgentRouter } from "./agent-vault-proxy-agent-router";
 import { registerAgentVaultProxyRouter } from "./agent-vault-proxy-router";
+import { recordBodyProjectId } from "./agent-vault-router-fns";
 import { registerAgentVaultSessionLogRouter } from "./agent-vault-session-log-router";
 import { registerAgentVaultSessionRouter } from "./agent-vault-session-router";
 import { registerAgentVaultSessionSkillRouter } from "./agent-vault-session-skill-router";
@@ -12,6 +13,10 @@ import { registerAgentVaultSkillRouter } from "./agent-vault-skill-router";
 import { registerAgentVaultVariableRouter } from "./agent-vault-variable-router";
 
 export const registerAgentVaultRouters = async (server: FastifyZodProvider) => {
+  server.addHook("preValidation", async (req) => {
+    recordBodyProjectId(req);
+  });
+
   await server.register(registerAgentVaultAccessBundleRouter, { prefix: "/access-bundles" });
   await server.register(registerAgentVaultVariableRouter, { prefix: "/variables" });
   await server.register(registerAgentVaultSkillRouter, { prefix: "/skills" });

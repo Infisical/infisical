@@ -352,23 +352,6 @@ export const projectServiceFactory = ({
         }
       }
 
-      if (type === ProjectType.AgentVault) {
-        // Plans resolve at the root org, so the limit covers the root and its sub-orgs together. The root's lock
-        // keeps two sub-orgs from both passing the count. Missing on a plan cached before the field existed.
-        const limit = plan.agentVaultProjectLimit === undefined ? 3 : plan.agentVaultProjectLimit;
-        if (typeof limit === "number") {
-          await tx.raw("SELECT pg_advisory_xact_lock(?)", [
-            PgSqlLock.CreateAgentVaultProject(organization.rootOrgId ?? organization.id)
-          ]);
-          const count = await projectDAL.countAgentVaultProjectsInOrgTree(organization.id, tx);
-          if (count >= limit) {
-            throw new BadRequestError({
-              message: `Your organization can have up to ${limit} Agent Vault projects. Delete one you no longer use, or contact us to raise the limit.`
-            });
-          }
-        }
-      }
-
       if (type === ProjectType.SecretScanning) {
         const [existingSecretScanningProject] = await projectDAL.find(
           { orgId: organization.id, type: ProjectType.SecretScanning },

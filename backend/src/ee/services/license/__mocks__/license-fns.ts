@@ -61,7 +61,6 @@ export const getDefaultOnPremFeatures = () => {
     agentVaultByoS3: true,
     agentVaultManagedStorage: true,
     agentVaultSessionLogRetentionDays: 30,
-    agentVaultProjectLimit: 3,
     secretSyncLimit: null,
     maxPamAccounts: null,
     // PKI / Cert Manager

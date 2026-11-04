@@ -61,7 +61,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...query } = req.query;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultVariable.listVariables({
         projectId,
         ctx: actorContext(req),
@@ -90,7 +90,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       const { variable } = await server.services.agentVaultVariable.createVariable({
         projectId,
         ctx: actorContext(req),

@@ -2,8 +2,8 @@ import { ProjectType } from "@app/db/schemas";
 
 type TMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-// An org can hold only a few Agent Vault projects (agentVaultProjectLimit), counted across every spec that
-// runs against the seeded org, so delete each one a spec creates.
+// Every spec shares the seeded org, and a request without projectId falls back to the org's oldest Agent Vault
+// project, so delete each one a spec creates.
 export const createAgentVaultProject = async (dto: { authToken: string; name: string }) => {
   const res = await testServer.inject({
     method: "POST",

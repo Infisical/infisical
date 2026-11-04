@@ -1008,9 +1008,15 @@ export const registerRoutes = async (
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL, keyStore });
   const emailDispatchGuard = emailDispatchGuardFactory({ keyStore });
 
+  const agentVaultPersonalValueDAL = agentVaultPersonalValueDALFactory(db);
+
   const applicationMembershipCleanupService = applicationMembershipCleanupServiceFactory({
     membershipDAL,
-    approvalPolicyDAL
+    projectDAL,
+    approvalPolicyDAL,
+    agentVaultPersonalValueDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const oauthClientDAL = oauthClientDALFactory(db);
@@ -1892,8 +1898,6 @@ export const registerRoutes = async (
     secretScanningQueue
   });
 
-  const agentVaultPersonalValueDAL = agentVaultPersonalValueDALFactory(db);
-
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,
     projectDAL,
@@ -1919,9 +1923,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     applicationMembershipCleanupService,
     usageMeteringService,
-    alertChannelRecipientDAL,
-    agentVaultPersonalValueDAL,
-    identityGroupMembershipDAL
+    alertChannelRecipientDAL
   });
 
   const projectKeyService = projectKeyServiceFactory({

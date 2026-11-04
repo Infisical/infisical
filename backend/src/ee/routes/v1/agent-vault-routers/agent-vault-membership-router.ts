@@ -47,7 +47,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...query } = req.query;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultMembership.listProductMembers({
         projectId,
         ...query,
@@ -78,7 +78,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...query } = req.query;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultMembership.listAvailableProductMembers({
         projectId,
         ...query,
@@ -94,7 +94,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       operationId: "addAgentVaultMembers",
-      description: "Give users, groups and machine identities access to an Agent Vault project, by id or by email",
+      description: "Give users, groups and machine identities access to an Agent Vault project, by id, email or username",
       tags: [ApiDocsTags.AgentVaultMembers],
       body: AgentVaultProductMemberAddSchema.and(z.object({ projectId: AgentVaultProjectIdSchema })),
       response: {
@@ -107,7 +107,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       const { members, skipped } = await server.services.agentVaultMembership.addProductMembers({
         projectId,
         ...body,
@@ -150,7 +150,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       hide: false,
       operationId: "updateAgentVaultMemberRoles",
       description:
-        "Change the Agent Vault role of users, groups and machine identities. Name each one by ID; to add users by email, use Add members.",
+        "Change the Agent Vault role of users, groups and machine identities. Name each one by ID; to add users by email or username, use Add members.",
       tags: [ApiDocsTags.AgentVaultMembers],
       body: AgentVaultProductMemberRoleUpdateSchema.and(z.object({ projectId: AgentVaultProjectIdSchema })),
       response: {
@@ -163,7 +163,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       const { members, skipped } = await server.services.agentVaultMembership.updateProductMemberRoles({
         projectId,
         ...body,
@@ -218,7 +218,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       const { members, skipped } = await server.services.agentVaultMembership.revokeProductMembers({
         projectId,
         ...body,

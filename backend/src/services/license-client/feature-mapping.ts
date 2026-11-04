@@ -367,8 +367,7 @@ const pamMappings: TFeatureMapping[] = [
 ];
 
 // Agent Vault session logs: external storage (the customer's own bucket), default storage (the instance's bucket),
-// and how many days default storage keeps them, plus how many Agent Vault projects an org may hold. The retention
-// and project limit keys are placeholders until the License Server has them.
+// and how many days default storage keeps them. The retention key is a placeholder until the License Server has it.
 const agentVaultMappings: TFeatureMapping[] = [
   {
     v2Key: "agent_vault_byo_s3",
@@ -381,10 +380,6 @@ const agentVaultMappings: TFeatureMapping[] = [
   {
     v2Key: "agent_vault_session_log_retention_days",
     v1Field: "agentVaultSessionLogRetentionDays"
-  },
-  {
-    v2Key: "agent_vault_project_limit",
-    v1Field: "agentVaultProjectLimit"
   }
 ];
 

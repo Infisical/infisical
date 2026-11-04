@@ -25,8 +25,7 @@ export type CapabilityUpgradeIntent = {
     | "machine_identity_auth_templates"
     | "identity_auth"
     | "agent_vault_byo_s3"
-    | "agent_vault_managed_storage"
-    | "agent_vault_project_limit";
+    | "agent_vault_managed_storage";
   productName?: string;
   title: string;
   description: string;
@@ -249,15 +248,6 @@ export const AgentVaultSessionLogsUpgradeIntent = {
   title: "Unlock Agent Vault Session Logs",
   description: "Record agent requests in your own storage for review and investigation.",
   isEnterpriseFeature: true
-} satisfies CapabilityUpgradeIntent;
-
-export const AgentVaultProjectLimitUpgradeIntent = {
-  scope: "product",
-  productName: "Agent Vault",
-  featureKey: "agent_vault_project_limit",
-  title: "Unlock More Agent Vault Projects",
-  description: "Compare subscriptions to create more Agent Vault projects in your organization.",
-  isEnterpriseFeature: false
 } satisfies CapabilityUpgradeIntent;
 
 export const AgentVaultSessionLogDefaultStorageUpgradeIntent = {

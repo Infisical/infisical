@@ -185,7 +185,7 @@ export const agentVaultDelegationServiceFactory = ({
     const reasons: string[] = [];
     if (viaGroup.length) {
       reasons.push(
-        `User(s) ${quoted(viaGroup)} are in Agent Vault through a group. Name the group instead, or add them directly under Access Control first.`
+        `User(s) ${quoted(viaGroup)} are in this project through a group. Name the group instead, or add them directly under Access Control first.`
       );
     }
     if (strangers.length) {
@@ -415,7 +415,7 @@ export const agentVaultDelegationServiceFactory = ({
     const refuseAllMembers = (scope?: string) => {
       if (scope === AgentVaultDelegationScope.AllMembers) {
         throw new BadRequestError({
-          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every Agent Vault member. To name users and groups instead, set its scope to selected.`
+          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every project member. To name users and groups instead, set its scope to selected.`
         });
       }
     };
@@ -478,7 +478,7 @@ export const agentVaultDelegationServiceFactory = ({
       if (!current || !before) return undefined;
       if (current.scope === AgentVaultDelegationScope.AllMembers) {
         throw new BadRequestError({
-          message: `Machine identity with ID '${machineIdentityId}' acts on behalf of every Agent Vault member, so it names no users or groups to remove.`
+          message: `Machine identity with ID '${machineIdentityId}' acts on behalf of every project member, so it names no users or groups to remove.`
         });
       }
 

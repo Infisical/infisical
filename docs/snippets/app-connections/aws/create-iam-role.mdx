@@ -31,7 +31,7 @@ Props:
 
                 - **Secrets Management:** the project's ID, shown under **Project ID** in the project's settings
                 - **Certificate Management:** your Organization ID, shown under **Organization ID** in your organization's **Settings**
-                - **Agent Vault:** the project's ID, shown under **Project ID** in the project's **Administration** > **Settings**
+                - **Agent Vault:** the project's ID, shown under **Project ID** in the project's **Administration** &gt; **Settings**
 
                 <Note>
                     If you created a project-level connection before May 26, 2026 on Infisical Cloud (or before v0.160.7 if you self-host Infisical), Infisical sends your Organization ID for it. To use the Project ID instead, recreate the connection and update the role's trust policy.
@@ -44,7 +44,7 @@ Props:
 
     {externalId === "agent-vault-project" && (
         <MDX>
-            Enable **Require external ID** and enter the ID of your Agent Vault project. It's shown under **Project ID** in the project's **Administration** > **Settings**.
+            Enable **Require external ID** and enter the ID of your Agent Vault project. It's shown under **Project ID** in the project's **Administration** &gt; **Settings**.
 
             Infisical sends this ID every time it assumes the role, so the role only works for connections in this project.
         </MDX>

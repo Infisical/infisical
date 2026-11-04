@@ -51,7 +51,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const projectId = await resolveRequestedProjectId(req, req.body.projectId);
+      const projectId = await resolveRequestedProjectId(req, req.body.projectId, "body");
       const { skill, version } = await server.services.agentVaultSkill.createSkill({
         projectId,
         ctx: actorContext(req),
@@ -89,7 +89,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "listAgentVaultSkills",
       description:
-        "List the skills in Agent Vault and the access bundles each is in, ordered by name. A member sees only the skills on access bundles they have been granted.",
+        "List the skills in an Agent Vault project and the access bundles each is in, ordered by name. A member sees only the skills on access bundles they have been granted.",
       tags: [ApiDocsTags.AgentVaultSkills],
       querystring: z.object({
         projectId: AgentVaultProjectIdSchema,
@@ -112,7 +112,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...query } = req.query;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultSkill.listSkills({
         projectId,
         ctx: actorContext(req),
@@ -129,7 +129,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "getAgentVaultSkill",
       description:
-        "Get a skill in Agent Vault, the access bundles it is in, and the files of its latest version. A member can get only a skill on an access bundle they have been granted.",
+        "Get a skill in an Agent Vault project, the access bundles it is in, and the files of its latest version. A member can get only a skill on an access bundle they have been granted.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
       response: {

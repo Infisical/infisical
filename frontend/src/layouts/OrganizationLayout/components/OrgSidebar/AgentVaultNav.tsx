@@ -73,18 +73,22 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   )
     settingsAlert = "warning";
 
-  const administrationItems: NavItem[] = isAdmin
-    ? [
-        {
-          label: "Access Control",
-          icon: Shield,
-          pathSuffix: "access-management",
-          activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
-        },
-        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-        { label: "Settings", icon: Settings, pathSuffix: "settings", alertVariant: settingsAlert }
-      ]
-    : [];
+  const administrationItems: NavItem[] = [
+    {
+      label: "Access Control",
+      icon: Shield,
+      pathSuffix: "access-management",
+      activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//,
+      hidden: !isAdmin
+    },
+    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs", hidden: !isAdmin },
+    {
+      label: "Settings",
+      icon: Settings,
+      pathSuffix: "settings",
+      alertVariant: isAdmin ? settingsAlert : undefined
+    }
+  ];
 
   return (
     <>
@@ -92,11 +96,9 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       <SidebarCollapsibleGroup label="Infrastructure">
         <ProjectNavList items={infrastructureItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
-      {administrationItems.length > 0 && (
-        <SidebarCollapsibleGroup label="Administration">
-          <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
-        </SidebarCollapsibleGroup>
-      )}
+      <SidebarCollapsibleGroup label="Administration">
+        <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
       <div className="mt-auto" />
       <SetupChecklist progress={setupProgress} />
       <SidebarMenu>

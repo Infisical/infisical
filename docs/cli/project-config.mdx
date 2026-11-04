@@ -6,7 +6,7 @@ description: "Configure how the Infisical CLI interacts with your directory."
 
 A project config file links a directory to an [Infisical project](/documentation/platform/project). When you run a command such as [`infisical sm run`](/cli/reference#sm-run) or [`infisical sm secrets`](/cli/reference#sm-secrets) in that directory, the CLI reads the project from the file, so you don't have to pass [`--projectId`](/cli/reference#sm-run--flag-projectid).
 
-The file can also [choose an environment](#set-the-environment) and [a folder](#set-the-folder) for you, [set the Agent Vault project](#set-the-agent-vault-project) for `infisical agent-vault` commands, and [pin the Infisical instance](#set-the-infisical-instance) the project lives on.
+The file can also [choose an environment](#set-the-environment) and [a folder](#set-the-folder) for you, and [pin the Infisical instance](#set-the-infisical-instance) the project lives on.
 
 The CLI reads the settings from either of two files:
 
@@ -153,32 +153,17 @@ The [`infisical sm secrets folders`](/cli/reference#sm-secrets-folders) commands
 
 ## Set the Agent Vault project
 
-[`infisical agent-vault run --access-bundle`](/cli/reference#agent-vault-run), [`infisical agent-vault sessions create`](/cli/reference#agent-vault-sessions-create), and [`infisical agent-vault skills push`](/cli/reference#agent-vault-skills-push) work in one [Agent Vault project](/documentation/platform/agent-vault/projects). To set that project for a directory, add `project-id` under `agent-vault` to the directory's existing `.infisical.yaml`:
+[`infisical agent-vault run --access-bundle`](/cli/reference#agent-vault-run), [`infisical agent-vault sessions create`](/cli/reference#agent-vault-sessions-create), and [`infisical agent-vault skills push`](/cli/reference#agent-vault-skills-push) work in one [Agent Vault project](/documentation/platform/agent-vault/projects). These commands don't read the project from the project config file, because `secrets-management.project-id` is a Secrets Management project.
 
-```yaml .infisical.yaml
-version: 1
-secrets-management:
-  project-id: <project-id>
-agent-vault:
-  project-id: <project-id>
-```
-
-The two IDs are different: `secrets-management.project-id` is a Secrets Management project, and `agent-vault.project-id` is an Agent Vault project. To get the Agent Vault project's ID, see [find a project's ID](/documentation/platform/agent-vault/projects#find-a-projects-id).
-
-`infisical init` doesn't write this setting, and `.infisical.json` has no field for it. If the directory has only `.infisical.json`, pass `--project-id` or set `INFISICAL_AGENT_VAULT_PROJECT_ID` instead.
-
-<Warning>
-  Add the key to the project config file the CLI already reads, rather than creating a new `.infisical.yaml` in a subdirectory. The CLI reads only the first file it finds, so a new file hides the settings in the old one (see [Where the CLI looks for the file](#where-the-cli-looks-for-the-file)).
-</Warning>
+To set the Agent Vault project, set `INFISICAL_AGENT_VAULT_PROJECT_ID` to the project's ID, or pass `--project-id`. To get the ID, see [Find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id).
 
 The CLI picks the Agent Vault project in this order:
 
 1. The `--project-id` flag
 2. The `INFISICAL_AGENT_VAULT_PROJECT_ID` environment variable
-3. `agent-vault.project-id` in `.infisical.yaml`
-4. The `INFISICAL_PROJECT_ID` environment variable
+3. The `INFISICAL_PROJECT_ID` environment variable
 
-If none of these is set, the command stops with an error. To see which project the CLI picked, run [`infisical profile current`](/cli/reference#profile-current).
+If none of these is set, the command stops with an error. If you're logged in with a profile, run [`infisical profile current`](/cli/reference#profile-current) to see which project the CLI picked.
 
 ## Set the Infisical instance
 
@@ -271,10 +256,6 @@ A list of branches, each with the environment slug to use on that branch, such a
 
 <ResponseField name="secrets-management.secret-path" type="string">
 The folder to read secrets from when [`--path`](/cli/reference#sm-run--flag-path) and `INFISICAL_SECRET_PATH` aren't set. The `infisical sm` commands read it, except `infisical sm secrets folders`. In `.infisical.json`, the field is `defaultSecretPath`.
-</ResponseField>
-
-<ResponseField name="agent-vault.project-id" type="string">
-The ID of the Agent Vault project that `infisical agent-vault` commands use when `--project-id` and `INFISICAL_AGENT_VAULT_PROJECT_ID` aren't set. Only in `.infisical.yaml`.
 </ResponseField>
 
 <ResponseField name="general.domain" type="string">

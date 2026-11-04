@@ -18,7 +18,7 @@ export const useAddUserToWsNonE2EE = () => {
       if (projectType === ProjectType.AgentVault) {
         const { data } = await apiRequest.post("/api/v1/agent-vault/members", {
           projectId,
-          emails: usernames,
+          usernames,
           role: roleSlugs?.[0] ?? "member"
         });
         return data;

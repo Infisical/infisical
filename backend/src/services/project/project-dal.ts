@@ -23,7 +23,6 @@ import {
   TFindFilter,
   TFindOpt
 } from "@app/lib/knex";
-import { orgTreeIds } from "@app/lib/knex/org-tree";
 
 import { ActorType } from "../auth/auth-type";
 import {
@@ -1040,22 +1039,6 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Agent Vault projects across the root org and its sub-orgs, the scope agentVaultProjectLimit applies to.
-  const countAgentVaultProjectsInOrgTree = async (orgId: string, tx?: Knex) => {
-    try {
-      const knex = tx || db;
-      const doc = await knex(TableName.Project)
-        .where({ type: ProjectType.AgentVault })
-        .whereNull("deleteAfter")
-        .whereIn("orgId", orgTreeIds(knex, orgId))
-        .count("*")
-        .first();
-      return Number((doc as { count?: string | number } | undefined)?.count ?? 0);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count Agent Vault projects in org tree" });
-    }
-  };
-
   const findDeletedProjects = async (orgId: string, type?: ProjectType, tx?: Knex) => {
     try {
       type DeletedProjectRow = TDeletedByRow & {
@@ -1187,7 +1170,6 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectDeletedEnvironments,
     findDeletedProjects,
     findProjectsSharedWith,
-    countOfBillableOrgProjects,
-    countAgentVaultProjectsInOrgTree
+    countOfBillableOrgProjects
   };
 };

@@ -2,7 +2,7 @@ import { SettingsIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectOverviewChangeSection } from "@app/components/project/ProjectOverviewChangeSection";
-import { AccessRestrictedDialog, PageHeader } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -23,20 +23,20 @@ export const AgentVaultSettingsPage = () => {
         scope={ProjectType.AgentVault}
         icon={SettingsIcon}
         title="Settings"
-        description="Manage this project, its session logs, and the connections they use."
+        description={
+          isAdmin
+            ? "Manage this project, its session logs, and the connections they use."
+            : "View this project's name and ID."
+        }
       />
-      {isAdmin ? (
-        <div className="flex flex-col gap-8">
-          <SessionLogAlerts />
-          <SessionLogSection />
-          <div>
-            <ProjectOverviewChangeSection />
-            <DeleteProjectSection />
-          </div>
+      <div className="flex flex-col gap-8">
+        {isAdmin && <SessionLogAlerts />}
+        {isAdmin && <SessionLogSection />}
+        <div>
+          <ProjectOverviewChangeSection />
+          {isAdmin && <DeleteProjectSection />}
         </div>
-      ) : (
-        <AccessRestrictedDialog />
-      )}
+      </div>
     </div>
   );
 };

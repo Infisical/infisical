@@ -151,7 +151,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...query } = req.query;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultDelegation.listDelegations({
         ...query,
         projectId,
@@ -176,7 +176,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = await resolveRequestedProjectId(req, req.query.projectId);
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       return server.services.agentVaultDelegation.getDelegation({
         projectId,
         ctx: actorContext(req),
@@ -247,7 +247,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = await resolveRequestedProjectId(req, req.query.projectId);
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const { delegation: saved } = await server.services.agentVaultDelegation.setDelegation({
         ...req.body,
         projectId,
@@ -304,7 +304,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...query } = req.query;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultDelegation.listAvailableDelegationSubjects({
         ...query,
         projectId,
@@ -334,7 +334,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = await resolveRequestedProjectId(req, req.query.projectId);
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const { delegation: saved, isChanged } = await server.services.agentVaultDelegation.addDelegationSubjects({
         ...req.body,
         projectId,
@@ -388,7 +388,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = await resolveRequestedProjectId(req, req.query.projectId);
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const {
         delegation: saved,
         previous,
@@ -446,7 +446,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = await resolveRequestedProjectId(req, req.query.projectId);
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const { delegation } = await server.services.agentVaultDelegation.deleteDelegation({
         projectId,
         ctx: actorContext(req),

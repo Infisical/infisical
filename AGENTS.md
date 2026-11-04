@@ -113,7 +113,7 @@ Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/sr
 
 PAM is a product over one implicit project per organization, not projects a user creates. Its URLs are `/organizations/$orgId/pam/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, its roles are admin or member only, and it has its own metered identities dimension (`pam_identities`). See `backend/src/ee/services/pam/AGENTS.md`.
 
-Agent Vault is a normal project type that users create, like Secrets Management, at `/organizations/$orgId/projects/agent-vault/$projectId/…`. It shares PAM's admin-or-member roles and has its own metered `agent_vault_identities` dimension, so a `ProjectType.PAM` arm for roles or metering usually needs an Agent Vault arm beside it. The number of Agent Vault projects is capped by the `agentVaultProjectLimit` plan setting (default 3, shared by the root org and its sub-orgs, `null` unlimited). See `backend/src/ee/services/agent-vault/AGENTS.md`.
+Agent Vault is a normal project type that users create, like Secrets Management, at `/organizations/$orgId/projects/agent-vault/$projectId/…`. It shares PAM's admin-or-member roles and has its own metered `agent_vault_identities` dimension, so a `ProjectType.PAM` arm for roles or metering usually needs an Agent Vault arm beside it. See `backend/src/ee/services/agent-vault/AGENTS.md`.
 
 ### Single-Project Products
 

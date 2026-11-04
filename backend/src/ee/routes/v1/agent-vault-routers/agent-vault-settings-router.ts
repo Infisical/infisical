@@ -35,7 +35,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) =>
       server.services.agentVaultSessionLog.getSessionLogSettings({
-        projectId: await resolveRequestedProjectId(req, req.query.projectId),
+        projectId: await resolveRequestedProjectId(req, req.query.projectId, "query"),
         ctx: actorContext(req)
       })
   });
@@ -55,7 +55,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectId = await resolveRequestedProjectId(req, req.query.projectId);
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const { settings, defaultStorage, appConnectionName, previous } =
         await server.services.agentVaultSessionLog.updateSessionLogSettings({
           projectId,
@@ -104,7 +104,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     handler: async (req, reply) => {
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.getSessionLogHealth({
-        projectId: await resolveRequestedProjectId(req, req.query.projectId),
+        projectId: await resolveRequestedProjectId(req, req.query.projectId, "query"),
         ctx: actorContext(req)
       });
     }
@@ -126,7 +126,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     handler: async (req, reply) => {
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.getSessionLogCorsProbe({
-        projectId: await resolveRequestedProjectId(req, req.query.projectId),
+        projectId: await resolveRequestedProjectId(req, req.query.projectId, "query"),
         ctx: actorContext(req)
       });
     }

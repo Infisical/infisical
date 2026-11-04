@@ -123,7 +123,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId: requestedProjectId, onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultAccessBundle.listAccessBundles({
         projectId,
         ctx: actorContext(req),
@@ -155,7 +155,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       const accessBundle = await server.services.agentVaultAccessBundle.createAccessBundle({
         projectId,
         ctx: actorContext(req),

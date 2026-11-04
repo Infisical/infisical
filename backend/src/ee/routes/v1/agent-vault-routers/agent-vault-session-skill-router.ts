@@ -163,9 +163,10 @@ export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodPro
         });
 
       if (revokedNow) {
+        const actor = sessionOwnerActor(session, ownerUser);
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          actor: sessionOwnerActor(session, ownerUser),
+          actor,
           orgId,
           projectId: session.projectId,
           event: {
@@ -178,6 +179,21 @@ export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodPro
             }
           }
         });
+
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.AgentVaultSessionRevoked,
+            distinctId: `agent-vault-session-${session.id}`,
+            organizationId: orgId,
+            anonymous: true,
+            properties: {
+              orgId,
+              channel: req.auditLogInfo.userAgentType ?? UserAgentType.OTHER,
+              actorType: actor.type,
+              sessionId: session.id
+            }
+          })
+          .catch(() => {});
       }
 
       return { session: { id: session.id, revokedAt: session.revokedAt ?? null } };

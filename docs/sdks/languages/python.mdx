@@ -832,10 +832,6 @@ What the client can do with sessions depends on the [role](/documentation/platfo
   `agent_vault` requires `infisicalsdk` version 1.0.19 or newer.
 </Note>
 
-<Warning>
-  The SDK doesn't let you choose an [Agent Vault project](/documentation/platform/agent-vault/projects) yet. `sessions.list`, `sessions.create`, `proxies.list`, and `proxies.create` work in your organization's first Agent Vault project, the one created earliest. To work in another project, call the [Agent Vault API](/api-reference/endpoints/agent-vault-sessions/create) directly. Methods that take a session or proxy ID work in any project.
-</Warning>
-
 #### List sessions
 
 ```python
@@ -936,7 +932,7 @@ finally:
 
 This sub-class manages [Agent Vault proxies](/documentation/platform/agent-vault/proxies). A proxy attaches API credentials to the requests that agents send through it.
 
-To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership). `list` and `create` work in your organization's first Agent Vault project (see [`agent_vault.sessions`](#agent_vault-sessions)).
+To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
   `agent_vault` requires `infisicalsdk` version 1.0.19 or newer.

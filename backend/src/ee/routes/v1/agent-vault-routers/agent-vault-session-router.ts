@@ -133,7 +133,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId: requestedProjectId, status, ...query } = req.query;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultSession.listSessions({
         projectId,
         ctx: actorContext(req),
@@ -285,7 +285,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
-      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       // Snapshotted from the request, the way PAM's session create does it, so a deleted actor still names
       // the session it held. Nothing extra is queried for it.
       let actorEmail: string | null = null;

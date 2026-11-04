@@ -15,7 +15,7 @@ Use inline services when the code that creates sessions, such as an agent orches
 
 ## Create a session with inline services
 
-You can send inline services only through the API, not from the dashboard or the CLI. Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) as the machine identity, with the ID of your Agent Vault project in `projectId` ([find a project's ID](/documentation/platform/agent-vault/projects#find-a-projects-id)), and list the inline services in `services`. In this example, the session gets one HTTP service for `api.github.com` with a bearer token, and the agent can send only `GET` requests to that host:
+You can send inline services only through the API, not from the dashboard or the CLI. Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) as the machine identity, with the ID of your Agent Vault project in `projectId` ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and list the inline services in `services`. In this example, the session gets one HTTP service for `api.github.com` with a bearer token, and the agent can send only `GET` requests to that host:
 
 ```bash
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \

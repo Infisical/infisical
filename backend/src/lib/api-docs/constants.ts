@@ -4895,7 +4895,8 @@ export const AGENT_VAULT = {
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",
     emails: "The email addresses of the users to give access to. Each must already be in the organization.",
-    identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
+    usernames: "The usernames of the users to give access to. Each must already be in the organization.",
+    identifier: "The ID, email address or username the request named, echoed back so a reply can be matched to it.",
     addSkipped: "The requested members who already had access to the project and were left as they were.",
     revokeSkipped: "The requested members who did not have access to the project, so nothing was removed.",
     updateSkipped:
@@ -5068,7 +5069,7 @@ export const AGENT_VAULT = {
     machineIdentity: "The machine identity that can start sessions on behalf of users.",
     machineIdentityName: "The name of the machine identity.",
     scope:
-      "Which users the machine identity can start sessions on behalf of: every Agent Vault member (all-members), or only the users and the members of the groups in the delegation (selected).",
+      "Which users the machine identity can start sessions on behalf of: every member of the project (all-members), or only the users and the members of the groups in the delegation (selected).",
     userIds:
       "The users the machine identity can act on behalf of, up to 100. Each must be a member of the Agent Vault project. Only allowed when the scope is selected.",
     groupIds:

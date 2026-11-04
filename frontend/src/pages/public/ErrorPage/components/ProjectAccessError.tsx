@@ -232,7 +232,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
           {canJoinAsAdmin && (
             <Button
               variant="project"
-              isPending={isResolvingProjectId || orgAdminAccessProject.isPending}
+              isPending={isProjectResolving || orgAdminAccessProject.isPending}
               isDisabled={isJoinUnavailable}
               onClick={() => handleAccessProject()}
             >

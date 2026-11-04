@@ -70,18 +70,11 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore }: TResolverDeps
           "This organization has no Agent Vault project yet. Create one in Infisical, then pass its ID as projectId."
       });
     }
+    const [{ id: projectId }] = projects;
     logger.info(
-      {
-        orgId,
-        route: context.route,
-        actorId: context.actorId,
-        actorType: context.actorType,
-        userAgent: context.userAgent,
-        agentVaultProjectCount: projects.length
-      },
-      "agent-vault: request without projectId used the organization's oldest Agent Vault project"
+      `agent-vault: request without projectId used the organization's oldest Agent Vault project [orgId=${orgId}] [projectId=${projectId}] [route=${context.route}] [actorId=${context.actorId}] [actorType=${context.actorType}] [userAgent=${context.userAgent}] [agentVaultProjectCount=${projects.length}]`
     );
-    return projects[0].id;
+    return projectId;
   };
 
   const resolve = async (orgId: string, projectId: string | undefined, context: TAgentVaultFallbackContext) =>

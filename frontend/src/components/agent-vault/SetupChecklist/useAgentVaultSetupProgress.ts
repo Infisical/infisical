@@ -1,6 +1,6 @@
 import { linkOptions } from "@tanstack/react-router";
 
-import { useProject, useProjectPermission } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { useLocalStorageState } from "@app/hooks";
 import {
   AgentVaultSessionScope,
@@ -30,6 +30,7 @@ export enum AgentVaultSetupStep {
 // Only admins can set Agent Vault up, and listing every session is admin-only on the server, so none
 // of these queries runs for a member.
 export const useAgentVaultSetupProgress = () => {
+  const { currentOrg } = useOrganization();
   const { projectId } = useProject();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
@@ -67,7 +68,7 @@ export const useAgentVaultSetupProgress = () => {
   const queries = [proxies, newestBundles, fullestBundles, sessions];
 
   const [dismissed, setDismissed] = useLocalStorageState(DISMISSED_STORAGE_KEY, NOTHING_DISMISSED);
-  const isDismissed = Boolean(dismissed?.[projectId]);
+  const isDismissed = Boolean(dismissed?.[currentOrg.id]);
 
   const isLoaded = queries.every((query) => Boolean(query.data));
   // A query with no data left after its retries would otherwise hold every caller waiting forever.
@@ -96,8 +97,8 @@ export const useAgentVaultSetupProgress = () => {
     isFailed,
     isVisible: isIncomplete && !isDismissed,
     canRestore: isIncomplete && isDismissed,
-    dismiss: () => setDismissed((current) => ({ ...current, [projectId]: true })),
-    restore: () => setDismissed((current) => ({ ...current, [projectId]: undefined })),
+    dismiss: () => setDismissed((current) => ({ ...current, [currentOrg.id]: true })),
+    restore: () => setDismissed((current) => ({ ...current, [currentOrg.id]: undefined })),
     hasProxy,
     hasConnectedProxy,
     newestBundle,
