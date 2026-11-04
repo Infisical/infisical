@@ -2,7 +2,7 @@ import { SecretType } from "@app/hooks/api/secrets/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
 import { useV4Adapter } from "../../../data/adapters";
-import type { Resource, Secret } from "../secrets-model";
+import type { Resource, ResourceApplyOptions, Secret } from "../secrets-model";
 
 const childPath = (path: string, name: string) => `${path === "/" ? "" : path}/${name}`;
 
@@ -61,7 +61,11 @@ export const useResourceApply = ({
   const tagIds = (slugs: string[]) =>
     slugs.flatMap((slug) => tags.filter((tag) => tag.slug === slug).map((tag) => tag.id));
 
-  return async (before: readonly Resource[], after: readonly Resource[]) => {
+  return async (
+    before: readonly Resource[],
+    after: readonly Resource[],
+    { shouldOverwrite = false }: ResourceApplyOptions = {}
+  ) => {
     const previous = new Map(
       before.map((resource) => [`${resource.kind}:${resource.id}`, resource])
     );
@@ -73,6 +77,13 @@ export const useResourceApply = ({
       .filter(
         (pair): pair is readonly [Resource, Resource] => Boolean(pair[0]) && !same(pair[0], pair[1])
       );
+
+    const createdSecrets = created.filter(
+      (resource): resource is Secret =>
+        resource.kind === "secret" && !resource.managedBy && !resource.honeyToken
+    );
+    if (createdSecrets.some((secret) => valueOf(secret) === undefined))
+      throw new Error("Load all selected secret values before creating secrets.");
 
     const folderMoves = changed
       .filter(
@@ -96,6 +107,16 @@ export const useResourceApply = ({
           to.environment === move.toEnvironment &&
           to.path === move.to + from.path.slice(move.from.length)
       );
+    if (
+      changed.some(
+        ([from, to]) =>
+          from.kind === "rotation" &&
+          (from.path !== to.path || from.environment !== to.environment) &&
+          !implied(from, to)
+      )
+    )
+      throw new Error("Moving secret rotations is not supported here yet.");
+
     const removedFolders = removed.filter((resource) => resource.kind === "folder");
     const insideRemoved = (resource: Resource) =>
       removedFolders.some(
@@ -218,15 +239,11 @@ export const useResourceApply = ({
           destinationEnvironment: group[0][1].environment,
           destinationSecretPath: group[0][1].path,
           secretIds: group.map(([from]) => from.id),
-          shouldOverwrite: true
+          shouldOverwrite
         })
       )
     );
 
-    const createdSecrets = created.filter(
-      (resource): resource is Secret =>
-        resource.kind === "secret" && !resource.managedBy && !resource.honeyToken
-    );
     await Promise.all(
       Object.values(groupBy(createdSecrets, scopeOf)).map((group) =>
         createSecretBatch.mutateAsync({

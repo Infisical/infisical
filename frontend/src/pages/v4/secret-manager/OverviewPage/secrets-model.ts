@@ -1,3 +1,5 @@
+export type ResourceApplyOptions = { shouldOverwrite?: boolean };
+
 export type ResourceKind =
   | "folder"
   | "secret"
