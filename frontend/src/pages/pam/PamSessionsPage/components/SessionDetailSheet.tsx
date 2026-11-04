@@ -43,6 +43,7 @@ import { TPamSession, TPamSessionLog } from "@app/hooks/api/pam/types";
 import { LiveDot } from "../../components/LiveDot";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "../constants";
+import { renderLegacyTerminalOutput } from "./legacyTerminalOutput";
 
 const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
 
@@ -62,24 +63,6 @@ const decodeBase64Utf8 = (b64: string): string => {
   }
 };
 
-// Only reached for recordings written before gateways rendered the terminal themselves, which the `rendered` flag distinguishes.
-const LEGACY_ANSI_ESCAPE_REGEX = new RegExp(
-  [
-    "\u001B[\\]PX^_][\\s\\S]*?(?:\u0007|\u001B\\\\)",
-    "(?:\u001B\\[|\u009B)[0-?]*[ -/]*[@-~]",
-    "\u001B[()*+\\-./][ -~]",
-    "\u001B[@-Z\\\\-_]"
-  ].join("|"),
-  "g"
-);
-
-const cleanLegacyTerminalOutput = (raw: string): string =>
-  raw
-    .replace(LEGACY_ANSI_ESCAPE_REGEX, "")
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
-    .trim();
-
 const getLogText = (log: TPamSessionLog): string => {
   if ("input" in log && "output" in log) {
     return [log.input, log.output].filter(Boolean).join(" ");
@@ -88,7 +71,8 @@ const getLogText = (log: TPamSessionLog): string => {
     // resize events carry window dimensions, not terminal content. skip them
     if (log.eventType === "resize") return "";
     const data = decodeBase64Utf8(log.data);
-    return log.rendered ? data.trim() : cleanLegacyTerminalOutput(data);
+    // Recordings written before gateways rendered the terminal themselves carry raw bytes
+    return log.rendered ? data.trim() : renderLegacyTerminalOutput(data);
   }
   if ("method" in log) {
     return `${log.method} ${log.url}`;
