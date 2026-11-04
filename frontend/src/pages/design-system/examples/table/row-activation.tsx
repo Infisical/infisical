@@ -42,7 +42,6 @@ export default function RowActivation() {
       id: "actions",
       header: "Actions",
       actions: true,
-      width: 52,
       render: (row) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

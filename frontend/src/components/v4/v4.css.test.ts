@@ -43,9 +43,7 @@ describe("v4 stylesheet compilation", () => {
     expect(result.css).not.toContain(':where([data-theme="dark"], [data-theme="dark"] *)');
     expect(rules.get(".text-primary-foreground")).toContain("color: var(--primary-foreground)");
     expect(rules.get(".text-foreground")).toContain("color: var(--foreground)");
-    expect(
-      rules.get(".data-\\[state\\=selected\\]\\:bg-\\[color\\:var\\(--v4-selected-surface\\)\\]")
-    ).toContain('data-state="selected"');
+    expect(rules.get(".data-\\[state\\=hidden\\]\\:opacity-0")).toContain('data-state="hidden"');
     expect(rules.get(".data-\\[orientation\\=vertical\\]\\:flex-col")).toContain(
       'data-orientation="vertical"'
     );

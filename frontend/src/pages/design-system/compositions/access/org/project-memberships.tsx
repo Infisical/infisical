@@ -236,7 +236,7 @@ const AddGroupProjectsSheet = ({
       actions: true,
       render: (project) => (
         <Gate allowed={canEdit}>
-          <Button variant="outline" size="xs" disabled={!canEdit} onClick={() => onAssign(project)}>
+          <Button variant="outline" disabled={!canEdit} onClick={() => onAssign(project)}>
             Assign
           </Button>
         </Gate>

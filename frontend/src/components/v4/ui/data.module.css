@@ -993,7 +993,8 @@ button.rowTitle::after {
   margin-inline: auto;
 }
 .tableScroll [data-variant="striped"] tbody tr:nth-child(even) {
-  background: var(--v4-row-done);
+  --v4-table-row-ground: var(--v4-row-done);
+  background-color: var(--v4-table-row-ground);
 }
 .tableScroll [data-variant="bordered"] td:not(:last-child),
 .tableScroll [data-variant="bordered"] th:not(:last-child) {
@@ -1002,13 +1003,9 @@ button.rowTitle::after {
 .tableScroll [data-variant="bordered"] th:not(:last-child) {
   border-right-color: var(--v4-line);
 }
-.tableScroll [data-state="selected"] {
-  background: var(--v4-selected-surface);
-}
 .tableScroll [data-pin="true"] {
   position: sticky;
   right: 0;
-  background: var(--v4-surface);
   border-left: var(--v4-size-control-border) solid var(--v4-line-soft);
   box-shadow: var(--v4-frame-pad) 0 0 var(--v4-tint);
 }
@@ -1019,9 +1016,6 @@ button.rowTitle::after {
 }
 .tableScroll th[data-pin="true"] {
   background: var(--v4-tint);
-}
-.tableScroll [data-state="selected"] > td[data-pin="true"] {
-  background: var(--v4-selected-surface);
 }
 .tableSort {
   display: inline-flex;
@@ -1160,8 +1154,21 @@ button.rowTitle::after {
   font-weight: var(--v4-type-body-font-weight);
   letter-spacing: var(--v4-type-body-letter-spacing);
 }
-.nativeTableRow:is(:hover, :has([aria-expanded="true"])) {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+/* Row states are layers on the row's ground, so a pinned cell repaints the same stack opaquely and nothing scrolls through it. */
+.nativeTableRow {
+  --v4-table-row-ground: var(--v4-surface);
+  --v4-table-row-state: transparent;
+  --v4-table-row-hover: transparent;
+  --v4-table-row-layers:
+    linear-gradient(var(--v4-table-row-hover), var(--v4-table-row-hover)),
+    linear-gradient(var(--v4-table-row-state), var(--v4-table-row-state));
+  background-image: var(--v4-table-row-layers);
+}
+.nativeTableRow:is(:hover, :has([aria-expanded="true"])):not(thead > *) {
+  --v4-table-row-hover: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+}
+.nativeTableRow[data-state="selected"] {
+  --v4-table-row-state: var(--v4-selected-surface);
 }
 .nativeTableHead,
 .nativeTableCell {
@@ -1212,6 +1219,10 @@ td.tableActions {
   padding-inline: var(--v4-space-row-actions-inset);
   background-color: var(--v4-surface);
   border-inline-start: var(--v4-size-control-border) solid var(--v4-line-soft);
+  --v4-nested-action-height: var(--v4-size-target-row);
+}
+.tableActions [data-v4-button] {
+  --v4-action-height: min(var(--v4-action-requested-height), var(--v4-nested-action-height));
 }
 /* DataTable draws the frame edge inside the pinned cell, so the end pad clears that line too. */
 .tableScroll td.tableActions {
@@ -1220,14 +1231,10 @@ td.tableActions {
 .tableScroll th.tableActions {
   background-color: var(--v4-tint);
 }
-.nativeTableRow:is(:hover, :has([aria-expanded="true"])) > td.tableActions {
-  background-image: linear-gradient(
-    color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent),
-    color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent)
-  );
-}
-.nativeTableRow[data-state="selected"] > td.tableActions {
-  background-color: var(--v4-selected-surface);
+td.tableActions,
+.tableScroll td[data-pin="true"] {
+  background-color: var(--v4-table-row-ground);
+  background-image: var(--v4-table-row-layers);
 }
 .tableRowActionSkeleton {
   display: inline-flex;
@@ -1278,11 +1285,4 @@ td.tableActions {
   max-width: 100%;
   white-space: normal;
   overflow-wrap: anywhere;
-}
-.tableScroll tbody tr:hover > td[data-pin="true"] {
-  background: linear-gradient(
-      color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent),
-      color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent)
-    ),
-    var(--v4-surface);
 }
