@@ -1,1 +1,0 @@
-export { SecretSharingModule } from "./module";

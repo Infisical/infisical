@@ -1,1 +1,0 @@
-export { KmsCoreModule } from "./module";

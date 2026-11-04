@@ -1,1 +1,0 @@
-export { createKmsCoreModule } from "./module";
