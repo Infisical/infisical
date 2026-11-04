@@ -9,6 +9,8 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     ]),
     route("/settings", "v4/organization/SettingsPage/route.tsx"),
     route("/audit-logs", "v4/organization/AuditLogsPage/route.tsx"),
+    route("/integrations", "v4/organization/IntegrationsPage/route.tsx"),
+    route("/secret-scanning/findings", "v4/secret-scanning/SecretScanningFindingsPage/route.tsx"),
     route("/$", "v4/organization/NotPortedPage/route.tsx")
   ])
 ]);
