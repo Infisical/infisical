@@ -8,6 +8,7 @@ import {
   TCanDescribeLocation,
   TSecretValidationFailure
 } from "@app/services/secret-validation-rule/secret-validation-rule-errors";
+import { TSecretToValidate } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 // Clients branch on these, so they are part of the API contract: add new codes, never rename one.
 export enum SecretWriteErrorCode {
@@ -89,7 +90,8 @@ export const toSecretKeyConflictError = (
 
   // Postgres reports the clashing row as `Key (key, "folderId")=(<key>, <folderId>) already exists.`
   const detail = typeof violation.detail === "string" ? violation.detail : "";
-  const conflicts = candidates.filter((el) => detail.includes(`=(${el.newSecretName ?? el.secretKey}, `));
+  const conflictingKey = detail.match(/=\((.*), [0-9a-f-]{36}\) already exists/)?.[1];
+  const conflicts = candidates.filter((el) => (el.newSecretName ?? el.secretKey) === conflictingKey);
 
   return secretAlreadyExistsError({
     conflicts: conflicts.length ? conflicts : candidates,
@@ -107,15 +109,17 @@ export const describeMissingTags = (tagIds: string[], foundTags: { id: string }[
 
 export const secretValidationFailedError = (
   failures: TSecretValidationFailure[],
-  environment: string,
+  { environment, secrets = [] }: { environment: string; secrets?: TSecretToValidate[] },
   canDescribeLocation: TCanDescribeLocation
-) =>
-  new BadRequestError({
+) => {
+  const requestKeys = new Map(secrets.map((el) => [el.key, el.requestKey ?? el.key]));
+
+  return new BadRequestError({
     message: describeSecretValidationFailures(failures, canDescribeLocation),
     code: SecretWriteErrorCode.SecretValidationFailed,
     details: {
       fieldErrors: failures.map((failure): TSecretWriteFieldError => ({
-        secretKey: failure.secretKey,
+        secretKey: requestKeys.get(failure.secretKey) ?? failure.secretKey,
         environment,
         field:
           failure.violation.target === ConstraintTarget.SecretKey
@@ -126,6 +130,7 @@ export const secretValidationFailedError = (
       }))
     }
   });
+};
 
 export const secretReadOnlyError = ({
   secrets,
@@ -157,3 +162,36 @@ export const secretReadOnlyError = ({
       )
     }
   });
+
+// Rotated and honey token secrets are written by their rotation or honey token, so a request may change their
+// tags or comment but not their name or value.
+export const throwIfReadOnlySecretEdits = ({
+  storedSecrets,
+  updates,
+  environment,
+  secretPath
+}: {
+  storedSecrets: { key: string; isRotatedSecret?: boolean | null; isHoneyTokenSecret?: boolean | null }[];
+  updates: { secretKey: string; newSecretName?: string; secretValue?: string }[];
+  environment: string;
+  secretPath: string;
+}) => {
+  const readOnlyEdits = storedSecrets.flatMap((el) => {
+    if (!el.isHoneyTokenSecret && !el.isRotatedSecret) return [];
+    const update = updates.find((i) => i.secretKey === el.key);
+    const fields = [
+      ...(update?.newSecretName ? [SecretWriteErrorField.SecretKey] : []),
+      ...(update?.secretValue !== undefined ? [SecretWriteErrorField.SecretValue] : [])
+    ];
+    return fields.length ? [{ secretKey: el.key, isHoneyTokenSecret: el.isHoneyTokenSecret, fields }] : [];
+  });
+  if (!readOnlyEdits.length) return;
+
+  throw secretReadOnlyError({
+    secrets: readOnlyEdits,
+    environment,
+    message: `Cannot update the name or value of rotated or honey token secrets: ${readOnlyEdits
+      .map((el) => `'${el.secretKey}'`)
+      .join(", ")} in path '${secretPath}' of environment '${environment}'`
+  });
+};

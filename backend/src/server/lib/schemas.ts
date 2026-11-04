@@ -50,9 +50,9 @@ export const auditSafeText = (schema: z.ZodString, { allowMultiline = false } = 
     message: LOG_UNSAFE_TEXT_MESSAGE
   });
 
-export const BaseSecretNameSchema = z.string().trim().min(1).max(500, "Secret name cannot exceed 500 characters.");
+export const BaseSecretNameSchema = z.string().trim().min(1);
 
-export const SecretNameSchema = BaseSecretNameSchema.refine(
+export const SecretNameSchema = BaseSecretNameSchema.max(500, "Secret name cannot exceed 500 characters.").refine(
   (el) => !el.includes(":") && !el.includes("/"),
   "Secret name cannot contain colon or forward slash."
 );

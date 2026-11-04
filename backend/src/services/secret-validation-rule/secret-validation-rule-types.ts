@@ -119,6 +119,8 @@ export type TDeleteSecretValidationRuleDTO = {
 /** A secret about to be written, as the static-secret rules see it. */
 export type TSecretToValidate = {
   key: string;
+  // The key the request named the secret by, when it differs from `key` (a rename). Only used to report failures.
+  requestKey?: string;
   value?: string;
   secretId?: string;
 };

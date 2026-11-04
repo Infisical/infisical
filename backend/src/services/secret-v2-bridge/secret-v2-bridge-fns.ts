@@ -1905,11 +1905,14 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
     // Which secret already holds a duplicated value is only named to a writer who may read there, so the
     // message is resolved against their permission rather than formatted inside validation.
-    throw secretValidationFailedError(error.failures, destinationEnvironment, (environment, secretPath) =>
-      permission.can(
-        ProjectPermissionSecretActions.DescribeSecret,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      )
+    throw secretValidationFailedError(
+      error.failures,
+      { environment: destinationEnvironment },
+      (environment, secretPath) =>
+        permission.can(
+          ProjectPermissionSecretActions.DescribeSecret,
+          subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+        )
     );
   }
 

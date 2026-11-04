@@ -88,6 +88,7 @@ import {
   secretReadOnlyError,
   secretValidationFailedError,
   SecretWriteErrorField,
+  throwIfReadOnlySecretEdits,
   toSecretKeyConflictError
 } from "./secret-v2-bridge-errors";
 import {
@@ -238,7 +239,7 @@ export const secretV2BridgeServiceFactory = ({
     } catch (error) {
       if (!(error instanceof SecretValidationError)) throw error;
 
-      throw secretValidationFailedError(error.failures, dto.environment, (environment, secretPath) =>
+      throw secretValidationFailedError(error.failures, dto, (environment, secretPath) =>
         permission.can(
           ProjectPermissionSecretActions.DescribeSecret,
           subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -782,7 +783,7 @@ export const secretV2BridgeServiceFactory = ({
           environment,
           envId: folder.envId,
           secretPath,
-          secrets: [{ key: finalKey, value: secretValue, secretId }]
+          secrets: [{ key: finalKey, requestKey: secretName, value: secretValue, secretId }]
         },
         permission
       );
@@ -2645,24 +2646,12 @@ export const secretV2BridgeServiceFactory = ({
           );
         });
 
-        const readOnlySecretEdits = secretsToUpdateInDB.flatMap((el) => {
-          if (!el.isHoneyTokenSecret && !el.isRotatedSecret) return [];
-          const input = secretsToUpdate.find((i) => i.secretKey === el.key);
-          const fields = [
-            ...(input?.newSecretName ? [SecretWriteErrorField.SecretKey] : []),
-            ...(input?.secretValue !== undefined ? [SecretWriteErrorField.SecretValue] : [])
-          ];
-          return fields.length ? [{ secretKey: el.key, isHoneyTokenSecret: el.isHoneyTokenSecret, fields }] : [];
+        throwIfReadOnlySecretEdits({
+          storedSecrets: secretsToUpdateInDB,
+          updates: secretsToUpdate,
+          environment,
+          secretPath
         });
-        if (readOnlySecretEdits.length) {
-          throw secretReadOnlyError({
-            secrets: readOnlySecretEdits,
-            environment,
-            message: `Cannot update the name or value of rotated or honey token secrets: ${readOnlySecretEdits
-              .map((el) => `'${el.secretKey}'`)
-              .join(", ")} in path '${secretPath}' of environment '${environment}'`
-          });
-        }
 
         // get all tags
         // get all tags (include create + update in upsert)
@@ -2778,6 +2767,7 @@ export const secretV2BridgeServiceFactory = ({
             .filter((el) => el.secretValue || el.newSecretName)
             .map((el) => ({
               key: el.newSecretName || el.secretKey,
+              requestKey: el.secretKey,
               value: el.secretValue,
               secretId: secretsToUpdateInDBGroupedByKey[el.secretKey]?.[0]?.id
             })),

@@ -14,7 +14,8 @@ import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
   secretAlreadyExistsError,
-  secretValidationFailedError
+  secretValidationFailedError,
+  throwIfReadOnlySecretEdits
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-errors";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
@@ -106,7 +107,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
     } catch (error) {
       if (!(error instanceof SecretValidationError)) throw error;
 
-      throw secretValidationFailedError(error.failures, dto.environment, (environment, secretPath) =>
+      throw secretValidationFailedError(error.failures, dto, (environment, secretPath) =>
         permission.can(
           ProjectPermissionSecretActions.DescribeSecret,
           subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -259,6 +260,13 @@ export const secretApprovalRequestCommitFnsFactory = ({
         if (el.tags?.length) existingTagIds[el.key] = el.tags.map((i) => i.id);
       });
 
+      throwIfReadOnlySecretEdits({
+        storedSecrets: secretsToUpdateStoredInDB,
+        updates: secretsToUpdate,
+        environment,
+        secretPath
+      });
+
       const existingKeys = new Set(secretsToUpdateStoredInDB.map((el) => el.key));
       const missingSecrets = secretsToUpdate.filter((el) => !existingKeys.has(el.secretKey));
 
@@ -366,6 +374,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
           .filter((s) => s.secretValue !== undefined || s.newSecretName)
           .map((s) => ({
             key: s.newSecretName || s.secretKey,
+            requestKey: s.secretKey,
             value: s.secretValue,
             secretId: updatingSecretsGroupByKey[s.secretKey]?.[0]?.id
           }))
