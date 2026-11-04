@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { AxiosError } from "axios";
-import { ClipboardCheckIcon, CopyIcon, LinkIcon } from "lucide-react";
+import { BracesIcon, ClipboardCheckIcon, CopyIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -131,7 +131,7 @@ export const ResolvedSecretValuePopover = ({
               }}
               onMouseDown={(e) => e.preventDefault()}
             >
-              <LinkIcon className="size-3.5" />
+              <BracesIcon className="size-3.5" />
             </IconButton>
           </PopoverTrigger>
         </TooltipTrigger>
