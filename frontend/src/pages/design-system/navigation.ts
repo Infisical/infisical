@@ -33,7 +33,7 @@ export const comparisonPages = [
     id: "compare-access",
     href: "/v4/organizations/demo/access-management?selectedTab=members",
     screen: "access",
-    title: "Organization and project access control",
+    title: "Org and project access",
     description:
       "Organization and project access control ported from main: users, machine identities, groups, service tokens, roles and the role editor, with every flow on local demo data. Pick a page or flow to compare."
   },
@@ -48,7 +48,7 @@ export const comparisonPages = [
     id: "compare-approvals",
     href: "/v4/organizations/demo/projects/secret-management/payments-api/approval",
     screen: "approvals",
-    title: "Secrets project change requests",
+    title: "Secrets project approvals",
     description: "4 open production change requests in the ApprovalQueue pattern."
   },
   {
@@ -78,7 +78,7 @@ export const comparisonPages = [
     id: "compare-identities",
     href: "/v4/organizations/demo/access-management?selectedTab=identities",
     screen: "identities",
-    title: "Organization machine identities",
+    title: "Organization identities",
     description:
       "6 machine identities with their auth methods; open one for its details, auth methods and projects."
   },
