@@ -202,7 +202,7 @@ export const DenoDeploySyncFns = {
 
     if (!disableSecretDeletion) {
       for (const envVar of ownedVars(existingVars, context)) {
-        if (!(envVar.key in secretMap) && matchesSchema(envVar.key, environmentSlug, keySchema)) {
+        if (!Object.hasOwn(secretMap, envVar.key) && matchesSchema(envVar.key, environmentSlug, keySchema)) {
           updates.push({ id: envVar.id, delete: true });
         }
       }
@@ -232,7 +232,7 @@ export const DenoDeploySyncFns = {
 
     const updates: TDenoDeployEnvVarUpdate[] = [];
     for (const envVar of ownedVars(app.env_vars, context)) {
-      if (envVar.key in secretMap) {
+      if (Object.hasOwn(secretMap, envVar.key)) {
         updates.push({ id: envVar.id, delete: true });
       }
     }

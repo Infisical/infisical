@@ -265,6 +265,25 @@ describe("DenoDeploySyncFns", () => {
     expect(patchEnvVars()).toEqual([{ id: "managed-id", delete: true }]);
   });
 
+  it("does not treat inherited object properties as synced keys", async () => {
+    get.mockResolvedValue({
+      data: appWith([
+        { id: "constructor-id", key: "constructor", secret: true, contexts: [DenoDeploySyncContext.Production] },
+        { id: "to-string-id", key: "toString", secret: true, contexts: [DenoDeploySyncContext.Production] }
+      ])
+    });
+
+    await DenoDeploySyncFns.removeSecrets(sync, payloadOf({ MANAGED: "value" }));
+    expect(patch).not.toHaveBeenCalled();
+
+    await DenoDeploySyncFns.syncSecrets(sync, payloadOf({ MANAGED: "value" }));
+    expect(patchEnvVars()).toEqual([
+      { key: "MANAGED", value: "value", secret: true, contexts: [DenoDeploySyncContext.Production] },
+      { id: "constructor-id", delete: true },
+      { id: "to-string-id", delete: true }
+    ]);
+  });
+
   it("maps a missing app to a non-retryable error", async () => {
     get.mockRejectedValue(denoError(404, "App not found"));
 
