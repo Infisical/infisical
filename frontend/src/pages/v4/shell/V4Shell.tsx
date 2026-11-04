@@ -144,6 +144,12 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
           label: "Organization settings",
           icon: "settings",
           onSelect: () => go(`${base}/settings`)
+        },
+        { type: "separator" },
+        {
+          label: "Design system",
+          icon: "apps",
+          onSelect: () => navigate({ to: "/design-system" })
         }
       ]
     }
