@@ -115,6 +115,7 @@ describe("fields a type does not take", () => {
         allowedPathPrefixes: ["/v1"],
         substitutions: [],
         customHeaders: [],
+        allowedTools: ["read_file"],
         serverUrl: "https://mcp.example.com/mcp",
         transport: AgentVaultMcpTransport.Sse
       })
@@ -130,12 +131,13 @@ describe("fields a type does not take", () => {
         hostPattern: "api.github.com",
         allowedMethods: ["GET"],
         substitutions: [],
+        allowedTools: ["read_file"],
         serverUrl: "https://mcp.example.com/mcp",
         transport: AgentVaultMcpTransport.Sse
       })
-    ).toEqual(["serverUrl", "transport"]);
+    ).toEqual(["allowedTools", "serverUrl", "transport"]);
     expect(() => assertServiceFieldsSupported(http, { serverUrl: "x", transport: "sse" })).toThrow(
-      "An HTTP service doesn't take 'serverUrl' or 'transport'. A server URL and transport apply only to MCP services."
+      "An HTTP service doesn't take 'serverUrl' or 'transport'. A server URL, transport and allowed tools apply only to MCP services."
     );
   });
 
@@ -158,9 +160,12 @@ describe("fields read back unchanged on an update", () => {
       allowedPathPrefixes: undefined,
       substitutions: undefined
     });
-    expect(dropReadBackServiceFields(http, { serverUrl: null, transport: null }, "api.example.com")).toEqual({
+    expect(
+      dropReadBackServiceFields(http, { serverUrl: null, transport: null, allowedTools: null }, "api.example.com")
+    ).toEqual({
       serverUrl: undefined,
-      transport: undefined
+      transport: undefined,
+      allowedTools: undefined
     });
   });
 

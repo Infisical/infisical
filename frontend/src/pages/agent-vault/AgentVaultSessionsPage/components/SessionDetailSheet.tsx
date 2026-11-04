@@ -4,6 +4,7 @@ import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-reac
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
+import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
   Detail,
@@ -20,16 +21,23 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  Spinner
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
+import { InlineServicesHoverCard } from "./InlineServicesHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
+import { inlineServiceTarget } from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionStatusBadge } from "./SessionStatusBadge";
+
+const SHOWN_INLINE_SERVICES = 1;
 
 type Props = {
   session: TAgentVaultSession | undefined;
@@ -73,6 +81,9 @@ export const SessionDetailSheet = ({
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
+  const services = session?.services ?? [];
+  const shownServices = services.slice(0, SHOWN_INLINE_SERVICES);
+  const moreServices = services.slice(SHOWN_INLINE_SERVICES);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -208,6 +219,40 @@ export const SessionDetailSheet = ({
                             <span className="min-w-0">{bundle.name} (deleted)</span>
                           </span>
                         )
+                      )}
+                    </DetailValue>
+                  </Detail>
+                )}
+                {services.length > 0 && (
+                  <Detail>
+                    <DetailLabel>Inline Services</DetailLabel>
+                    <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      {shownServices.map((service) => (
+                        <Tooltip key={service.id}>
+                          <TooltipTrigger asChild>
+                            <span className="flex min-w-0 items-center gap-2">
+                              <ServiceIcon hostPattern={service.hostPattern} className="size-5" />
+                              <span className="truncate">{service.name}</span>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Sent with this session when it was created, for{" "}
+                            {inlineServiceTarget(service)}
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                      {moreServices.length > 0 && (
+                        <InlineServicesHoverCard services={moreServices}>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-sm text-muted outline-hidden hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                          >
+                            {/* One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam. */}
+                            <span className="underline decoration-dotted underline-offset-2">
+                              {`+${moreServices.length} more`}
+                            </span>
+                          </button>
+                        </InlineServicesHoverCard>
                       )}
                     </DetailValue>
                   </Detail>

@@ -52,8 +52,8 @@ func (a *STSAccount) getCallerIdentity(c call) (any, *apiError) {
 		user = k.user
 	}
 	return struct {
-		Arn     string `xml:"Arn"`
-		UserID  string `xml:"UserId"`
-		Account string `xml:"Account"`
+		Arn     string `xml:"Arn" json:"Arn"`
+		UserID  string `xml:"UserId" json:"UserId"`
+		Account string `xml:"Account" json:"Account"`
 	}{"arn:aws:iam::" + c.account() + ":user/" + user, "AIDA" + randomBase32(16), c.account()}, nil
 }

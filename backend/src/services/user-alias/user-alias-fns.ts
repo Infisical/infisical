@@ -146,7 +146,8 @@ type TSyncSsoUserProfileDTO = {
   assertedFirstName?: string | null;
   assertedLastName?: string | null;
   orgId: string;
-  isAuthEnforced: boolean;
+  // The org enforces SSO and owns the asserted domain (isIdpAuthoritativeForDomain).
+  isIdpAuthoritative: boolean;
   userDAL: Pick<TUserDALFactory, "findOne" | "updateById" | "transaction">;
   userAliasDAL: Pick<TUserAliasDALFactory, "updateById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
@@ -157,8 +158,8 @@ type TSyncSsoUserProfileDTO = {
  * An IdP that keys people on a stable identifier (a UPN, say) lets them change mailbox and display
  * name without changing who they are, so our copy of both goes stale: notification mail is sent to
  * an address that no longer exists, and every audit entry written from then on records it. Where
- * the org enforces SSO it has already made the IdP authoritative for identity, so the assertion is
- * the better source and we take it.
+ * the org enforces SSO and owns the asserted domain it has made the IdP authoritative for identity,
+ * so the assertion is the better source and we take it.
  *
  * Requires a verified alias, which is our proof that the IdP controls this account. An unverified
  * alias asserting an unrecognized email is what isStaleSsoAlias exists to catch, and reading that
@@ -178,13 +179,13 @@ export const syncSsoUserProfile = async ({
   assertedFirstName,
   assertedLastName,
   orgId,
-  isAuthEnforced,
+  isIdpAuthoritative,
   userDAL,
   userAliasDAL,
   emailDomainDAL,
   auditLogService
 }: TSyncSsoUserProfileDTO): Promise<TUsers> => {
-  if (!isAuthEnforced || !userAlias.isEmailVerified) return user;
+  if (!isIdpAuthoritative || !userAlias.isEmailVerified) return user;
 
   const assertedUsername = sanitizeEmail(assertedEmail);
   const isEmailChanged = Boolean(assertedUsername) && assertedUsername !== user.username;

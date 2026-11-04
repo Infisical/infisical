@@ -16,6 +16,13 @@ type TGatewayDep = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsB
 
 export const DEFAULT_WINRM_PORT = 5985;
 
+export const getCredentialAccountIds = (credentialAccountId: string, configuration: Record<string, unknown>) => {
+  const configIds = Array.isArray(configuration.credentialAccountIds)
+    ? (configuration.credentialAccountIds as string[])
+    : [];
+  return Array.from(new Set([credentialAccountId, ...configIds]));
+};
+
 const SWEEP_RESPONSE_TIMEOUT_MS = 10 * 60 * 1000;
 
 // runs a command on the target via the gateway's ssh-exec handler; the gateway performs the ssh login (any auth

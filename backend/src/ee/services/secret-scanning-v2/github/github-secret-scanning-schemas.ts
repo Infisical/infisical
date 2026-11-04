@@ -65,3 +65,12 @@ export const GitHubFindingSchema = BaseSecretScanningFindingSchema.extend({
   dataSourceType: z.literal(SecretScanningDataSource.GitHub),
   details: GitRepositoryScanFindingDetailsSchema
 });
+
+export const GitHubPullRequestScanMetadataSchema = z.object({
+  pullRequestNumber: z.number().int().positive(),
+  baseSha: z.string(),
+  headSha: z.string(),
+  checkRunId: z.number().int().positive(),
+  // Every finding in the pull request's commits, including ones another scan saved first; set when the scan completes.
+  findingIds: z.string().uuid().array().optional()
+});

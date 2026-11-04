@@ -8,9 +8,18 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
+import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage/usage-metering-service";
 
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
+import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { softDeleteCertificates } from "../certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TPkiCollectionItemDALFactory } from "../pki-collection/pki-collection-item-dal";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
+import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
 import { PostHogEventTypes } from "../telemetry/telemetry-types";
 import { TCertificateCleanupConfigDALFactory } from "./certificate-cleanup-dal";
@@ -20,8 +29,15 @@ type TCertificateCleanupQueueFactoryDep = {
   db: TDbClient;
   cronJob: TCronJobFactory;
   certificateCleanupConfigDAL: TCertificateCleanupConfigDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "delete">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "delete">;
+  certificateDAL: Pick<TCertificateDALFactory, "update">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "delete">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "delete">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
+  pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "delete">;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "find">;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -33,7 +49,14 @@ export const certificateCleanupQueueFactory = ({
   cronJob,
   certificateCleanupConfigDAL,
   certificateDAL,
+  certificateBodyDAL,
+  certificateSecretDAL,
   certificateRequestDAL,
+  pkiCollectionItemDAL,
+  certificateSyncDAL,
+  pkiSyncDAL,
+  pkiSyncQueue,
+  usageMeteringService,
   auditLogService,
   telemetryService
 }: TCertificateCleanupQueueFactoryDep) => {
@@ -69,6 +92,18 @@ export const certificateCleanupQueueFactory = ({
       pendingAuditSerials = [];
     };
 
+    const queueAutoSyncsForRemoval = async (pkiSyncIds: string[]) => {
+      if (pkiSyncIds.length === 0) return;
+      try {
+        const pkiSyncs = await pkiSyncDAL.find({ $in: { id: pkiSyncIds }, isAutoSyncEnabled: true });
+        await Promise.all(
+          pkiSyncs.map((pkiSync) => pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSync.id }))
+        );
+      } catch (err) {
+        logger.error(err, `CertificateCleanup: failed to queue PKI syncs for project ${config.projectId}`);
+      }
+    };
+
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - config.postExpiryRetentionDays);
 
@@ -79,6 +114,13 @@ export const certificateCleanupQueueFactory = ({
         .replicaNode()(TableName.Certificate)
         .where("projectId", config.projectId)
         .where("notAfter", "<", cutoffDate)
+        .whereNull("deletedAt")
+        .whereNotExists((qb) => {
+          void qb
+            .select("id")
+            .from(TableName.PkiSigners)
+            .whereRaw(`"${TableName.PkiSigners}"."certificateId" = "${TableName.Certificate}"."id"`);
+        })
         .orderBy("id", "asc")
         .select("id");
 
@@ -114,11 +156,23 @@ export const certificateCleanupQueueFactory = ({
 
       if (idsToDelete.length > 0) {
         try {
-          const deleted = await certificateCleanupConfigDAL.transaction(async (tx) => {
-            await certificateRequestDAL.delete({ $in: { certificateId: idsToDelete } }, tx);
-            return certificateDAL.delete({ $in: { id: idsToDelete } }, tx);
-          });
+          const { deletedCertificates: deleted, pkiSyncIdsHoldingCertificates } =
+            await certificateCleanupConfigDAL.transaction((tx) =>
+              softDeleteCertificates(
+                { certificateIds: idsToDelete, actorType: ActorType.PLATFORM },
+                {
+                  certificateDAL,
+                  certificateBodyDAL,
+                  certificateSecretDAL,
+                  certificateRequestDAL,
+                  pkiCollectionItemDAL,
+                  certificateSyncDAL
+                },
+                tx
+              )
+            );
           deletedCount += deleted.length;
+          await queueAutoSyncsForRemoval(pkiSyncIdsHoldingCertificates);
 
           for (const cert of deleted) {
             pendingAuditSerials.push(cert.serialNumber);
@@ -151,6 +205,11 @@ export const certificateCleanupQueueFactory = ({
     });
 
     await flushAuditLog();
+
+    if (deletedCount > 0) {
+      usageMeteringService.emitForProject(config.projectId, ActiveCerts.key);
+      usageMeteringService.emitForProject(config.projectId, WildcardCerts.key);
+    }
 
     return { deletedCount, errors: errorMessages.length };
   };

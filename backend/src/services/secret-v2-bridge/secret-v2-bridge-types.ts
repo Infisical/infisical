@@ -536,6 +536,13 @@ export type TGetSecretsMultiEnvDTO = Pick<
   isInternal?: boolean;
 };
 
+export type TGetSecretKeyEnvironmentsDTO = Pick<
+  TGetSecretsMultiEnvDTO,
+  "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "environments"
+> & {
+  secretKey: string;
+};
+
 export type TGetSecretsRawByFolderMappingsDTO = {
   projectId: string;
   folderMappings: { folderId: string; path: string; environment: string }[];
@@ -543,14 +550,6 @@ export type TGetSecretsRawByFolderMappingsDTO = {
   filters: TFindSecretsByFolderIdsFilter;
   filterByAction?: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 };
-
-export type TGetAccessibleSecretsDTO = {
-  environment: string;
-  projectId: string;
-  secretPath: string;
-  recursive?: boolean;
-  filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
-} & TProjectPermission;
 
 export type TUpdateLinkedSecretReferencesDTO = {
   projectId: string;

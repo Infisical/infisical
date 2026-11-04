@@ -4,6 +4,10 @@ sidebarTitle: "Local proxy"
 description: "Run an agent on your own computer, sandboxed, with a proxy that starts and stops alongside it."
 ---
 
+import AgentProxyMovedCallout from "/snippets/agent-proxy-moved-callout.mdx";
+
+<AgentProxyMovedCallout />
+
 With a local proxy, everything happens on the computer you're already working on. The proxy starts alongside your agent, hands it placeholder credentials, swaps in the real ones as its requests leave, and stops when the agent exits. There is nothing to deploy and no machine identity to create: the proxy brokers as your logged-in user, against secrets you can already read.
 
 Because the proxy and the agent share a machine, an **OS sandbox** is what keeps them apart. The agent can't read your keyring or your credential files, and its only route to the network is the proxy.
