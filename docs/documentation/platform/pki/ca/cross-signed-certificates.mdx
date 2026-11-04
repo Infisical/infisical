@@ -147,8 +147,6 @@ If a cross-signed certificate isn't valid yet, the CA adds it to chains only fro
 
 While the cross-signed certificate is valid, each certificate the CA issues or renews carries a chain in which the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported.
 
-If you sign an intermediate CA outside Infisical with [the endpoint to sign an intermediate CA](/api-reference/endpoints/certificate-authorities/internal/sign-intermediate), the response holds the Infisical CA's own chain, not the cross-signed certificate. For clients that only trust the old root to accept certificates from that intermediate CA, build its chain from the cross-signed certificate followed by the old CA's certificates. [The endpoint to get a cross-signed certificate](/api-reference/endpoints/certificate-authorities/internal/get-cross-signed-cert) returns both.
-
 ### Chain order
 
 If you cross-sign a root CA, a certificate from an intermediate CA under it carries this chain:
