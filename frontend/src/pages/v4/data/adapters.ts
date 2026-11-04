@@ -4,12 +4,14 @@ import type { IntegrationsAdapter } from "./integrations/contract";
 import type { KmsAdapter } from "./kms/contract";
 import type { OrgAdapter } from "./org/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
+import type { SecretsAdapter } from "./secrets/contract";
 
 export type V4Adapters = {
   kms: KmsAdapter;
   org: OrgAdapter;
   integrations: IntegrationsAdapter;
   secretScanning: SecretScanningAdapter;
+  secrets: SecretsAdapter;
 };
 
 export const useV4Adapter = <K extends keyof V4Adapters>(domain: K): V4Adapters[K] => {
