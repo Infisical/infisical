@@ -1,3 +1,4 @@
+import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
 import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
@@ -12,5 +13,6 @@ export const liveAdapters: V4Adapters = {
   integrations: integrationsLive,
   secretScanning: secretScanningLive,
   secrets: secretsLive,
-  certificates: certificatesLive
+  certificates: certificatesLive,
+  access: accessLive
 };
