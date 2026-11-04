@@ -479,7 +479,7 @@ export const SecretTableRow = ({
               pendingActionBorderClass(singleEnvPendingAction)
             )}
           >
-            <div className="flex h-10 items-center justify-center [&>svg]:size-4">
+            <div className="relative flex h-10 items-center justify-center [&>svg]:size-4">
               <Checkbox
                 variant="project"
                 id={`checkbox-${secretKey}`}
