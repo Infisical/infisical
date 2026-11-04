@@ -34,7 +34,8 @@ const emptied = (fixtures: SecretsFixtures): SecretsFixtures => ({
   rotations: [],
   honeyTokens: [],
   proxiedServices: [],
-  secretSyncs: []
+  secretSyncs: [],
+  commits: []
 });
 
 const stores = {

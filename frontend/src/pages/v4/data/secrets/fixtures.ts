@@ -33,6 +33,7 @@ import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
+import { type DemoCommit, seedDemoCommits } from "./demo-commits";
 import { seedSecretSyncs } from "./demo-syncs";
 
 type Scope = { projectId: string; environment: string; path: string };
@@ -55,6 +56,7 @@ export type SecretsFixtures = {
   versionHistory: Record<string, DemoVersion[]>;
   leases: Record<string, TDynamicSecretLease[]>;
   secretSyncs: TSecretSync[];
+  commits: DemoCommit[];
 };
 export type DemoVersion = {
   version: number;
@@ -587,6 +589,7 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     dynamicSecrets,
     leases: seedLeases(dynamicSecrets),
     secretSyncs: seedSecretSyncs(envOf),
+    commits: seedDemoCommits(secrets),
     rotations: [
       rotation("/", "dev", "payments-app-db-creds", "payments-postgres", [
         "APP_DB_USERNAME",

@@ -5,6 +5,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { type SecretVersions, SecretType } from "@app/hooks/api/secrets/types";
 
 import type { SecretsFlowsAdapter } from "./contract-flows";
+import { recordDemoCommit, secretsCommitsDemo } from "./demo-commits";
 import { fakeLeaseData } from "./demo-leases";
 import { secretsManagedDemo } from "./demo-managed";
 import {
@@ -178,6 +179,7 @@ const dynamicAt =
 
 export const secretsFlowsDemo: SecretsFlowsAdapter = {
   ...secretsManagedDemo,
+  ...secretsCommitsDemo,
   useDynamicSecretDetails: ({ projectSlug, environmentSlug, path, name }) => {
     const entry = useStore()
       .use()
@@ -593,6 +595,17 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
   }),
   useCreateCommit: demoMutation((store, dto) => {
     const scope = { projectId: dto.projectId, environment: dto.environment, path: dto.secretPath };
+    const snapshotOf = (key: string) => {
+      const secret = store
+        .get()
+        .secrets.find(secretAt(dto.projectId, dto.environment, dto.secretPath, key));
+      return secret && { name: secret.key, value: secret.value, comment: secret.comment };
+    };
+    const secretChanges = dto.pendingChanges.secrets.map((change) => ({
+      key: ("newSecretName" in change && change.newSecretName) || change.secretKey,
+      type: "secret" as const,
+      before: change.type === PendingAction.Create ? undefined : snapshotOf(change.secretKey)
+    }));
     dto.pendingChanges.secrets.forEach((change) => {
       const match = secretAt(dto.projectId, dto.environment, dto.secretPath, change.secretKey);
       if (change.type === PendingAction.Create) {
@@ -641,6 +654,24 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
         else folders = folders.filter((folder) => folder.id !== change.id);
       });
       return { ...state, folders };
+    });
+    recordDemoCommit(store, {
+      projectId: dto.projectId,
+      environment: dto.environment,
+      path: dto.secretPath,
+      message: dto.message,
+      actor: "Sarah Lin",
+      changes: [
+        ...secretChanges.map(({ key, ...change }) => ({ ...change, after: snapshotOf(key) })),
+        ...dto.pendingChanges.folders.map((change) => ({
+          type: "folder" as const,
+          before: change.type === PendingAction.Create ? undefined : { name: change.folderName },
+          after:
+            change.type === PendingAction.Delete
+              ? undefined
+              : { name: change.folderName, description: change.description ?? "" }
+        }))
+      ]
     });
     return {
       commitId: crypto.randomUUID(),

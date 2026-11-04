@@ -49,6 +49,7 @@ import type {
 import type { PendingChanges } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
+import type { SecretsCommitsAdapter } from "./contract-commits";
 import type { SecretsManagedAdapter } from "./contract-managed";
 
 export type TCreateCommitDTO = {
@@ -69,7 +70,8 @@ type SecretScopedMutation<TVariables, TData> = (secretId: string) => {
   isPending: boolean;
 };
 
-export type SecretsFlowsAdapter = SecretsManagedAdapter & {
+export type SecretsFlowsAdapter = SecretsManagedAdapter &
+  SecretsCommitsAdapter & {
   useDynamicSecretDetails: (
     dto: TDetailsDynamicSecretDTO
   ) => V4QueryResult<TDynamicSecret & { inputs: unknown }>;

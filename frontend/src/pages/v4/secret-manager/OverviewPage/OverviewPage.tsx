@@ -97,7 +97,6 @@ import { BulkTagDialog } from "./secrets/bulk/bulk-tag-dialog";
 import { type CopySecretsInvocation, CopySecretsSheet } from "./secrets/bulk/copy-secrets-sheet";
 import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
 import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
-import type { LocalCommit } from "./secrets/commits/commits-model";
 import { addFlows, type FlowFeedback, FlowToasts, type NewResource } from "./secrets/flows";
 import { childPath } from "./secrets/flows/shared";
 import {
@@ -449,7 +448,6 @@ export const OverviewPage = () => {
         })
     );
   };
-  const commits: LocalCommit[] = [];
   const syncs = (adapter.useSecretSyncs(projectId).data ?? []).map(
     (sync): LocalSecretSync => ({
       id: sync.id,
@@ -946,10 +944,13 @@ export const OverviewPage = () => {
     (option) => option.field === sort.field && option.direction === sort.direction
   )?.label;
   const colSpan = visibleEnvironments.length + 3;
-  const commitCount = commits.filter(
-    (commit) =>
-      commit.project === project && commit.environment === activeEnvironment && commit.path === path
-  ).length;
+  const commitCount =
+    adapter.useCommitCount({
+      projectId,
+      environment: activeEnvironment,
+      directory: path,
+      enabled: single
+    }).data ?? 0;
   const canQuickAdd = !writeBlock && isLastPage && totalCount > 0;
   const gate = (reason: string | undefined, node: ReactNode) =>
     reason ? (
@@ -1890,9 +1891,7 @@ export const OverviewPage = () => {
                 <CommitHistorySheet
                   {...host}
                   environment={commitEnvironment}
-                  commits={commits}
                   onClose={() => setCommitEnvironment(undefined)}
-                  onRecordCommit={() => undefined}
                 />
               </>
             );

@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from "react";
+import type { AxiosError } from "axios";
 import { format } from "date-fns";
 import {
   ArrowDownWideNarrowIcon,
@@ -41,27 +42,19 @@ import {
   SheetTitle
 } from "@app/components/v4/ui/sheet";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import type { Commit } from "@app/hooks/api/folderCommits/types";
+
+import { useV4Adapter } from "../../../../data/adapters";
 
 import { environmentLabel, Gate } from "../flows/shared";
 import { ActionButton } from "../overview-cells";
 import type { OverlayHostProps } from "../row-actions/types";
-import {
-  type CommitSummary,
-  inScope,
-  isFirstCommit,
-  isLatestCommit,
-  LOCAL_ACTOR,
-  type LocalCommit,
-  newCommitId,
-  revertState,
-  rollbackState,
-  summarizeChanges
-} from "./commits-model";
+import { toCommitChange } from "./commit-changes";
+import { type CommitResourceChange, type CommitSummary, summarizeChanges } from "./commits-model";
 import { ResourceChangeCard, sortChanges } from "./resource-change-card";
 
 import styles from "./commits.module.css";
 
-const COMMITS_PER_PAGE = 10;
 const MAX_RESTORE_MESSAGE_LENGTH = 256;
 const PLATFORM_HINT = "Generated automatically by the platform as part of an automated event.";
 
@@ -70,7 +63,25 @@ type View =
   | { name: "details"; commitId: string }
   | { name: "restore"; commitId: string };
 
-const authorName = (commit: LocalCommit) =>
+type ViewCommit = {
+  id: string;
+  message?: string | null;
+  actor: string;
+  actorType: string;
+  createdAt: string;
+  summary?: CommitSummary;
+};
+
+const toViewCommit = (commit: Commit): ViewCommit => ({
+  id: commit.id,
+  message: commit.message,
+  actor: commit.actorMetadata?.name ?? commit.actorMetadata?.email ?? "Unknown",
+  actorType: commit.actorType,
+  createdAt: commit.createdAt,
+  summary: commit.summary
+});
+
+const authorName = (commit: ViewCommit) =>
   commit.actorType === "platform" ? "Platform" : commit.actor;
 const shortId = (id: string) => id.substring(0, 8);
 const plural = (count: number, singular: string) =>
@@ -103,7 +114,7 @@ function ChangeSummary({ summary, showLabels }: { summary: CommitSummary; showLa
   );
 }
 
-function Author({ commit }: { commit: LocalCommit }) {
+function Author({ commit }: { commit: ViewCommit }) {
   return (
     <span className={styles.inlineGroup}>
       <span className={styles.truncate}>{authorName(commit)}</span>
@@ -118,8 +129,8 @@ function Author({ commit }: { commit: LocalCommit }) {
   );
 }
 
-function CommitRow({ commit, onSelect }: { commit: LocalCommit; onSelect: () => void }) {
-  const summary = summarizeChanges(commit.changes);
+function CommitRow({ commit, onSelect }: { commit: ViewCommit; onSelect: () => void }) {
+  const summary = commit.summary ?? summarizeChanges([]);
   const resources = resourceSummary(summary);
   return (
     <button type="button" className={styles.commitRow} onClick={onSelect}>
@@ -181,19 +192,14 @@ function ChangeCards({
 export function CommitHistorySheet({
   onClose,
   scope,
-  resources,
-  onApply,
   onToast,
   environment: environmentProp,
-  commits: allCommits,
-  onRecordCommit,
   rollbackBlock
-}: OverlayHostProps & {
+}: Pick<OverlayHostProps, "onClose" | "scope" | "onToast"> & {
   environment?: { value: string; label: string };
-  commits: readonly LocalCommit[];
-  onRecordCommit: (commit: LocalCommit) => void;
   rollbackBlock?: string;
 }) {
+  const adapter = useV4Adapter("secrets");
   const open = Boolean(environmentProp);
   const [wasOpen, setWasOpen] = useState(false);
   const [shown, setShown] = useState(environmentProp);
@@ -201,7 +207,6 @@ export function CommitHistorySheet({
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"asc" | "desc">("desc");
   const [author, setAuthor] = useState<string>();
-  const [pages, setPages] = useState(1);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [fullState, setFullState] = useState<Record<string, boolean>>({});
   const [revertOpen, setRevertOpen] = useState(false);
@@ -220,105 +225,106 @@ export function CommitHistorySheet({
   }
 
   const environment = shown ?? scope.visibleEnvironments[0] ?? { value: "", label: "" };
-  const folder = { project: scope.project, environment: environment.value, path: scope.path };
+  const folder = { projectId: scope.project, environment: environment.value, directory: scope.path };
+  const changeScope = { project: scope.project, environment: environment.value, path: scope.path };
   const envName = environment.label || environmentLabel(environment.value);
-  const scoped = allCommits.filter((commit) => inScope(commit, folder));
-  const authors = [...new Set(scoped.map(authorName))].sort((a, b) => a.localeCompare(b));
+  const history = adapter.useCommitHistory({
+    ...folder,
+    search: search.trim() || undefined,
+    sort,
+    enabled: open
+  });
+  const loaded = (history.data?.commits ?? []).map(toViewCommit);
+  const authors = [...new Set(loaded.map(authorName))].sort((a, b) => a.localeCompare(b));
   const query = search.trim().toLowerCase();
-  const filtered = scoped
-    .filter((commit) => !author || authorName(commit) === author)
-    .filter(
-      (commit) =>
-        !query ||
-        [commit.message, commit.id, commit.actor, ...commit.changes.map((change) => change.name)]
-          .join("\n")
-          .toLowerCase()
-          .includes(query)
-    )
-    .sort((a, b) =>
-      sort === "desc"
-        ? b.createdAt.localeCompare(a.createdAt)
-        : a.createdAt.localeCompare(b.createdAt)
-    );
-  const visible = filtered.slice(0, pages * COMMITS_PER_PAGE);
-  const groups = visible.reduce<{ date: string; commits: LocalCommit[] }[]>((acc, commit) => {
+  const visible = loaded.filter((commit) => !author || authorName(commit) === author);
+  const groups = visible.reduce<{ date: string; commits: ViewCommit[] }[]>((acc, commit) => {
     const date = format(new Date(commit.createdAt), "MMM d, yyyy");
     const group = acc.at(-1);
     if (group?.date === date) group.commits.push(commit);
     else acc.push({ date, commits: [commit] });
     return acc;
   }, []);
-  const remaining = filtered.length - visible.length;
+  const remaining = Math.max((history.data?.total ?? 0) - loaded.length, 0);
 
-  const commit =
-    view.name === "history" ? undefined : scoped.find((item) => item.id === view.commitId);
+  const commitId = view.name === "history" ? "" : view.commitId;
+  const details = adapter.useCommitDetails(scope.project, commitId).data?.changes;
+  const commit: ViewCommit | undefined = details && {
+    id: details.id,
+    message: details.message,
+    actor: details.actorMetadata?.name ?? "Unknown",
+    actorType: details.actorType,
+    createdAt: details.createdAt,
+    summary: undefined
+  };
+  const commitChanges = (details?.changes ?? [])
+    .map((change) =>
+      toCommitChange(changeScope, {
+        id: change.id,
+        type: change.folderVersionId || change.folderName ? "folder" : "secret",
+        action: change.changeType === "add" ? "create" : (change.changeType as "create" | "update" | "delete"),
+        name: change.secretKey ?? change.folderName ?? "Unnamed",
+        versions: change.versions as unknown as { version: number }[]
+      })
+    )
+    .filter((change): change is CommitResourceChange => change !== null);
+  const preview = adapter.useRollbackPreview({
+    projectId: scope.project,
+    folderId: view.name === "restore" ? (details?.folderId ?? "") : "",
+    commitId: view.name === "restore" ? commitId : "",
+    deepRollback: deep
+  }).data;
+  const revertCommit = adapter.useCommitRevert({ ...folder, commitId });
+  const rollbackCommit = adapter.useCommitRollback({
+    ...folder,
+    commitId,
+    folderId: details?.folderId ?? "",
+    deepRollback: deep
+  });
+  const failed = (title: string) => (error: unknown) =>
+    onToast("bad", {
+      title,
+      description:
+        (error as AxiosError<{ message?: string }>)?.response?.data?.message ??
+        (error instanceof Error ? error.message : undefined)
+    });
+
   const resetCards = () => {
     setCollapsed({});
     setFullState({});
   };
   const toggle = (setter: typeof setCollapsed) => (id: string) =>
     setter((current) => ({ ...current, [id]: !current[id] }));
-  const openDetails = (commitId: string) => {
+  const openDetails = (id: string) => {
     resetCards();
-    setView({ name: "details", commitId });
+    setView({ name: "details", commitId: id });
   };
   const backToHistory = () => {
     resetCards();
     setView({ name: "history" });
   };
-  const openRestore = (commitId: string) => {
+  const openRestore = (id: string) => {
     resetCards();
     setDeep(false);
     setMessage("");
     setSelectedPath(scope.path);
-    setView({ name: "restore", commitId });
+    setView({ name: "restore", commitId: id });
   };
 
-  const record = (changes: LocalCommit["changes"], commitMessage: string, path = scope.path) =>
-    onRecordCommit({
-      id: newCommitId(),
-      ...folder,
-      path,
-      message: commitMessage,
-      actor: LOCAL_ACTOR,
-      actorType: "user",
-      createdAt: new Date().toISOString(),
-      changes
-    });
-
-  const revert = (target: LocalCommit) => {
+  const revert = () => {
     setRevertOpen(false);
-    if (isFirstCommit(allCommits, target)) {
-      onToast("bad", {
-        title: "Cannot revert the first commit",
-        description: "Nothing was changed in the local demo data."
-      });
-      return;
-    }
-    const { changes } = revertState(resources, target);
-    if (!changes.length) {
-      onToast("neutral", { title: "No changes to revert" });
-      return;
-    }
-    onApply((current) => revertState(current, target).resources, {
-      title: "Changes reverted successfully"
-    });
-    record(changes, `Reverted changes from commit ${target.id}`);
-    backToHistory();
+    revertCommit.mutateAsync().then(() => {
+      onToast("ok", { title: "Changes reverted successfully" });
+      backToHistory();
+    }, failed("Failed to revert changes"));
   };
 
-  const rollback = (target: LocalCommit) => {
+  const rollback = () => {
     setConfirmOpen(false);
-    const preview = rollbackState(allCommits, target, resources, deep);
-    onApply((current) => rollbackState(allCommits, target, current, deep).resources, {
-      title: "Restore completed successfully"
-    });
-    preview.folders
-      .filter((item) => item.changes.length)
-      .forEach((item) =>
-        record(item.changes, message.trim() || "Rolled back folder state", item.path)
-      );
-    backToHistory();
+    rollbackCommit.mutateAsync(message.trim()).then(() => {
+      onToast("ok", { title: "Restore completed successfully" });
+      backToHistory();
+    }, failed("Failed to restore commit"));
   };
 
   const missing = [
@@ -347,7 +353,7 @@ export function CommitHistorySheet({
         <SheetDescription className={styles.meta}>
           <Badge tone="outline">{envName}</Badge>
           <code className={styles.mono}>{scope.path}</code>
-          <span>{plural(scoped.length, "commit")}</span>
+          <span>{plural(history.data?.total ?? 0, "commit")}</span>
         </SheetDescription>
       </SheetHeader>,
       <SheetSubheader key="subheader" className={styles.toolbar}>
@@ -359,7 +365,6 @@ export function CommitHistorySheet({
           placeholder="Search commits, keys, or folders..."
           onChange={(event) => {
             setSearch(event.target.value);
-            setPages(1);
           }}
           trailing={
             search ? (
@@ -431,7 +436,7 @@ export function CommitHistorySheet({
             ))}
             {remaining > 0 && (
               <div className={styles.loadMore}>
-                <Button variant="outline" onClick={() => setPages(pages + 1)}>
+                <Button variant="outline" onClick={() => history.fetchNextPage()}>
                   {`Load ${remaining} ${sort === "desc" ? "older" : "newer"} commits`}
                 </Button>
               </div>
@@ -452,10 +457,10 @@ export function CommitHistorySheet({
     ];
 
   if (view.name === "details" && commit) {
-    const changes = sortChanges(commit.changes);
-    const summary = summarizeChanges(commit.changes);
+    const changes = sortChanges(commitChanges);
+    const summary = summarizeChanges(commitChanges);
     const everyFull = changes.length > 0 && changes.every((change) => fullState[change.id]);
-    const latest = isLatestCommit(allCommits, commit);
+    const latest = Boolean(details?.isLatest);
     content = [
       <SheetHeader key="header">
         <BackLink label="Commit history" onClick={backToHistory} />
@@ -552,14 +557,37 @@ export function CommitHistorySheet({
   }
 
   if (view.name === "restore" && commit) {
-    const preview = rollbackState(allCommits, commit, resources, deep);
-    const nested = preview.folders.slice(1);
-    const selected =
-      preview.folders.find((item) => item.path === (deep ? selectedPath : scope.path)) ??
-      preview.folders[0];
+    const folders = [...(preview ?? [])]
+      .sort((x, y) => Number(y.folderId === details?.folderId) - Number(x.folderId === details?.folderId))
+      .map((item) => ({
+        path: item.folderPath,
+        changes: item.changes
+          .map((change) => {
+            const extra = change as typeof change & {
+              secretKey?: string;
+              folderName?: string;
+              versions?: { version: number }[];
+            };
+            return toCommitChange(
+              { ...changeScope, path: item.folderPath },
+              {
+                id: change.id,
+                type: change.type,
+                action: change.changeType === "add" ? "create" : change.changeType,
+                name: (change.type === "secret" ? extra.secretKey : extra.folderName) || "Unnamed",
+                versions: extra.versions,
+                isRollback: true
+              }
+            );
+          })
+          .filter((change): change is CommitResourceChange => change !== null)
+      }));
+    const nested = folders.slice(1);
+    const selected = folders.find((item) => item.path === (deep ? selectedPath : scope.path)) ??
+      folders[0] ?? { path: scope.path, changes: [] };
     const changes = sortChanges(selected.changes);
-    const hasAnyChanges = preview.folders.some((item) => item.changes.length > 0);
-    const folderButton = (item: (typeof preview.folders)[number]) => (
+    const hasAnyChanges = folders.some((item) => item.changes.length > 0);
+    const folderButton = (item: (typeof folders)[number]) => (
       <button
         key={item.path}
         type="button"
@@ -606,7 +634,7 @@ export function CommitHistorySheet({
         <div className={styles.restoreLayout}>
           {deep && nested.length > 0 && (
             <nav className={styles.folderList} aria-label="Folders to restore">
-              {folderButton(preview.folders[0])}
+              {folderButton(folders[0])}
               <div className={styles.folderListLabel}>Child folders to restore</div>
               {nested.map(folderButton)}
             </nav>
@@ -674,7 +702,7 @@ export function CommitHistorySheet({
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (commit) revert(commit);
+                revert();
               }}
             >
               Revert changes
@@ -698,7 +726,7 @@ export function CommitHistorySheet({
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (commit) rollback(commit);
+                rollback();
               }}
             >
               Restore
