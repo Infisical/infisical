@@ -50,7 +50,7 @@ const SessionWithAccessBundleSchema = SessionSchema.extend({
   accessBundle: SessionAccessBundleSchema
 });
 
-// CLI 0.43.132+ and the Python SDK send the list form. Remove once those clients send accessBundle.
+// CLI 0.43.132+ and the Python SDK send the list form. Keep until 2027-01-04, then remove.
 // Done in a preprocess so the API reference only shows accessBundle.
 const mapLegacyAccessBundles = (body: unknown) => {
   if (!body || typeof body !== "object" || !("accessBundles" in body)) return body;
