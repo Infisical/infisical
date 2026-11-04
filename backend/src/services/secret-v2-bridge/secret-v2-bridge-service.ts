@@ -2650,6 +2650,13 @@ export const secretV2BridgeServiceFactory = ({
           storedSecrets: secretsToUpdateInDB,
           updates: secretsToUpdate,
           decryptValue: (encryptedValue) => secretManagerDecryptor({ cipherTextBlob: encryptedValue }).toString(),
+          canReadValue: (el) =>
+            hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+              environment,
+              secretPath,
+              secretName: el.key,
+              secretTags: el.tags?.map((tag) => tag.slug)
+            }),
           environment,
           secretPath
         });

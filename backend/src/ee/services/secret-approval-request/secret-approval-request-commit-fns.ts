@@ -2,6 +2,7 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
+import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
@@ -265,6 +266,13 @@ export const secretApprovalRequestCommitFnsFactory = ({
         storedSecrets: secretsToUpdateStoredInDB,
         updates: secretsToUpdate,
         decryptValue: (encryptedValue) => secretManagerDecryptor({ cipherTextBlob: encryptedValue }).toString(),
+        canReadValue: (el) =>
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment,
+            secretPath,
+            secretName: el.key,
+            secretTags: el.tags?.map((tag) => tag.slug)
+          }),
         environment,
         secretPath
       });

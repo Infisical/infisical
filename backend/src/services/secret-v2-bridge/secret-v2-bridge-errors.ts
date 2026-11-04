@@ -165,22 +165,26 @@ export const secretReadOnlyError = ({
 
 // Rotated and honey token secrets are written by their rotation or honey token, so a request may change their
 // tags or comment but not their name or value. Resending the current name or value is not a change, so a full
-// re-apply of an environment still succeeds.
+// re-apply of an environment still succeeds. The value is only compared for a caller who may read it; otherwise
+// the answer would confirm guesses at a hidden value.
 export const throwIfReadOnlySecretEdits = ({
   storedSecrets,
   updates,
   decryptValue,
+  canReadValue,
   environment,
   secretPath
 }: {
   storedSecrets: {
     key: string;
+    tags?: { slug: string }[];
     encryptedValue?: Buffer | null;
     isRotatedSecret?: boolean | null;
     isHoneyTokenSecret?: boolean | null;
   }[];
   updates: { secretKey: string; newSecretName?: string; secretValue?: string }[];
   decryptValue: (encryptedValue: Buffer) => string;
+  canReadValue: (secret: { key: string; tags?: { slug: string }[] }) => boolean;
   environment: string;
   secretPath: string;
 }) => {
@@ -191,7 +195,7 @@ export const throwIfReadOnlySecretEdits = ({
     const isRenamed = Boolean(update.newSecretName) && update.newSecretName !== el.key;
     const isValueChanged =
       update.secretValue !== undefined &&
-      update.secretValue !== (el.encryptedValue ? decryptValue(el.encryptedValue) : "");
+      (!canReadValue(el) || update.secretValue !== (el.encryptedValue ? decryptValue(el.encryptedValue) : ""));
     const fields = [
       ...(isRenamed ? [SecretWriteErrorField.SecretKey] : []),
       ...(isValueChanged ? [SecretWriteErrorField.SecretValue] : [])
