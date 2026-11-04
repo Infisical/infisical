@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import { type MouseEvent, type ReactNode, useState } from "react";
 import { type LinkOptions, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 
 import type { BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
@@ -9,6 +9,7 @@ import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/to
 import { useV4Session } from "../data/session/contract";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useShellChrome } from "./chrome";
+import { CommandPalette } from "./command-palette";
 import { resolveShellLocation } from "./location";
 import {
   orgSections,
@@ -47,6 +48,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const session = useV4Session();
   const chrome = useShellChrome();
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const base = `/v4/organizations/${orgId}`;
   const { selectedTab } = location.search as { selectedTab?: string };
   const at = resolveShellLocation(
@@ -194,7 +196,11 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
 
   return (
     <AppShell style={{ height: "100%" }} onClickCapture={(event) => routeInternalLinks(event, go)}>
-      <TopBar breadcrumb={breadcrumb} account={chrome.account} />
+      <TopBar
+        breadcrumb={breadcrumb}
+        search={{ onClick: () => setPaletteOpen(true), label: "Search" }}
+        account={chrome.account}
+      />
       <Sidebar
         label="Main"
         levels={levels}
@@ -206,6 +212,12 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         <PageGutter>{children}</PageGutter>
       </AppInset>
       {chrome.dialog}
+      <CommandPalette
+        orgId={orgId}
+        projectId={at.projectId}
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+      />
     </AppShell>
   );
 };
