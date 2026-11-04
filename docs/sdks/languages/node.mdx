@@ -1182,7 +1182,7 @@ const accessBundle = await client.agentVault().accessBundles.update("<access-bun
 
 #### Delete access bundle
 
-When you delete an access bundle, the sessions that use it stop getting credentials, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes.
+When you delete an access bundle, the sessions that use it stop getting credentials for the bundle's services, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes. A session's [inline services](#create-a-session-with-inline-services) keep working, so to stop every credential that a session gets, [revoke the session](#revoke-session).
 
 ```typescript
 const accessBundle = await client.agentVault().accessBundles.delete("<access-bundle-id>");
