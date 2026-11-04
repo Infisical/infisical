@@ -218,4 +218,22 @@ describe("DigiCert cancelPendingRequest", () => {
     ).rejects.toThrow("so the request is still open");
     expect(client.cancelOrderReissue).not.toHaveBeenCalled();
   });
+
+  test("cancels using the organization and product saved with the request, not the CA's current ones", async () => {
+    client.getOrder.mockResolvedValue({
+      id: ORDER_ID,
+      status: "reissue_pending",
+      certificate: { id: CURRENT_CERTIFICATE_ID },
+      organization: { id: 888 },
+      product: { name_id: "ssl_basic" }
+    });
+    const metadata = JSON.stringify({
+      digicert: { ...ORDER_METADATA, organizationId: 888, previousCertificateId: CURRENT_CERTIFICATE_ID }
+    });
+
+    await expect(
+      buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })
+    ).resolves.toBeUndefined();
+    expect(client.cancelOrderReissue).toHaveBeenCalledWith(ORDER_ID, expect.any(String));
+  });
 });

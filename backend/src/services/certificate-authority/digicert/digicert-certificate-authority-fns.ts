@@ -346,7 +346,7 @@ export const DigiCertCertificateAuthorityFns = ({
 
   const $getOrderForCa = async (
     client: TDigiCertApiClient,
-    configuration: TDigiCertCertificateAuthority["configuration"],
+    configuration: Pick<TDigiCertCertificateAuthority["configuration"], "organizationId" | "productNameId">,
     orderId: number
   ) => {
     const order = await client.getOrder(orderId);
@@ -682,15 +682,15 @@ export const DigiCertCertificateAuthorityFns = ({
     const parsed = DigiCertCertificateRequestMetadataSchema.safeParse(parsedMetadata);
     if (!parsed.success || parsed.data.digicert.previousCertificateId === undefined) return;
 
-    const { orderId, previousCertificateId } = parsed.data.digicert;
+    const { orderId, previousCertificateId, organizationId, productNameId } = parsed.data.digicert;
     const cancelFailedError = new BadRequestError({
       message: `DigiCert didn't cancel the reissue on order ${orderId}, so the request is still open. Try again in a few minutes, or cancel the reissue in DigiCert CertCentral.`
     });
 
     let currentCertificateId: number | undefined;
     try {
-      const { digicertCa, client } = await $getActiveDigiCertCa(caId);
-      currentCertificateId = (await $getOrderForCa(client, digicertCa.configuration, orderId)).certificate?.id;
+      const { client } = await $getActiveDigiCertCa(caId);
+      currentCertificateId = (await $getOrderForCa(client, { organizationId, productNameId }, orderId)).certificate?.id;
     } catch (error) {
       logger.warn(
         error,
