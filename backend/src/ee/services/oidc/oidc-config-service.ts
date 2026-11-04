@@ -899,7 +899,15 @@ export const oidcConfigServiceFactory = ({
       // the verify callback below takes no userinfo argument, so userinfo_endpoint is never requested
       const endpoints = [issuer.metadata.jwks_uri, issuer.metadata.token_endpoint].filter((url) => url !== undefined);
       const agents = new Map(
-        await Promise.all(endpoints.map(async (url) => [new URL(url).origin, await buildSsrfSafeAgent(url)] as const))
+        await Promise.all(
+          endpoints.map(
+            async (url) =>
+              [
+                new URL(url).origin,
+                await buildSsrfSafeAgent(url, { allowPrivateIps: appCfg.ALLOW_INTERNAL_IP_CONNECTIONS })
+              ] as const
+          )
+        )
       );
       discoveredEndpointHttpOptions = (url) => ({ agent: agents.get(url.origin) });
     } else {

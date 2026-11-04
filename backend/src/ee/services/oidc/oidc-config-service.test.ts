@@ -8,9 +8,20 @@ import { beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
 import { oidcConfigServiceFactory } from "./oidc-config-service";
 import { OIDCConfigurationType } from "./oidc-config-types";
 
-const config = vi.hoisted(() => ({ isDevelopmentMode: false, ALLOW_INTERNAL_IP_CONNECTIONS: false }));
+const config = vi.hoisted(() => ({
+  isDevelopmentMode: false,
+  ALLOW_INTERNAL_IP_CONNECTIONS: false,
+  DB_HOST: undefined as string | undefined
+}));
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => config }));
+
+const publicAddresses = vi.hoisted(() => new Set<string>());
+
+vi.mock("@app/lib/ip/ipRange", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/ip/ipRange")>();
+  return { ...actual, isPrivateIp: (ip: string) => !publicAddresses.has(ip) && actual.isPrivateIp(ip) };
+});
 
 vi.mock("@app/lib/logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
@@ -49,6 +60,8 @@ describe("getOrgAuthStrategy", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     config.ALLOW_INTERNAL_IP_CONNECTIONS = false;
+    config.DB_HOST = undefined;
+    publicAddresses.clear();
   });
 
   test.each(["jwks_uri", "token_endpoint"])("refuses a discovered %s on a private address", async (endpoint) => {
@@ -66,9 +79,18 @@ describe("getOrgAuthStrategy", () => {
     }
   );
 
+  test("returns a login strategy for a discovered JWKS on the database host when internal IPs are allowed", async () => {
+    config.ALLOW_INTERNAL_IP_CONNECTIONS = true;
+    config.DB_HOST = "10.0.0.5";
+
+    await expect(
+      getOrgAuthStrategy(new Issuer({ ...publicMetadata, jwks_uri: "https://10.0.0.5/jwks" }))
+    ).resolves.toBeInstanceOf(Strategy);
+  });
+
   test("sends the JWKS and token requests to the address that passed the check", async () => {
     // Setup: idp.invalid resolves only for the check, so the server is reachable only at the checked address
-    config.ALLOW_INTERNAL_IP_CONNECTIONS = true;
+    publicAddresses.add("127.0.0.1");
     vi.spyOn(dns, "lookup").mockResolvedValue([{ address: "127.0.0.1", family: 4 }] as never);
     const requestedPaths: string[] = [];
     const server = http.createServer((req, res) => {
