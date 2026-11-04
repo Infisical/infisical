@@ -1,4 +1,3 @@
-import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -295,26 +294,12 @@ const parseCertificateChain = (certificateChain: string): string[] => {
   return certificates ? certificates.map((cert) => cert.trim()) : [];
 };
 
-const isSelfSignedCertificate = (certificatePem: string) => {
-  try {
-    const certObj = new x509.X509Certificate(certificatePem);
-    if (certObj.subject !== certObj.issuer) return false;
-
-    const authorityKeyId = certObj.getExtension(x509.AuthorityKeyIdentifierExtension)?.keyId;
-    const subjectKeyId = certObj.getExtension(x509.SubjectKeyIdentifierExtension)?.keyId;
-    return !authorityKeyId || !subjectKeyId || authorityKeyId.toLowerCase() === subjectKeyId.toLowerCase();
-  } catch {
-    return false;
-  }
-};
-
 /**
- * Removes the root CA certificate from a certificate chain, leaving the rest of the chain.
- * Only a trailing self-signed certificate is removed, so a chain that ends in a cross-signed
- * certificate keeps it.
+ * Removes the root CA certificate from a certificate chain, leaving only intermediate certificates.
+ * If the chain contains only the root CA certificate, returns an empty string.
  *
  * @param certificateChain - PEM-formatted certificate chain containing leaf + intermediates + root CA
- * @returns PEM-formatted certificate chain without a trailing self-signed root CA
+ * @returns PEM-formatted certificate chain with only intermediate certificates (no root CA)
  */
 export const removeRootCaFromChain = (certificateChain?: string): string => {
   if (!certificateChain || typeof certificateChain !== "string") {
@@ -327,9 +312,9 @@ export const removeRootCaFromChain = (certificateChain?: string): string => {
     return "";
   }
 
-  const isLastCertificateRoot = isSelfSignedCertificate(certificates[certificates.length - 1]);
+  const intermediateCerts = certificates.slice(0, -1);
 
-  return (isLastCertificateRoot ? certificates.slice(0, -1) : certificates).join("\n");
+  return intermediateCerts.join("\n");
 };
 
 /**
@@ -350,11 +335,4 @@ export const extractRootCaFromChain = (certificateChain?: string): string => {
   }
 
   return certificates[certificates.length - 1];
-};
-
-export const extractSelfSignedRootCaFromChain = (certificateChain: string, fallbackCertificateChain: string) => {
-  const rootCaCertificate = extractRootCaFromChain(certificateChain);
-  return isSelfSignedCertificate(rootCaCertificate)
-    ? rootCaCertificate
-    : extractRootCaFromChain(fallbackCertificateChain);
 };

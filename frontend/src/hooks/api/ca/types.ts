@@ -280,7 +280,7 @@ export type TImportCaCertificateResponse = {
 export type TCaCrossSignedCertificate = {
   caId: string;
   certificate: string;
-  certificateChain: string | null;
+  certificateChain: string;
   issuer: string;
   serialNumber: string;
   notBefore: string;
@@ -290,7 +290,7 @@ export type TCaCrossSignedCertificate = {
 export type TImportCaCrossSignedCertificateDTO = {
   caId: string;
   certificate: string;
-  certificateChain?: string;
+  certificateChain: string;
 };
 
 export type TDeleteCaCrossSignedCertificateDTO = {

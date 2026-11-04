@@ -89,6 +89,7 @@ import {
   getCaCertChain, // TODO: consider rename
   getCaCertChains,
   getCaSigner,
+  assertCrossSignedCertsAllowSubCa,
   getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
   signatureAlgorithmToAlgCfg,
@@ -142,7 +143,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   >;
   certificateAuthorityCrossSignedCertDAL: Pick<
     TCertificateAuthorityCrossSignedCertDALFactory,
-    "findValidInCaHierarchy"
+    "findValidInCaHierarchy" | "findUnexpiredInCaHierarchyWithDepth"
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
@@ -1551,16 +1552,10 @@ export const internalCertificateAuthorityServiceFactory = ({
       ]
     });
 
-    const {
-      caCert: issuingCaCertificate,
-      caCertChain,
-      certificateChainPem
-    } = await getIssuedCaCertChain({
+    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
-      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
@@ -1568,7 +1563,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     return {
       certificate: intermediateCert.toString("pem"),
       issuingCaCertificate,
-      certificateChain: isInternal ? `${issuingCaCertificate}\n${caCertChain}`.trim() : certificateChainPem,
+      certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
       serialNumber: intermediateCert.serialNumber,
       ca: expandInternalCa(ca)
     };
@@ -1586,13 +1581,6 @@ export const internalCertificateAuthorityServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    if (ca.internalCa.type === InternalCaType.ROOT) {
-      throw new BadRequestError({
-        message:
-          "Root CAs sign their own certificate, so you can't import one. To have another CA sign this CA, import a cross-signed certificate instead."
-      });
-    }
-
     if (!isInternal) {
       const { actor, actorId, actorAuthMethod, actorOrgId } = params;
       const { permission } = await permissionService.getProjectPermission({
@@ -1608,6 +1596,13 @@ export const internalCertificateAuthorityServiceFactory = ({
         ProjectPermissionCertificateAuthorityActions.Create,
         subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
       );
+    }
+
+    if (ca.internalCa.type === InternalCaType.ROOT) {
+      throw new BadRequestError({
+        message:
+          "Root CAs sign their own certificate, so you can't import one. To have another CA sign this CA, import a cross-signed certificate instead."
+      });
     }
 
     if (ca.internalCa.parentCaId && (!parentCaId || parentCaId !== ca.internalCa.parentCaId)) {
@@ -1676,6 +1671,17 @@ export const internalCertificateAuthorityServiceFactory = ({
       [`${TableName.InternalCertificateAuthority}.serialNumber` as "serialNumber"]: parentSerialNumber
     });
 
+    const resolvedParentCaId = parentCaId ?? parentCa?.id;
+    if (resolvedParentCaId && resolvedParentCaId !== ca.internalCa.parentCaId) {
+      await assertCrossSignedCertsAllowSubCa({
+        parentCaId: resolvedParentCaId,
+        projectId: ca.projectId,
+        certificateAuthorityCrossSignedCertDAL,
+        projectDAL,
+        kmsService
+      });
+    }
+
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
       projectDAL,
@@ -1739,7 +1745,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notBefore: new Date(certObj.notBefore),
           notAfter: new Date(certObj.notAfter),
           serialNumber: certObj.serialNumber,
-          parentCaId: parentCaId ?? parentCa?.id,
+          parentCaId: resolvedParentCaId,
           activeCaCertId: newCaCert.id
         },
         tx

@@ -2320,8 +2320,9 @@ export const CERTIFICATE_AUTHORITIES = {
   IMPORT_CROSS_SIGNED_CERT: {
     caId: "The ID of the CA to import the cross-signed certificate for.",
     certificate:
-      "The PEM-encoded cross-signed certificate. It must have the same subject and public key as the CA and be signed by another CA.",
-    certificateChain: "The PEM-encoded certificates of the CA that signed the cross-signed certificate, up to its root."
+      "The PEM-encoded cross-signed certificate: the CA's certificate signed by the old CA as a CA certificate. It must have the same subject, public key, and subject key identifier as the CA.",
+    certificateChain:
+      "The PEM-encoded certificates of the old CA, in order: start with the CA that signed the cross-signed certificate and end with its root. When the old root signed it directly, this is the old root's certificate."
   },
   GET_CROSS_SIGNED_CERT: {
     caId: "The ID of the CA to get the cross-signed certificate for."
@@ -2332,7 +2333,8 @@ export const CERTIFICATE_AUTHORITIES = {
   CROSS_SIGNED_CERT: {
     caId: "The ID of the CA the cross-signed certificate belongs to.",
     certificate: "The PEM-encoded cross-signed certificate.",
-    certificateChain: "The PEM-encoded certificates of the CA that signed the cross-signed certificate, if imported.",
+    certificateChain:
+      "The PEM-encoded certificates of the old CA, from the one that signed the cross-signed certificate up to its root.",
     issuer: "The distinguished name of the CA that signed the cross-signed certificate.",
     serialNumber: "The serial number of the cross-signed certificate.",
     notBefore: "The date and time the cross-signed certificate becomes valid.",

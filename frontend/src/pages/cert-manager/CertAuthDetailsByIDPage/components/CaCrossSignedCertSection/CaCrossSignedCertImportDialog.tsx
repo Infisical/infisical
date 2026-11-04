@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as x509 from "@peculiar/x509";
-import { CheckIcon, CircleCheckIcon, CircleXIcon, XIcon } from "lucide-react";
+import { CheckIcon, CircleCheckIcon, CircleXIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -69,6 +69,7 @@ const checkCrossSignedCert = (certificatePem: string, caCertPem: string, caName:
   const isSameKey = cert.publicKey.equal(caCert.publicKey);
   const issuerName = cert.issuerName.getField("CN")[0] ?? cert.issuer;
   const notAfter = formatCertificateDate(cert.notAfter);
+  const isNotYetValid = cert.notBefore > new Date();
 
   const isCa = Boolean(cert.getExtension(x509.BasicConstraintsExtension)?.ca);
 
@@ -82,7 +83,12 @@ const checkCrossSignedCert = (certificatePem: string, caCertPem: string, caName:
     if (cert.notAfter <= new Date()) {
       return { isPassed: false, text: `Expired on ${notAfter}` };
     }
-    return { isPassed: true, text: `Signed by ${issuerName}, valid until ${notAfter}` };
+    return {
+      isPassed: true,
+      text: isNotYetValid
+        ? `Signed by ${issuerName}, valid from ${formatCertificateDate(cert.notBefore)} until ${notAfter}`
+        : `Signed by ${issuerName}, valid until ${notAfter}`
+    };
   };
 
   const items: TCheckItem[] = [
@@ -112,6 +118,7 @@ const checkCrossSignedCert = (certificatePem: string, caCertPem: string, caName:
   return {
     items,
     isMatchingCa: isSameSubject && isSameKey,
+    notYetValidFrom: isNotYetValid ? formatCertificateDate(cert.notBefore) : null,
     isFixedByCsr: items.some((item) => !item.isPassed && item.isFixedByCsr),
     isPassed: items.every((item) => item.isPassed)
   };
@@ -142,6 +149,7 @@ export const CaCrossSignedCertImportDialog = ({
   });
 
   const certificateText = watch("certificate").trim();
+  const certificateChainText = watch("certificateChain").trim();
 
   const check = useMemo(
     () =>
@@ -172,7 +180,7 @@ export const CaCrossSignedCertImportDialog = ({
       await importCrossSignedCert({
         caId,
         certificate,
-        ...(certificateChain && { certificateChain })
+        certificateChain
       });
       createNotification({
         text: isReplace ? "Cross-signed certificate replaced" : "Cross-signed certificate imported",
@@ -210,34 +218,49 @@ export const CaCrossSignedCertImportDialog = ({
     }
 
     const getTitle = () => {
-      if (check.isPassed) return "Ready to import";
+      if (check.isPassed) {
+        return certificateChainText ? "Ready to import" : "Add the certificate chain to import";
+      }
       if (!check.isMatchingCa) return `This certificate isn't for ${caName}`;
       return "This certificate can't be imported";
     };
 
     return (
-      <Alert variant={check.isPassed ? "success" : "danger"}>
-        {check.isPassed ? <CircleCheckIcon /> : <CircleXIcon />}
-        <AlertTitle>{getTitle()}</AlertTitle>
-        <AlertDescription>
-          {check.isFixedByCsr && <p>Have the old CA sign the CSR from this CA.</p>}
-          <ul className="flex flex-col gap-1">
-            {check.items.map((item) => (
-              <li
-                key={item.text}
-                className={cn("flex items-start gap-2", item.isPassed && "text-foreground")}
-              >
-                {item.isPassed ? (
-                  <CheckIcon className="mt-0.5 size-3.5 shrink-0" />
-                ) : (
-                  <XIcon className="mt-0.5 size-3.5 shrink-0" />
-                )}
-                <span>{item.text}</span>
-              </li>
-            ))}
-          </ul>
-        </AlertDescription>
-      </Alert>
+      <>
+        <Alert variant={check.isPassed ? "success" : "danger"}>
+          {check.isPassed ? <CircleCheckIcon /> : <CircleXIcon />}
+          <AlertTitle>{getTitle()}</AlertTitle>
+          <AlertDescription>
+            {check.isFixedByCsr && <p>Have the old CA sign the CSR from this CA.</p>}
+            <ul className="flex flex-col gap-1">
+              {check.items.map((item) => (
+                <li
+                  key={item.text}
+                  className={cn("flex items-start gap-2", item.isPassed && "text-foreground")}
+                >
+                  {item.isPassed ? (
+                    <CheckIcon className="mt-0.5 size-3.5 shrink-0" />
+                  ) : (
+                    <XIcon className="mt-0.5 size-3.5 shrink-0" />
+                  )}
+                  <span>{item.text}</span>
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+        {check.isPassed && isReplace && check.notYetValidFrom && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertTitle>Not valid until {check.notYetValidFrom}</AlertTitle>
+            <AlertDescription>
+              Replacing removes the current cross-signed certificate now. Until{" "}
+              {check.notYetValidFrom}, new certificates from this CA and the CAs under it won&apos;t
+              carry one, so clients that only trust the old root won&apos;t trust them.
+            </AlertDescription>
+          </Alert>
+        )}
+      </>
     );
   };
 
@@ -284,7 +307,7 @@ export const CaCrossSignedCertImportDialog = ({
                   render={({ field }) => (
                     <Field>
                       <FieldLabel htmlFor="cross-signed-certificate-chain">
-                        Certificate Chain (Optional)
+                        Certificate Chain <span className="text-danger">*</span>
                       </FieldLabel>
                       <TextArea
                         {...field}
@@ -298,7 +321,9 @@ export const CaCrossSignedCertImportDialog = ({
                         rows={4}
                       />
                       <FieldDescription>
-                        The old CA&apos;s certificates, up to its root.
+                        The old CA&apos;s certificates, starting with the CA that signed the
+                        cross-signed certificate and ending with its root. If the old root signed it
+                        directly, paste the old root&apos;s certificate.
                       </FieldDescription>
                     </Field>
                   )}
@@ -321,7 +346,7 @@ export const CaCrossSignedCertImportDialog = ({
               type="submit"
               form={formId}
               isPending={isSubmitting}
-              isDisabled={!check?.isPassed || Boolean(serverError)}
+              isDisabled={!check?.isPassed || !certificateChainText || Boolean(serverError)}
             >
               {action}
             </Button>

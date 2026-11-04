@@ -3,7 +3,7 @@ import { TProjectPermission } from "@app/lib/types";
 export type TImportCaCrossSignedCertDTO = {
   caId: string;
   certificate: string;
-  certificateChain?: string;
+  certificateChain: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCaCrossSignedCertDTO = {

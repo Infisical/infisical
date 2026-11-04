@@ -13,7 +13,7 @@ export const CertificateAuthorityCrossSignedCertsSchema = z.object({
   id: z.string().uuid(),
   caId: z.string().uuid(),
   encryptedCertificate: zodBuffer,
-  encryptedCertificateChain: zodBuffer.nullable().optional(),
+  encryptedCertificateChain: zodBuffer,
   issuer: z.string(),
   serialNumber: z.string(),
   publicKeyFingerprint: z.string(),

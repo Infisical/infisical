@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import * as x509 from "@peculiar/x509";
-import { CircleXIcon, CopyIcon, DownloadIcon } from "lucide-react";
+import { CircleXIcon, DownloadIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
+  CodeBlock,
   Detail,
   DetailGroup,
   DetailLabel,
@@ -19,8 +19,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Loader,
-  ScrollableContent
+  Loader
 } from "@app/components/v3";
 import { downloadTxtFile } from "@app/helpers/download";
 import { useGetCaCsr } from "@app/hooks/api";
@@ -65,34 +64,12 @@ const CsrContent = ({ caId, caName }: Pick<Props, "caId" | "caName">) => {
             </Detail>
             <Detail>
               <DetailLabel>CSR</DetailLabel>
-              <ScrollableContent
-                aria-label="Certificate signing request"
-                size="sm"
-                edgeBehavior="fade"
-                outline={false}
-                containerClassName="rounded-md border border-border bg-container"
-              >
-                <pre className="p-3 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground">
-                  {csr}
-                </pre>
-              </ScrollableContent>
+              <CodeBlock value={csr} className="max-h-64 break-all whitespace-pre-wrap" />
             </Detail>
           </DetailGroup>
         )}
       </DialogBody>
       <DialogFooter>
-        <Button
-          variant="outline"
-          type="button"
-          isDisabled={!csr}
-          onClick={async () => {
-            await navigator.clipboard.writeText(csr!);
-            createNotification({ text: "Copied to clipboard", type: "success" });
-          }}
-        >
-          <CopyIcon />
-          Copy
-        </Button>
         <Button
           variant="project"
           type="button"

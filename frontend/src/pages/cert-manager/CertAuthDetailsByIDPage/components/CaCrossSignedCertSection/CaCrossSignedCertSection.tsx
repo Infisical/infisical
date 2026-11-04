@@ -6,6 +6,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Card,
   CardAction,
   CardContent,
@@ -13,12 +14,16 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
-  Loader
+  Loader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import { CaStatus, CaType, useGetCa, useGetCaCrossSignedCert } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
@@ -31,7 +36,11 @@ import { CaCrossSignedCertDetails } from "./CaCrossSignedCertDetails";
 import { CaCrossSignedCertEmptyState } from "./CaCrossSignedCertEmptyState";
 import { CaCrossSignedCertImportDialog } from "./CaCrossSignedCertImportDialog";
 import { CaCrossSignedCertRemoveDialog } from "./CaCrossSignedCertRemoveDialog";
-import { getServerErrorMessage, summarizeCrossSignedCert } from "./crossSignedCertUtils";
+import {
+  ENTERPRISE_PLAN_TEXT,
+  getServerErrorMessage,
+  summarizeCrossSignedCert
+} from "./crossSignedCertUtils";
 
 type Props = {
   caId: string;
@@ -39,6 +48,8 @@ type Props = {
 
 export const CaCrossSignedCertSection = ({ caId }: Props) => {
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
+  const isEntitled = Boolean(subscription.pkiCrossSignedCa);
   const { data } = useGetCa({ caId, type: CaType.INTERNAL });
   const ca = data as TInternalCertificateAuthority | undefined;
   const isCaActive = ca?.status === CaStatus.ACTIVE;
@@ -63,10 +74,9 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
     ProjectPermissionCertificateAuthorityActions.Create,
     caSubject
   );
-  const canManageCrossSignedCert = permission.can(
-    ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-    caSubject
-  );
+  const canManageCrossSignedCert =
+    permission.can(ProjectPermissionCertificateAuthorityActions.IssueCACertificate, caSubject) &&
+    permission.can(ProjectPermissionCertificateAuthorityActions.Edit, caSubject);
 
   const renderContent = () => {
     if (isPending) {
@@ -92,6 +102,7 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
         <CaCrossSignedCertEmptyState
           canGenerateCsr={canGenerateCsr}
           canManageCrossSignedCert={canManageCrossSignedCert}
+          isEntitled={isEntitled}
           onOpen={handlePopUpOpen}
         />
       );
@@ -107,8 +118,18 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
           <CardTitle>
             Cross-Signed Certificate
             <DocumentationLinkBadge href={PkiDocsUrls.ca.crossSignedCertificates} />
+            {!isEntitled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="info">Enterprise</Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">{ENTERPRISE_PLAN_TEXT}</TooltipContent>
+              </Tooltip>
+            )}
           </CardTitle>
-          <CardDescription>This CA&apos;s certificate, signed by another CA</CardDescription>
+          <CardDescription>
+            Keeps clients that trust your old CA working while you migrate
+          </CardDescription>
           {crossSignedCert && (
             <CardAction>
               <CaCrossSignedCertActionsMenu
@@ -117,6 +138,7 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
                 isCaActive={isCaActive}
                 canGenerateCsr={canGenerateCsr}
                 canManageCrossSignedCert={canManageCrossSignedCert}
+                isEntitled={isEntitled}
                 onOpen={handlePopUpOpen}
               />
             </CardAction>

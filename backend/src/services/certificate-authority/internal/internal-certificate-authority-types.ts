@@ -381,6 +381,17 @@ export type TGetCaCertChainDTO = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
 
+export type TAssertCrossSignedCertsAllowSubCaDTO = {
+  parentCaId: string;
+  projectId: string;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findUnexpiredInCaHierarchyWithDepth"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+};
+
 export type TBuildIssuedCertificateChainDTO = {
   caId: string;
   caCert: string;

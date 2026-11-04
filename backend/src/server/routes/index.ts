@@ -3922,7 +3922,8 @@ export const registerRoutes = async (
     certificateAuthorityCrossSignedCertDAL,
     projectDAL,
     kmsService,
-    permissionService
+    permissionService,
+    licenseService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({

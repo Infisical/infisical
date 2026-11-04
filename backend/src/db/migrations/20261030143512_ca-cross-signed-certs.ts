@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("caId").notNullable().unique();
       t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
       t.binary("encryptedCertificate").notNullable();
-      t.binary("encryptedCertificateChain").nullable();
+      t.binary("encryptedCertificateChain").notNullable();
       t.text("issuer").notNullable();
       t.string("serialNumber").notNullable();
       t.string("publicKeyFingerprint").notNullable();

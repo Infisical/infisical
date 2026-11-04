@@ -40,7 +40,7 @@ const describeChain = (chain: string) => splitChain(chain).map((cert) => `${cert
 type TCrossSignedCertificate = {
   caId: string;
   certificate: string;
-  certificateChain: string | null;
+  certificateChain: string;
   issuer: string;
   serialNumber: string;
   notBefore: string;
@@ -67,6 +67,7 @@ describe("CA cross-signed certificates", async () => {
     notBefore = new Date(Date.now() - 60 * 1000),
     notAfter = new Date(Date.now() + 30 * ONE_DAY_MS),
     isCa = true,
+    pathLength,
     subjectKeyIdentifier
   }: {
     subject?: string;
@@ -77,6 +78,7 @@ describe("CA cross-signed certificates", async () => {
     notBefore?: Date;
     notAfter?: Date;
     isCa?: boolean;
+    pathLength?: number;
     subjectKeyIdentifier?: string;
   } = {}) =>
     (
@@ -90,7 +92,7 @@ describe("CA cross-signed certificates", async () => {
         signingKey,
         signingAlgorithm: SIGNING_ALGORITHM,
         extensions: [
-          new x509.BasicConstraintsExtension(isCa, undefined, true),
+          new x509.BasicConstraintsExtension(isCa, pathLength, true),
           ...(subjectKeyIdentifier ? [new x509.SubjectKeyIdentifierExtension(subjectKeyIdentifier)] : [])
         ]
       })
@@ -131,7 +133,7 @@ describe("CA cross-signed certificates", async () => {
       method: "PUT",
       url: crossSignedCertUrl(caId),
       headers: authHeaders(token),
-      body
+      body: { certificateChain: legacyRoot.toString("pem"), ...body }
     });
 
   const getCopy = (caId: string, token?: string) =>
@@ -166,7 +168,8 @@ describe("CA cross-signed certificates", async () => {
   beforeAll(async () => {
     restoreLicense = overrideLicenseFeatures({
       maxCas: 100,
-      maxInternalCas: 100
+      maxInternalCas: 100,
+      pkiCrossSignedCa: true
     });
 
     const projectRes = await testServer.inject({
@@ -359,6 +362,62 @@ describe("CA cross-signed certificates", async () => {
     expect(res.statusCode).toBe(400);
   });
 
+  test("refuses an import without the cross-signed certificate plan feature", async () => {
+    const restorePlan = overrideLicenseFeatures({ maxCas: 100, maxInternalCas: 100, pkiCrossSignedCa: false });
+    try {
+      const res = await importCopy(rootCaId, { certificate: await signCopy() });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/plan restriction/);
+    } finally {
+      restorePlan();
+    }
+  });
+
+  test("requires the old CA's chain", async () => {
+    const res = await importCopy(rootCaId, { certificate: await signCopy(), certificateChain: "" });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/Paste the old CA's certificates/);
+  });
+
+  describe("with an old issuing CA", () => {
+    let legacyIssuingKeys: CryptoKeyPair;
+    const LEGACY_ISSUING_DN = "CN=Legacy Issuing CA, O=Acme";
+
+    const createLegacyIssuingCa = async (pathLength?: number) =>
+      signCopy({
+        subject: LEGACY_ISSUING_DN,
+        publicKey: legacyIssuingKeys.publicKey,
+        notAfter: new Date(Date.now() + 180 * ONE_DAY_MS),
+        pathLength
+      });
+
+    beforeAll(async () => {
+      legacyIssuingKeys = await generateKeys();
+    });
+
+    test("rejects a chain that doesn't end with the old root", async () => {
+      const res = await importCopy(rootCaId, {
+        certificate: await signCopy({ issuer: LEGACY_ISSUING_DN, signingKey: legacyIssuingKeys.privateKey }),
+        certificateChain: await createLegacyIssuingCa()
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/doesn't end with a root certificate/);
+    });
+
+    test("rejects an old issuing CA whose path length forbids the CAs below it", async () => {
+      const res = await importCopy(rootCaId, {
+        certificate: await signCopy({ issuer: LEGACY_ISSUING_DN, signingKey: legacyIssuingKeys.privateKey }),
+        certificateChain: `${await createLegacyIssuingCa(0)}\n${legacyRoot.toString("pem")}`
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/Certificate 1 in the chain \(Legacy Issuing CA\) allows fewer CA levels/);
+    });
+  });
+
   test("denies import and removal to a member without IssueCACertificate but lets them read", async () => {
     const { identityId, authToken } = await createIdentityActor({
       orgId: seedData1.organization.id,
@@ -389,6 +448,35 @@ describe("CA cross-signed certificates", async () => {
     });
   });
 
+  test("refuses a sub-CA deeper than the cross-signed certificate's path length allows", async () => {
+    const importRes = await importCopy(rootCaId, {
+      certificate: await signCopy({ serialNumber: "0a09", pathLength: 1 })
+    });
+    expect(importRes.statusCode, importRes.payload).toBe(200);
+
+    try {
+      const subCaId = await createCa("corp-sub-issuing-ca", InternalCaType.INTERMEDIATE);
+      const res = await testServer.inject({
+        method: "POST",
+        url: `/api/v1/cert-manager/ca/internal/${subCaId}/certificate`,
+        headers: authHeaders(),
+        body: {
+          parentCaId: intermediateCaId,
+          notBefore: new Date().toISOString(),
+          notAfter: new Date(Date.now() + 90 * ONE_DAY_MS).toISOString(),
+          maxPathLength: -1
+        }
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(
+        /cross-signed certificate of CA 'corp-root-ca' doesn't allow another CA level below it/
+      );
+    } finally {
+      await testServer.inject({ method: "DELETE", url: crossSignedCertUrl(rootCaId), headers: authHeaders() });
+    }
+  });
+
   describe("issuance with a cross-signed root", () => {
     let leafBeforeImport: { serialNumber: string; certificateChain: string };
     let firstCopy = "";
@@ -398,7 +486,7 @@ describe("CA cross-signed certificates", async () => {
       firstCopy = await signCopy({ serialNumber: "0a02" });
     });
 
-    test("imports a copy without a chain", async () => {
+    test("imports a copy with the old root as its chain", async () => {
       const res = await importCopy(rootCaId, { certificate: firstCopy });
 
       expect(res.statusCode).toBe(200);
@@ -406,7 +494,9 @@ describe("CA cross-signed certificates", async () => {
         crossSignedCertificate: TCrossSignedCertificate;
       };
       expect(crossSignedCertificate.caId).toBe(rootCaId);
-      expect(crossSignedCertificate.certificateChain).toBeNull();
+      expect(splitChain(crossSignedCertificate.certificateChain).map((cert) => cert.subject)).toEqual([
+        legacyRoot.subject
+      ]);
       expect(crossSignedCertificate.issuer).toBe(legacyRoot.subject);
       expect(crossSignedCertificate.serialNumber).toBe("0a02");
       expect(new x509.X509Certificate(crossSignedCertificate.certificate).toString("pem")).toBe(
@@ -425,14 +515,18 @@ describe("CA cross-signed certificates", async () => {
 
       expect(describeChain(leaf.certificateChain)).toEqual([
         `${ISSUING_CA_DN} <- ${ROOT_CA_DN}`,
-        `${ROOT_CA_DN} <- ${LEGACY_ROOT_DN}`
+        `${ROOT_CA_DN} <- ${LEGACY_ROOT_DN}`,
+        `${LEGACY_ROOT_DN} <- ${LEGACY_ROOT_DN}`
       ]);
     });
 
     test("starts the chain with the copy for leaves from the root itself", async () => {
       const leaf = await issueLeaf(rootCaId);
 
-      expect(describeChain(leaf.certificateChain)).toEqual([`${ROOT_CA_DN} <- ${LEGACY_ROOT_DN}`]);
+      expect(describeChain(leaf.certificateChain)).toEqual([
+        `${ROOT_CA_DN} <- ${LEGACY_ROOT_DN}`,
+        `${LEGACY_ROOT_DN} <- ${LEGACY_ROOT_DN}`
+      ]);
     });
 
     test("replaces the copy and sends the legacy chain after it", async () => {
@@ -448,7 +542,7 @@ describe("CA cross-signed certificates", async () => {
         crossSignedCertificate: TCrossSignedCertificate;
       };
       expect(crossSignedCertificate.serialNumber).toBe("0a03");
-      expect(splitChain(crossSignedCertificate.certificateChain ?? "").map((cert) => cert.subject)).toEqual([
+      expect(splitChain(crossSignedCertificate.certificateChain).map((cert) => cert.subject)).toEqual([
         legacyRoot.subject
       ]);
 

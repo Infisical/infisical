@@ -14,6 +14,7 @@ import { downloadTxtFile } from "@app/helpers/download";
 import { TCaCrossSignedCertificate } from "@app/hooks/api/ca/types";
 
 import {
+  ENTERPRISE_PLAN_TEXT,
   GENERATE_CSR_DENIED_TEXT,
   INACTIVE_CA_TEXT,
   TCrossSignedCertPopUp
@@ -25,6 +26,7 @@ type Props = {
   isCaActive: boolean;
   canGenerateCsr: boolean;
   canManageCrossSignedCert: boolean;
+  isEntitled: boolean;
   onOpen: (popUp: TCrossSignedCertPopUp) => void;
 };
 
@@ -34,6 +36,7 @@ export const CaCrossSignedCertActionsMenu = ({
   isCaActive,
   canGenerateCsr,
   canManageCrossSignedCert,
+  isEntitled,
   onOpen
 }: Props) => {
   const getDisabledReason = (isAllowed: boolean, deniedText: string, needsActiveCa: boolean) => {
@@ -53,11 +56,13 @@ export const CaCrossSignedCertActionsMenu = ({
       popUp: "importCrossSignedCert",
       Icon: UploadIcon,
       label: "Replace",
-      disabledReason: getDisabledReason(
-        canManageCrossSignedCert,
-        "You don't have permission to replace the cross-signed certificate for this CA",
-        true
-      )
+      disabledReason: isEntitled
+        ? getDisabledReason(
+            canManageCrossSignedCert,
+            "You don't have permission to replace the cross-signed certificate for this CA",
+            true
+          )
+        : ENTERPRISE_PLAN_TEXT
     },
     {
       popUp: "removeCrossSignedCert",

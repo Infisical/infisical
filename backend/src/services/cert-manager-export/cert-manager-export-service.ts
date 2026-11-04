@@ -304,9 +304,7 @@ export const certManagerExportServiceFactory = ({
             {
               caId: newCa.id,
               encryptedCertificate: await reencrypt(sourceCrossSignedCert.encryptedCertificate),
-              encryptedCertificateChain: sourceCrossSignedCert.encryptedCertificateChain
-                ? await reencrypt(sourceCrossSignedCert.encryptedCertificateChain)
-                : null,
+              encryptedCertificateChain: await reencrypt(sourceCrossSignedCert.encryptedCertificateChain),
               issuer: sourceCrossSignedCert.issuer,
               serialNumber: sourceCrossSignedCert.serialNumber,
               publicKeyFingerprint: sourceCrossSignedCert.publicKeyFingerprint,

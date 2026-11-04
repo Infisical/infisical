@@ -16,6 +16,9 @@ export const INACTIVE_CA_TEXT = "Enable this CA first";
 
 export const GENERATE_CSR_DENIED_TEXT = "You don't have permission to generate a CSR for this CA";
 
+export const ENTERPRISE_PLAN_TEXT =
+  "Cross-signed certificates are available on Infisical's Enterprise plan.";
+
 const EXPIRY_WARNING_DAYS = 30;
 
 const PEM_CERTIFICATE_REGEX = /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g;
@@ -44,7 +47,7 @@ const getNameLabel = (name: x509.Name, fallback: string) => name.getField("CN")[
 
 export const summarizeCrossSignedCert = (crossSignedCert: TCaCrossSignedCertificate) => {
   const cert = new x509.X509Certificate(crossSignedCert.certificate);
-  const chainCerts = crossSignedCert.certificateChain?.match(PEM_CERTIFICATE_REGEX) ?? [];
+  const chainCerts = crossSignedCert.certificateChain.match(PEM_CERTIFICATE_REGEX) ?? [];
   const topChainPem = chainCerts[chainCerts.length - 1];
   const topChainCert = topChainPem ? new x509.X509Certificate(topChainPem) : null;
 
@@ -114,7 +117,7 @@ export const getCrossSignedCertStatus = (summary: TCrossSignedCertSummary) => {
       label: formatExpiresIn(summary.daysLeft),
       alert: {
         title: "Replace before it expires",
-        body: `Replace it before then, or new certificates from this CA and the CAs under it won't be trusted by clients that only trust ${trustedRootName}.`
+        body: `It expires on ${formatCertificateDate(summary.notAfter)}. After that, clients that only trust ${trustedRootName} won't trust new certificates from this CA and the CAs under it.`
       }
     };
   }
