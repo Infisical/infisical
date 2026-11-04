@@ -311,6 +311,14 @@ export const v4Checks: readonly V4Check[] = [
     appliesTo: isAuthored,
     markup: [/^\s*\/\s*$/g, /(?<!<code)>\s*\/\s*</g],
     css: [/content\s*:\s*["']\/["']/g]
+  },
+  {
+    id: "suspense-fallback",
+    rule: "page-loading",
+    message:
+      "A Suspense fallback is a Loader (size page for a page or a lazy page chunk) or Skeleton shapes for a known layout. Never a Spinner, bare status text or null.",
+    appliesTo: isAuthored,
+    markup: [/\bfallback=\{\s*(?:null\b|<(?!Loader\b|Skeleton\b)[\w.]+|["'`])/g]
   }
 ];
 

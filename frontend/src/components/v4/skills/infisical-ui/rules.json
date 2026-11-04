@@ -941,7 +941,7 @@
       "id": "breadcrumb-divider",
       "title": "Separate crumbs with the vertical divider",
       "category": "Visual",
-      "instruction": "Let Breadcrumb (or BreadcrumbSeparator) draw the separator between crumbs: a 1px vertical divider in crumb-divider, size-crumb-divider tall, with space-crumb-divider on each side. Never type a slash or another character between crumbs.",
+      "instruction": "Let Breadcrumb (or BreadcrumbSeparator) draw the separator between crumbs: a 1px vertical divider in crumb-divider, size-crumb-divider tall, with space-crumb-divider on each side between the line and the neighboring crumb's ground. Never type a slash or another character between crumbs.",
       "good": "Acme Corp | payments-api | Production, with every divider drawn by the component from tokens.",
       "avoid": "A literal / between crumbs, a chevron glyph used as a separator, or a divider drawn with raw sizes and colors.",
       "detect": {
@@ -1070,13 +1070,26 @@
     {
       "id": "skeleton-for-known-shape",
       "title": "Skeleton when the shape is known, Loader when it is not",
-      "instruction": "When the shape of the content being loaded is known or measurable, show Skeleton shapes that match the loaded state at the same size. Use a Loader only when the shape is unknown.",
+      "instruction": "Inside a page that has rendered, when the shape of the content being loaded is known or measurable, show Skeleton shapes that match the loaded state at the same size. Use a Loader only when the shape is unknown. A whole page that is still loading takes the page loader instead (rule/page-loading).",
       "good": "Reloading connections shows two skeleton rows shaped like the Vercel and GitHub rows.",
       "avoid": "A centered spinner over a list whose rows are already known.",
       "detect": {
         "by": "review"
       },
       "category": "Interaction"
+    },
+    {
+      "id": "page-loading",
+      "title": "Page loader for pages, Skeleton for regions, loading rows for tables",
+      "instruction": "Pick the loading treatment by what is waiting. While a whole page or its lazy chunk loads and none of it is on screen yet (a route or Suspense boundary around a page, a detail page's first fetch), fill the page body with the page loader, Loader size page, labeled with the page it loads. Once the page has rendered, a card, panel or chart inside it whose shape is known shows Skeleton shapes at the loaded size, and rows inside a table already on screen use the table's own loading rows (DataTable loading with loadingRows). A region of unknown shape inside a rendered page uses Loader at base size.",
+      "good": "Opening a machine identity while it loads shows the page loader labeled Loading ci-deployer; the Users tab keeps its header and toolbar and shows ten loading rows in its table.",
+      "avoid": "A Spinner or bare Loading text as a Suspense fallback, a blank area while a page chunk loads, or a page loader over a table that is already on screen.",
+      "detect": {
+        "by": "lint",
+        "check": "suspense-fallback"
+      },
+      "category": "Interaction",
+      "exceptions": "An inline status beside text keeps Spinner with a label, and a Button keeps its own loading state. A Suspense fallback written across several lines is not linted, so review those by hand."
     }
   ]
 }

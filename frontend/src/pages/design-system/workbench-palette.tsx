@@ -30,7 +30,6 @@ const RECENT_KEY = "v4-palette-recent";
 const kindOf = (group: string): CommandMenuItemKind => {
   if (group === "Foundations") return "foundation";
   if (group === "Comparisons") return "comparison";
-  if (group === "Contributing") return "page";
   if (group === "Patterns" || group === "Composites") return "pattern";
   return "component";
 };

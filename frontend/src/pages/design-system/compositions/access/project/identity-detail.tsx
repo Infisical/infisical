@@ -26,7 +26,6 @@ import { Input } from "@app/components/v4/ui/input";
 import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
 import { Switch } from "@app/components/v4/ui/switch";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
@@ -360,32 +359,14 @@ const OrgManagedAuthCard = ({ identity }: { identity: OrgIdentity }) => {
   );
 };
 
-const DetailSkeleton = () => (
-  <Stack gap={24} aria-busy>
-    <Stack gap={12}>
-      <Skeleton width={180} height={16} />
-      <Skeleton width={260} height={28} />
-      <Skeleton width={360} height={14} />
-    </Stack>
-    <DetailLayout asideLabel="Details" aside={<Skeleton height={360} />}>
-      <Stack gap={24}>
-        <Skeleton height={160} />
-        <Skeleton height={200} />
-      </Stack>
-    </DetailLayout>
-  </Stack>
-);
-
 export const ProjectIdentityDetail = ({ id }: { id: string }) => {
-  const { data, loading, navigate, toast } = useAccess();
+  const { data, navigate, toast } = useAccess();
   const can = useCan("project");
   const row = projectIdentityRows(data).find((item) => item.identity.id === id);
   const [editing, setEditing] = useState(false);
   const [assuming, setAssuming] = useState(false);
   const [removing, setRemoving] = useState(false);
   const back = () => navigate({ scope: "project", projectTab: "identities" });
-
-  if (loading) return <DetailSkeleton />;
 
   const backLink = (
     <div>

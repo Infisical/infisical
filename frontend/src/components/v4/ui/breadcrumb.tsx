@@ -80,9 +80,16 @@ const CrumbName = ({
   );
 };
 
-const Divider = () => (
-  <span data-slot="breadcrumb-divider" className={breadcrumbStyles.separator} aria-hidden="true" />
-);
+function BandDivider({ className }: { className?: string }) {
+  return (
+    <span
+      data-slot="band-divider"
+      className={cn(breadcrumbStyles.separator, className)}
+      aria-hidden="true"
+    />
+  );
+}
+BandDivider.displayName = "BandDivider";
 
 const SwitcherCrumb = ({
   crumb,
@@ -211,7 +218,7 @@ function Breadcrumb({
         data-switcher={Boolean(crumb.switcher) || undefined}
         data-media={Boolean(crumb.media) || undefined}
       >
-        {index > 0 && <Divider />}
+        {index > 0 && <BandDivider />}
         {crumb.switcher ? (
           <SwitcherCrumb
             crumb={{ ...crumb, switcher: crumb.switcher }}
@@ -258,7 +265,7 @@ function Breadcrumb({
               return (
                 <React.Fragment key="middle">
                   <li className={breadcrumbStyles.entry}>
-                    <Divider />
+                    <BandDivider />
                     <button
                       type="button"
                       className={breadcrumbStyles.link}
@@ -357,7 +364,7 @@ function BreadcrumbSeparator({ children, className, ref, ...props }: React.Compo
       className={cn("[&>svg]:size-3.5", className)}
       {...props}
     >
-      {children ?? <Divider />}
+      {children ?? <BandDivider />}
     </li>
   );
 }
@@ -381,6 +388,7 @@ function BreadcrumbEllipsis({ className, ref, ...props }: React.ComponentProps<"
 BreadcrumbEllipsis.displayName = "BreadcrumbEllipsis";
 
 export {
+  BandDivider,
   Breadcrumb,
   BreadcrumbEllipsis,
   BreadcrumbItem,

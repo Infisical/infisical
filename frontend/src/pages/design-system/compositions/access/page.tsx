@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@app/components/v4/ui/button";
 import { Stack } from "@app/components/v4/ui/layout";
+import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { ToastStack } from "@app/components/v4/ui/toast-stack";
@@ -78,7 +79,8 @@ const detailSubject: Record<Detail["kind"], Subject> = {
 };
 
 const DetailView = ({ detail }: { detail: Detail }) => {
-  const { can } = useAccess();
+  const { can, loading } = useAccess();
+  if (loading) return <Loader size="page" label={`Loading ${detail.label}`} />;
   const scope = detail.kind.startsWith("org-") ? "org" : "project";
   if (!can(scope, detailSubject[detail.kind], "read")) return <AccessRestricted />;
   switch (detail.kind) {
