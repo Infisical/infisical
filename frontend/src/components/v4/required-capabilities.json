@@ -129,6 +129,7 @@
         "warn",
         "bad",
         "sm/md",
+        "control-sm/control-md/control-lg",
         "dot",
         "mono",
         "Count accent/ink"
@@ -532,6 +533,15 @@
         "Custom control ref/focus forwarding",
         "Horizontal 320px reflow"
       ]
+    },
+    {
+      "id": "field-mapping",
+      "name": "FieldMapping",
+      "kind": "pattern",
+      "exports": ["FieldMapping", "FieldMappingRow"],
+      "variants": ["sm", "md", "lg", "trailing slot", "invalid"],
+      "behavior": "Sentence case header row, then grid rows of a control-height source Badge, an arrow and an Input of the same size",
+      "acceptance": ["Columns align", "Badge, arrow and Input share one height", "Inputs named by source"]
     },
     {
       "id": "file-tree",

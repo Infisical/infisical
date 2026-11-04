@@ -12,6 +12,7 @@ import { coverDefinition } from "./contracts/cover";
 import { dataGridDefinition } from "./contracts/data-grid";
 import { detailDefinition } from "./contracts/detail";
 import { documentationLinkBadgeDefinition } from "./contracts/documentation-link-badge";
+import { fieldMappingDefinition } from "./contracts/field-mapping";
 import { fileTreeDefinition } from "./contracts/file-tree";
 import { filterBarDefinition } from "./contracts/filter-bar";
 import { floatingActionBarDefinition } from "./contracts/floating-action-bar";
@@ -52,6 +53,7 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   dataGridDefinition,
   detailDefinition,
   documentationLinkBadgeDefinition,
+  fieldMappingDefinition,
   fileTreeDefinition,
   filterBarDefinition,
   floatingActionBarDefinition,

@@ -82,8 +82,8 @@ it("rejects coverage that drifts from the component's cva variants", () => {
 it("rejects coverage that drifts from a prop's string-literal union", () => {
   const result = generateWith(
     "src/components/v4/ui/badge.tsx",
-    'size?: "sm" | "md";',
-    'size?: "sm" | "md" | "lg";'
+    'size?: "sm" | "md" | "control-sm" | "control-md" | "control-lg";',
+    'size?: "sm" | "md" | "control-sm" | "control-md" | "control-lg" | "lg";'
   );
   expect(result.status).not.toBe(0);
   expect(result.stderr).toContain("Coverage drifts from source: badge:size missing [lg] extra []");

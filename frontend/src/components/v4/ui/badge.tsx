@@ -41,7 +41,7 @@ function Badge({
   /** @deprecated Use tone. Each value maps to a tone: default solid, secondary soft, destructive bad, the rest outline. */
   variant?: LegacyBadgeVariant;
   dot?: boolean;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "control-sm" | "control-md" | "control-lg";
   mono?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<"span">> }) {
   const Comp = asChild ? Slot.Root : "span";

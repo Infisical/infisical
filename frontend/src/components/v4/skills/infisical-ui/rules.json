@@ -993,6 +993,22 @@
       "category": "Visual"
     },
     {
+      "id": "badge-control-height",
+      "title": "Badges in control rows take the control height",
+      "instruction": "A badge that shares a row or grid track with regular-height controls takes the control height. Use the Badge control size that matches its neighbors: control-sm beside the default 32px Input, Select and Button, control-md beside md and control-lg beside lg. Keep the compact sm and md badges for status inside text, table cells and a field's nested slot.",
+      "good": "FieldMapping's source Badge at control-sm beside a 32px Input, with the arrow centered on the same height.",
+      "avoid": "A 20px Badge floating in a 32px form row, or a page-local span copying the input's height, padding and border.",
+      "detect": {
+        "by": "review",
+        "how": "Measure rows that mix a Badge with an Input, Select or Button. Whether two elements share a row depends on the rendered grid or flex layout, not on JSX nesting, so a static check would miss grid tracks and flag nested slots."
+      },
+      "source": {
+        "title": "Badge control height",
+        "url": "#badge"
+      },
+      "category": "Visual"
+    },
+    {
       "id": "surface-heading-rank",
       "title": "Keep title rank across container treatments",
       "instruction": "A plain section, framed Card and settings task keep the same title role when they express the same hierarchy. Border, tint and framing do not select a new font size, uppercase treatment or semantic level. Align named header, body and footer content edges through the owning component.",

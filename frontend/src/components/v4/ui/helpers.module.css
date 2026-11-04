@@ -280,6 +280,28 @@
   padding-inline: var(--v4-space-6);
   line-height: calc(var(--v4-size-badge-sm) - 2 * var(--v4-size-control-border));
 }
+.badge:is([data-size="control-sm"], [data-size="control-md"], [data-size="control-lg"]) {
+  --v4-badge-glyph: var(--v4-size-icon);
+  gap: var(--v4-space-control-gap);
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+}
+.badge[data-size="control-sm"] {
+  --v4-badge-glyph: var(--v4-size-icon-sm);
+  height: var(--v4-size-control-sm);
+  padding-inline: var(--v4-space-control-inline-sm);
+}
+.badge[data-size="control-md"] {
+  height: var(--v4-size-control-md);
+  padding-inline: var(--v4-space-control-inline-md);
+}
+.badge[data-size="control-lg"] {
+  height: var(--v4-size-control-lg);
+  padding-inline: var(--v4-space-control-inline);
+}
 .badge[data-slot][data-tone="soft"] {
   border-color: var(--v4-line-soft);
   background: var(--v4-line-soft);
