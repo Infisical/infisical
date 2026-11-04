@@ -4,8 +4,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { TDatabricksGatewayDeps } from "@app/services/app-connection/databricks";
 import {
   databricksRequest,
-  getDatabricksConnectionAccessToken,
-  getDatabricksGatewayDetails
+  getDatabricksConnectionAccessToken
 } from "@app/services/app-connection/databricks/databricks-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {
@@ -31,7 +30,7 @@ type TDatabricksSecretSyncFactoryDeps = {
 const DATABRICKS_SCOPE_SECRET_LIMIT = 1000;
 
 const listDatabricksSecrets = async (
-  { connection, gatewayDetails, scope, accessToken }: TDatabricksListSecretKeys,
+  { connection, scope, accessToken }: TDatabricksListSecretKeys,
   deps: TDatabricksGatewayDeps
 ) => {
   const data = await databricksRequest<TDatabricksListSecretKeysResponse>(
@@ -47,15 +46,14 @@ const listDatabricksSecrets = async (
         "Accept-Encoding": "application/json"
       }
     },
-    deps,
-    gatewayDetails
+    deps
   );
 
   // not present in response if no secrets exist in scope
   return data.secrets ?? [];
 };
 const putDatabricksSecret = async (
-  { connection, gatewayDetails, scope, key, value, accessToken }: TDatabricksPutSecret,
+  { connection, scope, key, value, accessToken }: TDatabricksPutSecret,
   deps: TDatabricksGatewayDeps
 ) =>
   databricksRequest(
@@ -73,12 +71,11 @@ const putDatabricksSecret = async (
         "Accept-Encoding": "application/json"
       }
     },
-    deps,
-    gatewayDetails
+    deps
   );
 
 const deleteDatabricksSecrets = async (
-  { connection, gatewayDetails, scope, key, accessToken }: TDatabricksDeleteSecret,
+  { connection, scope, key, accessToken }: TDatabricksDeleteSecret,
   deps: TDatabricksGatewayDeps
 ) =>
   databricksRequest(
@@ -95,8 +92,7 @@ const deleteDatabricksSecrets = async (
         "Accept-Encoding": "application/json"
       }
     },
-    deps,
-    gatewayDetails
+    deps
   );
 
 export const databricksSyncFactory = ({
@@ -107,20 +103,14 @@ export const databricksSyncFactory = ({
 }: TDatabricksSecretSyncFactoryDeps) => {
   const deps = { gatewayV2Service };
 
-  // resolved once per run so every request goes through the same pool member and reuses one signed client
-  // certificate instead of generating a key pair per secret
-  const $resolveGatewayConnection = async (syncConnection: TDatabricksSyncWithCredentials["connection"]) => {
+  // resolved once so every request in a run goes through the same pool member
+  const $resolveGatewayConnection = async (connection: TDatabricksSyncWithCredentials["connection"]) => {
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: syncConnection.gatewayId,
-      gatewayPoolId: syncConnection.gatewayPoolId
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
     });
 
-    const connection = { ...syncConnection, gatewayId, gatewayPoolId: null };
-    const gatewayDetails = gatewayId
-      ? await getDatabricksGatewayDetails(connection, gatewayId, gatewayV2Service)
-      : undefined;
-
-    return { connection, gatewayDetails };
+    return { ...connection, gatewayId, gatewayPoolId: null };
   };
 
   const syncSecrets = async (secretSync: TDatabricksSyncWithCredentials, payload: TSecretSyncPayload) => {
@@ -135,14 +125,9 @@ export const databricksSyncFactory = ({
       destinationConfig: { scope }
     } = secretSync;
 
-    const gateway = await $resolveGatewayConnection(secretSync.connection);
+    const connection = await $resolveGatewayConnection(secretSync.connection);
 
-    const accessToken = await getDatabricksConnectionAccessToken(
-      gateway.connection,
-      appConnectionDAL,
-      kmsService,
-      deps
-    );
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService, deps);
 
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
@@ -152,7 +137,7 @@ export const databricksSyncFactory = ({
           {
             key,
             value,
-            ...gateway,
+            connection,
             scope,
             accessToken
           },
@@ -168,7 +153,7 @@ export const databricksSyncFactory = ({
 
     const databricksSecretKeys = await listDatabricksSecrets(
       {
-        ...gateway,
+        connection,
         scope,
         accessToken
       },
@@ -185,7 +170,7 @@ export const databricksSyncFactory = ({
         await deleteDatabricksSecrets(
           {
             key: secret.key,
-            ...gateway,
+            connection,
             scope,
             accessToken
           },
@@ -201,18 +186,13 @@ export const databricksSyncFactory = ({
       destinationConfig: { scope }
     } = secretSync;
 
-    const gateway = await $resolveGatewayConnection(secretSync.connection);
+    const connection = await $resolveGatewayConnection(secretSync.connection);
 
-    const accessToken = await getDatabricksConnectionAccessToken(
-      gateway.connection,
-      appConnectionDAL,
-      kmsService,
-      deps
-    );
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService, deps);
 
     const databricksSecretKeys = await listDatabricksSecrets(
       {
-        ...gateway,
+        connection,
         scope,
         accessToken
       },
@@ -224,7 +204,7 @@ export const databricksSyncFactory = ({
         await deleteDatabricksSecrets(
           {
             key: secret.key,
-            ...gateway,
+            connection,
             scope,
             accessToken
           },

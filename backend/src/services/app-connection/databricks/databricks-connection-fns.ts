@@ -11,7 +11,6 @@ import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-reques
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
-import { TGatewayDetails } from "@app/services/app-connection/hc-vault/hc-vault-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { DatabricksConnectionMethod } from "./databricks-connection-enums";
@@ -36,35 +35,10 @@ export const getDatabricksConnectionListItem = () => {
   };
 };
 
-export const getDatabricksGatewayDetails = async (
-  { credentials }: Pick<TDatabricksRequestConfig, "credentials">,
-  gatewayId: string,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
-): Promise<TGatewayDetails> => {
-  const url = new URL(credentials.workspaceUrl);
-
-  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
-  const targetPort = url.port ? Number(url.port) : (url.protocol === "https:" && 443) || 80;
-
-  const details = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-    gatewayId,
-    targetHost,
-    targetPort
-  });
-
-  if (!details) {
-    throw new BadRequestError({ message: "Unable to connect to the Gateway assigned to this Databricks connection" });
-  }
-
-  return { details, target: { host: targetHost, port: targetPort } };
-};
-
 export const databricksRequest = async <T>(
   config: TDatabricksRequestConfig,
   { path, headers, ...requestConfig }: TDatabricksRequest,
-  { gatewayV2Service, gatewayPoolService }: TDatabricksGatewayDeps = {},
-  // signs a client certificate per call, so callers sending many requests resolve it once and pass it in
-  gatewayDetails?: TGatewayDetails
+  { gatewayV2Service, gatewayPoolService }: TDatabricksGatewayDeps = {}
 ): Promise<T> => {
   const { credentials, gatewayId: directGatewayId, gatewayPoolId } = config;
 
@@ -83,8 +57,19 @@ export const databricksRequest = async <T>(
     return data;
   }
 
-  const { details, target } =
-    gatewayDetails ?? (await getDatabricksGatewayDetails(config, gatewayId, gatewayV2Service));
+  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
+  const isHttps = url.protocol === "https:";
+  const targetPort = url.port ? Number(url.port) : (isHttps && 443) || 80;
+
+  const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost,
+    targetPort
+  });
+
+  if (!platformConnectionDetails) {
+    throw new BadRequestError({ message: "Unable to connect to the Gateway assigned to this Databricks connection" });
+  }
 
   return withGatewayV2Proxy(
     async (proxyPort) => {
@@ -96,8 +81,8 @@ export const databricksRequest = async <T>(
         url: proxiedUrl.toString(),
         headers: { ...headers, Host: url.host },
         maxRedirects: 0,
-        ...(url.protocol === "https:" && {
-          httpsAgent: getSharedHttpsAgent({ servername: target.host, rejectUnauthorized: true })
+        ...(isHttps && {
+          httpsAgent: getSharedHttpsAgent({ servername: targetHost, rejectUnauthorized: true })
         })
       });
 
@@ -105,7 +90,7 @@ export const databricksRequest = async <T>(
     },
     {
       protocol: GatewayProxyProtocol.Tcp,
-      ...details
+      ...platformConnectionDetails
     }
   );
 };

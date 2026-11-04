@@ -4,21 +4,21 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 import { DatabricksConnectionMethod, DatabricksConnectionScope } from "./databricks-connection-enums";
 import {
-  databricksRequest,
   getDatabricksConnectionAccessToken,
-  getDatabricksGatewayDetails,
   validateDatabricksConnectionCredentials
 } from "./databricks-connection-fns";
 import { TDatabricksConnection, TDatabricksConnectionConfig } from "./databricks-connection-types";
 
-const { sendRequest, safeSendRequest, getSharedHttpsAgent } = vi.hoisted(() => ({
+const { sendRequest, safeSendRequest } = vi.hoisted(() => ({
   sendRequest: vi.fn<(config: AxiosRequestConfig) => Promise<{ data: unknown }>>(),
-  safeSendRequest: vi.fn<(config: AxiosRequestConfig) => Promise<{ data: unknown }>>(),
-  getSharedHttpsAgent: vi.fn<(options: { servername: string }) => string>(() => "https-agent")
+  safeSendRequest: vi.fn<(config: AxiosRequestConfig) => Promise<{ data: unknown }>>()
 }));
 
 vi.mock("@app/lib/config/request", () => ({ request: { request: sendRequest } }));
-vi.mock("@app/lib/validator/safe-request", () => ({ getSharedHttpsAgent, safeRequest: { request: safeSendRequest } }));
+vi.mock("@app/lib/validator/safe-request", () => ({
+  getSharedHttpsAgent: () => "https-agent",
+  safeRequest: { request: safeSendRequest }
+}));
 vi.mock("@app/services/app-connection/app-connection-fns", () => ({ encryptAppConnectionCredentials: vi.fn() }));
 vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({
   verifyHostInputValidity: async ({ host }: { host: string }) => [host]
@@ -169,54 +169,4 @@ describe("getDatabricksConnectionAccessToken", () => {
       expect(safeSendRequest.mock.calls[0][0].url).toBe("https://example.cloud.databricks.com/oidc/v1/token");
     }
   );
-});
-
-describe("databricksRequest with precomputed gateway details", () => {
-  const credentials = {
-    workspaceUrl: "https://example.cloud.databricks.com:8443",
-    clientId: "client-id",
-    clientSecret: "client-secret",
-    accessToken: "access-token",
-    expiresAt: 0
-  };
-
-  beforeEach(() => {
-    sendRequest.mockReset();
-    sendRequest.mockResolvedValue({ data: {} });
-    getSharedHttpsAgent.mockClear();
-    getPlatformConnectionDetailsByGatewayId.mockReset();
-    getPlatformConnectionDetailsByGatewayId.mockResolvedValue({ relayHost: "relay" });
-  });
-
-  test("resolves the gateway target once from the workspace URL", async () => {
-    await expect(getDatabricksGatewayDetails({ credentials }, "gateway-id", gatewayV2Service)).resolves.toEqual({
-      details: { relayHost: "relay" },
-      target: { host: "example.cloud.databricks.com", port: 8443 }
-    });
-  });
-
-  test("reuses the details it is given instead of signing a new client certificate per request", async () => {
-    const gatewayDetails = await getDatabricksGatewayDetails({ credentials }, "gateway-id", gatewayV2Service);
-    getPlatformConnectionDetailsByGatewayId.mockClear();
-
-    for (const path of ["/api/2.0/secrets/put", "/api/2.0/secrets/delete"]) {
-      // eslint-disable-next-line no-await-in-loop
-      await databricksRequest(
-        { credentials, gatewayId: "gateway-id" },
-        { method: "POST", path },
-        { gatewayV2Service },
-        gatewayDetails
-      );
-    }
-
-    expect(getPlatformConnectionDetailsByGatewayId).not.toHaveBeenCalled();
-    expect(sendRequest.mock.calls.map(([config]) => config.url)).toEqual([
-      "https://localhost:4444/api/2.0/secrets/put",
-      "https://localhost:4444/api/2.0/secrets/delete"
-    ]);
-    expect(getSharedHttpsAgent).toHaveBeenCalledWith({
-      servername: "example.cloud.databricks.com",
-      rejectUnauthorized: true
-    });
-  });
 });
