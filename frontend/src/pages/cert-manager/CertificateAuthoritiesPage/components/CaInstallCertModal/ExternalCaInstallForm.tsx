@@ -14,17 +14,11 @@ import {
   DialogClose,
   DialogFooter,
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
   IconButton,
   ScrollableContent,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Spinner,
   TextArea,
   Tooltip,
@@ -32,10 +26,10 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { CaType, useGetCa, useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
+import { useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { PATH_LENGTH_OPTIONS } from "./pathLengthOptions";
+import { PathLengthDescription, PathLengthSelect, useLockedPathLength } from "./PathLengthSelect";
 
 const schema = z.object({
   maxPathLength: z.string().min(1, "Select a path length"),
@@ -55,7 +49,6 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
-    setValue,
     watch,
     formState: { isSubmitting }
   } = useForm<FormData>({
@@ -63,34 +56,29 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     defaultValues: { maxPathLength: "" }
   });
 
-  const { data: ca } = useGetCa({ caId, type: CaType.INTERNAL });
-  const storedPathLength =
-    ca?.type === CaType.INTERNAL ? ca.configuration.maxPathLength : undefined;
-  const isPathLengthLocked = typeof storedPathLength === "number" && storedPathLength >= 0;
+  const lockedPathLength = useLockedPathLength(caId);
+  const isPathLengthLocked = lockedPathLength !== undefined;
   const maxPathLength = watch("maxPathLength");
   const {
     data: csr,
     isFetching: isCsrFetching,
     isError: isCsrError,
     error: csrError,
-    refetch: refetchCsr
+    refetch: refetchCsr,
+    isPlaceholderData: isCsrPlaceholder
   } = useGetCaCsr(caId, isPathLengthLocked ? undefined : Number(maxPathLength), {
     enabled: maxPathLength !== ""
   });
   const showCsrError = isCsrError && !isCsrFetching;
-  const isCsrReady = Boolean(csr) && !isCsrFetching && !isCsrError;
+  const isCsrReady = Boolean(csr) && !isCsrFetching && !isCsrError && !isCsrPlaceholder;
   const csrErrorMessage =
     (csrError as AxiosError<{ message?: string }>)?.response?.data?.message ??
     "The CSR could not be generated.";
   const { mutateAsync: importCaCertificate } = useImportCaCertificate();
 
   useEffect(() => {
-    reset();
-  }, []);
-
-  useEffect(() => {
-    if (isPathLengthLocked) setValue("maxPathLength", String(storedPathLength));
-  }, [isPathLengthLocked, storedPathLength]);
+    reset({ maxPathLength: isPathLengthLocked ? String(lockedPathLength) : "" });
+  }, [lockedPathLength]);
 
   const onFormSubmit = async ({ certificate, certificateChain }: FormData) => {
     if (!csr || !caId) return;
@@ -125,25 +113,14 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel>Path Length</FieldLabel>
-                <Select value={value} onValueChange={onChange} disabled={isPathLengthLocked}>
-                  <SelectTrigger className="w-full" isError={Boolean(error)}>
-                    <SelectValue placeholder="Select a path length" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {(isPathLengthLocked ? [storedPathLength] : PATH_LENGTH_OPTIONS).map(
-                      (option) => (
-                        <SelectItem value={String(option)} key={`ca-csr-path-length-${option}`}>
-                          {String(option)}
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
-                <FieldDescription>
-                  {isPathLengthLocked
-                    ? "Matches this CA's current certificate and can't be changed."
-                    : "How many intermediate CAs may follow this CA in the chain. -1 means no limit."}
-                </FieldDescription>
+                <PathLengthSelect
+                  value={value}
+                  onChange={onChange}
+                  lockedPathLength={lockedPathLength}
+                  isError={Boolean(error)}
+                  placeholder="Select a path length"
+                />
+                <PathLengthDescription isLocked={isPathLengthLocked} />
                 <FieldError errors={[error]} />
               </Field>
             )}
@@ -176,23 +153,28 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                   </Tooltip>
                 </div>
               </div>
-              <ScrollableContent
-                aria-label="Certificate signing request"
-                size="sm"
-                edgeBehavior="fade"
-                outline={false}
-                containerClassName="rounded-md border border-border bg-container"
-              >
-                {showCsrError && (
-                  <div className="flex h-40 flex-col items-center justify-center gap-2 p-3 text-center">
-                    <p className="text-xs text-danger">{csrErrorMessage}</p>
-                    <Button type="button" variant="outline" size="xs" onClick={() => refetchCsr()}>
-                      Retry
-                    </Button>
-                  </div>
-                )}
-                {!showCsrError && csr && (
-                  <div className="relative">
+              <div className="relative">
+                <ScrollableContent
+                  aria-label="Certificate signing request"
+                  size="sm"
+                  edgeBehavior="fade"
+                  outline={false}
+                  containerClassName="rounded-md border border-border bg-container"
+                >
+                  {showCsrError && (
+                    <div className="flex h-40 flex-col items-center justify-center gap-2 p-3 text-center">
+                      <p className="text-xs text-danger">{csrErrorMessage}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => refetchCsr()}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  {!showCsrError && csr && (
                     <pre
                       className={cn(
                         "p-3 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground transition-opacity",
@@ -201,19 +183,19 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                     >
                       {csr}
                     </pre>
-                    {!isCsrReady && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Spinner size="sm" label="Generating CSR" />
-                      </div>
-                    )}
-                  </div>
-                )}
-                {!showCsrError && !csr && (
-                  <div className="flex h-40 items-center justify-center">
+                  )}
+                  {!showCsrError && !csr && (
+                    <div className="flex h-40 items-center justify-center">
+                      <Spinner size="sm" label="Generating CSR" />
+                    </div>
+                  )}
+                </ScrollableContent>
+                {!showCsrError && csr && !isCsrReady && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <Spinner size="sm" label="Generating CSR" />
                   </div>
                 )}
-              </ScrollableContent>
+              </div>
             </Field>
           )}
           <Controller
