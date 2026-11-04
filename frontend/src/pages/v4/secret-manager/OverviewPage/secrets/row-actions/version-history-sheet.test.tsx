@@ -9,6 +9,8 @@ import { VersionHistorySheet } from "./version-history-sheet";
 const query = vi.hoisted(() => ({
   value: { data: undefined as string | undefined, isPending: true, error: null as unknown },
   redacted: false,
+  hidden: false,
+  refetch: vi.fn().mockResolvedValue(undefined),
   useValue: vi.fn()
 }));
 
@@ -20,12 +22,13 @@ vi.mock("../../../../data/adapters", () => ({
         id: `version-${version}`,
         version,
         createdAt: "2026-01-01T00:00:00Z",
-        isRedacted: version === 1 && query.redacted
+        isRedacted: version === 1 && query.redacted,
+        secretValueHidden: version === 1 && query.hidden
       }))
     }),
     useSecretVersionValue: (dto: unknown, options: unknown) => {
       query.useValue(dto, options);
-      return query.value;
+      return { ...query.value, refetch: query.refetch };
     }
   })
 }));
@@ -60,6 +63,9 @@ vi.mock("@app/components/v4/ui/sheet", () => {
     SheetTitle: Section
   };
 });
+vi.mock("@app/components/v4/ui/button", () => ({
+  Button: (props: React.ComponentProps<"button">) => <button type="button" {...props} />
+}));
 vi.mock("@app/components/v4/ui/badge", () => ({
   Badge: ({ children }: React.PropsWithChildren) => <span>{children}</span>
 }));
@@ -97,6 +103,7 @@ beforeEach(() => {
   root = createRoot(host);
   query.value = { data: undefined, isPending: true, error: null };
   query.redacted = false;
+  query.hidden = false;
   vi.clearAllMocks();
 });
 afterEach(() => {
@@ -219,4 +226,46 @@ it("does not block redaction on the version value request", () => {
   click("Redact");
   expect(onRedact).toHaveBeenCalledWith(expect.objectContaining({ version: 1 }));
   expect(onRestore).not.toHaveBeenCalled();
+});
+
+it("does not restore a historical version whose tags deny read access", () => {
+  query.hidden = true;
+  query.value = { data: "<hidden-by-infisical>", isPending: false, error: null };
+  render();
+  expect(host.textContent).not.toContain("Restore version");
+  expect(query.useValue).toHaveBeenCalledWith(
+    { secretId: "secret-1", version: 1 },
+    { enabled: false }
+  );
+  expect(onRestore).not.toHaveBeenCalled();
+  expect(
+    [...host.querySelectorAll("button")].filter((item) => item.textContent === "Show value")
+  ).toHaveLength(1);
+  expect(
+    [...host.querySelectorAll("button")].filter((item) => item.textContent === "Copy value")
+  ).toHaveLength(1);
+  expect(host.textContent).not.toContain("EMPTY");
+});
+
+it("fails closed on an ambiguous hidden marker even when list permissions are stale", () => {
+  query.value = { data: "<hidden-by-infisical>", isPending: false, error: null };
+  render();
+  click("Restore version");
+  expect(button("Restore").disabled).toBe(true);
+  click("Restore");
+  expect(onRestore).not.toHaveBeenCalled();
+});
+
+it("explicitly retries a failed read after Show kept its query enabled", async () => {
+  query.value = { data: undefined, isPending: false, error: new Error("Read failed") };
+  render();
+  click("Show value");
+  click("Restore version");
+  await React.act(async () => button("Retry").click());
+  expect(query.refetch).toHaveBeenCalledOnce();
+  expect(onRestore).not.toHaveBeenCalled();
+  query.value = { data: "retry-value", isPending: false, error: null };
+  render();
+  click("Restore");
+  expect(onRestore).toHaveBeenCalledWith(expect.objectContaining({ version: 1 }), "retry-value");
 });

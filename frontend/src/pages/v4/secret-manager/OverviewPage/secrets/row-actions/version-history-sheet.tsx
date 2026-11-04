@@ -13,6 +13,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
+import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Loader } from "@app/components/v4/ui/loader";
 import {
@@ -66,13 +67,21 @@ function VersionItem({
   const [wanted, setWanted] = useState(false);
   const copyRequested = useRef(false);
   const restoreSubmitted = useRef(false);
+  const [retrying, setRetrying] = useState(false);
   const {
     data: loaded,
     isPending: valuePending,
-    error: valueError
+    error: valueError,
+    refetch
   } = useV4Adapter("secrets").useSecretVersionValue(
     { secretId, version: version.version },
-    { enabled: canRead && !version.redacted && (wanted || visible || confirm === "restore") }
+    {
+      enabled:
+        canRead &&
+        !version.secretValueHidden &&
+        !version.redacted &&
+        (wanted || visible || confirm === "restore")
+    }
   );
   const value = loaded ?? "";
   const canRestore =
@@ -81,6 +90,9 @@ function VersionItem({
     !managed &&
     !current &&
     !version.redacted &&
+    !version.secretValueHidden &&
+    !retrying &&
+    loaded !== "<hidden-by-infisical>" &&
     !valuePending &&
     !valueError &&
     loaded !== undefined;
@@ -112,7 +124,7 @@ function VersionItem({
           </span>
           {canRead && (
             <span className={styles.versionActions}>
-              {!version.redacted && (
+              {!version.redacted && !version.secretValueHidden && (
                 <>
                   <ActionButton
                     label="Copy value"
@@ -133,7 +145,7 @@ function VersionItem({
                   />
                 </>
               )}
-              {!managed && !version.redacted && !current && (
+              {!managed && !version.redacted && !version.secretValueHidden && !current && (
                 <ActionButton
                   label="Restore version"
                   icon={RotateCcwIcon}
@@ -161,10 +173,12 @@ function VersionItem({
             <span className="sr-only">Redacted value</span>
           </div>
         ) : (
-          <Tooltip content={canRead ? undefined : "Access denied"}>
+          <Tooltip content={canRead && !version.secretValueHidden ? undefined : "Access denied"}>
             <div className={styles.versionValue}>
-              {visible && (value || <span className={styles.muted}>EMPTY</span>)}
-              {!visible && mask}
+              {visible &&
+                !version.secretValueHidden &&
+                (value || <span className={styles.muted}>EMPTY</span>)}
+              {(!visible || version.secretValueHidden) && mask}
             </div>
           </Tooltip>
         )}
@@ -199,8 +213,27 @@ function VersionItem({
           </AlertDialogHeader>
           {confirm === "restore" && valuePending && <Loader label="Loading version value" />}
           {confirm === "restore" && Boolean(valueError) && (
-            <p role="alert">Could not load this version. Close this dialog and try again.</p>
+            <div role="alert">
+              <p>Could not load this version.</p>
+              <Button
+                disabled={retrying}
+                onClick={async () => {
+                  setRetrying(true);
+                  try {
+                    await refetch();
+                  } finally {
+                    setRetrying(false);
+                  }
+                }}
+              >
+                Retry
+              </Button>
+            </div>
           )}
+          {confirm === "restore" &&
+            (version.secretValueHidden || loaded === "<hidden-by-infisical>") && (
+              <p role="alert">This version value is unavailable. Restore is disabled.</p>
+            )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
@@ -268,7 +301,8 @@ export function VersionHistorySheet({
       createdAt: entry.createdAt,
       actor: entry.actor?.name ?? "Unknown actor",
       actorType: actorType === "identity" || actorType === "platform" ? actorType : "user",
-      redacted: entry.isRedacted
+      redacted: entry.isRedacted,
+      secretValueHidden: entry.secretValueHidden
     };
   });
   return (

@@ -2040,8 +2040,9 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
                   blindIndexes: await (doc.value ? blindIndexer.generateBlindIndexes(Buffer.from(doc.value)) : null)
                 }
               : {
-                  encryptedValue: undefined,
-                  references: undefined
+                  encryptedValue: null,
+                  references: [],
+                  blindIndexes: null
                 })
           }
         }))
