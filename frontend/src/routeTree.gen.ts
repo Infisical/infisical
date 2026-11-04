@@ -94,6 +94,7 @@ import { Route as secretManagerIntegrationsRouteGcpOauthRedirectImport } from '.
 import { Route as secretManagerIntegrationsRouteBitbucketOauthRedirectImport } from './pages/secret-manager/integrations/route-bitbucket-oauth-redirect'
 import { Route as secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-key-vault-oauth-redirect'
 import { Route as secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-app-configurations-oauth-redirect'
+import { Route as v4KmsOverviewPageRouteImport } from './pages/v4/kms/OverviewPage/route'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationProjectsPageProjectTypePageRouteImport } from './pages/organization/ProjectsPage/ProjectTypePage/route'
 import { Route as organizationUserDetailsByIDPageRouteImport } from './pages/organization/UserDetailsByIDPage/route'
@@ -1119,6 +1120,12 @@ const secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute =
         AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
     } as any,
   )
+
+const v4KmsOverviewPageRouteRoute = v4KmsOverviewPageRouteImport.update({
+  id: '/kms/$projectId/overview',
+  path: '/kms/$projectId/overview',
+  getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+} as any)
 
 const organizationRoleByIDPageRouteRoute =
   organizationRoleByIDPageRouteImport.update({
@@ -3478,6 +3485,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationRoleByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdImport
     }
+    '/v4/organizations/$orgId/projects/kms/$projectId/overview': {
+      id: '/v4/organizations/$orgId/projects/kms/$projectId/overview'
+      path: '/kms/$projectId/overview'
+      fullPath: '/v4/organizations/$orgId/projects/kms/$projectId/overview'
+      preLoaderRoute: typeof v4KmsOverviewPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': {
       id: '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
       path: '/azure-app-configuration/oauth2/callback'
@@ -5131,6 +5145,7 @@ const designSystemRouteRouteWithChildren =
 interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4OrganizationProjectsPageRouteRoute: typeof v4OrganizationProjectsPageRouteRoute
   v4OrganizationNotPortedPageProjectsRouteRoute: typeof v4OrganizationNotPortedPageProjectsRouteRoute
+  v4KmsOverviewPageRouteRoute: typeof v4KmsOverviewPageRouteRoute
 }
 
 const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRouteChildren =
@@ -5138,6 +5153,7 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
     v4OrganizationProjectsPageRouteRoute: v4OrganizationProjectsPageRouteRoute,
     v4OrganizationNotPortedPageProjectsRouteRoute:
       v4OrganizationNotPortedPageProjectsRouteRoute,
+    v4KmsOverviewPageRouteRoute: v4KmsOverviewPageRouteRoute,
   }
 
 const V4OrganizationsOrgIdProjectsRouteWithChildren =
@@ -6630,6 +6646,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -6933,6 +6950,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -7229,6 +7247,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -7549,6 +7568,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/members/$membershipId'
     | '/organizations/$orgId/projects/$type'
     | '/organizations/$orgId/roles/$roleId'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
     | '/integrations/azure-app-configuration/oauth2/callback'
     | '/integrations/azure-key-vault/oauth2/callback'
     | '/integrations/bitbucket/oauth2/callback'
@@ -7851,6 +7871,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/members/$membershipId'
     | '/organizations/$orgId/projects/$type'
     | '/organizations/$orgId/roles/$roleId'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
     | '/integrations/azure-app-configuration/oauth2/callback'
     | '/integrations/azure-key-vault/oauth2/callback'
     | '/integrations/bitbucket/oauth2/callback'
@@ -8145,6 +8166,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback'
@@ -8723,7 +8745,8 @@ export const routeTree = rootRoute
       "parent": "/v4/organizations/$orgId",
       "children": [
         "/v4/organizations/$orgId/projects/",
-        "/v4/organizations/$orgId/projects/$"
+        "/v4/organizations/$orgId/projects/$",
+        "/v4/organizations/$orgId/projects/kms/$projectId/overview"
       ]
     },
     "/design-system/components/$group/$component": {
@@ -8929,6 +8952,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId": {
       "filePath": "organization/RoleByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/projects/kms/$projectId/overview": {
+      "filePath": "v4/kms/OverviewPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
     },
     "/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback": {
       "filePath": "secret-manager/integrations/route-azure-app-configurations-oauth-redirect.tsx",
