@@ -32,6 +32,7 @@ import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import {
   countPemCertificates,
   formatCertificateDate,
+  getFirstPemCertificate,
   getServerErrorMessage
 } from "./crossSignedCertUtils";
 
@@ -61,10 +62,18 @@ const parseCertificate = (pem: string) => {
   }
 };
 
-const checkCrossSignedCert = (certificatePem: string, caCertPem: string, caName: string) => {
+const checkCrossSignedCert = (
+  certificatePem: string,
+  certificateChainPem: string,
+  caCertPem: string,
+  caName: string
+) => {
   const cert = parseCertificate(certificatePem);
   const caCert = parseCertificate(caCertPem);
   if (!cert || !caCert) return null;
+
+  const firstChainPem = getFirstPemCertificate(certificateChainPem);
+  const firstChainCert = firstChainPem ? parseCertificate(firstChainPem) : null;
 
   const isSameSubject = cert.subject === caCert.subject;
   const isSameKey = cert.publicKey.equal(caCert.publicKey);
@@ -113,7 +122,15 @@ const checkCrossSignedCert = (certificatePem: string, caCertPem: string, caName:
           isPassed: false,
           text: "Not a CA certificate. Have the old CA sign the CSR as a CA certificate."
         },
-    getSignerItem()
+    getSignerItem(),
+    ...(firstChainCert && firstChainCert.subject !== cert.issuer
+      ? [
+          {
+            isPassed: false,
+            text: `Certificate Chain doesn't start with ${issuerName}, the CA that signed this certificate`
+          }
+        ]
+      : [])
   ];
 
   return {
@@ -165,9 +182,9 @@ export const CaCrossSignedCertImportDialog = ({
   const check = useMemo(
     () =>
       certificateText && caCert
-        ? checkCrossSignedCert(certificateText, caCert.certificate, caName)
+        ? checkCrossSignedCert(certificateText, certificateChainText, caCert.certificate, caName)
         : null,
-    [certificateText, caCert, caName]
+    [certificateText, certificateChainText, caCert, caName]
   );
 
   const close = () => {
@@ -332,9 +349,9 @@ export const CaCrossSignedCertImportDialog = ({
                         rows={4}
                       />
                       <FieldDescription>
-                        The old CA&apos;s certificates, starting with the CA that signed the
-                        cross-signed certificate and ending with its root. If the old root signed it
-                        directly, paste the old root&apos;s certificate.
+                        {isReplace && currentCertificateChain
+                          ? "Prefilled with the current chain. Replace it if a different CA signed the new certificate."
+                          : "The old CA's certificates, starting with the CA that signed the cross-signed certificate and ending with its root. If the old root signed it directly, paste the old root's certificate."}
                       </FieldDescription>
                     </Field>
                   )}

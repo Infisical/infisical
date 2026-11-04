@@ -84,7 +84,15 @@ export const CaCrossSignedCertActionsMenu = ({
           onClick={() => downloadTxtFile(`${caName}-cross-signed.pem`, crossSignedCert.certificate)}
         >
           <DownloadIcon />
-          Download
+          Download Certificate
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() =>
+            downloadTxtFile(`${caName}-cross-signed-chain.pem`, crossSignedCert.certificateChain)
+          }
+        >
+          <DownloadIcon />
+          Download Certificate Chain
         </DropdownMenuItem>
         {actions.map((action) => (
           <Tooltip key={action.popUp} open={action.disabledReason ? undefined : false}>

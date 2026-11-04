@@ -29,6 +29,9 @@ export const formatCertificateDate = (timestamp: Date | string) =>
 export const countPemCertificates = (pem: string) =>
   (pem.match(/-----BEGIN CERTIFICATE-----/g) ?? []).length;
 
+export const getFirstPemCertificate = (pem: string) =>
+  pem.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/)?.[0] ?? null;
+
 export const getServerErrorMessage = (
   error: unknown,
   fallback: string,
