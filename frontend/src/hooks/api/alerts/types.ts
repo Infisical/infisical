@@ -7,7 +7,8 @@ export enum AlertResourceType {
   IdentityAuthentication = "identity.authentication",
   PamFolder = "pam.folder",
   SecretReminder = "secret.reminder",
-  AuditLogStream = "audit-log.stream"
+  AuditLogStream = "audit-log.stream",
+  SecretRotation = "secret.rotation"
 }
 
 export enum AlertEventType {
@@ -17,7 +18,8 @@ export enum AlertEventType {
   PamAccessRequestApproved = "pam.folder.access-request-approved",
   PamAccessRequestDenied = "pam.folder.access-request-denied",
   PamAccessRequestBypassed = "pam.folder.access-request-bypassed",
-  AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed"
+  AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed",
+  SecretRotationFailed = "secret.rotation.failed"
 }
 
 export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
@@ -33,7 +35,8 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
   ],
   // Reminder alerts are edited from the secret's reminder form, not the generic alert form.
   [AlertResourceType.SecretReminder]: [],
-  [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed]
+  [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed],
+  [AlertResourceType.SecretRotation]: [AlertEventType.SecretRotationFailed]
 };
 
 // Resource types whose provider accepts plain email addresses as email channel recipients
@@ -88,8 +91,14 @@ export enum AlertPrincipalType {
   User = "user",
   Group = "group",
   Email = "email",
-  ProjectMembers = "project-members"
+  ProjectMembers = "project-members",
+  ProjectAdmins = "project-admins"
 }
+
+export const ALERT_PROJECT_RECIPIENT_LABELS = {
+  [AlertPrincipalType.ProjectMembers]: "All Project Members",
+  [AlertPrincipalType.ProjectAdmins]: "Project Admins"
+} as const;
 
 export enum AlertRunStatus {
   Success = "success",
@@ -134,7 +143,8 @@ export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
   [AlertResourceType.PamFolder]: "PAM Folder",
   [AlertResourceType.SecretReminder]: "Secret Reminder",
-  [AlertResourceType.AuditLogStream]: "Audit Log Stream"
+  [AlertResourceType.AuditLogStream]: "Audit Log Stream",
+  [AlertResourceType.SecretRotation]: "Secret Rotation"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -144,7 +154,8 @@ export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.PamAccessRequestApproved]: "Request Approved",
   [AlertEventType.PamAccessRequestDenied]: "Request Denied",
   [AlertEventType.PamAccessRequestBypassed]: "Break-Glass Used",
-  [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure"
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure",
+  [AlertEventType.SecretRotationFailed]: "Rotation Failure"
 };
 
 export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
@@ -161,7 +172,9 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.PamAccessRequestBypassed]:
     "Notify when someone uses break-glass to access an account in this folder without approval.",
   [AlertEventType.AuditLogStreamDeliveryFailed]:
-    "Notify when an external log stream fails to deliver audit log events after all retries."
+    "Notify when an external log stream fails to deliver audit log events after all retries.",
+  [AlertEventType.SecretRotationFailed]:
+    "Notify when a scheduled rotation fails after all of its retries."
 };
 
 // Channel types a plan doesn't include, and the paywall shown when one is picked.
