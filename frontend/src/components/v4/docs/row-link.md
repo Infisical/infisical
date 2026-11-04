@@ -70,7 +70,7 @@ Exports: RowLink. Source TypeScript defines the API.
 
 ## Limits
 
-- Use one RowLink per row or Card; a second stretched target would cover the first.
+- Use one RowLink per row or Card; a second stretched target would cover the first. When the whole Card is the link and its name should wrap, use CardLink, which shares these semantics.
 - Do not combine RowLink with DataTable's onRowActivate on the same table. Both would claim the row, and the row would take two tab stops.
 - Controls that position themselves absolutely keep their own stacking; if one sits under the overlay, mark it data-row-interactive and give it a position.
 

@@ -18,6 +18,7 @@ export const comboboxDefinition = {
     "Multiple mode anchors its list to the whole field, chips included, and re-anchors on every open, so the list sits under the field inside a Dialog or Sheet too.",
     "Multiple mode lists options with checkbox marks and no Select all bar. Removing a chip with Enter, Space, Backspace or Delete on its remove button moves focus to the next removable chip, else the previous one, else the trigger; focus never falls to the page.",
     "Controlled or local value; case-insensitive label and metadata filtering; optional awaited creation.",
+    "onSearch(query) turns on async search for single selection: the Combobox stops filtering and renders options as the host passes them, calls onSearch on every query change and with an empty string when it closes with a query, and keeps the label of the chosen option on the trigger after the results move on. Debouncing and request cancellation stay with the host. loading shows the pixel Spinner in the search row and disables the creation row until results settle. With no results, a status line reads Searching… while loading and emptyText after, above the creation row when there is one. The creation row works the same in async mode.",
     "defaultOpen opens the list on mount, for a picker that is the first step of a flow. Focus moving outside the list closes it unless closeOnFocusOutside is false, which is the default when defaultOpen is set, so a Dialog or Sheet taking focus on mount does not close a list that opened with it; outside pointer presses and Escape still close it. Multiple mode with clearable adds a Clear all button after the chips; it removes every removable chip, keeps locked ones and returns focus to the trigger.",
     "Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.",
     "A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable."
@@ -27,7 +28,8 @@ export const comboboxDefinition = {
     "Disabled options cannot be selected."
   ],
   limitations: [
-    "Do not treat this in-memory picker as a remote-search or virtualized-results implementation.",
+    "Without onSearch, filtering is in memory. Async search does not virtualize results; keep the host's result page short.",
+    "onSearch and loading are single-selection props. Multiple mode filters its options in memory and orders the value by them, so it needs every selectable option up front.",
     "Creation persistence belongs to the host. Aborting suppresses obsolete UI results and asks the host to cancel; it cannot undo an already committed server write."
   ],
   examples: [
@@ -48,6 +50,12 @@ export const comboboxDefinition = {
       title: "Creation",
       module: "./examples/combobox/creation.tsx",
       states: ["controlled"]
+    },
+    {
+      id: "async",
+      title: "Async search",
+      module: "./examples/combobox/async.tsx",
+      states: ["controlled", "loading", "empty"]
     }
   ],
   coverage: [
@@ -101,16 +109,16 @@ export const comboboxDefinition = {
           value: "abort on close/query",
           exampleId: "creation",
           label: "Environment"
+        },
+        {
+          value: "empty search",
+          exampleId: "async",
+          label: "Searches the server as you type"
         }
       ],
       omitted: [
         {
           value: "empty options",
-          reason:
-            "Empty, invalid and disabled use the shared field surface, which the Input and Field examples show once."
-        },
-        {
-          value: "empty search",
           reason:
             "Empty, invalid and disabled use the shared field surface, which the Input and Field examples show once."
         },
@@ -137,19 +145,20 @@ export const comboboxDefinition = {
       ]
     },
     {
+      axis: "search",
+      expected: ["in memory", "async", "async loading"],
+      shown: [
+        { value: "in memory", exampleId: "default", label: "Single environment" },
+        { value: "async", exampleId: "async", label: "Searches the server as you type" },
+        { value: "async loading", exampleId: "async", label: "Searches the server as you type" }
+      ]
+    },
+    {
       axis: "composition",
       expected: ["mono identifier", "custom empty text"],
-      shown: [],
-      omitted: [
-        {
-          value: "mono identifier",
-          reason:
-            "The mono prop only changes the typeface of the option labels; no example sets it."
-        },
-        {
-          value: "custom empty text",
-          reason: "The emptyText prop only changes the no-match sentence; no example sets it."
-        }
+      shown: [
+        { value: "mono identifier", exampleId: "async", label: "Searches the server as you type" },
+        { value: "custom empty text", exampleId: "async", label: "Searches the server as you type" }
       ]
     }
   ],
@@ -182,7 +191,7 @@ export const comboboxDefinition = {
         when: "A field searches an in-memory set or offers host-backed creation.",
         do: "Use stable option values, keep the visible field purpose separate from the query and pass onCreate only for a real cancellable host operation.",
         avoid:
-          "Treat an empty search as an empty collection, create duplicate values or imply search is remote or virtualized.",
+          "Treat an empty search as an empty collection, create duplicate values, imply in-memory search is remote or filter again on top of onSearch results.",
         reason:
           "Query state, selected identity and persisted creation describe different things and must not be conflated.",
         detect: {
