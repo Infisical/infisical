@@ -44,7 +44,11 @@ const SecretsComparison = ({ title, href }: { title: string; href: string }) => 
       <ComparisonSlider
         title={title}
         before={before("secrets")}
-        href={scenario === "overview" ? href : `${href}?scenario=${scenario}`}
+        href={
+          scenario === "overview"
+            ? `${href}?environments=${encodeURIComponent(JSON.stringify(["dev"]))}`
+            : `${href}?scenario=${scenario}`
+        }
       />
     </>
   );
