@@ -12,7 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -1940,6 +1940,57 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       return { secrets };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/key-exists",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getSecretKeyExists",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        projectId: z.string().trim().min(1).max(64),
+        environments: z
+          .string()
+          .trim()
+          .max(4000)
+          .transform(decodeURIComponent)
+          .transform((value) => value.split(",").filter(Boolean))
+          .pipe(slugSchema({ field: "Environment" }).array().min(1).max(100)),
+        secretPath: z.string().trim().max(1000).default("/").transform(removeTrailingSlash),
+        secretKey: z.string().trim().max(500).pipe(SecretNameSchema)
+      }),
+      response: {
+        200: z.object({
+          existingEnvironments: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, environments, secretPath, secretKey } = req.query;
+
+      const existingEnvironments = await server.services.secret.getSecretKeyEnvironments({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId,
+        environments,
+        path: secretPath,
+        secretKey
+      });
+
+      return { existingEnvironments };
     }
   });
 

@@ -274,6 +274,8 @@ Agent Vault uses the `HTTPS_PROXY` environment variable, which `curl`, `git`, `g
 
 The same applies to MCP servers. Your agent's MCP configuration keeps each server's real URL and has no token, and the proxy authenticates the agent's requests to the server.
 
+Some sandbox providers, such as [E2B](/documentation/platform/agent-vault/guides/e2b), can send a sandbox's HTTP and HTTPS traffic to the proxy over SOCKS5 instead, so the agent doesn't need `HTTPS_PROXY`.
+
 <Note>
   Node.js's built-in `fetch` (undici-backed) doesn't read `HTTPS_PROXY` by default. If your agent uses it directly, run Node with `--use-env-proxy` or set `NODE_USE_ENV_PROXY=1` (Node 24 or later). Third-party clients like `axios`, `node-fetch`, and `got` read the environment variable without extra flags.
 </Note>

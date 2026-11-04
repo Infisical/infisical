@@ -1143,7 +1143,18 @@ export const PROJECTS = {
     template: "The name of the project template, if specified, to apply to this project."
   },
   DELETE: {
-    projectId: "The ID of the project to delete."
+    projectId: "The ID of the project to delete.",
+    hardDelete:
+      "When true, the project is permanently deleted shortly after the request. When false or omitted, a secret manager project is soft-deleted (preserved and scheduled for permanent deletion after a grace period) and hidden from subsequent reads."
+  },
+  LIST_DELETED: {
+    type: "The type of soft-deleted projects to list."
+  },
+  RESTORE: {
+    projectId: "The ID of the soft-deleted project to restore."
+  },
+  PERMANENTLY_DELETE: {
+    projectId: "The ID of the soft-deleted project to permanently delete."
   },
   GET: {
     projectId: "The ID of the project."
@@ -4234,7 +4245,9 @@ export const OidcSSo = {
     isActive: "Whether to enable or disable this OIDC configuration.",
     manageGroupMemberships:
       "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
-    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
+    mfaClaimName: "The ID token claim that lists the authentication methods the user completed. Defaults to amr.",
+    mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the OIDC config for.",
@@ -4254,7 +4267,9 @@ export const OidcSSo = {
     isActive: "Whether to enable or disable this OIDC configuration.",
     manageGroupMemberships:
       "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
-    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
+    mfaClaimName: "The ID token claim that lists the authentication methods the user completed. Defaults to amr.",
+    mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   }
 };
 
@@ -4271,7 +4286,11 @@ export const SamlSso = {
     issuer: "The SAML provider issuer URL or entity ID.",
     cert: "The certificate to use for SAML authentication.",
     enableGroupSync:
-      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
+      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.",
+    mfaSignalAttribute:
+      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
+    mfaAuthnContexts:
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the SAML config for.",
@@ -4282,7 +4301,11 @@ export const SamlSso = {
     issuer: "The SAML provider issuer URL or entity ID.",
     cert: "The certificate to use for SAML authentication.",
     enableGroupSync:
-      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
+      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.",
+    mfaSignalAttribute:
+      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
+    mfaAuthnContexts:
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
   },
   ACS: {
     samlConfigId: "The ID of the SAML configuration the response is for.",
@@ -4673,6 +4696,10 @@ export const AGENT_VAULT = {
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
       "The path prefixes this service allows, matched on whole segments, so `/repos` covers `/repos/octo` but not `/repositories`. `null` allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
+    allowedTools:
+      "The MCP tools agents can call through this service, by exact, case-sensitive name. Each name is 1 to 128 letters, numbers, underscores (_), hyphens (-), or dots (.). `null` allows every tool. The proxy refuses a call to any other tool and leaves it out of the server's tool list. MCP services only.",
+    mcpToolName: "The tool's name, as the MCP server reports it.",
+    mcpToolDescription: "The server's description of the tool, or null if it gave none.",
     customHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
@@ -4852,6 +4879,7 @@ export const AGENT_VAULT = {
     revokeGroupIds: "The IDs of the groups to revoke the access bundle from.",
     skipped: "The requested grantees who already had the access bundle and were left as they were.",
     revokeSkipped: "The requested grantees who did not have the access bundle, so nothing was revoked.",
+    actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
     offset: "How many members to skip."
@@ -4881,6 +4909,7 @@ export const AGENT_VAULT = {
     offset: "How many candidates to skip."
   },
   AVAILABLE_GRANTEE: {
+    actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match candidates by name, username or email address.",
     limit: "The maximum number of candidates to return.",
     offset: "How many candidates to skip."
@@ -4901,6 +4930,7 @@ export const AGENT_VAULT = {
     rootCa:
       "The certificate authority Infisical keeps for this proxy: a PEM certificate and its PKCS#8 PEM private key.",
     rootCaCertificatePem: "The certificate authority's certificate, in PEM form.",
+    ca: "The certificate authority the proxy serves, with its certificate in PEM form. Agents trust it to accept the proxy's certificates.",
     rootCaPrivateKey: "The certificate authority's private key, in PKCS#8 PEM form.",
     servedCaCertificate:
       "The certificate authority the proxy serves, in PEM form, when it uses its own instead of Infisical's. Infisical records its fingerprint and returns no `rootCa`.",
@@ -4908,9 +4938,13 @@ export const AGENT_VAULT = {
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
     trafficPolicy:
-      "Which hosts an agent may reach through this proxy. `any-host` lets every request out; `bundle-hosts` allows only hosts an access bundle covers, plus anything in `allowedHosts`, and refuses the rest with a 403.",
+      "Which hosts an agent may reach through this proxy. `any-host` lets every request out; `service-hosts` allows only hosts that the session's services cover, from its access bundle or sent with the session, plus anything in `allowedHosts`, and refuses the rest with a 403. `bundle-hosts` is the old name of `service-hosts` and is still accepted.",
+    trafficPolicyProxy:
+      "Which hosts the proxy lets agents reach: `any-host` for every host, or `bundle-hosts` for only the hosts the session's services cover plus `allowedHosts`.",
+    trafficPolicyRead:
+      "Which hosts an agent may reach through this proxy. `any-host` lets every request out; `service-hosts` allows only hosts that the session's services cover, from its access bundle or sent with the session, plus anything in `allowedHosts`, and refuses the rest with a 403.",
     allowedHosts:
-      "Hosts that stay reachable under the `bundle-hosts` traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
+      "Hosts that stay reachable under the `service-hosts` traffic policy even though none of the session's services cover them. Still intercepted, and given no credential.",
     pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
     sessionToken: "The session an agent is running with. A selector, not a second credential.",
     createdAt: "When the proxy was registered."
@@ -4965,7 +4999,33 @@ export const AGENT_VAULT = {
 
   SESSION: {
     sessionId: "The ID of the session.",
-    accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
+    accessBundles:
+      "The access bundle this session carries, by name. A list that accepts one name at most. Leave it out to start a session with services of its own only.",
+    inlineServices:
+      "Services this session carries itself, alongside its access bundle's or without one. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+    inlineServiceName:
+      "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
+    inlineServiceValue:
+      "The secret, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineServiceUsername:
+      "The username half of the basic credential, sent exactly as given. May be empty if a password is set. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineServicePassword:
+      "The password half of the basic credential, sent exactly as given. May be empty if a username is set. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineMcpCredential: "The credential the proxy attaches to requests to the MCP server, a bearer token.",
+    inlineCustomHeaders:
+      "Additional headers the proxy attaches to every request to this service, on top of the credential. Up to 20.",
+    inlineSubstitutions: "Placeholders the proxy swaps for a real secret before forwarding. Up to 20.",
+    inlineCustomHeadersRead: "The headers the proxy attaches besides the credential, without their values.",
+    inlineSubstitutionsRead: "The placeholders the proxy swaps for a real secret, without their values.",
+    inlineCustomHeaderValue:
+      "The header value, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineSubstitutionValue:
+      "The real value the placeholder is replaced with, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineServicesRead:
+      "The services sent with this session when it was created, without their secrets. Its access bundle's services aren't listed here. Empty when the session carries only an access bundle.",
+    inlineServiceId: "The ID of the service sent with this session.",
+    inlineServiceNameRead:
+      "The name the service was sent with, or its first host if it was sent without one. Shown in session logs and in the proxy's error messages.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",

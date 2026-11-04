@@ -3,6 +3,8 @@ import { ArrowRightIcon, CheckIcon, VaultIcon } from "lucide-react";
 import { useEnterAgentVault } from "@app/components/agent-vault/useEnterAgentVault";
 import { UpgradeDialogLayout } from "@app/components/license/UpgradeGate/UpgradeDialogLayout";
 import { Button, DocumentationLinkBadge } from "@app/components/v3";
+import { useOrganization, useProject } from "@app/context";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 const CHANGES = [
@@ -36,6 +38,8 @@ export const AgentProxyMovedModal = ({ isOpen, onOpenChange }: Props) => {
     isEntering,
     agentVaultAccessRequest
   } = useEnterAgentVault();
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
 
   return (
     <>
@@ -57,6 +61,15 @@ export const AgentProxyMovedModal = ({ isOpen, onOpenChange }: Props) => {
               className="w-full"
               isPending={isEntering}
               onClick={async () => {
+                analytics.captureForOrganization(
+                  AnalyticsEvent.AgentVaultRedirectClicked,
+                  currentOrg.id,
+                  {
+                    projectId: currentProject.id,
+                    source: "agent-proxy-moved-modal",
+                    action: needsAccessRequest ? "request-access" : "go-to-agent-vault"
+                  }
+                );
                 if (needsAccessRequest) {
                   if (await requestAgentVaultAccess()) onOpenChange(false);
                   return;

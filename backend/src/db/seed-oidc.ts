@@ -249,10 +249,15 @@ const main = async () => {
       orgId: org.id,
       configurationType: "discoveryURL",
       discoveryURL,
+      issuer: "",
+      authorizationEndpoint: "",
+      jwksUri: "",
+      tokenEndpoint: "",
+      userinfoEndpoint: "",
       isActive: true,
       jwtSignatureAlgorithm,
       manageGroupMemberships: false,
-      allowedEmailDomains: null,
+      allowedEmailDomains: "",
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });

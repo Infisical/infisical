@@ -7,6 +7,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { CHEF_SYNC_LIST_OPTION } from "@app/ee/services/secret-sync/chef";
 import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "@app/ee/services/secret-sync/chef/chef-sync-fns";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -297,8 +298,9 @@ export const SecretSyncFns = {
       gitHubAppDAL,
       gatewayV2Service,
       gatewayPoolService,
-      oidcIssuerService
-    }: TSyncSecretDeps
+      oidcIssuerService,
+      keyStore
+    }: TSyncSecretDeps & { keyStore: Pick<TKeyStoreFactory, "acquireLock"> }
   ): Promise<TSyncSecretsResult | void> => {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -370,7 +372,7 @@ export const SecretSyncFns = {
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
-        return CloudflareWorkersSyncFns.syncSecrets(secretSync, payload);
+        return CloudflareWorkersSyncFns.syncSecrets(secretSync, payload, { keyStore });
       case SecretSync.CloudflareSecretsStore:
         return CloudflareSecretsStoreSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Zabbix:

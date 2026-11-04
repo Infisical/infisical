@@ -5,6 +5,10 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { TCertificateSource } from "@app/hooks/api/certificates/types";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub
+} from "@app/hooks/api/pkiApplications/types";
 
 export const getCertSourceLabel = (source: TCertificateSource): string => {
   switch (source) {
@@ -22,6 +26,71 @@ export const DELETED_CERTIFICATE_NO_ACTIONS = "No actions are available for a de
 
 export const RENEWAL_UNAVAILABLE_NO_PROFILE =
   "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
+
+type TApplicationAbility = {
+  can: (action: string, subjectType: string) => boolean;
+};
+
+export type TApplicationCertificateAccess = {
+  canRenew: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canManagePkiSyncs: boolean;
+  renewBlockedReason?: string;
+  editBlockedReason?: string;
+  editMetadataBlockedReason?: string;
+  revokeBlockedReason?: string;
+  deleteBlockedReason?: string;
+  managePkiSyncsBlockedReason?: string;
+};
+
+// The backend checks only the application role for a certificate that belongs to an application,
+// and gives a project admin who is not a member read access alone, so project permissions must not
+// unlock these actions.
+export const getApplicationCertificateAccess = ({
+  applicationName,
+  permission
+}: {
+  applicationName: string;
+  permission?: TApplicationAbility;
+}): TApplicationCertificateAccess => {
+  const can = (
+    action: PkiApplicationResourceActions,
+    subjectType: PkiApplicationResourceSub = PkiApplicationResourceSub.Certificates
+  ) => Boolean(permission?.can(action, subjectType));
+  const canEdit = can(PkiApplicationResourceActions.Edit);
+  const canDelete = can(PkiApplicationResourceActions.Delete);
+  const canRenew = can(PkiApplicationResourceActions.Create) && canEdit;
+  const canManagePkiSyncs = can(
+    PkiApplicationResourceActions.Edit,
+    PkiApplicationResourceSub.PkiSyncs
+  );
+
+  // Until the ability loads the actions stay disabled without blaming a role.
+  if (!permission) return { canRenew, canEdit, canDelete, canManagePkiSyncs };
+
+  const operatorOrAdmin = `You need the Operator or Admin role on ${applicationName}`;
+  const admin = `You need the Admin role on ${applicationName}`;
+
+  return {
+    canRenew,
+    canEdit,
+    canDelete,
+    canManagePkiSyncs,
+    renewBlockedReason: canRenew ? undefined : `${operatorOrAdmin} to renew this certificate.`,
+    editBlockedReason: canEdit
+      ? undefined
+      : `${operatorOrAdmin} to change auto-renewal for this certificate.`,
+    editMetadataBlockedReason: canEdit
+      ? undefined
+      : `${operatorOrAdmin} to edit this certificate's metadata.`,
+    revokeBlockedReason: canDelete ? undefined : `${admin} to revoke this certificate.`,
+    deleteBlockedReason: canDelete ? undefined : `${admin} to delete this certificate.`,
+    managePkiSyncsBlockedReason: canManagePkiSyncs
+      ? undefined
+      : `${admin} to manage PKI syncs for this certificate.`
+  };
+};
 
 type TCertificateRenewalPreview = {
   profileId?: string | null;

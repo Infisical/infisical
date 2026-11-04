@@ -26,7 +26,7 @@ import {
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
-  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findById" | "findEffectiveOrgMembership">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -348,8 +348,10 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         refreshVersion: updatedSession.refreshVersion,
         organizationId: decodedToken.organizationId,
         ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
+        issuingRootOrgId: decodedToken.issuingRootOrgId,
         isMfaVerified: decodedToken.isMfaVerified,
-        mfaMethod: decodedToken.mfaMethod
+        mfaMethod: decodedToken.mfaMethod,
+        idpMfaOrgId: decodedToken.idpMfaOrgId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: refreshTokenExpiresIn }
@@ -425,7 +427,9 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
 
     if (!subOrganizationId) {
-      const organization = await orgDAL.findOne({ id: organizationId });
+      const organization = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
+        orgDAL.findById(organizationId)
+      );
 
       if (!organization) {
         throw new UnauthorizedError({
@@ -442,7 +446,9 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       };
     }
 
-    const subOrganization = await orgDAL.findOne({ id: subOrganizationId });
+    const subOrganization = await requestMemoize(requestMemoKeys.orgFindById(subOrganizationId), () =>
+      orgDAL.findById(subOrganizationId)
+    );
     if (!subOrganization) {
       throw new UnauthorizedError({
         message: `The sub-organization with ID '${subOrganizationId}' no longer exists. Log in again.`
