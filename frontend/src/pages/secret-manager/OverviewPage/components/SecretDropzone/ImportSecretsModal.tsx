@@ -65,6 +65,7 @@ import {
   useUpdateSecretBatch
 } from "@app/hooks/api";
 import { fetchProjectFolders } from "@app/hooks/api/secretFolders/queries";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { ApiErrorTypes, SecretType } from "@app/hooks/api/types";
@@ -930,7 +931,8 @@ const ImportSecretsContent = ({
         });
       }
 
-      if (failedEnvs.length) {
+      // A flat import's failures are single batch requests the global handler already toasted
+      if (failedEnvs.length && nestedImport) {
         createNotification({
           type: "error",
           text: `Failed to upload secrets into ${failedEnvs.join(", ")}`
@@ -950,18 +952,12 @@ const ImportSecretsContent = ({
         folderResponseCountBucket: overviewCountBucket(folderResponseCount),
         folderFailureCountBucket: overviewCountBucket(folderFailureCount)
       });
-      const closedCurrentInvocation = onClose();
       const completedEnvSlugs = [...successEnvSlugs, ...approvalEnvSlugs, ...partialEnvSlugs];
-      if (completedEnvSlugs.length && closedCurrentInvocation) {
-        onComplete?.(completedEnvSlugs);
-      }
+      if (!completedEnvSlugs.length) return;
+      if (onClose()) onComplete?.(completedEnvSlugs);
     } catch (err) {
       attempt.flow({ ...flow, phase: "failed" });
-      console.error(err);
-      createNotification({
-        type: "error",
-        text: "Failed to upload secrets"
-      });
+      showSecretWriteErrors([{ error: err }]);
     } finally {
       isImportRunningRef.current = false;
       setNestedProgress(null);

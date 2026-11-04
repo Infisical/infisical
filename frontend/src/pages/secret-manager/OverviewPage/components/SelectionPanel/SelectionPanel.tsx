@@ -311,12 +311,11 @@ export const SelectionPanel = ({
       resourceLabel = "folders";
     }
 
-    const failedEnvs = userAvailableEnvs
-      .filter(
-        (env) =>
-          !results.some(
-            (result) => result.status === "fulfilled" && result.value.environment === env.slug
-          )
+    const deletedEnvs = userAvailableEnvs
+      .filter((env) =>
+        results.some(
+          (result) => result.status === "fulfilled" && result.value.environment === env.slug
+        )
       )
       .map((env) => env.name);
     if (processedEntries === 0) {
@@ -347,12 +346,7 @@ export const SelectionPanel = ({
     } else if (areSomeEntriesDeleted) {
       createNotification({
         type: "warning",
-        text: `Deletion partially completed. The following environments could not be processed due to conflicts: ${failedEnvs.join(", ")}.`
-      });
-    } else {
-      createNotification({
-        type: "error",
-        text: `Failed to delete selected ${resourceLabel}`
+        text: `Selected ${resourceLabel} deleted only in ${deletedEnvs.join(", ")}. The other environments were not changed.`
       });
     }
   };
