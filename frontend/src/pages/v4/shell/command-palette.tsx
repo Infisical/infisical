@@ -12,6 +12,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useV4Adapter } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
 import { V4_DEMO_ORG_ID } from "../mode";
+import { useClearThemeOverride } from "../useV4Theme";
 import {
   kmsSections,
   orgSections,
@@ -26,7 +27,6 @@ import {
   settingsSections,
   type ShellNavSection
 } from "./navigation";
-import { useClearThemeOverride } from "./useClearThemeOverride";
 
 type Theme = "light" | "dark" | "system";
 
@@ -192,7 +192,7 @@ export const CommandPalette = ({
       ]
     });
     return result;
-  }, [base, groupData, project, session, orgId]);
+  }, [base, groupData, project, session, orgId, navigate, setTheme, clearThemeOverride]);
 
   return (
     <CommandMenu

@@ -7,7 +7,7 @@ import type { SidebarHelp } from "@app/components/v4/ui/sidebar";
 import type { TopBarAccount } from "@app/components/v4/ui/top-bar";
 
 import { useV4Session } from "../data/session/contract";
-import { useClearThemeOverride } from "./useClearThemeOverride";
+import { useClearThemeOverride } from "../useV4Theme";
 
 const announcementItems: Announcement[] = [
   {
