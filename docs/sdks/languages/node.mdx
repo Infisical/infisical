@@ -797,7 +797,7 @@ What the client can do with sessions depends on the [Agent Vault role](/document
 
 | Role | Can create sessions with | Can list, get, label, and revoke |
 | --- | --- | --- |
-| **Admin** | Any access bundle, and [inline services](#create-a-session-with-inline-services) | Every session |
+| **Admin** | Any access bundle (on behalf of a user, [only access bundles that the user can use too](#create-a-session-on-behalf-of-a-user)), and [inline services](#create-a-session-with-inline-services) | Every session |
 | **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the member | The member's own sessions |
 
 <Note>
@@ -880,7 +880,7 @@ const session = await client.agentVault().sessions.create({
 - The session belongs to the machine identity, so the user can't see the session unless they're an Agent Vault admin
 - In each session that the `get`, `list`, `update`, and `revoke` methods return, `onBehalfOf` is the user, or `null` if the session is the machine identity's own
 
-To find the access bundles that a session on behalf of the user can use, pass the user's email address or ID to [`accessBundles.list`](#list-access-bundles).
+To find the access bundles that a session on behalf of the user can use, pass the user's email address or ID to [`accessBundles.list`](#list-access-bundles). The proxy refuses a session's requests to services that still need the user's personal values, so also pass `requiresSetup: false` to leave out the access bundles with those services.
 
 #### Create a session with inline services
 
@@ -1158,7 +1158,7 @@ const accessBundle = await client.agentVault().accessBundles.create({
 **Returns:**
 - `AgentVaultAccessBundle`: the new access bundle
 
-Infisical grants the new access bundle to you, unless you're in Agent Vault only through a group. To add services to the access bundle, follow the steps in [Create an access bundle](/documentation/platform/agent-vault/access-bundles#create-an-access-bundle).
+Infisical grants the new access bundle to you, unless you're in Agent Vault only through a group. The SDK can't add services to an access bundle. To add them in Infisical, see [Services](/documentation/platform/agent-vault/services).
 
 #### Update access bundle
 
@@ -1274,7 +1274,7 @@ const { members, skipped } = await client.agentVault().accessBundles.grant("<acc
 
 Revoke an access bundle from users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
 
-- If someone with the **Member** role no longer has any grant on the access bundle, their sessions for the bundle stop getting credentials, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes
+- If someone with the **Member** role no longer has any grant on the access bundle, their sessions for the bundle stop getting credentials, and so do the sessions that machine identities created on their behalf, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes
 - Admins can use every access bundle without a grant, so their sessions keep getting credentials after you revoke their grants (to stop one of their agents, [revoke its session](#revoke-session))
 
 ```typescript
@@ -1421,7 +1421,7 @@ const delegation = await client.agentVault().delegations.addSubjects("<machine-i
 
 Remove users and groups from a machine identity's delegation. Pass at least one ID.
 
-- If the delegation no longer covers a user, the sessions that the machine identity created on behalf of the user stop working
+- If the delegation no longer covers a user, the proxy refuses the sessions that the machine identity created on behalf of the user until the delegation covers the user again (to end those sessions for good, [revoke them](#revoke-session))
 - If you remove the last user or group, Infisical deletes the delegation
 
 ```typescript
@@ -1442,7 +1442,7 @@ const delegation = await client.agentVault().delegations.removeSubjects("<machin
 
 #### Delete delegation
 
-Stop a machine identity from creating sessions on behalf of users. The sessions that the machine identity already created on behalf of users stop working.
+Stop a machine identity from creating sessions on behalf of users. The proxy refuses the sessions that the machine identity already created on behalf of users until a delegation covers those users again. To end those sessions for good, [revoke them](#revoke-session).
 
 ```typescript
 const delegation = await client.agentVault().delegations.delete("<machine-identity-id>");
