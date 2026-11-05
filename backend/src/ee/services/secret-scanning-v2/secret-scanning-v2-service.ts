@@ -738,6 +738,7 @@ export const secretScanningV2ServiceFactory = ({
     if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
     let resourceExternalId: string | undefined;
+    let resourceName: string | undefined;
 
     if (resourceId) {
       const resource = await secretScanningV2DAL.resources.findOne({ id: resourceId, dataSourceId });
@@ -747,6 +748,7 @@ export const secretScanningV2ServiceFactory = ({
         });
       }
       resourceExternalId = resource.externalId;
+      resourceName = resource.name;
     }
 
     await secretScanningV2Queue.queueDataSourceFullScan(
@@ -761,7 +763,7 @@ export const secretScanningV2ServiceFactory = ({
       }
     );
 
-    return dataSource as TSecretScanningDataSource;
+    return { dataSource: dataSource as TSecretScanningDataSource, resourceName };
   };
 
   // Adds one resource by name, or every resource the connection can access when no name is given.

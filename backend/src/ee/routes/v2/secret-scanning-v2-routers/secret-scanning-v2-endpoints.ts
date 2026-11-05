@@ -437,10 +437,10 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
-      const dataSource = (await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
+      const { dataSource } = await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
         { type, dataSourceId },
         req.permission
-      )) as T;
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -482,10 +482,10 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId, resourceId } = req.params;
 
-      const dataSource = (await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
+      const { dataSource, resourceName } = await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
         { type, dataSourceId, resourceId },
         req.permission
-      )) as T;
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -496,7 +496,8 @@ export const registerSecretScanningEndpoints = <
             type,
             dataSourceId,
             dataSourceName: dataSource.name,
-            resourceId
+            resourceId,
+            resourceName
           }
         }
       });

@@ -5837,7 +5837,7 @@ interface SecretScanningDataSourceDeleteEvent {
 
 interface SecretScanningDataSourceTriggerScanEvent {
   type: EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN;
-  metadata: TTriggerSecretScanningDataSourceDTO & { dataSourceName: string };
+  metadata: TTriggerSecretScanningDataSourceDTO & { dataSourceName: string; resourceName?: string };
 }
 
 interface SecretScanningDataSourceScanEvent {
