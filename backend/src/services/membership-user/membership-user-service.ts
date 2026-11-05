@@ -103,7 +103,7 @@ type TMembershipUserServiceFactoryDep = {
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "deleteItemsByKeyIn">;
+  keyStore: Pick<TKeyStoreFactory, "incrementSeededWithExpiry">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
 };

@@ -10,7 +10,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { conditionsMatcher } from "@app/lib/casl";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -24,12 +24,15 @@ import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import { TFolderGrant, TFolderGrantActor, TFolderGrantTypeInput, TResolvedFolder } from "./folder-permission-types";
 
 export const invalidateFolderAccessCache = async (
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "deleteItemsByKeyIn">,
+  keyStore: Pick<TKeyStoreFactory, "incrementSeededWithExpiry">,
   projectId: string
 ) => {
   try {
-    const keys = await keyStore.getKeysByPattern(KeyStorePrefixes.ProjectFolderAccessPattern(projectId));
-    if (keys.length) await keyStore.deleteItemsByKeyIn(keys);
+    await keyStore.incrementSeededWithExpiry(
+      KeyStorePrefixes.ProjectFolderAccessRosterVersion(projectId),
+      Date.now(),
+      KeyStoreTtls.ProjectFolderAccessRosterVersionTtlSeconds
+    );
   } catch (err) {
     logger.warn({ err, projectId }, "invalidateFolderAccessCache: failed to clear folder access roster cache");
   }
@@ -143,7 +146,8 @@ export const assertRecursiveFolderIsRoot = (folder: TResolvedFolder) => {
 
 export const assertManageFolderSubtree = (
   callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
-  folder: TResolvedFolder
+  folder: TResolvedFolder,
+  operation: "apply" | "remove" = "apply"
 ) => {
   const subtreeManageAccess = createMongoAbility<ProjectPermissionSet>(
     [
@@ -159,7 +163,10 @@ export const assertManageFolderSubtree = (
   if (!isValid) {
     throw new ForbiddenRequestError({
       name: "RecursiveFolderAccessNotAllowed",
-      message: `Applying folder access to subfolders requires permission to manage access on '${folder.path}' and every folder below it in environment with slug '${folder.environmentSlug}'. Grant access on this folder only, or ask someone who can manage access on all of its subfolders.`
+      message:
+        operation === "remove"
+          ? `Removing folder access that applies to subfolders requires permission to manage access on '${folder.path}' and every folder below it in environment with slug '${folder.environmentSlug}'. Ask someone who can manage access on all of its subfolders to remove it.`
+          : `Applying folder access to subfolders requires permission to manage access on '${folder.path}' and every folder below it in environment with slug '${folder.environmentSlug}'. Grant access on this folder only, or ask someone who can manage access on all of its subfolders.`
     });
   }
 };

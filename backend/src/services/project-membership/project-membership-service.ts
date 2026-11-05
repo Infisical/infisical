@@ -83,7 +83,7 @@ type TProjectMembershipServiceFactoryDep = {
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "deleteItemsByKeyIn">;
+  keyStore: Pick<TKeyStoreFactory, "incrementSeededWithExpiry">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 

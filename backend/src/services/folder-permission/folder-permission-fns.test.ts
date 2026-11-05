@@ -221,4 +221,12 @@ describe("assertManageFolderSubtree", () => {
 
     expect(() => assertManageFolderSubtree(caller, folder("/a"))).toThrow(/'\/a' and every folder below it.*'dev'/);
   });
+
+  test("tells the caller who can remove the grant when it is a removal", () => {
+    const caller = abilityFor([{ role: ProjectMembershipRole.Member, permissions: [] }]);
+
+    expect(() => assertManageFolderSubtree(caller, folder("/"), "remove")).toThrow(
+      /^Removing folder access that applies to subfolders.*'\/' and every folder below it.*'dev'.*to remove it\.$/
+    );
+  });
 });

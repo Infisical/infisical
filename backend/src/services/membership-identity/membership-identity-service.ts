@@ -58,7 +58,7 @@ type TMembershipIdentityServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore" | "getKeysByPattern" | "deleteItemsByKeyIn">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore" | "incrementSeededWithExpiry">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<

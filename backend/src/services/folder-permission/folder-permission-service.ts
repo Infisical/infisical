@@ -7,6 +7,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -61,7 +62,7 @@ type TFolderPermissionServiceFactoryDep = {
     | "isProjectAdmin"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "getItemPrimary" | "setItemWithExpiry">;
 };
 
 type TFolderActorType = ActorType.USER | ActorType.IDENTITY;
@@ -211,6 +212,7 @@ export const folderPermissionServiceFactory = ({
           message: `No folder access found for ${targetLabel(target).toLowerCase()} with ID '${target.actorId}' on the folder at path '${folder.path}' in environment with slug '${folder.environmentSlug}'`
         });
       }
+      if (existing.isRecursiveFolder) assertManageFolderSubtree(callerPermission, folder, "remove");
 
       const doc = await additionalPrivilegeDAL.deleteById(existing.id, tx);
       await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
@@ -220,7 +222,7 @@ export const folderPermissionServiceFactory = ({
     return { folderAccess: toFolderGrant(grant, projectId, folder) };
   };
 
-  const $getFolderAccess = <TActor extends TProjectMemberActor>(
+  const $getFolderAccess = async <TActor extends TProjectMemberActor>(
     {
       projectId,
       orgId,
@@ -232,11 +234,24 @@ export const folderPermissionServiceFactory = ({
   ) => {
     // if we don't take the search in consideration, it can create a cache key that does not have anything.
     const pageKey = `${page.offset}:${page.limit}:${page.search ?? ""}`;
+    const dataFetcher = async () => {
+      const { data, totalCount } = await fetchMembers();
+      return buildFolderAccess(data, folder, totalCount);
+    };
+
+    let rosterVersion: string;
+    try {
+      rosterVersion =
+        (await keyStore.getItemPrimary(KeyStorePrefixes.ProjectFolderAccessRosterVersion(projectId))) ?? "0";
+    } catch (err) {
+      logger.warn({ err, projectId }, "Failed to read the folder access roster version, skipping the roster cache");
+      return dataFetcher();
+    }
 
     return withCacheFingerprint<TCachedFolderAccess<TActor>>({
       keyStore,
       dataKey: KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, actorType, pageKey),
-      markerKey: KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, actorType, pageKey),
+      markerKey: KeyStorePrefixes.ProjectFolderAccessMarker(projectId, rosterVersion, folder.id, actorType, pageKey),
       markerTtlSeconds: KeyStoreTtls.ProjectFolderAccessMarkerTtlSeconds,
       dataTtlSeconds: KeyStoreTtls.ProjectFolderAccessDataTtlSeconds,
       // the key is by folder id but the granting roles are evaluated against the folder's path, and a
@@ -245,10 +260,7 @@ export const folderPermissionServiceFactory = ({
         const fingerprint = await folderPermissionDAL.getFolderAccessFingerprint({ projectId, orgId, actorType });
         return `${fingerprint}|${folder.environmentSlug}|${folder.path}`;
       },
-      dataFetcher: async () => {
-        const { data, totalCount } = await fetchMembers();
-        return buildFolderAccess(data, folder, totalCount);
-      },
+      dataFetcher,
       reviver: reviveFolderAccess
     });
   };

@@ -1,3 +1,7 @@
+import { randomUUID } from "node:crypto";
+
+import jwt from "jsonwebtoken";
+
 import {
   AccessScope,
   OrgMembershipRole,
@@ -20,7 +24,7 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -107,6 +111,33 @@ const createProjectUser = async (role: ProjectMembershipRole) => {
     email: username,
     projectMembershipId: projectMembership.id
   };
+};
+
+const createUserSessionHeaders = async (userId: string) => {
+  const sessionId = randomUUID();
+  await testDb(TableName.AuthTokenSession).insert({
+    id: sessionId,
+    userId,
+    ip: "127.0.0.1",
+    userAgent: "e2e-folder-access",
+    accessVersion: 1,
+    refreshVersion: 1,
+    lastUsed: new Date()
+  } as never);
+
+  const token = jwt.sign(
+    {
+      authTokenType: AuthTokenType.ACCESS_TOKEN,
+      userId,
+      tokenVersionId: sessionId,
+      authMethod: AuthMethod.EMAIL,
+      organizationId: orgId,
+      accessVersion: 1
+    },
+    process.env.AUTH_SECRET as string,
+    { expiresIn: 3600 }
+  );
+  return { authorization: `Bearer ${token}` };
 };
 
 const deleteProjectUser = async (id: string) => {
@@ -301,6 +332,101 @@ describe("User folder access CRUD", () => {
       expect(deleteRes.statusCode).toBe(200);
     } finally {
       await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).del();
+    }
+  });
+
+  test("revoking a recursive root grant requires managing access on every subfolder", async () => {
+    const rootTarget = { environmentSlug: seedData1.environment.slug, secretPath: "/" };
+    const rootManager = await createProjectUser(ProjectMembershipRole.Member);
+    const rootManagerHeaders = await createUserSessionHeaders(rootManager.userId);
+    const createdGrantIds: string[] = [];
+
+    try {
+      const managerGrantRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(rootManager.userId),
+        headers: authHeaders(),
+        body: { ...rootTarget, permission: SecretFolderRole.FullAccess }
+      });
+      expect(managerGrantRes.statusCode).toBe(200);
+      createdGrantIds.push(managerGrantRes.json().folderAccess.id);
+
+      const recursiveRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...rootTarget, permission: SecretFolderRole.Read, isPermissionRecursive: true }
+      });
+      expect(recursiveRes.statusCode).toBe(200);
+      const recursiveGrantId: string = recursiveRes.json().folderAccess.id;
+      createdGrantIds.push(recursiveGrantId);
+
+      const deleteRes = await testServer.inject({
+        method: "DELETE",
+        url: folderAccessUrl(),
+        headers: rootManagerHeaders,
+        body: { ...rootTarget }
+      });
+      expect(deleteRes.statusCode).toBe(403);
+      expect(deleteRes.json().error).toBe("RecursiveFolderAccessNotAllowed");
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: recursiveGrantId }).first()).toBeDefined();
+    } finally {
+      await testDb(TableName.AdditionalPrivilege).whereIn("id", createdGrantIds).del();
+      await testDb(TableName.AuthTokenSession).where({ userId: rootManager.userId }).del();
+      await deleteProjectUser(rootManager.userId);
+    }
+  });
+
+  test("the folder access sheet shows a project member right after they are added and drops them right after removal", async () => {
+    const username = `folder-access-roster-${alphaNumericNanoId(8)}@example.com`.toLowerCase();
+    const [user] = await testDb(TableName.Users)
+      .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+      .returning("*");
+    const [orgMembership] = await testDb(TableName.Membership)
+      .insert({
+        scope: AccessScope.Organization,
+        scopeOrgId: orgId,
+        actorUserId: user.id,
+        status: OrgMembershipStatus.Accepted,
+        isActive: true
+      })
+      .returning("*");
+    await testDb(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
+    const listedUserIds = async () => {
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/projects/${projectId}/secret-folder-access/users`,
+        headers: authHeaders(),
+        query: { ...folderTarget, search: username }
+      });
+      expect(res.statusCode).toBe(200);
+      const body: { users: { userId: string }[]; usersWithoutAccess: { userId: string }[] } = res.json();
+      return [...body.users, ...body.usersWithoutAccess].map(({ userId }) => userId);
+    };
+
+    try {
+      expect(await listedUserIds()).toEqual([]);
+
+      const addRes = await testServer.inject({
+        method: "POST",
+        url: `/api/v1/projects/${projectId}/memberships`,
+        headers: authHeaders(),
+        body: { usernames: [username] }
+      });
+      expect(addRes.statusCode).toBe(200);
+      expect(await listedUserIds()).toEqual([user.id]);
+
+      const removeRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/projects/${projectId}/memberships`,
+        headers: authHeaders(),
+        body: { usernames: [username] }
+      });
+      expect(removeRes.statusCode).toBe(200);
+      expect(await listedUserIds()).toEqual([]);
+    } finally {
+      await deleteProjectUser(user.id);
     }
   });
 

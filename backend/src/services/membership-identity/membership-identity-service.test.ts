@@ -104,8 +104,7 @@ const createService = ({
     } as never,
     keyStore: {
       sortedSetRangeByScore: vi.fn().mockResolvedValue([]),
-      getKeysByPattern: vi.fn().mockResolvedValue([]),
-      deleteItemsByKeyIn: vi.fn().mockResolvedValue(0)
+      incrementSeededWithExpiry: vi.fn().mockResolvedValue(1)
     } as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
