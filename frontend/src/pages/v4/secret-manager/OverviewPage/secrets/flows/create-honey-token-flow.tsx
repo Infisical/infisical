@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
@@ -11,10 +11,22 @@ import { Field, FieldError } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Select } from "@app/components/v4/ui/select";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Textarea } from "@app/components/v4/ui/textarea";
+import {
+  OrgPermissionHoneyTokenActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import { isInfisicalCloud } from "@app/helpers/platform";
+import {
+  AwsHoneyTokenDeploymentUnavailableReason,
+  HoneyTokenManagedBy
+} from "@app/hooks/api/honeyTokens/enums";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
+import { useOrgId, useOrgPermission } from "../../../../access/permissions";
+import { useV4Adapter } from "../../../../data/adapters";
 import { InfoTip } from "./secret-rotation/fields";
 import { DiscardDialog, secretsAt } from "./shared";
 import type { AddFlowProps } from "./types";
@@ -32,9 +44,10 @@ export const HONEY_TOKEN_STEPS = [
   {
     key: "configuration",
     name: "Configuration",
-    shortDescription: "Environment",
+    shortDescription: "Environment and AWS account",
     title: "Choose where to plant it",
-    subtitle: "Select the environment where Infisical should store the decoy credentials."
+    subtitle:
+      "Select the environment for the decoy credentials and the AWS account that creates them."
   },
   {
     key: "mapping",
@@ -60,13 +73,14 @@ export const honeyTokenSchema = z.object({
   name: slugSchema({ field: "Name" }),
   description: z.string().trim().max(256, "Cannot exceed 256 characters").nullish(),
   environment: z.string({ required_error: "Required" }).min(1, "Required"),
+  managedBy: z.nativeEnum(HoneyTokenManagedBy, { required_error: "Select an AWS account" }),
   secretsMapping: z.object({
     accessKeyId: z.string().trim().min(1, "Access Key ID secret name required"),
     secretAccessKey: z.string().trim().min(1, "Secret Access Key secret name required")
   })
 });
 export const HONEY_TOKEN_STEP_FIELDS = [
-  ["environment"],
+  ["environment", "managedBy"],
   ["secretsMapping"],
   ["name", "description"]
 ];
@@ -174,7 +188,13 @@ export function CreateHoneyTokenFlow({
   resources,
   onCreate
 }: AddFlowProps) {
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<{
+    environment: string;
+    managedBy?: HoneyTokenManagedBy;
+    secretsMapping: typeof DEFAULT_MAPPING;
+    name: string;
+    description: string;
+  }>({
     environment: "",
     secretsMapping: { ...DEFAULT_MAPPING },
     name: "",
@@ -184,6 +204,74 @@ export function CreateHoneyTokenFlow({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
+  const [accountChosen, setAccountChosen] = useState(false);
+  const orgId = useOrgId();
+  const { permission } = useOrgPermission();
+  const canSetUpAccount = permission.can(
+    OrgPermissionHoneyTokenActions.Setup,
+    OrgPermissionSubjects.HoneyTokens
+  );
+  const deployment = useV4Adapter("secrets").useHoneyTokenDeploymentOptions({
+    refetchOnWindowFocus: "always"
+  });
+  const optionFor = (managedBy: HoneyTokenManagedBy) =>
+    deployment.data?.find((option) => option.managedBy === managedBy);
+  const isAvailable = (managedBy: HoneyTokenManagedBy) => {
+    const option = optionFor(managedBy);
+    return Boolean(option && !option.unavailableReason);
+  };
+  const organizationReady = isAvailable(HoneyTokenManagedBy.Organization);
+  const instanceReady = isInfisicalCloud() && isAvailable(HoneyTokenManagedBy.Instance);
+  useEffect(() => {
+    if (!deployment.data || accountChosen) return;
+    if (organizationReady)
+      setDraft((current) => ({ ...current, managedBy: HoneyTokenManagedBy.Organization }));
+    else if (instanceReady)
+      setDraft((current) => ({ ...current, managedBy: HoneyTokenManagedBy.Instance }));
+  }, [deployment.data, accountChosen, organizationReady, instanceReady]);
+  let organizationDescription =
+    "Ask an organization admin to connect your organization's AWS account to use this option.";
+  if (organizationReady)
+    organizationDescription =
+      "Infisical creates the decoy credentials in the AWS account your organization connected.";
+  else if (canSetUpAccount)
+    organizationDescription = "Connect your organization's AWS account to use this option.";
+  const accountChoices = [
+    ...(isInfisicalCloud()
+      ? [
+          {
+            value: HoneyTokenManagedBy.Instance,
+            label: "Infisical managed",
+            description: isAvailable(HoneyTokenManagedBy.Instance)
+              ? "Infisical creates the decoy credentials in an Infisical-managed AWS account. No setup needed."
+              : "Temporarily unavailable. Contact support if this persists.",
+            disabled: !isAvailable(HoneyTokenManagedBy.Instance)
+          }
+        ]
+      : []),
+    {
+      value: HoneyTokenManagedBy.Organization,
+      label: "Self hosted",
+      description: organizationDescription,
+      disabled: !organizationReady
+    }
+  ];
+  const setupLabel =
+    optionFor(HoneyTokenManagedBy.Organization)?.unavailableReason ===
+    AwsHoneyTokenDeploymentUnavailableReason.StackVerificationPending
+      ? "Finish AWS account setup"
+      : "Connect AWS account";
+  const accountError = () => {
+    if (!deployment.data)
+      return deployment.error
+        ? "Couldn't load where this honey token can be created."
+        : "Still loading where this honey token can be created. Try again in a moment.";
+    if (draft.managedBy === HoneyTokenManagedBy.Organization && !organizationReady)
+      return instanceReady
+        ? "Finish connecting your AWS account, or choose Infisical managed."
+        : "Finish connecting your AWS account to create a honey token.";
+    return undefined;
+  };
   const patch = (value: Partial<typeof draft>) => {
     setDraft((current) => ({ ...current, ...value }));
     setDirty(true);
@@ -244,6 +332,7 @@ export function CreateHoneyTokenFlow({
           kind: "honey",
           name,
           provider: "AWS",
+          managedBy: draft.managedBy,
           status: "active",
           description: draft.description.trim(),
           mappedKeys: mapped
@@ -271,6 +360,13 @@ export function CreateHoneyTokenFlow({
   };
   const next = () => {
     if (!validate(step)) return;
+    if (step === 0) {
+      const message = accountError();
+      if (message) {
+        setErrors({ managedBy: message });
+        return;
+      }
+    }
     if (step === 1 && !checkMapping()) return;
     if (step === HONEY_TOKEN_STEPS.length - 1) {
       submit();
@@ -353,6 +449,56 @@ export function CreateHoneyTokenFlow({
                 }}
               />
             </Field>
+          )}
+          {current.key === "configuration" && (
+            <Stack gap={8}>
+              <Field
+                label="AWS account"
+                description={
+                  accountChoices.find((choice) => choice.value === draft.managedBy)?.description
+                }
+                error={errors.managedBy}
+              >
+                <Select
+                  label="AWS account"
+                  placeholder="Select an AWS account..."
+                  options={accountChoices}
+                  value={draft.managedBy}
+                  invalid={Boolean(errors.managedBy)}
+                  onChange={(value) => {
+                    setAccountChosen(true);
+                    patch({ managedBy: value as HoneyTokenManagedBy });
+                    setErrors({});
+                  }}
+                />
+              </Field>
+              {deployment.data && !organizationReady && canSetUpAccount && (
+                <Inline>
+                  <Button asChild variant="link" size="sm" iconRight="external">
+                    <a
+                      href={`/organizations/${orgId}/projects/secret-management/product-settings`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {setupLabel}
+                    </a>
+                  </Button>
+                </Inline>
+              )}
+              {Boolean(deployment.error) && !deployment.data && (
+                <Inline>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    icon="sync"
+                    onClick={() => deployment.refetch()}
+                  >
+                    Retry
+                  </Button>
+                </Inline>
+              )}
+            </Stack>
           )}
           {current.key === "mapping" && (
             <HoneyTokenMappingFields

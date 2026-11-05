@@ -1,4 +1,4 @@
-import { HoneyTokenStatus } from "@app/hooks/api/honeyTokens/enums";
+import { HoneyTokenManagedBy, HoneyTokenStatus } from "@app/hooks/api/honeyTokens/enums";
 import { SecretRotationStatus } from "@app/hooks/api/secretRotationsV2/enums";
 import type {
   TSecretRotationV2,
@@ -256,6 +256,15 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
       error: null
     };
   },
+  useHoneyTokenDeploymentOptions: () => ({
+    data: [
+      { managedBy: HoneyTokenManagedBy.Instance, unavailableReason: null },
+      { managedBy: HoneyTokenManagedBy.Organization, unavailableReason: null }
+    ],
+    isPending: false,
+    error: null,
+    refetch: () => undefined
+  }),
   useCreateHoneyToken: demoMutation((store, dto) => {
     const timestamp = now();
     const honeyToken = {
@@ -268,6 +277,7 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
       createdAt: timestamp,
       updatedAt: timestamp,
       type: dto.type,
+      config: dto.config,
       secretsMapping: dto.secretsMapping,
       environment: envOf(dto.environment),
       folder: { path: dto.secretPath }

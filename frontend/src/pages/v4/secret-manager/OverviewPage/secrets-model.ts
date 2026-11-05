@@ -1,3 +1,5 @@
+import type { HoneyTokenManagedBy } from "@app/hooks/api/honeyTokens/enums";
+
 export type ResourceApplyOptions = { shouldOverwrite?: boolean };
 
 export type ResourceKind =
@@ -94,6 +96,7 @@ export type Resource =
   | (ResourceBase & {
       kind: "honey";
       provider: string;
+      managedBy?: HoneyTokenManagedBy;
       status: "active" | "triggered" | "revoked";
       description: string;
       mappedKeys: string[];
