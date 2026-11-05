@@ -500,7 +500,7 @@ Store your Cursor service account API key and the machine identity's client ID a
 
 ### Add the spawn hook
 
-The controller runs the spawn hook each time it claims a request. The hook logs in as the machine identity, creates a session with [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create), and starts a worker pod. It passes the worker two tokens in a Secret that the pod owns: the Infisical session token, and the Cursor token that the controller got for this run. Kubernetes deletes the Secret with the pod.
+The controller runs the spawn hook each time it claims a request. The hook logs in as the machine identity, creates a session with the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint, and starts a worker pod. It passes the worker two tokens in a Secret that the pod owns: the Infisical session token, and the Cursor token that the controller got for this run. Kubernetes deletes the Secret with the pod.
 
 Save this script as `spawn-worker.sh`:
 
@@ -560,6 +560,12 @@ spec:
         allowPrivilegeEscalation: false
         capabilities:
           drop: ["ALL"]
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          memory: 4Gi
       volumeMounts:
         - name: tokens
           mountPath: /var/run/worker
@@ -592,7 +598,7 @@ then
 fi
 ```
 
-Replace `<access-bundle-name>` with your access bundle's name and `<worker-image>` with the worker's image. If you self-host Infisical, replace `https://app.infisical.com` with the address of your instance.
+Replace `<access-bundle-name>` with your access bundle's name and `<worker-image>` with the worker's image. If you self-host Infisical, replace `https://app.infisical.com` with the address of your instance. Size the worker's `resources` for the builds and tests your agents run.
 
 <Tip>
 To give runs different access, such as by repository or by user, choose the access bundle in the hook using `CURSOR_REPO_NAME`, the repository the run works on, or `CURSOR_USER_ID`, the ID of the Cursor user who started the run. For example, add this before the session request:
