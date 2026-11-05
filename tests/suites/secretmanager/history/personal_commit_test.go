@@ -144,4 +144,41 @@ func TestFolderCommit_PersonalOverride(t *testing.T) {
 			require.NotContains(t, string(changes.Body), personalValue)
 		}
 	})
+	for name, renames := range map[string][][2]string{
+		"B to C then A to B": {{"B", "C"}, {"A", "B"}},
+	} {
+		t.Run("should restore every reference when a rollback undoes chained renames "+name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			tn := h.NewTenant(t)
+			proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+			owner := proj.NewUser(t, fixture.WithPrincipalName("owner"))
+			secretmanager.CreateSecret(t, proj, "dev", "A", "one")
+			secretmanager.CreateSecret(t, proj, "dev", "B", "two")
+			secretmanager.CreateSecret(t, proj, "dev", "FROM_A", "${A}")
+			secretmanager.CreateSecret(t, proj, "dev", "FROM_B", "${B}")
+			secretmanager.CreateSecret(t, proj, "dev", "FROM_A", "owner-${A}", secretmanager.As(owner), secretmanager.WithPersonal())
+			secretmanager.CreateSecret(t, proj, "dev", "FROM_B", "owner-${B}", secretmanager.As(owner), secretmanager.WithPersonal())
+			target := headCommit(t, proj, "dev", "/")
+			for _, rename := range renames {
+				res, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), rename[0], api.UpdateSecretV4JSONRequestBody{
+					ProjectId: proj.ID, Environment: "dev", SecretPath: new("/"), NewSecretName: new(rename[1]),
+				})
+				require.NoError(t, err)
+				requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+			}
+
+			// Action
+			res, err := rollback(t, tn.Admin, proj, "dev", folderID(t, proj, "dev", "/"), target.ID, false)
+
+			// Assert
+			require.NoError(t, err)
+			requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+			require.Equal(t, "one", secretmanager.GetSecret(t, proj, "dev", "FROM_A").Value)
+			require.Equal(t, "two", secretmanager.GetSecret(t, proj, "dev", "FROM_B").Value)
+			require.Equal(t, "owner-one", secretmanager.GetSecret(t, proj, "dev", "FROM_A", secretmanager.As(owner), secretmanager.WithPersonal()).Value)
+			require.Equal(t, "owner-two", secretmanager.GetSecret(t, proj, "dev", "FROM_B", secretmanager.As(owner), secretmanager.WithPersonal()).Value)
+		})
+	}
 }
