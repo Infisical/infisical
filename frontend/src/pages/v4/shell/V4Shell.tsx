@@ -8,6 +8,7 @@ import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/to
 
 import { useV4Session } from "../data/session/contract";
 import { V4_DEMO_ORG_ID } from "../mode";
+import { useResolveV4Href } from "../resolveV4Href";
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
 import { resolveShellLocation } from "./location";
@@ -34,7 +35,7 @@ const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) =
     event.altKey ||
     anchor.target ||
     anchor.origin !== window.location.origin ||
-    !anchor.pathname.startsWith("/v4/")
+    !/^\/(v4|organizations)\//.test(anchor.pathname)
   ) {
     return;
   }
@@ -48,6 +49,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const session = useV4Session();
   const chrome = useShellChrome();
+  const resolve = useResolveV4Href();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const base = `/v4/organizations/${orgId}`;
   const { selectedTab } = location.search as { selectedTab?: string };
@@ -56,7 +58,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     selectedTab,
     session.organization.isSubOrganization
   );
-  const go = (href: string) => navigate({ href });
+  const go = (href: string) => navigate({ href: resolve(href) });
   const toSidebar = (
     level: string,
     sections: readonly ShellNavSection[],
@@ -73,7 +75,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
           ? { level: opens[item.id] }
           : {
               link: {
-                to: `${base}${item.path}`,
+                to: resolve(`${base}${item.path}`),
                 search: item.search,
                 activeOptions: {
                   exact: item.id === "home" || item.id === "projects",
@@ -131,7 +133,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const orgCrumb: BreadcrumbCrumb = {
     label: session.organization.name,
     media: <Icon name="building" />,
-    href: `${base}/projects`,
+    href: resolve(`${base}/projects`),
     switcher: {
       label: "Switch organization",
       searchable: true,
@@ -165,7 +167,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const productCrumb: BreadcrumbCrumb | undefined = product && {
     label: product.label,
     media: <Icon name={product.icon} />,
-    href: `${base}${productHome(product)}`,
+    href: resolve(`${base}${productHome(product)}`),
     switcher: {
       label: "Switch product",
       options: products.map((option) => ({
@@ -183,7 +185,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       ? {
           label: project?.name ?? at.projectId,
           mono: true,
-          href: `${base}${projectBase(product.type, at.projectId)}/overview`,
+          href: resolve(`${base}${projectBase(product.type, at.projectId)}/overview`),
           switcher: {
             label: "Switch project",
             options: session.projects
@@ -199,7 +201,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       : undefined;
   const breadcrumb = [
     orgCrumb,
-    ...(at.level === "settings" ? [{ label: "Settings", href: `${base}/settings` }] : []),
+    ...(at.level === "settings" ? [{ label: "Settings", href: resolve(`${base}/settings`) }] : []),
     ...(productCrumb ? [productCrumb] : []),
     ...(projectCrumb ? [projectCrumb] : []),
     ...(at.current ? [{ label: at.current.label }] : [])

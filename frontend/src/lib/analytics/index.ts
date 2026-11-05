@@ -5,7 +5,8 @@ import {
   OrganizationAnalyticsEvent,
   OrganizationAnalyticsEventMap,
   SignupFlowCompletedProperties,
-  ThemePreferenceChangedProperties
+  ThemePreferenceChangedProperties,
+  UiVersion
 } from "./events";
 
 export const analytics = {
@@ -20,6 +21,20 @@ export const analytics = {
   captureOnboardingDocumentationClicked() {
     const telemetry = new Telemetry().getInstance();
     telemetry.capture(AnalyticsEvent.OnboardingDocumentationClicked);
+  },
+  registerUiVersion(uiVersion: UiVersion) {
+    try {
+      new Telemetry().getInstance().api?.register({ ui_version: uiVersion });
+    } catch (error) {
+      console.error("PostHog", error);
+    }
+  },
+  unregisterUiVersion() {
+    try {
+      new Telemetry().getInstance().api?.unregister("ui_version");
+    } catch (error) {
+      console.error("PostHog", error);
+    }
   },
   captureForOrganization<Event extends OrganizationAnalyticsEvent>(
     event: Event,

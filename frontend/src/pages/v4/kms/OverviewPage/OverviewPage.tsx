@@ -261,9 +261,13 @@ export const OverviewPage = () => {
             renderMenu: (r) => (
               <KeyMenu
                 item={r}
-                onRotate={() => rotateKey.mutateAsync({ keyId: r.id, projectId })}
+                onRotate={() =>
+                  rotateKey.mutateAsync({ keyId: r.id, projectId }).catch(() => undefined)
+                }
                 onToggle={() => {
-                  updateKey.mutateAsync({ keyId: r.id, projectId, isDisabled: !r.isDisabled });
+                  updateKey
+                    .mutateAsync({ keyId: r.id, projectId, isDisabled: !r.isDisabled })
+                    .catch(() => undefined);
                   setSelected((current) => current.filter((id) => id !== r.id));
                 }}
               />

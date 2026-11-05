@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { BookOpen, Github, LogOut, Mail, MessagesSquare } from "lucide-react";
 
-import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
 import { type Announcement, Announcements } from "@app/components/v4/ui/announcements";
 import type { SidebarHelp } from "@app/components/v4/ui/sidebar";
 import type { TopBarAccount } from "@app/components/v4/ui/top-bar";
 
 import { useV4Session } from "../data/session/contract";
-import { useClearThemeOverride } from "../useV4Theme";
+import { useV4ThemeChoice } from "../useV4Theme";
 
 const announcementItems: Announcement[] = [
   {
@@ -27,8 +26,7 @@ const announcementItems: Announcement[] = [
 
 export const useShellChrome = () => {
   const { user } = useV4Session();
-  const { theme, setTheme } = useTheme();
-  const clearThemeOverride = useClearThemeOverride();
+  const { theme, setTheme } = useV4ThemeChoice("profile-menu");
   const [unseen, setUnseen] = useState(() => announcementItems.map((item) => item.id));
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const openAnnouncements = () => setAnnouncementsOpen(true);
@@ -39,13 +37,7 @@ export const useShellChrome = () => {
       { label: "Personal settings", icon: "user" },
       { label: "Invite users", icon: "user-plus" }
     ],
-    theme: {
-      value: theme,
-      onChange: (value) => {
-        setTheme(value, "profile-menu");
-        clearThemeOverride();
-      }
-    },
+    theme: { value: theme, onChange: setTheme },
     endItems: [
       { label: "Copy token", icon: "copy" },
       { type: "separator" },
