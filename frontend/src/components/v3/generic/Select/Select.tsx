@@ -30,8 +30,6 @@ function Select({
     },
     [controlledOpen, onOpenChange]
   );
-  // Inside a form, Radix's hidden native select reports "" when the value is set before its
-  // option mounts (e.g. async-loaded items), which would wipe the field. Items can't be "".
   const handleValueChange = React.useCallback(
     (nextValue: string) => {
       if (nextValue === "") return;
