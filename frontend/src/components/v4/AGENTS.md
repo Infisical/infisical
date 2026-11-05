@@ -1,6 +1,6 @@
 # v4
 
-This folder is the Infisical 2.0 component source of truth. It is incubating. Product code must not import it. The only UI importer outside this folder is `src/pages/design-system`. Dedicated generation and introspection scripts may read the typed metadata; product code remains fenced from all v4 imports.
+This folder is the v4 component source of truth. It is incubating. Product code must not import it. The only UI importer outside this folder is `src/pages/design-system`. Dedicated generation and introspection scripts may read the typed metadata; product code remains fenced from all v4 imports.
 
 For the contribution workflow, read [Infisical UI](skills/infisical-ui/SKILL.md). Its [canonical rules](skills/infisical-ui/rules.json) also drive the workbench Rules page. Every rule, shared or component, has a `detect` field: `lint` names a check in `frontend/scripts/check-v4.ts`, `test` names the test that exercises it, and `review` means only a reader of the change will catch a break. Generation fails on a rule without one.
 
@@ -28,7 +28,7 @@ Use only the composition needed to demonstrate the component. Do not add synthet
 
 ## Icons
 
-The Infisical 2.0 line set (52 glyphs from #8691, ui/icon-data.ts) is the primary icon set: use `<Icon name="..." />`. Use Lucide (`lucide-react`) only for glyphs the set lacks (Kbd keys, the unsorted sort arrows and similar), through `<Icon icon={...} />` or a direct import, drawn at `stroke-icon` (1.7) and the size tokens so it blends in. Do not hand-draw other SVG icons or import another icon library.
+The v4 line set (52 glyphs from #8691, ui/icon-data.ts) is the primary icon set: use `<Icon name="..." />`. Use Lucide (`lucide-react`) only for glyphs the set lacks (Kbd keys, the unsorted sort arrows and similar), through `<Icon icon={...} />` or a direct import, drawn at `stroke-icon` (1.7) and the size tokens so it blends in. Do not hand-draw other SVG icons or import another icon library.
 
 ## System rules
 

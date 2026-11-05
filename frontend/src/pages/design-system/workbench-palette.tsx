@@ -135,7 +135,7 @@ export const WorkbenchPalette = ({ open, onOpenChange, toggleTheme, groups }: Pa
       open={open}
       onOpenChange={onOpenChange}
       label="Search the design system"
-      footer="Infisical 2.0 design system"
+      footer="Infisical v4 design system"
       recent={recent}
       groups={[
         ...index.pageGroups,

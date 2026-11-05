@@ -738,8 +738,8 @@
     },
     {
       "id": "one-icon-set",
-      "title": "Draw icons from the Infisical 2.0 set first",
-      "instruction": "Render icons with the v4 Icon component and one of the 52 Infisical 2.0 names. Use a Lucide icon (Icon icon={...} or a direct lucide-react import) only for a glyph the set lacks, sized by the size tokens at stroke-icon (1.7). Do not import another icon library or hand-draw SVG icons.",
+      "title": "Draw icons from the v4 set first",
+      "instruction": "Render icons with the v4 Icon component and one of the 52 v4 icon names. Use a Lucide icon (Icon icon={...} or a direct lucide-react import) only for a glyph the set lacks, sized by the size tokens at stroke-icon (1.7). Do not import another icon library or hand-draw SVG icons.",
       "good": "<Icon name=\"chev-down\" /> inside a Select trigger, sized by --v4-size-icon; <Icon icon={ArrowUpDown} /> for an unsorted column, which the set lacks.",
       "avoid": "A Lucide ChevronDown where the set has chev-down, an import from react-icons or @radix-ui/react-icons, or an inline <svg> path drawn by hand.",
       "detect": {

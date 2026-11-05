@@ -14,7 +14,7 @@ export const kbdDefinition = {
     "Existing composed Kbd children and native element refs remain supported.",
     "Cap sizes are tokens: md is size-kbd-md (20px), sm is size-kbd-sm (18px) and caps in a tooltip are size-kbd-xs (16px). A single-glyph cap (Command, K, an arrow) is a square of that size; a longer label (Ctrl, Shift, Esc) keeps the height and grows with equal side padding, never narrower than the square.",
     "Inside a control the last cap sits as far from the control's inner right edge as from its top and bottom: (inner height minus cap height) / 2. The host slot sets this once (Input trailing slot, Button, menu and command rows), never an example.",
-    "Modifier, Enter, Tab, Backspace and arrow glyphs are icons, never text symbols. The custom 2.0 set has none of them, so they use Lucide fallbacks at the shared stroke."
+    "Modifier, Enter, Tab, Backspace and arrow glyphs are icons, never text symbols. The custom v4 set has none of them, so they use Lucide fallbacks at the shared stroke."
   ],
   accessibility: [
     "The shortcut group announces key names rather than symbol glyphs.",

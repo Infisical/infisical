@@ -187,7 +187,7 @@ export const v4Checks: readonly V4Check[] = [
     id: "icon-source",
     rule: "one-icon-set",
     message:
-      "Icons come from the Infisical 2.0 set through the v4 Icon component, with Lucide only for glyphs the set lacks. Do not import another icon library.",
+      "Icons come from the v4 set through the v4 Icon component, with Lucide only for glyphs the set lacks. Do not import another icon library.",
     appliesTo: isAuthored,
     markup: [
       /from\s+["'](?:react-icons[^"']*|@radix-ui\/react-icons|@heroicons\/[^"']+|@tabler\/icons[^"']*|@phosphor-icons\/[^"']+)["']/g

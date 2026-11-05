@@ -52,7 +52,7 @@ export const OverviewPage = () => {
         className="text-muted-foreground text-sm leading-6"
         style={{ maxWidth: "var(--v4-size-measure-prose)" }}
       >
-        The v4 tokens, components and patterns behind Infisical 2.0, each with working examples and
+        The v4 tokens, components and patterns behind Infisical v4, each with working examples and
         its contract. Every product page below is rebuilt from them and compared with the current
         app on main.
       </p>

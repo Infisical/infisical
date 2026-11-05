@@ -214,7 +214,7 @@ export const DesignSystemPage = () => {
             search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
             account={{
               label: "Workbench",
-              name: "Infisical 2.0 workbench",
+              name: "v4 workbench",
               email: `Design system v${tokens.version}`,
               items: [
                 { label: "Overview", icon: "home", onSelect: () => go("overview") },

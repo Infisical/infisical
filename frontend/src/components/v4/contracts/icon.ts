@@ -10,7 +10,7 @@ export const iconDefinition = {
   exports: ["Icon", "iconNames"],
   referenceNames: ["Icon"],
   behavior: [
-    "The Infisical 2.0 line set (52 owned 24-unit glyphs in ui/icon-data.ts) is primary: pass name. Pass icon with a Lucide icon only for a glyph the set lacks, such as the Kbd keys and the unsorted sort arrows.",
+    "The v4 line set (52 owned 24-unit glyphs in ui/icon-data.ts) is primary: pass name. Pass icon with a Lucide icon only for a glyph the set lacks, such as the Kbd keys and the unsorted sort arrows.",
     "Size defaults to the size-icon token (16px for controls; 18px for navigation and list media and 14px for small buttons come from the surrounding component) and the stroke to stroke-icon (1.7) for both sources, so a Lucide fallback blends in. Icons inherit currentColor. data-icon-source marks each icon custom or lucide."
   ],
   accessibility: [
@@ -20,7 +20,7 @@ export const iconDefinition = {
   examples: [
     {
       id: "default",
-      title: "Infisical 2.0 set (custom), with visible names",
+      title: "v4 set (custom), with visible names",
       module: "./examples/icon/default.tsx",
       states: ["default"]
     },
