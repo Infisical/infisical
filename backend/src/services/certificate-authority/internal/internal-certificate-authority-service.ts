@@ -77,6 +77,7 @@ import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa 
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
   assertNoCertificateProfilesUsingCa,
+  assertPathLengthMatchesCa,
   buildAuthorityInfoAccessExtension,
   buildCrlDistributionPointUrls,
   buildOcspResponderUrl,
@@ -809,18 +810,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const storedPathLength = ca.internalCa.maxPathLength ?? -1;
-    // Signing-config install jobs pass -1 to mean "keep the stored value".
-    const isInternalDefault = isInternal && maxPathLength === -1;
-    if (
-      storedPathLength >= 0 &&
-      maxPathLength !== undefined &&
-      maxPathLength !== storedPathLength &&
-      !isInternalDefault
-    ) {
-      throw new BadRequestError({
-        message: `Path length ${maxPathLength} doesn't match this CA's current certificate (${storedPathLength}). Use ${storedPathLength} or leave it out.`
-      });
-    }
+    assertPathLengthMatchesCa({
+      storedPathLength,
+      requestedPathLength: maxPathLength,
+      allowNoLimitDefault: isInternal
+    });
     const effectivePathLength = storedPathLength >= 0 ? storedPathLength : (maxPathLength ?? -1);
     const resolvedPathLength = effectivePathLength === -1 ? undefined : effectivePathLength;
 
