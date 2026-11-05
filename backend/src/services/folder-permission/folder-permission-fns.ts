@@ -10,9 +10,11 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { conditionsMatcher } from "@app/lib/casl";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -20,6 +22,18 @@ import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import { TFolderGrant, TFolderGrantActor, TFolderGrantTypeInput, TResolvedFolder } from "./folder-permission-types";
+
+export const invalidateFolderAccessCache = async (
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "deleteItemsByKeyIn">,
+  projectId: string
+) => {
+  try {
+    const keys = await keyStore.getKeysByPattern(KeyStorePrefixes.ProjectFolderAccessPattern(projectId));
+    if (keys.length) await keyStore.deleteItemsByKeyIn(keys);
+  } catch (err) {
+    logger.warn({ err, projectId }, "invalidateFolderAccessCache: failed to clear folder access roster cache");
+  }
+};
 
 export const computeTemporaryFields = (type: TFolderGrantTypeInput | undefined) => {
   if (!type?.isTemporary) {

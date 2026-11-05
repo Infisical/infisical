@@ -1390,6 +1390,7 @@ export const registerRoutes = async (
     oidcConfigDAL,
     samlConfigDAL,
     usageMeteringService,
+    keyStore,
     eventEmitter: eventOutboxService
   });
 
@@ -1918,6 +1919,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     applicationMembershipCleanupService,
     usageMeteringService,
+    keyStore,
     alertChannelRecipientDAL
   });
 

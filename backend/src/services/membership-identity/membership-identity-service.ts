@@ -13,6 +13,7 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -57,7 +58,7 @@ type TMembershipIdentityServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore" | "getKeysByPattern" | "deleteItemsByKeyIn">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
@@ -242,6 +243,7 @@ export const membershipIdentityServiceFactory = ({
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
     return { membership };
   };
@@ -517,6 +519,7 @@ export const membershipIdentityServiceFactory = ({
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
       usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
