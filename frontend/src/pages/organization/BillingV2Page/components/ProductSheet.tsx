@@ -696,6 +696,9 @@ export const ProductSheet = ({
   const trialIsUpgrade = entitled && Boolean(trialConfirmTier) && trialConfirmTier !== currentTier;
   const trialLengthLabel =
     trialConfirmPlan && trialConfirmPlan.trialDays > 0 ? `${trialConfirmPlan.trialDays}-day ` : "";
+  const newTrialDescription = showAnnualTrialNote
+    ? `Start your ${trialLengthLabel}free trial. After it ends, your subscription will convert to monthly billing.`
+    : `Your ${trialLengthLabel}trial is free. After it ends, your subscription continues automatically and you'll be billed monthly based on usage. Cancel before the trial ends to avoid charges.`;
 
   return (
     <>
@@ -883,10 +886,7 @@ export const ProductSheet = ({
             <AlertDialogDescription>
               {trialIsUpgrade
                 ? `Your ${trialLengthLabel}trial is free and nothing changes about your bill. You'll keep paying for ${basePlanName} until it ends, then move to ${trialConfirmPlan?.name} and be charged the difference. End the trial before then to stay on ${basePlanName}.`
-                : `Your ${trialLengthLabel}trial is free. After it ends, your subscription continues automatically and you'll be billed monthly based on usage. Cancel before the trial ends to avoid charges.`}
-              {showAnnualTrialNote &&
-                !trialIsUpgrade &&
-                " Trials convert to monthly billing, so annual pricing doesn't apply to this trial."}
+                : newTrialDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
