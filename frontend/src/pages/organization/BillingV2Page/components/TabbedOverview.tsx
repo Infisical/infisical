@@ -321,6 +321,11 @@ export const TabbedOverview = ({
           <span className="text-lg leading-6 font-medium tabular-nums">
             {nextCharge ? fmtMoneyCents(nextCharge.amount) : "Nothing due"}
           </span>
+          {nextCharge && (nextCharge.estimatedUsage ?? 0) > 0 && (
+            <span className="text-sm text-muted tabular-nums">
+              + est. {fmtMoneyCents(nextCharge.estimatedUsage ?? 0)} usage
+            </span>
+          )}
           {nextCharge && <span className="text-xs text-muted">· {nextCharge.at}</span>}
           {nextCharge && (chargeDetail || overview.onDemandAmount > 0) && (
             <Tooltip>
@@ -332,7 +337,13 @@ export const TabbedOverview = ({
               <TooltipContent>
                 <span className="flex flex-col gap-0.5">
                   {chargeDetail && <span>{chargeDetail}</span>}
-                  {nextCharge.hasUsage && <span>Estimate includes usage to date</span>}
+                  {nextCharge.hasUsage && (
+                    <span>
+                      {(nextCharge.estimatedUsage ?? 0) > 0
+                        ? "Usage is estimated from this period so far and billed when the period ends"
+                        : "Estimate includes usage to date"}
+                    </span>
+                  )}
                   {overview.onDemandAmount > 0 && (
                     <span className="text-warning">
                       +{fmtMoneyCents(overview.onDemandAmount)} on-demand this period

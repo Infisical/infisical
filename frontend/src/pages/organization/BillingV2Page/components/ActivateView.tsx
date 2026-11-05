@@ -14,9 +14,10 @@ import {
   usePreviewBillingV2Change
 } from "@app/hooks/api";
 
-import { billingV2ErrorCode, fmtMoney } from "../billing-v2-format";
+import { bandRateLabel, billingV2ErrorCode, fmtMoney, fmtMoneyCents } from "../billing-v2-format";
 import { ChargeBreakdown } from "./ChargeBreakdown";
 import { CommitmentTerms } from "./CommitmentTerms";
+import { MeteredBandTable } from "./MeteredBandTable";
 import {
   CostSummary,
   CostSummaryRow,
@@ -46,22 +47,37 @@ type Props = {
 const isCommittable = (dim: BillingV2Dim): boolean =>
   dim.annual > 0 && dim.monthly > 0 && !dim.meteredAnnual;
 
-// The plan's monthly headline price (base fee, else the first priced dimension's monthly rate).
+// The plan's monthly headline price (base fee, else the first per-unit monthly rate). A metered
+// rate is a price per unit of usage, never a monthly fee, so it is never the headline.
 const monthlyHeadline = (plan: BillingV2Plan): number => {
   if (plan.base) {
     return plan.base.monthly;
   }
-  const dim = plan.dims.find((d) => d.monthly > 0);
+  const dim = plan.dims.find((d) => d.monthly > 0 && !d.meteredMonthly);
   return dim ? dim.monthly : 0;
 };
 
-// The plan's annual headline price (base fee, else the first priced dimension's annual rate).
+// The plan's annual headline price (base fee, else the first per-unit annual rate).
 const annualHeadline = (plan: BillingV2Plan): number => {
   if (plan.base) {
     return plan.base.annual;
   }
-  const dim = plan.dims.find((d) => d.annual > 0);
+  const dim = plan.dims.find((d) => d.annual > 0 && !d.meteredAnnual);
   return dim ? dim.annual : 0;
+};
+
+const meteredDimNote = (dim: BillingV2Dim): string => {
+  const tiers = dim.bands?.tiers ?? [];
+  if (tiers.length > 1) {
+    return dim.bands?.mode === "volume"
+      ? "Billed by usage each month. All usage is priced at the band the month's total reaches."
+      : "Billed by usage each month. Each band's usage is priced at that band's rate.";
+  }
+  const rate =
+    tiers.length === 1
+      ? bandRateLabel(tiers[0], dim.noun)
+      : `${fmtMoneyCents(dim.monthly)} per ${dim.noun}`;
+  return `Billed by usage each month at ${rate}.`;
 };
 
 type CadenceOptionProps = {
@@ -103,6 +119,10 @@ export const ActivateView = ({
   onDone
 }: Props) => {
   const committable = useMemo(() => plan.dims.filter(isCommittable), [plan.dims]);
+  // Usage-billed dimensions are charged monthly in arrears on either cadence, so neither the amount
+  // due today nor the recurring total includes them.
+  const meteredDims = useMemo(() => plan.dims.filter((d) => d.meteredMonthly), [plan.dims]);
+  const hasUsage = meteredDims.length > 0;
   const supportsAnnual =
     plan.dims.some((d) => d.annual > 0) || Boolean(plan.base && plan.base.annual > 0);
   const supportsMonthly =
@@ -195,6 +215,8 @@ export const ActivateView = ({
   let chargedNote = "Calculating…";
   if (trialFlow) {
     chargedNote = "Free during your trial";
+  } else if (!isCalculating && hasUsage && dueToday === 0) {
+    chargedNote = "Nothing to pay today; usage is billed at the end of each month";
   } else if (!isCalculating) {
     chargedNote = hasActiveSubscription
       ? "Prorated onto your shared billing date"
@@ -267,6 +289,17 @@ export const ActivateView = ({
     recurringNote = "Billed monthly after your trial ends";
   } else if (renewsOn) {
     recurringNote = `Billed on ${renewsOn}`;
+  }
+  let recurringLabel = `${fmtMoney(recurring)} / ${period}`;
+  if (hasUsage) {
+    recurringLabel = recurring > 0 ? `${recurringLabel} + usage` : "Usage only";
+  }
+  if (hasUsage && recurring === 0 && !trialFlow) {
+    recurringNote = "Billed at the end of each month for what you use";
+  } else if (hasUsage) {
+    recurringNote = recurringNote
+      ? `${recurringNote}, plus usage at the end of each month`
+      : "Plus usage, billed at the end of each month";
   }
 
   return (
@@ -341,15 +374,36 @@ export const ActivateView = ({
               </div>
             </div>
             <div className="flex shrink-0 flex-col items-end">
-              <span className="text-sm font-semibold text-foreground tabular-nums">
-                {fmtMoney(cadence === "annual" ? localRecurring / 12 : localRecurring)} / mo
-              </span>
-              {cadence === "annual" && (
-                <span className="text-[11px] text-muted">billed annually</span>
+              {localRecurring > 0 || !hasUsage ? (
+                <>
+                  <span className="text-sm font-semibold text-foreground tabular-nums">
+                    {fmtMoney(cadence === "annual" ? localRecurring / 12 : localRecurring)} / mo
+                  </span>
+                  {cadence === "annual" && (
+                    <span className="text-[11px] text-muted">billed annually</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-sm font-semibold text-foreground">Usage-based</span>
               )}
             </div>
           </div>
         )}
+
+        {meteredDims.map((dim) => (
+          <div
+            key={dim.key}
+            className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4"
+          >
+            <div className="text-sm font-medium text-foreground">{dim.label}</div>
+            <div className="text-xs text-muted">{meteredDimNote(dim)}</div>
+            {dim.bands && dim.bands.tiers.length > 1 && (
+              <div className="mt-1">
+                <MeteredBandTable bands={dim.bands} noun={dim.noun} />
+              </div>
+            )}
+          </div>
+        ))}
 
         <CostSummary>
           <CostSummaryRow
@@ -362,7 +416,7 @@ export const ActivateView = ({
           <CostSummaryRow
             label={cadence === "annual" ? "New yearly total" : "New monthly total"}
             note={recurringNote}
-            value={`${fmtMoney(recurring)} / ${period}`}
+            value={recurringLabel}
             isCalculating={isCalculating}
           />
         </CostSummary>
