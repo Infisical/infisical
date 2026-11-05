@@ -387,6 +387,14 @@ export const appConnections = [
     category: "SaaS",
   },
   {
+    name: "ServiceNow",
+    slug: "servicenow",
+    path: "/integrations/app-connections/servicenow",
+    description:
+      "Learn how to connect ServiceNow to route Infisical access requests through ServiceNow approvals.",
+    category: "SaaS",
+  },
+  {
     name: "OpenRouter",
     slug: "openrouter",
     path: "/integrations/app-connections/openrouter",
@@ -480,11 +488,11 @@ export const appConnections = [
     category: "DevOps Tools",
   }, 
   {
-    name: "OVH",
+    name: "OVHcloud",
     slug: "ovh",
     path: "/integrations/app-connections/ovh",
     description:
-      "Learn how to connect OVH Cloud to pull secrets from OVH Secret Manager to Infisical.",
+      "Learn how to connect OVHcloud to pull secrets from OVHcloud Secret Manager to Infisical.",
     category: "Cloud Providers",
   },
   {

@@ -11,8 +11,8 @@ import { logger } from "@app/lib/logger";
 import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
-import { PamAccountType } from "../../pam/pam-enums";
 import { isDomainQualifiedUsername, toNetbiosUsername } from "../../pam-account/pam-account-schemas";
+import { PamAccountType } from "../../pam/pam-enums";
 import { DEFAULT_WINRM_PORT, executeWithGateway, winrmRpcWithGateway } from "../pam-discovery-fns";
 import {
   TDiscoveredAccount,

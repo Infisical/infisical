@@ -164,7 +164,7 @@
   --color-proxied-service: oklch(51.4929% 0.1474105 306.2291);
 }
 
-/* Distinct neutral tones preserve surface depth and control contrast during migration. */
+/* Distinct neutral tones preserve surface depth and control contrast. */
 @theme {
   --color-border-bright: oklch(75.06158% 0.0030629 264.5385);
   --color-border-control: oklch(30.47636% 0.0077146 264.4536);

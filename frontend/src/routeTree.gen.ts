@@ -46,6 +46,7 @@ import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam-access-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
+import { Route as agentVaultAgentVaultOAuthCallbackPageRouteImport } from './pages/agent-vault/AgentVaultOAuthCallbackPage/route'
 import { Route as adminWelcomePageRouteImport } from './pages/admin/WelcomePage/route'
 import { Route as adminSetupPageRouteImport } from './pages/admin/SetupPage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
@@ -121,6 +122,7 @@ import { Route as certManagerInventoryPageRouteImport } from './pages/cert-manag
 import { Route as certManagerCertificateAuthoritiesPageRouteImport } from './pages/cert-manager/CertificateAuthoritiesPage/route'
 import { Route as certManagerAlertingPageRouteImport } from './pages/cert-manager/AlertingPage/route'
 import { Route as agentVaultAgentVaultVariablesPageRouteImport } from './pages/agent-vault/AgentVaultVariablesPage/route'
+import { Route as agentVaultAgentVaultSkillsPageRouteImport } from './pages/agent-vault/AgentVaultSkillsPage/route'
 import { Route as agentVaultAgentVaultSettingsPageRouteImport } from './pages/agent-vault/AgentVaultSettingsPage/route'
 import { Route as agentVaultAgentVaultSessionsPageRouteImport } from './pages/agent-vault/AgentVaultSessionsPage/route'
 import { Route as agentVaultAgentVaultProxiesPageRouteImport } from './pages/agent-vault/AgentVaultProxiesPage/route'
@@ -669,6 +671,13 @@ const authProviderErrorPageRouteRoute = authProviderErrorPageRouteImport.update(
     getParentRoute: () => RestrictLoginSignupLoginRoute,
   } as any,
 )
+
+const agentVaultAgentVaultOAuthCallbackPageRouteRoute =
+  agentVaultAgentVaultOAuthCallbackPageRouteImport.update({
+    id: '/agent-vault/oauth/callback',
+    path: '/agent-vault/oauth/callback',
+    getParentRoute: () => middlewaresAuthenticateRoute,
+  } as any)
 
 const adminWelcomePageRouteRoute = adminWelcomePageRouteImport.update({
   id: '/welcome',
@@ -1463,6 +1472,13 @@ const agentVaultAgentVaultVariablesPageRouteRoute =
   agentVaultAgentVaultVariablesPageRouteImport.update({
     id: '/variables',
     path: '/variables',
+    getParentRoute: () => agentVaultLayoutRoute,
+  } as any)
+
+const agentVaultAgentVaultSkillsPageRouteRoute =
+  agentVaultAgentVaultSkillsPageRouteImport.update({
+    id: '/skills',
+    path: '/skills',
     getParentRoute: () => agentVaultLayoutRoute,
   } as any)
 
@@ -3001,6 +3017,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof adminWelcomePageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsAdminImport
     }
+    '/_authenticate/agent-vault/oauth/callback': {
+      id: '/_authenticate/agent-vault/oauth/callback'
+      path: '/agent-vault/oauth/callback'
+      fullPath: '/agent-vault/oauth/callback'
+      preLoaderRoute: typeof agentVaultAgentVaultOAuthCallbackPageRouteImport
+      parentRoute: typeof middlewaresAuthenticateImport
+    }
     '/_restrict-login-signup/login/provider/error': {
       id: '/_restrict-login-signup/login/provider/error'
       path: '/provider/error'
@@ -3391,6 +3414,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/organizations/$orgId/agent-vault/settings'
       preLoaderRoute: typeof agentVaultAgentVaultSettingsPageRouteImport
+      parentRoute: typeof agentVaultLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/skills': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/skills'
+      path: '/skills'
+      fullPath: '/organizations/$orgId/agent-vault/skills'
+      preLoaderRoute: typeof agentVaultAgentVaultSkillsPageRouteImport
       parentRoute: typeof agentVaultLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/variables': {
@@ -5405,6 +5435,7 @@ interface agentVaultLayoutRouteChildren {
   agentVaultAgentVaultProxiesPageRouteRoute: typeof agentVaultAgentVaultProxiesPageRouteRoute
   agentVaultAgentVaultSessionsPageRouteRoute: typeof agentVaultAgentVaultSessionsPageRouteRoute
   agentVaultAgentVaultSettingsPageRouteRoute: typeof agentVaultAgentVaultSettingsPageRouteRoute
+  agentVaultAgentVaultSkillsPageRouteRoute: typeof agentVaultAgentVaultSkillsPageRouteRoute
   agentVaultAgentVaultVariablesPageRouteRoute: typeof agentVaultAgentVaultVariablesPageRouteRoute
   redirectsAgentVaultIndexRedirectRoute: typeof redirectsAgentVaultIndexRedirectRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAgentVaultAgentVaultLayoutAccessBundlesRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAgentVaultAgentVaultLayoutAccessBundlesRouteWithChildren
@@ -5423,6 +5454,8 @@ const agentVaultLayoutRouteChildren: agentVaultLayoutRouteChildren = {
     agentVaultAgentVaultSessionsPageRouteRoute,
   agentVaultAgentVaultSettingsPageRouteRoute:
     agentVaultAgentVaultSettingsPageRouteRoute,
+  agentVaultAgentVaultSkillsPageRouteRoute:
+    agentVaultAgentVaultSkillsPageRouteRoute,
   agentVaultAgentVaultVariablesPageRouteRoute:
     agentVaultAgentVaultVariablesPageRouteRoute,
   redirectsAgentVaultIndexRedirectRoute: redirectsAgentVaultIndexRedirectRoute,
@@ -6158,6 +6191,7 @@ interface middlewaresAuthenticateRouteChildren {
   organizationOauthConsentPageRouteRoute: typeof organizationOauthConsentPageRouteRoute
   organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
   organizationSignupOnboardingPageRouteRoute: typeof organizationSignupOnboardingPageRouteRoute
+  agentVaultAgentVaultOAuthCallbackPageRouteRoute: typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
 }
 
 const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren =
@@ -6173,6 +6207,8 @@ const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren
     organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
     organizationSignupOnboardingPageRouteRoute:
       organizationSignupOnboardingPageRouteRoute,
+    agentVaultAgentVaultOAuthCallbackPageRouteRoute:
+      agentVaultAgentVaultOAuthCallbackPageRouteRoute,
   }
 
 const middlewaresAuthenticateRouteWithChildren =
@@ -6286,6 +6322,7 @@ export interface FileRoutesByFullPath {
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
   '/admin/setup': typeof adminSetupPageRouteRoute
   '/admin/welcome': typeof adminWelcomePageRouteRoute
+  '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -6337,6 +6374,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/agent-vault/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
   '/organizations/$orgId/agent-vault/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/organizations/$orgId/agent-vault/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
+  '/organizations/$orgId/agent-vault/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
   '/organizations/$orgId/agent-vault/variables': typeof agentVaultAgentVaultVariablesPageRouteRoute
   '/organizations/$orgId/cert-manager/alerting': typeof certManagerAlertingPageRouteRoute
   '/organizations/$orgId/cert-manager/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
@@ -6580,6 +6618,7 @@ export interface FileRoutesByTo {
   '/admin': typeof adminGeneralPageRouteRoute
   '/admin/setup': typeof adminSetupPageRouteRoute
   '/admin/welcome': typeof adminWelcomePageRouteRoute
+  '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -6627,6 +6666,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/agent-vault/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
   '/organizations/$orgId/agent-vault/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/organizations/$orgId/agent-vault/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
+  '/organizations/$orgId/agent-vault/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
   '/organizations/$orgId/agent-vault/variables': typeof agentVaultAgentVaultVariablesPageRouteRoute
   '/organizations/$orgId/cert-manager/alerting': typeof certManagerAlertingPageRouteRoute
   '/organizations/$orgId/cert-manager/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
@@ -6856,6 +6896,7 @@ export interface FileRoutesById {
   '/_authenticate/personal-settings/_layout/': typeof userPersonalSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/admin/setup': typeof adminSetupPageRouteRoute
   '/_authenticate/_inject-org-details/admin/welcome': typeof adminWelcomePageRouteRoute
+  '/_authenticate/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
@@ -6912,6 +6953,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/variables': typeof agentVaultAgentVaultVariablesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/alerting': typeof certManagerAlertingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
@@ -7162,6 +7204,7 @@ export interface FileRouteTypes {
     | '/personal-settings/'
     | '/admin/setup'
     | '/admin/welcome'
+    | '/agent-vault/oauth/callback'
     | '/login/provider/error'
     | '/integrations'
     | '/pam/access'
@@ -7213,6 +7256,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/agent-vault/proxies'
     | '/organizations/$orgId/agent-vault/sessions'
     | '/organizations/$orgId/agent-vault/settings'
+    | '/organizations/$orgId/agent-vault/skills'
     | '/organizations/$orgId/agent-vault/variables'
     | '/organizations/$orgId/cert-manager/alerting'
     | '/organizations/$orgId/cert-manager/certificate-authorities'
@@ -7455,6 +7499,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/setup'
     | '/admin/welcome'
+    | '/agent-vault/oauth/callback'
     | '/login/provider/error'
     | '/integrations'
     | '/pam/access'
@@ -7502,6 +7547,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/agent-vault/proxies'
     | '/organizations/$orgId/agent-vault/sessions'
     | '/organizations/$orgId/agent-vault/settings'
+    | '/organizations/$orgId/agent-vault/skills'
     | '/organizations/$orgId/agent-vault/variables'
     | '/organizations/$orgId/cert-manager/alerting'
     | '/organizations/$orgId/cert-manager/certificate-authorities'
@@ -7729,6 +7775,7 @@ export interface FileRouteTypes {
     | '/_authenticate/personal-settings/_layout/'
     | '/_authenticate/_inject-org-details/admin/setup'
     | '/_authenticate/_inject-org-details/admin/welcome'
+    | '/_authenticate/agent-vault/oauth/callback'
     | '/_restrict-login-signup/login/provider/error'
     | '/_authenticate/_inject-org-details/_org-layout/integrations'
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
@@ -7785,6 +7832,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/settings'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/skills'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/variables'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/alerting'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificate-authorities'
@@ -8060,7 +8108,8 @@ export const routeTree = rootRoute
         "/_authenticate/mfa-session/$mfaSessionId",
         "/_authenticate/organization/oauth-consent",
         "/_authenticate/organizations/none",
-        "/_authenticate/organizations/onboarding"
+        "/_authenticate/organizations/onboarding",
+        "/_authenticate/agent-vault/oauth/callback"
       ]
     },
     "/_restrict-login-signup": {
@@ -8240,6 +8289,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/admin/welcome": {
       "filePath": "admin/WelcomePage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin"
+    },
+    "/_authenticate/agent-vault/oauth/callback": {
+      "filePath": "agent-vault/AgentVaultOAuthCallbackPage/route.tsx",
+      "parent": "/_authenticate"
     },
     "/_restrict-login-signup/login/provider/error": {
       "filePath": "auth/ProviderErrorPage/route.tsx",
@@ -8513,6 +8566,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/settings",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/skills",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/variables",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/access-bundles",
@@ -8618,6 +8672,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/settings": {
       "filePath": "agent-vault/AgentVaultSettingsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/skills": {
+      "filePath": "agent-vault/AgentVaultSkillsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/variables": {

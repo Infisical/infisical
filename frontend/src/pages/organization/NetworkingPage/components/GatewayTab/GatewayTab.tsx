@@ -49,6 +49,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   OverflowBadgeList,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -332,24 +333,21 @@ export const GatewayTab = withPermission(
                         ))}
                       {filteredGateway?.map((el) => {
                         return (
-                          <TableRow
-                            key={el.id}
-                            className="cursor-pointer"
-                            onClick={() =>
-                              navigate({
-                                to: "/organizations/$orgId/networking/gateways/$gatewayId",
-                                params: { orgId, gatewayId: el.id }
-                              })
-                            }
-                          >
+                          <TableRow key={el.id} linked>
                             <TableCell>
                               <div className="flex min-w-0 items-center gap-2">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="min-w-0 flex-1 truncate">{el.name}</span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>{el.name}</TooltipContent>
-                                </Tooltip>
+                                <RowLink
+                                  to="/organizations/$orgId/networking/gateways/$gatewayId"
+                                  params={{ orgId, gatewayId: el.id }}
+                                  className="min-w-0 flex-1"
+                                >
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>{el.name}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{el.name}</TooltipContent>
+                                  </Tooltip>
+                                </RowLink>
                               </div>
                             </TableCell>
                             {showPoolsTab && (
@@ -360,6 +358,7 @@ export const GatewayTab = withPermission(
                                     getKey={(pool) => pool.id}
                                     getLabel={(pool) => pool.name}
                                     appearance="text"
+                                    className="pointer-events-none [&_[data-slot=tooltip-trigger]]:pointer-events-auto [&_button]:pointer-events-auto"
                                     onItemClick={(pool) => setSelectedPoolId(pool.id)}
                                     maxBadgeWidth={144}
                                   />
@@ -389,7 +388,7 @@ export const GatewayTab = withPermission(
                                 heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                               />
                             </TableCell>
-                            <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+                            <TableCell variant="action">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <IconButton

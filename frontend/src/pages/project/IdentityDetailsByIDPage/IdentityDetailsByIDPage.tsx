@@ -14,6 +14,7 @@ import {
   VenetianMaskIcon
 } from "lucide-react";
 
+import { IdentityDelegationSection } from "@app/components/agent-vault/IdentityDelegationSection";
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
@@ -404,6 +405,12 @@ const Page = () => {
                   </CardContent>
                 </Card>
               )}
+              {isAgentVault && (
+                <IdentityDelegationSection
+                  machineIdentityId={identityId}
+                  machineIdentityName={identityMembershipDetails.identity.name}
+                />
+              )}
               {!isAgentVault && (
                 <IdentityRoleDetailsSection
                   identityMembershipDetails={identityMembershipDetails}
@@ -420,7 +427,7 @@ const Page = () => {
                 !currentProject.isLegacyAdditionalPrivilegesEnabled && (
                   <AdditionalPrivilegesRemovedSection />
                 )}
-              {isSecretManager && hasFolderRbacPlan && (
+              {isSecretManager && (
                 <FolderAccessSection
                   actor={{
                     type: "identity",

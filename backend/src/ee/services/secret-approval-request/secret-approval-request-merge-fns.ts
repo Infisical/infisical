@@ -9,13 +9,12 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
@@ -30,6 +29,8 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
+import { SecretOperations } from "@app/services/secret/secret-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -61,6 +62,7 @@ type TSecretApprovalRequestMergeFnsFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   secretApprovalRequestSecretDAL: Pick<TSecretApprovalRequestSecretDALFactory, "updateV2ById">;
   validateSecrets: TSecretApprovalRequestCommitFnsFactory["validateSecrets"];
@@ -254,6 +256,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
   secretTagDAL,
   resourceMetadataDAL,
   folderCommitService,
+  eventEmitter,
   secretQueueService,
   secretApprovalRequestSecretDAL,
   validateSecrets,
@@ -387,6 +390,8 @@ export const secretApprovalRequestMergeFnsFactory = ({
       ? await fnSecretBulkInsert({
           tx,
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath },
           actor: { actorId, type: actor },
           orgId: actorOrgId,
           inputSecrets: creates.map((el, idx) => ({
@@ -449,6 +454,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
           secretVersionDAL: secretVersionV2BridgeDAL,
           folderCommitService,
           secretQueueService,
+          eventEmitter,
           folderDAL,
           encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
           decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
@@ -485,6 +491,8 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const updated = updates.length
       ? await fnSecretBulkUpdate({
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath },
           orgId: actorOrgId,
           actor: { actorId, type: actor },
           tx,
@@ -543,6 +551,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
         secretVersionDAL: secretVersionV2BridgeDAL,
         folderCommitService,
         secretQueueService,
+        eventEmitter,
         folderDAL,
         encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
         decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
@@ -555,6 +564,8 @@ export const secretApprovalRequestMergeFnsFactory = ({
       ? await fnSecretBulkDelete({
           projectId,
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath },
           tx,
           actorId,
           actorType: actor,

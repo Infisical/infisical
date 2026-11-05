@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -86,7 +86,6 @@ type Filter = {
 };
 
 export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
-  const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { mutateAsync: updateMutateAsync } = useUpdateGroup();
@@ -428,20 +427,17 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 a={OrgPermissionSubjects.Groups}
                               >
                                 {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      navigate({
-                                        to: "/organizations/$orgId/groups/$groupId",
-                                        params: {
-                                          orgId,
-                                          groupId: id
-                                        }
-                                      })
-                                    }
-                                    isDisabled={!isAllowed}
-                                  >
-                                    <UsersIcon />
-                                    Manage Members
+                                  <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                    <Link
+                                      to="/organizations/$orgId/groups/$groupId"
+                                      params={{
+                                        orgId,
+                                        groupId: id
+                                      }}
+                                    >
+                                      <UsersIcon />
+                                      Manage Members
+                                    </Link>
                                   </DropdownMenuItem>
                                 )}
                               </OrgPermissionCan>

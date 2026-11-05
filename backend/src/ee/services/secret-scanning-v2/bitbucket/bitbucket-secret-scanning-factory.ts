@@ -1,8 +1,6 @@
 import { join } from "path";
 import RE2 from "re2";
 
-import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
-import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
@@ -23,6 +21,8 @@ import {
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
@@ -278,7 +278,7 @@ export const BitbucketSecretScanningFactory = () => {
             if (!patch) continue;
 
             // eslint-disable-next-line no-await-in-loop
-            const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${patch}`), configPath);
+            const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(patch), configPath);
 
             const adjustedFindings = findings.map((finding) => {
               const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
@@ -318,12 +318,14 @@ export const BitbucketSecretScanningFactory = () => {
       }
     }
 
-    return allFindings.map((finding) => ({
-      details: toFindingDetails(finding),
-      fingerprint: finding.Fingerprint,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    }));
+    return {
+      findings: allFindings.map((finding) => ({
+        details: toFindingDetails(finding),
+        fingerprint: finding.Fingerprint,
+        severity: SecretScanningFindingSeverity.High,
+        rule: finding.RuleID
+      }))
+    };
   };
 
   const setupWebhook: TSecretScanningFactorySetupWebhook<

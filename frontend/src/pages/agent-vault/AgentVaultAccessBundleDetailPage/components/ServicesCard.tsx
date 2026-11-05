@@ -13,7 +13,11 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { displayHostPattern } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
+import {
+  displayHostPattern,
+  SERVICE_TYPE_LABELS
+} from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -49,23 +53,34 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useDeleteAgentVaultService } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultCredentialType,
+  AgentVaultOauthStatus,
+  AgentVaultServiceType,
+  useDeleteAgentVaultService
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 enum SortColumn {
   Name = "name",
-  Hosts = "hosts",
+  Type = "type",
+  Target = "target",
   Created = "created"
 }
+
+const targetOf = (service: TAgentVaultService) =>
+  service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
 
 const SORT_COMPARATORS: Record<
   SortColumn,
   (a: TAgentVaultService, b: TAgentVaultService) => number
 > = {
   [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Hosts]: (a, b) => a.hostPattern.localeCompare(b.hostPattern),
+  [SortColumn.Type]: (a, b) => a.type.localeCompare(b.type),
+  // The host, not the shown URL, so MCP servers sort among the HTTP hosts instead of together under "https".
+  [SortColumn.Target]: (a, b) => a.hostPattern.localeCompare(b.hostPattern),
   [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 };
 
@@ -99,6 +114,15 @@ const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
   );
 };
 
+const TargetCell = ({ service }: { service: TAgentVaultService }) =>
+  service.type === AgentVaultServiceType.Mcp ? (
+    <span className="block max-w-72 truncate text-sm" title={service.serverUrl}>
+      {service.serverUrl.replace(/^https:\/\//i, "")}
+    </span>
+  ) : (
+    <HostsCell hostPattern={service.hostPattern} />
+  );
+
 export const ServicesCard = ({
   accessBundleId,
   services,
@@ -116,10 +140,15 @@ export const ServicesCard = ({
 
   const displayed = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = services.filter(
-      (service) =>
-        service.name.toLowerCase().includes(term) ||
-        service.hostPattern.toLowerCase().includes(term)
+    // A bundle holds few services, so the type is matched by search ("mcp", "http") rather than a filter.
+    const filtered = services.filter((service) =>
+      [
+        service.name,
+        service.hostPattern,
+        targetOf(service),
+        service.type,
+        SERVICE_TYPE_LABELS[service.type]
+      ].some((text) => text.toLowerCase().includes(term))
     );
 
     const ordered = [...filtered].sort(SORT_COMPARATORS[sortColumn]);
@@ -169,8 +198,8 @@ export const ServicesCard = ({
           <DocumentationLinkBadge href={AgentVaultDocsUrls.services} />
         </CardTitle>
         <CardDescription>
-          A service defines one API the agent can reach, the hosts the API answers on, and the
-          credential the proxy attaches to matching requests.
+          A service defines one HTTP API or MCP server the agent can reach, and the credential the
+          proxy attaches to its requests.
         </CardDescription>
         {canManage && (
           <CardAction>
@@ -189,6 +218,7 @@ export const ServicesCard = ({
               <SearchIcon />
             </InputGroupAddon>
             <InputGroupInput
+              aria-label="Search services"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search services..."
@@ -210,6 +240,12 @@ export const ServicesCard = ({
                   : "Try a different search term."}
               </EmptyDescription>
             </EmptyHeader>
+            {canManage && services.length === 0 && (
+              <Button variant="av" onClick={onAdd}>
+                <PlusIcon />
+                Add Service
+              </Button>
+            )}
           </Empty>
         </CardContent>
       ) : (
@@ -224,11 +260,18 @@ export const ServicesCard = ({
                 <ChevronDownIcon className={sortIconClassName(SortColumn.Name)} />
               </TableHead>
               <TableHead
-                sortDirection={sortColumn === SortColumn.Hosts ? sortDirection : "none"}
-                onSortChange={(direction) => handleSort(SortColumn.Hosts, direction)}
+                sortDirection={sortColumn === SortColumn.Type ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(SortColumn.Type, direction)}
               >
-                Hosts
-                <ChevronDownIcon className={sortIconClassName(SortColumn.Hosts)} />
+                Type
+                <ChevronDownIcon className={sortIconClassName(SortColumn.Type)} />
+              </TableHead>
+              <TableHead
+                sortDirection={sortColumn === SortColumn.Target ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(SortColumn.Target, direction)}
+              >
+                Target
+                <ChevronDownIcon className={sortIconClassName(SortColumn.Target)} />
               </TableHead>
               <TableHead
                 sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
@@ -248,10 +291,17 @@ export const ServicesCard = ({
                   <div className="flex items-center gap-2">
                     <ServiceIcon hostPattern={service.hostPattern} />
                     {service.name}
+                    {service.credential.type === AgentVaultCredentialType.OAuth &&
+                      service.credential.status !== AgentVaultOauthStatus.Connected && (
+                        <OAuthStatusBadge status={service.credential.status} />
+                      )}
                   </div>
                 </TableCell>
                 <TableCell>
-                  <HostsCell hostPattern={service.hostPattern} />
+                  <span className="text-sm">{SERVICE_TYPE_LABELS[service.type]}</span>
+                </TableCell>
+                <TableCell>
+                  <TargetCell service={service} />
                 </TableCell>
                 <TableCell>
                   <Tooltip>

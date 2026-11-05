@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import {
   MoreHorizontalIcon,
   PencilIcon,
@@ -34,6 +33,7 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  RowLink,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -72,7 +72,6 @@ type TMachineIdentityMember = TAgentVaultProductMemberOf<AgentVaultMemberType.Ma
 export const IdentitiesTab = () => {
   const { currentProject } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -228,24 +227,20 @@ export const IdentitiesTab = () => {
               ))}
             {!isPending &&
               filtered.map((identity) => (
-                <TableRow
-                  key={identity.id}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    navigate({
-                      to: "/organizations/$orgId/agent-vault/identities/$identityId",
-                      params: { orgId: currentOrg.id, identityId: identity.id }
-                    });
-                  }}
-                >
+                <TableRow key={identity.id} linked>
                   <TableCell isTruncatable className="min-w-32" title={identity.name}>
-                    <HighlightText text={identity.name} highlight={debouncedSearch} />
+                    <RowLink
+                      to="/organizations/$orgId/agent-vault/identities/$identityId"
+                      params={{ orgId: currentOrg.id, identityId: identity.id }}
+                    >
+                      <HighlightText text={identity.name} highlight={debouncedSearch} />
+                    </RowLink>
                   </TableCell>
                   <TableCell>
                     <ProductRoleBadge role={identity.role} />
                   </TableCell>
                   <TableCell>{renderManagedByBadge(identity)}</TableCell>
-                  <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
+                  <TableCell variant="action">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <IconButton variant="ghost" size="xs" aria-label="Open identity actions">

@@ -734,6 +734,7 @@ export const createManySecretsRawFnFactory = ({
   secretV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
   folderCommitService,
+  eventEmitter,
   kmsService,
   resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
@@ -806,6 +807,8 @@ export const createManySecretsRawFnFactory = ({
             tagIds: el.tags
           })),
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath: folder.path },
           orgId: project.orgId,
           secretDAL: secretV2BridgeDAL,
           resourceMetadataDAL,
@@ -925,6 +928,7 @@ export const updateManySecretsRawFnFactory = ({
   secretV2BridgeDAL,
   resourceMetadataDAL,
   folderCommitService,
+  eventEmitter,
   kmsService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -1012,6 +1016,8 @@ export const updateManySecretsRawFnFactory = ({
       const updatedSecrets = await secretDAL.transaction(async (tx) =>
         fnSecretV2BridgeBulkUpdate({
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath: folder.path },
           orgId: project.orgId,
           tx,
           inputSecrets: inputSecrets.map((el) => ({

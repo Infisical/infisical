@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
@@ -14,13 +14,19 @@ import {
   EmptyTitle,
   Loader,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useListPkiInstallations } from "@app/hooks/api";
 import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
 
@@ -34,12 +40,9 @@ const PER_PAGE_INIT = 10;
 const SCAN_IN_FLIGHT_POLL_MS = 5000;
 
 export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRunning }: Props) => {
-  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
-  const { orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/$discoveryId"
-  });
+  const { currentProject } = useProject();
 
   const { data, isPending } = useListPkiInstallations(
     {
@@ -87,20 +90,40 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
               </TableHeader>
               <TableBody>
                 {installations.map((installation) => (
-                  <TableRow
-                    key={installation.id}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/discovery/installations/$installationId",
-                        params: {
-                          orgId,
-                          installationId: installation.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
-                    <TableCell>{installation.primaryCertName || "N/A"}</TableCell>
+                  <TableRow key={installation.id} linked>
+                    <TableCell className="max-w-48">
+                      <RowLink
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `discovery/installations/${installation.id}`
+                        )!}
+                        title={installation.name || getEndpoint(installation)}
+                      >
+                        {installation.name || getEndpoint(installation)}
+                      </RowLink>
+                    </TableCell>
+                    <TableCell className="max-w-44">
+                      {installation.primaryCertName ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Link
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `discovery/installations/${installation.id}`
+                              )!}
+                              className="block truncate"
+                            >
+                              {installation.primaryCertName}
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent>{installation.primaryCertName}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        "N/A"
+                      )}
+                    </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>
                       {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}

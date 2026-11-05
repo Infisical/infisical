@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CopyIcon, MoreHorizontalIcon, PencilIcon, TrashIcon } from "lucide-react";
 
@@ -13,16 +12,19 @@ import {
   DropdownMenuTrigger,
   IconButton,
   ProviderIcon,
+  RowLink,
   TableCell,
   TableRow
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   SecretScanningScanStatus,
   TSecretScanningDataSourceWithDetails
@@ -37,12 +39,12 @@ type Props = {
 };
 
 export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Props) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const {
     id,
     name,
     description,
+    projectId,
     type,
     unresolvedFindings,
     resourceCount,
@@ -50,6 +52,16 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
     lastScanStatus,
     lastScanStatusMessage
   } = dataSource;
+  const dataSourceLink =
+    getInstancePinningLink(
+      currentOrg.id,
+      { id: projectId, type: ProjectType.SecretScanning },
+      `data-sources/${type}/${id}`
+    ) ??
+    ({
+      to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
+      params: { orgId: currentOrg.id, dataSourceId: id, type }
+    } as const);
   const sourceDetails = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const resourceDescription = RESOURCE_DESCRIPTION_HELPER[type];
 
@@ -75,14 +87,7 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
   };
 
   return (
-    <TableRow
-      onClick={() =>
-        navigate({
-          to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
-          params: { orgId: currentOrg.id, dataSourceId: id, type }
-        })
-      }
-    >
+    <TableRow linked>
       <TableCell>
         <div className="flex items-center gap-1.5">
           <ProviderIcon
@@ -94,7 +99,7 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
         </div>
       </TableCell>
       <TableCell isTruncatable>
-        <p className="truncate">{name}</p>
+        <RowLink {...dataSourceLink}>{name}</RowLink>
         {description && <p className="truncate text-xs text-muted">{description}</p>}
       </TableCell>
       <TableCell>
@@ -114,7 +119,7 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
       <TableCell>
         <DataSourceStatusBadge dataSource={dataSource} />
       </TableCell>
-      <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+      <TableCell variant="action">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton aria-label="Data source options" variant="ghost" size="sm">

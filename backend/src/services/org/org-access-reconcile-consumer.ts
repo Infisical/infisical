@@ -72,32 +72,32 @@ export const orgAccessReconcileConsumerFactory = ({
   // Group events carry orgs and actors captured at removal time, since later removals can wipe those rows.
   // Parse eagerly and read lazily: a bad payload never recovers, a failed read is worth a retry.
   const $parseScope = (event: TEvent): (() => Promise<TReconcileScope>) => {
-    switch (event.eventType) {
+    switch (event.type) {
       case GROUP_MEMBERSHIP_REMOVED_EVENT: {
-        const { groupId, orgIds, members } = GroupMembershipRemovedPayloadSchema.parse(event.payload);
-        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
+        const { groupId, orgIds, members } = GroupMembershipRemovedPayloadSchema.parse(event.data);
+        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.type];
         return async () => ({ orgIds, actors: members, reason, groupId });
       }
       case GROUP_LINK_REMOVED_EVENT: {
-        const { orgId, groupId, members } = GroupLinkRemovedPayloadSchema.parse(event.payload);
-        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
+        const { orgId, groupId, members } = GroupLinkRemovedPayloadSchema.parse(event.data);
+        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.type];
         return async () => ({ orgIds: [orgId], actors: members, reason, groupId });
       }
       case GROUP_REMOVED_EVENT: {
-        const { groupId, orgIds, members } = GroupRemovedPayloadSchema.parse(event.payload);
-        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
+        const { groupId, orgIds, members } = GroupRemovedPayloadSchema.parse(event.data);
+        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.type];
         return async () => ({ orgIds, actors: members, reason, groupId });
       }
       case ORG_MEMBERSHIP_REMOVED_EVENT: {
-        const { orgId, ...actor } = OrgMembershipRemovedPayloadSchema.parse(event.payload);
-        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
+        const { orgId, ...actor } = OrgMembershipRemovedPayloadSchema.parse(event.data);
+        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.type];
         return async () => {
           const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx: orgDAL.primaryNode() });
           return { orgIds: [orgId, ...childOrgs.map((org) => org.id)], actors: [actor], reason };
         };
       }
       default:
-        throw new Error(`No org membership event named '${event.eventType}'`);
+        throw new Error(`No org membership event named '${event.type}'`);
     }
   };
 
@@ -140,7 +140,7 @@ export const orgAccessReconcileConsumerFactory = ({
   };
 
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
-    const id = String(event.id);
+    const { id } = event;
     let resolveScope: () => Promise<TReconcileScope>;
     try {
       resolveScope = $parseScope(event);
@@ -188,7 +188,7 @@ export const orgAccessReconcileConsumerFactory = ({
 
   return {
     name: ORG_ACCESS_RECONCILE_CONSUMER,
-    payloadSchema: OrgMembershipEventPayloadSchema,
+    dataSchema: OrgMembershipEventPayloadSchema,
     subscribesTo,
     handle
   };

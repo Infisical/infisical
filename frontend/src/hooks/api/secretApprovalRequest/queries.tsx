@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";

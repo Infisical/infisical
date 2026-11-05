@@ -154,6 +154,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "deleteEmailDomain",
       params: z.object({
         emailDomainId: z.string().uuid().describe("The ID of the email domain to delete")
       }),

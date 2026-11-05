@@ -7,9 +7,9 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { accountTypeSupportsSessionLogMasking, PamAccountType } from "../pam/pam-enums";
 import { TPamTemplateSettings } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { accountTypeSupportsSessionLogMasking, PamAccountType } from "../pam/pam-enums";
 
 type TBootstrapDeps = {
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;

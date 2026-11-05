@@ -52,10 +52,9 @@ const SKELETON_CELLS = ["name", "status", "last-scan", "actions"];
 
 type Props = {
   dataSource: TSecretScanningDataSource;
-  onViewFindings: (resourceId: string) => void;
 };
 
-export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Props) => {
+export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
   const { permission } = useProjectPermission();
 
   const canReadResources = permission.can(
@@ -283,7 +282,6 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
                     key={resource.id}
                     resource={resource}
                     dataSource={dataSource}
-                    onViewFindings={onViewFindings}
                   />
                 ))}
             </TableBody>

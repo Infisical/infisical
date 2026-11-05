@@ -1133,6 +1133,11 @@ export const resourceAuthMethodServiceFactory = ({
         }
       }
       await $bumpTokenVersion(resource, tx);
+      // Routing only checks that a transport is recorded, so a running agent would keep receiving
+      // traffic until it next authenticates. Clearing them cuts it off now; re-enrolling connects again.
+      if (resource.type === RESOURCE_TYPE_GATEWAY) {
+        await gatewayV2DAL.updateById(resource.id, { relayId: null, directAddress: null }, tx);
+      }
     });
 
     return {
