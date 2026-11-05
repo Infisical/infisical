@@ -1,6 +1,7 @@
 import { useRouteContext } from "@tanstack/react-router";
 
 import type { AccessAdapter } from "./access/contract";
+import type { AgentVaultAdapter } from "./agent-vault/contract";
 import type { CertificatesAdapter } from "./certificates/contract";
 import type { IntegrationsAdapter } from "./integrations/contract";
 import type { KmsAdapter } from "./kms/contract";
@@ -20,6 +21,7 @@ export type V4Adapters = {
   access: AccessAdapter;
   projects: ProjectsAdapter;
   pam: PamAdapter;
+  agentVault: AgentVaultAdapter;
 };
 
 export const useV4Adapter = <K extends keyof V4Adapters>(domain: K): V4Adapters[K] => {

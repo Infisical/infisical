@@ -57,7 +57,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/groups/$groupId", "v4/organization/GroupDetailsByIDPage/route.tsx"),
     route("/roles/$roleId", "v4/organization/RoleByIDPage/route.tsx"),
     route(
-      "/secret-scanning/data-sources",
+      "/secret-scanning/data-sources/",
       "v4/secret-scanning/SecretScanningDataSourcesPage/route.tsx"
     ),
     route("/secret-scanning/findings", "v4/secret-scanning/SecretScanningFindingsPage/route.tsx"),
@@ -71,6 +71,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/pam/accounts/", "v4/pam/PamAccountsPage/route.tsx"),
     route("/pam/access", "v4/redirects/PamAccessRedirect/route.tsx"),
     route("/agent-vault/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
+    route("/agent-vault/sessions", "v4/agent-vault/AgentVaultSessionsPage/route.tsx"),
     route("/secret-scanning/", "v4/redirects/SecretScanningIndexRedirect/route.tsx"),
     route("/$", "v4/organization/NotPortedPage/route.tsx")
   ])

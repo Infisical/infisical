@@ -5,7 +5,7 @@ export const SecretScanningIndexRedirect = () => {
   return (
     <Navigate
       replace
-      to="/v4/organizations/$orgId/secret-scanning/data-sources"
+      to="/v4/organizations/$orgId/secret-scanning/data-sources/"
       params={{ orgId }}
     />
   );
