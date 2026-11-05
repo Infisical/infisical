@@ -8,7 +8,7 @@ mode: "frame"
 import { CLIPage, CLICommand } from "/snippets/CLIPage.jsx";
 
 <Visibility for="agents">
-The CLI reference for agents is on a separate page. Read the [CLI reference for agents](/cli/reference-agents), which has every command's arguments, flags, and examples. Each command has the same anchor there, so `/cli/reference#sm-run` is `/cli/reference-agents#sm-run`.
+The CLI reference for agents is on a separate page. Read the [CLI reference for agents](/cli/reference-agents), which has every command's arguments, flags, and examples. Each command has the same anchor there, so `/cli/reference#secrets-manager-run` is `/cli/reference-agents#secrets-manager-run`.
 </Visibility>
 
 <Visibility for="humans">
@@ -16,7 +16,7 @@ The CLI reference for agents is on a separate page. Read the [CLI reference for 
 <CLIPage
   title="CLI reference"
   description="Every Infisical CLI command, with its arguments, flags, and examples. Select a command or flag in a heading to jump to its details."
-  movedAnchors={{ "dynamic-secrets": "sm-dynamic-secrets", export: "sm-export", run: "sm-run", secrets: "sm-secrets", "secrets-agent-proxy": "sm-agent-proxy" }}
+  movedAnchors={{ sm: "secrets-manager", "sm-projects-list": "secrets-manager-projects-get", "sm-secrets-folders": "secrets-manager-folders", "sm-secrets-set": "secrets-manager-secrets-create", "sm-secrets-folders-create--flag-name": "secrets-manager-folders-create--arg-name", "sm-secrets-folders-delete--flag-name": "secrets-manager-folders-delete--arg-name", "sm-secrets-generate-example-env": "secrets-manager-secrets", "dynamic-secrets": "secrets-manager-dynamic-secrets", export: "secrets-manager-export", run: "secrets-manager-run", secrets: "secrets-manager-secrets", "secrets-agent-proxy": "secrets-manager-agent-proxy", "secrets-folders": "secrets-manager-folders", "secrets-folders-create--flag-name": "secrets-manager-folders-create--arg-name", "secrets-folders-delete--flag-name": "secrets-manager-folders-delete--arg-name", "secrets-generate-example-env": "secrets-manager-secrets", "secrets-set": "secrets-manager-secrets-create" }}
 >
 
 <CLICommand
@@ -181,7 +181,7 @@ Run the agent in the foreground, as [infisical agent](/cli/reference#agent) does
 
 Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](/cli/reference#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](/cli/reference#agent-vault-run). Upload skills for those agents with [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push).
 
-`av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does. Agent Vault is a different product from the agent proxy that [infisical sm agent-proxy](/cli/reference#sm-agent-proxy) runs.
+`av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does. Agent Vault is a different product from the agent proxy that [infisical secrets-manager agent-proxy](/cli/reference#secrets-manager-agent-proxy) runs.
 
 </CLICommand>
 
@@ -499,7 +499,7 @@ Stop and remove a gateway's systemd service. Run the command as root on Linux.
   command="init"
   usage="[flags]"
   flags={[
-    { name: "--project-id", value: "<string>", type: "string", description: "Project ID to link this directory to. When set, skips the interactive org and project pickers and writes `.infisical.yaml` directly. Find the ID with [infisical sm projects list](/cli/reference#sm-projects-list)." },
+    { name: "--project-id", value: "<string>", type: "string", description: "Project ID to link this directory to. When set, skips the interactive org and project pickers and writes `.infisical.yaml` directly. Find the ID with [infisical secrets-manager projects get](/cli/reference#secrets-manager-projects-get)." },
   ]}
   examples={[
     { title: "Link the current directory to a project", code: "infisical init" },
@@ -926,6 +926,10 @@ To add a different account, or an account on another instance, use `infisical lo
 
 Show which profile the CLI uses in this terminal and directory, and why.
 
+The command also shows the project, environment, and folder that `secrets-manager` commands use in this directory when you don't pass `--projectId`, `--env`, or `--path`, and where each value comes from, such as `INFISICAL_ENVIRONMENT` or `.infisical.yaml`. Run it before you write secrets, to check where they'll go.
+
+If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `run`, `export`, and `secrets get` don't read the project from the [project config file](/cli/project-config), so pass `--projectId` or set `INFISICAL_PROJECT_ID`.
+
 </CLICommand>
 
 <CLICommand
@@ -1303,6 +1307,882 @@ The hook runs `infisical scan git-changes -v --staged` before each commit and bl
 </CLICommand>
 
 <CLICommand
+  id="secrets-manager"
+  command="secrets-manager"
+>
+
+Manage secrets, and the projects, environments, and folders that hold them. The `secrets-manager` commands inject secrets into a process, export them to a file, read and write them, lease credentials from [dynamic secrets](/documentation/platform/dynamic-secrets/overview), and run the [Agent Proxy](/documentation/platform/agent-proxy/overview). `sm` is an alias, so `infisical sm run` is the same command as `infisical secrets-manager run`.
+
+<br />
+### Confirm before deleting
+
+Every delete asks you to type the name of what it deletes, or the number of secrets if you delete more than one, and deletes nothing if what you type doesn't match. Pass `--yes` (`-y`) to skip the question.
+
+If there's no terminal to ask in, such as in CI, and you don't pass `--yes`, the command deletes nothing and fails with `confirmation_required`. Add `--yes` to scripts that delete with `secrets-manager` or `sm`.
+
+<br />
+### Errors in scripts
+
+If one of the following fails, it prints what went wrong and the command to run next, and exits with status `1`:
+
+- The `projects`, `environments`, and `folders` commands
+- `secrets create` and `secrets update`
+
+With `--output=json` or `--output=yaml`, the command prints the error to standard error in that format instead:
+
+```json
+{"error": {"code": "environment_not_found", "message": "Environment \"stagng\" doesn't exist in project payments-api.", "next": ["infisical secrets-manager environments get --projectId <project-id>"]}}
+```
+
+If Infisical returned the error, the JSON also has `statusCode` and `requestId`. `code` is one of the following:
+
+| Code | Meaning |
+| --- | --- |
+| `auth_required` | You aren't logged in, or the token is invalid or expired |
+| `permission_denied` | Your role doesn't allow the action |
+| `project_not_linked` | No `--projectId`, no `INFISICAL_PROJECT_ID`, and no `.infisical.yaml` |
+| `project_config_invalid` | The directory's `.infisical.yaml` exists but can't be read |
+| `project_not_found` | The project doesn't exist, or you aren't a member of it |
+| `project_type_not_supported` | The project belongs to another product, such as Certificate Management |
+| `project_required` | An `environments` or `folders` delete ran without `--projectId` |
+| `project_delete_protected` | The project has delete protection on, so nothing was deleted |
+| `environment_not_found` | No environment in the project has that slug |
+| `environment_exists` | Another environment already has that slug |
+| `environment_pending_deletion` | The slug belongs to an environment that's pending deletion |
+| `folder_not_found` | No folder in `--path` has that name |
+| `folder_exists` | Another folder in `--path` already has that name |
+| `secret_exists` | A secret passed to `secrets create` already exists, so nothing was written |
+| `secret_not_found` | A secret passed to `secrets update` doesn't exist, so nothing was written |
+| `invalid_argument` | The command can't use an argument, such as the same secret name given twice, a secret with no value, or a folder name with a `/` |
+| `invalid_flag_value` | A flag is missing or has a value the command can't use, such as an empty `--name` or a `--file` that doesn't exist or isn't a valid `.env` or YAML file |
+| `nothing_to_update` | An `update` command got no flag that changes anything |
+| `service_token_not_supported` | The command doesn't accept service tokens |
+| `token_project_mismatch` | The service token belongs to a different project than the one you selected |
+| `confirmation_required` | A delete ran without a terminal and without `--yes` |
+| `confirmation_declined` | What you typed didn't match what the question asked for, you cancelled the question, or the project, environment, or folder changed before you answered |
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-agent-proxy"
+  command="secrets-manager agent-proxy"
+>
+
+Run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview), which lets AI agents and untrusted code use secrets without holding them. Agents send their HTTP requests through the proxy, which replaces placeholder credentials with real ones before forwarding each request, so the agent never holds the real secret.
+
+For an agent on your own computer, [infisical secrets-manager agent-proxy run](/cli/reference#secrets-manager-agent-proxy-run) starts a proxy and a sandboxed agent together. For a proxy shared across your network, run [infisical secrets-manager agent-proxy start](/cli/reference#secrets-manager-agent-proxy-start) on its own host, and launch agents behind it with [infisical secrets-manager agent-proxy connect](/cli/reference#secrets-manager-agent-proxy-connect).
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-agent-proxy-connect"
+  command="secrets-manager agent-proxy connect"
+  usage="[flags] -- <command>"
+  args={[
+    { name: "command", usage: "<command>", required: true, description: "The agent's command, after `--`. Everything after `--` is passed to it unchanged." },
+  ]}
+  flags={[
+    { name: "--allow-readable-brokered-secrets", type: "bool", description: "Start the agent even if it can read the real value of a secret that a proxied service substitutes into its requests. Without this flag, the command exits with an error, and you fix it by removing the agent's read permission on that secret. Can also be set with `INFISICAL_AGENT_PROXY_ALLOW_READABLE_BROKERED_SECRETS`." },
+    { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
+    { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
+    { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `secrets-management.environment`." },
+    { name: "--no-proxy", value: "<string>", type: "string", description: "More hosts for the agent to reach directly instead of through the proxy, separated by commas. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` in your environment." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `secrets-management.secret-path` in `.infisical.yaml`." },
+    { name: "--projectId", value: "<string>", type: "string", required: true, description: "The project to fetch proxied services and secrets from. Can also be set with `INFISICAL_PROJECT_ID`, or read from `.infisical.yaml`." },
+    { name: "--proxy", value: "<string>", type: "string", required: true, description: "The agent proxy's address as `host:port`. Can also be set with `INFISICAL_AGENT_PROXY_ADDRESS`. It's never read from `.infisical.yaml`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of `--client-id` and `--client-secret`. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Launch an agent behind a proxy", code: "infisical secrets-manager agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude" },
+    { title: "Read the settings from environment variables", code: "export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322\nexport INFISICAL_PROJECT_ID=<project-id>\nexport INFISICAL_ENVIRONMENT=prod\ninfisical secrets-manager agent-proxy connect -- claude" },
+    { title: "Authenticate as a machine identity", code: "infisical secrets-manager agent-proxy connect \\\n  --proxy=<proxy-host>:17322 \\\n  --env=prod \\\n  --client-id=<client-id> \\\n  --client-secret=<client-secret> \\\n  -- codex" },
+  ]}
+>
+
+Launch an agent that sends its requests through an agent proxy on another host, started with [infisical secrets-manager agent-proxy start](/cli/reference#secrets-manager-agent-proxy-start). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+
+The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agent’s-environment).
+
+If the agent can read a secret or lease a dynamic secret that a proxied service brokers to it, the command refuses to start, because the agent would get the real value and bypass the proxy.
+
+The command exits with the agent's exit code.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-agent-proxy-run"
+  command="secrets-manager agent-proxy run"
+  usage="[flags] -- <command>"
+  args={[
+    { name: "command", usage: "<command>", required: true, description: "The agent's command, after `--`. Everything after `--` is passed to it unchanged." },
+  ]}
+  flags={[
+    { name: "--allow-host", value: "<stringArray>", type: "stringArray", description: "A host the agent can reach, without a credential, when `--unmatched-host=block` is set. Repeatable." },
+    { name: "--allow-read", value: "<stringArray>", type: "stringArray", description: "A path the agent can read even though the sandbox blocks it by default, such as `~/.aws/config`. The path stays read-only, and the rest of a denied directory stays denied. Repeatable." },
+    { name: "--allow-write", value: "<stringArray>", type: "stringArray", description: "A path the agent can write, beyond the working directory, the temporary directory, and the state directories of Claude Code, Codex, and Gemini CLI. Repeatable." },
+    { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `secrets-management.environment`." },
+    { name: "--log-file", value: "<string>", type: "string", description: "A file to write the proxy's per-request activity to. The file is appended to. Without it, nothing is written, and only warnings and errors print to stderr unless you pass `--log-level`." },
+    { name: "--no-sandbox", type: "bool", description: "Run the agent without the OS sandbox. Credentials are still brokered, but the agent can read your files and keyring and reach the network directly." },
+    { name: "--pass-env", value: "<stringArray>", type: "stringArray", description: "One of your environment variables to pass through to the agent, by name, when the command would otherwise remove it. Repeatable." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to fetch proxied services from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `secrets-management.secret-path` in `.infisical.yaml`." },
+    { name: "--poll-interval", value: "<int>", type: "int", default: "60", description: "The number of seconds between refreshes of permissions and credentials." },
+    { name: "--projectId", value: "<string>", type: "string", required: true, description: "The project to fetch proxied services from. Can also be set with `INFISICAL_PROJECT_ID`, or read from `.infisical.yaml`." },
+    { name: "--sandbox", type: "bool", default: "true", description: "Run the agent inside the OS sandbox. Pass `--sandbox=false` or `--no-sandbox` to turn it off. Can also be set with `INFISICAL_AGENT_PROXY_SANDBOX`, where `0`, `false`, or `off` turns it off." },
+    { name: "--set-env", value: "<stringArray>", type: "stringArray", description: "An environment variable to set in the agent, as `KEY=VALUE`. It overrides every other value. Repeatable." },
+    { name: "--token", value: "<string>", type: "string", description: "A token to broker with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`, then uses your login." },
+    { name: "--unmatched-host", value: "<string>", type: "string", default: "allow", description: "What to do with requests to a host that has no proxied service: `allow` forwards them with no credential, and `block` rejects them." },
+  ]}
+  examples={[
+    { title: "Run an agent in the sandbox", code: "infisical secrets-manager agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude" },
+    { title: "Read the project and environment from .infisical.yaml", code: "infisical secrets-manager agent-proxy run -- claude" },
+    { title: "Allow only proxied services and one registry", code: "infisical secrets-manager agent-proxy run --env=dev --unmatched-host=block --allow-host=registry.npmjs.org -- claude" },
+    { title: "Keep a log of proxied requests", code: "infisical secrets-manager agent-proxy run --env=dev --log-file=/tmp/agent-proxy.log -- claude" },
+  ]}
+>
+
+Launch an agent on your own computer in an OS sandbox, with a proxy that brokers credentials onto its requests. The command starts the proxy, runs the agent, and stops the proxy when the agent exits. It authenticates as your login, or with `--token`. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
+
+The [sandbox](/documentation/platform/agent-proxy/local-agent-proxy#the-sandbox) stops the agent from reading credential files such as `~/.ssh` and `~/.aws`. If the host supports it, the sandbox also blocks every network connection except the one to the proxy. The sandbox needs macOS, or Linux with `bubblewrap` installed. On any other system, the command won't start unless you pass `--no-sandbox`.
+
+The agent never gets real secret values or an Infisical token. It gets placeholder values for [proxied services](/documentation/platform/agent-proxy/proxied-services) that substitute credentials into requests. The command [removes variables that look like credentials](/documentation/platform/agent-proxy/local-agent-proxy#environment-scrubbed) from the agent's environment, such as any variable with `TOKEN` or `SECRET` in its name. To keep one of those variables, pass its name to `--pass-env`.
+
+The command always starts its own proxy. To use a proxy on another host, run [infisical secrets-manager agent-proxy connect](/cli/reference#secrets-manager-agent-proxy-connect).
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-agent-proxy-start"
+  command="secrets-manager agent-proxy start"
+  usage="[flags]"
+  flags={[
+    { name: "--client-id", value: "<string>", type: "string", required: true, description: "The client ID of the proxy's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
+    { name: "--client-secret", value: "<string>", type: "string", required: true, description: "The client secret of the proxy's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
+    { name: "--log-file", value: "<string>", type: "string", description: "A file to also write logs to, as JSON lines. The file is appended to." },
+    { name: "--log-format", value: "<string>", type: "string", default: "console", description: "The format of the logs written to stderr: `console` or `json`." },
+    { name: "--poll-interval", value: "<int>", type: "int", default: "60", description: "The number of seconds between refreshes of permissions and credentials for active agents." },
+    { name: "--port", value: "<int>", type: "int", default: "17322", description: "The port to listen on, on all interfaces." },
+    { name: "--unmatched-host", value: "<string>", type: "string", default: "allow", description: "What to do with requests to a host that has no proxied service: `allow` forwards them with no credential, and `block` rejects them. `block` also rejects requests to your Infisical instance." },
+  ]}
+  examples={[
+    { title: "Start the proxy", code: "infisical secrets-manager agent-proxy start --client-id=<client-id> --client-secret=<client-secret>" },
+    { title: "Block hosts with no proxied service", code: "infisical secrets-manager agent-proxy start --port=17322 --unmatched-host=block" },
+    { title: "Log JSON to a file", code: "infisical secrets-manager agent-proxy start --log-format=json --log-file=/var/log/infisical/agent-proxy.log" },
+  ]}
+>
+
+Start an agent proxy in the foreground, for agents on other hosts to connect to with [infisical secrets-manager agent-proxy connect](/cli/reference#secrets-manager-agent-proxy-connect). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+
+The proxy authenticates as its own machine identity, which needs read access to the secrets your proxied services reference, and renews its access token as it runs. The proxy logs brokered requests at `info` and blocked requests at `warn`. To also see requests passed through without a credential, pass `--log-level=debug`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-dynamic-secrets"
+  command="secrets-manager dynamic-secrets"
+  usage="[flags]"
+  flags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to work in. Every `infisical secrets-manager dynamic-secrets` subcommand accepts it. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the dynamic secrets as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to list dynamic secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project to list dynamic secrets from. Takes precedence over `--projectId`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project to list dynamic secrets from. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "List dynamic secrets in dev", code: "infisical secrets-manager dynamic-secrets" },
+    { title: "List dynamic secrets in a production folder", code: "infisical secrets-manager dynamic-secrets --env=prod --path=/databases" },
+    { title: "Print dynamic secrets as JSON", code: "infisical secrets-manager dynamic-secrets --projectId=<project-id> --output=json" },
+  ]}
+>
+
+List the [dynamic secrets](/documentation/platform/dynamic-secrets/overview) in an environment and folder, with each one's provider, default TTL, and max TTL. A dynamic secret generates credentials on demand, such as a database user, and each set of credentials it generates is a lease. Manage leases with [infisical secrets-manager dynamic-secrets lease](/cli/reference#secrets-manager-dynamic-secrets-lease).
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-dynamic-secrets-lease"
+  command="secrets-manager dynamic-secrets lease"
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the dynamic secret." },
+  ]}
+>
+
+Create, list, renew, and delete the leases of a dynamic secret.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-dynamic-secrets-lease-create"
+  command="secrets-manager dynamic-secrets lease create"
+  usage="<name> [flags]"
+  args={[
+    { name: "name", usage: "<name>", required: true, description: "The name of the dynamic secret to lease." },
+  ]}
+  flags={[
+    { name: "--kubernetes-namespace", value: "<string>", type: "string", description: "The namespace to create the lease in. Used only by Kubernetes dynamic secrets." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print only the credentials, as `json`, `yaml`, or `dotenv`, instead of the lease details and a table." },
+    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that holds the dynamic secret. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--plain", type: "bool", description: "Print each credential as `KEY=value`, one per line, with no other output. Ignored when you pass `--output`." },
+    { name: "--principals", value: "<string>", type: "string", description: "The principals to put in the certificate, separated by commas. Required by SSH dynamic secrets, and each one must be allowed by the dynamic secret." },
+    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project that holds the dynamic secret. Takes precedence over `--projectId`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project that holds the dynamic secret. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--ttl", value: "<string>", type: "string", description: "How long the lease lasts, such as `30m` or `1h`. Defaults to the dynamic secret's default TTL, and can't exceed its max TTL." },
+  ]}
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the dynamic secret." },
+  ]}
+  examples={[
+    { title: "Lease database credentials for an hour", code: "infisical secrets-manager dynamic-secrets lease create postgres-app --env=prod --ttl=1h" },
+    { title: "Lease credentials as JSON", code: "infisical secrets-manager dynamic-secrets lease create postgres-app --output=json" },
+    { title: "Lease an SSH certificate", code: "infisical secrets-manager dynamic-secrets lease create ssh-prod \\\n  --projectId=<project-id> \\\n  --env=prod \\\n  --principals=root,deploy" },
+  ]}
+>
+
+Generate a new set of credentials from a dynamic secret. The command prints the lease ID, when the lease expires, and the credentials. Keep the lease ID to renew or delete the lease later, or find it with [infisical secrets-manager dynamic-secrets lease list](/cli/reference#secrets-manager-dynamic-secrets-lease-list).
+
+The table and `--plain` show only credentials whose values are strings. Pass `--output` to get every credential the provider returns.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-dynamic-secrets-lease-delete"
+  command="secrets-manager dynamic-secrets lease delete"
+  usage="<lease-id> [flags]"
+  args={[
+    { name: "lease-id", usage: "<lease-id>", required: true, description: "The ID of the lease to delete." },
+  ]}
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the deleted lease as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that holds the lease's dynamic secret. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project that holds the lease. Takes precedence over `--projectId`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project that holds the lease. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--yes", short: "-y", type: "bool", description: "Delete without asking for confirmation. Required when there's no terminal to ask in, such as in CI." },
+  ]}
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the lease's dynamic secret." },
+  ]}
+  examples={[
+    { title: "Delete a lease", code: "infisical secrets-manager dynamic-secrets lease delete <lease-id> --env=prod" },
+  ]}
+>
+
+Delete a lease before it expires, and revoke its credentials with the provider. The command asks you to type the lease ID before it deletes anything, unless you pass `--yes`. `--env` and `--path` must point to the folder that holds the lease's dynamic secret, or Infisical reports that the lease doesn't exist.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-dynamic-secrets-lease-list"
+  command="secrets-manager dynamic-secrets lease list"
+  usage="<name> [flags]"
+  args={[
+    { name: "name", usage: "<name>", required: true, description: "The name of the dynamic secret to list leases for." },
+  ]}
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the leases as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that holds the dynamic secret. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project that holds the dynamic secret. Takes precedence over `--projectId`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project that holds the dynamic secret. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the dynamic secret." },
+  ]}
+  examples={[
+    { title: "List a dynamic secret's leases", code: "infisical secrets-manager dynamic-secrets lease list postgres-app --env=prod" },
+  ]}
+>
+
+List the active leases of a dynamic secret, with each lease's ID, expiry time, and creation time.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-dynamic-secrets-lease-renew"
+  command="secrets-manager dynamic-secrets lease renew"
+  usage="<lease-id> [flags]"
+  args={[
+    { name: "lease-id", usage: "<lease-id>", required: true, description: "The ID of the lease to renew." },
+  ]}
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the renewed lease as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that holds the lease's dynamic secret. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project that holds the lease. Takes precedence over `--projectId`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project that holds the lease. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--ttl", value: "<string>", type: "string", description: "How long to extend the lease by, from its current expiry, such as `30m` or `1h`. Defaults to the dynamic secret's default TTL." },
+  ]}
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the lease's dynamic secret." },
+  ]}
+  examples={[
+    { title: "Extend a lease by 30 minutes", code: "infisical secrets-manager dynamic-secrets lease renew <lease-id> --env=prod --ttl=30m" },
+  ]}
+>
+
+Extend a lease before it expires, and print its new expiry time. A renewal can't push the lease past the dynamic secret's max TTL, counted from when the lease was created. `--env` and `--path` must point to the folder that holds the lease's dynamic secret, or Infisical reports that the lease doesn't exist.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-environments"
+  command="secrets-manager environments"
+>
+
+List, create, rename, and delete the [environments](/documentation/platform/secrets-mgmt/project#project-environments) of a Secrets Management project, such as `dev` and `prod`. Other commands take an environment's slug with `--env`. `environment` is an alias, so `infisical secrets-manager environment get` also works.
+
+The commands take the project from `--projectId`, then `INFISICAL_PROJECT_ID`, then `.infisical.yaml`, except `delete`, which takes it only from `--projectId`. They don't accept service tokens. If `INFISICAL_TOKEN` holds a service token, the commands use your login instead.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-environments-create"
+  command="secrets-manager environments create"
+  usage="<slug> [flags]"
+  args={[
+    { name: "slug", usage: "<slug>", required: true, description: "The slug of the new environment, such as `qa`." },
+  ]}
+  flags={[
+    { name: "--name", value: "<string>", type: "string", description: "The environment's display name. Defaults to the slug." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the created environment as `json` or `yaml` instead of a table." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to create the environment in. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Create an environment", code: "infisical secrets-manager environments create qa --projectId=<project-id>" },
+    { title: "Create an environment with a display name", code: "infisical secrets-manager environments create qa --name=\"Quality Assurance\" --projectId=<project-id>" },
+  ]}
+>
+
+Create an environment in a project. If an environment already has the slug, the command fails with `environment_exists`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-environments-delete"
+  command="secrets-manager environments delete"
+  usage="<slug> [flags]"
+  args={[
+    { name: "slug", usage: "<slug>", required: true, description: "The slug of the environment to delete." },
+  ]}
+  flags={[
+    { name: "--force", type: "bool", description: "Delete the environment permanently now, instead of after 14 days. Also deletes an environment that's already pending deletion, which frees its slug." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the deleted environment as `json` or `yaml` instead of a table." },
+    { name: "--projectId", value: "<string>", type: "string", required: true, description: "The project that holds the environment. The command doesn't read `INFISICAL_PROJECT_ID` or `.infisical.yaml`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--yes", short: "-y", type: "bool", description: "Delete without asking for confirmation. Required when there's no terminal to ask in, such as in CI." },
+  ]}
+  examples={[
+    { title: "Delete an environment", code: "infisical secrets-manager environments delete qa --projectId=<project-id>" },
+    { title: "Delete an environment permanently in a script", code: "infisical secrets-manager environments delete qa --force --yes --projectId=<project-id>" },
+  ]}
+>
+
+Delete an environment and every secret in it. The command asks you to type the environment's slug before it deletes anything, unless you pass `--yes`.
+
+The environment stays pending deletion for 14 days, and is deleted permanently after that. Until then, you can restore it from the project's settings in Infisical, and no other environment can use its slug. Pass `--force` to delete it permanently now.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-environments-get"
+  command="secrets-manager environments get"
+  usage="[slug] [flags]"
+  args={[
+    { name: "slug", usage: "[slug]", description: "The slug of the environment to show. Without it, the command lists every environment in the project." },
+  ]}
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the environments as `json` or `yaml` instead of a table." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to read environments from. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "List the environments of the linked project", code: "infisical secrets-manager environments get" },
+    { title: "Show one environment as JSON", code: "infisical secrets-manager environments get staging --projectId=<project-id> --output=json" },
+  ]}
+>
+
+List a project's environments with each one's name, slug, and ID, or show the environment you name. The list also shows the environments pending deletion, with the day each one will be deleted permanently. In JSON and YAML, those environments are in `pendingDeletion`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-environments-update"
+  command="secrets-manager environments update"
+  usage="<slug> [flags]"
+  args={[
+    { name: "slug", usage: "<slug>", required: true, description: "The current slug of the environment to change." },
+  ]}
+  flags={[
+    { name: "--name", value: "<string>", type: "string", description: "The environment's new display name." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the updated environment as `json` or `yaml` instead of a table." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project that holds the environment. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`." },
+    { name: "--slug", value: "<string>", type: "string", description: "The environment's new slug. Commands that pass the old slug with `--env` stop working." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Change an environment's display name", code: "infisical secrets-manager environments update qa --name=\"Quality Assurance\" --projectId=<project-id>" },
+    { title: "Change an environment's slug", code: "infisical secrets-manager environments update qa --slug=testing --projectId=<project-id>" },
+  ]}
+>
+
+Change an environment's display name, its slug, or both. Pass at least one of `--name` and `--slug`, or the command fails with `nothing_to_update`. If another environment already has the new slug, the command fails with `environment_exists`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-export"
+  command="secrets-manager export"
+  usage="[flags]"
+  flags={[
+    { name: "--env", short: "-e", value: "<string>", type: "string", default: "dev", description: "The environment to export secrets from, such as `dev`, `staging`, or `prod`. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
+    { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values. Pass `--expand=false` to export values exactly as stored." },
+    { name: "--format", short: "-f", value: "<string>", type: "string", default: "dotenv", description: "The output format: `dotenv`, `dotenv-export`, `dotenv-eval`, `csv`, `json`, or `yaml`." },
+    { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
+    { name: "--output-file", short: "-o", value: "<string>", type: "string", description: "A file or directory to write to, instead of standard output. In a directory, the CLI writes `.env`, `secrets.json`, `secrets.csv`, or `secrets.yaml`, depending on the format. A file name without an extension gets the format's extension, and missing parent directories are created." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to export secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to export secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--secret-overriding", type: "bool", default: "true", description: "Export your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to export only shared secrets." },
+    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only export secrets with these tag slugs, separated by commas." },
+    { name: "--template", value: "<string>", type: "string", description: "The path to a Go template to render and print instead of a file format. The template chooses its own project, environment, and folder, so every other `export` flag except `--token` is ignored." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Write a .env file", code: "infisical secrets-manager export --output-file=./.env" },
+    { title: "Export production secrets as JSON", code: "infisical secrets-manager export --env=prod --format=json > secrets.json" },
+    { title: "Load secrets into the current shell", code: "eval \"$(infisical secrets-manager export --format=dotenv-eval)\"" },
+    { title: "Render secrets through a template", code: "infisical secrets-manager export --template=./secrets.tmpl" },
+  ]}
+>
+
+Print an environment's secrets in a file format such as `.env` or JSON, for tools that read configuration from a file. Output goes to standard output unless you pass `--output-file`.
+
+`dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
+
+`--template` takes a Go template that fetches secrets with the functions the [Infisical Agent](/integrations/platforms/infisical-agent#available-secret-template-functions) provides, such as `listSecrets` and `getSecretByName`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-folders"
+  command="secrets-manager folders"
+>
+
+List, create, rename, and delete the folders in an environment. Folders organize an environment's secrets into paths such as `/backend/api`, which other commands take with `--path`. Each `folders` command works on the folders directly inside `--path`, so to work on `/backend/api`, pass `api` as the name and `--path=/backend`. A folder name can contain only letters, numbers, dashes, and underscores.
+
+The commands take the project from `--projectId`, then `INFISICAL_PROJECT_ID`, then `.infisical.yaml`, except `delete`, which takes it only from `--projectId`. A service token works only in its own project. If you select a different project, the command fails with `token_project_mismatch`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-folders-create"
+  command="secrets-manager folders create"
+  usage="<name> [flags]"
+  args={[
+    { name: "name", usage: "<name>", required: true, description: "The name of the new folder." },
+  ]}
+  flags={[
+    { name: "--description", value: "<string>", type: "string", description: "A description of the folder." },
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to create the folder in. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the created folder as `json` or `yaml` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to create the new folder in. Folders in the path that don't exist yet are created too. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to create the folder in. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`. A service token always uses its own project." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token or service token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Create a folder", code: "infisical secrets-manager folders create api --env=prod --path=/backend" },
+    { title: "Create a folder and its missing parents, with a description", code: "infisical secrets-manager folders create api --path=/backend/services --description=\"Public API\"" },
+  ]}
+>
+
+Create a folder inside `--path`. If a folder with that name already exists there, the command fails with `folder_exists` and creates nothing.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-folders-delete"
+  command="secrets-manager folders delete"
+  usage="<name> [flags]"
+  args={[
+    { name: "name", usage: "<name>", required: true, description: "The name of the folder to delete." },
+  ]}
+  flags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the folder. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the deleted folder as `json` or `yaml` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder that contains the folder to delete. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--projectId", value: "<string>", type: "string", required: true, description: "The project that holds the folder. The command doesn't read `INFISICAL_PROJECT_ID` or `.infisical.yaml`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token or service token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--yes", short: "-y", type: "bool", description: "Delete without asking for confirmation. Required when there's no terminal to ask in, such as in CI." },
+  ]}
+  examples={[
+    { title: "Delete a folder", code: "infisical secrets-manager folders delete api --env=prod --path=/backend --projectId=<project-id>" },
+    { title: "Delete a folder in a script", code: "infisical secrets-manager folders delete api --env=prod --path=/backend --projectId=<project-id> --yes" },
+  ]}
+>
+
+Delete a folder and everything in it: its secrets, its dynamic secrets, and the folders inside it. The command asks you to type the folder's name before it deletes anything, unless you pass `--yes`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-folders-get"
+  command="secrets-manager folders get"
+  usage="[name] [flags]"
+  args={[
+    { name: "name", usage: "[name]", description: "The name of the folder to show. Without it, the command lists the folders inside `--path`." },
+  ]}
+  flags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to read folders from. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the folders as `json` or `yaml` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to list folders from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to read folders from. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`. A service token always uses its own project." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token or service token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "List the folders at the root", code: "infisical secrets-manager folders get" },
+    { title: "Show one folder as JSON", code: "infisical secrets-manager folders get api --env=prod --path=/backend --output=json" },
+  ]}
+>
+
+List the folders inside `--path`, or show the folder you name. In JSON and YAML, each folder's `path` is its own full path, such as `/backend/api`, which you can pass to `--path` to work inside the folder.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-folders-update"
+  command="secrets-manager folders update"
+  usage="<name> [flags]"
+  args={[
+    { name: "name", usage: "<name>", required: true, description: "The current name of the folder to change." },
+  ]}
+  flags={[
+    { name: "--description", value: "<string>", type: "string", description: "The folder's new description. Pass `--description=\"\"` to remove it." },
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the folder. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
+    { name: "--name", value: "<string>", type: "string", description: "The folder's new name. Commands that pass the folder's old path with `--path` stop working." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the updated folder as `json` or `yaml` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder that contains the folder to change. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project that holds the folder. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`. A service token always uses its own project." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token or service token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Rename a folder", code: "infisical secrets-manager folders update api --name=public-api --env=prod --path=/backend" },
+    { title: "Remove a folder's description", code: "infisical secrets-manager folders update api --description=\"\" --path=/backend" },
+  ]}
+>
+
+Rename a folder, change its description, or both. Pass at least one of `--name` and `--description`, or the command fails with `nothing_to_update`. If another folder in `--path` already has the new name, the command fails with `folder_exists`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-projects"
+  command="secrets-manager projects"
+>
+
+Find, create, change, and delete Secrets Management [projects](/documentation/platform/project). Use these commands to find the project ID that [infisical init](/cli/reference#init) and the `--projectId` flag take, or to manage projects without opening Infisical.
+
+The commands don't accept service tokens, except `projects get` with a project ID. If `INFISICAL_TOKEN` holds a service token, the commands use your login instead.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-projects-create"
+  command="secrets-manager projects create"
+  usage="[flags]"
+  flags={[
+    { name: "--description", value: "<string>", type: "string", description: "A description of the project, up to 1024 characters." },
+    { name: "--name", value: "<string>", type: "string", required: true, description: "The name of the project, up to 64 characters." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the created project as `json` or `yaml` instead of a table." },
+    { name: "--slug", value: "<string>", type: "string", description: "The project's slug, from 5 to 64 characters. Without it, Infisical generates a slug from the name." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Create a project and link this directory to it", code: "infisical secrets-manager projects create --name=my-app\ninfisical init --project-id=<project-id>" },
+    { title: "Create a project with a description and slug", code: "infisical secrets-manager projects create --name=my-app --description=\"Backend service\" --slug=my-app-backend" },
+  ]}
+>
+
+Create a Secrets Management project in your organization with the Development, Staging, and Production environments.
+
+The user or machine identity that creates the project becomes the project's admin. The command prints the project and its environments, followed by the `infisical init` command that links the current directory to the project.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-projects-delete"
+  command="secrets-manager projects delete"
+  usage="<slug> [flags]"
+  args={[
+    { name: "slug", usage: "<slug>", required: true, description: "The slug of the project to delete. Find it with [infisical secrets-manager projects get](/cli/reference#secrets-manager-projects-get)." },
+  ]}
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the deleted project as `json` or `yaml` instead of a table." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--yes", short: "-y", type: "bool", description: "Delete without asking for confirmation. Required when there's no terminal to ask in, such as in CI." },
+  ]}
+  examples={[
+    { title: "Delete a project", code: "infisical secrets-manager projects delete my-app" },
+    { title: "Delete a project in a script", code: "infisical secrets-manager projects delete my-app --yes" },
+  ]}
+>
+
+Delete a project, with all of its environments, folders, and secrets. The command asks you to type the project's slug before it deletes anything, unless you pass `--yes`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-projects-get"
+  command="secrets-manager projects get"
+  usage="[slug-or-id] [flags]"
+  args={[
+    { name: "slug-or-id", usage: "[slug-or-id]", description: "The slug or ID of the project to show. Without it, the command lists your projects." },
+  ]}
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the projects as `json` or `yaml` instead of a table." },
+    { name: "--projectId", value: "<string>", type: "string", deprecated: true, description: "Deprecated: pass the project's ID as the argument instead. The ID of the project to show." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "List your projects", code: "infisical secrets-manager projects get" },
+    { title: "Show a project and its environments", code: "infisical secrets-manager projects get my-app" },
+    { title: "List a machine identity's projects as JSON", code: "infisical secrets-manager projects get --token=<access-token> --output=json" },
+  ]}
+>
+
+List the name, slug, and ID of each Secrets Management project you're a member of, or show one project with the name, slug, and ID of each of its environments. With a machine identity, the list has the projects the identity is a member of. Use an environment's slug with the `--env` flag of other `secrets-manager` commands.
+
+Without an argument, the command lists your projects, even in a directory linked to one. It doesn't use `INFISICAL_PROJECT_ID` or `.infisical.yaml`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-projects-update"
+  command="secrets-manager projects update"
+  usage="<slug-or-id> [flags]"
+  args={[
+    { name: "slug-or-id", usage: "<slug-or-id>", required: true, description: "The slug or ID of the project to change." },
+  ]}
+  flags={[
+    { name: "--description", value: "<string>", type: "string", description: "The project's new description, up to 1024 characters. Pass `--description=\"\"` to remove it." },
+    { name: "--name", value: "<string>", type: "string", description: "The project's new name, up to 64 characters." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the updated project as `json` or `yaml` instead of a table." },
+    { name: "--slug", value: "<string>", type: "string", description: "The project's new slug, up to 64 characters. Commands that name the project by its old slug stop working." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Rename a project", code: "infisical secrets-manager projects update my-app --name=\"My App\"" },
+    { title: "Change a project's slug", code: "infisical secrets-manager projects update my-app --slug=my-app-backend" },
+    { title: "Remove a project's description", code: "infisical secrets-manager projects update <project-id> --description=\"\"" },
+  ]}
+>
+
+Change a project's name, slug, or description. Pass at least one of `--name`, `--slug`, and `--description`, or the command fails with `nothing_to_update`.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-run"
+  command="secrets-manager run"
+  usage="[flags] -- [command]"
+  args={[
+    { name: "command", usage: "[command]", description: "The command to run, after `--`. Everything after `--` is passed to it unchanged. Required unless you pass `--command`." },
+  ]}
+  flags={[
+    { name: "--command", short: "-c", value: "<string>", type: "string", description: "A shell command to run instead of the arguments after `--`, such as `\"npm run build && npm start\"`. Use it to chain several commands." },
+    { name: "--env", short: "-e", value: "<string>", type: "string", default: "dev", description: "The environment to fetch secrets from, such as `dev`, `staging`, or `prod`. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
+    { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values before injecting them. Pass `--expand=false` to inject values exactly as stored." },
+    { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
+    { name: "--path", value: "<stringArray>", type: "stringArray", default: "/", description: "The folder to fetch secrets from. Repeat the flag to inject secrets from several folders. When a secret exists in more than one, the value from the last `--path` wins. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--project-config-dir", value: "<string>", type: "string", description: "The directory that contains `.infisical.yaml`. Use it when the file isn't in the directory you run the command from, such as in a monorepo." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to fetch secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--recursive", type: "bool", description: "Also inject the secrets in every subfolder of each `--path`." },
+    { name: "--secret-overriding", type: "bool", default: "true", description: "Use your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to use only shared secrets." },
+    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only inject secrets with these tag slugs, separated by commas." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to fetch secrets with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--watch", type: "bool", description: "Restart the command whenever secrets change in Infisical. Intended for local development." },
+    { name: "--watch-interval", value: "<int>", type: "int", default: "10", description: "How often, in seconds, `--watch` checks for changes. The minimum is `5`." },
+  ]}
+  examples={[
+    { title: "Start a dev server with secrets", code: `infisical secrets-manager run -- npm run dev` },
+    { title: "Use another environment and two folders", code: `infisical secrets-manager run --env=prod --path=/shared --path=/backend -- node server.js` },
+    { title: "Run in CI with a machine identity", code: `export INFISICAL_TOKEN=<access-token>
+infisical secrets-manager run --projectId=<project-id> --env=prod -- npm start` },
+    { title: "Restart when secrets change", code: `infisical secrets-manager run --watch -- npm run dev` },
+  ]}
+>
+
+Inject secrets from Infisical into a process as environment variables. The CLI fetches the secrets for the project linked in [`.infisical.yaml`](/cli/project-config), or the one you pass with `--projectId`, and starts your command with them set.
+
+Secrets override variables that are already set in your shell. Secrets named `HOME`, `PATH`, `PS1`, `PS2`, `PWD`, `EDITOR`, `XAUTHORITY`, `USER`, `TERM`, `TERMINFO`, `SHELL`, or `MAIL`, or starting with `XDG_` or `LC_`, are never injected.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-secrets"
+  command="secrets-manager secrets"
+  usage="[flags]"
+  flags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to list secrets from. Every `infisical secrets-manager secrets` subcommand accepts it. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
+    { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values." },
+    { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the secrets as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to list secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--plain", type: "bool", deprecated: true, description: "Deprecated: use `--output` instead. Print each secret as `KEY=value`, one per line." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to list secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--recursive", type: "bool", description: "Also list the secrets in every subfolder of `--path`." },
+    { name: "--secret-overriding", type: "bool", default: "true", description: "Show your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to show only shared secrets." },
+    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only list secrets with these tag slugs, separated by commas. `infisical secrets-manager secrets get` accepts it too." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to fetch secrets with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "List secrets in dev", code: `infisical secrets-manager secrets` },
+    { title: "List every secret in a folder tree", code: `infisical secrets-manager secrets --env=staging --path=/ --recursive` },
+    { title: "Print production secrets as JSON", code: `infisical secrets-manager secrets --env=prod --output=json` },
+  ]}
+>
+
+Print the secrets in an environment and folder as a table. Pass `--output` to print them as JSON, YAML, or dotenv instead.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-secrets-create"
+  command="secrets-manager secrets create"
+  usage="<name=value>... [flags]"
+  args={[
+    { name: "name=value", usage: "<name=value>...", repeatable: true, description: "A secret to create. Use `NAME=@path/to/file` to read the value from a file, and `NAME=\\@value` for a value that starts with `@`. Required unless you pass `--file`." },
+  ]}
+  flags={[
+    { name: "--file", value: "<string>", type: "string", description: "A `.env` or YAML file to read secrets from, instead of arguments. Lines starting with `#` or `//` are comments." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the created secrets as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder that holds the new secrets. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project that holds the new secrets. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`. A service token always writes to its own project, and fails with `token_project_mismatch` if you select another one." },
+    { name: "--show-values", type: "bool", description: "Show secret values in the result table instead of masking them." },
+    { name: "--tag", value: "<stringArray>", type: "stringArray", description: "A tag to attach, created if it doesn't exist. Repeat the flag for several tags." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token or service token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--type", value: "<string>", type: "string", default: "shared", description: "`shared` for secrets everyone on the project sees, or `personal` for secrets that override them only for you." },
+  ]}
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to create the secrets in." },
+    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command. Use `--tag` to attach tags." },
+  ]}
+  examples={[
+    { title: "Create two secrets", code: "infisical secrets-manager secrets create DOMAIN=example.com PORT=443" },
+    { title: "Load a value from a file", code: "infisical secrets-manager secrets create TLS_CERT=@./cert.pem --env=prod" },
+    { title: "Import a .env file", code: "infisical secrets-manager secrets create --file=./.env" },
+    { title: "Override a secret only for yourself", code: "infisical secrets-manager secrets create API_URL=http://localhost:3000 --type=personal" },
+  ]}
+>
+
+Create secrets. If any of them already exists, the command fails with `secret_exists` and writes none of them. To change a secret that exists, run [infisical secrets-manager secrets update](/cli/reference#secrets-manager-secrets-update). The result table masks values unless you pass `--show-values`.
+
+Your shell saves the values you pass on the command line in its history file. To keep them out, pass `--file` or `NAME=@path`, or [set your shell to skip these commands](/cli/faq).
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-secrets-delete"
+  command="secrets-manager secrets delete"
+  usage="<name>... [flags]"
+  args={[
+    { name: "name", usage: "<name>...", required: true, repeatable: true, description: "The names of the secrets to delete." },
+  ]}
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the result as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to delete from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to delete from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--type", value: "<string>", type: "string", default: "personal", description: "Which secrets to delete: `personal` or `shared`." },
+    { name: "--yes", short: "-y", type: "bool", description: "Delete without asking for confirmation. Required when there's no terminal to ask in, such as in CI." },
+  ]}
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to delete from." },
+  ]}
+  examples={[
+    { title: "Delete two shared secrets", code: `infisical secrets-manager secrets delete STRIPE_API_KEY DOMAIN --type=shared` },
+    { title: "Delete a secret in a script", code: `infisical secrets-manager secrets delete OLD_API_KEY --type=shared --yes` },
+    { title: "Remove your personal override of a secret", code: `infisical secrets-manager secrets delete API_URL` },
+  ]}
+>
+
+Delete secrets by name. The command asks you to type the secret's name, or the number of secrets if you name more than one, before it deletes anything, unless you pass `--yes`.
+
+Without `--type`, the command deletes your personal secrets with those names. Pass `--type=shared` to delete the shared secrets that everyone on the project sees.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-secrets-get"
+  command="secrets-manager secrets get"
+  usage="[name]... [flags]"
+  args={[
+    { name: "name", usage: "[name]...", repeatable: true, description: "The names of the secrets to print. Without names, the command prints every secret in `--path`." },
+  ]}
+  flags={[
+    { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values." },
+    { name: "--include-imports", type: "bool", default: "true", description: "Also look for the names among secrets imported from other environments or folders." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the secrets as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to read from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--plain", type: "bool", description: "Print only the values, one per line." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project to read from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
+    { name: "--recursive", type: "bool", description: "Also look for the names in every subfolder of `--path`." },
+    { name: "--secret-overriding", type: "bool", default: "true", description: "Return your personal secret in place of a shared secret with the same name. Pass `--secret-overriding=false` to return only shared secrets." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to read from." },
+    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only return secrets with these tag slugs, separated by commas." },
+  ]}
+  examples={[
+    { title: "List the secrets in a folder", code: `infisical secrets-manager secrets get --path=/backend` },
+    { title: "Show two secrets", code: `infisical secrets-manager secrets get DOMAIN PORT` },
+    { title: "Read a value into a variable", code: `API_KEY=$(infisical secrets-manager secrets get API_KEY --plain --silent)` },
+    { title: "Print production secrets as JSON", code: `infisical secrets-manager secrets get DB_HOST DB_PASSWORD --env=prod --output=json` },
+  ]}
+>
+
+Print the secrets you name, or every secret in `--path` if you don't name any. A name that doesn't exist prints as `*not found*`.
+
+In scripts, pass `--plain --silent` to print only the values, with no other output.
+
+</CLICommand>
+
+<CLICommand
+  id="secrets-manager-secrets-update"
+  command="secrets-manager secrets update"
+  usage="<name=value>... [flags]"
+  args={[
+    { name: "name=value", usage: "<name=value>...", repeatable: true, description: "A secret to change, with its new value. Use `NAME=@path/to/file` to read the value from a file, and `NAME=\\@value` for a value that starts with `@`. Required unless you pass `--file`." },
+  ]}
+  flags={[
+    { name: "--file", value: "<string>", type: "string", description: "A `.env` or YAML file to read secrets from, instead of arguments. Lines starting with `#` or `//` are comments." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the updated secrets as `json`, `yaml`, or `dotenv` instead of a table." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder that holds the secrets. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The project that holds the secrets. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`. A service token always writes to its own project, and fails with `token_project_mismatch` if you select another one." },
+    { name: "--show-values", type: "bool", description: "Show secret values in the result table instead of masking them." },
+    { name: "--tag", value: "<stringArray>", type: "stringArray", description: "A tag to attach, created if it doesn't exist. Repeat the flag for several tags. The tags replace the secret's existing tags." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token or service token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+    { name: "--type", value: "<string>", type: "string", default: "shared", description: "`shared` for secrets everyone on the project sees, or `personal` for secrets that override them only for you." },
+  ]}
+  inheritedFlags={[
+    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the secrets." },
+    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command. Use `--tag` to attach tags." },
+  ]}
+  examples={[
+    { title: "Change a secret's value", code: "infisical secrets-manager secrets update API_URL=https://api.example.com --env=prod" },
+    { title: "Change a value and replace its tags", code: "infisical secrets-manager secrets update DB_URL=postgres://db/app --tag=backend --env=prod" },
+    { title: "Update secrets from a .env file", code: "infisical secrets-manager secrets update --file=./.env" },
+  ]}
+>
+
+Change the values of secrets that already exist. If any of them doesn't exist, the command fails with `secret_not_found` and writes none of them. To add a secret, run [infisical secrets-manager secrets create](/cli/reference#secrets-manager-secrets-create). The result table masks values unless you pass `--show-values`.
+
+Your shell saves the values you pass on the command line in its history file. To keep them out, pass `--file` or `NAME=@path`, or [set your shell to skip these commands](/cli/faq).
+
+</CLICommand>
+
+<CLICommand
   id="service-token"
   command="service-token"
 >
@@ -1333,668 +2213,6 @@ Manage service tokens. Service tokens are deprecated and will be removed in a fu
 Create a service token for a project with your user login. Service tokens are deprecated; create a [machine identity](/documentation/platform/identities/machine-identities) instead.
 
 Without `--token-only`, the command prints the token's name, project, access, scopes, and the token itself to standard error, so capturing standard output gets nothing.
-
-</CLICommand>
-
-<CLICommand
-  id="sm"
-  command="sm"
->
-
-Manage secrets from the command line. The `sm` commands inject secrets into a process, export them to a file, read and write them, lease credentials from [dynamic secrets](/documentation/platform/dynamic-secrets/overview), run the [Agent Proxy](/documentation/platform/agent-proxy/overview), and list and create projects.
-
-<Note>
-If `infisical --version` prints 0.43.145 or earlier, your CLI doesn't have `sm`. [Upgrade the CLI](/cli/upgrade), or run the commands without `sm`, such as `infisical run` instead of `infisical sm run`. For the Agent Proxy, use `infisical secrets agent-proxy` instead of `infisical sm agent-proxy`.
-</Note>
-
-</CLICommand>
-
-<CLICommand
-  id="sm-agent-proxy"
-  command="sm agent-proxy"
->
-
-Run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview), which lets AI agents and untrusted code use secrets without holding them. Agents send their HTTP requests through the proxy, which replaces placeholder credentials with real ones before forwarding each request, so the agent never holds the real secret.
-
-For an agent on your own computer, [infisical sm agent-proxy run](/cli/reference#sm-agent-proxy-run) starts a proxy and a sandboxed agent together. For a proxy shared across your network, run [infisical sm agent-proxy start](/cli/reference#sm-agent-proxy-start) on its own host, and launch agents behind it with [infisical sm agent-proxy connect](/cli/reference#sm-agent-proxy-connect).
-
-</CLICommand>
-
-<CLICommand
-  id="sm-agent-proxy-connect"
-  command="sm agent-proxy connect"
-  usage="[flags] -- <command>"
-  args={[
-    { name: "command", usage: "<command>", required: true, description: "The agent's command, after `--`. Everything after `--` is passed to it unchanged." },
-  ]}
-  flags={[
-    { name: "--allow-readable-brokered-secrets", type: "bool", description: "Start the agent even if it can read the real value of a secret that a proxied service substitutes into its requests. Without this flag, the command exits with an error, and you fix it by removing the agent's read permission on that secret. Can also be set with `INFISICAL_AGENT_PROXY_ALLOW_READABLE_BROKERED_SECRETS`." },
-    { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
-    { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
-    { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `secrets-management.environment`." },
-    { name: "--no-proxy", value: "<string>", type: "string", description: "More hosts for the agent to reach directly instead of through the proxy, separated by commas. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` in your environment." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `secrets-management.secret-path` in `.infisical.yaml`." },
-    { name: "--projectId", value: "<string>", type: "string", required: true, description: "The project to fetch proxied services and secrets from. Can also be set with `INFISICAL_PROJECT_ID`, or read from `.infisical.yaml`." },
-    { name: "--proxy", value: "<string>", type: "string", required: true, description: "The agent proxy's address as `host:port`. Can also be set with `INFISICAL_AGENT_PROXY_ADDRESS`. It's never read from `.infisical.yaml`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of `--client-id` and `--client-secret`. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  examples={[
-    { title: "Launch an agent behind a proxy", code: "infisical sm agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude" },
-    { title: "Read the settings from environment variables", code: "export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322\nexport INFISICAL_PROJECT_ID=<project-id>\nexport INFISICAL_ENVIRONMENT=prod\ninfisical sm agent-proxy connect -- claude" },
-    { title: "Authenticate as a machine identity", code: "infisical sm agent-proxy connect \\\n  --proxy=<proxy-host>:17322 \\\n  --env=prod \\\n  --client-id=<client-id> \\\n  --client-secret=<client-secret> \\\n  -- codex" },
-  ]}
->
-
-Launch an agent that sends its requests through an agent proxy on another host, started with [infisical sm agent-proxy start](/cli/reference#sm-agent-proxy-start). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
-
-The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agent’s-environment).
-
-If the agent can read a secret or lease a dynamic secret that a proxied service brokers to it, the command refuses to start, because the agent would get the real value and bypass the proxy.
-
-The command exits with the agent's exit code.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-agent-proxy-run"
-  command="sm agent-proxy run"
-  usage="[flags] -- <command>"
-  args={[
-    { name: "command", usage: "<command>", required: true, description: "The agent's command, after `--`. Everything after `--` is passed to it unchanged." },
-  ]}
-  flags={[
-    { name: "--allow-host", value: "<stringArray>", type: "stringArray", description: "A host the agent can reach, without a credential, when `--unmatched-host=block` is set. Repeatable." },
-    { name: "--allow-read", value: "<stringArray>", type: "stringArray", description: "A path the agent can read even though the sandbox blocks it by default, such as `~/.aws/config`. The path stays read-only, and the rest of a denied directory stays denied. Repeatable." },
-    { name: "--allow-write", value: "<stringArray>", type: "stringArray", description: "A path the agent can write, beyond the working directory, the temporary directory, and the state directories of Claude Code, Codex, and Gemini CLI. Repeatable." },
-    { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `secrets-management.environment`." },
-    { name: "--log-file", value: "<string>", type: "string", description: "A file to write the proxy's per-request activity to. The file is appended to. Without it, nothing is written, and only warnings and errors print to stderr unless you pass `--log-level`." },
-    { name: "--no-sandbox", type: "bool", description: "Run the agent without the OS sandbox. Credentials are still brokered, but the agent can read your files and keyring and reach the network directly." },
-    { name: "--pass-env", value: "<stringArray>", type: "stringArray", description: "One of your environment variables to pass through to the agent, by name, when the command would otherwise remove it. Repeatable." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to fetch proxied services from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `secrets-management.secret-path` in `.infisical.yaml`." },
-    { name: "--poll-interval", value: "<int>", type: "int", default: "60", description: "The number of seconds between refreshes of permissions and credentials." },
-    { name: "--projectId", value: "<string>", type: "string", required: true, description: "The project to fetch proxied services from. Can also be set with `INFISICAL_PROJECT_ID`, or read from `.infisical.yaml`." },
-    { name: "--sandbox", type: "bool", default: "true", description: "Run the agent inside the OS sandbox. Pass `--sandbox=false` or `--no-sandbox` to turn it off. Can also be set with `INFISICAL_AGENT_PROXY_SANDBOX`, where `0`, `false`, or `off` turns it off." },
-    { name: "--set-env", value: "<stringArray>", type: "stringArray", description: "An environment variable to set in the agent, as `KEY=VALUE`. It overrides every other value. Repeatable." },
-    { name: "--token", value: "<string>", type: "string", description: "A token to broker with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`, then uses your login." },
-    { name: "--unmatched-host", value: "<string>", type: "string", default: "allow", description: "What to do with requests to a host that has no proxied service: `allow` forwards them with no credential, and `block` rejects them." },
-  ]}
-  examples={[
-    { title: "Run an agent in the sandbox", code: "infisical sm agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude" },
-    { title: "Read the project and environment from .infisical.yaml", code: "infisical sm agent-proxy run -- claude" },
-    { title: "Allow only proxied services and one registry", code: "infisical sm agent-proxy run --env=dev --unmatched-host=block --allow-host=registry.npmjs.org -- claude" },
-    { title: "Keep a log of proxied requests", code: "infisical sm agent-proxy run --env=dev --log-file=/tmp/agent-proxy.log -- claude" },
-  ]}
->
-
-Launch an agent on your own computer in an OS sandbox, with a proxy that brokers credentials onto its requests. The command starts the proxy, runs the agent, and stops the proxy when the agent exits. It authenticates as your login, or with `--token`. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
-
-The [sandbox](/documentation/platform/agent-proxy/local-agent-proxy#the-sandbox) stops the agent from reading credential files such as `~/.ssh` and `~/.aws`. If the host supports it, the sandbox also blocks every network connection except the one to the proxy. The sandbox needs macOS, or Linux with `bubblewrap` installed. On any other system, the command won't start unless you pass `--no-sandbox`.
-
-The agent never gets real secret values or an Infisical token. It gets placeholder values for [proxied services](/documentation/platform/agent-proxy/proxied-services) that substitute credentials into requests. The command [removes variables that look like credentials](/documentation/platform/agent-proxy/local-agent-proxy#environment-scrubbed) from the agent's environment, such as any variable with `TOKEN` or `SECRET` in its name. To keep one of those variables, pass its name to `--pass-env`.
-
-The command always starts its own proxy. To use a proxy on another host, run [infisical sm agent-proxy connect](/cli/reference#sm-agent-proxy-connect).
-
-</CLICommand>
-
-<CLICommand
-  id="sm-agent-proxy-start"
-  command="sm agent-proxy start"
-  usage="[flags]"
-  flags={[
-    { name: "--client-id", value: "<string>", type: "string", required: true, description: "The client ID of the proxy's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
-    { name: "--client-secret", value: "<string>", type: "string", required: true, description: "The client secret of the proxy's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
-    { name: "--log-file", value: "<string>", type: "string", description: "A file to also write logs to, as JSON lines. The file is appended to." },
-    { name: "--log-format", value: "<string>", type: "string", default: "console", description: "The format of the logs written to stderr: `console` or `json`." },
-    { name: "--poll-interval", value: "<int>", type: "int", default: "60", description: "The number of seconds between refreshes of permissions and credentials for active agents." },
-    { name: "--port", value: "<int>", type: "int", default: "17322", description: "The port to listen on, on all interfaces." },
-    { name: "--unmatched-host", value: "<string>", type: "string", default: "allow", description: "What to do with requests to a host that has no proxied service: `allow` forwards them with no credential, and `block` rejects them. `block` also rejects requests to your Infisical instance." },
-  ]}
-  examples={[
-    { title: "Start the proxy", code: "infisical sm agent-proxy start --client-id=<client-id> --client-secret=<client-secret>" },
-    { title: "Block hosts with no proxied service", code: "infisical sm agent-proxy start --port=17322 --unmatched-host=block" },
-    { title: "Log JSON to a file", code: "infisical sm agent-proxy start --log-format=json --log-file=/var/log/infisical/agent-proxy.log" },
-  ]}
->
-
-Start an agent proxy in the foreground, for agents on other hosts to connect to with [infisical sm agent-proxy connect](/cli/reference#sm-agent-proxy-connect). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
-
-The proxy authenticates as its own machine identity, which needs read access to the secrets your proxied services reference, and renews its access token as it runs. The proxy logs brokered requests at `info` and blocked requests at `warn`. To also see requests passed through without a credential, pass `--log-level=debug`.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-dynamic-secrets"
-  command="sm dynamic-secrets"
-  usage="[flags]"
-  flags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to work in. Every `infisical sm dynamic-secrets` subcommand accepts it. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the dynamic secrets as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to list dynamic secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project to list dynamic secrets from. Takes precedence over `--projectId`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project to list dynamic secrets from. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  examples={[
-    { title: "List dynamic secrets in dev", code: "infisical sm dynamic-secrets" },
-    { title: "List dynamic secrets in a production folder", code: "infisical sm dynamic-secrets --env=prod --path=/databases" },
-    { title: "Print dynamic secrets as JSON", code: "infisical sm dynamic-secrets --projectId=<project-id> --output=json" },
-  ]}
->
-
-List the [dynamic secrets](/documentation/platform/dynamic-secrets/overview) in an environment and folder, with each one's provider, default TTL, and max TTL. A dynamic secret generates credentials on demand, such as a database user, and each set of credentials it generates is a lease. Manage leases with [infisical sm dynamic-secrets lease](/cli/reference#sm-dynamic-secrets-lease).
-
-</CLICommand>
-
-<CLICommand
-  id="sm-dynamic-secrets-lease"
-  command="sm dynamic-secrets lease"
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the dynamic secret." },
-  ]}
->
-
-Create, list, renew, and delete the leases of a dynamic secret.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-dynamic-secrets-lease-create"
-  command="sm dynamic-secrets lease create"
-  usage="<name> [flags]"
-  args={[
-    { name: "name", usage: "<name>", required: true, description: "The name of the dynamic secret to lease." },
-  ]}
-  flags={[
-    { name: "--kubernetes-namespace", value: "<string>", type: "string", description: "The namespace to create the lease in. Used only by Kubernetes dynamic secrets." },
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print only the credentials, as `json`, `yaml`, or `dotenv`, instead of the lease details and a table." },
-    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that holds the dynamic secret. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--plain", type: "bool", description: "Print each credential as `KEY=value`, one per line, with no other output. Ignored when you pass `--output`." },
-    { name: "--principals", value: "<string>", type: "string", description: "The principals to put in the certificate, separated by commas. Required by SSH dynamic secrets, and each one must be allowed by the dynamic secret." },
-    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project that holds the dynamic secret. Takes precedence over `--projectId`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project that holds the dynamic secret. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-    { name: "--ttl", value: "<string>", type: "string", description: "How long the lease lasts, such as `30m` or `1h`. Defaults to the dynamic secret's default TTL, and can't exceed its max TTL." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the dynamic secret." },
-  ]}
-  examples={[
-    { title: "Lease database credentials for an hour", code: "infisical sm dynamic-secrets lease create postgres-app --env=prod --ttl=1h" },
-    { title: "Lease credentials as JSON", code: "infisical sm dynamic-secrets lease create postgres-app --output=json" },
-    { title: "Lease an SSH certificate", code: "infisical sm dynamic-secrets lease create ssh-prod \\\n  --projectId=<project-id> \\\n  --env=prod \\\n  --principals=root,deploy" },
-  ]}
->
-
-Generate a new set of credentials from a dynamic secret. The command prints the lease ID, when the lease expires, and the credentials. Keep the lease ID to renew or delete the lease later, or find it with [infisical sm dynamic-secrets lease list](/cli/reference#sm-dynamic-secrets-lease-list).
-
-The table and `--plain` show only credentials whose values are strings. Pass `--output` to get every credential the provider returns.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-dynamic-secrets-lease-delete"
-  command="sm dynamic-secrets lease delete"
-  usage="<lease-id> [flags]"
-  args={[
-    { name: "lease-id", usage: "<lease-id>", required: true, description: "The ID of the lease to delete." },
-  ]}
-  flags={[
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the deleted lease as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that holds the lease's dynamic secret. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project that holds the lease. Takes precedence over `--projectId`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project that holds the lease. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the lease's dynamic secret." },
-  ]}
-  examples={[
-    { title: "Delete a lease", code: "infisical sm dynamic-secrets lease delete <lease-id> --env=prod" },
-  ]}
->
-
-Delete a lease before it expires, and revoke its credentials with the provider. `--env` and `--path` must point to the folder that holds the lease's dynamic secret, or Infisical reports that the lease doesn't exist.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-dynamic-secrets-lease-list"
-  command="sm dynamic-secrets lease list"
-  usage="<name> [flags]"
-  args={[
-    { name: "name", usage: "<name>", required: true, description: "The name of the dynamic secret to list leases for." },
-  ]}
-  flags={[
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the leases as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that holds the dynamic secret. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project that holds the dynamic secret. Takes precedence over `--projectId`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project that holds the dynamic secret. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the dynamic secret." },
-  ]}
-  examples={[
-    { title: "List a dynamic secret's leases", code: "infisical sm dynamic-secrets lease list postgres-app --env=prod" },
-  ]}
->
-
-List the active leases of a dynamic secret, with each lease's ID, expiry time, and creation time.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-dynamic-secrets-lease-renew"
-  command="sm dynamic-secrets lease renew"
-  usage="<lease-id> [flags]"
-  args={[
-    { name: "lease-id", usage: "<lease-id>", required: true, description: "The ID of the lease to renew." },
-  ]}
-  flags={[
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the renewed lease as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that holds the lease's dynamic secret. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--project-slug", value: "<string>", type: "string", description: "The slug of the project that holds the lease. Takes precedence over `--projectId`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project that holds the lease. Without it or `--project-slug`, the CLI uses the project in `.infisical.yaml`. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-    { name: "--ttl", value: "<string>", type: "string", description: "How long to extend the lease by, from its current expiry, such as `30m` or `1h`. Defaults to the dynamic secret's default TTL." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment that holds the lease's dynamic secret." },
-  ]}
-  examples={[
-    { title: "Extend a lease by 30 minutes", code: "infisical sm dynamic-secrets lease renew <lease-id> --env=prod --ttl=30m" },
-  ]}
->
-
-Extend a lease before it expires, and print its new expiry time. A renewal can't push the lease past the dynamic secret's max TTL, counted from when the lease was created. `--env` and `--path` must point to the folder that holds the lease's dynamic secret, or Infisical reports that the lease doesn't exist.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-export"
-  command="sm export"
-  usage="[flags]"
-  flags={[
-    { name: "--env", short: "-e", value: "<string>", type: "string", default: "dev", description: "The environment to export secrets from, such as `dev`, `staging`, or `prod`. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
-    { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values. Pass `--expand=false` to export values exactly as stored." },
-    { name: "--format", short: "-f", value: "<string>", type: "string", default: "dotenv", description: "The output format: `dotenv`, `dotenv-export`, `dotenv-eval`, `csv`, `json`, or `yaml`." },
-    { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
-    { name: "--output-file", short: "-o", value: "<string>", type: "string", description: "A file or directory to write to, instead of standard output. In a directory, the CLI writes `.env`, `secrets.json`, `secrets.csv`, or `secrets.yaml`, depending on the format. A file name without an extension gets the format's extension, and missing parent directories are created." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to export secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to export secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--secret-overriding", type: "bool", default: "true", description: "Export your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to export only shared secrets." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only export secrets with these tag slugs, separated by commas." },
-    { name: "--template", value: "<string>", type: "string", description: "The path to a Go template to render and print instead of a file format. The template chooses its own project, environment, and folder, so every other `export` flag except `--token` is ignored." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  examples={[
-    { title: "Write a .env file", code: "infisical sm export --output-file=./.env" },
-    { title: "Export production secrets as JSON", code: "infisical sm export --env=prod --format=json > secrets.json" },
-    { title: "Load secrets into the current shell", code: "eval \"$(infisical sm export --format=dotenv-eval)\"" },
-    { title: "Render secrets through a template", code: "infisical sm export --template=./secrets.tmpl" },
-  ]}
->
-
-Print an environment's secrets in a file format such as `.env` or JSON, for tools that read configuration from a file. Output goes to standard output unless you pass `--output-file`.
-
-`dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
-
-`--template` takes a Go template that fetches secrets with the functions the [Infisical Agent](/integrations/platforms/infisical-agent#available-secret-template-functions) provides, such as `listSecrets` and `getSecretByName`.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-projects"
-  command="sm projects"
->
-
-List, inspect, and create Secrets Management [projects](/documentation/platform/project). Use these commands to find the project ID that [infisical init](/cli/reference#init) and the `--projectId` flag take, or to create a project without opening Infisical. `project` is an alias, so `infisical sm project list` also works.
-
-<Note>
-The commands work only with Secrets Management projects. Projects of other products, such as Certificate Management or KMS, don't appear in the list.
-</Note>
-
-</CLICommand>
-
-<CLICommand
-  id="sm-projects-create"
-  command="sm projects create"
-  usage="[flags]"
-  flags={[
-    { name: "--description", value: "<string>", type: "string", description: "A description of the project, up to 1024 characters." },
-    { name: "--name", value: "<string>", type: "string", required: true, description: "The name of the project, up to 64 characters." },
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the created project as `json` or `yaml` instead of a table." },
-    { name: "--slug", value: "<string>", type: "string", description: "The project's slug, from 5 to 64 characters. Without it, Infisical generates a slug from the name." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  examples={[
-    { title: "Create a project and link this directory to it", code: "infisical sm projects create --name my-app\ninfisical init --project-id <project-id>" },
-    { title: "Create a project with a description and slug", code: "infisical sm projects create --name my-app --description \"Backend service\" --slug my-app-backend" },
-  ]}
->
-
-Create a Secrets Management project in your organization with the Development, Staging, and Production environments.
-
-The user or machine identity that creates the project becomes the project's admin. The command prints the project and its environments, followed by the `infisical init` command that links the current directory to the project.
-
-<Note>
-Service tokens can't create projects. If your environment stores a service token in `INFISICAL_TOKEN`, the command uses your login instead.
-</Note>
-
-</CLICommand>
-
-<CLICommand
-  id="sm-projects-get"
-  command="sm projects get"
-  usage="[flags]"
-  flags={[
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the project as `json` or `yaml` instead of a table." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project to show. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  examples={[
-    { title: "Show the project linked to this directory", code: "infisical sm projects get" },
-    { title: "Show a project by ID", code: "infisical sm projects get --projectId=<project-id>" },
-  ]}
->
-
-Show a project's name, slug, and ID, and the name, slug, and ID of each of its environments. Use an environment's slug with the `--env` flag of other `sm` commands.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-projects-list"
-  command="sm projects list"
-  usage="[flags]"
-  flags={[
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the projects as `json` or `yaml` instead of a table." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  examples={[
-    { title: "List your projects", code: "infisical sm projects list" },
-    { title: "List a machine identity's projects as JSON", code: "infisical sm projects list --token=<access-token> --output=json" },
-  ]}
->
-
-List the name, slug, and ID of each Secrets Management project you're a member of in your organization. With a machine identity, the command lists the projects the identity is a member of.
-
-<Note>
-Service tokens can't create projects. If your environment stores a service token in `INFISICAL_TOKEN`, the command uses your login instead.
-</Note>
-
-</CLICommand>
-
-<CLICommand
-  id="sm-run"
-  command="sm run"
-  usage="[flags] -- [command]"
-  args={[
-    { name: "command", usage: "[command]", description: "The command to run, after `--`. Everything after `--` is passed to it unchanged. Required unless you pass `--command`." },
-  ]}
-  flags={[
-    { name: "--command", short: "-c", value: "<string>", type: "string", description: "A shell command to run instead of the arguments after `--`, such as `\"npm run build && npm start\"`. Use it to chain several commands." },
-    { name: "--env", short: "-e", value: "<string>", type: "string", default: "dev", description: "The environment to fetch secrets from, such as `dev`, `staging`, or `prod`. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
-    { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values before injecting them. Pass `--expand=false` to inject values exactly as stored." },
-    { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
-    { name: "--path", value: "<stringArray>", type: "stringArray", default: "/", description: "The folder to fetch secrets from. Repeat the flag to inject secrets from several folders. When a secret exists in more than one, the value from the last `--path` wins. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--project-config-dir", value: "<string>", type: "string", description: "The directory that contains `.infisical.yaml`. Use it when the file isn't in the directory you run the command from, such as in a monorepo." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to fetch secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--recursive", type: "bool", description: "Also inject the secrets in every subfolder of each `--path`." },
-    { name: "--secret-overriding", type: "bool", default: "true", description: "Use your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to use only shared secrets." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only inject secrets with these tag slugs, separated by commas." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to fetch secrets with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-    { name: "--watch", type: "bool", description: "Restart the command whenever secrets change in Infisical. Intended for local development." },
-    { name: "--watch-interval", value: "<int>", type: "int", default: "10", description: "How often, in seconds, `--watch` checks for changes. The minimum is `5`." },
-  ]}
-  examples={[
-    { title: "Start a dev server with secrets", code: `infisical sm run -- npm run dev` },
-    { title: "Use another environment and two folders", code: `infisical sm run --env=prod --path=/shared --path=/backend -- node server.js` },
-    { title: "Run in CI with a machine identity", code: `export INFISICAL_TOKEN=<access-token>
-infisical sm run --projectId=<project-id> --env=prod -- npm start` },
-    { title: "Restart when secrets change", code: `infisical sm run --watch -- npm run dev` },
-  ]}
->
-
-Inject secrets from Infisical into a process as environment variables. The CLI fetches the secrets for the project linked in [`.infisical.yaml`](/cli/project-config), or the one you pass with `--projectId`, and starts your command with them set.
-
-Secrets override variables that are already set in your shell. Secrets named `HOME`, `PATH`, `PS1`, `PS2`, `PWD`, `EDITOR`, `XAUTHORITY`, `USER`, `TERM`, `TERMINFO`, `SHELL`, or `MAIL`, or starting with `XDG_` or `LC_`, are never injected.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets"
-  command="sm secrets"
-  usage="[flags]"
-  flags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to list secrets from. Every `infisical sm secrets` subcommand accepts it. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
-    { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values." },
-    { name: "--include-imports", type: "bool", default: "true", description: "Include secrets imported into the environment from other environments or folders." },
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the secrets as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to list secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--plain", type: "bool", deprecated: true, description: "Deprecated: use `--output` instead. Print only secret values, one per line." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to list secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--recursive", type: "bool", description: "Also list the secrets in every subfolder of `--path`." },
-    { name: "--secret-overriding", type: "bool", default: "true", description: "Show your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to show only shared secrets." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only list secrets with these tag slugs, separated by commas. `infisical sm secrets get` and `infisical sm secrets generate-example-env` accept it too." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to fetch secrets with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  examples={[
-    { title: "List secrets in dev", code: `infisical sm secrets` },
-    { title: "List every secret in a folder tree", code: `infisical sm secrets --env=staging --path=/ --recursive` },
-    { title: "Print production secrets as JSON", code: `infisical sm secrets --env=prod --output=json` },
-  ]}
->
-
-Print the secrets in an environment and folder as a table. Pass `--output` to print them as JSON, YAML, or dotenv instead.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets-delete"
-  command="sm secrets delete"
-  usage="<name>... [flags]"
-  args={[
-    { name: "name", usage: "<name>...", required: true, repeatable: true, description: "The names of the secrets to delete." },
-  ]}
-  flags={[
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the result as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to delete from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to delete from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-    { name: "--type", value: "<string>", type: "string", default: "personal", description: "Which secrets to delete: `personal` or `shared`." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to delete from." },
-  ]}
-  examples={[
-    { title: "Delete two shared secrets", code: `infisical sm secrets delete STRIPE_API_KEY DOMAIN --type=shared` },
-    { title: "Remove your personal override of a secret", code: `infisical sm secrets delete API_URL` },
-  ]}
->
-
-Delete secrets by name.
-
-Without `--type`, the command deletes your personal secrets with those names. Pass `--type=shared` to delete the shared secrets that everyone on the project sees.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets-folders"
-  command="sm secrets folders"
-  flags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to work in. Every `infisical sm secrets folders` subcommand accepts it. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`." },
-  ]}
-  inheritedFlags={[
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on folder commands." },
-  ]}
->
-
-Create, delete, and list the folders in an environment. Folders organize an environment's secrets into paths such as `/backend/api`.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets-folders-create"
-  command="sm secrets folders create"
-  usage="[flags]"
-  flags={[
-    { name: "--name", short: "-n", value: "<string>", type: "string", required: true, description: "The name of the folder to create." },
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the result as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder to create the new folder in." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to create the folder in. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to create the folder in." },
-  ]}
-  examples={[
-    { title: "Create a folder", code: `infisical sm secrets folders create --path=/backend --name=api` },
-  ]}
->
-
-Create a folder named `--name` inside `--path`.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets-folders-delete"
-  command="sm secrets folders delete"
-  usage="[flags]"
-  flags={[
-    { name: "--name", short: "-n", value: "<string>", type: "string", required: true, description: "The name of the folder to delete." },
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the result as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder that contains the folder to delete." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to delete the folder from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to delete the folder from." },
-  ]}
-  examples={[
-    { title: "Delete a folder", code: `infisical sm secrets folders delete --path=/backend --name=api` },
-  ]}
->
-
-Delete the folder named `--name` inside `--path`.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets-folders-get"
-  command="sm secrets folders get"
-  usage="[flags]"
-  flags={[
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the folders as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", short: "-p", value: "<string>", type: "string", default: "/", description: "The folder to list folders from." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to list folders from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to list folders from." },
-  ]}
-  examples={[
-    { title: "List the folders at the root", code: `infisical sm secrets folders get` },
-    { title: "List the folders under a path in production", code: `infisical sm secrets folders get --env=prod --path=/backend` },
-  ]}
->
-
-List the folders inside `--path`.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets-generate-example-env"
-  command="sm secrets generate-example-env"
-  usage="[flags]"
-  flags={[
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to read secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to read secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to read secrets from." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only include secrets with these tag slugs, separated by commas." },
-  ]}
-  examples={[
-    { title: "Write an example .env file", code: `infisical sm secrets generate-example-env > .env.example` },
-  ]}
->
-
-Print an example `.env` file that lists every secret's name without its value, for people who work on the project without Infisical.
-
-Each secret's comment in Infisical appears as a comment above it. To give a secret an example value, add `DEFAULT:<value>` to the end of its comment.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets-get"
-  command="sm secrets get"
-  usage="<name>... [flags]"
-  args={[
-    { name: "name", usage: "<name>...", required: true, repeatable: true, description: "The names of the secrets to print." },
-  ]}
-  flags={[
-    { name: "--expand", type: "bool", default: "true", description: "Resolve secret references and shell parameter expansions in secret values." },
-    { name: "--include-imports", type: "bool", default: "true", description: "Also look for the names among secrets imported from other environments or folders." },
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the secrets as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to read from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--plain", type: "bool", description: "Print only the values, one per line." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to read from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--recursive", type: "bool", description: "Also look for the names in every subfolder of `--path`." },
-    { name: "--secret-overriding", type: "bool", default: "true", description: "Return your personal secret in place of a shared secret with the same name. Pass `--secret-overriding=false` to return only shared secrets." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to read from." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Only return secrets with these tag slugs, separated by commas." },
-  ]}
-  examples={[
-    { title: "Show two secrets", code: `infisical sm secrets get DOMAIN PORT` },
-    { title: "Read a value into a variable", code: `API_KEY=$(infisical sm secrets get API_KEY --plain --silent)` },
-    { title: "Print production secrets as JSON", code: `infisical sm secrets get DB_HOST DB_PASSWORD --env=prod --output=json` },
-  ]}
->
-
-Print the secrets you name. A name that doesn't exist prints as `*not found*`.
-
-In scripts, pass `--plain --silent` to print only the values, with no other output.
-
-</CLICommand>
-
-<CLICommand
-  id="sm-secrets-set"
-  command="sm secrets set"
-  usage="[name=value]... [flags]"
-  args={[
-    { name: "name=value", usage: "[name=value]...", repeatable: true, description: "A secret to create or update. Use `name=@path/to/file` to read the value from a file, and `name=\\@value` for a value that starts with `@`. Required unless you pass `--file`." },
-  ]}
-  flags={[
-    { name: "--file", value: "<string>", type: "string", description: "A `.env` or YAML file to read secrets from, instead of arguments. Lines starting with `#` or `//` are comments." },
-    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the result as `json`, `yaml`, or `dotenv` instead of a table." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to write to. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`." },
-    { name: "--projectId", value: "<string>", type: "string", description: "The project to write to. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`." },
-    { name: "--show-values", type: "bool", description: "Show secret values in the result table instead of masking them." },
-    { name: "--tag", value: "<stringArray>", type: "stringArray", description: "A tag to attach, created if it doesn't exist. Repeat the flag for several tags. When you update a secret, these tags replace its existing ones." },
-    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
-    { name: "--type", value: "<string>", type: "string", default: "shared", description: "`shared` for secrets everyone on the project sees, or `personal` for secrets that override them only for you." },
-  ]}
-  inheritedFlags={[
-    { name: "--env", value: "<string>", type: "string", default: "dev", description: "The environment to write to." },
-    { name: "--tags", short: "-t", value: "<string>", type: "string", description: "Has no effect on this command. Use `--tag` to attach tags." },
-  ]}
-  examples={[
-    { title: "Set two secrets", code: `infisical sm secrets set DOMAIN=example.com PORT=443` },
-    { title: "Load a value from a file", code: `infisical sm secrets set TLS_CERT=@./cert.pem --env=prod` },
-    { title: "Import a .env file", code: `infisical sm secrets set --file=./.env` },
-    { title: "Override a secret only for yourself", code: `infisical sm secrets set API_URL=http://localhost:3000 --type=personal` },
-  ]}
->
-
-Create secrets, or update the value of secrets that already exist. The result table masks values unless you pass `--show-values`.
-
-You can set secrets without permission to read secret values. In that case, the CLI can't compare values, so it writes every secret you pass that already exists and reports each one as `SECRET VALUE MODIFIED`, even when the value didn't change.
-
-Your shell saves the values you pass on the command line in its history file. To keep them out, pass `--file` or `name=@path`, or [set your shell to skip these commands](/cli/faq).
 
 </CLICommand>
 
