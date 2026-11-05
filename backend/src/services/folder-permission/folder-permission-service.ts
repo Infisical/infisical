@@ -244,7 +244,10 @@ export const folderPermissionServiceFactory = ({
       rosterVersion =
         (await keyStore.getItemPrimary(KeyStorePrefixes.ProjectFolderAccessRosterVersion(projectId))) ?? "0";
     } catch (err) {
-      logger.warn({ err, projectId }, "Failed to read the folder access roster version, skipping the roster cache");
+      logger.warn(
+        { err, projectId },
+        `Failed to read the folder access roster version, skipping the roster cache. projectId: ${projectId}`
+      );
       return dataFetcher();
     }
 

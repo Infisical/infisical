@@ -34,7 +34,10 @@ export const invalidateFolderAccessCache = async (
       KeyStoreTtls.ProjectFolderAccessRosterVersionTtlSeconds
     );
   } catch (err) {
-    logger.warn({ err, projectId }, "invalidateFolderAccessCache: failed to clear folder access roster cache");
+    logger.warn(
+      { err, projectId },
+      `invalidateFolderAccessCache: failed to clear folder access roster cache. projectId: ${projectId}`
+    );
   }
 };
 
@@ -161,6 +164,7 @@ export const assertManageFolderSubtree = (
   );
   const { isValid } = validatePermissionBoundary(callerPermission, subtreeManageAccess);
   if (!isValid) {
+    logger.warn({ callerPermission, subtreeManageAccess }, "assertManageFolderSubtree: invalid permission boundary");
     throw new ForbiddenRequestError({
       name: "RecursiveFolderAccessNotAllowed",
       message:
