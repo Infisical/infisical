@@ -1,5 +1,6 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
+import { vi } from "vitest";
 
 import { ProjectMembershipRole, ProjectType, SecretFolderRole, TemporaryPermissionMode } from "@app/db/schemas";
 import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
@@ -21,6 +22,8 @@ import {
   computeTemporaryFields,
   resolveFolder
 } from "./folder-permission-fns";
+
+vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
 describe("computeTemporaryFields", () => {
   test.each([undefined, { isTemporary: false as const }])("returns permanent fields for %o", (input) => {
