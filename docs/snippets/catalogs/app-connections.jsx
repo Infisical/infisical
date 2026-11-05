@@ -450,6 +450,13 @@ export const appConnections = [
     category: "Databases"
   },
   {
+    name: "ClickHouse",
+    slug: "clickhouse",
+    path: "/integrations/app-connections/clickhouse",
+    description: "Learn how to connect Infisical to ClickHouse to rotate database credentials.",
+    category: "Databases"
+  },
+  {
     name: "Octopus Deploy",
     slug: "octopus-deploy",
     path: "/integrations/app-connections/octopus-deploy",

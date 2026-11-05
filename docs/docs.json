@@ -157,6 +157,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/clickhouse-credentials",
                       "documentation/platform/secret-rotation/cloudflare-api-token",
                       "documentation/platform/secret-rotation/cloudflare-r2-access-key",
                       "documentation/platform/secret-rotation/convex-access-key",
@@ -1060,6 +1061,7 @@
                   "integrations/app-connections/checkly",
                   "integrations/app-connections/circleci",
                   "integrations/app-connections/chef",
+                  "integrations/app-connections/clickhouse",
                   "integrations/app-connections/cloud-66",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/convex",
@@ -1837,6 +1839,18 @@
                           "api-reference/endpoints/app-connections/chef/create",
                           "api-reference/endpoints/app-connections/chef/update",
                           "api-reference/endpoints/app-connections/chef/delete"
+                        ]
+                      },
+                      {
+                        "group": "ClickHouse",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/clickhouse/list",
+                          "api-reference/endpoints/app-connections/clickhouse/available",
+                          "api-reference/endpoints/app-connections/clickhouse/get-by-id",
+                          "api-reference/endpoints/app-connections/clickhouse/get-by-name",
+                          "api-reference/endpoints/app-connections/clickhouse/create",
+                          "api-reference/endpoints/app-connections/clickhouse/update",
+                          "api-reference/endpoints/app-connections/clickhouse/delete"
                         ]
                       },
                       {
@@ -2996,6 +3010,19 @@
                           "api-reference/endpoints/secret-rotations/azure-client-secret/list",
                           "api-reference/endpoints/secret-rotations/azure-client-secret/rotate-secrets",
                           "api-reference/endpoints/secret-rotations/azure-client-secret/update"
+                        ]
+                      },
+                      {
+                        "group": "ClickHouse credentials",
+                        "pages": [
+                          "api-reference/endpoints/secret-rotations/clickhouse-credentials/create",
+                          "api-reference/endpoints/secret-rotations/clickhouse-credentials/delete",
+                          "api-reference/endpoints/secret-rotations/clickhouse-credentials/get-by-id",
+                          "api-reference/endpoints/secret-rotations/clickhouse-credentials/get-by-name",
+                          "api-reference/endpoints/secret-rotations/clickhouse-credentials/get-generated-credentials-by-id",
+                          "api-reference/endpoints/secret-rotations/clickhouse-credentials/list",
+                          "api-reference/endpoints/secret-rotations/clickhouse-credentials/rotate-secrets",
+                          "api-reference/endpoints/secret-rotations/clickhouse-credentials/update"
                         ]
                       },
                       {

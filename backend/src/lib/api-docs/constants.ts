@@ -4122,6 +4122,10 @@ export const SecretRotations = {
     GCP_SERVICE_ACCOUNT_KEY: {
       serviceAccountKey:
         "The name of the secret that the rotated service account key (the JSON key file) will be mapped to."
+    },
+    CLICKHOUSE_CREDENTIALS: {
+      username: "The name of the secret that the active username will be mapped to.",
+      password: "The name of the secret that the generated password will be mapped to."
     }
   }
 };
