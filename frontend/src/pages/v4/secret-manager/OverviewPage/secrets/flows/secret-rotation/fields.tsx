@@ -1,9 +1,8 @@
 import { cloneElement, isValidElement, type ReactElement, type ReactNode, useId } from "react";
 import { Controller, type FieldValues, useFormContext, useWatch } from "react-hook-form";
-import { ArrowRightIcon } from "lucide-react";
 
+import { FieldMapping, FieldMappingRow } from "@app/components/v4/patterns/field-mapping";
 import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { CodeBlock } from "@app/components/v4/ui/code-block";
 import { Combobox, type ComboboxOption } from "@app/components/v4/ui/combobox";
@@ -320,48 +319,36 @@ export function SecretsMappingFields({
 }) {
   const { control } = useRotationForm();
   return (
-    <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-x-5 gap-y-4">
-      <FieldLabel>Rotated Credentials</FieldLabel>
-      <span />
-      <Inline gap={4} wrap={false}>
-        <FieldLabel>Secret Name</FieldLabel>
+    <FieldMapping
+      legend="Rotated credential mappings"
+      sourceHeader="Rotated credentials"
+      targetHeader="Secret name"
+      targetHint={
         <InfoTip content="The name of the secret that the active credentials will be mapped to." />
-      </Inline>
+      }
+    >
       {items.map((item) => (
         <Controller
           key={item.key}
           control={control}
           name={`secretsMapping.${item.key}`}
           render={({ field, fieldState: { error } }) => (
-            <>
-              <Inline className="h-8" wrap={false}>
-                <Badge tone="soft" className="w-full justify-center">
-                  <Icon name="key" />
-                  {item.name}
-                </Badge>
-              </Inline>
-              <Inline className="h-8" wrap={false}>
-                <Icon icon={ArrowRightIcon} />
-              </Inline>
-              <Stack gap={4}>
-                <Input
-                  ref={field.ref}
-                  name={field.name}
-                  aria-label={`${item.name} secret name`}
-                  value={field.value ?? ""}
-                  onBlur={field.onBlur}
-                  onChange={field.onChange}
-                  placeholder={item.placeholder}
-                  invalid={Boolean(error)}
-                  autoComplete="off"
-                />
-                {error?.message && <FieldError>{error.message}</FieldError>}
-              </Stack>
-            </>
+            <FieldMappingRow
+              source={item.name}
+              icon="key"
+              ref={field.ref}
+              name={field.name}
+              value={field.value ?? ""}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              placeholder={item.placeholder}
+              error={error?.message}
+              autoComplete="off"
+            />
           )}
         />
       ))}
-    </div>
+    </FieldMapping>
   );
 }
 

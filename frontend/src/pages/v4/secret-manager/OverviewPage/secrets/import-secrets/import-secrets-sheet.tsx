@@ -119,7 +119,7 @@ function MatrixRow({
         <Icon icon={ArrowRightIcon} size={16} />
       </span>
       <span className={styles.mapResult}>
-        <Badge tone="soft" className={styles.mapBadge}>
+        <Badge tone="soft" size="control-sm" className={styles.mapBadge}>
           {icon}
           {label}
         </Badge>
