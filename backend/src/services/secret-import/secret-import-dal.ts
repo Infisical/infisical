@@ -120,6 +120,16 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Row-locks the import for the rest of tx, so a concurrent delete of it waits for tx to commit.
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    try {
+      const doc = await tx(TableName.SecretImport).where({ id }).forUpdate().first();
+      return doc as TSecretImports | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id for update" });
+    }
+  };
+
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.SecretImport)
@@ -590,6 +600,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     ...secretImportOrm,
     find,
     findById,
+    findByIdForUpdate,
     findByIds,
     findIncludingExpired,
     findByFolderIds,
