@@ -177,4 +177,28 @@ func TestFolderCommit_PersonalOverride(t *testing.T) {
 		require.Equal(t, "owner-one", secretmanager.GetSecret(t, proj, "dev", "FROM_A", secretmanager.As(owner), secretmanager.WithPersonal()).Value)
 		require.Equal(t, "owner-two", secretmanager.GetSecret(t, proj, "dev", "FROM_B", secretmanager.As(owner), secretmanager.WithPersonal()).Value)
 	})
+	t.Run("should repair references in other folders when a rollback undoes a rename", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app")
+		secretmanager.CreateSecret(t, proj, "dev", "DB_HOST", "db.internal")
+		target := headCommit(t, proj, "dev", "/")
+		secretmanager.CreateSecret(t, proj, "dev", "CONN", "${dev.DB_HOST}", secretmanager.WithPath("/app"))
+		renamed, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), "DB_HOST", api.UpdateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new("/"), NewSecretName: new("DATABASE_HOST"),
+		})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, renamed.StatusCode(), renamed.Body)
+
+		// Action
+		res, err := rollback(t, tn.Admin, proj, "dev", folderID(t, proj, "dev", "/"), target.ID, false)
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Equal(t, "db.internal", secretmanager.GetSecret(t, proj, "dev", "CONN", secretmanager.WithPath("/app")).Value)
+	})
 }

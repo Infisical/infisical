@@ -855,8 +855,8 @@ type TFnUpdateSecretLinkedReferences = {
   blindIndexer: TSecretBlindIndexer;
   tx?: Knex;
   deferredSyncs?: Parameters<TSecretQueueFactory["syncSecrets"]>[0][];
-  // When set, skip shared secrets (e.g. PIT restore already restored them from history).
-  onlyPersonalOverrides?: boolean;
+  // Secrets whose values are already correct, such as the ones a point-in-time rollback restored.
+  excludeSecretIds?: string[];
 };
 
 /**
@@ -883,7 +883,7 @@ export const fnUpdateSecretLinkedReferences = async ({
   blindIndexer,
   tx,
   deferredSyncs,
-  onlyPersonalOverrides
+  excludeSecretIds = []
 }: TFnUpdateSecretLinkedReferences) => {
   // case: nested references, can be inferred directly from the secret references table
   const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
@@ -922,7 +922,7 @@ export const fnUpdateSecretLinkedReferences = async ({
   > = new Map();
 
   for await (const secretToUpdate of allSecretsToUpdate) {
-    if (onlyPersonalOverrides && secretToUpdate.type !== SecretType.Personal) {
+    if (excludeSecretIds.includes(secretToUpdate.id)) {
       // eslint-disable-next-line no-continue
       continue;
     }
