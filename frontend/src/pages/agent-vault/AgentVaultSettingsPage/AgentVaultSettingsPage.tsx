@@ -1,5 +1,5 @@
 import { useSearch } from "@tanstack/react-router";
-import { SettingsIcon } from "lucide-react";
+import { ScrollTextIcon, SettingsIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectOverviewChangeSection } from "@app/components/project/ProjectOverviewChangeSection";
@@ -33,7 +33,7 @@ export const AgentVaultSettingsPage = () => {
 
       <PageHeader
         scope={ProjectType.AgentVault}
-        icon={SettingsIcon}
+        icon={isSessionLogsTab ? ScrollTextIcon : SettingsIcon}
         title={isSessionLogsTab ? "Session Logs" : "General"}
         description={description}
       />
