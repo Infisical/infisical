@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderIcon, FolderTreeIcon } from "lucide-react";
+import { FolderIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -11,8 +11,7 @@ import {
   SheetContent,
   SheetFooter,
   SheetHeader,
-  SheetTitle,
-  Toggle
+  SheetTitle
 } from "@app/components/v3";
 import {
   SecretFolderRole,
@@ -21,6 +20,7 @@ import {
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
+import { ApplyToSubfoldersToggle } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/ApplyToSubfoldersToggle";
 import { DEFAULT_TEMPORARY_RANGE } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   expiryOf,
@@ -153,21 +153,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
         </div>
 
         {isRoot && (
-          <Label
-            htmlFor="apply-to-subfolders"
-            className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-neutral/5 px-3 py-3 text-sm font-normal text-foreground"
-          >
-            <span className="flex items-center gap-2">
-              <FolderTreeIcon className="size-4 text-muted" />
-              Apply to Subfolders
-            </span>
-            <Toggle
-              id="apply-to-subfolders"
-              variant="project"
-              checked={isRecursive}
-              onCheckedChange={setIsRecursive}
-            />
-          </Label>
+          <ApplyToSubfoldersToggle checked={isRecursive} onCheckedChange={setIsRecursive} />
         )}
       </div>
 

@@ -49,7 +49,7 @@ import {
 type TFolderPermissionServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<
     TAdditionalPrivilegeDALFactory,
-    "findOne" | "find" | "create" | "updateById" | "deleteById" | "transaction"
+    "findOne" | "findOneForUpdate" | "find" | "create" | "updateById" | "deleteById" | "transaction"
   >;
   secretFolderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
@@ -160,7 +160,7 @@ export const folderPermissionServiceFactory = ({
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
-      const existing = await additionalPrivilegeDAL.findOne(
+      const existing = await additionalPrivilegeDAL.findOneForUpdate(
         { projectId, folderId: folder.id, [actorField]: target.actorId },
         tx
       );
@@ -203,7 +203,7 @@ export const folderPermissionServiceFactory = ({
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
-      const existing = await additionalPrivilegeDAL.findOne(
+      const existing = await additionalPrivilegeDAL.findOneForUpdate(
         { projectId, folderId: folder.id, [actorField]: target.actorId },
         tx
       );

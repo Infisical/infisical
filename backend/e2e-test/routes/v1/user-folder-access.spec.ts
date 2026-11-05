@@ -31,6 +31,8 @@ import { membershipRoleDALFactory } from "@app/services/membership/membership-ro
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
+import { pollUntil } from "../../testUtils/poll";
+
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
 // the seed user is the project admin; admins cannot receive folder grants, so tests grant to a
@@ -150,6 +152,83 @@ const getFolderPermissionVersion = async () => {
     .where({ key: KeyStorePrefixes.ProjectFolderPermissionVersion(projectId) })
     .first();
   return Number(row?.integerValue ?? 0);
+};
+
+const waitUntilBlockedBy = (pid: number) =>
+  pollUntil({
+    describe: `a query blocked by backend ${pid}`,
+    read: async () => {
+      const { rows } = await testDb.raw(
+        "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
+        [pid]
+      );
+      return rows[0].waiting as number;
+    },
+    done: (waiting) => waiting > 0,
+    timeoutMs: 5_000
+  });
+
+const raceRootManagerAgainstRecursionTurnedOn = async (dto: {
+  method: "PATCH" | "DELETE";
+  body: Record<string, unknown>;
+}) => {
+  const rootTarget = { environmentSlug: seedData1.environment.slug, secretPath: "/" };
+  const rootManager = await createProjectUser(ProjectMembershipRole.Member);
+  const rootManagerHeaders = await createUserSessionHeaders(rootManager.userId);
+  const createdGrantIds: string[] = [];
+
+  try {
+    const managerGrantRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(rootManager.userId),
+      headers: authHeaders(),
+      body: { ...rootTarget, permission: SecretFolderRole.FullAccess }
+    });
+    expect(managerGrantRes.statusCode).toBe(200);
+    createdGrantIds.push(managerGrantRes.json().folderAccess.id);
+
+    const memberGrantRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(),
+      headers: authHeaders(),
+      body: { ...rootTarget, permission: SecretFolderRole.Read }
+    });
+    expect(memberGrantRes.statusCode).toBe(200);
+    const memberGrantId: string = memberGrantRes.json().folderAccess.id;
+    createdGrantIds.push(memberGrantId);
+
+    const trx = await testDb.transaction();
+    try {
+      const { rows } = await trx.raw("select pg_backend_pid() as pid");
+      await trx(TableName.AdditionalPrivilege).where({ id: memberGrantId }).forUpdate().first();
+
+      const pending = testServer.inject({
+        method: dto.method,
+        url: folderAccessUrl(),
+        headers: rootManagerHeaders,
+        body: { ...rootTarget, ...dto.body }
+      });
+      await waitUntilBlockedBy(rows[0].pid);
+
+      await trx(TableName.AdditionalPrivilege).where({ id: memberGrantId }).update({ isRecursiveFolder: true });
+      await trx.commit();
+
+      const refused = await pending;
+      expect(refused.statusCode).toBe(403);
+      expect(refused.json().error).toBe("RecursiveFolderAccessNotAllowed");
+    } catch (err) {
+      if (!trx.isCompleted()) await trx.rollback();
+      throw err;
+    }
+
+    expect(await testDb(TableName.AdditionalPrivilege).where({ id: memberGrantId }).first()).toEqual(
+      expect.objectContaining({ role: SecretFolderRole.Read, isRecursiveFolder: true })
+    );
+  } finally {
+    await testDb(TableName.AdditionalPrivilege).whereIn("id", createdGrantIds).del();
+    await testDb(TableName.AuthTokenSession).where({ userId: rootManager.userId }).del();
+    await deleteProjectUser(rootManager.userId);
+  }
 };
 
 describe("User folder access CRUD", () => {
@@ -375,6 +454,14 @@ describe("User folder access CRUD", () => {
       await testDb(TableName.AuthTokenSession).where({ userId: rootManager.userId }).del();
       await deleteProjectUser(rootManager.userId);
     }
+  });
+
+  test("a root-only manager cannot change a grant that became recursive while the change waited", async () => {
+    await raceRootManagerAgainstRecursionTurnedOn({ method: "PATCH", body: { permission: SecretFolderRole.Edit } });
+  });
+
+  test("a root-only manager cannot revoke a grant that became recursive while the revoke waited", async () => {
+    await raceRootManagerAgainstRecursionTurnedOn({ method: "DELETE", body: {} });
   });
 
   test("the folder access sheet shows a project member right after they are added and drops them right after removal", async () => {
