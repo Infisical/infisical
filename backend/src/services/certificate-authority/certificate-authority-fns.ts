@@ -617,6 +617,7 @@ export const isCaCrlAllowed = async ({
 export const buildCaCrlParams = async ({
   issuer,
   caPublicKey,
+  caCertificate,
   crlNumber,
   crlValidityDays,
   caNotAfter,
@@ -624,6 +625,7 @@ export const buildCaCrlParams = async ({
 }: {
   issuer: string;
   caPublicKey: CryptoKey;
+  caCertificate?: x509.X509Certificate;
   crlNumber: number;
   crlValidityDays: number;
   caNotAfter?: Date;
@@ -632,6 +634,7 @@ export const buildCaCrlParams = async ({
   const thisUpdate = new Date();
   const validityEnd = new Date(thisUpdate);
   validityEnd.setDate(validityEnd.getDate() + crlValidityDays);
+  const caSubjectKeyId = caCertificate?.getExtension(x509.SubjectKeyIdentifierExtension)?.keyId;
   const nextUpdate = caNotAfter && caNotAfter < validityEnd ? caNotAfter : validityEnd;
   if (nextUpdate <= thisUpdate) {
     throw new BadRequestError({
@@ -646,7 +649,9 @@ export const buildCaCrlParams = async ({
     entries,
     extensions: [
       new x509.Extension(id_ce_cRLNumber, false, AsnConvert.serialize(new CRLNumber(crlNumber))),
-      await x509.AuthorityKeyIdentifierExtension.create(caPublicKey, false)
+      caSubjectKeyId
+        ? new x509.AuthorityKeyIdentifierExtension(caSubjectKeyId, false)
+        : await x509.AuthorityKeyIdentifierExtension.create(caPublicKey, false)
     ]
   };
 };
@@ -758,6 +763,7 @@ export const rebuildCaCrl = async ({
   caId,
   certificateAuthorityDAL,
   certificateAuthorityCrlDAL,
+  certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   projectDAL,
   certificateDAL,
@@ -792,6 +798,15 @@ export const rebuildCaCrl = async ({
       kmsId: keyId
     });
 
+    let caCertificate: x509.X509Certificate | undefined;
+    if (ca.internalCa.activeCaCertId) {
+      const activeCaCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId, primary);
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+      caCertificate = new x509.X509Certificate(
+        await kmsDecryptor({ cipherTextBlob: activeCaCert.encryptedCertificate })
+      );
+    }
+
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caId: ca.id }, primary);
     if (!caCrl) throw new NotFoundError({ message: `CRL for CA with ID '${caId}' not found` });
 
@@ -801,6 +816,7 @@ export const rebuildCaCrl = async ({
     const crlParams = await buildCaCrlParams({
       issuer: ca.internalCa.dn,
       caPublicKey: signer.caPublicKey,
+      caCertificate,
       crlNumber,
       crlValidityDays: ca.internalCa.crlValidityDays,
       caNotAfter: ca.internalCa.notAfter ? new Date(ca.internalCa.notAfter) : undefined,

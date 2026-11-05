@@ -12,6 +12,7 @@ import {
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
+import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import {
   expandInternalCa,
@@ -33,6 +34,7 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
     TCertificateAuthorityCrlDALFactory,
     "find" | "findById" | "findOne" | "update" | "primaryNode"
   >;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
@@ -46,6 +48,7 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
 export const certificateAuthorityCrlServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCrlDAL,
+  certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
@@ -198,6 +201,7 @@ export const certificateAuthorityCrlServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthorityCrlDAL,
+      certificateAuthorityCertDAL,
       certificateAuthoritySecretDAL,
       projectDAL,
       certificateDAL,

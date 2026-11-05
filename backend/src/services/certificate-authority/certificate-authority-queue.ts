@@ -23,6 +23,7 @@ import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
+import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { rebuildCaCrl } from "./certificate-authority-fns";
@@ -37,6 +38,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
@@ -62,6 +64,7 @@ const CA_CRL_REBUILD_BATCH_SIZE = 100;
 
 export const certificateAuthorityQueueFactory = ({
   certificateAuthorityCrlDAL,
+  certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
@@ -144,6 +147,7 @@ export const certificateAuthorityQueueFactory = ({
                 caId: dueCrl.caId,
                 certificateAuthorityDAL,
                 certificateAuthorityCrlDAL,
+                certificateAuthorityCertDAL,
                 certificateAuthoritySecretDAL,
                 projectDAL,
                 certificateDAL,

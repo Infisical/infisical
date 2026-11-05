@@ -28,8 +28,8 @@ export async function up(knex: Knex): Promise<void> {
       .update("nextUpdate", knex.raw(`?? + interval '7 days'`, ["updatedAt"]));
 
     await knex.schema.alterTable(TableName.CertificateAuthorityCrl, (t) => {
-      t.timestamp("thisUpdate", { useTz: true }).notNullable().alter();
-      t.timestamp("nextUpdate", { useTz: true }).notNullable().alter();
+      t.timestamp("thisUpdate", { useTz: true }).notNullable().defaultTo(knex.fn.now()).alter();
+      t.timestamp("nextUpdate", { useTz: true }).notNullable().defaultTo(knex.raw(`now() + interval '7 days'`)).alter();
     });
   }
 }

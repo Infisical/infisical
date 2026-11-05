@@ -118,7 +118,7 @@ A validity other than 7 days requires the Enterprise plan.
     </Steps>
   </Tab>
   <Tab title="API">
-    Set `crlValidityDays` under `configuration` when you [create](/api-reference/endpoints/certificate-authorities/internal/create) or [update](/api-reference/endpoints/certificate-authorities/internal/update) an internal CA. If you leave it out when creating a CA, the CA uses 7 days.
+    Set `crlValidityDays` under `configuration` when you call the internal CA [Create](/api-reference/endpoints/certificate-authorities/internal/create) or [Update](/api-reference/endpoints/certificate-authorities/internal/update) endpoint. If you leave it out when creating a CA, the CA uses 7 days.
 
     ```bash
     curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>' \
@@ -155,7 +155,7 @@ Regenerating a CRL requires the Enterprise plan and permission to edit the CA, w
     </Steps>
   </Tab>
   <Tab title="API">
-    Call [the endpoint that regenerates a CA's CRL](/api-reference/endpoints/certificate-authorities/internal/regenerate-crl).
+    Call the [Regenerate CRL](/api-reference/endpoints/certificate-authorities/internal/regenerate-crl) endpoint.
 
     ```bash
     curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/crls/rebuild' \
@@ -176,7 +176,7 @@ The current CRL is served in DER format at the CA's managed CRL URL, shown on th
 curl --location 'https://app.infisical.com/api/v1/cert-manager/crl/<crl-id>/der' --output internal-ca.crl
 ```
 
-To look up `<crl-id>` with the API, [list the CA's CRLs](/api-reference/endpoints/certificate-authorities/internal/crl) and use the `id` of the entry.
+To look up `<crl-id>` with the API, call the [List CRLs](/api-reference/endpoints/certificate-authorities/internal/crl) endpoint and use the `id` of the entry.
 
 <Note>
   Run this on a cron schedule that's well within the CRL validity window — every few hours is a reasonable default — so mirrors never serve a stale or expired CRL to validators.

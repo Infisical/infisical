@@ -215,6 +215,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateAuthorityDAL,
       certificateAuthorityCrlDAL,
+      certificateAuthorityCertDAL,
       certificateAuthoritySecretDAL,
       projectDAL,
       certificateDAL,

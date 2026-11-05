@@ -443,6 +443,23 @@ describe("buildCaCrlParams", () => {
     expect(await crl.verify({ publicKey: caKeys.publicKey })).toBe(true);
   });
 
+  it("should take the authority key identifier from the installed CA certificate when its SKI differs from the key", async () => {
+    const externalSki = "0a0b0c0d0e0f";
+    const caCertificate = await x509.X509CertificateGenerator.createSelfSigned({
+      name: CA_DN,
+      keys: caKeys,
+      signingAlgorithm: EC_SIGNING_ALGORITHM,
+      notBefore: new Date(Date.now() - DAY_MS),
+      notAfter: new Date(Date.now() + 365 * DAY_MS),
+      extensions: [new x509.SubjectKeyIdentifierExtension(externalSki)]
+    });
+    const signer = buildLocalCaSigner({ ...caKeys, signingAlgorithm: EC_SIGNING_ALGORITHM });
+    const crl = await signer.createCrl(await build({ caCertificate }));
+
+    expect(readAuthorityKeyId(crl)).toBe(externalSki);
+    expect(await crl.verify({ publicKey: caKeys.publicKey })).toBe(true);
+  });
+
   it("should carry both extensions through an external key signer, whose structure is built with a throwaway key", async () => {
     const signer = buildExternalCaSigner({
       caPublicKey: caKeys.publicKey,

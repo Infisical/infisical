@@ -816,6 +816,7 @@ export const certificateServiceFactory = ({
         caId: ca.id,
         certificateAuthorityDAL,
         certificateAuthorityCrlDAL,
+        certificateAuthorityCertDAL,
         certificateAuthoritySecretDAL,
         projectDAL,
         certificateDAL,

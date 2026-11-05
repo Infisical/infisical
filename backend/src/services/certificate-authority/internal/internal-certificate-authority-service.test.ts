@@ -98,7 +98,7 @@ describe("internal CA CRL validity", () => {
     const { service, calls } = buildService({ caCrl: true, notAfter: new Date(Date.now() - 60_000) });
 
     await expect(service.updateCaById({ isInternal: true, caId: CA_ID, crlValidityDays: 30 })).rejects.toThrow(
-      /expired/i
+      "expired"
     );
     expect(calls).toEqual([]);
   });
@@ -128,6 +128,6 @@ describe("internal CA CRL validity", () => {
         keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
         crlValidityDays: 30
       })
-    ).rejects.toThrow(/validity/i);
+    ).rejects.toThrow("CRL validity");
   });
 });
