@@ -48,6 +48,7 @@ export {
   EnterprisePamAccountsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
   EnvironmentLimitUpgradeIntent,
+  CrossSignedCertificatesUpgradeIntent,
   ExternalCertificateAuthoritiesUpgradeIntent,
   FolderAccessControlsUpgradeIntent,
   getSafeUpgradeReturnPath,

@@ -7,6 +7,7 @@ import { CaRenewalStatus, CaSigningConfigType, CaType } from "./enums";
 import {
   TAdcsTemplate,
   TAzureAdCsTemplate,
+  TCaCrossSignedCertificate,
   TCaQuota,
   TInternalCertificateAuthority,
   TUnifiedCertificateAuthority
@@ -22,6 +23,7 @@ export const caKeys = {
   getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-certificate"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
+  getCaCrossSignedCert: (caId: string) => [{ caId }, "ca-cross-signed-cert"],
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"],
   getCaCertTemplates: (caId: string) => [{ caId }, "ca-cert-templates"],
   getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"],
@@ -208,6 +210,21 @@ export const useGetCaCsr = (caId: string) => {
       return csr;
     },
     enabled: Boolean(caId)
+  });
+};
+
+export const useGetCaCrossSignedCert = (caId: string, enabled: boolean) => {
+  return useQuery({
+    queryKey: caKeys.getCaCrossSignedCert(caId),
+    queryFn: async () => {
+      const {
+        data: { crossSignedCertificate }
+      } = await apiRequest.get<{ crossSignedCertificate: TCaCrossSignedCertificate | null }>(
+        `/api/v1/cert-manager/ca/internal/${caId}/cross-signed-certificate`
+      );
+      return crossSignedCertificate;
+    },
+    enabled
   });
 };
 

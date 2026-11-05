@@ -6,6 +6,8 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
+import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -88,6 +90,7 @@ import {
   getCaCertChain, // TODO: consider rename
   getCaCertChains,
   getCaSigner,
+  getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
@@ -129,6 +132,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "countCasByOrgId"
     | "countInternalCasByOrgId"
+    | "findMaxSubCaDepth"
   >;
   internalCertificateAuthorityDAL: Pick<
     TInternalCertificateAuthorityDALFactory,
@@ -137,6 +141,10 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<
     TCertificateAuthorityCertDALFactory,
     "create" | "findOne" | "transaction" | "find" | "findById"
+  >;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findValidInCaHierarchy" | "lockCaHierarchyAndFindUnexpired"
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
@@ -165,6 +173,7 @@ export type TInternalCertificateAuthorityServiceFactory = ReturnType<typeof inte
 export const internalCertificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificateTemplateDAL,
@@ -796,9 +805,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     }
 
-    if (ca.internalCa.type === InternalCaType.ROOT)
-      throw new BadRequestError({ message: "Root CA cannot generate CSR" });
-
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     const { signer } = await getCaSigner({
@@ -974,6 +980,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             },
             {
               activeCaCertId: newCaCert.id,
+              serialNumber: cert.serialNumber,
               notBefore: notBeforeDate,
               notAfter: new Date(notAfter)
             },
@@ -1105,6 +1112,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             },
             {
               activeCaCertId: newCaCert.id,
+              serialNumber: intermediateCert.serialNumber,
               notBefore: notBeforeDate,
               notAfter: new Date(notAfter)
             },
@@ -1591,6 +1599,13 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     }
 
+    if (ca.internalCa.type === InternalCaType.ROOT) {
+      throw new BadRequestError({
+        message:
+          "Root CAs sign their own certificate, so you can't import one. To have another CA sign this CA, import a cross-signed certificate instead."
+      });
+    }
+
     if (ca.internalCa.parentCaId && (!parentCaId || parentCaId !== ca.internalCa.parentCaId)) {
       /**
        * re-evaluate in the future if we should allow users to import a new CA certificate for an intermediate
@@ -1657,6 +1672,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       [`${TableName.InternalCertificateAuthority}.serialNumber` as "serialNumber"]: parentSerialNumber
     });
 
+    const resolvedParentCaId = parentCaId ?? parentCa?.id;
+    const isParentChanging = Boolean(resolvedParentCaId) && resolvedParentCaId !== ca.internalCa.parentCaId;
+
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
       projectDAL,
@@ -1696,6 +1714,16 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     await certificateAuthorityCertDAL.transaction(async (tx) => {
+      if (isParentChanging && resolvedParentCaId) {
+        await assertCrossSignedCertsAllowSubCa({
+          parentCaId: resolvedParentCaId,
+          attachedCaId: ca.id,
+          certificateAuthorityDAL,
+          certificateAuthorityCrossSignedCertDAL,
+          tx
+        });
+      }
+
       const newCaCert = await certificateAuthorityCertDAL.create(
         {
           caId: ca.id,
@@ -1720,7 +1748,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notBefore: new Date(certObj.notBefore),
           notAfter: new Date(certObj.notAfter),
           serialNumber: certObj.serialNumber,
-          parentCaId: parentCa?.id,
+          parentCaId: resolvedParentCaId,
           activeCaCertId: newCaCert.id
         },
         tx
@@ -2241,15 +2269,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(skLeaf)
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: caCert.id,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)
@@ -2738,15 +2766,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)

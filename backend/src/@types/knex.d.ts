@@ -170,6 +170,9 @@ import {
   TCertificateAuthorityCrl,
   TCertificateAuthorityCrlInsert,
   TCertificateAuthorityCrlUpdate,
+  TCertificateAuthorityCrossSignedCerts,
+  TCertificateAuthorityCrossSignedCertsInsert,
+  TCertificateAuthorityCrossSignedCertsUpdate,
   TCertificateAuthoritySecret,
   TCertificateAuthoritySecretInsert,
   TCertificateAuthoritySecretUpdate,
@@ -936,6 +939,11 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrl,
       TCertificateAuthorityCrlInsert,
       TCertificateAuthorityCrlUpdate
+    >;
+    [TableName.CertificateAuthorityCrossSignedCert]: KnexOriginal.CompositeTableType<
+      TCertificateAuthorityCrossSignedCerts,
+      TCertificateAuthorityCrossSignedCertsInsert,
+      TCertificateAuthorityCrossSignedCertsUpdate
     >;
     [TableName.InternalCertificateAuthority]: KnexOriginal.CompositeTableType<
       TInternalCertificateAuthorities,
