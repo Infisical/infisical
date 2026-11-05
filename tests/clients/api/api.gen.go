@@ -116830,7 +116830,7 @@ type GenerateKmipServerEnrollmentToken500JSONResponseBodyStatusCode float32
 
 // KmipActivateJSONBody defines parameters for KmipActivate.
 type KmipActivateJSONBody struct {
-	Id string `json:"id"`
+	Id openapi_types.UUID `json:"id"`
 }
 
 // KmipActivate400JSONResponseBodyStatusCode defines parameters for KmipActivate.
@@ -116879,7 +116879,7 @@ type KmipCreate500JSONResponseBodyStatusCode float32
 
 // KmipDestroyJSONBody defines parameters for KmipDestroy.
 type KmipDestroyJSONBody struct {
-	Id string `json:"id"`
+	Id openapi_types.UUID `json:"id"`
 }
 
 // KmipDestroy400JSONResponseBodyStatusCode defines parameters for KmipDestroy.
@@ -116902,7 +116902,7 @@ type KmipDestroy500JSONResponseBodyStatusCode float32
 
 // KmipGetJSONBody defines parameters for KmipGet.
 type KmipGetJSONBody struct {
-	Id string `json:"id"`
+	Id openapi_types.UUID `json:"id"`
 }
 
 // KmipGet400JSONResponseBodyStatusCode defines parameters for KmipGet.
@@ -116925,7 +116925,7 @@ type KmipGet500JSONResponseBodyStatusCode float32
 
 // KmipGetAttributesJSONBody defines parameters for KmipGetAttributes.
 type KmipGetAttributesJSONBody struct {
-	Id string `json:"id"`
+	Id openapi_types.UUID `json:"id"`
 }
 
 // KmipGetAttributes400JSONResponseBodyStatusCode defines parameters for KmipGetAttributes.
@@ -116995,7 +116995,7 @@ type KmipRegister500JSONResponseBodyStatusCode float32
 
 // KmipRevokeJSONBody defines parameters for KmipRevoke.
 type KmipRevokeJSONBody struct {
-	Id string `json:"id"`
+	Id openapi_types.UUID `json:"id"`
 }
 
 // KmipRevoke400JSONResponseBodyStatusCode defines parameters for KmipRevoke.

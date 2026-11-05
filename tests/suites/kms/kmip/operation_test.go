@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/kms"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -308,46 +309,45 @@ func TestKmipOperation(t *testing.T) {
 		requireStatus(t, http.StatusForbidden, refusedStatus, refusedBody)
 		require.Equal(t, "You are not allowed to proxy on kmip", apierr.Message(refusedBody))
 	})
-}
 
-// TestKmipOperation_KnownIssues asserts the intended behaviour of KMIP operations that are wrong today; each fails
-// until its bug is fixed.
-func TestKmipOperation_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should refuse activating a revoked key, since a revoked KMIP object cannot become active again", func(t *testing.T) {
+	t.Run("should report an active key as active, and refuse activating a revoked key", func(t *testing.T) {
 		t.Parallel()
+		spec.Why(t, "a revoked KMIP object is deactivated for good; activate applies only to a key that was never active")
 
 		// Setup
 		proj := newProject(t, h.NewTenant(t))
 		s, _ := newSession(t, proj, "revoke", "activate", "get-attributes")
-		key := kms.NewKey(t, proj)
-		callOK[struct{}](t, s, "revoke", map[string]any{"id": key.ID})
+		active, revoked := kms.NewKey(t, proj), kms.NewKey(t, proj)
+		callOK[struct{}](t, s, "revoke", map[string]any{"id": revoked.ID})
 
 		// Action
-		status, body := s.call(t, "activate", map[string]any{"id": key.ID})
+		activeResult := callOK[kmipAttributes](t, s, "activate", map[string]any{"id": active.ID})
+		status, body := s.call(t, "activate", map[string]any{"id": revoked.ID})
 
 		// Assert
+		require.True(t, activeResult.IsActive)
 		requireStatus(t, http.StatusBadRequest, status, body)
-		require.False(t, callOK[kmipAttributes](t, s, "get-attributes", map[string]any{"id": key.ID}).IsActive)
+		require.Equal(t, "Key with ID "+revoked.ID.String()+" is revoked and cannot be activated again", apierr.Message(body))
+		require.False(t, callOK[kmipAttributes](t, s, "get-attributes", map[string]any{"id": revoked.ID}).IsActive)
 	})
 
-	t.Run("should refuse registering a name already used in the project with 400", func(t *testing.T) {
+	t.Run("should refuse registering a name already used in the project, naming the stored name, and keep the existing key", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		proj := newProject(t, h.NewTenant(t))
 		s, _ := newSession(t, proj, "register")
-		kms.NewKey(t, proj, kms.WithName("taken"))
+		existing := kms.NewKey(t, proj, kms.WithName("array-key"))
 
 		// Action
 		status, body := s.call(t, "register", map[string]any{
-			"key": base64.StdEncoding.EncodeToString(make([]byte, 32)), "name": "taken", "algorithm": "aes-256-gcm",
+			"key": base64.StdEncoding.EncodeToString(make([]byte, 32)), "name": "Array Key", "algorithm": "aes-256-gcm",
 		})
 
 		// Assert
 		requireStatus(t, http.StatusBadRequest, status, body)
+		require.Equal(t, `A key with the name "array-key" already exists in this project`, apierr.Message(body))
+		require.Equal(t, existing, kms.GetKey(t, proj, existing.ID))
 	})
 
 	t.Run("should answer 401 to a request with every KMIP header and no token", func(t *testing.T) {
@@ -363,9 +363,10 @@ func TestKmipOperation_KnownIssues(t *testing.T) {
 
 		// Assert
 		requireStatus(t, http.StatusUnauthorized, status, body)
+		require.Equal(t, "Token missing", apierr.Message(body))
 	})
 
-	t.Run("should answer 4xx to a client id or key id that is not a UUID", func(t *testing.T) {
+	t.Run("should answer a client id that is not a UUID as an unknown client, and refuse a key id that is not a UUID", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -377,7 +378,9 @@ func TestKmipOperation_KnownIssues(t *testing.T) {
 		keyStatus, keyBody := s.call(t, "get", map[string]any{"id": "not-a-uuid"})
 
 		// Assert
-		require.Truef(t, clientStatus >= 400 && clientStatus < 500, "client id: %d %s", clientStatus, apierr.Body(clientBody))
-		require.Truef(t, keyStatus >= 400 && keyStatus < 500, "key id: %d %s", keyStatus, apierr.Body(keyBody))
+		requireStatus(t, http.StatusNotFound, clientStatus, clientBody)
+		require.Equal(t, "KMIP client cannot be found.", apierr.Message(clientBody))
+		requireStatus(t, http.StatusUnprocessableEntity, keyStatus, keyBody)
+		require.Contains(t, string(keyBody), "Invalid uuid")
 	})
 }

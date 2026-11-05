@@ -3,7 +3,8 @@ import z from "zod";
 import { KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { isUuidV4 } from "@app/lib/validator/validate-uuid";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -12,6 +13,9 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
   server.decorateRequest("kmipUser");
 
   server.addHook("onRequest", async (req) => {
+    // This hook runs before each route's verifyAuth, so it has to refuse an anonymous caller itself.
+    if (!req.auth) throw new UnauthorizedError({ message: "Token missing" });
+
     const clientId = req.headers["x-kmip-client-id"] as string;
     const projectId = req.headers["x-kmip-project-id"] as string;
     const clientCertSerialNumber = req.headers["x-kmip-client-certificate-serial-number"] as string;
@@ -38,6 +42,12 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     if (!projectId) {
       throw new ForbiddenRequestError({
         message: "Missing project ID from request"
+      });
+    }
+
+    if (!isUuidV4(clientId)) {
+      throw new NotFoundError({
+        message: "KMIP client cannot be found."
       });
     }
 
@@ -131,7 +141,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       operationId: "kmipGet",
       description: "KMIP endpoint for getting managed objects",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -184,7 +194,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       operationId: "kmipGetAttributes",
       description: "KMIP endpoint for getting attributes of managed object",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -239,7 +249,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       operationId: "kmipDestroy",
       description: "KMIP endpoint for destroying managed objects",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -289,7 +299,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       operationId: "kmipActivate",
       description: "KMIP endpoint for activating managed object",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -340,7 +350,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       operationId: "kmipRevoke",
       description: "KMIP endpoint for revoking managed object",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
