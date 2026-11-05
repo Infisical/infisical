@@ -37,6 +37,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -122,6 +123,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findById">;
@@ -146,6 +148,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "updateSecretReferenceSecretKey"
     | "updateSecretReferenceEnvAndPath"
     | "findOne"
+    | "findByFolderId"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -198,6 +201,7 @@ export const secretApprovalRequestServiceFactory = ({
   secretApprovalPolicyDAL,
   kmsService,
   secretV2BridgeDAL,
+  secretImportDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
   licenseService,
@@ -229,6 +233,7 @@ export const secretApprovalRequestServiceFactory = ({
     secretApprovalRequestMergeFnsFactory({
       folderDAL,
       secretV2BridgeDAL,
+      secretImportDAL,
       secretVersionV2BridgeDAL,
       secretVersionTagV2BridgeDAL,
       secretTagDAL,

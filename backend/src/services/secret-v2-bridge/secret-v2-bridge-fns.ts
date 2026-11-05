@@ -828,6 +828,72 @@ const emitSecretsUpdatedByFolder = (
     tx
   );
 
+type TCreateFetchFolderSecretsWithImportsArg = {
+  projectId: string;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  tx?: Knex;
+};
+
+// Returns a function that fetches direct secrets for a folder merged with its
+// one-level-deep imported secrets. Direct secrets take priority over imports.
+export const createFetchFolderSecretsWithImports = ({
+  projectId,
+  secretDAL,
+  secretImportDAL,
+  folderDAL,
+  tx
+}: TCreateFetchFolderSecretsWithImportsArg) => {
+  type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
+  type SecretRow = Awaited<ReturnType<TCreateFetchFolderSecretsWithImportsArg["secretDAL"]["findByFolderId"]>>[number];
+
+  const recursiveFetch = async (
+    folderId: string,
+    userIdArg: string | undefined,
+    visitedFolderIds: Set<string>
+  ): Promise<SecretRow[]> => {
+    if (visitedFolderIds.has(folderId)) return [];
+    visitedFolderIds.add(folderId);
+
+    const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg, tx });
+    const rawImports = (await secretImportDAL.findByFolderIds([folderId], tx)) as ImportRow[];
+    if (!rawImports.length) return directSecrets;
+
+    const reservedIds: string[] = [];
+    for (const imp of rawImports) {
+      if (imp.isReserved) {
+        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
+        if (match) reservedIds.push(match[1]);
+      }
+    }
+    let activeImports: ImportRow[] = rawImports;
+    if (reservedIds.length) {
+      const referenced = (await secretImportDAL.findByIds(reservedIds, tx)) as ImportRow[];
+      const detailMap = new Map(referenced.map((r) => [r.id, { importPath: r.importPath, importEnv: r.importEnv }]));
+      activeImports = rawImports.map((imp) => {
+        if (!imp.isReserved) return imp;
+        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
+        if (!match) return imp;
+        const details = detailMap.get(match[1]);
+        return details ? { ...imp, importPath: details.importPath, importEnv: details.importEnv } : imp;
+      });
+    }
+
+    const importedFolders = await Promise.all(
+      activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath, tx))
+    );
+    const importedSecretArrays = await Promise.all(
+      importedFolders.filter(Boolean).map((f) => recursiveFetch(f!.id, userIdArg, visitedFolderIds))
+    );
+    const importedMerged = new Map<string, SecretRow>(importedSecretArrays.flat().map((s) => [s.key, s]));
+    directSecrets.forEach((s) => importedMerged.set(s.key, s));
+    return [...importedMerged.values()];
+  };
+
+  return (args: { folderId: string; userId?: string }) => recursiveFetch(args.folderId, args.userId, new Set());
+};
+
 type TFnUpdateSecretLinkedReferences = {
   orgId: string;
   projectId: string;
@@ -840,14 +906,16 @@ type TFnUpdateSecretLinkedReferences = {
   secretDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "find"
+    | "findByFolderId"
     | "updateById"
     | "upsertSecretReferences"
     | "findReferencedSecretReferencesBySecretKey"
     | "updateSecretReferenceSecretKey"
   >;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPath">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   eventEmitter: TEventEmitter;
   encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
@@ -873,6 +941,7 @@ export const fnUpdateSecretLinkedReferences = async ({
   newSecretKey,
   secretId,
   secretDAL,
+  secretImportDAL,
   secretVersionDAL,
   folderCommitService,
   folderDAL,
@@ -885,6 +954,30 @@ export const fnUpdateSecretLinkedReferences = async ({
   deferredSyncs,
   excludeSecretIds = []
 }: TFnUpdateSecretLinkedReferences) => {
+  // The renamed row already carries its new key, so it is mapped back to the old one and the merged view is
+  // exactly what a local reference in that folder resolved to before the rename.
+  const fetchFolderSecretsAsBeforeRename = createFetchFolderSecretsWithImports({
+    projectId,
+    folderDAL,
+    secretImportDAL,
+    tx,
+    secretDAL: {
+      findByFolderId: async (args) =>
+        (await secretDAL.findByFolderId(args)).map((s) => (s.id === secretId ? { ...s, key: oldSecretKey } : s))
+    }
+  });
+  const folderResolvesToRenamedSecret = new Map<string, Promise<boolean>>();
+  const resolvesToRenamedSecret = (otherFolderId: string) => {
+    let resolved = folderResolvesToRenamedSecret.get(otherFolderId);
+    if (!resolved) {
+      resolved = fetchFolderSecretsAsBeforeRename({ folderId: otherFolderId }).then((secrets) =>
+        secrets.some((s) => s.key === oldSecretKey && s.id === secretId)
+      );
+      folderResolvesToRenamedSecret.set(otherFolderId, resolved);
+    }
+    return resolved;
+  };
+
   // case: nested references, can be inferred directly from the secret references table
   const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
     projectId,
@@ -938,8 +1031,11 @@ export const fnUpdateSecretLinkedReferences = async ({
     const { localReferences, nestedReferences } = getAllSecretReferences(originalValue);
 
     // checkk if this secret references the renamed secret at all (either locally or nested)
-    // A local reference resolves in its own folder, so only secrets beside the renamed one point at it.
-    const hasLocalRef = secretToUpdate.folderId === folderId && localReferences.includes(oldSecretKey);
+    // A local reference in another folder points at the renamed secret only when it resolves to it through
+    // that folder's imports.
+    const hasLocalRef =
+      localReferences.includes(oldSecretKey) &&
+      (secretToUpdate.folderId === folderId || (await resolvesToRenamedSecret(secretToUpdate.folderId)));
     const hasNestedRef = nestedReferences.some(
       (ref) => ref.environment === environment && ref.secretPath === secretPath && ref.secretKey === oldSecretKey
     );
@@ -1480,70 +1576,6 @@ export const fnUpdateMovedSecretReferences = async ({
       })
     );
   }
-};
-
-type TCreateFetchFolderSecretsWithImportsArg = {
-  projectId: string;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
-};
-
-// Returns a function that fetches direct secrets for a folder merged with its
-// one-level-deep imported secrets. Direct secrets take priority over imports.
-export const createFetchFolderSecretsWithImports = ({
-  projectId,
-  secretDAL,
-  secretImportDAL,
-  folderDAL
-}: TCreateFetchFolderSecretsWithImportsArg) => {
-  type ImportRow = Omit<TSecretImports, "importEnv"> & { importEnv: { id: string; slug: string; name: string } };
-  type SecretRow = Awaited<ReturnType<TCreateFetchFolderSecretsWithImportsArg["secretDAL"]["findByFolderId"]>>[number];
-
-  const recursiveFetch = async (
-    folderId: string,
-    userIdArg: string | undefined,
-    visitedFolderIds: Set<string>
-  ): Promise<SecretRow[]> => {
-    if (visitedFolderIds.has(folderId)) return [];
-    visitedFolderIds.add(folderId);
-
-    const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg });
-    const rawImports = (await secretImportDAL.findByFolderIds([folderId])) as ImportRow[];
-    if (!rawImports.length) return directSecrets;
-
-    const reservedIds: string[] = [];
-    for (const imp of rawImports) {
-      if (imp.isReserved) {
-        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
-        if (match) reservedIds.push(match[1]);
-      }
-    }
-    let activeImports: ImportRow[] = rawImports;
-    if (reservedIds.length) {
-      const referenced = (await secretImportDAL.findByIds(reservedIds)) as ImportRow[];
-      const detailMap = new Map(referenced.map((r) => [r.id, { importPath: r.importPath, importEnv: r.importEnv }]));
-      activeImports = rawImports.map((imp) => {
-        if (!imp.isReserved) return imp;
-        const match = RESERVED_REPLICATION_IMPORT_REGEX.exec(imp.importPath);
-        if (!match) return imp;
-        const details = detailMap.get(match[1]);
-        return details ? { ...imp, importPath: details.importPath, importEnv: details.importEnv } : imp;
-      });
-    }
-
-    const importedFolders = await Promise.all(
-      activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
-    );
-    const importedSecretArrays = await Promise.all(
-      importedFolders.filter(Boolean).map((f) => recursiveFetch(f!.id, userIdArg, visitedFolderIds))
-    );
-    const importedMerged = new Map<string, SecretRow>(importedSecretArrays.flat().map((s) => [s.key, s]));
-    directSecrets.forEach((s) => importedMerged.set(s.key, s));
-    return [...importedMerged.values()];
-  };
-
-  return (args: { folderId: string; userId?: string }) => recursiveFetch(args.folderId, args.userId, new Set());
 };
 
 type TCreateRelativeImportExpanderArg = {

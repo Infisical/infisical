@@ -39,6 +39,7 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -151,7 +152,9 @@ type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
     | "updateSecretReferenceSecretKey"
     | "updateSecretReferenceEnvAndPath"
     | "findOne"
+    | "findByFolderId"
   >;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany" | "insertMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
@@ -197,6 +200,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   projectEnvDAL,
   kmsService,
   secretV2BridgeDAL,
+  secretImportDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
   secretTagDAL,
@@ -235,6 +239,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   } = secretApprovalRequestMergeFnsFactory({
     folderDAL,
     secretV2BridgeDAL,
+    secretImportDAL,
     secretVersionV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     secretTagDAL,

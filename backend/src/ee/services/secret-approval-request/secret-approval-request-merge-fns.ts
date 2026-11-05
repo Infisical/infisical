@@ -16,6 +16,7 @@ import { TNotificationServiceFactory } from "@app/services/notification/notifica
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -56,7 +57,9 @@ type TSecretApprovalRequestMergeFnsFactoryDep = {
     | "updateSecretReferenceSecretKey"
     | "updateSecretReferenceEnvAndPath"
     | "findOne"
+    | "findByFolderId"
   >;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
@@ -251,6 +254,7 @@ const toSecretMetadataInput = (secretMetadata: unknown) =>
 export const secretApprovalRequestMergeFnsFactory = ({
   folderDAL,
   secretV2BridgeDAL,
+  secretImportDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
   secretTagDAL,
@@ -548,6 +552,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
         newSecretKey: rename.key,
         secretId: rename.secretId,
         secretDAL: secretV2BridgeDAL,
+        secretImportDAL,
         secretVersionDAL: secretVersionV2BridgeDAL,
         folderCommitService,
         secretQueueService,

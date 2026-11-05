@@ -35,6 +35,7 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1, previousSecretLocation } from "../secret-folder/secret-folder-events";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer, TSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { secretModifiedEvents } from "../secret-v2-bridge/secret-events";
@@ -197,6 +198,7 @@ type TFolderCommitServiceFactoryDep = {
     | "saveTagsToSecretVersionV2"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
 };
 
 const pluralizeResource = (count: number, resource: string) => `${count} ${resource}${count === 1 ? "" : "s"}`;
@@ -258,6 +260,7 @@ export const folderCommitServiceFactory = ({
   secretVersionV2BridgeDAL,
   projectDAL,
   secretV2BridgeDAL,
+  secretImportDAL,
   folderTreeCheckpointResourcesDAL,
   folderCommitQueueService,
   permissionService,
@@ -1618,6 +1621,7 @@ export const folderCommitServiceFactory = ({
             secretPath: folderLocation.path,
             folderId,
             secretDAL: secretV2BridgeDAL,
+            secretImportDAL,
             secretVersionDAL: secretVersionV2BridgeDAL,
             folderCommitService: { createCommit },
             folderDAL,

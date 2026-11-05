@@ -213,6 +213,7 @@ describe("folderCommitServiceFactory", () => {
       kmsService: mockKmsService,
       secretTagDAL: mockSecretTagDAL,
       resourceMetadataDAL: mockResourceMetadataDAL,
+      secretImportDAL: { findByFolderIds: vi.fn().mockResolvedValue([]), findByIds: vi.fn().mockResolvedValue([]) },
       eventEmitter: mockEventEmitter
     });
   });

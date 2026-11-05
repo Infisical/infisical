@@ -429,6 +429,28 @@ func TestSecretReference_Rewrite(t *testing.T) {
 		require.Equal(t, "root-host:app-host", secretmanager.GetSecret(t, proj, "dev", "CONN", secretmanager.WithPath("/app")).Value)
 	})
 
+	t.Run("should rewrite a local reference in another folder when it resolves to the renamed secret through an import", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app")
+		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "dev", Path: "/"}, secretmanager.IntoPath("/app"))
+		secretmanager.CreateSecret(t, proj, "dev", "DB_HOST", "root-host")
+		secretmanager.CreateSecret(t, proj, "dev", "CONN", "${dev.DB_HOST}:${DB_HOST}", secretmanager.WithPath("/app"))
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), "DB_HOST",
+			api.UpdateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", NewSecretName: new("DATABASE_HOST")})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "renaming returned %s", apierr.Body(res.Body))
+
+		// Assert
+		require.Equal(t, "${dev.DATABASE_HOST}:${DATABASE_HOST}", rawValue(t, proj, "dev", "/app", "CONN"))
+		require.Equal(t, "root-host:root-host", secretmanager.GetSecret(t, proj, "dev", "CONN", secretmanager.WithPath("/app")).Value)
+	})
+
 	t.Run("should rewrite a local reference into a nested one when the referenced secret is moved", func(t *testing.T) {
 		t.Parallel()
 
