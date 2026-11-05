@@ -8,14 +8,6 @@ import {
   type TDynamicSecretLeaseOutput
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
 import { Button } from "@app/components/v4/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@app/components/v4/ui/dialog";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
@@ -26,19 +18,18 @@ import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
-import type { DynamicSecretResource } from "../flows/dynamic-secret-flow";
 import { toMs } from "./dynamic-secret-leases";
 
 import styles from "./dynamic-secret-actions.module.css";
 
 export type LeaseRequest = { ttl?: string; config?: Record<string, unknown> };
 
-type LeaseResult = {
+export type LeaseResult = {
   expireAt: string;
   data: Record<string, unknown>;
 };
 
-const FORM_ID = "dynamic-secret-provision-lease-form";
+export const LEASE_FORM_ID = "dynamic-secret-provision-lease-form";
 
 function OutputFields({
   output,
@@ -64,7 +55,7 @@ function OutputFields({
         <Stack gap={8}>
           <SmallText muted>
             Important: Copy these credentials now. You will not be able to see them again after you
-            close this dialog.
+            leave this view.
           </SmallText>
           {output.notice === "one-time-delayed" && (
             <SmallText muted>
@@ -183,7 +174,7 @@ function SshOutput({
       ))}
       <SmallText muted>
         Important: Copy or download these credentials now. You will not be able to see them again
-        after you close this dialog.
+        after you leave this view.
       </SmallText>
     </div>
   );
@@ -202,23 +193,17 @@ const formSchema = z.object({
 
 type TForm = z.infer<typeof formSchema>;
 
-export function DynamicSecretLeaseDialog({
-  entry: openEntry,
+export function DynamicSecretLeaseProvision({
   provider,
-  onClose,
+  result,
   onProvision
 }: {
-  entry?: DynamicSecretResource;
   provider: DynamicSecretProviders;
-  onClose: () => void;
-  onProvision: (request: LeaseRequest) => Promise<LeaseResult | undefined>;
+  result?: LeaseResult;
+  onProvision: (request: LeaseRequest) => void;
 }) {
-  const lastEntry = useRef(openEntry);
-  if (openEntry) lastEntry.current = openEntry;
-  const entry = openEntry ?? lastEntry.current;
   const capabilities = getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities;
   const { provisioner, fixedTtl, ttlDescription, output } = capabilities;
-  const [result, setResult] = useState<LeaseResult>();
   const [principalInput, setPrincipalInput] = useState("");
   const schema =
     provisioner === "ssh"
@@ -232,20 +217,12 @@ export function DynamicSecretLeaseDialog({
   });
   const principals = watch("principals");
 
-  const [isProvisioning, setIsProvisioning] = useState(false);
-  const provision = (request: LeaseRequest) => {
-    setIsProvisioning(true);
-    onProvision(request)
-      .then((next) => next && setResult(next))
-      .finally(() => setIsProvisioning(false));
-  };
-
   const autoStarted = useRef(false);
   useEffect(() => {
-    if (!capabilities.autoGenerate || !openEntry || autoStarted.current) return;
+    if (!capabilities.autoGenerate || autoStarted.current) return;
     autoStarted.current = true;
-    onProvision({}).then((next) => next && setResult(next));
-  }, [capabilities.autoGenerate, onProvision, openEntry]);
+    onProvision({});
+  }, [capabilities.autoGenerate, onProvision]);
 
   const addPrincipal = () => {
     const trimmed = principalInput.trim();
@@ -256,9 +233,9 @@ export function DynamicSecretLeaseDialog({
 
   const submit = handleSubmit(({ ttl, namespace, principals: requested }) => {
     if (provisioner === "kubernetes")
-      provision({ ttl, config: { namespace: namespace || undefined } });
-    else if (provisioner === "ssh") provision({ ttl, config: { principals: requested } });
-    else provision({ ttl });
+      onProvision({ ttl, config: { namespace: namespace || undefined } });
+    else if (provisioner === "ssh") onProvision({ ttl, config: { principals: requested } });
+    else onProvision({ ttl });
   });
 
   const ttlFeedback = fixedTtl ? `This provider has a fixed TTL of ${fixedTtl}.` : ttlDescription;
@@ -275,7 +252,7 @@ export function DynamicSecretLeaseDialog({
       <TotpOutput
         totp={String(result.data.TOTP)}
         remainingSeconds={Number(result.data.TIME_REMAINING)}
-        onRegenerate={() => provision({})}
+        onRegenerate={() => onProvision({})}
       />
     );
   } else if (result && output.type === "ssh") {
@@ -289,7 +266,7 @@ export function DynamicSecretLeaseDialog({
     body = <OutputFields output={output} data={result.data} />;
   } else {
     body = (
-      <form id={FORM_ID} noValidate onSubmit={submit}>
+      <form id={LEASE_FORM_ID} noValidate onSubmit={submit}>
         <Stack gap={16}>
           {provisioner === "kubernetes" && (
             <Controller
@@ -394,27 +371,5 @@ export function DynamicSecretLeaseDialog({
     );
   }
 
-  return (
-    <Dialog open={Boolean(openEntry)} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Provision lease</DialogTitle>
-          <DialogDescription>
-            Generate temporary credentials from this dynamic secret.
-          </DialogDescription>
-        </DialogHeader>
-        {entry && body}
-        {!result && !capabilities.autoGenerate && (
-          <DialogFooter>
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" form={FORM_ID} loading={isProvisioning}>
-              Provision lease
-            </Button>
-          </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
+  return body;
 }

@@ -22,8 +22,9 @@ import {
   type DynamicSecretResource
 } from "../flows/dynamic-secret-flow";
 import { environmentLabel } from "../flows/shared";
-import { DynamicSecretLeaseDialog, type LeaseRequest } from "./dynamic-secret-lease-provision";
-import { type DynamicSecretLease, DynamicSecretLeasesDialog } from "./dynamic-secret-leases";
+import type { LeaseRequest } from "./dynamic-secret-lease-provision";
+import type { DynamicSecretLease } from "./dynamic-secret-leases";
+import { DynamicSecretLeasesSheet } from "./dynamic-secret-leases-sheet";
 import type { RowActionHostProps } from "./types";
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : undefined);
@@ -40,7 +41,6 @@ export function DynamicSecretActions({
   onToast
 }: RowActionHostProps<"dynamic">) {
   const adapter = useV4Adapter("secrets");
-  const [newLeaseFor, setNewLeaseFor] = useState<DynamicSecretResource>();
   const [session, setSession] = useState(0);
   const [previousAction, setPreviousAction] = useState(action);
   if (action !== previousAction) {
@@ -106,7 +106,7 @@ export function DynamicSecretActions({
         (error as AxiosError<{ message?: string }>)?.response?.data?.message ?? errorText(error)
     });
 
-  const leaseTarget = newLeaseFor ?? (kind === "lease" ? entry : undefined);
+  const leaseTarget = kind === "leases" ? entry : undefined;
   const lastLeaseTarget = useRef(leaseTarget);
   if (leaseTarget) lastLeaseTarget.current = leaseTarget;
   const leaseProvider = lastLeaseTarget.current
@@ -114,7 +114,7 @@ export function DynamicSecretActions({
     : DynamicSecretProviders.SqlDatabase;
 
   const provision = async (request: LeaseRequest) => {
-    const item = leaseTarget ?? lastLeaseTarget.current;
+    const item = lastLeaseTarget.current;
     if (!item) return undefined;
     const { fixedTtl } = getDynamicSecretProviderRuntimeMetadata(leaseProvider).leaseCapabilities;
     const { name, ...rest } = target(item);
@@ -141,21 +141,14 @@ export function DynamicSecretActions({
 
   return (
     <>
-      <DynamicSecretLeasesDialog
-        entry={kind === "leases" ? entry : undefined}
+      <DynamicSecretLeasesSheet
+        key={session}
+        entry={leaseTarget}
+        provider={leaseProvider}
         leases={leases}
-        canRenew={
-          entry
-            ? getDynamicSecretProviderRuntimeMetadata(providerOf(entry)).leaseCapabilities
-                .supportsRenewal
-            : false
-        }
+        loading={leaseQuery.isPending}
         onClose={onClose}
-        onNewLease={() => {
-          if (!entry) return;
-          setSession((value) => value + 1);
-          setNewLeaseFor(entry);
-        }}
+        onProvision={provision}
         onRenew={(leaseId, ttl) => {
           if (!entry) return;
           const { name, ...rest } = target(entry);
@@ -176,13 +169,6 @@ export function DynamicSecretActions({
               failed(isForced ? "Failed to delete lease" : "Failed to revoke lease")
             );
         }}
-      />
-      <DynamicSecretLeaseDialog
-        key={session}
-        entry={leaseTarget}
-        provider={leaseProvider}
-        onClose={() => (newLeaseFor ? setNewLeaseFor(undefined) : onClose())}
-        onProvision={provision}
       />
       <DynamicSecretEditSheet
         entry={kind === "edit" ? entry : undefined}

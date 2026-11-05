@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
@@ -29,7 +29,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Inline } from "@app/components/v4/ui/layout";
+import { Spinner } from "@app/components/v4/ui/spinner";
 import {
   Table,
   TableBody,
@@ -143,145 +143,138 @@ function RenewLeaseDialog({
   );
 }
 
-export function DynamicSecretLeasesDialog({
-  entry: openEntry,
+export function DynamicSecretLeaseList({
+  entry,
   leases,
+  loading,
   canRenew,
-  onClose,
-  onNewLease,
+  onGenerate,
   onRenew,
   onRevoke
 }: {
-  entry?: DynamicSecretResource;
+  entry: DynamicSecretResource;
   leases: readonly DynamicSecretLease[];
+  loading: boolean;
   canRenew: boolean;
-  onClose: () => void;
-  onNewLease: () => void;
+  onGenerate: () => void;
   onRenew: (leaseId: string, ttl: string) => void;
   onRevoke: (leaseId: string, isForced: boolean) => void;
 }) {
-  const lastEntry = useRef(openEntry);
-  if (openEntry) lastEntry.current = openEntry;
-  const entry = openEntry ?? lastEntry.current;
   const [renewLeaseId, setRenewLeaseId] = useState<string>();
   const [revoke, setRevoke] = useState<{ leaseId: string; isForced: boolean }>();
   const [revokeOpen, setRevokeOpen] = useState(false);
-  if (!entry) return null;
+
+  let body;
+  if (loading)
+    body = (
+      <div className={styles.loading}>
+        <Spinner label="Loading leases" />
+      </div>
+    );
+  else if (leases.length === 0)
+    body = (
+      <EmptyState
+        icon="clock"
+        title="No active leases"
+        description="Generate a lease to get temporary credentials from this dynamic secret."
+        actions={
+          <Button size="sm" onClick={onGenerate}>
+            Generate lease
+          </Button>
+        }
+      />
+    );
+  else
+    body = (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Lease ID</TableHead>
+            <TableHead>State</TableHead>
+            <TableHead>Expires in</TableHead>
+            <TableHead className={styles.actionColumn} aria-label="Actions" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {leases.map(({ id, expireAt, status, statusDetails }) => (
+            <TableRow key={id}>
+              <TableCell>
+                <div className={styles.leaseId}>
+                  <span className={styles.truncate}>{id}</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                {status ? (
+                  <Tooltip content={statusDetails || "The provider could not revoke this lease."}>
+                    <Badge tone="bad">
+                      <Icon name="alert" />
+                      Deletion failed
+                    </Badge>
+                  </Tooltip>
+                ) : (
+                  <Badge tone="ok">Active</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                <Tooltip content={format(new Date(expireAt), "yyyy-MM-dd, hh:mm aaa")}>
+                  <span className="capitalize">
+                    {formatDistance(new Date(expireAt), new Date())}
+                  </span>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                <div className={styles.actions}>
+                  {canRenew && (
+                    <Tooltip content="Renew lease">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        iconOnly
+                        icon="sync"
+                        aria-label="Renew lease"
+                        onClick={() => setRenewLeaseId(id)}
+                      />
+                    </Tooltip>
+                  )}
+                  <Tooltip content="Revoke lease">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      iconOnly
+                      icon="trash"
+                      aria-label="Revoke lease"
+                      onClick={() => {
+                        setRevoke({ leaseId: id, isForced: false });
+                        setRevokeOpen(true);
+                      }}
+                    />
+                  </Tooltip>
+                  {status === "failed-deletion" && (
+                    <Tooltip content="Force delete lease. This removes the lease from Infisical without revoking it in the external provider.">
+                      <Button
+                        variant="danger-ghost"
+                        size="icon-xs"
+                        iconOnly
+                        icon="trash"
+                        aria-label="Force delete lease"
+                        onClick={() => {
+                          setRevoke({ leaseId: id, isForced: true });
+                          setRevokeOpen(true);
+                        }}
+                      />
+                    </Tooltip>
+                  )}
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
 
   return (
     <>
-      <Dialog open={Boolean(openEntry)} onOpenChange={(next) => !next && onClose()}>
-        <DialogContent className={styles.leasesDialog}>
-          <DialogHeader>
-            <DialogTitle>
-              <Inline gap={8}>
-                Dynamic secret leases
-                <Badge tone="outline">{entry.name}</Badge>
-              </Inline>
-            </DialogTitle>
-            <DialogDescription>Revoke or renew active leases.</DialogDescription>
-          </DialogHeader>
-          {leases.length === 0 ? (
-            <EmptyState
-              icon="clock"
-              title="No leases found"
-              description="Provision a lease to generate temporary credentials from this dynamic secret."
-              actions={
-                <Button size="sm" onClick={onNewLease}>
-                  New lease
-                </Button>
-              }
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Lease ID</TableHead>
-                  <TableHead>Expires at</TableHead>
-                  <TableHead className={styles.actionColumn} aria-label="Actions" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leases.map(({ id, expireAt, status, statusDetails }) => (
-                  <TableRow key={id}>
-                    <TableCell>
-                      <div className={styles.leaseId}>
-                        <span className={styles.truncate}>{id}</span>
-                        {status && (
-                          <Tooltip content={statusDetails || status}>
-                            <span className={styles.warn} aria-label="Lease warning">
-                              <Icon name="alert" size={16} />
-                            </span>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip content={format(new Date(expireAt), "yyyy-MM-dd, hh:mm aaa")}>
-                        <span className="capitalize">
-                          {formatDistance(new Date(expireAt), new Date())}
-                        </span>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <div className={styles.actions}>
-                        {canRenew && (
-                          <Tooltip content="Renew lease">
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              iconOnly
-                              icon="sync"
-                              aria-label="Renew lease"
-                              onClick={() => setRenewLeaseId(id)}
-                            />
-                          </Tooltip>
-                        )}
-                        <Tooltip content="Revoke lease">
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            iconOnly
-                            icon="trash"
-                            aria-label="Revoke lease"
-                            onClick={() => {
-                              setRevoke({ leaseId: id, isForced: false });
-                              setRevokeOpen(true);
-                            }}
-                          />
-                        </Tooltip>
-                        {status === "failed-deletion" && (
-                          <Tooltip content="Force delete lease. This removes the lease from Infisical without revoking it in the external provider.">
-                            <Button
-                              variant="danger-ghost"
-                              size="icon-xs"
-                              iconOnly
-                              icon="trash"
-                              aria-label="Force delete lease"
-                              onClick={() => {
-                                setRevoke({ leaseId: id, isForced: true });
-                                setRevokeOpen(true);
-                              }}
-                            />
-                          </Tooltip>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          {leases.length > 0 && (
-            <DialogFooter>
-              <Button variant="ghost" onClick={onClose}>
-                Close
-              </Button>
-              <Button onClick={onNewLease}>New lease</Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
+      {body}
       <RenewLeaseDialog
         entry={entry}
         leaseId={renewLeaseId}

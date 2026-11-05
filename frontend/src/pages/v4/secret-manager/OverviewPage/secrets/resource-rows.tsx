@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import {
   type RowActionList,
@@ -47,7 +47,8 @@ import {
   ROW_ACTION_SLOTS,
   type RowContext,
   SelectCell,
-  StatusCell
+  StatusCell,
+  stopRowClick
 } from "./overview-cells";
 import { canReconcile } from "./row-actions/rotation-actions";
 
@@ -142,7 +143,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"dynamic">;
-      const run = (action: "leases" | "lease" | "edit" | "delete" | "force-delete") => () =>
+      const run = (action: "leases" | "edit" | "delete" | "force-delete") => () =>
         ctx.onAction({ kind: "dynamic", action, entry: item });
       const block =
         ctx.writeBlock ??
@@ -154,18 +155,17 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
           : "Only a dynamic secret whose deletion failed can be force deleted");
       return {
         inline: [
-          { label: "View leases", icon: ListIcon, disabledReason: block, onSelect: run("leases") },
-          {
-            label: "Generate lease",
-            icon: FileKeyIcon,
-            disabledReason: block,
-            onSelect: run("lease")
-          },
-          { label: "Edit", icon: EditIcon, disabledReason: block, onSelect: run("edit") }
+          { label: "Leases", icon: FileKeyIcon, disabledReason: block, onSelect: run("leases") }
         ],
         menu: (
           <>
+            <DropdownMenuItem disabled={Boolean(block)} description={block} onSelect={run("edit")}>
+              <Icon icon={EditIcon} />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
+              variant="destructive"
               disabled={Boolean(forceBlock)}
               description={forceBlock}
               onSelect={run("force-delete")}
@@ -223,22 +223,26 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
           : "Only local account rotations that log in as the target can be reconciled");
       return {
         inline: [
-          {
-            label: "Validate credentials",
-            icon: ActivityIcon,
-            disabledReason: block,
-            onSelect: run("validate")
-          },
-          {
-            label: "View generated credentials",
-            icon: "eye",
-            disabledReason: block,
-            onSelect: run("credentials")
-          },
           { label: "Rotate secret", icon: "sync", disabledReason: block, onSelect: run("rotate") }
         ],
         menu: (
           <>
+            <DropdownMenuItem
+              disabled={Boolean(block)}
+              description={block}
+              onSelect={run("validate")}
+            >
+              <Icon icon={ActivityIcon} />
+              Validate credentials
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={Boolean(block)}
+              description={block}
+              onSelect={run("credentials")}
+            >
+              <Icon name="eye" />
+              View generated credentials
+            </DropdownMenuItem>
             <DropdownMenuItem
               disabled={Boolean(reconcileBlock)}
               description={reconcileBlock}
@@ -247,10 +251,12 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
               <Icon icon={HandshakeIcon} />
               Reconcile secret
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem disabled={Boolean(block)} description={block} onSelect={run("edit")}>
               <Icon icon={EditIcon} />
               Edit
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
               disabled={Boolean(block)}
@@ -287,23 +293,25 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"honey">;
       const run = (action: "details" | "edit" | "revoke") => () =>
         ctx.onAction({ kind: "honey", action, entry: item });
+      const block =
+        item.status === "revoked" ? "Revoked honey tokens cannot be edited" : ctx.writeBlock;
       return {
-        inline: [{ label: "View details", icon: ListIcon, onSelect: run("details") }],
-        menuDisabledReason:
-          item.status === "revoked" ? "Revoked honey tokens cannot be edited." : undefined,
+        inline: [],
         menu: (
           <>
-            <DropdownMenuItem
-              disabled={Boolean(ctx.writeBlock)}
-              description={ctx.writeBlock}
-              onSelect={run("edit")}
-            >
+            <DropdownMenuItem onSelect={run("details")}>
+              <Icon icon={ListIcon} />
+              View details
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled={Boolean(block)} description={block} onSelect={run("edit")}>
               <Icon icon={EditIcon} />
               Edit
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
-              disabled={Boolean(ctx.writeBlock)}
-              description={ctx.writeBlock}
+              disabled={Boolean(block)}
+              description={block}
               variant="destructive"
               onSelect={run("revoke")}
             >
@@ -344,21 +352,32 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
     },
     actions: (entry, ctx) => {
       const item = entry as Of<"proxy">;
+      const run = (action: "edit" | "delete") => () =>
+        ctx.onAction({ kind: "proxy", action, entry: item });
       return {
-        inline: [
-          {
-            label: "Edit",
-            icon: EditIcon,
-            disabledReason: ctx.writeBlock,
-            onSelect: () => ctx.onAction({ kind: "proxy", action: "edit", entry: item })
-          },
-          {
-            label: "Delete",
-            icon: "trash",
-            disabledReason: ctx.writeBlock,
-            onSelect: () => ctx.onAction({ kind: "proxy", action: "delete", entry: item })
-          }
-        ]
+        inline: [],
+        menu: (
+          <>
+            <DropdownMenuItem
+              disabled={Boolean(ctx.writeBlock)}
+              description={ctx.writeBlock}
+              onSelect={run("edit")}
+            >
+              <Icon icon={EditIcon} />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={Boolean(ctx.writeBlock)}
+              description={ctx.writeBlock}
+              onSelect={run("delete")}
+            >
+              <Icon name="trash" />
+              Delete
+            </DropdownMenuItem>
+          </>
+        )
       };
     }
   }
@@ -383,7 +402,7 @@ function EnvironmentTable({
         <Table className={styles.nestedTable}>
           <TableHeader>
             <TableRow>
-              <TableHead className={styles.iconCell} />
+              <TableHead selection />
               <TableHead className={styles.envName}>Environment</TableHead>
               <TableHead>{valueHeader}</TableHead>
               <TableActionsHead slots={ROW_ACTION_SLOTS} />
@@ -398,7 +417,7 @@ function EnvironmentTable({
                 const entry = entries.find((item) => item.environment === environment.value)!;
                 return (
                   <TableRow key={environment.value} className={styles.row}>
-                    <TableCell className={styles.iconCell} />
+                    <TableCell selection />
                     <TableCell className={styles.envName}>{environment.label}</TableCell>
                     <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
                     <TableActionsCell slots={ROW_ACTION_SLOTS}>{actions(entry)}</TableActionsCell>
@@ -527,6 +546,9 @@ export function FolderRow({
   onDelete: (folder: Of<"folder">) => void;
 }) {
   const first = entries[0];
+  const accessBlock = ctx.single
+    ? ctx.writeBlock
+    : "Select a single environment to manage folder access.";
   return (
     <TableRow
       data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
@@ -548,36 +570,42 @@ export function FolderRow({
         ctx.environments.map((environment) => (
           <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
         ))}
-      <TableActionsCell slots={ROW_ACTION_SLOTS}>
+      <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
         <RowActions
           label={first.name}
-          inline={[
-            {
-              label: "Move folder",
-              icon: FolderInputIcon,
-              disabledReason: ctx.writeBlock,
-              onSelect: () =>
-                ctx.onAction({ kind: "folder", action: "move", entry: first, entries })
-            },
-            {
-              label: "Edit folder",
-              icon: EditIcon,
-              disabledReason: ctx.writeBlock,
-              onSelect: () => onEdit(first)
-            },
-            {
-              label: "Manage access",
-              icon: UsersIcon,
-              disabledReason: ctx.single
-                ? ctx.writeBlock
-                : "Select a single environment to manage folder access.",
-              onSelect: () =>
-                ctx.onAction({ kind: "folder", action: "access", entry: first, entries })
-            }
-          ]}
           menu={
             <>
               <PendingMenuItems id={first.id} ctx={ctx} />
+              <DropdownMenuItem
+                disabled={Boolean(ctx.writeBlock)}
+                description={ctx.writeBlock}
+                onSelect={() =>
+                  ctx.onAction({ kind: "folder", action: "move", entry: first, entries })
+                }
+              >
+                <Icon icon={FolderInputIcon} />
+                Move folder
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={Boolean(accessBlock)}
+                description={accessBlock}
+                onSelect={() =>
+                  ctx.onAction({ kind: "folder", action: "access", entry: first, entries })
+                }
+              >
+                <Icon icon={UsersIcon} />
+                Manage access
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={Boolean(ctx.writeBlock)}
+                description={ctx.writeBlock}
+                onSelect={() => onEdit(first)}
+              >
+                <Icon icon={EditIcon} />
+                Edit folder
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
                 disabled={Boolean(ctx.writeBlock)}
@@ -640,24 +668,33 @@ export function ImportRow({
         </span>
       </Tooltip>
     );
+  const resyncBlock = (entry: Of<"import">) =>
+    ctx.writeBlock ?? (entry.replicated ? undefined : "Only replicated imports resync");
   const actions = (entry: Of<"import">) => (
     <RowActions
       label={`secret import ${entry.source.path}`}
-      inline={[
-        {
-          label: "Resync",
-          icon: "sync",
-          disabledReason:
-            ctx.writeBlock ?? (entry.replicated ? undefined : "Only replicated imports resync"),
-          onSelect: () => ctx.onAction({ kind: "import", action: "resync", entry })
-        },
-        {
-          label: "Delete",
-          icon: "trash",
-          disabledReason: ctx.writeBlock,
-          onSelect: () => ctx.onAction({ kind: "import", action: "delete", entry })
-        }
-      ]}
+      menu={
+        <>
+          <DropdownMenuItem
+            disabled={Boolean(resyncBlock(entry))}
+            description={resyncBlock(entry)}
+            onSelect={() => ctx.onAction({ kind: "import", action: "resync", entry })}
+          >
+            <Icon name="sync" />
+            Resync
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={Boolean(ctx.writeBlock)}
+            description={ctx.writeBlock}
+            onSelect={() => ctx.onAction({ kind: "import", action: "delete", entry })}
+          >
+            <Icon name="trash" />
+            Delete
+          </DropdownMenuItem>
+        </>
+      }
     />
   );
   const toggle = (
@@ -707,11 +744,13 @@ export function ImportRow({
               <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
             )
           )}
-        <TableActionsCell slots={ROW_ACTION_SLOTS}>{ctx.single && actions(first)}</TableActionsCell>
+        <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
+          {ctx.single && actions(first)}
+        </TableActionsCell>
       </TableRow>
       {ctx.single && expanded && !first.revoked && (
         <TableRow className={styles.nestedHead}>
-          <TableCell className={styles.iconCell} />
+          <TableCell selection />
           <TableCell className={styles.nameCell}>Name</TableCell>
           <TableCell colSpan={2} className={styles.valueCell}>
             Value
@@ -721,7 +760,7 @@ export function ImportRow({
       {ctx.single &&
         keys.map((secret) => (
           <TableRow key={secret.id} className={styles.importedRow}>
-            <TableCell className={styles.iconCell} />
+            <TableCell selection />
             <TableCell className={styles.nameCell}>
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
@@ -734,7 +773,7 @@ export function ImportRow({
         ))}
       {ctx.single && expanded && first.revoked && (
         <TableRow className={styles.importedRow}>
-          <TableCell className={styles.iconCell} />
+          <TableCell selection />
           <TableCell colSpan={3} className={styles.subtle}>
             Access to this source was revoked, so its secrets are not shown.
           </TableCell>
@@ -762,7 +801,7 @@ export function ImportRow({
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>
-                  <TableHead className={styles.iconCell} />
+                  <TableHead selection />
                   <TableHead className={styles.envName}>Name</TableHead>
                   <TableHead>Value</TableHead>
                 </TableRow>
@@ -770,7 +809,7 @@ export function ImportRow({
               <TableBody>
                 {first.revoked ? (
                   <TableRow>
-                    <TableCell className={styles.iconCell} />
+                    <TableCell selection />
                     <TableCell colSpan={2} className={styles.subtle}>
                       Access to this source was revoked, so its secrets are not shown.
                     </TableCell>
@@ -778,7 +817,7 @@ export function ImportRow({
                 ) : (
                   sourceSecrets(first).map((secret) => (
                     <TableRow key={secret.id} className={styles.row}>
-                      <TableCell className={styles.iconCell} />
+                      <TableCell selection />
                       <TableCell className={styles.envName}>
                         <span className={styles.truncate}>{secret.name}</span>
                       </TableCell>

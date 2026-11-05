@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import {
   BanIcon,
   ChevronsLeftRightEllipsisIcon,
@@ -27,7 +27,8 @@ import type { RowAction } from "./row-actions/types";
 import styles from "./overview.module.css";
 
 export const NEXT_PHASE = "Ported in the next phase";
-export const ROW_ACTION_SLOTS = 4;
+export const ROW_ACTION_SLOTS = 2;
+export const stopRowClick = (event: MouseEvent) => event.stopPropagation();
 export type EnvironmentOption = { value: string; label: string };
 export type RowContext = {
   environments: EnvironmentOption[];
@@ -196,7 +197,7 @@ export function SelectCell({
 }) {
   const isSelected = ctx.selected.includes(rowKey);
   return (
-    <TableCell className={styles.iconCell}>
+    <TableCell selection>
       <span className={styles.iconSlot} data-selected={isSelected || pinned || undefined}>
         <span className={styles.kindGlyph}>
           <KindIcon kind={kind} overlay={overlay} />
