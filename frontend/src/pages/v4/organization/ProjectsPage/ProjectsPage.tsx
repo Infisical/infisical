@@ -11,8 +11,9 @@ import { getProjectDescription } from "@app/helpers/project";
 import type { TOrgProductStats } from "@app/hooks/api/organization/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { useV4Adapter } from "../../data/adapters";
+import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { useResolveV4Href } from "../../resolveV4Href";
 import { productHome, productOf, products, projectBase } from "../../shell/navigation";
 
 const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][] => {
@@ -62,25 +63,31 @@ export const ProjectsPage = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { organization, projects } = useV4Session();
   const { data: stats } = useV4Adapter("org").useProductStats(organization.id);
-  const recent = projects.find((project) => project.type === ProjectType.SecretManager);
+  const resolve = useResolveV4Href();
+  const demoProject =
+    useV4Mode() === "demo"
+      ? projects.find((project) => project.type === ProjectType.SecretManager)
+      : undefined;
   return (
     <Stack gap={32}>
       <PageHeader
         title={`${organization.isSubOrganization ? "Sub-organization" : "Organization"} overview`}
         description="Your team's complete security toolkit, organized and ready when you need them."
       />
-      {recent && (
+      {demoProject && (
         <Item
           asChild
           variant="outline"
-          icon={productOf(recent.type).icon}
-          title={recent.name}
+          icon={productOf(demoProject.type).icon}
+          title={demoProject.name}
           mono
-          description={`Continue in ${productOf(recent.type).label}`}
+          description={`Continue in ${productOf(demoProject.type).label}`}
           actions={<Icon name="chev-right" size={16} />}
         >
-          <a href={`/v4/organizations/${orgId}${projectBase(recent.type, recent.id)}/overview`}>
-            {recent.name}
+          <a
+            href={`/v4/organizations/${orgId}${projectBase(demoProject.type, demoProject.id)}/overview`}
+          >
+            {demoProject.name}
           </a>
         </Item>
       )}
@@ -92,7 +99,9 @@ export const ProjectsPage = () => {
             title={
               <Inline gap={8} align="center">
                 <Icon name={product.icon} size={18} />
-                <a href={`/v4/organizations/${orgId}${productHome(product)}`}>{product.label}</a>
+                <a href={resolve(`/v4/organizations/${orgId}${productHome(product)}`)}>
+                  {product.label}
+                </a>
                 {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
               </Inline>
             }

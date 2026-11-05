@@ -38,7 +38,7 @@ import { eventToNameMap, userAgentTypeToNameMap } from "@app/hooks/api/auditLogs
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import type { Actor, AuditLog, TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 
-import { useV4Adapter } from "../../data/adapters";
+import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 
 const PAGE_SIZE = 500;
@@ -449,6 +449,7 @@ export const AuditLogsPage = () => {
   const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/audit-logs" });
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/audit-logs" });
   const navigate = useNavigate();
+  const mode = useV4Mode();
   const { organization } = useV4Session();
   const activeTab = tabs.some((tab) => tab.value === selectedTab) ? selectedTab : "audit-logs";
   return (
@@ -462,7 +463,10 @@ export const AuditLogsPage = () => {
             value={activeTab}
             onValueChange={(next) =>
               navigate({
-                to: "/v4/organizations/$orgId/audit-logs",
+                to:
+                  mode === "live" && next !== "audit-logs"
+                    ? "/organizations/$orgId/audit-logs"
+                    : "/v4/organizations/$orgId/audit-logs",
                 params: { orgId },
                 search: { selectedTab: next }
               })

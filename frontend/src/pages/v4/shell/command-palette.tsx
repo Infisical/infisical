@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
 import {
   CommandMenu,
   type CommandMenuGroup,
@@ -12,7 +11,8 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useV4Adapter } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
 import { V4_DEMO_ORG_ID } from "../mode";
-import { useClearThemeOverride } from "../useV4Theme";
+import { useResolveV4Href } from "../resolveV4Href";
+import { useV4ThemeChoice } from "../useV4Theme";
 import {
   agentVaultSections,
   kmsSections,
@@ -44,10 +44,10 @@ export const CommandPalette = ({
   onOpenChange: (open: boolean) => void;
 }) => {
   const navigate = useNavigate();
+  const resolve = useResolveV4Href();
   const session = useV4Session();
   const access = useV4Adapter("access");
-  const { setTheme } = useTheme();
-  const clearThemeOverride = useClearThemeOverride();
+  const { setTheme } = useV4ThemeChoice("command-menu");
   const [groupSearch, setGroupSearch] = useState("");
   const { data: groupData } = access.useOrgGroups({
     organizationId: orgId,
@@ -56,7 +56,7 @@ export const CommandPalette = ({
   });
   const base = `/v4/organizations/${orgId}`;
   const go = (path: string, search?: Record<string, string>) =>
-    navigate({ to: `${base}${path}` as never, search: search as never });
+    navigate({ to: resolve(`${base}${path}`) as never, search: search as never });
   const project = session.projects.find((entry) => entry.id === projectId);
 
   const groups = useMemo(() => {
@@ -159,16 +159,14 @@ export const CommandPalette = ({
             id: `org:${entry.id}`,
             label: entry.name,
             kind: "organization" as const,
-            onSelect: () => navigate({ to: `/v4/organizations/${entry.id}/projects` as never })
+            onSelect: () =>
+              navigate({ to: resolve(`/v4/organizations/${entry.id}/projects`) as never })
           })),
         searchOnly: true,
         limit: 8
       });
     }
-    const pickTheme = (theme: Theme) => () => {
-      setTheme(theme, "command-menu");
-      clearThemeOverride();
-    };
+    const pickTheme = (theme: Theme) => () => setTheme(theme);
     result.push({
       label: "Commands",
       items: [
@@ -196,7 +194,7 @@ export const CommandPalette = ({
       ]
     });
     return result;
-  }, [base, groupData, project, session, orgId, navigate, setTheme, clearThemeOverride]);
+  }, [base, groupData, project, session, orgId, navigate, resolve, setTheme]);
 
   return (
     <CommandMenu

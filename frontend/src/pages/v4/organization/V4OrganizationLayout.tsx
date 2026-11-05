@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect } from "react";
 import { Outlet, useRouteContext } from "@tanstack/react-router";
 
-import { getPostHog } from "@app/components/analytics/posthog";
+import { analytics } from "@app/lib/analytics";
 
 import { V4SessionContext } from "../data/session/contract";
 import { demoSession } from "../data/session/demo";
@@ -22,9 +22,8 @@ export const V4OrganizationLayout = () => {
   const { v4Mode } = useRouteContext({ from: "/v4/organizations/$orgId" });
   useEffect(() => {
     if (v4Mode !== "live") return undefined;
-    const posthog = getPostHog();
-    posthog?.register({ ui_version: "v4" });
-    return () => posthog?.unregister("ui_version");
+    analytics.registerUiVersion("v4");
+    return () => analytics.unregisterUiVersion();
   }, [v4Mode]);
   return (
     <SessionProvider>
