@@ -342,6 +342,7 @@ export const OrgMembersTab = () => {
         return (
           <DropdownMenuItem
             disabled={!can(OrgPermissionMemberActions.Create)}
+            description={can(OrgPermissionMemberActions.Create) ? undefined : RESTRICTED}
             onSelect={() => inviteAsDirectMember(member)}
           >
             <Icon name="user-plus" />
@@ -355,6 +356,7 @@ export const OrgMembersTab = () => {
         <>
           <DropdownMenuItem
             disabled={!can(OrgPermissionMemberActions.Edit)}
+            description={can(OrgPermissionMemberActions.Edit) ? undefined : RESTRICTED}
             onSelect={() => openMember(member)}
           >
             <Icon name="settings" />
@@ -363,6 +365,7 @@ export const OrgMembersTab = () => {
           {pending && (
             <DropdownMenuItem
               disabled={!can(OrgPermissionMemberActions.Create)}
+              description={can(OrgPermissionMemberActions.Create) ? undefined : RESTRICTED}
               onSelect={() => resend(membership.id)}
             >
               <Icon icon={MailIcon} />
@@ -371,6 +374,7 @@ export const OrgMembersTab = () => {
           )}
           <DropdownMenuItem
             disabled={!can(OrgPermissionMemberActions.Edit)}
+            description={can(OrgPermissionMemberActions.Edit) ? undefined : RESTRICTED}
             onSelect={() => {
               if (!membership.isActive) {
                 updateMember(

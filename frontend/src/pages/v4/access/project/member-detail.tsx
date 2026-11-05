@@ -38,7 +38,7 @@ import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { formatDate } from "../roles";
 import { failed, saved, toast } from "../toast";
-import { AccessRestricted, Muted } from "../ui";
+import { AccessRestricted, Muted, RESTRICTED } from "../ui";
 import { personName } from "./member-access";
 import { type AssumeTarget, AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
 import { MemberRolesSection } from "./member-roles";
@@ -173,6 +173,7 @@ export const ProjectMemberDetail = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canAssume}
+                  description={canAssume ? undefined : RESTRICTED}
                   onSelect={() => setAssuming({ id: user.id, type: ActorType.USER })}
                 >
                   <Icon name="user" />
@@ -181,6 +182,7 @@ export const ProjectMemberDetail = () => {
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={!canDelete}
+                  description={canDelete ? undefined : RESTRICTED}
                   onSelect={() => setRemoving(true)}
                 >
                   <Icon name="trash" />

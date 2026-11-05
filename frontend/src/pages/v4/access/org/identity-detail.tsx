@@ -315,6 +315,7 @@ export const OrgIdentityDetail = () => {
         <DropdownMenuItem
           variant="destructive"
           disabled={!canDelete}
+          description={canDelete ? undefined : RESTRICTED}
           onSelect={() => setRemovingAuth(method)}
         >
           <Icon name="trash" />
@@ -357,6 +358,7 @@ export const OrgIdentityDetail = () => {
                   <DropdownMenuItem
                     variant="destructive"
                     disabled={!canDelete || deleteBlocked}
+                    description={canDelete ? undefined : RESTRICTED}
                     onSelect={() => setDeleting(true)}
                   >
                     <Icon name="trash" />

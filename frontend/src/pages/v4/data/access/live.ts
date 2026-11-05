@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
+
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import { useAssumeProjectPrivileges } from "@app/hooks/api/assumePrivileges/mutations";
 import {
@@ -10,9 +13,9 @@ import {
   useUpdateGroup
 } from "@app/hooks/api/groups/mutations";
 import {
-  useGetGroupById,
-  useListGroupMembers,
-  useListGroupProjects
+  groupByIdQuery,
+  groupProjectsQuery,
+  useListGroupMembers
 } from "@app/hooks/api/groups/queries";
 import {
   useAddIdentityUniversalAuth,
@@ -33,12 +36,12 @@ import {
   useGetIdentityAwsAuth,
   useGetIdentityKubernetesAuth,
   useGetIdentityOidcAuth,
-  useGetIdentityProjectMemberships,
   useGetIdentityTokenAuth,
   useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets,
   useGetOrgIdentityMembershipById,
+  identityProjectMembershipsQuery,
   useSearchOrgIdentityMemberships
 } from "@app/hooks/api/identities/queries";
 import {
@@ -130,6 +133,8 @@ import {
 
 import type { AccessAdapter } from "./contract";
 
+const useOrgId = () => useParams({ from: "/v4/organizations/$orgId" }).orgId;
+
 export const accessLive: AccessAdapter = {
   useOrgPermission: useGetUserOrgPermissions,
   useProjectPermission: useGetUserProjectPermissions,
@@ -155,7 +160,8 @@ export const accessLive: AccessAdapter = {
 
   useSearchOrgIdentities: useSearchOrgIdentityMemberships,
   useOrgIdentity: useGetOrgIdentityMembershipById,
-  useIdentityProjectMemberships: useGetIdentityProjectMemberships,
+  useIdentityProjectMemberships: (identityId) =>
+    useQuery(identityProjectMembershipsQuery(useOrgId(), identityId)),
   useCreateOrgIdentity,
   useUpdateOrgIdentity,
   useDeleteOrgIdentity,
@@ -186,9 +192,9 @@ export const accessLive: AccessAdapter = {
   useDeleteIdentityOidcAuth,
 
   useOrgGroups: useSearchOrganizationGroups,
-  useGroup: useGetGroupById,
+  useGroup: (groupId) => useQuery(groupByIdQuery(useOrgId(), groupId)),
   useGroupMembers: useListGroupMembers,
-  useGroupProjects: useListGroupProjects,
+  useGroupProjects: (dto) => useQuery(groupProjectsQuery(useOrgId(), dto)),
   useCreateGroup,
   useUpdateGroup,
   useDeleteGroup,

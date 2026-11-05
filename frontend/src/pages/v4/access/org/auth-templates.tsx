@@ -483,6 +483,7 @@ export const AuthTemplatesSection = () => {
         <DropdownMenuItem
           variant="destructive"
           disabled={!canDelete}
+          description={canDelete ? undefined : RESTRICTED}
           onSelect={() => setDeleting(template)}
         >
           <Icon name="trash" />

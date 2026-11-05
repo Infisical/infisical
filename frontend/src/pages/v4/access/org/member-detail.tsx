@@ -362,12 +362,17 @@ export const OrgMemberDetail = () => {
                       <Icon name="copy" />
                       Copy user ID
                     </DropdownMenuItem>
-                    <DropdownMenuItem disabled={!canEdit} onSelect={() => setEditing(true)}>
+                    <DropdownMenuItem
+                      disabled={!canEdit}
+                      description={canEdit ? undefined : RESTRICTED}
+                      onSelect={() => setEditing(true)}
+                    >
                       <Icon icon={PencilIcon} />
                       Edit user
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!canEdit}
+                      description={canEdit ? undefined : RESTRICTED}
                       onSelect={() =>
                         membership.isActive ? setDeactivating(true) : setActive(true)
                       }
@@ -382,6 +387,14 @@ export const OrgMemberDetail = () => {
                           OrgPermissionMemberActions.Delete,
                           OrgPermissionSubjects.Member
                         )
+                      }
+                      description={
+                        permission.can(
+                          OrgPermissionMemberActions.Delete,
+                          OrgPermissionSubjects.Member
+                        )
+                          ? undefined
+                          : RESTRICTED
                       }
                       onSelect={() => setRemoving(true)}
                     >
