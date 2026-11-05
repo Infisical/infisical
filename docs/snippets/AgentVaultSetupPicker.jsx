@@ -61,7 +61,7 @@ export const AgentVaultSetupQuestions = () => {
       id: "platform",
       label: "A service that starts agents for tasks",
       example: "Your own code, such as a Slack bot or a backend service, that starts a new agent for each task.",
-      runs: ["sandbox", "e2b", "kubernetes", "container", "server", "cursor"],
+      runs: ["modal", "daytona", "e2b", "kubernetes", "container", "server", "cursor"],
     },
     {
       id: "scheduled",
@@ -81,8 +81,9 @@ export const AgentVaultSetupQuestions = () => {
     { id: "server", label: "A server or VM", example: "Such as a dev box, a cloud VM, or a home server." },
     { id: "container", label: "A container", example: "Such as a Docker container or a dev container." },
     { id: "kubernetes", label: "Kubernetes", example: "A pod in your own cluster." },
-    { id: "sandbox", label: "A managed sandbox", example: "Such as Modal or Daytona." },
-    { id: "e2b", label: "E2B sandboxes", example: "Sandboxes that send their traffic to one shared proxy." },
+    { id: "modal", label: "Modal", example: "Each task runs in its own Modal sandbox." },
+    { id: "daytona", label: "Daytona", example: "Each task runs in its own Daytona sandbox." },
+    { id: "e2b", label: "E2B", example: "Each task runs in its own E2B sandbox." },
     { id: "ci", label: "A CI runner", example: "Such as a GitHub Actions job." },
     { id: "cursor", label: "Cursor Cloud Agents", example: "Cursor runs the agent, and its commands run on your Kubernetes cluster." },
   ];
@@ -91,10 +92,8 @@ export const AgentVaultSetupQuestions = () => {
 
   // Daytona's logo is black on a transparent background, so it's inverted in dark mode.
   const RUN_LOGOS = {
-    sandbox: [
-      { light: "agent-vault-agents/modal.svg" },
-      { light: "agent-vault-agents/daytona.svg", invertDark: true },
-    ],
+    modal: [{ light: "agent-vault-agents/modal.svg" }],
+    daytona: [{ light: "agent-vault-agents/daytona.svg", invertDark: true }],
     e2b: [{ light: "agent-vault-agents/e2b.svg" }],
     kubernetes: [{ light: "stack/kubernetes.png" }],
     container: [{ light: "agent-vault-agents/docker.svg" }],
@@ -303,19 +302,20 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const RULES = {
     personal: { model: "user", runs: ["server", "container"] },
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["sandbox", "e2b", "kubernetes", "container", "server", "cursor"] },
+    platform: { model: "orchestrator", runs: ["modal", "daytona", "e2b", "kubernetes", "container", "server", "cursor"] },
   };
   const HOSTS = {
     server: "Server or VM",
     container: "Container",
     kubernetes: "Kubernetes pod",
-    sandbox: "Managed sandbox",
+    modal: "Modal sandbox",
+    daytona: "Daytona sandbox",
     e2b: "E2B sandbox",
     ci: "CI runner",
     cursor: "Cursor worker pod",
   };
   // The Docker, Modal, and Daytona guides start a proxy with each agent. Every other setup shares one proxy.
-  const PER_AGENT_PROXY_RUNS = ["container", "sandbox"];
+  const PER_AGENT_PROXY_RUNS = ["container", "modal", "daytona"];
 
   const FOCUS = {
     building: { lanes: ["infisical", "creator"], messages: ["create", "token", "start", "revoke"] },
@@ -784,13 +784,14 @@ export const AgentVaultSetupSummary = () => {
   const RUNS = {
     personal: ["server", "container"],
     scheduled: ["server", "container", "ci"],
-    platform: ["sandbox", "e2b", "kubernetes", "container", "server", "cursor"],
+    platform: ["modal", "daytona", "e2b", "kubernetes", "container", "server", "cursor"],
   };
   const PLACES = {
     server: "on a server or VM",
     container: "in a container",
     kubernetes: "on Kubernetes",
-    sandbox: "in a managed sandbox",
+    modal: "in Modal sandboxes",
+    daytona: "in Daytona sandboxes",
     e2b: "in E2B sandboxes",
     ci: "in a CI runner",
   };
@@ -866,7 +867,7 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
   const RULES = {
     personal: { model: "user", runs: ["server", "container"] },
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["sandbox", "e2b", "kubernetes", "container", "server", "cursor"] },
+    platform: { model: "orchestrator", runs: ["modal", "daytona", "e2b", "kubernetes", "container", "server", "cursor"] },
   };
   const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 
