@@ -22,7 +22,6 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1 } from "@app/services/secret-folder/secret-folder-events";
-import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -44,6 +43,7 @@ import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-da
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
 import { MAX_REPLICATION_DEPTH } from "./secret-replication-constants";
+import { findOrCreateReplicationFolder, getReplicationFolderName } from "./secret-replication-fns";
 
 type TSecretReplicationServiceFactoryDep = {
   secretDAL: Pick<
@@ -67,7 +67,10 @@ type TSecretReplicationServiceFactoryDep = {
     TSecretVersionV2DALFactory,
     "find" | "insertMany" | "update" | "findLatestVersionMany"
   >;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "updateById" | "findByFolderIds" | "findByIds">;
+  secretImportDAL: Pick<
+    TSecretImportDALFactory,
+    "find" | "updateById" | "findByFolderIds" | "findByIds" | "lockWithFolderAgainstDelete"
+  >;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findSecretPathByFolderIds" | "findBySecretPath" | "create" | "findOne" | "findByManySecretPath" | "transaction"
@@ -106,7 +109,6 @@ export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicati
 const keystoreReplicationSuccessKey = (jobId: string, secretImportId: string) => `${jobId}-${secretImportId}`;
 const getReplicationKeyLockPrefix = (projectId: string, environmentSlug: string, secretPath: string) =>
   `REPLICATION_SECRET_${projectId}-${environmentSlug}-${secretPath}`;
-export const getReplicationFolderName = (importId: string) => `${ReservedFolders.SecretReplication}${importId}`;
 
 const getDecryptedKeyValue = (key: string, secret: TSecrets) => {
   const secretKey = crypto.encryption().symmetric().decrypt({
@@ -370,29 +372,17 @@ export const secretReplicationServiceFactory = ({
                 message: `Imported folder with ID '${destinationSecretImport.folderId}' not found in project with ID ${projectId}`
               });
 
-            const destinationReplicationFolderName = getReplicationFolderName(destinationSecretImport.id);
             const destinationReplicationFolderPath = path.posix.join(
               destinationFolder.path,
-              destinationReplicationFolderName
+              getReplicationFolderName(destinationSecretImport.id)
             );
-            let destinationReplicationFolder = await folderDAL.findOne({
-              parentId: destinationFolder.id,
-              name: destinationReplicationFolderName,
-              isReserved: true
-            });
-            if (!destinationReplicationFolder) {
-              // Same transaction, otherwise a retry finds the folder already there and never emits.
-              destinationReplicationFolder = await folderDAL.transaction(async (tx) => {
-                const createdFolder = await folderDAL.create(
-                  {
-                    parentId: destinationFolder.id,
-                    name: destinationReplicationFolderName,
-                    envId: destinationFolder.envId,
-                    isReserved: true
-                  },
-                  tx
-                );
-                await FolderModifiedEventV1.emit(
+            const destinationReplicationFolder = await findOrCreateReplicationFolder({
+              folderDAL,
+              secretImportDAL,
+              destinationSecretImportId: destinationSecretImport.id,
+              destinationFolder,
+              onCreate: (createdFolder, tx) =>
+                FolderModifiedEventV1.emit(
                   eventEmitter,
                   {
                     folderId: createdFolder.id,
@@ -402,9 +392,15 @@ export const secretReplicationServiceFactory = ({
                     modificationType: EventModificationType.Created
                   },
                   tx
-                );
-                return createdFolder;
-              });
+                )
+            });
+            if (!destinationReplicationFolder) {
+              logger.info(
+                { jobId: job.id, importId: destinationSecretImport.id },
+                `Skipping replication to an import that has been deleted [jobId=${job.id}] [importId=${destinationSecretImport.id}]`
+              );
+              // eslint-disable-next-line
+              continue;
             }
             const destinationReplicationFolderId = destinationReplicationFolder.id;
             const replicationEventScope = {
@@ -708,18 +704,19 @@ export const secretReplicationServiceFactory = ({
             });
           }
 
-          let destinationReplicationFolder = await folderDAL.findOne({
-            parentId: destinationFolder.id,
-            name: getReplicationFolderName(destinationSecretImport.id),
-            isReserved: true
+          const destinationReplicationFolder = await findOrCreateReplicationFolder({
+            folderDAL,
+            secretImportDAL,
+            destinationSecretImportId: destinationSecretImport.id,
+            destinationFolder
           });
           if (!destinationReplicationFolder) {
-            destinationReplicationFolder = await folderDAL.create({
-              parentId: destinationFolder.id,
-              name: getReplicationFolderName(destinationSecretImport.id),
-              envId: destinationFolder.envId,
-              isReserved: true
-            });
+            logger.info(
+              { jobId: job.id, importId: destinationSecretImport.id },
+              `Skipping replication to an import that has been deleted [jobId=${job.id}] [importId=${destinationSecretImport.id}]`
+            );
+            // eslint-disable-next-line
+            continue;
           }
           const destinationReplicationFolderId = destinationReplicationFolder.id;
 
