@@ -61,19 +61,19 @@ export const AgentVaultSetupQuestions = () => {
       id: "platform",
       label: "A service that starts agents for tasks",
       example: "Your own code, such as a Slack bot or a backend service, that starts a new agent for each task.",
-      runs: ["modal", "daytona", "e2b", "kubernetes", "container", "server", "cursor"],
+      runs: ["modal", "daytona", "e2b", "kubernetes", "container", "cursor", "server"],
     },
     {
       id: "scheduled",
       label: "A scheduled or unattended job",
       example: "An agent that runs on a schedule or in CI, such as one that triages new issues.",
-      runs: ["server", "container", "ci"],
+      runs: ["container", "ci", "server"],
     },
     {
       id: "personal",
       label: "An agent you run manually",
       example: "You create a session in the Infisical dashboard and run the agent with its token, such as a coding agent on a dev box.",
-      runs: ["server", "container"],
+      runs: ["container", "server"],
     },
   ];
 
@@ -300,9 +300,9 @@ export const AgentVaultSetupQuestions = () => {
 
 export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const RULES = {
-    personal: { model: "user", runs: ["server", "container"] },
-    scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["modal", "daytona", "e2b", "kubernetes", "container", "server", "cursor"] },
+    personal: { model: "user", runs: ["container", "server"] },
+    scheduled: { model: "job", runs: ["container", "ci", "server"] },
+    platform: { model: "orchestrator", runs: ["modal", "daytona", "e2b", "kubernetes", "container", "cursor", "server"] },
   };
   const HOSTS = {
     server: "Server or VM",
@@ -782,9 +782,9 @@ export const AgentVaultSetupSummary = () => {
     platform: "a service that starts agents for tasks",
   };
   const RUNS = {
-    personal: ["server", "container"],
-    scheduled: ["server", "container", "ci"],
-    platform: ["modal", "daytona", "e2b", "kubernetes", "container", "server", "cursor"],
+    personal: ["container", "server"],
+    scheduled: ["container", "ci", "server"],
+    platform: ["modal", "daytona", "e2b", "kubernetes", "container", "cursor", "server"],
   };
   const PLACES = {
     server: "on a server or VM",
@@ -865,9 +865,9 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
   const SELECTION_EVENT = "av-setup-selection-change";
 
   const RULES = {
-    personal: { model: "user", runs: ["server", "container"] },
-    scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["modal", "daytona", "e2b", "kubernetes", "container", "server", "cursor"] },
+    personal: { model: "user", runs: ["container", "server"] },
+    scheduled: { model: "job", runs: ["container", "ci", "server"] },
+    platform: { model: "orchestrator", runs: ["modal", "daytona", "e2b", "kubernetes", "container", "cursor", "server"] },
   };
   const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 
