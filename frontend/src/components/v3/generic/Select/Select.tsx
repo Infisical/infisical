@@ -17,6 +17,7 @@ function Select({
   open: controlledOpen,
   defaultOpen = false,
   onOpenChange,
+  onValueChange,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
@@ -29,6 +30,15 @@ function Select({
     },
     [controlledOpen, onOpenChange]
   );
+  // Inside a form, Radix's hidden native select reports "" when the value is set before its
+  // option mounts (e.g. async-loaded items), which would wipe the field. Items can't be "".
+  const handleValueChange = React.useCallback(
+    (nextValue: string) => {
+      if (nextValue === "") return;
+      onValueChange?.(nextValue);
+    },
+    [onValueChange]
+  );
   const contextValue = React.useMemo(
     () => ({ open, onOpenChange: handleOpenChange, escapeEvents: escapeEvents.current }),
     [open, handleOpenChange]
@@ -39,6 +49,7 @@ function Select({
       <SelectPrimitive.Root
         data-slot="select"
         {...props}
+        onValueChange={handleValueChange}
         open={open}
         onOpenChange={handleOpenChange}
       />
