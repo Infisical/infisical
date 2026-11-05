@@ -69,9 +69,11 @@ type Props = {
   paywallKey: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  initialTier?: string;
+  initialCadence?: BillingV2Cadence;
 };
 
-type CapabilityProps = Omit<Props, "intent"> & {
+type CapabilityProps = Omit<Props, "intent" | "initialTier" | "initialCadence"> & {
   intent: CapabilityUpgradeIntent;
   onOpenAutoFocus?: (event: Event) => void;
   onCloseAutoFocus?: (event: Event) => void;
@@ -262,9 +264,16 @@ const ProductUpgradeHeader = ({ product, productName, description }: ProductUpgr
   </DialogHeader>
 );
 
-const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props) => {
-  const [selectedTier, setSelectedTier] = useState<string>();
-  const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
+const ProductUpgradeGate = ({
+  intent,
+  paywallKey,
+  isOpen,
+  onOpenChange,
+  initialTier,
+  initialCadence = "annual"
+}: Props) => {
+  const [selectedTier, setSelectedTier] = useState(initialTier);
+  const [cadence, setCadence] = useState<BillingV2Cadence>(initialCadence);
   const [startedTrial, setStartedTrial] = useState<BillingV2Plan | null>(null);
   const refreshedReturn = useRef<string>(undefined);
   const hasTrackedView = useRef(false);
@@ -416,11 +425,11 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
 
   useEffect(() => {
     if (!isOpen) {
-      setSelectedTier(undefined);
-      setCadence("annual");
+      setSelectedTier(initialTier);
+      setCadence(initialCadence);
       setStartedTrial(null);
     }
-  }, [intent.planKey, isOpen]);
+  }, [intent.planKey, isOpen, initialTier, initialCadence]);
 
   if (!isOpen) {
     return null;
