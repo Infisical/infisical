@@ -21,7 +21,7 @@ type TStatementResult =
   | { header: mysql.ResultSetHeader };
 
 // Streams rather than buffering the whole result, so rows past the size limit are dropped as they arrive
-const streamStatement = (conn: mysql.Connection, sql: string) =>
+const streamStatement = (conn: mysql.Connection, sql: string, cancelQuery: () => Promise<void>) =>
   new Promise<TStatementResult>((resolve, reject) => {
     // The promise wrapper does not type its underlying connection, which is the only one that can stream
     const { connection } = conn as unknown as { connection: CoreConnection };
@@ -31,6 +31,12 @@ const streamStatement = (conn: mysql.Connection, sql: string) =>
     let header: mysql.ResultSetHeader | undefined;
     let bytes = 0;
     let isTruncated = false;
+    let cancelled: Promise<void> = Promise.resolve();
+    // Past the size cap the server keeps sending the rest, and on a slow link that can run into max_execution_time
+    const truncate = () => {
+      isTruncated = true;
+      cancelled = cancelQuery();
+    };
 
     connection
       .query(sql)
@@ -46,6 +52,7 @@ const streamStatement = (conn: mysql.Connection, sql: string) =>
         }
         // A CALL can return several result sets; only the first is shown
         if (currentFields !== resultFields || isTruncated) return;
+        // sql_select_limit leaves at most one more row here, so there is nothing worth killing
         if (rows.length === MAX_ROWS) {
           isTruncated = true;
           return;
@@ -57,15 +64,21 @@ const streamStatement = (conn: mysql.Connection, sql: string) =>
         }
         bytes += estimateRowBytes(row);
         if (bytes > DATA_EXPLORER_MAX_RESULT_BYTES) {
-          isTruncated = true;
+          truncate();
           return;
         }
         rows.push(row);
       })
-      .on("error", reject)
+      // Waiting on the KILL keeps it from landing on the next statement
+      .on("error", (err) => {
+        if (isTruncated) void cancelled.then(() => resolve({ rows, fields: resultFields ?? [], isTruncated }));
+        else reject(err);
+      })
       .on("end", () => {
-        if (!resultFields && header) resolve({ header });
-        else resolve({ rows, fields: resultFields ?? [], isTruncated });
+        void cancelled.then(() => {
+          if (!resultFields && header) resolve({ header });
+          else resolve({ rows, fields: resultFields ?? [], isTruncated });
+        });
       });
   });
 
@@ -249,7 +262,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
                 // eslint-disable-next-line no-await-in-loop
                 await conn.query(`SET SESSION sql_select_limit = ${MAX_ROWS + 1}`);
                 // eslint-disable-next-line no-await-in-loop
-                const result = await queryWithTimeout(() => streamStatement(conn, stmtSql));
+                const result = await queryWithTimeout(() => streamStatement(conn, stmtSql, cancelRunningQuery));
 
                 if ("rows" in result) {
                   lastIsTruncated = result.isTruncated;

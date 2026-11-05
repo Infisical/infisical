@@ -26,29 +26,43 @@ const pgTypes = {
 };
 
 const MAX_ROWS = 1000;
-const FIRST_BATCH_ROWS = 50;
-const MAX_BATCH_ROWS = 100;
+const FIRST_BATCH_ROWS = 10;
 
 const readCursorRows = async (cursor: Cursor): Promise<{ rows: Record<string, unknown>[]; isTruncated: boolean }> => {
   const rows: Record<string, unknown>[] = [];
   let bytes = 0;
+  let isTruncated = false;
+  // pg-cursor holds every row of a batch until the read resolves, so rows past the cap are emptied as they arrive
+  const drop = (row: Record<string, unknown>) => {
+    // eslint-disable-next-line no-param-reassign
+    for (const key of Object.keys(row)) row[key] = null;
+  };
+  cursor.on("row", (row: Record<string, unknown>) => {
+    if (isTruncated || rows.length === MAX_ROWS) {
+      isTruncated = true;
+      drop(row);
+      return;
+    }
+    bytes += estimateRowBytes(row);
+    if (bytes > DATA_EXPLORER_MAX_RESULT_BYTES) {
+      isTruncated = true;
+      drop(row);
+      return;
+    }
+    rows.push(row);
+  });
+
   let batchSize = FIRST_BATCH_ROWS;
   for (;;) {
     // eslint-disable-next-line no-await-in-loop
-    const batch = (await cursor.read(batchSize)) as Record<string, unknown>[];
-    for (const row of batch) {
-      if (rows.length === MAX_ROWS) return { rows, isTruncated: true };
-      bytes += estimateRowBytes(row);
-      if (bytes > DATA_EXPLORER_MAX_RESULT_BYTES) return { rows, isTruncated: true };
-      rows.push(row);
-    }
+    const batch = await cursor.read(batchSize);
+    if (isTruncated) return { rows, isTruncated };
     if (batch.length < batchSize) return { rows, isTruncated: false };
-    // Size the next read from the rows seen so far, capped because later rows can be much wider than earlier ones
-    const remainingBytes = DATA_EXPLORER_MAX_RESULT_BYTES - bytes;
+    // Size the next read from the rows seen so far, so narrow results arrive in two round trips
     const avgRowBytes = bytes / rows.length;
     batchSize = Math.max(
       1,
-      Math.min(MAX_BATCH_ROWS, MAX_ROWS + 1 - rows.length, Math.floor(remainingBytes / avgRowBytes))
+      Math.min(MAX_ROWS + 1 - rows.length, Math.ceil((DATA_EXPLORER_MAX_RESULT_BYTES - bytes) / avgRowBytes) + 1)
     );
   }
 };

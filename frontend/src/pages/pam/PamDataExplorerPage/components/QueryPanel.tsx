@@ -13,13 +13,10 @@ import { QueryToolbar } from "./QueryToolbar";
 import { SqlEditor } from "./SqlEditor";
 
 function getRowLabel(rowCount: number, shownRows: number, isTruncated: boolean): string {
-  if (isTruncated) {
-    if (shownRows === 0) return "Result too large";
-    return rowCount > shownRows
-      ? `Showing ${shownRows.toLocaleString()} of ${rowCount.toLocaleString()} rows`
-      : `Showing first ${shownRows.toLocaleString()} rows`;
-  }
-  return `${rowCount} row${rowCount !== 1 ? "s" : ""}`;
+  if (isTruncated && shownRows === 0) return "Result too large";
+  // The banner above the grid already says the result was truncated
+  const count = isTruncated ? shownRows : rowCount;
+  return `${count} row${count !== 1 ? "s" : ""}`;
 }
 
 type QueryResult = {
