@@ -16,8 +16,7 @@ The CLI reference for agents is on a separate page. Read the [CLI reference for 
 <CLIPage
   title="CLI reference"
   description="Every Infisical CLI command, with its arguments, flags, and examples. Select a command or flag in a heading to jump to its details."
-  movedAnchors={{ sm: "secrets-manager", "sm-projects-list": "secrets-manager-projects-get", "sm-secrets-folders": "secrets-manager-folders", "sm-secrets-set": "secrets-manager-secrets-create", "sm-secrets-folders-create--flag-name": "secrets-manager-folders-create--arg-name", "sm-secrets-folders-delete--flag-name": "secrets-manager-folders-delete--arg-name", "sm-secrets-generate-example-env": "secrets-manager-secrets", "dynamic-secrets": "secrets-manager-dynamic-secrets", export: "secrets-manager-secrets-export", "sm-export": "secrets-manager-secrets-export", "secrets-manager-export": "secrets-manager-secrets-export", run: "secrets-manager-run", secrets: "secrets-manager-secrets", "secrets-agent-proxy": "secrets-manager-agent-proxy", "secrets-folders": "secrets-manager-folders", "secrets-folders-create--flag-name": "secrets-manager-folders-create--arg-name", "secrets-folders-delete--flag-name": "secrets-manager-folders-delete--arg-name", "secrets-generate-example-env": "secrets-manager-secrets", "secrets-set": "secrets-manager-secrets-create" }}
-  removedAnchors={{ "secrets-manager-agent-proxy": "/documentation/platform/agent-proxy/overview", "secrets-manager-agent-proxy-connect": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands", "secrets-manager-agent-proxy-run": "/documentation/platform/agent-proxy/local-agent-proxy#running-an-agent", "secrets-manager-agent-proxy-start": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands" }}
+  movedAnchors={{ sm: "secrets-manager", "sm-projects-list": "secrets-manager-projects-get", "sm-secrets-folders": "secrets-manager-folders", "sm-secrets-set": "secrets-manager-secrets-create", "sm-secrets-folders-create--flag-name": "secrets-manager-folders-create--arg-name", "sm-secrets-folders-delete--flag-name": "secrets-manager-folders-delete--arg-name", "sm-secrets-generate-example-env": "secrets-manager-secrets", "dynamic-secrets": "secrets-manager-dynamic-secrets", export: "secrets-manager-secrets-export", run: "secrets-manager-run", secrets: "secrets-manager-secrets", "secrets-folders": "secrets-manager-folders", "secrets-folders-create--flag-name": "secrets-manager-folders-create--arg-name", "secrets-folders-delete--flag-name": "secrets-manager-folders-delete--arg-name", "secrets-generate-example-env": "secrets-manager-secrets", "secrets-set": "secrets-manager-secrets-create" }}
 >
 
 <CLICommand
@@ -182,7 +181,7 @@ Run the agent in the foreground, as [infisical agent](/cli/reference#agent) does
 
 Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](/cli/reference#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](/cli/reference#agent-vault-run). Upload skills for those agents with [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push).
 
-`av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does. Agent Vault is a different product from the [Agent Proxy](/documentation/platform/agent-proxy/overview).
+`av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does.
 
 </CLICommand>
 
@@ -1993,6 +1992,8 @@ Without `--type`, the command deletes your personal secrets with those names. Pa
 >
 
 Print an environment's secrets in a file format such as `.env` or JSON, for tools that read configuration from a file. Output goes to standard output unless you pass `--output-file`.
+
+This command used to be `infisical export`, which still works.
 
 `dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
 

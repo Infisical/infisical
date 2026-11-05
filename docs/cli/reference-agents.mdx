@@ -25,23 +25,14 @@ The moved anchors:
 - `#sm-secrets-generate-example-env` is now `#secrets-manager-secrets`
 - `#dynamic-secrets` is now `#secrets-manager-dynamic-secrets`
 - `#export` is now `#secrets-manager-secrets-export`
-- `#sm-export` is now `#secrets-manager-secrets-export`
-- `#secrets-manager-export` is now `#secrets-manager-secrets-export`
 - `#run` is now `#secrets-manager-run`
 - `#secrets` is now `#secrets-manager-secrets`
-- `#secrets-agent-proxy` is now `#secrets-manager-agent-proxy`
 - `#secrets-folders` is now `#secrets-manager-folders`
 - `#secrets-folders-create--flag-name` is now `#secrets-manager-folders-create--arg-name`
 - `#secrets-folders-delete--flag-name` is now `#secrets-manager-folders-delete--arg-name`
 - `#secrets-generate-example-env` is now `#secrets-manager-secrets`
 - `#secrets-set` is now `#secrets-manager-secrets-create`
 
-The `secrets-manager agent-proxy` commands are no longer in the CLI reference. If an anchor starts with one of the following once you've mapped it to its new anchor, the linked page documents that command:
-
-- `#secrets-manager-agent-proxy`: [Agent Proxy overview](/documentation/platform/agent-proxy/overview)
-- `#secrets-manager-agent-proxy-connect`: [Standalone agent proxy](/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands)
-- `#secrets-manager-agent-proxy-run`: [Local agent proxy](/documentation/platform/agent-proxy/local-agent-proxy#running-an-agent)
-- `#secrets-manager-agent-proxy-start`: [Standalone agent proxy](/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands)
 
 ## Global flags
 
@@ -257,7 +248,7 @@ infisical agent-vault
 
 Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](#agent-vault-run). Upload skills for those agents with [infisical agent-vault skills push](#agent-vault-skills-push).
 
-`av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does. Agent Vault is a different product from the [Agent Proxy](/documentation/platform/agent-proxy/overview).
+`av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does.
 
 ## `agent-vault proxy`
 
@@ -2712,6 +2703,8 @@ infisical secrets-manager secrets export [flags]
 ```
 
 Print an environment's secrets in a file format such as `.env` or JSON, for tools that read configuration from a file. Output goes to standard output unless you pass `--output-file`.
+
+This command used to be `infisical export`, which still works.
 
 `dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
 
