@@ -75,6 +75,20 @@ describe("usageMeteringService.recordMeteringEvents", () => {
     expect(opts).not.toHaveProperty("delay");
   });
 
+  test("splits a large batch into one job per server request", async () => {
+    const { svc, queue } = buildService(true);
+    svc.recordMeteringEvents(
+      ORG_ID,
+      Array.from({ length: 2500 }, (_, i) => ({ eventId: `e${i}`, dimensionKey: "secret_syncs" }))
+    );
+    await flushAsync();
+
+    const sizes = queue.mock.calls.map(
+      (call) => (call as unknown as [unknown, unknown, { events: unknown[] }])[2].events.length
+    );
+    expect(sizes).toEqual([1000, 1000, 500]);
+  });
+
   test("never throws into the caller when enqueue fails", async () => {
     const { svc } = buildService(
       true,
@@ -183,25 +197,31 @@ describe("usageEventQueue.handleMeteringEvents (worker)", () => {
     expect(reportEvents).toHaveBeenCalledWith("self-hosted", expect.any(Array));
   });
 
-  test("on cloud, skips a free org (null slug)", async () => {
+  test("reports even when the plan reads as free, since an outage serves a slugless fallback plan", async () => {
     const { queue, reportEvents } = buildQueue({ slug: null });
     await queue.handleMeteringEvents(ORG_ID, jobEvents);
-    expect(reportEvents).not.toHaveBeenCalled();
+    expect(reportEvents).toHaveBeenCalledTimes(1);
   });
 
-  test.each([404, 422])("drops a batch the server rejects with %i instead of retrying", async (status) => {
+  test.each([
+    [404, "license not found"],
+    [422, "dimension_key secret_syncs does not take usage events"]
+  ])("drops a batch the server rejects with %i (%s) instead of retrying", async (status, message) => {
     const { queue } = buildQueue({
       reportEvents: async () => {
-        throw new UsageReportError(status, "rejected");
+        throw new UsageReportError(status, message);
       }
     });
     await expect(queue.handleMeteringEvents(ORG_ID, jobEvents)).resolves.toBeUndefined();
   });
 
-  test("rethrows any other failure so the job retries", async () => {
+  test.each([
+    [404, "not found"],
+    [500, "internal server error"]
+  ])("rethrows %i (%s) so the job retries", async (status, message) => {
     const { queue } = buildQueue({
       reportEvents: async () => {
-        throw new UsageReportError(500, "internal server error");
+        throw new UsageReportError(status, message);
       }
     });
     await expect(queue.handleMeteringEvents(ORG_ID, jobEvents)).rejects.toBeInstanceOf(UsageReportError);

@@ -128,20 +128,16 @@ export const usageEventQueueFactory = ({
     }
   };
 
-  // A 404 (no license) or 422 (a dimension not metered on this license, or a date the server will not
-  // bill) is final for the whole batch, so it is logged and dropped; anything else retries the job.
+  // No plan-slug gate as in handleUsageEvent: getPlan serves a slugless fallback during a License
+  // Server outage, which would drop events nothing re-sends. The server's own 404 "license not found"
+  // or 422 (a dimension not metered on this license, a date it will not bill) is final for the batch,
+  // so it is logged and dropped; anything else retries the job.
   const handleMeteringEvents = async (
     orgId: string,
     events: TQueueJobTypes[QueueName.MeteringEvent]["payload"]["events"]
   ) => {
     if (!usageReporter || !events.length) {
       return;
-    }
-    if (isCloud) {
-      const plan = await licenseService.getPlan(orgId);
-      if (!plan.slug) {
-        return;
-      }
     }
 
     const reportOrgId = isCloud ? orgId : SELF_HOSTED_LICENSE_ORG_ID;
@@ -161,7 +157,10 @@ export const usageEventQueueFactory = ({
         }]`
       );
     } catch (error) {
-      if (error instanceof UsageReportError && (error.status === 404 || error.status === 422)) {
+      if (
+        error instanceof UsageReportError &&
+        (error.status === 422 || (error.status === 404 && error.serverMessage.includes("license not found")))
+      ) {
         logger.warn(
           `usage-event-queue: metering events rejected, dropping [orgId=${reportOrgId}] [count=${events.length}] [status=${error.status}] [message=${error.serverMessage}]`
         );
