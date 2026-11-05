@@ -207,6 +207,10 @@ Configure the following options to get custom guidance and best practices tailor
   The [real credential](/documentation/platform/agent-vault/http-apis#credential-types) is added to the request at the proxy, so it never passes through the agent. The request appears in the session's [logs](/documentation/platform/agent-vault/session-logs).
 
   The proxy only attaches credentials for the services in the access bundle. Requests to any other host go out without a credential, unless the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) blocks them.
+
+  <AgentVaultSetupBranch building="platform" runs="cursor">
+    Cursor doesn't report when a worker exits, so the session lasts until its `ttl` runs out; [keep the `ttl` as short as your runs allow](/documentation/platform/agent-vault/guides/cursor#sessions-that-outlive-their-workers).
+  </AgentVaultSetupBranch>
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="revoke">
