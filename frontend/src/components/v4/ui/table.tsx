@@ -99,24 +99,40 @@ function TableRow({ className, ref, ...props }: React.ComponentProps<"tr">) {
 }
 TableRow.displayName = "TableRow";
 
-function TableHead({ className, ref, ...props }: React.ComponentProps<"th">) {
+type SelectionProps = {
+  /** Draws the selection column: size-row wide, a centered Checkbox and a persistent line-soft divider on its right. */
+  selection?: boolean;
+};
+
+function TableHead({
+  selection,
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<"th"> & SelectionProps) {
   return (
     <th
       ref={ref}
-      data-slot="table-head"
-      className={cn(styles.nativeTableHead, className)}
+      data-slot={selection ? "table-selection" : "table-head"}
+      className={cn(styles.nativeTableHead, selection && styles.tableSelectionCell, className)}
       {...props}
     />
   );
 }
 TableHead.displayName = "TableHead";
 
-function TableCell({ className, ref, ...props }: React.ComponentProps<"td">) {
+function TableCell({
+  selection,
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<"td"> & SelectionProps) {
   return (
     <td
       ref={ref}
-      data-slot="table-cell"
-      className={cn(styles.nativeTableCell, className)}
+      data-slot={selection ? "table-selection" : "table-cell"}
+      data-row-interactive={selection || undefined}
+      className={cn(styles.nativeTableCell, selection && styles.tableSelectionCell, className)}
       {...props}
     />
   );
