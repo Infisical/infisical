@@ -123,6 +123,48 @@ const TargetCell = ({ service }: { service: TAgentVaultService }) =>
     <HostsCell hostPattern={service.hostPattern} />
   );
 
+// A connection missing scopes still works for what it was granted, so it stays configured but asks to reconnect.
+const PersonalSetupBadge = ({
+  personalValues,
+  onClick
+}: {
+  personalValues: NonNullable<TAgentVaultService["personalValues"]>;
+  onClick: () => void;
+}) => {
+  if (!personalValues.isConfigured) {
+    return (
+      <Badge variant="warning" asChild>
+        <button type="button" onClick={onClick}>
+          <TriangleAlertIcon />
+          Requires Setup
+        </button>
+      </Badge>
+    );
+  }
+  if (
+    personalValues.fields.some(
+      (field) => field.oauth?.status === AgentVaultOauthStatus.NeedsAdditionalScopes
+    )
+  ) {
+    return (
+      <Badge variant="warning" asChild>
+        <button type="button" onClick={onClick}>
+          <TriangleAlertIcon />
+          Missing Scopes
+        </button>
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="neutral" asChild>
+      <button type="button" onClick={onClick}>
+        <CircleCheckIcon />
+        Configured
+      </button>
+    </Badge>
+  );
+};
+
 export const ServicesCard = ({
   accessBundleId,
   services,
@@ -292,6 +334,7 @@ export const ServicesCard = ({
                     <ServiceIcon hostPattern={service.hostPattern} />
                     {service.name}
                     {service.credential.type === AgentVaultCredentialType.OAuth &&
+                      service.credential.status &&
                       service.credential.status !== AgentVaultOauthStatus.Connected && (
                         <OAuthStatusBadge status={service.credential.status} />
                       )}
@@ -317,22 +360,12 @@ export const ServicesCard = ({
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-center">
-                    {service.personalValues &&
-                      (service.personalValues.isConfigured ? (
-                        <Badge variant="neutral" asChild>
-                          <button type="button" onClick={() => onSetUp(service)}>
-                            <CircleCheckIcon />
-                            Configured
-                          </button>
-                        </Badge>
-                      ) : (
-                        <Badge variant="warning" asChild>
-                          <button type="button" onClick={() => onSetUp(service)}>
-                            <TriangleAlertIcon />
-                            Requires Setup
-                          </button>
-                        </Badge>
-                      ))}
+                    {service.personalValues && (
+                      <PersonalSetupBadge
+                        personalValues={service.personalValues}
+                        onClick={() => onSetUp(service)}
+                      />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell variant="action">

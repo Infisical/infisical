@@ -75,11 +75,10 @@ const OAUTH_NEEDS_AUTHORIZATION_MESSAGE = "An OAuth credential needs a completed
 export const BASIC_NEEDS_A_HALF_MESSAGE =
   "A basic credential needs a username, a password, or both. Set one, or leave one to each member.";
 
-// NULL, never an empty list, is what the column stores for a credential the admin sets in full.
+// NULL, never an empty list, is what the column stores for a credential the admin sets in full. An OAuth sign-in left
+// to members is `credential-value`, the field that holds the token.
 export const memberFieldsOf = (credential: TAgentVaultCredentialInput): TAgentVaultMemberProvidedField[] | null => {
-  if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.OAuth) {
-    return null;
-  }
+  if (credential.type === AgentVaultCredentialType.Passthrough) return null;
   const fields = [...new Set<TAgentVaultMemberProvidedField>(credential.memberProvidedFields ?? [])];
   return fields.length ? fields : null;
 };
@@ -134,12 +133,13 @@ export const splitCredential = (credential: TAgentVaultCredentialInput): TCreden
   }
 };
 
-// The member-provided fields a PATCH ends with: an omitted list keeps the stored one.
+// The member-provided fields a PATCH ends with: an omitted list keeps the stored one, except that an OAuth
+// authorization is the admin's own sign-in, so it takes the sign-in back.
 export const nextMemberFieldsOf = (credential: TAgentVaultCredentialUpdate, stored: TAgentVaultServices) => {
   if (
     credential.type !== stored.credentialType ||
     credential.type === AgentVaultCredentialType.Passthrough ||
-    credential.type === AgentVaultCredentialType.OAuth
+    (credential.type === AgentVaultCredentialType.OAuth && credential.authorizationId)
   ) {
     return memberFieldsOf(credential);
   }

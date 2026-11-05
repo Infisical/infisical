@@ -18,6 +18,7 @@ export const AgentVaultPersonalValuesSchema = z.object({
   userId: z.string().uuid().nullable().optional(),
   identityId: z.string().uuid().nullable().optional(),
   encryptedValue: zodBuffer,
+  oauthConfig: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

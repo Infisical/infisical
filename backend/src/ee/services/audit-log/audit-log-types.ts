@@ -6724,6 +6724,8 @@ interface AgentVaultServiceUpdateEvent {
     substitutionPlaceholders?: string[];
     substitutionsReplaced?: string[];
     credentialReplaced: boolean;
+    // Whether the update deleted what members saved for the service: their typed values or their OAuth connections.
+    personalValuesCleared?: boolean;
     // Every key the service uses after the update, present when the update wrote a value that can hold one.
     variableKeys?: string[];
   };
@@ -6805,6 +6807,9 @@ interface AgentVaultPersonalValuesSetEvent {
     // The fields this update set. A field it left out kept its saved value.
     fields: string[];
     variableKeys: string[];
+    // Set when the member connected their own OAuth account.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
   };
 }
 

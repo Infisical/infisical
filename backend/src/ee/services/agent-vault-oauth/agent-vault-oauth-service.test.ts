@@ -80,9 +80,13 @@ type TRow = {
   credentialType: string;
   credentialConfig: unknown;
   encryptedCredential: Buffer | null;
+  memberProvidedFields?: string[] | null;
   hostPattern?: string;
   config?: unknown;
 };
+
+// A member's connection: their personal value for `credential-value` on a service that leaves sign-in to members.
+type TPersonalRow = { id: string; serviceId: string; userId: string; encryptedValue: Buffer; oauthConfig: unknown };
 
 const LINEAR_JSON: Record<string, unknown> = {
   "https://mcp.linear.app/.well-known/oauth-protected-resource/mcp": {
@@ -102,11 +106,13 @@ const LINEAR_JSON: Record<string, unknown> = {
 
 const setup = ({
   metadata = LINEAR_JSON,
-  canEditBundles = true
-}: { metadata?: Record<string, unknown>; canEditBundles?: boolean } = {}) => {
+  canEditBundles = true,
+  challenge = `Bearer resource_metadata="https://mcp.linear.app/.well-known/oauth-protected-resource/mcp"`
+}: { metadata?: Record<string, unknown>; canEditBundles?: boolean; challenge?: string | null } = {}) => {
   const store = new Map<string, string>();
   const ttls = new Map<string, number>();
   const rows = new Map<string, TRow>();
+  const personalRows = new Map<string, TPersonalRow>();
   const tokenRequests: URLSearchParams[] = [];
   const registrations: unknown[] = [];
   let registerHandler: () => TOauthHttpResponse = () => json(201, { client_id: "registered-client" });
@@ -116,10 +122,8 @@ const setup = ({
     json(200, { access_token: "at-1", token_type: "Bearer", refresh_token: "rt-1", expires_in: 3600, scope: "read" });
 
   const http: TOauthHttpClient = {
-    probe: async () => ({
-      status: 401,
-      wwwAuthenticate: `Bearer resource_metadata="https://mcp.linear.app/.well-known/oauth-protected-resource/mcp"`
-    }),
+    probe: async () =>
+      challenge ? { status: 401, wwwAuthenticate: challenge } : { status: 200, wwwAuthenticate: null },
     get: async (url) =>
       url in metadata ? json(200, metadata[url]) : { status: 404, contentType: "text/plain", body: "" },
     postJson: async (_url, body) => {
@@ -263,19 +267,77 @@ const setup = ({
     agentVaultAccessBundleDAL: {
       findByIdInProject: async ({ id }: { id: string }) => (id === BUNDLE_ID ? ({ id } as never) : undefined)
     },
+    agentVaultPersonalValueDAL: {
+      findOauthForOwner: async ({ serviceId, owner }: { serviceId: string; owner: { userId?: string } }) => {
+        const personal = [...personalRows.values()].find(
+          (row) => row.serviceId === serviceId && row.userId === owner.userId
+        );
+        const serviceRow = rows.get(serviceId);
+        return (
+          personal && serviceRow
+            ? {
+                id: personal.id,
+                encryptedValue: personal.encryptedValue,
+                oauthConfig: structuredClone(personal.oauthConfig),
+                hostPattern: serviceRow.hostPattern ?? "",
+                config: serviceRow.config ?? null
+              }
+            : undefined
+        ) as never;
+      },
+      compareAndSwapOauth: async ({
+        id,
+        expectedEncryptedValue,
+        encryptedValue,
+        oauthConfigPatch
+      }: {
+        id: string;
+        expectedEncryptedValue: Buffer;
+        encryptedValue?: Buffer;
+        oauthConfigPatch: Record<string, unknown>;
+      }) => {
+        const row = personalRows.get(id);
+        if (!row?.encryptedValue.equals(expectedEncryptedValue)) return undefined;
+        if (encryptedValue) row.encryptedValue = encryptedValue;
+        row.oauthConfig = { ...(row.oauthConfig as object), ...oauthConfigPatch };
+        return { id, oauthConfig: structuredClone(row.oauthConfig) } as never;
+      },
+      addRequiredScopes: async ({
+        id,
+        expectedEncryptedValue,
+        requiredScopes
+      }: {
+        id: string;
+        expectedEncryptedValue: Buffer;
+        requiredScopes: string[];
+      }) => {
+        const row = personalRows.get(id);
+        if (!row?.encryptedValue.equals(expectedEncryptedValue)) return undefined;
+        row.oauthConfig = {
+          ...(row.oauthConfig as object),
+          status: AgentVaultOauthStatus.NeedsAdditionalScopes,
+          requiredScopes
+        };
+        return { id, oauthConfig: row.oauthConfig } as never;
+      }
+    },
     permissionService: {
       getProjectPermission: async () =>
         ({
-          permission: createMongoAbility(
-            canEditBundles
+          permission: createMongoAbility([
+            {
+              action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+              subject: ProjectPermissionSub.AgentVaultAccessBundles
+            },
+            ...(canEditBundles
               ? [
                   {
                     action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
                     subject: ProjectPermissionSub.AgentVaultAccessBundles
                   }
                 ]
-              : []
-          ),
+              : [])
+          ]),
           hasRole: () => true,
           memberships: []
         }) as never
@@ -288,6 +350,7 @@ const setup = ({
     store,
     ttls,
     rows,
+    personalRows,
     tokenRequests,
     registrations,
     kms,
@@ -1642,5 +1705,270 @@ describe("an edit that keeps a service's OAuth tokens, checked under the bundle 
         lockedOauth: { serverUrl: SERVER_URL }
       })
     ).not.toThrow();
+  });
+});
+
+describe("a member's own sign-in", () => {
+  const memberService = (overrides: Partial<TRow> = {}): TRow => ({
+    id: SERVICE_ID,
+    name: "linear",
+    type: AgentVaultServiceType.Mcp,
+    accessBundleId: BUNDLE_ID,
+    credentialType: AgentVaultCredentialType.OAuth,
+    credentialConfig: {
+      type: AgentVaultCredentialType.OAuth,
+      serverUrl: SERVER_URL,
+      issuer: "https://mcp.linear.app",
+      registration: AgentVaultOauthRegistration.Dynamic,
+      clientId: null
+    },
+    encryptedCredential: null,
+    memberProvidedFields: ["credential-value"],
+    hostPattern: "mcp.linear.app",
+    config: { serverUrl: SERVER_URL, transport: "streamable-http" },
+    ...overrides
+  });
+
+  const startPersonal = (env: ReturnType<typeof setup>, userId = USER_ID) =>
+    env.service.createAuthorization({
+      projectId: PROJECT_ID,
+      ctx: ctxOf(userId),
+      accessBundleId: BUNDLE_ID,
+      serverUrl: SERVER_URL,
+      serviceId: SERVICE_ID,
+      personal: true
+    });
+
+  test("a member who can only read the bundle starts one, registering a client of their own", async () => {
+    const env = setup({ canEditBundles: false });
+    env.rows.set(SERVICE_ID, memberService());
+
+    const { authorization } = await startPersonal(env);
+
+    expect(storedAuthorization(env, authorization!.id)).toMatchObject({
+      personal: true,
+      serviceId: SERVICE_ID,
+      clientId: "registered-client",
+      registration: AgentVaultOauthRegistration.Dynamic
+    });
+    expect(env.registrations).toHaveLength(1);
+  });
+
+  test("every member signs in with the admin-entered client and its sealed secret", async () => {
+    const env = setup({ canEditBundles: false });
+    env.rows.set(
+      SERVICE_ID,
+      memberService({
+        credentialConfig: {
+          type: AgentVaultCredentialType.OAuth,
+          serverUrl: SERVER_URL,
+          issuer: "https://mcp.linear.app",
+          registration: AgentVaultOauthRegistration.Manual,
+          clientId: "admin-app"
+        },
+        encryptedCredential: sealBytes({ clientSecret: "admin-secret" })
+      })
+    );
+
+    const { authorization } = await startPersonal(env);
+    const record = storedAuthorization(env, authorization!.id);
+
+    expect(record).toMatchObject({ clientId: "admin-app", registration: AgentVaultOauthRegistration.Manual });
+    expect(openBytes<{ clientSecret?: string }>(Buffer.from(record.sealedPending, "base64")).clientSecret).toBe(
+      "admin-secret"
+    );
+    expect(env.registrations).toHaveLength(0);
+  });
+
+  test("a service that keeps one shared sign-in has nothing for a member to connect", async () => {
+    const env = setup({ canEditBundles: false });
+    env.rows.set(
+      SERVICE_ID,
+      memberService({
+        credentialConfig: oauthConfig(),
+        encryptedCredential: sealBytes({ accessToken: "old-access" }),
+        memberProvidedFields: null
+      })
+    );
+
+    await expect(startPersonal(env)).rejects.toThrow(BadRequestError);
+  });
+
+  test("a member without Edit can't start one for the service itself", async () => {
+    const env = setup({ canEditBundles: false });
+    env.rows.set(SERVICE_ID, memberService());
+
+    await expect(createAuthorization(env, { serviceId: SERVICE_ID })).rejects.toThrow(ForbiddenError);
+  });
+
+  test("a personal sign-in is claimed only as a personal value, and an admin's only for the service", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, memberService());
+    const claimDto = { projectId: PROJECT_ID, accessBundleId: BUNDLE_ID, serviceId: SERVICE_ID, serverUrl: SERVER_URL };
+
+    const { authorization } = await startPersonal(env);
+    await expect(
+      env.service.claimAuthorization({ ...claimDto, authorizationId: authorization!.id, ctx: ctxOf(USER_ID) })
+    ).rejects.toThrow(BadRequestError);
+
+    const adminAuthorizationId = await authorize(env);
+    await expect(
+      env.service.claimAuthorization({
+        ...claimDto,
+        serviceId: undefined,
+        authorizationId: adminAuthorizationId,
+        ctx: ctxOf(USER_ID),
+        personal: true
+      })
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  test("loading the tools reads a sign-in of either intent without claiming it, but only for its own service", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, memberService());
+    const readDto = { projectId: PROJECT_ID, accessBundleId: BUNDLE_ID, serverUrl: SERVER_URL, ctx: ctxOf(USER_ID) };
+
+    const { authorization } = await startPersonal(env);
+    const state = new URL(authorization!.authorizeUrl).searchParams.get("state")!;
+    await env.service.completeAuthorization({
+      projectId: PROJECT_ID,
+      ctx: ctxOf(USER_ID),
+      authorizationId: authorization!.id,
+      state,
+      code: "code-1",
+      iss: "https://mcp.linear.app"
+    });
+    const personalDto = { ...readDto, authorizationId: authorization!.id, serviceId: SERVICE_ID };
+
+    await expect(env.service.readAuthorizationAccessToken(personalDto)).resolves.toBe("at-1");
+    await expect(env.service.readAuthorizationAccessToken({ ...personalDto, serviceId: undefined })).rejects.toThrow(
+      BadRequestError
+    );
+    await expect(
+      env.service.readAuthorizationAccessToken({ ...personalDto, ctx: ctxOf(OTHER_USER_ID) })
+    ).rejects.toThrow();
+    // Still unclaimed, so the member can save it as their own connection afterwards.
+    await expect(env.service.claimAuthorization({ ...personalDto, personal: true })).resolves.toBeDefined();
+
+    const adminAuthorizationId = await authorize(env);
+    await expect(
+      env.service.readAuthorizationAccessToken({ ...readDto, authorizationId: adminAuthorizationId })
+    ).resolves.toBe("at-1");
+  });
+
+  test("a refresh for one member writes only that member's connection, and a dead login names their account", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, memberService());
+    const connection = (userId: string, accessToken: string): TPersonalRow => ({
+      id: crypto.randomUUID(),
+      serviceId: SERVICE_ID,
+      userId,
+      encryptedValue: sealBytes({ accessToken, refreshToken: `${accessToken}-refresh` }),
+      oauthConfig: oauthConfig({ accessTokenHash: hashAccessToken(accessToken) })
+    });
+    const mine = connection(USER_ID, "mine-access");
+    const theirs = connection(OTHER_USER_ID, "their-access");
+    env.personalRows.set(mine.id, mine);
+    env.personalRows.set(theirs.id, theirs);
+    const theirsBefore = {
+      ...theirs,
+      encryptedValue: Buffer.from(theirs.encryptedValue),
+      oauthConfig: structuredClone(theirs.oauthConfig)
+    };
+
+    env.onToken(() => json(200, { access_token: "mine-new", token_type: "Bearer", expires_in: 600 }));
+    const refreshed = await env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      owner: { userId: USER_ID },
+      rejectedTokenHash: hashAccessToken("mine-access"),
+      destination: DESTINATION
+    });
+
+    expect(refreshed.credential.value).toBe("mine-new");
+    expect(env.tokenRequests[0].get("refresh_token")).toBe("mine-access-refresh");
+    expect(openBytes<TAgentVaultOauthSecret>(mine.encryptedValue).accessToken).toBe("mine-new");
+    expect(theirs).toEqual(theirsBefore);
+
+    env.onToken(() => json(400, { error: "invalid_grant" }));
+    const dead = await env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      owner: { userId: USER_ID },
+      rejectedTokenHash: hashAccessToken("mine-new"),
+      destination: DESTINATION
+    });
+
+    expect(dead.status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
+    expect((mine.oauthConfig as TAgentVaultOauthConfig).lastError).toContain("Connect your account again");
+    expect(theirs).toEqual(theirsBefore);
+  });
+
+  test("a member with no connection gets a 404 rather than the service's or anyone else's token", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, memberService());
+
+    await expect(
+      env.service.refreshServiceToken({
+        serviceId: SERVICE_ID,
+        projectId: PROJECT_ID,
+        owner: { userId: USER_ID },
+        rejectedTokenHash: hashAccessToken("anything"),
+        destination: DESTINATION
+      })
+    ).rejects.toThrow(NotFoundError);
+    // Without an owner, a service whose members sign in has no tokens of its own.
+    await expect(
+      env.service.refreshServiceToken({
+        serviceId: SERVICE_ID,
+        projectId: PROJECT_ID,
+        rejectedTokenHash: hashAccessToken("anything"),
+        destination: DESTINATION
+      })
+    ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("setting up a service whose members sign in", () => {
+  test("a server that registers clients needs nothing from the admin", async () => {
+    const env = setup();
+    expect(await env.service.prepareMemberOauth({ serverUrl: SERVER_URL })).toEqual({
+      config: {
+        type: AgentVaultCredentialType.OAuth,
+        serverUrl: SERVER_URL,
+        issuer: "https://mcp.linear.app",
+        registration: AgentVaultOauthRegistration.Dynamic,
+        clientId: null
+      },
+      clientSecret: undefined
+    });
+    expect(env.registrations).toHaveLength(0);
+  });
+
+  test("a server without registration needs the admin's own client", async () => {
+    const env = setup({
+      metadata: {
+        ...LINEAR_JSON,
+        "https://mcp.linear.app/.well-known/oauth-authorization-server": {
+          ...(LINEAR_JSON["https://mcp.linear.app/.well-known/oauth-authorization-server"] as object),
+          registration_endpoint: undefined
+        }
+      }
+    });
+
+    const refusal = env.service.prepareMemberOauth({ serverUrl: SERVER_URL });
+    await expect(refusal).rejects.toThrow(/doesn't support automatic client registration/);
+    await expect(refusal).rejects.toMatchObject({ details: { registrationRequired: true } });
+    expect(
+      (await env.service.prepareMemberOauth({ serverUrl: SERVER_URL, clientId: "admin-app", clientSecret: "s" })).config
+    ).toMatchObject({ registration: AgentVaultOauthRegistration.Manual, clientId: "admin-app" });
+  });
+
+  test("a server that doesn't advertise OAuth asks for the admin's own client", async () => {
+    const env = setup({ metadata: {}, challenge: null });
+
+    const refusal = env.service.prepareMemberOauth({ serverUrl: SERVER_URL });
+    await expect(refusal).rejects.toThrow(/doesn't advertise OAuth/);
+    await expect(refusal).rejects.toMatchObject({ details: { registrationRequired: true } });
   });
 });

@@ -2,13 +2,18 @@ import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
 import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
-import { AgentVaultCredentialType, AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMemberType,
+  AgentVaultVariableReferenceField
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { pick } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -360,10 +365,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
             ...pick(service, SERVICE_RULE_AUDIT_FIELDS),
             memberProvidedFields:
-              service.credential.type === AgentVaultCredentialType.Bearer ||
-              service.credential.type === AgentVaultCredentialType.Basic
-                ? service.credential.memberProvidedFields
-                : undefined,
+              service.credential.type === AgentVaultCredentialType.Passthrough
+                ? undefined
+                : service.credential.memberProvidedFields,
             customHeaderNames: service.customHeaders.map((header) => header.name),
             substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder),
             variableKeys: variableKeysOf(service)
@@ -412,7 +416,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { service, accessBundleName, update, credentialReplaced } =
+      const { service, accessBundleName, update, credentialReplaced, personalValuesCleared } =
         await server.services.agentVaultAccessBundle.updateService({
           projectId: req.internalAgentVaultProjectId,
           ctx: actorContext(req),
@@ -420,7 +424,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           serviceId: req.params.serviceId,
           ...req.body
         });
-      const isOauthAuthorized = req.body.credential?.type === AgentVaultCredentialType.OAuth;
+      const isOauthAuthorized =
+        req.body.credential?.type === AgentVaultCredentialType.OAuth && Boolean(req.body.credential.authorizationId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -459,9 +464,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             ...pick(update, SERVICE_RULE_AUDIT_FIELDS),
             // The setting after the update, present whenever the update touched the credential.
             memberProvidedFields:
-              req.body.credential &&
-              (service.credential.type === AgentVaultCredentialType.Bearer ||
-                service.credential.type === AgentVaultCredentialType.Basic)
+              req.body.credential && service.credential.type !== AgentVaultCredentialType.Passthrough
                 ? service.credential.memberProvidedFields
                 : undefined,
             customHeaderNames: req.body.customHeaders?.map((header) => header.name),
@@ -475,6 +478,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               ?.filter((substitution) => substitution.value !== undefined)
               .map((substitution) => substitution.placeholder),
             credentialReplaced,
+            personalValuesCleared,
             variableKeys:
               req.body.credential || req.body.customHeaders || update.substitutions
                 ? variableKeysOf(service)
@@ -604,13 +608,24 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
         serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
-      body: z.object({
-        values: AgentVaultPersonalValueInputSchema.array().min(1).max(2).describe(AGENT_VAULT.PERSONAL_VALUE.values),
-        credentialType: z
-          .nativeEnum(AgentVaultCredentialType)
-          .optional()
-          .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
-      }),
+      body: z
+        .object({
+          values: AgentVaultPersonalValueInputSchema.array()
+            .min(1)
+            .max(2)
+            .optional()
+            .describe(AGENT_VAULT.PERSONAL_VALUE.values),
+          // Only the UI's browser sign-in can produce one, through routes that aren't public.
+          oauthAuthorizationId: z.string().uuid().optional().describe(openApiHidden()),
+          credentialType: z
+            .nativeEnum(AgentVaultCredentialType)
+            .optional()
+            .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
+        })
+        .refine((body) => (body.values === undefined) !== (body.oauthAuthorizationId === undefined), {
+          message: "Send either values or an oauthAuthorizationId, not both.",
+          path: ["values"]
+        }),
       response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -621,8 +636,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: req.params.accessBundleId,
         serviceId: req.params.serviceId,
         values: req.body.values,
+        oauthAuthorizationId: req.body.oauthAuthorizationId,
         credentialType: req.body.credentialType
       });
+      const oauthConnection = personalValues.fields.find((field) => field.oauth)?.oauth;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -636,19 +653,29 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceId: personalValues.serviceId,
             serviceName: personalValues.serviceName,
             credentialType: personalValues.credentialType,
-            fields: req.body.values.map((value) => value.field),
+            fields: req.body.oauthAuthorizationId
+              ? [AgentVaultVariableReferenceField.CredentialValue]
+              : (req.body.values ?? []).map((value) => value.field),
             variableKeys: [
               ...new Set(
                 personalValues.fields
-                  .filter((field) => req.body.values.some((value) => value.field === field.field))
+                  .filter((field) => req.body.values?.some((value) => value.field === field.field))
                   .flatMap((field) => field.variableReferences.map((reference) => reference.key))
               )
-            ]
+            ],
+            ...(oauthConnection
+              ? { oauthIssuer: oauthConnection.issuer, oauthScopes: oauthConnection.grantedScopes }
+              : {})
           }
         }
       });
 
-      return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
+      return {
+        personalValues: {
+          isConfigured: personalValues.isConfigured,
+          fields: personalValues.fields
+        }
+      };
     }
   });
 
@@ -693,7 +720,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
-      return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
+      return {
+        personalValues: {
+          isConfigured: personalValues.isConfigured,
+          fields: personalValues.fields
+        }
+      };
     }
   });
 

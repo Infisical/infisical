@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
 import {
   ChevronDownIcon,
@@ -280,14 +280,19 @@ const MEMBER_FIELDS_OF_TYPE: Record<AgentVaultCredentialType, TAgentVaultMemberP
   [AgentVaultCredentialType.OAuth]: []
 };
 
-const MemberProvidedToggle = ({
+export const MemberProvidedToggle = ({
   label,
   isOn,
-  onChange
+  onChange,
+  isDisabled,
+  about
 }: {
   label: string;
   isOn: boolean;
   onChange: (isOn: boolean) => void;
+  isDisabled?: boolean;
+  /** Replaces the hover card's explanation, for a credential a member doesn't type. */
+  about?: ReactNode;
 }) => {
   const id = useId();
   return (
@@ -300,15 +305,19 @@ const MemberProvidedToggle = ({
           />
         </HoverCardTrigger>
         <HoverCardContent className="w-80">
-          <p>Choose who sets the {label.toLowerCase()} the proxy sends for this service.</p>
-          <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
-            <li>Off: you set the {label.toLowerCase()} here, and every session uses it.</li>
-            <li>
-              On: each member sets their own from the access bundle page, and a session uses the{" "}
-              {label.toLowerCase()} of whoever started it, or of the user it was started on behalf
-              of.
-            </li>
-          </ul>
+          {about ?? (
+            <>
+              <p>Choose who sets the {label.toLowerCase()} the proxy sends for this service.</p>
+              <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
+                <li>Off: you set the {label.toLowerCase()} here, and every session uses it.</li>
+                <li>
+                  On: each member sets their own from the access bundle page, and a session uses the{" "}
+                  {label.toLowerCase()} of whoever started it, or of the user it was started on
+                  behalf of.
+                </li>
+              </ul>
+            </>
+          )}
           <a
             href={AgentVaultDocsUrls.memberProvidedValues}
             target="_blank"
@@ -321,12 +330,19 @@ const MemberProvidedToggle = ({
         </HoverCardContent>
       </HoverCard>
       <FieldLabel htmlFor={id}>Member provided</FieldLabel>
-      <Toggle id={id} size="sm" variant="av" checked={isOn} onCheckedChange={onChange} />
+      <Toggle
+        id={id}
+        size="sm"
+        variant="av"
+        checked={isOn}
+        onCheckedChange={onChange}
+        disabled={isDisabled}
+      />
     </div>
   );
 };
 
-const MemberProvidedInput = ({ label }: { label: string }) => (
+export const MemberProvidedInput = ({ label }: { label: string }) => (
   <InputGroup>
     <InputGroupAddon>
       <LockIcon />

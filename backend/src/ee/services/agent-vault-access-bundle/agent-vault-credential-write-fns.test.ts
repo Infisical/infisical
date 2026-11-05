@@ -4,8 +4,10 @@ import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultCredentialUpdate } from "./agent-vault-access-bundle-types";
 import {
   isStoredSecretReplaced,
+  memberFieldsOf,
   mergeCredential,
   needsStoredSecretFor,
+  nextMemberFieldsOf,
   splitCredential
 } from "./agent-vault-credential-write-fns";
 
@@ -256,5 +258,23 @@ describe("needsStoredSecretFor", () => {
     expect(needsStoredSecretFor(credential(update), storedService(stored as Parameters<typeof storedService>[0]))).toBe(
       needed
     );
+  });
+});
+
+describe("an OAuth sign-in left to members", () => {
+  const OAUTH = AgentVaultCredentialType.OAuth;
+
+  test("is the token field, credential-value", () => {
+    expect(memberFieldsOf(credential({ type: OAUTH, memberProvidedFields: [VALUE] }))).toEqual([VALUE]);
+    expect(memberFieldsOf(credential({ type: OAUTH, authorizationId: "a" }))).toBeNull();
+  });
+
+  test("an update that leaves the list out keeps it, unless it brings the admin's own authorization", () => {
+    const stored = storedService({ type: OAUTH, memberProvidedFields: [VALUE], sealed: false });
+    expect(nextMemberFieldsOf(credential({ type: OAUTH, clientSecret: "s" }), stored)).toEqual([VALUE]);
+    expect(nextMemberFieldsOf(credential({ type: OAUTH, authorizationId: "a" }), stored)).toBeNull();
+    expect(
+      nextMemberFieldsOf(credential({ type: OAUTH, memberProvidedFields: [VALUE] }), storedService({ type: OAUTH }))
+    ).toEqual([VALUE]);
   });
 });

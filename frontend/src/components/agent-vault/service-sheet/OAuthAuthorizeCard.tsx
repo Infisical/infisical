@@ -24,12 +24,15 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { AgentVaultOauthStatus } from "@app/hooks/api/agentVault";
+import { AgentVaultCredentialType, AgentVaultOauthStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
+import { MemberProvidedToggle } from "./CredentialFields";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
+  hostOf,
   newOAuthAuthorizationId,
+  OAUTH_OWN_APP_REQUIRED_ERROR,
   OAUTH_STATUS_LABELS,
   oauthClientIdSchema,
   oauthClientSecretSchema,
@@ -39,14 +42,6 @@ import {
 import { useOAuthAuthorize } from "./useOAuthAuthorize";
 
 const CALLBACK_PATH = "/agent-vault/oauth/callback";
-
-const hostOf = (serverUrl: string) => {
-  try {
-    return new URL(serverUrl).host;
-  } catch {
-    return "the server";
-  }
-};
 
 const OAUTH_STATUS_VARIANTS = {
   [AgentVaultOauthStatus.Connected]: "success",
@@ -88,7 +83,7 @@ const Status = ({
   </div>
 );
 
-const Scopes = ({ granted, requested }: { granted: string[]; requested: string[] }) => (
+export const Scopes = ({ granted, requested }: { granted: string[]; requested: string[] }) => (
   <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
     <span className="text-muted">Scopes</span>
     {granted.length ? (
@@ -109,9 +104,17 @@ type Props = {
   accessBundleId: string;
   service?: TAgentVaultService | null;
   onSignInChange?: (isSigningIn: boolean) => void;
+  isMemberProvided: boolean;
+  onMemberProvidedChange: (isOn: boolean) => void;
 };
 
-export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: Props) => {
+export const OAuthAuthorizeCard = ({
+  accessBundleId,
+  service,
+  onSignInChange,
+  isMemberProvided,
+  onMemberProvidedChange
+}: Props) => {
   const {
     control,
     register,
@@ -183,14 +186,37 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
     onSignInChange?.(isWaiting);
   }, [isWaiting, onSignInChange]);
   useEffect(() => () => onSignInChange?.(false), [onSignInChange]);
-  const wantsOwnApp = isClientRequired || isUsingOwnApp;
-  const isOwnApp = wantsOwnApp && !isNewlyAuthorized;
+  const wantsOwnApp = (isClientRequired && !isMemberProvided) || isUsingOwnApp;
+  const isOwnApp = wantsOwnApp && (isMemberProvided || !isNewlyAuthorized);
   const hasAuthorization = isNewlyAuthorized || Boolean(stored);
+  // With a saved admin-entered client, a blank secret field keeps the saved secret.
+  const storedMemberClientId =
+    isMemberProvided && service?.credential.type === AgentVaultCredentialType.OAuth
+      ? (service.credential.clientId ?? "")
+      : "";
+  const isStoredClientKept =
+    Boolean(storedMemberClientId) && clientId.trim() === storedMemberClientId;
+
+  const changeMemberProvided = (isOn: boolean) => {
+    // A sign-in made for the admin is never saved once members sign in for themselves.
+    if (isOn) {
+      cancel();
+      setValue("oauthAuthorizationId", "");
+      setValue("oauthAuthorizationRejection", "");
+    }
+    onMemberProvidedChange(isOn);
+  };
 
   const switchToOwnApp = () => {
     setIsUsingOwnApp(true);
     setValue("oauthAutomaticSetup", false);
   };
+
+  // A member-provided save learns at save time what the admin's own sign-in learns from registrationRequired.
+  const isOwnAppRequiredBySave = errors.oauthAuthorizationId?.type === OAUTH_OWN_APP_REQUIRED_ERROR;
+  useEffect(() => {
+    if (isOwnAppRequiredBySave) switchToOwnApp();
+  }, [isOwnAppRequiredBySave]);
 
   const switchToAutomaticSetup = () => {
     setIsUsingOwnApp(false);
@@ -347,14 +373,40 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
     };
   };
 
-  const status = renderStatus();
+  const status = isMemberProvided ? null : renderStatus();
 
   return (
     <Field>
-      <FieldLabel>Authorization</FieldLabel>
+      <div className="flex items-center justify-between gap-2">
+        <FieldLabel>Authorization</FieldLabel>
+        <MemberProvidedToggle
+          label="Authorization"
+          isOn={isMemberProvided}
+          onChange={changeMemberProvided}
+          isDisabled={isWaiting}
+          about={
+            <>
+              <p>Choose whose account the proxy uses to reach {host}.</p>
+              <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
+                <li>Off: you authorize here, and every session uses your account.</li>
+                <li>
+                  On: each member connects their own account from the access bundle page, and a
+                  session uses the account of whoever started it, or of the user it was started on
+                  behalf of.
+                </li>
+              </ul>
+            </>
+          }
+        />
+      </div>
       <FieldContent>
         <div className="flex flex-col gap-3">
-          {status ? (
+          {isMemberProvided && (
+            <p className="text-sm text-muted">
+              Each member connects their own {host} account from the access bundle page.
+            </p>
+          )}
+          {!isMemberProvided && status && (
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 {status.head}
@@ -363,13 +415,12 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
               </div>
               {!isOwnApp && authorizeButton}
             </div>
-          ) : (
-            !isOwnApp && <div>{authorizeButton}</div>
           )}
+          {!isMemberProvided && !status && !isOwnApp && <div>{authorizeButton}</div>}
 
           {isOwnApp && (
             <div className="flex flex-col gap-4">
-              {isClientRequired && !isOAuthAdvertised && (
+              {isClientRequired && !isOAuthAdvertised && !isMemberProvided && (
                 <Alert variant="warning">
                   <TriangleAlertIcon />
                   <AlertTitle>{host} doesn&apos;t look like it uses OAuth</AlertTitle>
@@ -396,7 +447,11 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
                       />
                     </InputGroupAddon>
                   </InputGroup>
-                  <FieldDescription>Add this as a redirect URI in your OAuth app.</FieldDescription>
+                  <FieldDescription>
+                    {isMemberProvided
+                      ? "Add this as a redirect URI in your OAuth app. Every member signs in with this app."
+                      : "Add this as a redirect URI in your OAuth app."}
+                  </FieldDescription>
                 </FieldContent>
               </Field>
               <div className="flex flex-col gap-4 md:flex-row md:gap-3">
@@ -423,17 +478,20 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
                       id={clientSecretInputId}
                       maxLength={4096}
                       autoComplete="new-password"
+                      placeholder={
+                        isStoredClientKept ? "Leave blank to keep the saved secret" : undefined
+                      }
                       isError={Boolean(errors.oauthClientSecret)}
                     />
                     <FieldError>{errors.oauthClientSecret?.message}</FieldError>
                   </FieldContent>
                 </Field>
               </div>
-              <div>{authorizeButton}</div>
+              {!isMemberProvided && <div>{authorizeButton}</div>}
             </div>
           )}
 
-          {!isClientRequired && !isNewlyAuthorized && !isWaiting && (
+          {(isMemberProvided || (!isClientRequired && !isNewlyAuthorized && !isWaiting)) && (
             <div>
               <Button
                 type="button"
@@ -447,7 +505,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
           )}
         </div>
         <FieldError>{errors.oauthAuthorizationId?.message}</FieldError>
-        {rejection && stored && !isWaiting && (
+        {rejection && stored && !isWaiting && !isMemberProvided && (
           <div>
             <Button
               type="button"

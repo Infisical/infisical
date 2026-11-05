@@ -9,7 +9,11 @@ import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 import { computePkceChallenge } from "@app/services/oauth-client/oauth-client-fns";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
-import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultOauthStatus,
+  AgentVaultVariableReferenceField
+} from "../agent-vault/agent-vault-enums";
 import {
   describeServer,
   MAX_OAUTH_SCOPES,
@@ -460,6 +464,40 @@ export const toResolvedOauthCredential = (
   source: AgentVaultCredentialType.OAuth,
   expiresAt: config.expiresAt ?? null
 });
+
+// Each member signs in for themselves, so the service row holds no tokens, only what their sign-ins share.
+export const isMemberProvidedOauth = (service: { credentialType: string; memberProvidedFields?: string[] | null }) =>
+  service.credentialType === AgentVaultCredentialType.OAuth &&
+  Boolean(service.memberProvidedFields?.includes(AgentVaultVariableReferenceField.CredentialValue));
+
+// A connection's status as an API response shows it, without anything that identifies the client or the token.
+export const oauthConnectionStatusOf = (config: TAgentVaultOauthConfig) => ({
+  status: config.status,
+  issuer: config.issuer,
+  grantedScopes: config.grantedScopes ?? [],
+  requiredScopes: config.requiredScopes ?? [],
+  expiresAt: config.expiresAt ?? null,
+  authorizedAt: config.authorizedAt ?? null,
+  lastError: config.lastError ?? null
+});
+
+// What a member's sign-in is bound to on the service: its server, issuer, client and sealed client secret. Sealing is
+// randomized, so any secret an admin sends changes it, even the same one.
+export const memberOauthSetupOf = (service: {
+  config?: unknown;
+  credentialConfig?: unknown;
+  encryptedCredential?: Buffer | null;
+}) =>
+  crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify([
+        service.config ?? null,
+        service.credentialConfig ?? null,
+        service.encryptedCredential?.toString("base64") ?? null
+      ])
+    )
+    .digest("hex");
 
 // Never throws: `parseExpiresIn` bounds what a provider sends, and anything that still isn't a date is no expiry.
 export const expiresAtFrom = (expiresIn: number | undefined, now: Date) => {
