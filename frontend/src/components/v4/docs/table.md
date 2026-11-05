@@ -82,6 +82,26 @@ Source evidence:
 - src/components/v4/ui/data.module.css
 - src/pages/design-system/examples/table/row-actions.tsx
 
+### table-selection-column
+
+Owner: table.
+
+When a table, DataTable or native Table, has a column of row selection checkboxes.
+
+Do: Mark the header cell and every body cell of that column with selection (TableHead selection, TableCell selection) and put only the Checkbox inside. DataTable selectable renders the same cells.
+
+Avoid: Build a local check or icon cell class with its own width, padding, divider or background for the selection column.
+
+Why: One hook keeps the column's width, Checkbox position, divider and row layers identical in every table.
+
+Checked by: review only. Look for: Measure the selection column in a DataTable and a native Table: both are size-row wide with the Checkbox centered and a line-soft divider on the right, and hovering or selecting the row repaints the selection cell with the row.
+
+Source evidence:
+- src/components/v4/ui/table.tsx
+- src/components/v4/ui/data-table.tsx
+- src/components/v4/ui/data.module.css
+- src/pages/design-system/examples/table/semantic.tsx
+
 ### table-row-activation
 
 Owner: table.
@@ -158,6 +178,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Every actions tail uses this standard by default, whether it comes from rowActions, TableActionsCell or a column with actions true: it caps each Button inside it at size-target-row (28px), the row target height, so icon-row targets and a text button such as Open share one height, centered vertically in the row and end-aligned. The cell's inline padding is the same space-row-actions-inset, so a single target reads square and a text button gets the same clearance on each side. Examples and composites set no width, size or padding on the actions tail.
 - TableRowActions is the end-aligned group inside the actions tail, with targets touching (space-row-actions-gap, 0). For a native Table, TableActionsHead and TableActionsCell take slots, the widest row's action count, and draw the same actions tail; RowActions renders the inline actions and More inside it. TableRowIndicators lays persistent row marks in size-target-row slots with size-glyph glyphs, pulled so the last glyph lands on the 12px content edge; marks never swap out for actions.
 - The selection column is size-row wide with its Checkbox centered between the frame edge and a persistent line-soft divider on its right, the same line as the actions tail divider, on the header and every row, at rest, hovered and selected.
+- The selection column always uses one hook, the selection prop on TableHead and TableCell (data-slot "table-selection"), in DataTable and in a native Table alike. It owns the width, padding, centered Checkbox and divider, and repaints the row's ground and its stripe, hover and selected layers on the cell, so the column reads as one band with its row and stays opaque if pinned. The selection cell counts as row-interactive, so a click on it never activates the row. Nothing else draws a selection column.
 - Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.
 - With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
 - onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.
@@ -426,11 +447,14 @@ export default function States() {
 
 ### Native semantic table
 
-Save this example at `src/pages/design-system/examples/table/semantic.tsx`; its relative imports are generated for that exact path. States: default.
+Save this example at `src/pages/design-system/examples/table/semantic.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/checkbox, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
+import * as React from "react";
+
+import { Checkbox } from "../../../../components/v4/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -442,39 +466,100 @@ import {
   TableRow
 } from "../../../../components/v4/ui/table";
 
+const environments = [
+  { id: "production", name: "Production", secrets: 128 },
+  { id: "staging", name: "Staging", secrets: 42 },
+  { id: "development", name: "Development", secrets: 0 }
+];
+
 export default function SemanticTable() {
+  const [selected, setSelected] = React.useState<string[]>(["staging"]);
+  const all = selected.length === environments.length;
+  const toggle = (id: string) =>
+    setSelected((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    );
   return (
-    <Table aria-label="Environment inventory">
-      <TableCaption>Fabricated environment inventory</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead scope="col">Environment</TableHead>
-          <TableHead scope="col" className="text-right">
-            Secrets
-          </TableHead>
-          <TableHead scope="col">Rotation</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow>
-          <TableCell>Production</TableCell>
-          <TableCell className="text-right">128</TableCell>
-          <TableCell>2 overdue</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell>Staging</TableCell>
-          <TableCell className="text-right">0</TableCell>
-          <TableCell>No secrets</TableCell>
-        </TableRow>
-      </TableBody>
-      <TableFooter>
-        <TableRow>
-          <TableCell>Total</TableCell>
-          <TableCell className="text-right">128</TableCell>
-          <TableCell>2 environments</TableCell>
-        </TableRow>
-      </TableFooter>
-    </Table>
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Table aria-label="Environment inventory">
+            <TableCaption>Fabricated environment inventory</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Environment</TableHead>
+                <TableHead scope="col" className="text-right">
+                  Secrets
+                </TableHead>
+                <TableHead scope="col">Rotation</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell>Production</TableCell>
+                <TableCell className="text-right">128</TableCell>
+                <TableCell>2 overdue</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>Staging</TableCell>
+                <TableCell className="text-right">0</TableCell>
+                <TableCell>No secrets</TableCell>
+              </TableRow>
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell>Total</TableCell>
+                <TableCell className="text-right">128</TableCell>
+                <TableCell>2 environments</TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Caption and footer"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Table aria-label="Selectable environments">
+            <TableHeader>
+              <TableRow>
+                <TableHead selection>
+                  <Checkbox
+                    aria-label="Select all environments"
+                    checked={all || (selected.length > 0 && "indeterminate")}
+                    onCheckedChange={() =>
+                      setSelected(all ? [] : environments.map((env) => env.id))
+                    }
+                  />
+                </TableHead>
+                <TableHead scope="col">Environment</TableHead>
+                <TableHead scope="col" className="text-right">
+                  Secrets
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {environments.map((env) => (
+                <TableRow
+                  key={env.id}
+                  data-state={selected.includes(env.id) ? "selected" : undefined}
+                >
+                  <TableCell selection>
+                    <Checkbox
+                      aria-label={`Select ${env.name}`}
+                      checked={selected.includes(env.id)}
+                      onCheckedChange={() => toggle(env.id)}
+                    />
+                  </TableCell>
+                  <TableCell>{env.name}</TableCell>
+                  <TableCell className="text-right">{env.secrets}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Selection column"}</figcaption>
+      </figure>
+    </div>
   );
 }
 ```

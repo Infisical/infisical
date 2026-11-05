@@ -985,13 +985,6 @@ button.rowTitle::after {
 .tableScroll tbody tr:last-child > td {
   border-bottom: 0;
 }
-/* The frame edge draws over the cell's first pixel, so a start pad of one line centers the checkbox between that edge and the divider. */
-.tableScroll .tableCheck {
-  width: var(--v4-size-row);
-  padding-inline: var(--v4-size-control-border) 0;
-  border-inline-end: var(--v4-size-control-border) solid var(--v4-line-soft);
-}
-.tableScroll th.tableCheck > *,
 .tableSelection > * {
   margin-inline: auto;
 }
@@ -1245,6 +1238,24 @@ td.tableActions,
 .tableScroll td[data-pin="true"] {
   background-color: var(--v4-table-row-ground);
   background-image: var(--v4-table-row-layers);
+}
+th.tableSelectionCell,
+td.tableSelectionCell {
+  width: var(--v4-size-row);
+  padding-inline: 0;
+  border-inline-end: var(--v4-size-control-border) solid var(--v4-line-soft);
+  background-color: var(--v4-table-row-ground);
+  background-image: var(--v4-table-row-layers);
+}
+.tableSelectionCell > * {
+  margin-inline: auto;
+}
+/* The frame edge draws over the cell's first pixel, so a start pad of one line centers the checkbox between that edge and the divider. */
+.tableScroll .tableSelectionCell {
+  padding-inline: var(--v4-size-control-border) 0;
+}
+.tableScroll th.tableSelectionCell {
+  background-color: var(--v4-tint);
 }
 .tableRowActionSkeleton {
   display: inline-flex;

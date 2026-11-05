@@ -316,7 +316,7 @@ export function DataTable<Row>({
         <TableHeader>
           <TableRow>
             {selectable && (
-              <TableHead className={styles.tableCheck}>
+              <TableHead selection>
                 <Checkbox
                   aria-label={`Select all available rows in ${label}`}
                   disabled={loading || !eligible.length}
@@ -401,7 +401,7 @@ export function DataTable<Row>({
             Array.from({ length: skeletonRows }, (_, index) => (
               <TableRow key={`loading-${index}`} aria-hidden data-loading>
                 {selectable && (
-                  <TableCell className={styles.tableCheck}>
+                  <TableCell selection>
                     <div className={styles.tableSelection}>
                       <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
                     </div>
@@ -478,7 +478,7 @@ export function DataTable<Row>({
                 style={{ height: effectiveRowHeight }}
               >
                 {selectable && (
-                  <TableCell className={styles.tableCheck} data-row-interactive>
+                  <TableCell selection>
                     <SelectionBox
                       label={`Select ${rowLabel(row)}`}
                       checked={selected.includes(getRowId(row))}
