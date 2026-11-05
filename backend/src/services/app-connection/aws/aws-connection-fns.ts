@@ -82,7 +82,8 @@ export const getAwsConnectionConfig = async (
   let secretAccessKey: string;
   let sessionToken: undefined | string;
 
-  const { method, credentials, orgId, projectId, version, projectType } = appConnection;
+  const { method, credentials, orgId, projectId, version } = appConnection;
+  const projectType = appConnection.projectType ?? (appConnection as { project?: { type?: string } }).project?.type;
 
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
