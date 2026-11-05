@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { applyJitter } from "@app/lib/dates";
 import { logger } from "@app/lib/logger";
@@ -17,6 +19,15 @@ type TUsageMeteringServiceFactoryDep = {
 };
 
 const DEBOUNCE_MS = 5000;
+
+// A metered fact for a sum or count meter. eventId must be stable for the fact (the license server
+// dedups on it); quantity is ignored for a count meter.
+export type TMeteringEventInput = {
+  eventId: string;
+  dimensionKey: string;
+  quantity?: number;
+  occurredAt?: Date;
+};
 
 export const usageMeteringServiceFactory = ({
   queueService,
@@ -105,5 +116,42 @@ export const usageMeteringServiceFactory = ({
     });
   };
 
-  return { emit, emitForProject, reconcile };
+  // Fire-and-forget like emit, but every event is a fact to deliver, so jobs are never debounced or
+  // replaced (the server dedups on eventId); occurredAt is fixed now so a retry resends the same event.
+  const recordMeteringEvents = (orgId: string, events: TMeteringEventInput[]) => {
+    if (!licenseClient.isEnabled() || !events.length) {
+      return;
+    }
+
+    const now = new Date();
+    void queueService
+      .queue(
+        QueueName.MeteringEvent,
+        QueueJobs.MeteringEvent,
+        {
+          orgId,
+          events: events.map((e) => ({
+            eventId: e.eventId,
+            dimensionKey: e.dimensionKey,
+            quantity: e.quantity,
+            occurredAt: (e.occurredAt ?? now).toISOString()
+          }))
+        },
+        {
+          jobId: uuidv4(),
+          attempts: 10,
+          backoff: { type: "exponential", delay: 10_000 },
+          removeOnComplete: true,
+          removeOnFail: { count: 1000 }
+        }
+      )
+      .catch((error) => {
+        logger.error(
+          error,
+          `usage-metering: failed to enqueue metering events [orgId=${orgId}] [count=${events.length}]`
+        );
+      });
+  };
+
+  return { emit, emitForProject, reconcile, recordMeteringEvents };
 };
