@@ -176,6 +176,8 @@ DevOps
 BigQuery
 NodeLocal DNSCache
 DNSCache
+Dataplane
+Dataplane V2
 Cloud SQL
 Cloud Run
 Cloud 66

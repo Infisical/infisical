@@ -73,6 +73,7 @@ You create these files on your machine as you go through the guide:
 
 - An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent's commands call, such as GitHub
+- A Kubernetes cluster that enforces NetworkPolicies, such as Amazon EKS with network policy support turned on in the Amazon VPC CNI add-on, or GKE with Dataplane V2
 - A container registry your cluster can pull from
 - `kubectl`, `docker`, `curl`, `jq`, and `openssl` on your machine
 - A Cursor Enterprise plan, with a team pool and a service account API key
