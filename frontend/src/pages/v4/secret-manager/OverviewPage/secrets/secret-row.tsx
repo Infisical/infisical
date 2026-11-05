@@ -1,6 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
-  BellDotIcon,
   BellIcon,
   CodeXmlIcon,
   CopyPlusIcon,
@@ -76,7 +75,8 @@ import {
   ROW_ACTION_SLOTS,
   type RowContext,
   SelectCell,
-  StatusCell
+  StatusCell,
+  stopRowClick
 } from "./overview-cells";
 import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
@@ -373,30 +373,10 @@ function SecretActions({
         <PopoverAnchor asChild>
           <TableRowActions>
             <ActionButton
-              label={secret.reminder ? "View reminder" : "Add reminder"}
-              icon={secret.reminder ? BellDotIcon : BellIcon}
-              onClick={() => setOpen("reminder")}
-            />
-            <ActionButton
               label="Edit value"
               icon={EditIcon}
               disabledReason={editBlock}
               onClick={() => withValue(() => (ctx.single ? setOpen("edit") : onInlineEdit()))}
-            />
-            <ActionButton
-              label="Copy secret"
-              name="copy"
-              disabledReason={copyBlock}
-              onClick={() =>
-                withValue((loaded) =>
-                  copy(
-                    loaded,
-                    `Copied ${secret.name}.`,
-                    `Could not copy ${secret.name}. Check clipboard permissions.`,
-                    ctx.report
-                  )
-                )
-              }
             />
             <DropdownMenu
               onOpenChange={(next) => {
@@ -429,6 +409,24 @@ function SecretActions({
                 }}
               >
                 <PendingMenuItems id={secret.id} ctx={ctx} />
+                <DropdownMenuItem
+                  disabled={Boolean(copyBlock)}
+                  description={copyBlock}
+                  onSelect={() =>
+                    withValue((loaded) =>
+                      copy(
+                        loaded,
+                        `Copied ${secret.name}.`,
+                        `Could not copy ${secret.name}. Check clipboard permissions.`,
+                        ctx.report
+                      )
+                    )
+                  }
+                >
+                  <Icon name="copy" />
+                  Copy value
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Icon icon={PencilLineIcon} />
@@ -513,7 +511,7 @@ function SecretActions({
                   onSelect={() => handlers.onCopySecret(secret)}
                 >
                   <Icon icon={CopyPlusIcon} />
-                  Copy secret
+                  Copy to environment
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -750,6 +748,17 @@ function OverrideActions({
     <>
       <RowActions
         label={label}
+        menu={
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={Boolean(block)}
+            description={block}
+            onSelect={() => setRemoving(true)}
+          >
+            <Icon name="trash" />
+            Remove override
+          </DropdownMenuItem>
+        }
         inline={[
           {
             label: "Copy override",
@@ -765,12 +774,6 @@ function OverrideActions({
                   ctx.report
                 );
               })
-          },
-          {
-            label: "Remove override",
-            icon: "trash",
-            disabledReason: block,
-            onSelect: () => setRemoving(true)
           }
         ]}
       />
@@ -974,9 +977,15 @@ export function SecretRow({
             />
           )
         )}
-        <TableActionsCell slots={ROW_ACTION_SLOTS}>
+        <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
           <RowActions
             label={name}
+            menu={
+              <DropdownMenuItem disabled description={NEXT_PHASE}>
+                <Icon icon={EditIcon} />
+                Edit secret name
+              </DropdownMenuItem>
+            }
             inline={[
               {
                 label: "Copy secret name",
@@ -988,12 +997,6 @@ export function SecretRow({
                     "Could not copy the name. Check clipboard permissions.",
                     ctx.report
                   )
-              },
-              {
-                label: "Edit secret name",
-                icon: EditIcon,
-                disabledReason: NEXT_PHASE,
-                onSelect: () => {}
               }
             ]}
           />

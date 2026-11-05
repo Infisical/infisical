@@ -17,7 +17,7 @@ export type RowAction =
   | { kind: "import"; action: "resync" | "delete"; entry: Of<"import"> }
   | {
       kind: "dynamic";
-      action: "leases" | "lease" | "edit" | "delete" | "force-delete";
+      action: "leases" | "edit" | "delete" | "force-delete";
       entry: Of<"dynamic">;
     }
   | {
