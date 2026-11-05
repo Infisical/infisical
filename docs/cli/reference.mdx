@@ -337,7 +337,7 @@ The command reads the Agent Vault project in this order, and stops with an error
 2. [`INFISICAL_AGENT_VAULT_PROJECT_ID`](#agent-vault-sessions-create--env-infisical-agent-vault-project-id)
 3. [`INFISICAL_PROJECT_ID`](#agent-vault-sessions-create--env-infisical-project-id)
 
-If the project doesn't come from `--project-id`, the command prints the project's ID and where it came from to stderr.
+If the project doesn't come from `--project-id`, the command prints the project's ID and where it came from to stderr, unless you pass `--silent` or `-o`.
 
 The session stays active until it expires or you revoke it with [infisical agent-vault sessions revoke](/cli/reference#agent-vault-sessions-revoke). Because `--ttl` defaults to `never`, set a `--ttl` unless you always revoke the session.
 

@@ -704,6 +704,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const elsewhere = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: name, ttl: "1h" });
       expect(elsewhere.statusCode).toBe(400);
+      expect(elsewhere.json().error).toBe("AccessBundleNotGranted");
       expect(elsewhere.json().message).toBe(
         `No access bundle named '${name}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
       );
