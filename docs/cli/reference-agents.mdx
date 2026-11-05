@@ -8,7 +8,13 @@ This is the [CLI reference](/cli/reference) in Markdown. Each command has the sa
 
 Anchors on that page can also point to a command's argument, flag, or environment variable, such as `#secrets-manager-run--flag-path`. Here, the part before `--` is the command's heading, and the item is listed under it: `#secrets-manager-run--flag-path` is the `--path` flag under `#secrets-manager-run`.
 
-Some commands moved, so links to the CLI reference can use anchors that no longer exist. Each old anchor below maps to a new one, and so do the anchors that start with it: `#<old>-<rest>` is now `#<new>-<rest>`. If more than one old anchor matches, the longest one applies. If the argument or flag after `--` no longer exists, use the command's anchor, the part before `--`.
+Some commands moved, so a link to the CLI reference can use an anchor that no longer exists. To find where an old anchor points now:
+
+1. If the anchor exists on the CLI reference, use it as it is
+2. Otherwise, find the longest old anchor in the list of moved anchors that the link's anchor starts with, and replace that part with its new anchor: `#<old>-<rest>` becomes `#<new>-<rest>`
+3. If the result doesn't exist because the command no longer has that argument or flag, use the command's anchor, the part before `--`
+
+The moved anchors:
 
 - `#sm` is now `#secrets-manager`
 - `#sm-projects-list` is now `#secrets-manager-projects-get`
@@ -1259,9 +1265,9 @@ infisical profile current [flags]
 
 Show which profile the CLI uses in this terminal and directory, and why.
 
-The command also shows the project, environment, and folder that `secrets-manager` commands run here use when you don't pass `--projectId`, `--env`, or `--path`, and where each value comes from, such as `INFISICAL_ENVIRONMENT` or `.infisical.yaml`. Run it before you write secrets, to check where they'll go.
+The command also shows the project, environment, and folder that `secrets-manager` commands use in this directory when you don't pass `--projectId`, `--env`, or `--path`, and where each value comes from, such as `INFISICAL_ENVIRONMENT` or `.infisical.yaml`. Run it before you write secrets, to check where they'll go.
 
-When the project comes from the project config file, the output notes that a machine identity may ignore it: with a machine identity, `run`, `export`, and `secrets get` read the project only from `--projectId` or `INFISICAL_PROJECT_ID`.
+If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `run`, `export`, and `secrets get` don't read the project from the [project config file](/cli/project-config), so pass `--projectId` or set `INFISICAL_PROJECT_ID`.
 
 ### Flags
 
@@ -1830,13 +1836,13 @@ If Infisical returned the error, the JSON also has `statusCode` and `requestId`.
 | `folder_exists` | Another folder in `--path` already has that name |
 | `secret_exists` | A secret passed to `secrets create` already exists, so nothing was written |
 | `secret_not_found` | A secret passed to `secrets update` doesn't exist, so nothing was written |
-| `invalid_argument` | An argument can't be used, such as the same secret name twice, a secret with no value, or a folder name with a `/` |
-| `invalid_flag_value` | A flag is missing or has a value the command can't use, such as an empty `--name` |
+| `invalid_argument` | The command can't use an argument, such as the same secret name given twice, a secret with no value, or a folder name with a `/` |
+| `invalid_flag_value` | A flag is missing or has a value the command can't use, such as an empty `--name` or a `--file` that doesn't exist or isn't a valid `.env` or YAML file |
 | `nothing_to_update` | An `update` command got no flag that changes anything |
 | `service_token_not_supported` | The command doesn't accept service tokens |
 | `token_project_mismatch` | The service token belongs to a different project than the one you selected |
 | `confirmation_required` | A delete ran without a terminal and without `--yes` |
-| `confirmation_declined` | What you typed at the question didn't match, or you cancelled the question |
+| `confirmation_declined` | What you typed didn't match what the question asked for, you cancelled the question, or the project, environment, or folder changed before you answered |
 
 ## `secrets-manager agent-proxy`
 
@@ -2781,7 +2787,7 @@ Print the secrets in an environment and folder as a table. Pass `--output` to pr
 - `--include-imports` (default `true`): Include secrets imported into the environment from other environments or folders.
 - `--output <string>` (`-o`): Print the secrets as `json`, `yaml`, or `dotenv` instead of a table.
 - `--path <string>` (default `/`): The folder to list secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`.
-- `--plain` (deprecated): Deprecated: use `--output` instead. Print only secret values, one per line.
+- `--plain` (deprecated): Deprecated: use `--output` instead. Print each secret as `KEY=value`, one per line.
 - `--projectId <string>`: The project to list secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`.
 - `--recursive`: Also list the secrets in every subfolder of `--path`.
 - `--secret-overriding` (default `true`): Show your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to show only shared secrets.
