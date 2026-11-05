@@ -2381,8 +2381,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect((await statusesOf(member.as, bundle.id)).get(service.id)).toEqual({
           isConfigured: false,
-          fields: [expect.objectContaining({ field: "credential-value", isSet: false })],
-          oauth: null
+          fields: [expect.objectContaining({ field: "credential-value", isSet: false })]
         });
         expect((await pendingOf(member.as)).get(bundle.id)).toEqual(["datadog"]);
         // Each entry carries the service id, which is what saving the values needs.
