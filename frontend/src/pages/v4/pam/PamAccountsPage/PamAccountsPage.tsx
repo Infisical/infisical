@@ -308,23 +308,16 @@ export const PamAccountsPage = () => {
         count: folder.accountCount
       }));
     return folders.flatMap((folder) => {
-      const accounts = matches.filter((account) => account.folderId === folder.id);
-      if (!accounts.length) return [];
-      return [
-        {
-          kind: "folder" as const,
-          id: folder.id,
-          folder,
-          count: accounts.length
-        },
-        ...accounts.map((account) => ({
-          kind: "account" as const,
-          id: account.id,
-          account
-        }))
-      ];
+      const count = matches.filter((account) => account.folderId === folder.id).length;
+      return count ? [{ kind: "folder" as const, id: folder.id, folder, count }] : [];
     });
   }, [filterActive, folders, matches]);
+  const childrenOf = (row: Row): Row[] | undefined =>
+    filterActive && row.kind === "folder"
+      ? matches
+          .filter((account) => account.folderId === row.id)
+          .map((account) => ({ kind: "account" as const, id: account.id, account }))
+      : undefined;
 
   const copyId = (row: Row) => {
     navigator.clipboard.writeText(row.id);
@@ -373,22 +366,20 @@ export const PamAccountsPage = () => {
           PamResourcePermissionActions.EditAccounts
         );
         return (
-          <div style={{ paddingInlineStart: 24 }}>
-            <Inline gap={8} align="center" wrap={false}>
-              {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
-              <RowLink
-                to="/v4/organizations/$orgId/$"
-                params={{
-                  orgId,
-                  _splat: `pam/accounts/${account.accountType}/${account.id}/access`
-                }}
-              >
-                {account.name}
-              </RowLink>
-              <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
-              <AccountBadges account={account} canEdit={canEdit} />
-            </Inline>
-          </div>
+          <Inline gap={8} align="center" wrap={false}>
+            {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
+            <RowLink
+              to="/v4/organizations/$orgId/$"
+              params={{
+                orgId,
+                _splat: `pam/accounts/${account.accountType}/${account.id}/access`
+              }}
+            >
+              {account.name}
+            </RowLink>
+            <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
+            <AccountBadges account={account} canEdit={canEdit} />
+          </Inline>
         );
       }
     },
@@ -474,6 +465,7 @@ export const PamAccountsPage = () => {
           loading={isLoadingFolders || (filterActive && isLoadingMatches)}
           loadingRows={5}
           getRowId={(row) => `${row.kind}-${row.id}`}
+          getRowChildren={childrenOf}
           rowLabel={(row) => (row.kind === "folder" ? row.folder.name : row.account.name)}
           rowActions={{
             menuLabel: "Row options",
