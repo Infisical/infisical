@@ -194,7 +194,7 @@ func TestMachineIdentity_Delete(t *testing.T) {
 		tn := h.NewTenant(t)
 		sub := fixture.NewSubOrg(t, tn)
 		identity := tn.NewMachineIdentity(t)
-		linkIdentity(t, sub.Admin, identity.ID, "member")
+		sub.LinkIdentity(t, identity.ID, "member")
 
 		// Action
 		res, err := sub.Admin.API.DeleteMachineIdentityWithResponse(t.Context(), identity.ID.String())
@@ -219,7 +219,7 @@ func TestMachineIdentity_OrgMembership(t *testing.T) {
 		tn := h.NewTenant(t)
 		sub := fixture.NewSubOrg(t, tn)
 		ua := newUA(t, tn, api.AttachUniversalAuthJSONRequestBody{})
-		linkIdentity(t, sub.Admin, ua.ID, "member")
+		sub.LinkIdentity(t, ua.ID, "member")
 		login := uaLogin(t, tn.Anonymous(t), ua.ClientID, ua.ClientSecret, sub.Slug)
 		requireStatus(t, http.StatusOK, login.StatusCode(), login.Body)
 		inSub := tn.Client(t, login.JSON200.AccessToken)

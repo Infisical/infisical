@@ -69,6 +69,8 @@ export const KeyStorePrefixes = {
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  CloudflareWorkerVersionLock: (accountId: string, scriptId: string) =>
+    `cloudflare-worker-version-mutex-${accountId}-${scriptId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
@@ -165,6 +167,7 @@ export const KeyStorePrefixes = {
     `project-sse-conn:${projectId}:${connectionId}` as const,
 
   ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
+  HoneyTokenCreateLock: (orgId: string) => `honey-token-create-lock-${orgId}` as const,
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
@@ -261,7 +264,10 @@ export const KeyStorePrefixes = {
     `native-integration-deprecation-notice:${orgId}:${period}` as const,
 
   LegacyPkiDeprecationNotice: (orgId: string, period: string) =>
-    `legacy-pki-deprecation-notice:${orgId}:${period}` as const
+    `legacy-pki-deprecation-notice:${orgId}:${period}` as const,
+
+  SamlAssertionReplay: (samlConfigId: string, assertionIdHash: string) =>
+    `saml-assertion-replay:${samlConfigId}:${assertionIdHash}` as const
 };
 
 export const KeyStoreTtls = {

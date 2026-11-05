@@ -98,6 +98,7 @@ export const FolderTableRow = ({
             : "sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover",
           pendingActionBorderClass(pendingAction)
         )}
+        onClick={isNavigationDisabled ? undefined : () => onClick(folderName)}
       >
         <div className="flex h-full items-center justify-center [&>svg]:size-4">
           <Checkbox
@@ -123,12 +124,14 @@ export const FolderTableRow = ({
           />
         </div>
       </TableCell>
+      {/* Safari ignores position: relative on <tr>, so this cell must be positioned (relative or
+          sticky) or the RowLink overlay spans the whole table and swallows clicks on other rows. */}
       <TableCell
         isTruncatable
         colSpan={isSingleEnvView ? 2 : undefined}
         className={
           isSingleEnvView
-            ? "transition-all duration-75"
+            ? "relative transition-all duration-75"
             : "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover"
         }
       >
@@ -221,27 +224,28 @@ export const FolderTableRow = ({
               <TooltipContent>{canEditFolder ? "Edit Folder" : "Access Restricted"}</TooltipContent>
             </Tooltip>
           )}
-          {onToggleFolderAccess &&
-            canManageFolderAccess &&
-            pendingAction !== PendingAction.Delete && (
-              <Tooltip>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Manage folder access"
-                    variant="ghost"
-                    size="xs"
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                    onClick={(e) => {
-                      onToggleFolderAccess(folderName);
-                      e.stopPropagation();
-                    }}
-                  >
-                    <UsersIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Manage Access</TooltipContent>
-              </Tooltip>
-            )}
+          {onToggleFolderAccess && pendingAction !== PendingAction.Delete && (
+            <Tooltip>
+              <TooltipTrigger>
+                <IconButton
+                  aria-label="Manage folder access"
+                  variant="ghost"
+                  size="xs"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                  isDisabled={!canManageFolderAccess}
+                  onClick={(e) => {
+                    onToggleFolderAccess(folderName);
+                    e.stopPropagation();
+                  }}
+                >
+                  <UsersIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {canManageFolderAccess ? "Manage Access" : "Access Restricted"}
+              </TooltipContent>
+            </Tooltip>
+          )}
           {pendingAction && onPendingSave && (
             <Tooltip>
               <TooltipTrigger>

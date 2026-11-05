@@ -22,7 +22,7 @@ A Databricks connection authenticates Infisical to your Databricks workspace usi
 Next, create the app connection in Infisical.
 
 <Tip>
-    To create the connection using the API, use the [Create Databricks Connection](/api-reference/endpoints/app-connections/databricks/create) endpoint.
+    To create the connection using the API, use the [Create Databricks Connection](/api-reference/endpoints/app-connections/databricks/create) endpoint. If the workspace isn't reachable from the internet, include the ID of a [Gateway](/documentation/platform/gateways/overview) that can reach it as `gatewayId`, or the ID of a [Gateway pool](/documentation/platform/gateways/gateway-pools) as `gatewayPoolId`.
 </Tip>
 
 <View title="Organization-level">

@@ -10,10 +10,13 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -40,6 +43,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
@@ -57,7 +61,7 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import { isIdpAuthoritativeForDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -91,7 +95,8 @@ type TLdapConfigServiceFactoryDep = {
   >;
   groupDAL: Pick<TGroupDALFactory, "find" | "findOne" | "findGroupOrgIds">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
@@ -105,6 +110,7 @@ type TLdapConfigServiceFactoryDep = {
     TUserDALFactory,
     | "create"
     | "findOne"
+    | "findById"
     | "transaction"
     | "updateById"
     | "findUserEncKeyByUserIdsBatch"
@@ -122,6 +128,9 @@ type TLdapConfigServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -133,6 +142,7 @@ export const ldapConfigServiceFactory = ({
   orgDAL,
   groupDAL,
   membershipGroupDAL,
+  membershipDAL,
   membershipRoleDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
@@ -151,7 +161,10 @@ export const ldapConfigServiceFactory = ({
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService
+  usageMeteringService,
+  pamAccountDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -503,7 +516,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
+    const ownedDomain = await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
@@ -516,7 +529,11 @@ export const ldapConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    const skipEmailVerification = Boolean(organization.authEnforced) || Boolean(serverCfg.trustLdapEmails);
+    // The IdP is authoritative only when the org enforces SSO and owns the asserted domain. The
+    // instance-level trustLdapEmails flag is a server admin's own decision to skip verification and
+    // is kept apart from it.
+    const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
+    const skipEmailVerification = isIdpAuthoritative || Boolean(serverCfg.trustLdapEmails);
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
     // account's org membership / group state until the IdP proves control of it (the
@@ -668,6 +685,7 @@ export const ldapConfigServiceFactory = ({
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
+    const pamCancellations: (() => void)[] = [];
     let user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
       if (groups && !isStaleAlias) {
@@ -736,7 +754,7 @@ export const ldapConfigServiceFactory = ({
         for await (const group of groupsCurrentlyPartOf) {
           if (!toBePartOfGroupIdsSet.has(group.id)) {
             // remove user from group that they should no longer be part of
-            await removeUsersFromGroupByUserIds({
+            const { sendPamCancellations } = await removeUsersFromGroupByUserIds({
               group,
               userIds: [newUser.id],
               userDAL,
@@ -748,14 +766,21 @@ export const ldapConfigServiceFactory = ({
               usageMeteringService,
               alertChannelRecipientDAL,
               eventEmitter,
+              membershipDAL,
+              membershipRoleDAL,
+              pamAccountDAL,
+              pamSessionDAL,
+              gatewayV2Service,
               tx
             });
+            pamCancellations.push(sendPamCancellations);
           }
         }
       }
 
       return newUser;
     });
+    pamCancellations.forEach((send) => send());
 
     // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
     if (skipEmailVerification) {
@@ -775,7 +800,7 @@ export const ldapConfigServiceFactory = ({
       assertedFirstName: firstName,
       assertedLastName: lastName,
       orgId,
-      isAuthEnforced: Boolean(organization.authEnforced),
+      isIdpAuthoritative,
       userDAL,
       userAliasDAL,
       emailDomainDAL,

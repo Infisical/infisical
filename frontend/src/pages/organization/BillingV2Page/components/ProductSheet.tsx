@@ -32,6 +32,7 @@ import {
   Toggle
 } from "@app/components/v3";
 import {
+  BillingV2Bands,
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2CompareRow,
@@ -43,6 +44,8 @@ import {
 } from "@app/hooks/api";
 
 import {
+  bandIndexFor,
+  bandRateLabel,
   byDisplayOrder,
   cadencePeriod,
   cadenceWord,
@@ -52,17 +55,28 @@ import {
   fmtMoney,
   fmtMoneyCents,
   isMeteredCadence,
+  meteredUsageCaption,
   unitForCount,
   unitPrice
 } from "../billing-v2-format";
 import { ActivateView } from "./ActivateView";
 import { CancellationFeedbackDialog } from "./CancellationFeedbackDialog";
 import { CommitmentView } from "./CommitmentView";
+import { MeteredBandTable } from "./MeteredBandTable";
 import { ActiveBadge, DimensionMeter, ProductIcon } from "./shared";
 import { UpgradeView } from "./UpgradeView";
 
 // prefix/metered carry the usage-based framing for metered dims; absent for per_unit and base prices.
-type PriceLine = { amount: string; unit: string; prefix?: string; metered?: boolean };
+type PriceLine = {
+  amount: string;
+  unit: string;
+  prefix?: string;
+  metered?: boolean;
+  bands?: BillingV2Bands;
+  noun?: string;
+  // The band a free trial's usage has reached, marked on the band table.
+  trialBand?: number;
+};
 
 // The plan's headline price for a cadence: a base fee, else the first priced dimension's rate.
 const planHeadlinePrice = (plan: BillingV2Plan, cadence: BillingV2Cadence): number => {
@@ -89,17 +103,40 @@ const dimPriceLine = (
   cadence: BillingV2Cadence,
   variant: "headline" | "usage"
 ): PriceLine => {
-  const metered = isMeteredCadence(dim, cadence);
+  // Usage stays billed monthly when the customer commits yearly, so a meter with no annual price keeps
+  // its monthly price on the yearly card.
+  const cad: BillingV2Cadence =
+    cadence === "annual" && dim.annual === 0 && !dim.meteredAnnual && dim.meteredMonthly
+      ? "monthly"
+      : cadence;
+  const metered = isMeteredCadence(dim, cad);
   // A yearly commitment is always divisible by 12, so a per_resource annual price is shown as its
   // per-month equivalent (÷12); metered rates are usage-based consumption prices, shown as-is. The
   // card's cadence toggle is what tells the customer this is billed annually.
-  const perMonth = cadence === "annual" && !metered;
-  const amount = perMonth ? unitPrice(dim, cadence) / 12 : unitPrice(dim, cadence);
+  const perMonth = cad === "annual" && !metered;
+  const amount = perMonth ? unitPrice(dim, cad) / 12 : unitPrice(dim, cad);
   const unit =
     variant === "headline"
-      ? `/ ${dim.noun} / ${perMonth ? "month" : cadenceWord(cadence)}`
-      : `per ${dim.noun} / ${perMonth ? "mo" : cadenceWordShort(cadence)}`;
+      ? `/ ${dim.noun} / ${perMonth ? "month" : cadenceWord(cad)}`
+      : `per ${dim.noun} / ${perMonth ? "mo" : cadenceWordShort(cad)}`;
   const line: PriceLine = { amount: fmtMoneyCents(amount), unit, metered };
+  if (metered && dim.bands && dim.bands.tiers.length === 1) {
+    // One band is one exact rate; unitAmountCents is rounded to a whole cent.
+    line.amount = bandRateLabel(dim.bands.tiers[0], dim.noun);
+    line.unit = "/ month";
+    return line;
+  }
+  if (metered && dim.bands && dim.bands.tiers.length > 1) {
+    // Banded usage reads as its table, not one rate; the headline names the first paid band.
+    const paidIndex = dim.bands.tiers.findIndex((band) => band.unitPrice > 0 || band.flatFee > 0);
+    const paid = dim.bands.tiers[paidIndex >= 0 ? paidIndex : 0];
+    line.amount = bandRateLabel(paid, dim.noun);
+    line.unit = "/ month";
+    line.prefix = dim.bands.mode === "volume" ? "Volume pricing, from" : "Usage in bands, from";
+    line.bands = dim.bands;
+    line.noun = dim.noun;
+    return line;
+  }
   if (metered && dim.included > 0) {
     line.prefix = `First ${dim.included.toLocaleString()} ${unitForCount(dim.noun, dim.included)} included, then`;
   }
@@ -116,13 +153,35 @@ const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean
       <span className="text-xs text-muted">{line.unit}</span>
       {line.metered && <Badge variant="neutral">Usage-based</Badge>}
     </div>
+    {line.bands && (
+      <div className="mt-2">
+        <MeteredBandTable
+          bands={line.bands}
+          noun={line.noun ?? "unit"}
+          highlight={line.trialBand}
+        />
+      </div>
+    )}
   </div>
 );
 
 // A plan's price: a base fee leads as the headline, else the first priced dimension is promoted; the
 // remaining priced dimensions list below. A metered dimension renders with its usage-based framing.
-const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV2Cadence }) => {
+const PlanPricing = ({
+  plan,
+  cadence,
+  trialUsage
+}: {
+  plan: BillingV2Plan;
+  cadence: BillingV2Cadence;
+  trialUsage?: Record<string, number>;
+}) => {
   const dims = plan.dims ?? [];
+  // The trial's position is found in the bands shown here, which can differ from the pinned ones.
+  const withTrialBand = (key: string, line: PriceLine): PriceLine =>
+    line.bands && trialUsage?.[key] !== undefined
+      ? { ...line, trialBand: bandIndexFor(line.bands, trialUsage[key]) }
+      : line;
 
   // Render at a cadence the plan actually prices. A single-cadence plan (e.g. annual-only) shown at the
   // sheet's default "monthly" would read "$0 / mo", so fall back to the cadence that has real pricing.
@@ -145,7 +204,7 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
     : null;
   let usageDims = dims;
   if (!headline && dims.length > 0) {
-    headline = dimPriceLine(dims[0], cad, "headline");
+    headline = withTrialBand(dims[0].key, dimPriceLine(dims[0], cad, "headline"));
     usageDims = dims.slice(1);
   }
 
@@ -155,7 +214,7 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
 
   const usageLines = usageDims.map((dim) => ({
     key: dim.key,
-    line: dimPriceLine(dim, cad, "usage")
+    line: withTrialBand(dim.key, dimPriceLine(dim, cad, "usage"))
   }));
 
   return (
@@ -189,6 +248,8 @@ type PlanCardProps = {
   plan: BillingV2Plan;
   cadence: BillingV2Cadence;
   isCurrent: boolean;
+  // Current plan in a free trial only: the band each metered dimension's usage has reached.
+  trialUsage?: Record<string, number>;
   entitled: boolean;
   canChangeCommitment: boolean;
   // Whether a commitment already exists, so the CTA reads "Change" vs "Set" commitment.
@@ -207,6 +268,7 @@ const PlanCard = ({
   plan,
   cadence,
   isCurrent,
+  trialUsage,
   entitled,
   canChangeCommitment,
   hasCommitment,
@@ -355,7 +417,7 @@ const PlanCard = ({
         {isCustom ? (
           <span className="text-2xl font-medium text-foreground">Custom</span>
         ) : (
-          <PlanPricing plan={plan} cadence={cardCadence} />
+          <PlanPricing plan={plan} cadence={cardCadence} trialUsage={trialUsage} />
         )}
       </div>
     </div>
@@ -384,7 +446,15 @@ const CurrentUsageCard = ({
       {dims.length > 0 && (
         <div className="flex flex-col gap-3">
           {dims.map((dim) => (
-            <DimensionMeter key={dim.key} dim={dim} color={color} />
+            <div key={dim.key} className="flex flex-col gap-1">
+              <DimensionMeter dim={dim} color={color} />
+              {dim.metered && dim.usage && (
+                <span className="text-xs text-muted">
+                  This period ({dim.usage.periodStart} – {dim.usage.periodEnd})
+                  {meteredUsageCaption(dim) ? `: ${meteredUsageCaption(dim)}` : ""}
+                </span>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -547,6 +617,11 @@ export const ProductSheet = ({
     .sort(byDisplayOrder);
   const currentTier =
     entitlement?.planTier ?? (entitled ? plans.find((plan) => plan.selfServe)?.tier : undefined);
+  const trialUsage = Object.fromEntries(
+    (entitlement?.dimensions ?? [])
+      .filter((dim) => dim.usage?.trial)
+      .map((dim) => [dim.key, dim.used])
+  );
   const gridCols = GRID_COLS[Math.min(plans.length, 3)] ?? GRID_COLS[3];
   const showCompare = Boolean(prod.compare && prod.compare.length > 0 && plans.length > 1);
 
@@ -723,6 +798,7 @@ export const ProductSheet = ({
                       cadence={displayCadence}
                       entitled={entitled}
                       isCurrent={entitled && plan.tier === currentTier}
+                      trialUsage={entitled && plan.tier === currentTier ? trialUsage : undefined}
                       canChangeCommitment={showChangeCommitment}
                       hasCommitment={hasCommitment}
                       selfServe={selfServe}

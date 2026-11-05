@@ -61,6 +61,7 @@ The SDK methods are organized into the following high-level categories:
 5. `environments`: Creates and manages environments.
 6. `folders`: Creates and manages folders.
 7. `kms`: Manages KMS keys and encryption/signing operations.
+8. `agentVault`: Manages [Agent Vault](/documentation/platform/agent-vault/overview) sessions, proxies, access bundles, and delegations.
 
 ### `auth`
 
@@ -95,7 +96,7 @@ client.auth().accessToken("<your-access-token>")
 ```
 
 **Parameters:**
-- `accessToken` (string): The access token to be used for authentication. _This should not include "Bearer"._
+- `accessToken` (string): The access token to be used for authentication. _This shouldn't include "Bearer"._
 
 
 #### AWS IAM
@@ -787,3 +788,668 @@ console.log(publicKey); // Returns the public key string
 
 **Returns:**
 - `string`: The public key in PEM format.
+
+### `agentVault.sessions`
+
+`client.agentVault().sessions` manages [Agent Vault sessions](/documentation/platform/agent-vault/sessions). A session lets an AI agent use the [services](/documentation/platform/agent-vault/services) in one [access bundle](/documentation/platform/agent-vault/access-bundles), the [inline services](/documentation/platform/agent-vault/inline-services) sent with the session, or both, until the session expires or someone revokes it.
+
+What the client can do with sessions depends on the [Agent Vault role](/documentation/platform/agent-vault/access-control#product-membership) of the user or machine identity that the client logs in as:
+
+| Role | Can create sessions with | Can list, get, label, and revoke |
+| --- | --- | --- |
+| **Admin** | Any access bundle (on behalf of a user, [only access bundles that the user can use too](#create-a-session-on-behalf-of-a-user)), and [inline services](#create-a-session-with-inline-services) | Every session |
+| **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the member | The member's own sessions |
+
+<Note>
+  `agentVault` requires `@infisical/sdk` version 5.1.0 or newer.
+</Note>
+
+#### List sessions
+
+```typescript
+import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@infisical/sdk";
+
+const { sessions, totalCount } = await client.agentVault().sessions.list({
+  scope: AgentVaultSessionScope.Mine, // Optional
+  statuses: [AgentVaultSessionStatus.Active], // Optional
+  search: "nightly deploy", // Optional
+  limit: 20, // Optional
+  offset: 0 // Optional
+});
+```
+
+**Parameters:**
+- `options` (object, optional):
+  - `scope` (AgentVaultSessionScope, optional): whose sessions to list, either `AgentVaultSessionScope.Mine` (`"mine"`) for your own sessions or `AgentVaultSessionScope.All` (`"all"`) for every session if you're an admin (defaults to `AgentVaultSessionScope.Mine`)
+  - `statuses` (AgentVaultSessionStatus[], optional): the statuses to include, from `AgentVaultSessionStatus.Active` (`"active"`), `AgentVaultSessionStatus.Revoked` (`"revoked"`), and `AgentVaultSessionStatus.Expired` (`"expired"`) (defaults to all three)
+  - `search` (string, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
+  - `limit` (number, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
+  - `offset` (number, optional): the number of sessions to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultSessionsResponse`: the sessions in `sessions`, and the total number of matching sessions in `totalCount`
+
+#### Get session
+
+```typescript
+const session = await client.agentVault().sessions.get("<session-id>");
+```
+
+**Parameters:**
+- `sessionId` (string): the ID of the session
+
+**Returns:**
+- `AgentVaultSession`: the session
+
+#### Create session
+
+```typescript
+const session = await client.agentVault().sessions.create({
+  accessBundle: "<access-bundle-name>",
+  ttl: "1h", // Optional
+  label: "nightly deploy" // Optional
+});
+```
+
+**Parameters:**
+- `options` (object):
+  - `accessBundle` (string, optional): the name of the access bundle that the agent can use during the session (pass `accessBundle`, `services`, or both)
+  - `services` (AgentVaultInlineServiceInput[], optional): [inline services](#create-a-session-with-inline-services) to send with the session (Agent Vault admins only, up to 20)
+  - `ttl` (string, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`, or to `1h` for a session on behalf of a user)
+  - `label` (string, optional): a short description of what the session is for, such as `nightly deploy` (up to 128 characters, without line breaks, tabs, or invisible characters)
+  - `onBehalfOfUserEmail` (string, optional): the email address of the user that the session is [created on behalf of](#create-a-session-on-behalf-of-a-user) (throws an `InfisicalSDKError` if you also pass `onBehalfOfUserId`)
+  - `onBehalfOfUserId` (string, optional): the ID of the user that the session is created on behalf of (throws an `InfisicalSDKError` if you also pass `onBehalfOfUserEmail`)
+
+**Returns:**
+- `CreatedAgentVaultSession`: the new session, with the session token in `token` (Infisical returns the token only once)
+
+To pass `session.token` to the agent, follow the steps in [Start the agent with the session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token).
+
+#### Create a session on behalf of a user
+
+If the client logs in as a machine identity with a [delegation](/documentation/platform/agent-vault/sessions-on-behalf-of-users#set-up-a-delegation), the client can create sessions on behalf of the users that the delegation covers. For each of those sessions, the proxy uses the user's [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values) instead of the machine identity's.
+
+```typescript
+const session = await client.agentVault().sessions.create({
+  accessBundle: "<access-bundle-name>",
+  onBehalfOfUserEmail: "<user-email>"
+});
+```
+
+- The session can use an access bundle only if both the user and the machine identity [can use the bundle](/documentation/platform/agent-vault/sessions-on-behalf-of-users#what-the-session-can-reach)
+- The session belongs to the machine identity, so the user can't see the session unless they're an Agent Vault admin
+- In each session that the `get`, `list`, `update`, and `revoke` methods return, `onBehalfOf` is the user, or `null` if the session is the machine identity's own
+
+To find the access bundles that a session on behalf of the user can use, pass the user's email address or ID to [`accessBundles.list`](#list-access-bundles). The proxy refuses a session's requests to services that still need the user's personal values, so also pass `requiresSetup: false` to leave out the access bundles with those services.
+
+#### Create a session with inline services
+
+If the client logs in as a user or machine identity with the **Admin** role in Agent Vault, the client can send inline services with a session, instead of or beside an access bundle. Inline services let you pass along credentials that your code already holds, without setting anything up in Agent Vault in advance.
+
+```typescript
+const session = await client.agentVault().sessions.create({
+  ttl: "1h",
+  services: [
+    {
+      type: "http",
+      name: "github",
+      hostPattern: "api.github.com",
+      allowedMethods: ["GET"],
+      credential: { type: "bearer", value: "<github-token>" }
+    }
+  ]
+});
+```
+
+- Each service is an HTTP API (`type: "http"`) or an MCP server (`type: "mcp"`)
+- Credentials, custom header values, and substitution values can't contain text in double braces, such as `{{GITHUB_TOKEN}}`, because inline services can't use [variables](/documentation/platform/agent-vault/variables)
+- A session can have up to 20 inline services, and no two of its services can have the same name or host pattern, including the services in its access bundle
+- If a machine identity creates the session on behalf of a user, the machine identity needs the **Admin** role and the user doesn't, and the inline services don't use the user's personal values
+- In each session that the `create`, `get`, `list`, and `update` methods return, `services` lists the inline services without their secrets
+
+For the fields that each type of service takes, and for when Infisical deletes the services' secrets, see [Inline services](/documentation/platform/agent-vault/inline-services).
+
+#### Update session label
+
+Add, change, or remove a session's label, for example to record what the agent is working on. You can change the label after the session expires or is revoked, unless someone deleted the session's owner or the user that the session was created on behalf of.
+
+```typescript
+const session = await client.agentVault().sessions.update("<session-id>", {
+  label: "support ticket triage"
+});
+```
+
+**Parameters:**
+- `sessionId` (string): the ID of the session
+- `options` (object):
+  - `label` (string | null): the new label, or `null` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters)
+
+**Returns:**
+- `AgentVaultSession`: the updated session
+
+#### Revoke session
+
+Revoke a session when its agent finishes, even if the agent fails. The proxy stops attaching credentials to the session's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+
+If the agent can run longer than the client's access token lasts, log in again before you revoke the session, because the SDK doesn't renew the access token on its own. Set `ttl` close to how long the agent runs, so that the session expires soon after the agent finishes even if revoking the session fails.
+
+```typescript
+const session = await client.agentVault().sessions.create({
+  accessBundle: "<access-bundle-name>",
+  ttl: "1h"
+});
+
+try {
+  await runAgent(session.token); // Your code that starts the agent with the session token
+} finally {
+  await client.agentVault().sessions.revoke(session.id);
+}
+```
+
+**Parameters:**
+- `sessionId` (string): the ID of the session
+
+**Returns:**
+- `Omit<AgentVaultSession, "accessBundle" | "services">`: the revoked session, without its access bundle and inline services (call `get` for them)
+
+### `agentVault.proxies`
+
+`client.agentVault().proxies` manages [Agent Vault proxies](/documentation/platform/agent-vault/proxies). A proxy attaches API credentials to the requests that agents send through it.
+
+To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+
+<Note>
+  `agentVault` requires `@infisical/sdk` version 5.1.0 or newer.
+</Note>
+
+#### List proxies
+
+```typescript
+const { proxies, totalCount } = await client.agentVault().proxies.list({
+  search: "edge", // Optional
+  orderBy: "name", // Optional
+  orderDirection: "asc", // Optional
+  limit: 20, // Optional
+  offset: 0 // Optional
+});
+```
+
+**Parameters:**
+- `options` (object, optional):
+  - `search` (string, optional): text to find in proxy names and descriptions
+  - `orderBy` (string, optional): what to sort the proxies by, `name` or `createdAt` (defaults to `createdAt`)
+  - `orderDirection` (string, optional): the direction to sort in, `asc` or `desc` (defaults to `desc`)
+  - `limit` (number, optional): the maximum number of proxies to return, from 1 to 100 (defaults to `20`)
+  - `offset` (number, optional): the number of proxies to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultProxiesResponse`: the proxies in `proxies`, and the total number of matching proxies in `totalCount`
+
+If the client logs in as a member, the proxies have no `trafficPolicy`, `allowedHosts`, `pollInterval`, or `createdAt`.
+
+#### Create proxy
+
+```typescript
+import { AgentVaultTrafficPolicy } from "@infisical/sdk";
+
+const { proxy, proxyToken } = await client.agentVault().proxies.create({
+  name: "edge-proxy",
+  trafficPolicy: AgentVaultTrafficPolicy.ServiceHosts, // Optional
+  allowedHosts: ["registry.npmjs.org", "registry.yarnpkg.com"], // Optional
+  pollInterval: 60, // Optional
+  description: "Proxy for CI runners" // Optional
+});
+```
+
+**Parameters:**
+- `options` (object):
+  - `name` (string): the name of the proxy, in lowercase letters, numbers, and hyphens (up to 64 characters)
+  - `trafficPolicy` (AgentVaultTrafficPolicy, optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.AnyHost` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.ServiceHosts` (`"service-hosts"`) to refuse requests to hosts that none of the session's services cover (defaults to `AgentVaultTrafficPolicy.AnyHost`)
+  - `allowedHosts` (string[] | string, optional): hosts that agents can reach under `AgentVaultTrafficPolicy.ServiceHosts` even if none of the session's services cover them, as an array or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
+  - `pollInterval` (number, optional): how often, in seconds, the proxy checks its sessions and settings with Infisical, from 10 to 300 (defaults to `60`)
+  - `description` (string, optional): what the proxy is for (up to 256 characters, without line breaks or tabs)
+
+**Returns:**
+- `AgentVaultProxyWithTokenResponse`: the proxy in `proxy`, and its proxy token in `proxyToken` (Infisical returns the token only once)
+
+To start the proxy with the proxy token, run one of the commands in [Create a proxy and start it](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it).
+
+#### Update proxy
+
+The proxy's name, description, and settings that you don't pass stay as they are. If the proxy is running, it applies the changes within one poll interval.
+
+```typescript
+import { AgentVaultTrafficPolicy } from "@infisical/sdk";
+
+const proxy = await client.agentVault().proxies.update("<proxy-id>", {
+  name: "edge-proxy", // Optional
+  trafficPolicy: AgentVaultTrafficPolicy.ServiceHosts, // Optional
+  allowedHosts: ["registry.npmjs.org"], // Optional
+  pollInterval: 30, // Optional
+  description: "Proxy for CI runners" // Optional
+});
+```
+
+**Parameters:**
+- `proxyId` (string): the ID of the proxy
+- `options` (object):
+  - `name` (string, optional): the new name of the proxy
+  - `trafficPolicy` (AgentVaultTrafficPolicy, optional): the new traffic policy
+  - `allowedHosts` (string[] | string, optional): the new exceptions, which replace the current ones, or an empty array or string to remove every exception
+  - `pollInterval` (number, optional): the new poll interval in seconds, from 10 to 300
+  - `description` (string, optional): the new description, or an empty string to remove the description
+
+**Returns:**
+- `AgentVaultProxyWithSettings`: the updated proxy
+
+#### Delete proxy
+
+<Warning>
+  You can't undo deleting a proxy. To stop a proxy temporarily, [revoke its access](#revoke-proxy) instead.
+</Warning>
+
+```typescript
+const { id, name } = await client.agentVault().proxies.delete("<proxy-id>");
+```
+
+**Parameters:**
+- `proxyId` (string): the ID of the proxy
+
+**Returns:**
+- `Pick<AgentVaultProxy, "id" | "name">`: the deleted proxy's `id` and `name`
+
+#### Rotate proxy token
+
+Issue a new proxy token if the current token leaked. Rotating the token also restores a revoked proxy's access. The old token stops working right away. To restart the proxy and its agents, follow the steps in [Rotate a proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token).
+
+```typescript
+const { proxy, proxyToken } = await client.agentVault().proxies.rotateToken("<proxy-id>");
+```
+
+**Parameters:**
+- `proxyId` (string): the ID of the proxy
+
+**Returns:**
+- `AgentVaultProxyWithTokenResponse`: the proxy in `proxy`, and the new proxy token in `proxyToken` (Infisical returns the token only once)
+
+#### Revoke proxy
+
+Revoke a proxy's access if you think a machine that runs the proxy is compromised. The proxy stops attaching credentials to requests until you [rotate its token](#rotate-proxy-token).
+
+```typescript
+const proxy = await client.agentVault().proxies.revoke("<proxy-id>");
+```
+
+**Parameters:**
+- `proxyId` (string): the ID of the proxy
+
+**Returns:**
+- `AgentVaultProxyWithSettings`: the revoked proxy
+
+### `agentVault.accessBundles`
+
+`client.agentVault().accessBundles` manages [Agent Vault access bundles](/documentation/platform/agent-vault/access-bundles) and who they're [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to. An access bundle is a list of services that an agent can use during a session.
+
+To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+
+<Note>
+  `agentVault` requires `@infisical/sdk` version 5.1.0 or newer.
+</Note>
+
+#### List access bundles
+
+```typescript
+const { accessBundles, totalCount } = await client.agentVault().accessBundles.list({
+  search: "release", // Optional
+  requiresSetup: false, // Optional
+  granted: true, // Optional
+  orderBy: "name", // Optional
+  orderDirection: "asc", // Optional
+  limit: 20, // Optional
+  offset: 0 // Optional
+});
+```
+
+**Parameters:**
+- `options` (object, optional):
+  - `search` (string, optional): text to find in access bundle names and descriptions
+  - `requiresSetup` (boolean, optional): `true` to list only the access bundles with services that still need your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), or `false` to list the rest (defaults to listing both)
+  - `granted` (boolean, optional): `true` to list only the access bundles granted to you directly or through a group, or `false` to list the ones you can use only because you're an admin (defaults to listing both)
+  - `onBehalfOfUserEmail` (string, optional): the email address of a user, to list the access bundles that a session on behalf of the user could use (throws an `InfisicalSDKError` if you also pass `onBehalfOfUserId`)
+  - `onBehalfOfUserId` (string, optional): the ID of a user, to list the access bundles that a session on behalf of the user could use (throws an `InfisicalSDKError` if you also pass `onBehalfOfUserEmail`)
+  - `orderBy` (string, optional): what to sort the access bundles by, `name`, `serviceCount`, or `createdAt` (defaults to `createdAt`)
+  - `orderDirection` (string, optional): the direction to sort in, `asc` or `desc` (defaults to `desc`)
+  - `limit` (number, optional): the maximum number of access bundles to return, from 1 to 100 (defaults to `20`)
+  - `offset` (number, optional): the number of access bundles to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultAccessBundlesResponse`: the access bundles in `accessBundles`, and the total number of matching access bundles in `totalCount` (in each access bundle, `servicesRequiringSetup` lists the services that still need your personal values)
+
+If the client logs in as a member, `list` returns only the access bundles granted to the member.
+
+If you pass `onBehalfOfUserEmail` or `onBehalfOfUserId`, the client must log in as a machine identity with a [delegation](/documentation/platform/agent-vault/sessions-on-behalf-of-users#set-up-a-delegation) that covers the user. `list` then returns only the access bundles that both the user and the machine identity can use, and `requiresSetup` and `servicesRequiringSetup` refer to the user's personal values. You can't combine `onBehalfOfUserEmail` or `onBehalfOfUserId` with `granted`.
+
+#### Get access bundle
+
+```typescript
+const accessBundle = await client.agentVault().accessBundles.get("<access-bundle-id>");
+```
+
+**Parameters:**
+- `accessBundleId` (string): the ID of the access bundle
+
+**Returns:**
+- `AgentVaultAccessBundleWithServices`: the access bundle, with its services in `services`
+
+#### Create access bundle
+
+```typescript
+const accessBundle = await client.agentVault().accessBundles.create({
+  name: "release",
+  description: "Release and deploy tools" // Optional
+});
+```
+
+**Parameters:**
+- `options` (object):
+  - `name` (string): the name of the access bundle, in lowercase letters, numbers, and hyphens (up to 64 characters)
+  - `description` (string, optional): what the access bundle is for (up to 256 characters, without line breaks or tabs)
+
+**Returns:**
+- `AgentVaultAccessBundle`: the new access bundle
+
+Infisical grants the new access bundle to you, unless you're in Agent Vault only through a group. The SDK can't add services to an access bundle. To add them in Infisical, see [Services](/documentation/platform/agent-vault/services).
+
+#### Update access bundle
+
+The values that you don't pass stay as they are.
+
+```typescript
+const accessBundle = await client.agentVault().accessBundles.update("<access-bundle-id>", {
+  name: "release-tools", // Optional
+  description: "Release and deploy tools" // Optional
+});
+```
+
+**Parameters:**
+- `accessBundleId` (string): the ID of the access bundle
+- `options` (object):
+  - `name` (string, optional): the new name of the access bundle
+  - `description` (string, optional): the new description, or an empty string to remove the description
+
+**Returns:**
+- `AgentVaultAccessBundle`: the updated access bundle
+
+#### Delete access bundle
+
+When you delete an access bundle, the sessions that use it stop getting credentials for the bundle's services, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes. A session's [inline services](#create-a-session-with-inline-services) keep working, so to stop every credential that a session gets, [revoke the session](#revoke-session).
+
+```typescript
+const accessBundle = await client.agentVault().accessBundles.delete("<access-bundle-id>");
+```
+
+**Parameters:**
+- `accessBundleId` (string): the ID of the access bundle
+
+**Returns:**
+- `AgentVaultAccessBundle`: the deleted access bundle
+
+#### List grantees
+
+List the users, machine identities, and groups that an access bundle is granted to.
+
+```typescript
+import { AgentVaultMemberType } from "@infisical/sdk";
+
+const { members, totalCount } = await client.agentVault().accessBundles.listGrantees("<access-bundle-id>", {
+  actorType: AgentVaultMemberType.User, // Optional
+  search: "jsmith", // Optional
+  limit: 20, // Optional
+  offset: 0 // Optional
+});
+```
+
+**Parameters:**
+- `accessBundleId` (string): the ID of the access bundle
+- `options` (object, optional):
+  - `actorType` (AgentVaultMemberType, optional): `AgentVaultMemberType.User` (`"user"`), `AgentVaultMemberType.MachineIdentity` (`"machineIdentity"`), or `AgentVaultMemberType.Group` (`"group"`), to list only that kind of grantee (defaults to listing all three)
+  - `search` (string, optional): text to find in names, usernames, and email addresses
+  - `limit` (number, optional): the maximum number of grantees to return, from 1 to 100 (defaults to `20`)
+  - `offset` (number, optional): the number of grantees to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultGranteesResponse`: the grantees in `members`, and the total number of matching grantees in `totalCount`
+
+#### List available grantees
+
+List the Agent Vault members that an access bundle isn't granted to yet.
+
+```typescript
+import { AgentVaultMemberType } from "@infisical/sdk";
+
+const { members, totalCount } = await client.agentVault().accessBundles.listAvailableGrantees("<access-bundle-id>", {
+  actorType: AgentVaultMemberType.User, // Optional
+  search: "jsmith", // Optional
+  limit: 20, // Optional
+  offset: 0 // Optional
+});
+```
+
+**Parameters:**
+- `accessBundleId` (string): the ID of the access bundle
+- `options` (object, optional):
+  - `actorType` (AgentVaultMemberType, optional): `AgentVaultMemberType.User` (`"user"`), `AgentVaultMemberType.MachineIdentity` (`"machineIdentity"`), or `AgentVaultMemberType.Group` (`"group"`), to list only that kind of member (defaults to listing all three)
+  - `search` (string, optional): text to find in names, usernames, and email addresses
+  - `limit` (number, optional): the maximum number of members to return, from 1 to 100 (defaults to `20`)
+  - `offset` (number, optional): the number of members to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultMembersResponse`: the members in `members`, and the total number of matching members in `totalCount`
+
+#### Grant access
+
+Grant an access bundle to users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
+
+Each user, machine identity, and group must be a member of Agent Vault. If a user or machine identity is in Agent Vault only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to Agent Vault](/documentation/platform/agent-vault/access-control#adding-members).
+
+```typescript
+const { members, skipped } = await client.agentVault().accessBundles.grant("<access-bundle-id>", {
+  userIds: ["<user-id>"], // Optional
+  machineIdentityIds: ["<machine-identity-id>"], // Optional
+  groupIds: ["<group-id>"] // Optional
+});
+```
+
+**Parameters:**
+- `accessBundleId` (string): the ID of the access bundle
+- `options` (object):
+  - `userIds` (string[], optional): the IDs of the users to grant the access bundle to
+  - `machineIdentityIds` (string[], optional): the IDs of the machine identities to grant the access bundle to
+  - `groupIds` (string[], optional): the IDs of the groups to grant the access bundle to
+
+**Returns:**
+- `GrantAgentVaultAccessBundleResponse`: the new grants in `members`, and the users, machine identities, and groups that already had the access bundle in `skipped`
+
+#### Revoke access
+
+Revoke an access bundle from users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
+
+- If someone with the **Member** role no longer has any grant on the access bundle, the proxy stops attaching the bundle's credentials to their sessions and to the sessions that machine identities created on their behalf, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes (a session's inline services keep working, so to stop every credential, [revoke the session](#revoke-session))
+- Admins can use every access bundle without a grant, so their sessions keep getting credentials after you revoke their grants (to stop one of their agents, [revoke its session](#revoke-session))
+
+```typescript
+const { members, skipped } = await client.agentVault().accessBundles.revoke("<access-bundle-id>", {
+  userIds: ["<user-id>"], // Optional
+  machineIdentityIds: ["<machine-identity-id>"], // Optional
+  groupIds: ["<group-id>"] // Optional
+});
+```
+
+**Parameters:**
+- `accessBundleId` (string): the ID of the access bundle
+- `options` (object):
+  - `userIds` (string[], optional): the IDs of the users to revoke the access bundle from
+  - `machineIdentityIds` (string[], optional): the IDs of the machine identities to revoke the access bundle from
+  - `groupIds` (string[], optional): the IDs of the groups to revoke the access bundle from
+
+**Returns:**
+- `RevokeAgentVaultAccessBundleResponse`: the revoked grants in `members`, and the users, machine identities, and groups that didn't have the access bundle in `skipped`
+
+### `agentVault.delegations`
+
+`client.agentVault().delegations` manages [delegations](/documentation/platform/agent-vault/sessions-on-behalf-of-users), which let a machine identity [create sessions on behalf of users](#create-a-session-on-behalf-of-a-user).
+
+To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
+
+<Note>
+  `agentVault` requires `@infisical/sdk` version 5.1.0 or newer.
+</Note>
+
+#### List delegations
+
+```typescript
+const { delegations, totalCount } = await client.agentVault().delegations.list({
+  machineIdentityIds: ["<machine-identity-id>"], // Optional
+  limit: 100, // Optional
+  offset: 0 // Optional
+});
+```
+
+**Parameters:**
+- `options` (object, optional):
+  - `machineIdentityIds` (string[], optional): the IDs of the machine identities whose delegations to list (up to 100)
+  - `limit` (number, optional): the maximum number of delegations to return, from 1 to 100 (defaults to `100`)
+  - `offset` (number, optional): the number of delegations to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultDelegationsResponse`: the delegations in `delegations`, and the total number of matching delegations in `totalCount` (without `missingAccessBundles`, which `get` returns)
+
+#### Get delegation
+
+Get which users a machine identity can create sessions on behalf of. If the machine identity has no delegation, `get` throws an `InfisicalSDKRequestError` whose `statusCode` is `404`.
+
+```typescript
+const delegation = await client.agentVault().delegations.get("<machine-identity-id>");
+```
+
+**Parameters:**
+- `machineIdentityId` (string): the ID of the machine identity
+
+**Returns:**
+- `AgentVaultDelegationDetail`: the delegation, including `missingAccessBundles`
+
+`missingAccessBundles` lists the access bundles that the delegation's users can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both the user and the machine identity can use, so the machine identity can't create sessions with those access bundles. If a machine identity without the **Admin** role gets its own delegation, `missingAccessBundles` is empty.
+
+#### Set delegation
+
+Set which users a machine identity can create sessions on behalf of. The new delegation replaces any delegation that the machine identity has.
+
+```typescript
+import { AgentVaultDelegationScope } from "@infisical/sdk";
+
+const delegation = await client.agentVault().delegations.set("<machine-identity-id>", {
+  scope: AgentVaultDelegationScope.Selected,
+  userIds: ["<user-id>"], // Optional
+  groupIds: ["<group-id>"] // Optional
+});
+```
+
+**Parameters:**
+- `machineIdentityId` (string): the ID of the machine identity, which must be a member of Agent Vault
+- `options` (object):
+  - `scope` (AgentVaultDelegationScope): either `AgentVaultDelegationScope.Selected` (`"selected"`) for only the users and groups that you pass, or `AgentVaultDelegationScope.AllMembers` (`"all-members"`) for every Agent Vault member, admins included
+  - `userIds` (string[], optional): with `AgentVaultDelegationScope.Selected`, the IDs of the users that the machine identity can act on behalf of (up to 100)
+  - `groupIds` (string[], optional): with `AgentVaultDelegationScope.Selected`, the IDs of the groups whose members the machine identity can act on behalf of (up to 100)
+
+**Returns:**
+- `AgentVaultDelegationDetail`: the delegation, with `missingAccessBundles`
+
+With `AgentVaultDelegationScope.Selected`, pass at least one user or group. With `AgentVaultDelegationScope.AllMembers`, pass no users or groups. To stop the machine identity from acting on behalf of anyone, [delete the delegation](#delete-delegation).
+
+Each user and group must be a member of Agent Vault. If a user is in Agent Vault only through a group, pass the group instead.
+
+#### List available users and groups
+
+List the Agent Vault users and groups that you can add to a machine identity's delegation.
+
+```typescript
+import { AgentVaultMemberType } from "@infisical/sdk";
+
+const { members, totalCount } = await client.agentVault().delegations.listAvailableSubjects("<machine-identity-id>", {
+  actorType: AgentVaultMemberType.User, // Optional
+  search: "jsmith", // Optional
+  limit: 20, // Optional
+  offset: 0 // Optional
+});
+```
+
+**Parameters:**
+- `machineIdentityId` (string): the ID of the machine identity
+- `options` (object, optional):
+  - `actorType` (AgentVaultMemberType, optional): either `AgentVaultMemberType.User` (`"user"`) to list only users or `AgentVaultMemberType.Group` (`"group"`) to list only groups (defaults to listing both)
+  - `search` (string, optional): text to find in user names, usernames, email addresses, and group names
+  - `limit` (number, optional): the maximum number of users and groups to return, from 1 to 100 (defaults to `20`)
+  - `offset` (number, optional): the number of users and groups to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultMembersResponse`: the users and groups in `members`, and the total number of matching users and groups in `totalCount`
+
+#### Add users and groups
+
+Add users and groups to a machine identity's delegation. The users and groups that are already in the delegation stay in it. Pass at least one ID.
+
+- If the machine identity has no delegation, `addSubjects` creates one with the `AgentVaultDelegationScope.Selected` scope
+- If the delegation covers all members, you can't add users or groups to it
+
+```typescript
+const delegation = await client.agentVault().delegations.addSubjects("<machine-identity-id>", {
+  userIds: ["<user-id>"], // Optional
+  groupIds: ["<group-id>"] // Optional
+});
+```
+
+**Parameters:**
+- `machineIdentityId` (string): the ID of the machine identity
+- `options` (object):
+  - `userIds` (string[], optional): the IDs of the users to add (up to 100)
+  - `groupIds` (string[], optional): the IDs of the groups to add (up to 100)
+
+**Returns:**
+- `AgentVaultDelegationDetail`: the delegation after the change, with `missingAccessBundles`
+
+#### Remove users and groups
+
+Remove users and groups from a machine identity's delegation. Pass at least one ID.
+
+- If the delegation no longer covers a user, the proxy refuses the sessions that the machine identity created on behalf of the user until the delegation covers the user again (to end those sessions for good, [revoke them](#revoke-session))
+- If you remove the last user or group, Infisical deletes the delegation
+
+```typescript
+const delegation = await client.agentVault().delegations.removeSubjects("<machine-identity-id>", {
+  userIds: ["<user-id>"], // Optional
+  groupIds: ["<group-id>"] // Optional
+});
+```
+
+**Parameters:**
+- `machineIdentityId` (string): the ID of the machine identity
+- `options` (object):
+  - `userIds` (string[], optional): the IDs of the users to remove (up to 100)
+  - `groupIds` (string[], optional): the IDs of the groups to remove (up to 100)
+
+**Returns:**
+- `AgentVaultDelegationDetail | null`: the delegation after the change, with `missingAccessBundles`, or `null` if Infisical deleted the delegation
+
+#### Delete delegation
+
+Stop a machine identity from creating sessions on behalf of users. The proxy refuses the sessions that the machine identity already created on behalf of users until a delegation covers those users again. To end those sessions for good, [revoke them](#revoke-session).
+
+```typescript
+const delegation = await client.agentVault().delegations.delete("<machine-identity-id>");
+```
+
+**Parameters:**
+- `machineIdentityId` (string): the ID of the machine identity
+
+**Returns:**
+- `AgentVaultDelegation`: the deleted delegation, without `missingAccessBundles`

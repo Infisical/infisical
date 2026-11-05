@@ -56,6 +56,7 @@ export type TDigiCertOrderMetadata = {
     lastCheckStatus?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    previousCertificateId?: number;
   };
 };
 
@@ -66,7 +67,7 @@ export type TProcessDigiCertRequestDeps = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TDigiCertCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
-  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
+  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate" | "cancelReissue">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
@@ -138,18 +139,6 @@ export const processDigiCertPendingValidationRequest = async (
   const parsed = parseResult.data as TDigiCertOrderMetadata;
 
   const age = Date.now() - new Date(parsed.digicert.orderPlacedAt).getTime();
-  if (age >= DIGICERT_VALIDATION_TIMEOUT_MS) {
-    await deps.certificateRequestService.updateCertificateRequestStatus({
-      certificateRequestId: request.id,
-      status: CertificateRequestStatus.FAILED,
-      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
-      originalCertificateId: parsed.digicert.originalCertificateId,
-      errorMessage: "Validation timed out after 24h"
-    });
-    logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
-    return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };
-  }
-
   const client = await getOrCreateClient(request, deps, clientCache);
 
   const orderInfo = await client.getOrder(parsed.digicert.orderId);
@@ -157,15 +146,16 @@ export const processDigiCertPendingValidationRequest = async (
   let newCertificateId = orderInfo.certificate?.id ?? parsed.digicert.certificateId;
   let lastCheckStatus: string | undefined;
 
-  if (orderStatus === DigiCertOrderStatus.Pending) {
+  if (orderStatus === DigiCertOrderStatus.Pending || orderStatus === DigiCertOrderStatus.ReissuePending) {
     const checkResult = await client.checkValidation(parsed.digicert.orderId);
     orderStatus = checkResult.order_status?.toLowerCase() ?? orderStatus;
     newCertificateId = checkResult.certificate_id ?? newCertificateId;
     lastCheckStatus = checkResult.dcv_status ?? orderStatus;
   }
 
+  const isAwaitingReissue = newCertificateId === parsed.digicert.previousCertificateId;
   const isFinalisable = DIGICERT_FINAL_ISSUED_STATUSES.some((status) => status === orderStatus);
-  if (isFinalisable && newCertificateId) {
+  if (isFinalisable && newCertificateId && !isAwaitingReissue) {
     const { certificateId } = await deps.digicertFns.fetchAndAttachIssuedCertificate({
       caId: request.caId,
       certificateRequest: {
@@ -251,6 +241,28 @@ export const processDigiCertPendingValidationRequest = async (
       orderStatus,
       reason: `DigiCert order ${orderStatus}`
     };
+  }
+
+  if (age >= DIGICERT_VALIDATION_TIMEOUT_MS) {
+    let errorMessage = "Validation timed out after 24h";
+    if (parsed.digicert.previousCertificateId !== undefined) {
+      const isReissueCanceled = await deps.digicertFns.cancelReissue({
+        caId: request.caId,
+        orderId: parsed.digicert.orderId
+      });
+      errorMessage = isReissueCanceled
+        ? `DigiCert didn't finish the reissue on order ${parsed.digicert.orderId} within 24 hours, so it was canceled. Submit a new request to reissue again.`
+        : `DigiCert didn't finish the reissue on order ${parsed.digicert.orderId} within 24 hours. Cancel the reissue in DigiCert CertCentral and submit a new request. Finishing it in CertCentral won't bring its certificate into Infisical.`;
+    }
+    await deps.certificateRequestService.updateCertificateRequestStatus({
+      certificateRequestId: request.id,
+      status: CertificateRequestStatus.FAILED,
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.digicert.originalCertificateId,
+      errorMessage
+    });
+    logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
+    return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };
   }
 
   await deps.certificateRequestDAL.updateById(request.id, {

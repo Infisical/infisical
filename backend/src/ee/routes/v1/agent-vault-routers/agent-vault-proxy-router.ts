@@ -27,7 +27,9 @@ const ProxyMemberViewSchema = z.object({
 });
 
 const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
-  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  trafficPolicy: z
+    .enum([AgentVaultTrafficPolicy.AnyHost, AgentVaultTrafficPolicy.ServiceHosts])
+    .describe(AGENT_VAULT.PROXY.trafficPolicyRead),
   allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval),
   createdAt: z.date().describe(AGENT_VAULT.PROXY.createdAt)
@@ -76,6 +78,40 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         ...req.query
+      })
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:proxyId/ca",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultProxyCa",
+      description:
+        "Get the certificate authority an Agent Vault proxy serves. Returns 409 when the proxy serves its own certificate authority, which Infisical does not hold.",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({
+        proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId)
+      }),
+      response: {
+        200: z.object({
+          ca: z
+            .object({
+              certificate: z.string().describe(AGENT_VAULT.PROXY.rootCaCertificatePem),
+              fingerprint: z.string().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
+              expiresAt: z.date().describe(AGENT_VAULT.PROXY.rootCaExpiresAt)
+            })
+            .describe(AGENT_VAULT.PROXY.ca)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultProxy.getProxyCa({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId
       })
   });
 
@@ -179,7 +215,14 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_UPDATE,
-          metadata: { proxyId: proxy.id, ...req.body, name: proxy.name }
+          // The proxy's name as it stands after the change, so a settings-only update still names it, and the policy as
+          // the proxy now reports it, so an audit log never shows the old name.
+          metadata: {
+            proxyId: proxy.id,
+            ...req.body,
+            name: proxy.name,
+            ...(req.body.trafficPolicy && { trafficPolicy: proxy.trafficPolicy })
+          }
         }
       });
 

@@ -1300,6 +1300,7 @@ export type THoneyTokenCreatedEvent = {
   properties: {
     honeyTokenId: string;
     type: string;
+    managedBy: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -1337,6 +1338,7 @@ export type THoneyTokenTriggeredEvent = {
   event: PostHogEventTypes.HoneyTokenTriggered;
   properties: {
     type: string;
+    managedBy: string;
   };
 };
 
@@ -2565,7 +2567,9 @@ export type TAgentVaultSessionCreatedEvent = {
   event: PostHogEventTypes.AgentVaultSessionCreated;
   properties: TAgentVaultEventBase & {
     sessionId: string;
-    accessBundleId: string;
+    // Null for a session started with inline services only.
+    accessBundleId: string | null;
+    inlineServiceCount: number;
     ttlSeconds: number | null;
     isOnBehalfOfUser: boolean;
   };

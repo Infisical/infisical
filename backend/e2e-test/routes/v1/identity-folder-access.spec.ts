@@ -13,12 +13,16 @@ import { removeIdentitiesFromGroup } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
 import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
+import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { userDALFactory } from "@app/services/user/user-dal";
 
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
@@ -222,7 +226,12 @@ describe("Identity folder access CRUD", () => {
         groupDAL: groupDALFactory(testDb),
         identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-        eventEmitter: { emit: async () => {} }
+        eventEmitter: { emit: async () => {} },
+        membershipRoleDAL: membershipRoleDALFactory(testDb),
+        pamAccountDAL: pamAccountDALFactory(testDb),
+        pamSessionDAL: pamSessionDALFactory(testDb),
+        userDAL: userDALFactory(testDb),
+        gatewayV2Service: { getPAMConnectionDetails: () => Promise.reject(new Error("unexpected gateway call")) }
       };
 
       const [identity] = await testDb(TableName.Identity)

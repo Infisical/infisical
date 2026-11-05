@@ -34,6 +34,7 @@ import {
   CaCertDetailsSection,
   CaCertificatesSection,
   CaCrlsSection,
+  CaCrossSignedCertSection,
   CaDetailsSection,
   CaGenerateRootCertModal,
   CaIssuerUrlSection,
@@ -185,6 +186,7 @@ const Page = () => {
                       caName={data.name}
                       handlePopUpOpen={handlePopUpOpen}
                     />
+                    <CaCrossSignedCertSection caId={data.id} />
                     <CaIssuerUrlSection caId={data.id} />
                     <CaCrlsSection caId={data.id} />
                     <CaRevocationSection caId={data.id} />
