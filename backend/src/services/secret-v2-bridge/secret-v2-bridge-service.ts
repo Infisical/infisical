@@ -27,6 +27,7 @@ import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secre
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
+import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -77,14 +78,12 @@ import {
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
 import { createSecretBlindIndexer } from "./secret-blind-index-fns";
-import { compressSecretCachePayload, decompressSecretCachePayload } from "./secret-cache-compression";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
   LARGE_SECRET_CACHE_LOG_BYTES,
   MAX_SECRET_CACHE_BYTES,
   SECRET_DAL_TTL,
-  SecretServiceCacheKeys,
   TSecretV2BridgeDALFactory
 } from "./secret-v2-bridge-dal";
 import {
@@ -1480,10 +1479,10 @@ export const secretV2BridgeServiceFactory = ({
       secretPath: path
     });
 
-    const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
+    const cachedSecretDalVersion = await keyStore.pgGetIntItem(KeyStorePrefixes.SecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
 
-    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
+    const cacheKey = KeyStorePrefixes.SecretsServiceLayerCache({
       projectId,
       version: secretDalVersion,
       actorId,
@@ -1502,9 +1501,7 @@ export const secretV2BridgeServiceFactory = ({
     if (encryptedCachedSecrets) {
       try {
         await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
-        const cachedSecrets = await decompressSecretCachePayload(
-          secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets })
-        );
+        const cachedSecrets = await decompressZstd(secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets }));
         // Decompressed bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
         // the same ETag without re-serializing the object.
         const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
@@ -1758,7 +1755,7 @@ export const secretV2BridgeServiceFactory = ({
       const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
       const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
       const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
-        plainText: await compressSecretCachePayload(serializedPayload)
+        plainText: await compressZstd(serializedPayload)
       }).cipherTextBlob;
       const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
       const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
@@ -1864,7 +1861,7 @@ export const secretV2BridgeServiceFactory = ({
     const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
     const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
     const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
-      plainText: await compressSecretCachePayload(serializedPayload)
+      plainText: await compressZstd(serializedPayload)
     }).cipherTextBlob;
     const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
     const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;

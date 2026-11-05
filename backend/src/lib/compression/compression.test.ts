@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compressSecretCachePayload, decompressSecretCachePayload } from "./secret-cache-compression";
+import { compressZstd, decompressZstd } from "./index";
 
 const buildPayload = (count: number) =>
   Buffer.from(
@@ -17,20 +17,20 @@ const buildPayload = (count: number) =>
     })
   );
 
-describe("secret cache compression", () => {
+describe("zstd compression", () => {
   it("returns the exact serialized bytes after a round trip", async () => {
     const payload = buildPayload(500);
 
-    const restored = await decompressSecretCachePayload(await compressSecretCachePayload(payload));
+    const restored = await decompressZstd(await compressZstd(payload));
 
-    // The cache-hit ETag is a hash of these bytes, so they must match the miss path byte for byte.
+    // Callers that hash the original bytes (the secret cache ETag) need them back byte for byte.
     expect(restored.equals(payload)).toBe(true);
   });
 
-  it("stores a secrets payload in a fraction of its serialized size", async () => {
+  it("shrinks a repetitive JSON payload to a fraction of its size", async () => {
     const payload = buildPayload(2000);
 
-    const compressed = await compressSecretCachePayload(payload);
+    const compressed = await compressZstd(payload);
 
     expect(compressed.byteLength).toBeLessThan(payload.byteLength / 4);
   });
@@ -38,12 +38,12 @@ describe("secret cache compression", () => {
   it("round-trips an empty payload", async () => {
     const payload = Buffer.from(JSON.stringify({ secrets: [], imports: [] }));
 
-    const restored = await decompressSecretCachePayload(await compressSecretCachePayload(payload));
+    const restored = await decompressZstd(await compressZstd(payload));
 
     expect(restored.equals(payload)).toBe(true);
   });
 
   it("rejects bytes that are not a zstd frame", async () => {
-    await expect(decompressSecretCachePayload(Buffer.from("not compressed"))).rejects.toThrow();
+    await expect(decompressZstd(Buffer.from("not compressed"))).rejects.toThrow();
   });
 });

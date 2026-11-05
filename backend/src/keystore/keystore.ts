@@ -55,6 +55,9 @@ export const PgSqlLock = {
   AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`)
 } as const;
 
+// Shared by the secret list cache keys and the pattern the admin cache wipe deletes, so they cannot drift apart.
+export const SECRET_MANAGER_CACHE_PREFIX = "secret-manager";
+
 // all the key prefixes used must be set here to avoid conflict
 export const KeyStorePrefixes = {
   SecretReplication: "secret-replication-import-lock",
@@ -173,6 +176,17 @@ export const KeyStorePrefixes = {
   TelemetryAuditLogsViewed: (orgId: string, distinctId: string) =>
     `telemetry-audit-logs-viewed:${orgId}:${distinctId}` as const,
   TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
+  SecretDalVersion: (projectId: string) =>
+    `${SECRET_MANAGER_CACHE_PREFIX}:${projectId}:secrets_v2-dal-version` as const,
+  SecretsServiceLayerCache: (arg: {
+    projectId: string;
+    version: number;
+    actorId: string;
+    permissionFingerprint: string;
+    permissionHash: string;
+    requestParamsHash: string;
+  }) =>
+    `${SECRET_MANAGER_CACHE_PREFIX}:${arg.projectId}:secrets_v2-dal:v${arg.version}:get-secrets-service-layer-zstd:${arg.actorId}-${arg.permissionFingerprint}-${arg.permissionHash}-${arg.requestParamsHash}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
   SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
     `secret-perm-fingerprint:${projectId}:${actorType}:${actorId}` as const,
@@ -218,7 +232,7 @@ export const KeyStorePrefixes = {
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
-  SecretManagerCachePattern: "secret-manager:*",
+  SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
   // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.

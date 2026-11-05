@@ -2,7 +2,7 @@ import { Redis } from "ioredis";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
-import { SecretServiceCacheKeys } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import { SECRET_MANAGER_CACHE_PREFIX } from "@app/keystore/keystore";
 
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { createFolder } from "../../testUtils/folders";
@@ -31,7 +31,7 @@ const listSecrets = (dto: { projectId: string; authToken: string; includeImports
   });
 
 const cachedListKeys = (projectId: string) =>
-  testRedis.keys(`${SecretServiceCacheKeys.productKey}:${projectId}:*get-secrets-service-layer-zstd:*`);
+  testRedis.keys(`${SECRET_MANAGER_CACHE_PREFIX}:${projectId}:*get-secrets-service-layer-zstd:*`);
 
 // Deleting the row directly skips cache invalidation, so only a response served from the cache still has it.
 const deleteSecretRowBehindCache = (projectId: string, folderName: string, key: string) =>
@@ -83,7 +83,7 @@ describe("Secret list cache", () => {
   });
 
   afterEach(async () => {
-    const keys = await testRedis.keys(`${SecretServiceCacheKeys.productKey}:${projectId}:*`);
+    const keys = await testRedis.keys(`${SECRET_MANAGER_CACHE_PREFIX}:${projectId}:*`);
     if (keys.length) await testRedis.del(...keys);
     await cleanup();
   });
