@@ -71,7 +71,7 @@ type TSecretReplicationServiceFactoryDep = {
   >;
   secretImportDAL: Pick<
     TSecretImportDALFactory,
-    "find" | "updateById" | "findByFolderIds" | "findByIds" | "findByIdForUpdate"
+    "find" | "updateById" | "findByFolderIds" | "findByIds" | "lockWithFolderAgainstDelete"
   >;
   folderDAL: Pick<
     TSecretFolderDALFactory,
@@ -215,8 +215,8 @@ export const secretReplicationServiceFactory = ({
   // Finds or creates the reserved folder a replication import writes into. Returns undefined when the
   // import is gone: a job lists its imports before it waits on the replication lock, so the import can be
   // deleted (and its reserved folder with it) by the time the job reaches it, and creating the folder then
-  // would leave an orphan that nothing removes. The import row stays locked while the folder is created,
-  // so a delete that runs at the same time waits for this transaction and then removes the new folder.
+  // would leave an orphan that nothing removes. The import stays locked while the folder is created, so a
+  // delete that runs at the same time waits for this transaction and then removes the new folder.
   const $findOrCreateReplicationFolder = async (
     destinationSecretImportId: string,
     destinationFolder: { id: string; envId: string },
@@ -227,7 +227,10 @@ export const secretReplicationServiceFactory = ({
     if (existingFolder) return existingFolder;
 
     return folderDAL.transaction(async (tx) => {
-      const destinationSecretImport = await secretImportDAL.findByIdForUpdate(destinationSecretImportId, tx);
+      const destinationSecretImport = await secretImportDAL.lockWithFolderAgainstDelete(
+        { importId: destinationSecretImportId, folderId: destinationFolder.id, envId: destinationFolder.envId },
+        tx
+      );
       if (!destinationSecretImport) return undefined;
 
       const folder = await folderDAL.findOne({ parentId: destinationFolder.id, name, isReserved: true }, tx);
@@ -429,7 +432,7 @@ export const secretReplicationServiceFactory = ({
             if (!destinationReplicationFolder) {
               logger.info(
                 { jobId: job.id, importId: destinationSecretImport.id },
-                "Skipping replication to an import that has been deleted."
+                `Skipping replication to an import that has been deleted [jobId=${job.id}] [importId=${destinationSecretImport.id}]`
               );
               // eslint-disable-next-line
               continue;
@@ -743,7 +746,7 @@ export const secretReplicationServiceFactory = ({
           if (!destinationReplicationFolder) {
             logger.info(
               { jobId: job.id, importId: destinationSecretImport.id },
-              "Skipping replication to an import that has been deleted."
+              `Skipping replication to an import that has been deleted [jobId=${job.id}] [importId=${destinationSecretImport.id}]`
             );
             // eslint-disable-next-line
             continue;

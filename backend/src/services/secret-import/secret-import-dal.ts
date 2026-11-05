@@ -120,13 +120,24 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Row-locks the import for the rest of tx, so a concurrent delete of it waits for tx to commit.
-  const findByIdForUpdate = async (id: string, tx: Knex) => {
+  // Holds the import, its folder and the folder's environment against deletion until tx ends, and
+  // returns undefined if any of them is already gone. Deleting an environment or a folder locks its row
+  // and then cascades down to the imports, so the locks here go environment, folder, import: taking the
+  // import first would let a concurrent delete of its folder deadlock with tx. KEY SHARE conflicts only
+  // with deletes and key updates, so position and replication-status updates are not blocked.
+  const lockWithFolderAgainstDelete = async (
+    { importId, folderId, envId }: { importId: string; folderId: string; envId: string },
+    tx: Knex
+  ) => {
     try {
-      const doc = await tx(TableName.SecretImport).where({ id }).forUpdate().first();
+      const env = await tx(TableName.Environment).where({ id: envId }).forKeyShare().first("id");
+      if (!env) return undefined;
+      const folder = await tx(TableName.SecretFolder).where({ id: folderId }).forKeyShare().first("id");
+      if (!folder) return undefined;
+      const doc = await tx(TableName.SecretImport).where({ id: importId, folderId }).forKeyShare().first();
       return doc as TSecretImports | undefined;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find by id for update" });
+      throw new DatabaseError({ error, name: "Lock with folder against delete" });
     }
   };
 
@@ -600,7 +611,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     ...secretImportOrm,
     find,
     findById,
-    findByIdForUpdate,
+    lockWithFolderAgainstDelete,
     findByIds,
     findIncludingExpired,
     findByFolderIds,
