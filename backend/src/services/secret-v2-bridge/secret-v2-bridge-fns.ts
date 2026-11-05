@@ -938,7 +938,8 @@ export const fnUpdateSecretLinkedReferences = async ({
     const { localReferences, nestedReferences } = getAllSecretReferences(originalValue);
 
     // checkk if this secret references the renamed secret at all (either locally or nested)
-    const hasLocalRef = localReferences.includes(oldSecretKey);
+    // A local reference resolves in its own folder, so only secrets beside the renamed one point at it.
+    const hasLocalRef = secretToUpdate.folderId === folderId && localReferences.includes(oldSecretKey);
     const hasNestedRef = nestedReferences.some(
       (ref) => ref.environment === environment && ref.secretPath === secretPath && ref.secretKey === oldSecretKey
     );
