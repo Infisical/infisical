@@ -49,7 +49,7 @@ describe("usageMeteringService.recordMeteringEvents", () => {
 
     svc.recordMeteringEvents(ORG_ID, [
       { eventId: "e1", dimensionKey: "pam_session_minutes", quantity: 3, occurredAt },
-      { eventId: "e2", dimensionKey: "secret_syncs" }
+      { eventId: "e2", dimensionKey: "secret_syncs", quantity: 1 }
     ]);
     await flushAsync();
 
@@ -57,7 +57,7 @@ describe("usageMeteringService.recordMeteringEvents", () => {
     const [name, job, payload, opts] = queue.mock.calls[0] as unknown as [
       QueueName,
       QueueJobs,
-      { orgId: string; events: { eventId: string; occurredAt: string; quantity?: number }[] },
+      { orgId: string; events: { eventId: string; occurredAt: string; quantity: number }[] },
       Record<string, unknown>
     ];
     expect(name).toBe(QueueName.MeteringEvent);
@@ -79,7 +79,7 @@ describe("usageMeteringService.recordMeteringEvents", () => {
     const { svc, queue } = buildService(true);
     svc.recordMeteringEvents(
       ORG_ID,
-      Array.from({ length: 2500 }, (_, i) => ({ eventId: `e${i}`, dimensionKey: "secret_syncs" }))
+      Array.from({ length: 2500 }, (_, i) => ({ eventId: `e${i}`, dimensionKey: "secret_syncs", quantity: 1 }))
     );
     await flushAsync();
 
@@ -96,7 +96,9 @@ describe("usageMeteringService.recordMeteringEvents", () => {
         throw new Error("redis down");
       })
     );
-    expect(() => svc.recordMeteringEvents(ORG_ID, [{ eventId: "e1", dimensionKey: "secret_syncs" }])).not.toThrow();
+    expect(() =>
+      svc.recordMeteringEvents(ORG_ID, [{ eventId: "e1", dimensionKey: "secret_syncs", quantity: 1 }])
+    ).not.toThrow();
     await flushAsync();
   });
 });
@@ -105,6 +107,7 @@ const makeEvents = (n: number): TUsageEvent[] =>
   Array.from({ length: n }, (_, i) => ({
     event_id: `e${i}`,
     dimension_key: "secret_syncs",
+    quantity: 1,
     occurred_at: "2026-11-05T06:00:00.000Z",
     source: "cloud"
   }));

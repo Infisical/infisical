@@ -917,7 +917,12 @@ export const licenseV2ServiceFactory = ({
     const closingLines = subBilling?.nextChargeAt
       ? (subBilling.lines ?? []).filter((line) => line.currentPeriodEnd === subBilling.nextChargeAt)
       : [];
-    const closingEstimates = closingLines.flatMap((line) =>
+    // A trialing product's usage is rated but never billed, so it adds nothing to the next charge.
+    const trialingProductKeys = new Set(
+      (subscription?.items ?? []).filter((item) => item.isTrialing).map((item) => item.productId)
+    );
+    const billedClosingLines = closingLines.filter((line) => !trialingProductKeys.has(line.productKey));
+    const closingEstimates = billedClosingLines.flatMap((line) =>
       line.estimatedAmountCents === null || line.estimatedAmountCents === undefined ? [] : [line.estimatedAmountCents]
     );
     const closingUsageCents =
@@ -930,7 +935,7 @@ export const licenseV2ServiceFactory = ({
             at: formatShortDate(subBilling.nextChargeAt) ?? "",
             productKeys: [...new Set(closingLines.map((line) => line.productKey))],
             cadence: closingCadences.size === 1 ? [...closingCadences][0] : null,
-            hasUsage: closingLines.some((line) => line.usageBased),
+            hasUsage: billedClosingLines.some((line) => line.usageBased),
             estimatedUsage: closingUsageCents === null ? null : centsToDollars(closingUsageCents)
           }
         : null;

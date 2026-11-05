@@ -22,11 +22,12 @@ type TUsageMeteringServiceFactoryDep = {
 const DEBOUNCE_MS = 5000;
 
 // A metered fact for a sum or count meter. eventId must be stable for the fact (the license server
-// dedups on it); quantity is ignored for a count meter.
+// dedups on it). quantity is required because the server reads a missing one as 0; a count meter
+// ignores it, so pass 1.
 export type TMeteringEventInput = {
   eventId: string;
   dimensionKey: string;
-  quantity?: number;
+  quantity: number;
   occurredAt?: Date;
 };
 

@@ -18,7 +18,7 @@ export type TUsageSnapshot = {
 export type TUsageEvent = {
   event_id: string;
   dimension_key: string;
-  quantity?: number;
+  quantity: number;
   occurred_at: string;
   source: string;
 };

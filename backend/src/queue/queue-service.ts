@@ -656,7 +656,7 @@ export type TQueueJobTypes = {
     name: QueueJobs.MeteringEvent;
     payload: {
       orgId: string;
-      events: { eventId: string; dimensionKey: string; quantity?: number; occurredAt: string }[];
+      events: { eventId: string; dimensionKey: string; quantity: number; occurredAt: string }[];
     };
   };
   [QueueName.IntegrationDeprecationNotice]: {
