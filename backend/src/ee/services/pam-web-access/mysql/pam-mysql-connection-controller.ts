@@ -19,6 +19,9 @@ const ER_QUERY_INTERRUPTED = 1317;
 // MySQL undoes these as a whole when killed; a CALL or EXECUTE keeps the steps it already ran
 const KILLABLE_COMMANDS = new Set(["SELECT", "WITH", "SHOW", "EXPLAIN", "DESCRIBE", "DESC", "TABLE", "VALUES"]);
 
+// extractCommand stops at whitespace, so "SELECT* FROM t" and "(SELECT 1)" need the bare keyword pulled out
+const isKillable = (sql: string) => KILLABLE_COMMANDS.has(/^\(*([A-Z]+)/.exec(extractCommand(sql))?.[1] ?? "");
+
 type TStatementResult =
   | { rows: Record<string, unknown>[]; fields: FieldPacket[]; isTruncated: boolean }
   | { header: mysql.ResultSetHeader };
@@ -77,11 +80,13 @@ const streamStatement = (conn: mysql.Connection, sql: string, cancelQuery?: () =
       })
       // Waiting on the KILL keeps it from landing on the next statement
       .on("error", (err: Error & { errno?: number }) => {
-        if (killRequested && err.errno === ER_QUERY_INTERRUPTED) {
-          void cancelled.then(() => resolve({ rows, fields: resultFields ?? [], isTruncated }));
-        } else {
-          reject(err);
-        }
+        void cancelled.then(() => {
+          if (killRequested && err.errno === ER_QUERY_INTERRUPTED) {
+            resolve({ rows, fields: resultFields ?? [], isTruncated });
+          } else {
+            reject(err);
+          }
+        });
       })
       .on("end", () => {
         void cancelled.then(() => {
@@ -270,7 +275,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
               for (const stmtSql of stmts) {
                 // eslint-disable-next-line no-await-in-loop
                 await conn.query(`SET SESSION sql_select_limit = ${MAX_ROWS + 1}`);
-                const cancelQuery = KILLABLE_COMMANDS.has(extractCommand(stmtSql)) ? cancelRunningQuery : undefined;
+                const cancelQuery = isKillable(stmtSql) ? cancelRunningQuery : undefined;
                 // eslint-disable-next-line no-await-in-loop
                 const result = await queryWithTimeout(() => streamStatement(conn, stmtSql, cancelQuery));
 
