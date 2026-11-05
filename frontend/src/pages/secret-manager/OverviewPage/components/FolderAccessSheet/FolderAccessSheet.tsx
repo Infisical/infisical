@@ -325,11 +325,14 @@ export const FolderAccessSheet = ({
   ) => {
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
-    const scope = isPermissionRecursive ? "this folder and its subfolders" : "this folder";
+    const appliesToSubfolders = actor.access
+      ? actor.access.isPermissionRecursive
+      : isPermissionRecursive;
+    const scope = appliesToSubfolders ? "this folder and its subfolders" : "this folder";
     const onSuccess = () =>
       notifySuccess(
         actor.access
-          ? `Updated ${actor.name} to ${tierLabel} on this folder`
+          ? `Updated ${actor.name} to ${tierLabel} on ${scope}`
           : `Granted ${actor.name} ${tierLabel} access to ${scope}`
       );
     const recursion = isPermissionRecursive ? { isPermissionRecursive } : {};

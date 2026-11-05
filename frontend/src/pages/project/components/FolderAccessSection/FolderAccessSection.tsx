@@ -62,6 +62,8 @@ import { analytics, AnalyticsEvent, FolderAccessGrantSheetSource } from "@app/li
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   formatExpirationTime,
+  grantStateOf,
+  isRootFolderPath,
   toIdentityActor,
   toUserActor
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
@@ -131,6 +133,15 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
 
   const dialogActor = (() => {
     if (!deleteTarget) return null;
+    const inheritedAccess = isRootFolderPath(deleteTarget.secretPath)
+      ? null
+      : ((folderAccess ?? []).find(
+          (row) =>
+            row.environment === deleteTarget.environment &&
+            row.isPermissionRecursive &&
+            isRootFolderPath(row.secretPath) &&
+            grantStateOf(row) !== "expired"
+        ) ?? null);
     if (actor.type === "user") {
       return toUserActor({
         userId: actor.id,
@@ -140,7 +151,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
         lastName: actor.lastName,
         membership: { id: actor.membershipId, isProjectAdmin: false, roles: [] },
         folderRBACAccess: deleteTarget,
-        inheritedFolderRBACAccess: null
+        inheritedFolderRBACAccess: inheritedAccess
       });
     }
     return toIdentityActor({
@@ -148,7 +159,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
       name: actor.name,
       membership: { id: null, isProjectAdmin: false, roles: [] },
       folderRBACAccess: deleteTarget,
-      inheritedFolderRBACAccess: null
+      inheritedFolderRBACAccess: inheritedAccess
     });
   })();
 

@@ -51,6 +51,10 @@ export const RemoveFolderAccessDialog = ({
   const isExpired = grantState === "expired";
   const isTemporary = grantState === "temporary";
   const isRecursive = Boolean(actor?.access?.isPermissionRecursive);
+  const inheritedAccess = actor?.inheritedAccess ?? null;
+  const inheritedTierLabel = inheritedAccess
+    ? FOLDER_ROLE_TIER_LABELS[inheritedAccess.permission]
+    : null;
   const noun = isOverride ? "Override" : "Access";
 
   const title = (() => {
@@ -82,7 +86,18 @@ export const RemoveFolderAccessDialog = ({
               change their access.
             </AlertDialogDescription>
           )}
-          {!isExpired && isOverride && (
+          {!isExpired && inheritedAccess && (
+            <AlertDialogDescription>
+              The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
+              will fall back to{" "}
+              <span className="font-medium text-foreground">{inheritedTierLabel}</span>, inherited
+              from <span className="font-mono text-foreground">{inheritedAccess.secretPath}</span>,
+              in <span className="font-mono text-foreground">{folderPath}</span> on{" "}
+              {environmentName}.{tierLabel ? ` This ${tierLabel} grant` : " This grant"} currently
+              replaces it here, so removing it can broaden or narrow their access.
+            </AlertDialogDescription>
+          )}
+          {!isExpired && !inheritedAccess && isOverride && (
             <AlertDialogDescription>
               The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
               will fall back to their{" "}
@@ -92,14 +107,14 @@ export const RemoveFolderAccessDialog = ({
               role here, so removing it can broaden or narrow their access.
             </AlertDialogDescription>
           )}
-          {!isExpired && isRoleContextKnown && !isOverride && (
+          {!isExpired && !inheritedAccess && isRoleContextKnown && !isOverride && (
             <AlertDialogDescription>
               The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
               will lose access to <span className="font-mono text-foreground">{folderPath}</span> on{" "}
               {environmentName}. No project role grants them access to this folder.
             </AlertDialogDescription>
           )}
-          {!isExpired && !isRoleContextKnown && (
+          {!isExpired && !inheritedAccess && !isRoleContextKnown && (
             <AlertDialogDescription>
               The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
               will fall back to their project role permissions in{" "}
@@ -110,9 +125,10 @@ export const RemoveFolderAccessDialog = ({
           )}
           {!isExpired && isRecursive && (
             <AlertDialogDescription>
-              This access also applies to every subfolder of{" "}
-              <span className="font-mono text-foreground">{folderPath}</span>, so removing it
-              removes their access there too.
+              This access also applies to the subfolders of{" "}
+              <span className="font-mono text-foreground">{folderPath}</span>. Removing it returns
+              them to their project roles in those subfolders too, except where they have a role set
+              on the subfolder itself.
             </AlertDialogDescription>
           )}
           {isTemporary && expiry && (
@@ -121,8 +137,6 @@ export const RemoveFolderAccessDialog = ({
             </AlertDialogDescription>
           )}
         </AlertDialogHeader>
-
-
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

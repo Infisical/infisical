@@ -1971,7 +1971,7 @@ export const FOLDER_ACCESS = {
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts.",
     isPermissionRecursive:
-      "Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on the whole environment. Defaults to false."
+      "Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false."
   },
   UPDATE: {
     projectId: "The ID of the project the folder is in.",
@@ -1992,7 +1992,8 @@ export const FOLDER_ACCESS = {
   DELETE: {
     projectId: "The ID of the project the folder is in.",
     environmentSlug: "The slug of the environment the folder is in.",
-    secretPath: "The path of the folder the access is on.",
+    secretPath:
+      "The path of the folder the access is on. Revoking access that applies to subfolders requires permission to manage access on this folder and all of its subfolders.",
     userId: "The ID of the user whose folder access to revoke.",
     identityId: "The ID of the machine identity whose folder access to revoke."
   },

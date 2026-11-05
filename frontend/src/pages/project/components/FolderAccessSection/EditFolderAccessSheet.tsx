@@ -159,7 +159,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
           >
             <span className="flex items-center gap-2">
               <FolderTreeIcon className="size-4 text-muted" />
-              Apply to subfolders
+              Apply to Subfolders
             </span>
             <Toggle
               id="apply-to-subfolders"

@@ -25,7 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { SecretFolderRole } from "@app/hooks/api/folderAccess";
+import { SecretFolderRole, TFolderAccess } from "@app/hooks/api/folderAccess";
 
 import {
   DEFAULT_TEMPORARY_RANGE,
@@ -44,6 +44,36 @@ import { TierDropdown } from "./TierDropdown";
 const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
 
 const recursiveTitle = (path: string) => `Applies to ${path} and all of its subfolders`;
+
+const remainingTimeOf = (grant: TFolderAccess | null) =>
+  grant?.isTemporary && grant.temporaryAccessEndTime
+    ? formatExpirationTime(grant.temporaryAccessEndTime, Date.now())
+    : null;
+
+type TRemainingTime = NonNullable<ReturnType<typeof remainingTimeOf>>;
+
+const expiryNoteOf = (remainingTime: TRemainingTime) =>
+  `${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`;
+
+// the menu repeats the time left, so narrow sheets drop this badge to keep the member name visible
+const ExpiryBadge = ({
+  remainingTime,
+  hasTitle = true
+}: {
+  remainingTime: TRemainingTime;
+  hasTitle?: boolean;
+}) => (
+  <span className="hidden sm:contents">
+    <Badge
+      variant={remainingTime.isExpired ? "danger" : "neutral"}
+      iconPosition="left"
+      title={hasTitle ? `Access ${expiryNoteOf(remainingTime)}` : undefined}
+    >
+      <ClockIcon />
+      {remainingTime.isExpired ? "Expired" : remainingTime.value}
+    </Badge>
+  </span>
+);
 
 const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
   <>
@@ -140,10 +170,8 @@ export const FolderAccessRow = ({
   const grantState = grantStateOf(access);
   const removeTone = isOverride ? ("warning" as const) : ("danger" as const);
 
-  const remainingTime =
-    access?.isTemporary && access?.temporaryAccessEndTime
-      ? formatExpirationTime(access.temporaryAccessEndTime, Date.now())
-      : null;
+  const remainingTime = remainingTimeOf(access);
+  const inheritedRemainingTime = remainingTimeOf(inheritedAccess);
 
   const openTemporary = () => {
     setRange(access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
@@ -170,6 +198,13 @@ export const FolderAccessRow = ({
   const inheritedTierLabel = inheritedAccess
     ? FOLDER_ROLE_TIER_LABELS[inheritedAccess.permission]
     : null;
+  const inheritedExpiryNote = inheritedRemainingTime
+    ? `, ${expiryNoteOf(inheritedRemainingTime)}`
+    : "";
+  const inheritedExpiryLabel = (() => {
+    if (!inheritedRemainingTime) return undefined;
+    return inheritedRemainingTime.isExpired ? "Expired" : `${inheritedRemainingTime.value} left`;
+  })();
 
   const grantedFooterNote = (() => {
     if (!access) return `Choosing a tier overrides ${firstName}'s project role in this folder.`;
@@ -195,20 +230,7 @@ export const FolderAccessRow = ({
               </Badge>
             )}
             {isOverride && <Badge variant="warning">Override</Badge>}
-            {remainingTime && (
-              // the menu repeats the time left, so narrow sheets drop this badge to keep the
-              // member name visible
-              <span className="hidden sm:contents">
-                <Badge
-                  variant={remainingTime.isExpired ? "danger" : "neutral"}
-                  iconPosition="left"
-                  title={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
-                >
-                  <ClockIcon />
-                  {remainingTime.isExpired ? "Expired" : remainingTime.value}
-                </Badge>
-              </span>
-            )}
+            {remainingTime && <ExpiryBadge remainingTime={remainingTime} />}
             <ChevronDownIcon />
           </Button>
         </DropdownMenuTrigger>
@@ -223,19 +245,23 @@ export const FolderAccessRow = ({
                 variant="ghost"
                 size="sm"
                 isDisabled={isDisabled}
-                aria-label={`${inheritedTierLabel} for ${actor.name}, inherited from ${inheritedAccess.secretPath}`}
+                aria-label={`${inheritedTierLabel} for ${actor.name}, inherited from ${inheritedAccess.secretPath}${inheritedExpiryNote}`}
               >
                 {inheritedTierLabel}
                 <Badge variant="neutral" iconPosition="left" className="font-mono">
                   <CornerLeftUpIcon />
                   {inheritedAccess.secretPath}
                 </Badge>
+                {inheritedRemainingTime && (
+                  <ExpiryBadge remainingTime={inheritedRemainingTime} hasTitle={false} />
+                )}
                 <ChevronDownIcon />
               </Button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
           <TooltipContent>
             Inherited from {inheritedAccess.secretPath} (applied to subfolders)
+            {inheritedExpiryNote}
           </TooltipContent>
         </Tooltip>
       );
@@ -272,6 +298,7 @@ export const FolderAccessRow = ({
                 ? {
                     tier: inheritedAccess.permission,
                     sourcePath: inheritedAccess.secretPath,
+                    expiryLabel: inheritedExpiryLabel,
                     onManage: onManageInheritedAccess
                   }
                 : undefined

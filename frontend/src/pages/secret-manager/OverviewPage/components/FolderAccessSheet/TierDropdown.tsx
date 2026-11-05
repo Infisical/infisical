@@ -30,6 +30,7 @@ export type TRecursiveControl = {
 export type TInheritedAccess = {
   tier: SecretFolderRole;
   sourcePath: string;
+  expiryLabel?: string;
   onManage?: () => void;
 };
 
@@ -108,6 +109,11 @@ export const TierDropdown = ({
           <span className="rounded border border-border bg-neutral/10 px-1.5 font-mono text-xs">
             {inherited.sourcePath}
           </span>
+          {inherited.expiryLabel && (
+            <span className="ml-auto text-xs whitespace-nowrap text-muted">
+              {inherited.expiryLabel}
+            </span>
+          )}
         </div>
         <p className="px-2 pb-1.5 text-xs leading-4 text-muted">
           This role was applied to {inherited.sourcePath} and all of its subfolders. To change or
