@@ -610,6 +610,7 @@ access_token
 userAgent
 signingAlgorithm
 projectId
+smolvm
 orgId
 keyId
 ipAddress

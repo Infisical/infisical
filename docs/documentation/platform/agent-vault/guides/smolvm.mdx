@@ -1,0 +1,55 @@
+---
+title: "Use smolvm with Agent Vault"
+sidebarTitle: "smolvm"
+description: "Understand the current networking limitation when you use smolvm to run agents with Agent Vault."
+---
+
+[smolvm](https://github.com/smol-machines/smolvm) runs each workload in a hardware-isolated virtual machine with its own guest kernel. Agent Vault can provide the credentials an agent needs without putting the credentials in the agent's environment.
+
+Agent Vault requires more than a proxy environment variable for an untrusted agent. The agent's network must prevent direct connections to the internet, so the agent can't bypass the [Agent Vault proxy](/documentation/platform/agent-vault/proxies).
+
+## Current limitation
+
+smolvm's current networking options don't enforce this setup when the proxy and agent run in separate machines:
+
+- A named network lets the machines reach each other, but its members keep normal outbound access
+- `--block-private` blocks private destinations, but doesn't block the public internet
+- Mediated egress can inspect or redirect outbound TCP flows, but it can't be combined with named networking
+
+As a result, a two-machine smolvm setup can route requests through the proxy, but it can't guarantee that the agent uses the proxy. An agent can ignore `HTTP_PROXY` or `HTTPS_PROXY` and connect directly to an API.
+
+<Warning>
+  Don't use a two-machine smolvm setup with Agent Vault for an untrusted agent that needs enforced proxy-only access. The agent could bypass the proxy and reach the internet directly.
+</Warning>
+
+## Use a supported sandbox for enforced access
+
+Use one of these guides when the agent must only reach services through Agent Vault:
+
+- [Run agents in Docker containers with Agent Vault](/documentation/platform/agent-vault/guides/docker), using Docker's internal network to block direct internet access and a stronger container runtime such as [gVisor](https://gvisor.dev/docs/user_guide/quick_start/docker/) to protect against container escapes
+- [Run agents in Modal sandboxes with Agent Vault](/documentation/platform/agent-vault/guides/modal)
+- [Run agents in Daytona sandboxes with Agent Vault](/documentation/platform/agent-vault/guides/daytona)
+- [Run agents on Kubernetes with Agent Vault](/documentation/platform/agent-vault/guides/kubernetes), using a network plugin that enforces network policies
+
+These integrations can place the agent and proxy in a network where the agent can't make direct outbound connections.
+
+## Use smolvm without enforced proxy access
+
+You can still use smolvm to isolate a coding agent from the host. Follow smolvm's [coding-agent guide](https://github.com/smol-machines/smolvm/tree/main/docs/coding-agent), and treat the machine as the security boundary.
+
+Don't put long-lived API keys or other sensitive credentials in the machine. smolvm's network is disabled by default; if you enable networking, the workload can reach the destinations allowed by the selected network policy. Use Agent Vault only when you can enforce the network boundary that prevents direct access to the services whose credentials you're brokering.
+
+<Info>
+  Check the smolvm documentation before deploying this workflow. When smolvm supports a network policy that combines private machine-to-machine networking with proxy-only egress, this page can be updated with setup steps.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Agent Vault overview" icon="vault" href="/documentation/platform/agent-vault/overview">
+    Learn how Agent Vault brokers credentials without exposing them to agents.
+  </Card>
+  <Card title="Connect your own agent" icon="code" href="/documentation/platform/agent-vault/guides/custom-agent">
+    Configure an agent's HTTP client to use the Agent Vault proxy.
+  </Card>
+</CardGroup>
