@@ -11,6 +11,7 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
+import { DATA_EXPLORER_MAX_RESULT_BYTES, estimateRowBytes } from "../pam-web-access-fns";
 import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
 
 const pgTypes = {
@@ -21,6 +22,30 @@ const pgTypes = {
         return raw === "t" ? "true" : "false";
       };
     return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
+  }
+};
+
+const MAX_ROWS = 1000;
+const FIRST_BATCH_ROWS = 50;
+
+const readCursorRows = async (cursor: Cursor): Promise<{ rows: Record<string, unknown>[]; isTruncated: boolean }> => {
+  const rows: Record<string, unknown>[] = [];
+  let bytes = 0;
+  let batchSize = FIRST_BATCH_ROWS;
+  for (;;) {
+    // eslint-disable-next-line no-await-in-loop
+    const batch = (await cursor.read(batchSize)) as Record<string, unknown>[];
+    for (const row of batch) {
+      if (rows.length === MAX_ROWS) return { rows, isTruncated: true };
+      bytes += estimateRowBytes(row);
+      if (bytes > DATA_EXPLORER_MAX_RESULT_BYTES) return { rows, isTruncated: true };
+      rows.push(row);
+    }
+    if (batch.length < batchSize) return { rows, isTruncated: false };
+    // Size the next read from the rows seen so far, so narrow results still arrive in two round trips
+    const remainingBytes = DATA_EXPLORER_MAX_RESULT_BYTES - bytes;
+    const avgRowBytes = bytes / rows.length;
+    batchSize = Math.max(1, Math.min(MAX_ROWS + 1 - rows.length, Math.floor(remainingBytes / avgRowBytes)));
   }
 };
 
@@ -157,8 +182,6 @@ export const createPostgresConnectionController = async (params: ControllerParam
           case DataExplorerClientMessageType.Query: {
             try {
               const startTime = performance.now();
-              const MAX_ROWS = 1000;
-
               // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
               const parsed = await parseSql(message.sql);
               // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -178,9 +201,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
               for (const stmtSql of stmtTexts) {
                 const cursor = pgClient.query(new Cursor(stmtSql.trim(), null, { types: pgTypes }));
                 // eslint-disable-next-line no-await-in-loop
-                const stmtRows = await cursor.read(MAX_ROWS + 1);
-                const stmtIsTruncated = stmtRows.length > MAX_ROWS;
-                if (stmtIsTruncated) stmtRows.splice(MAX_ROWS);
+                const { rows: stmtRows, isTruncated: stmtIsTruncated } = await readCursorRows(cursor);
                 // eslint-disable-next-line no-await-in-loop
                 await cursor.close();
 
@@ -192,7 +213,8 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
                 lastRows = stmtRows;
                 lastFields = (cursorResult.fields ?? []).map((f) => ({ name: f.name }));
-                lastRowCount = cursorResult.rowCount;
+                // Postgres reports the rows of the last fetch only, so count what was read when rows came back
+                lastRowCount = lastFields.length > 0 ? stmtRows.length : cursorResult.rowCount;
                 lastCommand = cursorResult.command ?? "";
                 lastIsTruncated = stmtIsTruncated;
               }

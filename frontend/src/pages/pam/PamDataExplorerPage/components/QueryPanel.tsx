@@ -12,8 +12,12 @@ import { QueryResultsTable } from "./QueryResultsTable";
 import { QueryToolbar } from "./QueryToolbar";
 import { SqlEditor } from "./SqlEditor";
 
-function getRowLabel(rowCount: number, isTruncated: boolean): string {
-  if (isTruncated) return `Showing 1,000 of ${rowCount.toLocaleString()} rows`;
+function getRowLabel(rowCount: number, shownRows: number, isTruncated: boolean): string {
+  if (isTruncated) {
+    return rowCount > shownRows
+      ? `Showing ${shownRows.toLocaleString()} of ${rowCount.toLocaleString()} rows`
+      : `Showing first ${shownRows.toLocaleString()} rows`;
+  }
   return `${rowCount} row${rowCount !== 1 ? "s" : ""}`;
 }
 
@@ -181,7 +185,7 @@ export function QueryPanel({
             <div className="flex shrink-0 items-center justify-between border-t border-border px-3 py-1">
               <span className="text-xs text-muted">
                 {result.rowCount != null
-                  ? getRowLabel(result.rowCount, result.isTruncated)
+                  ? getRowLabel(result.rowCount, result.rows.length, result.isTruncated)
                   : result.command}
                 {" · "}
                 {result.executionTimeMs}ms
