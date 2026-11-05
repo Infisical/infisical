@@ -29,4 +29,6 @@ export const parseClientMessage = <T>(
 export const DATA_EXPLORER_MAX_RESULT_BYTES = 16 * 1024 * 1024;
 
 export const estimateRowBytes = (row: Record<string, unknown>): number =>
-  JSON.stringify(row, (_key, value: unknown) => (typeof value === "bigint" ? value.toString() : value)).length;
+  Buffer.byteLength(
+    JSON.stringify(row, (_key, value: unknown) => (typeof value === "bigint" ? value.toString() : value))
+  );

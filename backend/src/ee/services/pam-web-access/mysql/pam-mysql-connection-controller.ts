@@ -50,12 +50,17 @@ const streamStatement = (conn: mysql.Connection, sql: string) =>
           isTruncated = true;
           return;
         }
-        bytes += estimateRowBytes(result as Record<string, unknown>);
+        // Converted before measuring so the size counted is the size sent
+        const row: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(result)) {
+          row[k] = Buffer.isBuffer(v) ? `\\x${v.toString("hex")}` : v;
+        }
+        bytes += estimateRowBytes(row);
         if (bytes > DATA_EXPLORER_MAX_RESULT_BYTES) {
           isTruncated = true;
           return;
         }
-        rows.push(result as Record<string, unknown>);
+        rows.push(row);
       })
       .on("error", reject)
       .on("end", () => {
@@ -265,20 +270,12 @@ export const createMysqlConnectionController = async (params: ControllerParams):
               // eslint-disable-next-line no-await-in-loop
               await queryTransactionState();
 
-              const safeRows = lastRows.map((row) => {
-                const out: Record<string, unknown> = {};
-                for (const [k, v] of Object.entries(row)) {
-                  out[k] = Buffer.isBuffer(v) ? `\\x${v.toString("hex")}` : v;
-                }
-                return out;
-              });
-
               const executionTimeMs = Math.round(performance.now() - startTime);
               sendResponse({
                 type: DataExplorerServerMessageType.QueryResult,
                 id: message.id,
                 connectionId,
-                rows: safeRows,
+                rows: lastRows,
                 fields: lastFields,
                 rowCount: lastRowCount,
                 isTruncated: lastIsTruncated,

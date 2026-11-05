@@ -14,6 +14,7 @@ import { SqlEditor } from "./SqlEditor";
 
 function getRowLabel(rowCount: number, shownRows: number, isTruncated: boolean): string {
   if (isTruncated) {
+    if (shownRows === 0) return "Result too large";
     return rowCount > shownRows
       ? `Showing ${shownRows.toLocaleString()} of ${rowCount.toLocaleString()} rows`
       : `Showing first ${shownRows.toLocaleString()} rows`;
