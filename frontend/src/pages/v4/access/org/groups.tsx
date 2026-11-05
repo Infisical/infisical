@@ -149,13 +149,18 @@ export const OrgGroupsTab = () => {
           <Icon name="copy" />
           Copy group ID
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={!canEdit} onSelect={() => openDetail(group)}>
+        <DropdownMenuItem
+          disabled={!canEdit}
+          description={canEdit ? undefined : RESTRICTED}
+          onSelect={() => openDetail(group)}
+        >
           <Icon name="user" />
           Manage members
         </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"
           disabled={!can(OrgPermissionGroupActions.Delete)}
+          description={can(OrgPermissionGroupActions.Delete) ? undefined : RESTRICTED}
           onSelect={() => setDeleting(group)}
         >
           <Icon name="trash" />

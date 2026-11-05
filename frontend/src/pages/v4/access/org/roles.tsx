@@ -274,12 +274,20 @@ export const OrgRolesTab = () => {
       const roleIsDefault = isDefault(role);
       return (
         <>
-          <DropdownMenuItem disabled={!canEdit} onSelect={() => openRole(role)}>
+          <DropdownMenuItem
+            disabled={!canEdit}
+            description={canEdit ? undefined : RESTRICTED}
+            onSelect={() => openRole(role)}
+          >
             {custom ? <Icon icon={PencilIcon} /> : <Icon name="eye" />}
             {custom ? "Edit role" : "View role"}
           </DropdownMenuItem>
           {!roleIsDefault && (
-            <DropdownMenuItem disabled={!canEditSettings} onSelect={() => setDefault(role)}>
+            <DropdownMenuItem
+              disabled={!canEditSettings}
+              description={canEditSettings ? undefined : RESTRICTED}
+              onSelect={() => setDefault(role)}
+            >
               <Icon icon={IdCardIcon} />
               Set as default role
             </DropdownMenuItem>

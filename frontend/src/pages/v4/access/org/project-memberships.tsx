@@ -36,6 +36,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v4/ui/sheet";
+import { FilterReturnedProjects } from "@app/hooks/api/groups/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -301,7 +302,8 @@ const useMembershipRows = (subject: MembershipSubject, subjectId: string) => {
     id: subject === "group" ? subjectId : "",
     offset: 0,
     limit: 100,
-    search: ""
+    search: "",
+    filter: FilterReturnedProjects.ASSIGNED_PROJECTS
   });
   const rows = useMemo((): ProjectMembershipRow[] => {
     if (subject === "user")
@@ -322,7 +324,7 @@ const useMembershipRows = (subject: MembershipSubject, subjectId: string) => {
       id: entry.id,
       project: { id: entry.id, name: entry.name, type: entry.type as ProjectType },
       roles: [],
-      createdAt: String(entry.joinedGroupAt)
+      createdAt: entry.joinedGroupAt ? String(entry.joinedGroupAt) : ""
     }));
   }, [subject, users.data, identities.data, groups.data]);
   const pending = { user: users, identity: identities, group: groups }[subject].isPending;
