@@ -1603,7 +1603,8 @@ export const folderCommitServiceFactory = ({
     );
 
     // Personal overrides are not part of point-in-time history, so restoring a shared secret's old key
-    // does not restore the references a rename rewrote in them. Rewrite them back the way a rename does.
+    // does not restore the references a rename rewrote in them. Rewrite overrides only; shared values
+    // were already restored from history above.
     const { referenceRewrite } = restoreCrypto;
     if (renames.length && referenceRewrite) {
       const [folderLocation] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
@@ -1629,6 +1630,7 @@ export const folderCommitServiceFactory = ({
             encryptor: referenceRewrite.encryptor,
             decryptor: referenceRewrite.decryptor,
             blindIndexer: referenceRewrite.blindIndexer,
+            onlyPersonalOverrides: true,
             tx
           });
         }
