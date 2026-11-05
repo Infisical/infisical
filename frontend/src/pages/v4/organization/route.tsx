@@ -11,7 +11,8 @@ export const Route = createFileRoute("/v4/organizations/$orgId")({
       const { demoAdapters } = await import("../data/demo");
       return { v4Mode: "demo" as const, adapters: demoAdapters };
     }
-    if (!(await isV4AppEnabled())) {
+    const { liveHref } = await import("../liveReady");
+    if (!(await isV4AppEnabled()) || liveHref(location.pathname) !== location.pathname) {
       throw redirect({ href: location.href.replace(/^\/v4/, ""), replace: true });
     }
     const session = await authenticateSession({ context, location });
