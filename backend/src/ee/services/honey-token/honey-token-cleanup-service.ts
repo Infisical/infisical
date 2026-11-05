@@ -1,4 +1,5 @@
 import { NotFoundError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn/array";
 import { logger } from "@app/lib/logger";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
@@ -6,9 +7,13 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./honey-token-provider-fns";
-import { THoneyTokenProviderHooksDep } from "./honey-token-service-types";
+import { THoneyTokenCredentialTarget, THoneyTokenProviderHooksDep } from "./honey-token-service-types";
+import { getHoneyTokenManagedBy } from "./honey-token-types";
+
+// Managed tokens all live in one shared AWS account, so an org deletion must not burst its IAM rate limit.
+const REVOKE_BATCH_SIZE = 5;
 
 type THoneyTokenCleanupServiceFactoryDep = {
   honeyTokenDAL: Pick<
@@ -31,7 +36,12 @@ export const honeyTokenCleanupServiceFactory = ({
   kmsService,
   appConnectionDAL
 }: THoneyTokenCleanupServiceFactoryDep) => {
-  const providerHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
+  const providerHooksByType = getHoneyTokenServiceHooksByType({
+    kmsService,
+    appConnectionDAL,
+    honeyTokenDAL,
+    honeyTokenConfigDAL
+  });
 
   const $fetchConnection = async (orgId: string, type: HoneyTokenType) => {
     const config = await honeyTokenConfigDAL.findOne({ orgId, type });
@@ -60,9 +70,13 @@ export const honeyTokenCleanupServiceFactory = ({
       }
       const type = honeyToken.type as HoneyTokenType;
 
-      const appConnection = await findConnection(honeyToken.orgId, type);
-      if (!appConnection) {
-        throw new NotFoundError({ message: "Organization has no honey token connection" });
+      let target: THoneyTokenCredentialTarget = { managedBy: HoneyTokenManagedBy.Instance };
+      if (getHoneyTokenManagedBy(honeyToken) === HoneyTokenManagedBy.Organization) {
+        const appConnection = await findConnection(honeyToken.orgId, type);
+        if (!appConnection) {
+          throw new NotFoundError({ message: "Organization has no honey token connection" });
+        }
+        target = { managedBy: HoneyTokenManagedBy.Organization, appConnection };
       }
 
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -73,7 +87,7 @@ export const honeyTokenCleanupServiceFactory = ({
         decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
       ) as Record<string, string>;
 
-      await providerHooksByType[type].revokeCredentials({ appConnection, credentials });
+      await providerHooksByType[type].revokeCredentials({ target, credentials });
     };
   };
 
@@ -84,18 +98,20 @@ export const honeyTokenCleanupServiceFactory = ({
 
     const revoke = $createRevoker();
     const revokedIds: string[] = [];
-    await Promise.all(
-      honeyTokens.map((honeyToken) =>
-        revoke(honeyToken)
-          .then(() => revokedIds.push(honeyToken.id))
-          .catch((err) =>
-            logger.error(
-              { err: err as unknown },
-              `honey-token-cleanup: could not revoke honey token on ${reason} ${honeyTokenCleanupLogContext(honeyToken)}`
-            )
-          )
-      )
-    );
+    for (const batch of chunkArray(honeyTokens, REVOKE_BATCH_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      const results = await Promise.allSettled(batch.map((honeyToken) => revoke(honeyToken)));
+      results.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+          revokedIds.push(batch[i].id);
+          return;
+        }
+        logger.error(
+          { err: result.reason as unknown },
+          `honey-token-cleanup: could not revoke honey token on ${reason} ${honeyTokenCleanupLogContext(batch[i])}`
+        );
+      });
+    }
 
     if (revokedIds.length) {
       await honeyTokenDAL.update(

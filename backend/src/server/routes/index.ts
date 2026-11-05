@@ -3695,7 +3695,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     appConnectionService,
     telemetryService,
-    auditLogService
+    auditLogService,
+    keyStore
   });
 
   const proxiedServiceService = proxiedServiceServiceFactory({
