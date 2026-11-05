@@ -92,6 +92,7 @@ import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
+import { ValidateClickHouseConnectionCredentialsSchema } from "./clickhouse";
 import { ValidateCloud66ConnectionCredentialsSchema } from "./cloud-66";
 import { cloud66ConnectionService } from "./cloud-66/cloud-66-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
@@ -347,7 +348,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
   [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
   [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
-  [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema
+  [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
+  [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

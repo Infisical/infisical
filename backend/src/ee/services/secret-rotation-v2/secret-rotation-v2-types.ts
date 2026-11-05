@@ -31,6 +31,12 @@ import {
   TAzureClientSecretRotationWithConnection
 } from "./azure-client-secret";
 import {
+  TClickHouseCredentialsRotation,
+  TClickHouseCredentialsRotationInput,
+  TClickHouseCredentialsRotationListItem,
+  TClickHouseCredentialsRotationWithConnection
+} from "./clickhouse-credentials";
+import {
   TCloudflareApiTokenRotation,
   TCloudflareApiTokenRotationGeneratedCredentials,
   TCloudflareApiTokenRotationInput,
@@ -247,7 +253,8 @@ export type TSecretRotationV2 =
   | TCloudflareApiTokenRotation
   | TCloudflareR2AccessKeyRotation
   | TStripeApiKeyRotation
-  | TGcpServiceAccountKeyRotation;
+  | TGcpServiceAccountKeyRotation
+  | TClickHouseCredentialsRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -279,7 +286,8 @@ export type TSecretRotationV2WithConnection =
   | TCloudflareApiTokenRotationWithConnection
   | TCloudflareR2AccessKeyRotationWithConnection
   | TStripeApiKeyRotationWithConnection
-  | TGcpServiceAccountKeyRotationWithConnection;
+  | TGcpServiceAccountKeyRotationWithConnection
+  | TClickHouseCredentialsRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -339,7 +347,8 @@ export type TSecretRotationV2Input =
   | TCloudflareApiTokenRotationInput
   | TCloudflareR2AccessKeyRotationInput
   | TStripeApiKeyRotationInput
-  | TGcpServiceAccountKeyRotationInput;
+  | TGcpServiceAccountKeyRotationInput
+  | TClickHouseCredentialsRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -371,7 +380,8 @@ export type TSecretRotationV2ListItem =
   | TCloudflareApiTokenRotationListItem
   | TCloudflareR2AccessKeyRotationListItem
   | TStripeApiKeyRotationListItem
-  | TGcpServiceAccountKeyRotationListItem;
+  | TGcpServiceAccountKeyRotationListItem
+  | TClickHouseCredentialsRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

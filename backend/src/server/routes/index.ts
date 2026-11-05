@@ -76,6 +76,8 @@ import { auditReportQueueServiceFactory } from "@app/ee/services/audit-report/au
 import { auditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
+import { certificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
+import { certificateAuthorityCrossSignedCertServiceFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-service";
 import { certificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-service";
 import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
@@ -1292,24 +1294,6 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const membershipIdentityService = membershipIdentityServiceFactory({
-    identityDAL,
-    membershipIdentityDAL,
-    membershipRoleDAL,
-    orgDAL,
-    permissionService,
-    roleDAL,
-    additionalPrivilegeDAL,
-    licenseService,
-    applicationMembershipCleanupService,
-    projectDAL,
-    keyStore,
-    usageMeteringService,
-    alertService,
-    identityAccessTokenService,
-    eventEmitter: eventOutboxService
-  });
-
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
     permissionService,
@@ -1378,6 +1362,28 @@ export const registerRoutes = async (
       membershipRoleDAL,
       pamAccountDAL
     })
+  });
+
+  const membershipIdentityService = membershipIdentityServiceFactory({
+    identityDAL,
+    identityMetadataDAL,
+    identityGroupMembershipDAL,
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    orgDAL,
+    permissionService,
+    roleDAL,
+    additionalPrivilegeDAL,
+    licenseService,
+    applicationMembershipCleanupService,
+    projectDAL,
+    keyStore,
+    usageMeteringService,
+    alertService,
+    identityAccessTokenService,
+    eventEmitter: eventOutboxService,
+    projectAccessRevokeService,
+    auditLogService
   });
 
   const oidcIssuerService = oidcIssuerServiceFactory({ kmsDAL, kmsService, keyStore, auditLogService });
@@ -1967,6 +1973,7 @@ export const registerRoutes = async (
   const caSigningConfigDAL = caSigningConfigDALFactory(db);
   const externalCertificateAuthorityDAL = externalCertificateAuthorityDALFactory(db);
   const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
+  const certificateAuthorityCrossSignedCertDAL = certificateAuthorityCrossSignedCertDALFactory(db);
   const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
@@ -2915,7 +2922,6 @@ export const registerRoutes = async (
   });
 
   const identityService = identityServiceFactory({
-    additionalPrivilegeDAL,
     permissionService,
     identityDAL,
     identityOrgMembershipDAL,
@@ -2925,11 +2931,11 @@ export const registerRoutes = async (
     keyStore,
     orgDAL,
     membershipIdentityDAL,
+    membershipIdentityService,
     membershipRoleDAL,
     usageMeteringService,
     alertService,
-    identityAccessTokenService,
-    eventEmitter: eventOutboxService
+    identityAccessTokenService
   });
 
   const identityV2Service = identityV2ServiceFactory({
@@ -3692,7 +3698,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     appConnectionService,
     telemetryService,
-    auditLogService
+    auditLogService,
+    keyStore
   });
 
   const proxiedServiceService = proxiedServiceServiceFactory({
@@ -3935,6 +3942,7 @@ export const registerRoutes = async (
   const internalCaFns = InternalCertificateAuthorityFns({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateDAL,
@@ -3984,6 +3992,7 @@ export const registerRoutes = async (
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateTemplateDAL,
@@ -4002,6 +4011,16 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     usageMeteringService,
     caKeySourceService
+  });
+
+  const certificateAuthorityCrossSignedCertService = certificateAuthorityCrossSignedCertServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    licenseService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
@@ -4633,6 +4652,7 @@ export const registerRoutes = async (
     pkiSubscriberDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateDAL,
@@ -4780,6 +4800,7 @@ export const registerRoutes = async (
     pkiTemplatesDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateDAL,
@@ -5040,6 +5061,7 @@ export const registerRoutes = async (
     certificateEstV3: certificateEstV3Service,
     certificateAuthority: certificateAuthorityService,
     internalCertificateAuthority: internalCertificateAuthorityService,
+    certificateAuthorityCrossSignedCert: certificateAuthorityCrossSignedCertService,
     caSigningConfig: caSigningConfigService,
     certificateTemplate: certificateTemplateService,
     certificatePolicy: certificatePolicyService,

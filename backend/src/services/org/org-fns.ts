@@ -21,8 +21,8 @@ type TDeleteOrgMemberships = {
   orgMembershipIds: string[];
   orgId: string;
   orgDAL: Pick<TOrgDALFactory, "transaction" | "find">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "find" | "countActiveAdmins">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "countActiveAdmins">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   userId?: string;
@@ -108,27 +108,9 @@ export const deleteOrgMembershipsFn = async ({
       );
     }
 
-    const orgGroups = await membershipUserDAL.find(
-      {
-        $in: {
-          scopeOrgId: orgIds
-        },
-        $notNull: ["actorGroupId"]
-      },
-      { tx }
-    );
-
-    const groupIds = orgGroups.filter((el) => el.actorGroupId).map((el) => el.actorGroupId as string);
-
-    await userGroupMembershipDAL.delete(
-      {
-        $in: {
-          userId: membershipUserIds,
-          groupId: groupIds
-        }
-      },
-      tx
-    );
+    // Only groups these orgs own: a root group linked into a sub-org belongs to the root org, so
+    // removal from the sub-org must not take the user out of it.
+    await userGroupMembershipDAL.deleteByUserIdsInGroupsOwnedByOrgs({ userIds: membershipUserIds, orgIds }, tx);
 
     ({ revoked, sendPamCancellations } = await projectAccessRevokeService.revokeActorsInOrgs(
       { orgIds, userIds: membershipUserIds },

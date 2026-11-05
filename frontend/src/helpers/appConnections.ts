@@ -60,6 +60,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
+import { ClickHouseConnectionMethod } from "@app/hooks/api/appConnections/types/clickhouse-connection";
 import { Cloud66ConnectionMethod } from "@app/hooks/api/appConnections/types/cloud-66-connection";
 import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/convex-connection";
 import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
@@ -420,6 +421,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "MongoDB.png",
     category: "DATABASE",
     description: "Connect to a MongoDB database."
+  },
+  [AppConnection.ClickHouse]: {
+    name: "ClickHouse",
+    image: "ClickHouse.png",
+    category: "DATABASE",
+    description: "Connect to a ClickHouse database."
   },
   [AppConnection.LaravelForge]: {
     name: "Laravel Forge",
@@ -834,6 +841,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case ClickHouseConnectionMethod.UsernameAndPassword:
     case UltraDNSConnectionMethod.UsernamePassword:
       return { name: "Username & Password", icon: LockIcon };
     case SnowflakeConnectionMethod.UsernameAndToken:
