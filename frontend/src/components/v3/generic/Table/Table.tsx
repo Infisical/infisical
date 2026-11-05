@@ -163,8 +163,6 @@ const TableRow = React.forwardRef<
         "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
         props.onClick && "cursor-pointer select-none",
         linked && rowLinkContainerClassName,
-        // Safari ignores position: relative on a <tr> as the containing block for the RowLink
-        // overlay, so the overlay would cover the whole table. A no-op translate makes the row one.
         linked && "translate-x-0",
         className
       )}
