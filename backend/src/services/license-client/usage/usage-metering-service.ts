@@ -21,14 +21,14 @@ type TUsageMeteringServiceFactoryDep = {
 
 const DEBOUNCE_MS = 5000;
 
-// A metered fact for a sum or count meter. eventId must be stable for the fact (the license server
-// dedups on it). quantity is required because the server reads a missing one as 0; a count meter
-// ignores it, so pass 1.
+// A metered fact for a sum or count meter. The license server dedups on (eventId, occurredAt), so both
+// must be stable for the fact: recording it again with the same pair is a no-op. quantity is required
+// because the server reads a missing one as 0; a count meter ignores it, so pass 1.
 export type TMeteringEventInput = {
   eventId: string;
   dimensionKey: string;
   quantity: number;
-  occurredAt?: Date;
+  occurredAt: Date;
 };
 
 export const usageMeteringServiceFactory = ({
@@ -119,15 +119,13 @@ export const usageMeteringServiceFactory = ({
   };
 
   // Fire-and-forget like emit, but every event is a fact to deliver, so jobs are never debounced or
-  // replaced (the server dedups on eventId); occurredAt is fixed now so a retry resends the same event.
-  // The server accepts or rejects a request whole, so each job (one request) holds a single dimension:
-  // a dimension the org's plan does not price is refused without taking other dimensions' events.
+  // replaced. The server accepts or rejects a request whole, so each job (one request) holds a single
+  // dimension: a dimension the org's plan does not price is refused without taking other events.
   const recordMeteringEvents = (orgId: string, events: TMeteringEventInput[]) => {
     if (!licenseClient.isEnabled() || !events.length) {
       return;
     }
 
-    const now = new Date();
     const byDimension = new Map<string, TQueueJobTypes[QueueName.MeteringEvent]["payload"]["events"]>();
     events.forEach((e) => {
       const group = byDimension.get(e.dimensionKey) ?? [];
@@ -135,7 +133,7 @@ export const usageMeteringServiceFactory = ({
         eventId: e.eventId,
         dimensionKey: e.dimensionKey,
         quantity: e.quantity,
-        occurredAt: (e.occurredAt ?? now).toISOString()
+        occurredAt: e.occurredAt.toISOString()
       });
       byDimension.set(e.dimensionKey, group);
     });

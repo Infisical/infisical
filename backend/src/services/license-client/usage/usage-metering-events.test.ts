@@ -12,6 +12,7 @@ vi.mock("@app/lib/logger", () => ({
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 const SERVER_URL = "https://license.example.com";
+const AT = new Date("2026-11-05T06:00:00.000Z");
 
 const flushAsync = () =>
   new Promise((resolve) => {
@@ -31,7 +32,9 @@ const buildService = (enabled: boolean, queue = vi.fn(async () => {})) => ({
 describe("usageMeteringService.recordMeteringEvents", () => {
   test("does nothing when no license server is configured", async () => {
     const { svc, queue } = buildService(false);
-    svc.recordMeteringEvents(ORG_ID, [{ eventId: "e1", dimensionKey: "pam_session_minutes", quantity: 3 }]);
+    svc.recordMeteringEvents(ORG_ID, [
+      { eventId: "e1", dimensionKey: "pam_session_minutes", quantity: 3, occurredAt: AT }
+    ]);
     await flushAsync();
     expect(queue).not.toHaveBeenCalled();
   });
@@ -43,13 +46,17 @@ describe("usageMeteringService.recordMeteringEvents", () => {
     expect(queue).not.toHaveBeenCalled();
   });
 
-  test("enqueues one retrying job that is never debounced, with occurredAt fixed at record time", async () => {
+  test("enqueues one retrying job that is never debounced, carrying each event's own occurredAt", async () => {
     const { svc, queue } = buildService(true);
-    const occurredAt = new Date("2026-11-05T06:00:00.000Z");
 
     svc.recordMeteringEvents(ORG_ID, [
-      { eventId: "e1", dimensionKey: "pam_session_minutes", quantity: 3, occurredAt },
-      { eventId: "e2", dimensionKey: "pam_session_minutes", quantity: 1 }
+      { eventId: "e1", dimensionKey: "pam_session_minutes", quantity: 3, occurredAt: AT },
+      {
+        eventId: "e2",
+        dimensionKey: "pam_session_minutes",
+        quantity: 1,
+        occurredAt: new Date("2026-11-05T06:05:00.000Z")
+      }
     ]);
     await flushAsync();
 
@@ -69,7 +76,7 @@ describe("usageMeteringService.recordMeteringEvents", () => {
       quantity: 3,
       occurredAt: "2026-11-05T06:00:00.000Z"
     });
-    expect(Date.parse(payload.events[1].occurredAt)).not.toBeNaN();
+    expect(payload.events[1].occurredAt).toBe("2026-11-05T06:05:00.000Z");
     expect(opts.attempts).toBeGreaterThan(1);
     expect(opts).not.toHaveProperty("deduplication");
     expect(opts).not.toHaveProperty("delay");
@@ -79,7 +86,12 @@ describe("usageMeteringService.recordMeteringEvents", () => {
     const { svc, queue } = buildService(true);
     svc.recordMeteringEvents(
       ORG_ID,
-      Array.from({ length: 2500 }, (_, i) => ({ eventId: `e${i}`, dimensionKey: "secret_syncs", quantity: 1 }))
+      Array.from({ length: 2500 }, (_, i) => ({
+        eventId: `e${i}`,
+        dimensionKey: "secret_syncs",
+        quantity: 1,
+        occurredAt: AT
+      }))
     );
     await flushAsync();
 
@@ -92,9 +104,9 @@ describe("usageMeteringService.recordMeteringEvents", () => {
   test("gives each dimension its own jobs, so a refused dimension cannot take another's events", async () => {
     const { svc, queue } = buildService(true);
     svc.recordMeteringEvents(ORG_ID, [
-      { eventId: "p1", dimensionKey: "pam_session_minutes", quantity: 42 },
-      { eventId: "s1", dimensionKey: "secret_syncs", quantity: 1 },
-      { eventId: "p2", dimensionKey: "pam_session_minutes", quantity: 15 }
+      { eventId: "p1", dimensionKey: "pam_session_minutes", quantity: 42, occurredAt: AT },
+      { eventId: "s1", dimensionKey: "secret_syncs", quantity: 1, occurredAt: AT },
+      { eventId: "p2", dimensionKey: "pam_session_minutes", quantity: 15, occurredAt: AT }
     ]);
     await flushAsync();
 
@@ -114,7 +126,7 @@ describe("usageMeteringService.recordMeteringEvents", () => {
       })
     );
     expect(() =>
-      svc.recordMeteringEvents(ORG_ID, [{ eventId: "e1", dimensionKey: "secret_syncs", quantity: 1 }])
+      svc.recordMeteringEvents(ORG_ID, [{ eventId: "e1", dimensionKey: "secret_syncs", quantity: 1, occurredAt: AT }])
     ).not.toThrow();
     await flushAsync();
   });
