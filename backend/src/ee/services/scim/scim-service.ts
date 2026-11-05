@@ -159,6 +159,7 @@ type TScimServiceFactoryDep = {
     | "insertMany"
     | "filterProjectsByUserMembership"
     | "delete"
+    | "deleteByUserIdsInGroupsOwnedByOrgs"
     | "findGroupMembershipsByUserIdInOrg"
     | "findGroupMembershipsByGroupIdInOrg"
   >;
