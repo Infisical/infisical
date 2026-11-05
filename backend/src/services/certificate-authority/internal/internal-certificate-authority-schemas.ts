@@ -3,6 +3,8 @@ import { z } from "zod";
 import { CertificateAuthorities } from "@app/lib/api-docs/constants";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
+  MAX_CRL_VALIDITY_DAYS,
+  MIN_CRL_VALIDITY_DAYS,
   PKI_TEXT_COLUMN_MAX_LENGTH,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
@@ -16,6 +18,14 @@ import {
   GenericUpdateCertificateAuthorityFieldsSchema
 } from "../certificate-authority-schemas";
 import { distributionPointUrlsSchema, validateCaDateField } from "../certificate-authority-validators";
+
+const crlValidityDaysSchema = z
+  .number()
+  .int()
+  .min(MIN_CRL_VALIDITY_DAYS)
+  .max(MAX_CRL_VALIDITY_DAYS)
+  .optional()
+  .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlValidityDays);
 
 type TInternalCertificateAuthorityConfiguration = {
   type: InternalCaType;
@@ -45,6 +55,7 @@ type TInternalCertificateAuthorityConfiguration = {
   crlDistributionPointUrls?: string[];
   disableManagedCrlDistributionPointUrl?: boolean;
   isOcspEnabled?: boolean;
+  crlValidityDays?: number;
 };
 
 export const InternalCertificateAuthorityConfigurationSchema = z
@@ -104,7 +115,8 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .optional()
       .default(false)
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
-    isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled)
+    isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled),
+    crlValidityDays: crlValidityDaysSchema
   })
   .refine(
     (data) => {
@@ -155,7 +167,8 @@ export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
     .boolean()
     .optional()
     .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
-  isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled)
+  isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled),
+  crlValidityDays: crlValidityDaysSchema
 });
 
 export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(

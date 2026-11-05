@@ -1,16 +1,26 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { expandInternalCa } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  expandInternalCa,
+  getInternalCaExpiredAt,
+  isCaCrlAllowed,
+  rebuildCaCrl
+} from "@app/services/certificate-authority/certificate-authority-fns";
+import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -19,18 +29,31 @@ import { TCertificateAuthorityCrlServiceFactory } from "./certificate-authority-
 
 type TCertificateAuthorityCrlServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
-  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "find" | "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  certificateAuthorityCrlDAL: Pick<
+    TCertificateAuthorityCrlDALFactory,
+    "find" | "findById" | "findOne" | "update" | "primaryNode"
+  >;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
 export const certificateAuthorityCrlServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCrlDAL,
+  certificateAuthoritySecretDAL,
+  certificateDAL,
   projectDAL,
   kmsService,
-  permissionService // licenseService
+  permissionService,
+  licenseService,
+  caKeySourceService,
+  keyStore
 }: TCertificateAuthorityCrlServiceFactoryDep): TCertificateAuthorityCrlServiceFactory => {
   /**
    * Return CRL with id [crlId]
@@ -111,7 +134,10 @@ export const certificateAuthorityCrlServiceFactory = ({
         const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
         return {
           id: caCrl.id,
-          crl: crlPem
+          crl: crlPem,
+          thisUpdate: caCrl.thisUpdate,
+          nextUpdate: caCrl.nextUpdate,
+          crlNumber: Number(caCrl.crlNumber)
         };
       })
     );
@@ -122,90 +148,70 @@ export const certificateAuthorityCrlServiceFactory = ({
     };
   };
 
-  // const rotateCaCrl = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TRotateCrlDTO) => {
-  //   const ca = await certificateAuthorityDAL.findById(caId);
-  //   if (!ca) throw new BadRequestError({ message: "CA not found" });
+  const rebuildCrl: TCertificateAuthorityCrlServiceFactory["rebuildCrl"] = async ({
+    caId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    const project = ca?.internalCa?.id ? await projectDAL.findById(ca.projectId) : undefined;
+    if (!ca?.internalCa?.id || !project || project.orgId !== actorOrgId) {
+      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    }
 
-  //   const { permission } = await permissionService.getProjectPermission(
-  //     actor,
-  //     actorId,
-  //     ca.projectId,
-  //     actorAuthMethod,
-  //     actorOrgId
-  //   );
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
 
-  //   ForbiddenError.from(permission).throwUnlessCan(
-  //     ProjectPermissionActions.Read,
-  //     ProjectPermissionSub.CertificateAuthorities
-  //   );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.Edit,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
+    );
 
-  //   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+    if (!(await isCaCrlAllowed({ orgId: project.orgId, licenseService }))) {
+      throw new BadRequestError({
+        message: "Failed to regenerate the CRL due to plan restriction. Upgrade plan to regenerate CRLs on demand."
+      });
+    }
 
-  //   const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
+    if (!ca.internalCa.activeCaCertId) {
+      throw new BadRequestError({
+        message: `CA '${ca.name}' has no certificate yet. Generate or install its CA certificate before regenerating the CRL.`
+      });
+    }
 
-  //   const keyId = await getProjectKmsCertificateKeyId({
-  //     projectId: ca.projectId,
-  //     projectDAL,
-  //     kmsService
-  //   });
+    const caExpiredAt = getInternalCaExpiredAt(ca.internalCa.notAfter);
+    if (caExpiredAt) {
+      throw new BadRequestError({
+        message: `CA '${ca.name}' expired on ${caExpiredAt.toISOString()}. Renew the CA to publish a new CRL.`
+      });
+    }
 
-  //   const privateKey = await kmsService.decrypt({
-  //     kmsId: keyId,
-  //     cipherTextBlob: caSecret.encryptedPrivateKey
-  //   });
+    const crl = await rebuildCaCrl({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthorityCrlDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      certificateDAL,
+      kmsService,
+      caKeySourceService,
+      keyStore
+    });
 
-  //   const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-  //   const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
-  //     "sign"
-  //   ]);
-
-  //   const revokedCerts = await certificateDAL.find({
-  //     caId: ca.id,
-  //     status: CertStatus.REVOKED
-  //   });
-
-  //   const crl = await x509.X509CrlGenerator.create({
-  //     issuer: ca.dn,
-  //     thisUpdate: new Date(),
-  //     nextUpdate: new Date("2025/12/12"),
-  //     entries: revokedCerts.map((revokedCert) => {
-  //       return {
-  //         serialNumber: revokedCert.serialNumber,
-  //         revocationDate: new Date(revokedCert.revokedAt as Date),
-  //         reason: revokedCert.revocationReason as number,
-  //         invalidity: new Date("2022/01/01"),
-  //         issuer: ca.dn
-  //       };
-  //     }),
-  //     signingAlgorithm: alg,
-  //     signingKey: sk
-  //   });
-
-  //   const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
-  //     kmsId: keyId,
-  //     plainText: Buffer.from(new Uint8Array(crl.rawData))
-  //   });
-
-  //   await certificateAuthorityCrlDAL.update(
-  //     {
-  //       caId: ca.id
-  //     },
-  //     {
-  //       encryptedCrl
-  //     }
-  //   );
-
-  //   const base64crl = crl.toString("base64");
-  //   const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
-
-  //   return {
-  //     crl: crlPem
-  //   };
-  // };
+    return { ca, crl };
+  };
 
   return {
     getCrlById,
-    getCaCrls
-    // rotateCaCrl
+    getCaCrls,
+    rebuildCrl
   };
 };

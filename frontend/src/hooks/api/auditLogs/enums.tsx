@@ -94,6 +94,7 @@ export enum EventType {
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRL = "get-certificate-authority-crl",
+  REBUILD_CA_CRL = "rebuild-certificate-authority-crl",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   GET_CERT = "get-cert",

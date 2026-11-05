@@ -2375,7 +2375,14 @@ export const CERTIFICATE_AUTHORITIES = {
   GET_CRLS: {
     caId: "The ID of the CA to get the certificate revocation lists (CRLs) for.",
     id: "The ID of certificate revocation list (CRL).",
-    crl: "The certificate revocation list (CRL)."
+    crl: "The certificate revocation list (CRL).",
+    thisUpdate: "When the current CRL was issued.",
+    nextUpdate:
+      "When the current CRL expires. A new CRL is issued before this time, unless this time is the CA certificate's expiry.",
+    crlNumber: "The CRL Number extension of the current CRL. It increases each time the CRL is regenerated."
+  },
+  REBUILD_CRL: {
+    caId: "The ID of the CA to regenerate the certificate revocation list (CRL) for."
   },
   INSTALL_CERT_VENAFI: {
     caId: "The ID of the CA to install the certificate for via Venafi."
@@ -2993,7 +3000,9 @@ export const CertificateAuthorities = {
       disableManagedCrlDistributionPointUrl:
         "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.",
       isOcspEnabled:
-        "When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled."
+        "When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.",
+      crlValidityDays:
+        "The number of days each CRL issued by this CA stays valid (its nextUpdate), from 1 to 365. Defaults to 7 when creating a CA, and leaving it out of an update keeps the current value. A value other than 7 requires the Enterprise plan. Never extends past the CA certificate's expiry. Changing it regenerates the CRL immediately, and it can't be changed once the CA has expired."
     }
   }
 };

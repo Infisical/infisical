@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { TCertificates } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { TProjectPermission } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -62,6 +63,7 @@ export type TCreateCaDTO =
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
       isOcspEnabled?: boolean;
+      crlValidityDays?: number;
     }
   | ({
       isInternal: false;
@@ -83,6 +85,7 @@ export type TCreateCaDTO =
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
       isOcspEnabled?: boolean;
+      crlValidityDays?: number;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaDTO = {
@@ -98,6 +101,7 @@ export type TUpdateCaDTO =
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
       isOcspEnabled?: boolean;
+      crlValidityDays?: number;
     }
   | ({
       isInternal: false;
@@ -107,6 +111,7 @@ export type TUpdateCaDTO =
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
       isOcspEnabled?: boolean;
+      crlValidityDays?: number;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TDeleteCaDTO = {
@@ -383,17 +388,13 @@ export type TGetCaCertChainDTO = {
 export type TRebuildCaCrlDTO = {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
-  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne" | "update" | "primaryNode">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   certificateDAL: Pick<TCertificateDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
-};
-
-export type TRotateCaCrlTriggerDTO = {
-  caId: string;
-  rotationIntervalDays: number;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
 export type TOrderCertificateForSubscriberDTO = {

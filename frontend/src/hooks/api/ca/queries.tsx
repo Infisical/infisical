@@ -7,6 +7,7 @@ import { CaRenewalStatus, CaSigningConfigType, CaType } from "./enums";
 import {
   TAdcsTemplate,
   TAzureAdCsTemplate,
+  TCaCrl,
   TCaQuota,
   TInternalCertificateAuthority,
   TUnifiedCertificateAuthority
@@ -215,12 +216,9 @@ export const useGetCaCrls = (caId: string) => {
   return useQuery({
     queryKey: caKeys.getCaCrls(caId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<
-        {
-          id: string;
-          crl: string;
-        }[]
-      >(`/api/v1/cert-manager/ca/internal/${caId}/crls`);
+      const { data } = await apiRequest.get<TCaCrl[]>(
+        `/api/v1/cert-manager/ca/internal/${caId}/crls`
+      );
       return data;
     },
     enabled: Boolean(caId)

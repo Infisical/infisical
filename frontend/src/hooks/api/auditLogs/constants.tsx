@@ -78,6 +78,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SIGN_INTERMEDIATE]: "Sign intermediate",
   [EventType.IMPORT_CA_CERT]: "Import CA certificate",
   [EventType.GET_CA_CRL]: "Get CA CRL",
+  [EventType.REBUILD_CA_CRL]: "Regenerate CA CRL",
   [EventType.ISSUE_CERT]: "Request certificate",
   [EventType.IMPORT_CERT]: "Import certificate",
   [EventType.GET_CERT]: "Get certificate",

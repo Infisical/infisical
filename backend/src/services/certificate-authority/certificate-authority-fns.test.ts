@@ -1,16 +1,32 @@
+import { webcrypto } from "node:crypto";
+
+import { AsnConvert } from "@peculiar/asn1-schema";
+import { CRLNumber, id_ce_cRLNumber } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { BadRequestError } from "@app/lib/errors";
+import { ExecutionError, ResourceLockedError } from "@app/lib/red-lock";
+import { CertKeyAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
+import { buildExternalCaSigner, buildLocalCaSigner } from "./ca-signer";
 import {
   buildAuthorityInfoAccessExtension,
+  buildCaCrlParams,
   buildCrlDistributionPointUrls,
   buildOcspResponderUrl,
   createDistinguishedName,
   extractDnParts,
+  rebuildCaCrl,
+  rebuildCaCrlAfterChange,
   signatureAlgorithmToAlgCfg
 } from "./certificate-authority-fns";
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
 
 // Helper to access properties on the union return type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -352,5 +368,278 @@ describe("buildAuthorityInfoAccessExtension", () => {
     );
 
     expect(parsed.ocsp ?? []).toHaveLength(0);
+  });
+});
+
+const EC_SIGNING_ALGORITHM = { name: "ECDSA", hash: "SHA-256" } as Algorithm;
+const EC_KEY_PARAMS = { name: "ECDSA", namedCurve: "P-256" };
+const DAY_MS = 24 * 60 * 60 * 1000;
+const CA_DN = "CN=CRL Test CA";
+
+const generateCaKeys = () =>
+  webcrypto.subtle.generateKey(EC_KEY_PARAMS, true, ["sign", "verify"]) as Promise<CryptoKeyPair>;
+
+const readCrlNumber = (crl: x509.X509Crl) => {
+  const extension = crl.extensions.find((ext) => ext.type === id_ce_cRLNumber);
+  return extension ? AsnConvert.parse(extension.value, CRLNumber).value : undefined;
+};
+
+const readAuthorityKeyId = (crl: x509.X509Crl) => crl.getExtension(x509.AuthorityKeyIdentifierExtension)?.keyId;
+
+const subjectKeyIdOf = async (publicKey: CryptoKey) =>
+  (await x509.SubjectKeyIdentifierExtension.create(publicKey)).keyId;
+
+describe("buildCaCrlParams", () => {
+  let caKeys: CryptoKeyPair;
+
+  beforeAll(async () => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+    caKeys = await generateCaKeys();
+  });
+
+  const build = (overrides: Partial<Parameters<typeof buildCaCrlParams>[0]> = {}) =>
+    buildCaCrlParams({
+      issuer: CA_DN,
+      caPublicKey: caKeys.publicKey,
+      crlNumber: 1,
+      crlValidityDays: 30,
+      entries: [],
+      ...overrides
+    });
+
+  it("should set nextUpdate the configured number of days after thisUpdate", async () => {
+    const params = await build({ crlValidityDays: 30 });
+    expect(params.nextUpdate.getTime() - params.thisUpdate.getTime()).toBeGreaterThanOrEqual(
+      30 * DAY_MS - 60 * 60 * 1000
+    );
+    expect(params.nextUpdate.getTime() - params.thisUpdate.getTime()).toBeLessThanOrEqual(30 * DAY_MS + 60 * 60 * 1000);
+  });
+
+  it("should cap nextUpdate at the CA certificate's notAfter", async () => {
+    const caNotAfter = new Date(Date.now() + 5 * DAY_MS);
+    const params = await build({ crlValidityDays: 30, caNotAfter });
+    expect(params.nextUpdate).toEqual(caNotAfter);
+  });
+
+  it("should refuse to sign a CRL for a CA whose certificate has expired", async () => {
+    await expect(build({ caNotAfter: new Date(Date.now() - DAY_MS) })).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it("should keep the full validity when the CA outlives it", async () => {
+    const caNotAfter = new Date(Date.now() + 365 * DAY_MS);
+    const params = await build({ crlValidityDays: 1, caNotAfter });
+    expect(params.nextUpdate.getTime()).toBeLessThan(caNotAfter.getTime());
+    expect(params.nextUpdate.getTime() - params.thisUpdate.getTime()).toBeLessThanOrEqual(DAY_MS + 60 * 60 * 1000);
+  });
+
+  it("should sign the CRL number and an authority key identifier matching the CA's subject key identifier", async () => {
+    const signer = buildLocalCaSigner({ ...caKeys, signingAlgorithm: EC_SIGNING_ALGORITHM });
+    const crl = await signer.createCrl(await build({ crlNumber: 42 }));
+
+    expect(readCrlNumber(crl)).toBe(42);
+    expect(readAuthorityKeyId(crl)).toBe(await subjectKeyIdOf(caKeys.publicKey));
+    expect(await crl.verify({ publicKey: caKeys.publicKey })).toBe(true);
+  });
+
+  it("should carry both extensions through an external key signer, whose structure is built with a throwaway key", async () => {
+    const signer = buildExternalCaSigner({
+      caPublicKey: caKeys.publicKey,
+      signingAlgorithm: EC_SIGNING_ALGORITHM,
+      generateEphemeralKey: generateCaKeys,
+      signTbs: buildLocalCaSigner({ ...caKeys, signingAlgorithm: EC_SIGNING_ALGORITHM }).signTbs
+    });
+    const crl = await signer.createCrl(await build({ crlNumber: 7 }));
+
+    expect(readCrlNumber(crl)).toBe(7);
+    expect(readAuthorityKeyId(crl)).toBe(await subjectKeyIdOf(caKeys.publicKey));
+    expect(await crl.verify({ publicKey: caKeys.publicKey })).toBe(true);
+  });
+});
+
+describe("rebuildCaCrl", () => {
+  const CA_ID = "ca-1";
+  const REVOKED_SERIAL = "0a1b2c";
+
+  beforeAll(() => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+  });
+
+  const PRIMARY = { node: "primary" };
+
+  const buildRebuildDeps = async ({
+    storedCrlNumber = 41,
+    isSigningBroken = false,
+    isLockBusy = false,
+    isRedisDown = false,
+    conflictingWrites = 0
+  } = {}) => {
+    const calls: string[] = [];
+    const caKeys = await generateCaKeys();
+    const signer = buildLocalCaSigner({ ...caKeys, signingAlgorithm: EC_SIGNING_ALGORITHM });
+    let currentCrlNumber = storedCrlNumber;
+    let conflictsLeft = conflictingWrites;
+    const certificateAuthorityCrlDAL = {
+      primaryNode: vi.fn(() => PRIMARY),
+      findOne: vi.fn(async () => {
+        calls.push("readCrl");
+        return { id: "crl-1", crlNumber: String(currentCrlNumber) };
+      }),
+      update: vi.fn(async () => {
+        if (conflictsLeft > 0) {
+          conflictsLeft -= 1;
+          currentCrlNumber += 1;
+          return [];
+        }
+        return [{ id: "crl-1" }];
+      })
+    };
+    const keyStore = {
+      acquireLock: vi.fn(async () => {
+        if (isLockBusy || isRedisDown) {
+          const vote = isLockBusy
+            ? new ResourceLockedError("The resource is locked.")
+            : new Error("connect ECONNREFUSED");
+          throw new ExecutionError("The operation was unable to achieve a quorum during its retry window.", [
+            Promise.resolve({
+              membershipSize: 1,
+              quorumSize: 1,
+              votesFor: new Set(),
+              votesAgainst: new Map([[{}, vote]])
+            } as never)
+          ]);
+        }
+        calls.push("lock");
+        return {
+          release: vi.fn(async () => {
+            calls.push("release");
+          })
+        };
+      })
+    };
+
+    const deps = {
+      caId: CA_ID,
+      keyStore,
+      certificateAuthorityCrlDAL,
+      certificateAuthorityDAL: {
+        findByIdWithAssociatedCa: vi.fn(async () => ({
+          id: CA_ID,
+          projectId: "project-1",
+          internalCa: { id: "internal-1", dn: CA_DN, keyAlgorithm: CertKeyAlgorithm.ECDSA_P256, crlValidityDays: 30 }
+        }))
+      },
+      certificateAuthoritySecretDAL: { findOne: vi.fn(async () => ({ id: "secret-1", keySource: CertKeySource.Hsm })) },
+      caKeySourceService: {
+        buildSigner: vi.fn(async () =>
+          isSigningBroken
+            ? {
+                ...signer,
+                createCrl: async () => {
+                  throw new Error("HSM unavailable");
+                }
+              }
+            : signer
+        )
+      },
+      projectDAL: {
+        transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb({})),
+        findOne: vi.fn(async () => ({ id: "project-1", orgId: "org-1", kmsCertificateKeyId: "kms-1" })),
+        updateById: vi.fn()
+      },
+      kmsService: {
+        encryptWithKmsKey: vi.fn(async () => async ({ plainText }: { plainText: Buffer }) => ({
+          cipherTextBlob: plainText
+        })),
+        decryptWithKmsKey: vi.fn(),
+        generateKmsKey: vi.fn()
+      },
+      certificateDAL: {
+        find: vi.fn(async () => [
+          { serialNumber: REVOKED_SERIAL, status: CertStatus.REVOKED, revokedAt: new Date(), revocationReason: 1 }
+        ])
+      }
+    };
+
+    return {
+      deps: deps as unknown as Parameters<typeof rebuildCaCrl>[0],
+      calls,
+      certificateAuthorityCrlDAL,
+      certificateDAL: deps.certificateDAL,
+      keyStore
+    };
+  };
+
+  it("should sign the next CRL number after the stored one and store exactly what it signed", async () => {
+    const { deps, certificateAuthorityCrlDAL } = await buildRebuildDeps({ storedCrlNumber: 41 });
+
+    const result = await rebuildCaCrl(deps);
+
+    const [filter, stored] = certificateAuthorityCrlDAL.update.mock.calls[0] as unknown as [
+      { id: string; crlNumber: string },
+      { encryptedCrl: Buffer; thisUpdate: Date; nextUpdate: Date; crlNumber: number }
+    ];
+    const signed = new x509.X509Crl(new Uint8Array(stored.encryptedCrl));
+
+    expect(filter).toEqual({ id: "crl-1", crlNumber: "41" });
+    expect(result.crlNumber).toBe(42);
+    expect(stored.crlNumber).toBe(42);
+    expect(readCrlNumber(signed)).toBe(42);
+    expect(Math.floor(stored.nextUpdate.getTime() / 1000)).toBe((signed.nextUpdate as Date).getTime() / 1000);
+    expect(stored.nextUpdate.getTime() - stored.thisUpdate.getTime()).toBeGreaterThan(29 * DAY_MS);
+    expect(signed.entries.map((entry) => entry.serialNumber)).toEqual([REVOKED_SERIAL]);
+  });
+
+  it("should read the stored CRL number only while holding the CA's lock", async () => {
+    const { deps, calls, keyStore } = await buildRebuildDeps();
+
+    await rebuildCaCrl(deps);
+
+    expect((keyStore.acquireLock.mock.calls[0] as unknown[])[0]).toEqual([KeyStorePrefixes.CaCrlRebuildLock(CA_ID)]);
+    expect(calls).toEqual(["lock", "readCrl", "release"]);
+  });
+
+  it("should release the lock and store nothing when signing fails", async () => {
+    const { deps, calls, certificateAuthorityCrlDAL } = await buildRebuildDeps({ isSigningBroken: true });
+
+    await expect(rebuildCaCrl(deps)).rejects.toThrow();
+
+    expect(certificateAuthorityCrlDAL.update).not.toHaveBeenCalled();
+    expect(calls[calls.length - 1]).toBe("release");
+  });
+
+  it("should read the revoked certificates from the primary", async () => {
+    const { deps, certificateDAL } = await buildRebuildDeps();
+
+    await rebuildCaCrl(deps);
+
+    expect(certificateDAL.find).toHaveBeenCalledWith({ caId: CA_ID, status: CertStatus.REVOKED }, { tx: PRIMARY });
+  });
+
+  it("should refuse instead of overwriting a CRL another writer stored meanwhile", async () => {
+    const { deps, calls, certificateAuthorityCrlDAL } = await buildRebuildDeps({ conflictingWrites: 1 });
+
+    await expect(rebuildCaCrl(deps)).rejects.toBeInstanceOf(BadRequestError);
+    expect(certificateAuthorityCrlDAL.update).toHaveBeenCalledTimes(1);
+    expect(calls[calls.length - 1]).toBe("release");
+  });
+
+  it("should answer with a readable error when the CA's lock cannot be taken", async () => {
+    const { deps, certificateAuthorityCrlDAL } = await buildRebuildDeps({ isLockBusy: true });
+
+    await expect(rebuildCaCrl(deps)).rejects.toThrow("Another CRL update for this CA is still in progress.");
+    expect(certificateAuthorityCrlDAL.findOne).not.toHaveBeenCalled();
+  });
+
+  it("should not report a lock store failure as another update in progress", async () => {
+    const { deps } = await buildRebuildDeps({ isRedisDown: true });
+
+    await expect(rebuildCaCrl(deps)).rejects.toBeInstanceOf(ExecutionError);
+  });
+
+  it("should log and continue when a rebuild after a CA change fails", async () => {
+    const { deps, certificateAuthorityCrlDAL } = await buildRebuildDeps({ isSigningBroken: true });
+
+    await expect(rebuildCaCrlAfterChange(deps)).resolves.toBeUndefined();
+    expect(certificateAuthorityCrlDAL.update).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,17 @@ export type TGetCaCrlsDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TRebuildCrlDTO = {
+  caId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+type TCaCrlDetails = {
+  id: string;
+  thisUpdate: Date;
+  nextUpdate: Date;
+  crlNumber: number;
+};
+
 export type TCertificateAuthorityCrlServiceFactory = {
   getCrlById: (crlId: TGetCrlById) => Promise<{
     ca: {
@@ -133,9 +144,10 @@ export type TCertificateAuthorityCrlServiceFactory = {
       readonly notAfter: string | undefined;
       readonly activeCaCertId: string | null | undefined;
     };
-    crls: {
-      id: string;
-      crl: string;
-    }[];
+    crls: (TCaCrlDetails & { crl: string })[];
+  }>;
+  rebuildCrl: (dto: TRebuildCrlDTO) => Promise<{
+    ca: { id: string; name: string; projectId: string };
+    crl: TCaCrlDetails;
   }>;
 };
