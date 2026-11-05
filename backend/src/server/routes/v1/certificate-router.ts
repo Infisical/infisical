@@ -22,6 +22,7 @@ import {
   certificateAttributesSchema,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
+  csrSchema,
   CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE,
   resolvedCustomExtensionSchema,
   subjectAttributeSchema
@@ -52,8 +53,6 @@ type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertifica
 // their format here (wildcards like *.example.com are valid); only bound the length, which
 // subjectAttributeSchema does against the varchar(255) columns they are persisted in.
 const subjectAttributeField = subjectAttributeSchema;
-
-const csrSchema = z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters");
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -989,7 +988,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           profileId: z.string().uuid(),
-          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters"),
+          csr: csrSchema,
           ttl: z
             .string()
             .trim()
