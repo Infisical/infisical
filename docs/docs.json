@@ -1361,10 +1361,8 @@
                     "expanded": true,
                     "pages": [
                       "cli/reference/secrets-manager",
-                      "cli/reference/secrets-manager/agent-proxy",
                       "cli/reference/secrets-manager/dynamic-secrets",
                       "cli/reference/secrets-manager/environments",
-                      "cli/reference/secrets-manager/export",
                       "cli/reference/secrets-manager/folders",
                       "cli/reference/secrets-manager/projects",
                       "cli/reference/secrets-manager/run",
@@ -5073,8 +5071,16 @@
       "destination": "/cli/reference#secrets-manager"
     },
     {
+      "source": "/cli/reference/secrets-manager/agent-proxy",
+      "destination": "/documentation/platform/agent-proxy/overview"
+    },
+    {
+      "source": "/cli/reference/secrets-manager/export",
+      "destination": "/cli/reference#secrets-manager-secrets-export"
+    },
+    {
       "source": "/cli/reference/sm/agent-proxy",
-      "destination": "/cli/reference#secrets-manager-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/overview"
     },
     {
       "source": "/cli/reference/sm/dynamic-secrets",
@@ -5082,7 +5088,7 @@
     },
     {
       "source": "/cli/reference/sm/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/reference/sm/projects",
@@ -5102,7 +5108,7 @@
     },
     {
       "source": "/cli/reference/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/reference/run",
@@ -5114,7 +5120,7 @@
     },
     {
       "source": "/cli/commands/agent-proxy",
-      "destination": "/cli/reference#secrets-manager-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/overview"
     },
     {
       "source": "/cli/commands/agent-vault",
@@ -5130,7 +5136,7 @@
     },
     {
       "source": "/cli/commands/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/commands/gateway",
