@@ -379,7 +379,7 @@ export async function runAgent(daytona: Daytona, prompt: string): Promise<string
   // agent can't lose access mid-run.
   const { session } = await infisical("/api/v1/agent-vault/sessions", {
     token: accessToken,
-    body: { accessBundles: [ACCESS_BUNDLE], ttl: "20m" },
+    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" },
   });
 
   let proxySandbox: Sandbox | undefined;
@@ -551,8 +551,8 @@ func runAgent(ctx context.Context, client *daytona.Client, prompt string) (outpu
 		} `json:"session"`
 	}
 	err = infisical(ctx, "/api/v1/agent-vault/sessions", login.AccessToken, map[string]any{
-		"accessBundles": []string{accessBundle},
-		"ttl":           "20m",
+		"accessBundle": accessBundle,
+		"ttl":          "20m",
 	}, &created)
 	if err != nil {
 		return "", err
@@ -722,7 +722,7 @@ def run_agent(daytona, prompt)
   session = infisical(
     "/api/v1/agent-vault/sessions",
     token: access_token,
-    body: { accessBundles: [ACCESS_BUNDLE], ttl: "20m" }
+    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" }
   )["session"]
 
   proxy_sandbox = nil
@@ -893,7 +893,7 @@ public class RunAgent {
         // One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
         // agent can't lose access mid-run.
         JsonNode session = infisical("/api/v1/agent-vault/sessions", accessToken, Map.of(
-            "accessBundles", List.of(ACCESS_BUNDLE),
+            "accessBundle", ACCESS_BUNDLE,
             "ttl", "20m")).get("session");
 
         Sandbox proxySandbox = null;

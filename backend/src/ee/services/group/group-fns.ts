@@ -346,27 +346,6 @@ export const addIdentitiesToGroup = async ({
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
 
-  // ensure all identities exist and belong to the org via org scoped membership
-  const foundIdentitiesMemberships = await membershipDAL.find({
-    scope: AccessScope.Organization,
-    scopeOrgId: group.orgId,
-    $in: {
-      actorIdentityId: identityIdsArray
-    }
-  });
-
-  const existingIdentityOrgMembershipsIdentityIdsSet = new Set(
-    foundIdentitiesMemberships.map((u) => u.actorIdentityId as string)
-  );
-
-  identityIdsArray.forEach((identityId) => {
-    if (!existingIdentityOrgMembershipsIdentityIdsSet.has(identityId)) {
-      throw new ForbiddenRequestError({
-        message: `Identity with id ${identityId} is not part of the organization`
-      });
-    }
-  });
-
   // check if identity group membership already exists
   const existingIdentityGroupMemberships = await identityGroupMembershipDAL.find({
     groupId: group.id,
@@ -383,6 +362,29 @@ export const addIdentitiesToGroup = async ({
 
   return identityDAL.transaction(async (tx) => {
     await orgDAL.lockActorsForOrgAccess({ orgId: group.orgId, actorIds: identityIdsArray }, tx);
+
+    const foundIdentitiesMemberships = await membershipDAL.find(
+      {
+        scope: AccessScope.Organization,
+        scopeOrgId: group.orgId,
+        $in: {
+          actorIdentityId: identityIdsArray
+        }
+      },
+      { tx }
+    );
+
+    const existingIdentityOrgMembershipsIdentityIdsSet = new Set(
+      foundIdentitiesMemberships.map((u) => u.actorIdentityId as string)
+    );
+
+    identityIdsArray.forEach((identityId) => {
+      if (!existingIdentityOrgMembershipsIdentityIdsSet.has(identityId)) {
+        throw new ForbiddenRequestError({
+          message: `Identity with id ${identityId} is not part of the organization`
+        });
+      }
+    });
 
     await identityGroupMembershipDAL.insertMany(
       foundIdentitiesMemberships.map((membership) => ({

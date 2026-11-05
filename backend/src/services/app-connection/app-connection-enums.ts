@@ -93,7 +93,8 @@ export enum AppConnection {
   HpeIloRedFish = "hpe-ilo",
   ServiceNow = "servicenow",
   S3Compatible = "s3-compatible",
-  Jira = "jira"
+  Jira = "jira",
+  ClickHouse = "clickhouse"
 }
 
 export enum AWSRegion {

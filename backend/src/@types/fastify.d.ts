@@ -23,6 +23,7 @@ import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audi
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
+import { TCertificateAuthorityCrossSignedCertServiceFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-service";
 import { TCertificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
@@ -480,6 +481,7 @@ declare module "fastify" {
     pit: TPitServiceFactory;
     secretScanningV2: TSecretScanningV2ServiceFactory;
     internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
+    certificateAuthorityCrossSignedCert: TCertificateAuthorityCrossSignedCertServiceFactory;
     pkiTemplate: TPkiTemplatesServiceFactory;
     reminder: TReminderServiceFactory;
     eventBus: TInternalEventBusService;

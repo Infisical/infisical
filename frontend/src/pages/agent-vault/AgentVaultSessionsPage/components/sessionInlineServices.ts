@@ -25,8 +25,8 @@ export type TSessionAccessItem =
 
 // A session's bundle, then one more badge for the services it was sent with.
 export const toAccessItems = (
-  session: Pick<TAgentVaultSession, "accessBundles" | "services">
+  session: Pick<TAgentVaultSession, "accessBundle" | "services">
 ): TSessionAccessItem[] => [
-  ...session.accessBundles.map((bundle) => ({ kind: "bundle" as const, bundle })),
+  ...(session.accessBundle ? [{ kind: "bundle" as const, bundle: session.accessBundle }] : []),
   ...(session.services.length ? [{ kind: "inline" as const, services: session.services }] : [])
 ];

@@ -427,7 +427,7 @@ const Page = () => {
                 !currentProject.isLegacyAdditionalPrivilegesEnabled && (
                   <AdditionalPrivilegesRemovedSection />
                 )}
-              {isSecretManager && hasFolderRbacPlan && (
+              {isSecretManager && (
                 <FolderAccessSection
                   actor={{
                     type: "identity",

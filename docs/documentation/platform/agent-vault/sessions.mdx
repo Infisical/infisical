@@ -12,7 +12,7 @@ Every session expires on a schedule you set. When the session expires (or [you r
 Anyone granted at least one access bundle can create a session. Admins can create one with any access bundle.
 
 <Tip>
-  If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli), [the API](/documentation/platform/agent-vault/sessions-api), or [the Python SDK](/sdks/languages/python#agent_vault-sessions). A machine identity can also create sessions [on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so that each agent uses the personal values of the person it runs for and gets no more access than that person.
+  If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli), [the API](/documentation/platform/agent-vault/sessions-api), [the Python SDK](/sdks/languages/python#agent_vault-sessions), or [the Node.js SDK](/sdks/languages/node#agentvault-sessions). A machine identity can also create sessions [on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so that each agent uses the personal values of the person it runs for and gets no more access than that person.
 </Tip>
 
 <Tabs>
@@ -64,7 +64,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
       -H "Authorization: Bearer <access-token>" \
       -H "Content-Type: application/json" \
-      -d '{"accessBundles": ["<access-bundle-name>"], "ttl": "1h", "label": "nightly deploy"}'
+      -d '{"accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
     ```
 
     The response includes the session token.

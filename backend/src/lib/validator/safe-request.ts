@@ -342,6 +342,18 @@ export const buildSsrfSafeAgent = async (
   });
 };
 
+// Same as buildSsrfSafeAgent, but always builds a new agent instead of returning a
+// cached one. Use it for clients that destroy their agent on close (such as
+// @clickhouse/client), which would otherwise tear down a pool other requests share.
+export const buildUncachedSsrfSafeAgent = async (
+  url: string,
+  options: TBuildSsrfSafeAgentOptions = {}
+): Promise<http.Agent | https.Agent> => {
+  const { allowPrivateIps, ...agentOptions } = options;
+  const validated = await validateAndPinUrl(url, { allowPrivateIps });
+  return constructAgent(validated, new URL(url).protocol, agentOptions);
+};
+
 type TSharedHttpsAgentOptions = {
   ca?: string;
   rejectUnauthorized: boolean;
