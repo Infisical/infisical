@@ -10,6 +10,8 @@ import {
 } from "@app/lib/knex/permission-filter-utils";
 import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
 
+export const MAX_CA_HIERARCHY_DEPTH = 32;
+
 export type TCertificateAuthorityDALFactory = ReturnType<typeof certificateAuthorityDALFactory>;
 
 export type TCertificateAuthorityWithAssociatedCa = Awaited<
@@ -420,9 +422,35 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findMaxSubCaDepth = async (caId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db)
+        .withRecursive("sub_cas", (cte) => {
+          void cte
+            .select("caId", db.raw("1 as depth"))
+            .from(TableName.InternalCertificateAuthority)
+            .where("parentCaId", caId)
+            .union((builder) => {
+              void builder
+                .select("ica.caId", db.raw("sub_cas.depth + 1"))
+                .from({ ica: TableName.InternalCertificateAuthority })
+                .innerJoin("sub_cas", "sub_cas.caId", "ica.parentCaId")
+                .where("sub_cas.depth", "<", MAX_CA_HIERARCHY_DEPTH);
+            });
+        })
+        .from("sub_cas")
+        .max("depth as maxDepth")
+        .first()) as { maxDepth: number | string | null } | undefined;
+      return Number(result?.maxDepth ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindMaxSubCaDepth" });
+    }
+  };
+
   return {
     ...caOrm,
     findWithAssociatedCa,
+    findMaxSubCaDepth,
     buildCertificateChain,
     findByIdWithAssociatedCa,
     findByNameAndProjectIdWithAssociatedCa,

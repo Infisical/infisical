@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -8,6 +8,7 @@ import {
   TAdcsTemplate,
   TAzureAdCsTemplate,
   TCaCrl,
+  TCaCrossSignedCertificate,
   TCaQuota,
   TInternalCertificateAuthority,
   TUnifiedCertificateAuthority
@@ -23,6 +24,7 @@ export const caKeys = {
   getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-certificate"],
   getCaCsr: (caId: string) => [{ caId }, "ca-csr"],
+  getCaCrossSignedCert: (caId: string) => [{ caId }, "ca-cross-signed-cert"],
   getCaCrl: (caId: string) => [{ caId }, "ca-crl"],
   getCaCertTemplates: (caId: string) => [{ caId }, "ca-cert-templates"],
   getCaEstConfig: (caId: string) => [{ caId }, "ca-est-config"],
@@ -197,18 +199,40 @@ export const useGetCaCert = (caId: string) => {
   });
 };
 
-export const useGetCaCsr = (caId: string) => {
+export const useGetCaCsr = (
+  caId: string,
+  maxPathLength?: number,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
-    queryKey: caKeys.getCaCsr(caId),
+    queryKey: [...caKeys.getCaCsr(caId), { maxPathLength }],
     queryFn: async () => {
       const {
         data: { csr }
       } = await apiRequest.get<{
         csr: string;
-      }>(`/api/v1/cert-manager/ca/internal/${caId}/csr`);
+      }>(`/api/v1/cert-manager/ca/internal/${caId}/csr`, {
+        params: { maxPathLength }
+      });
       return csr;
     },
-    enabled: Boolean(caId)
+    placeholderData: keepPreviousData,
+    enabled: Boolean(caId) && (options?.enabled ?? true)
+  });
+};
+
+export const useGetCaCrossSignedCert = (caId: string, enabled: boolean) => {
+  return useQuery({
+    queryKey: caKeys.getCaCrossSignedCert(caId),
+    queryFn: async () => {
+      const {
+        data: { crossSignedCertificate }
+      } = await apiRequest.get<{ crossSignedCertificate: TCaCrossSignedCertificate | null }>(
+        `/api/v1/cert-manager/ca/internal/${caId}/cross-signed-certificate`
+      );
+      return crossSignedCertificate;
+    },
+    enabled
   });
 };
 

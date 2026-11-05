@@ -1,9 +1,22 @@
 import { z } from "zod";
 
+import { HONEY_TOKENS } from "@app/lib/api-docs";
 import { isValidAwsRegion } from "@app/lib/aws/region";
 import { slugSchema } from "@app/server/lib/schemas";
 
-import { HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "./honey-token-enums";
+
+// The per-token honey_tokens.config column, not the org-level honey_token_configs row (AwsHoneyTokenConfigSchema).
+export const AwsHoneyTokenRowConfigSchema = z.object({
+  managedBy: z.nativeEnum(HoneyTokenManagedBy).describe(HONEY_TOKENS.CONFIG.managedBy)
+});
+
+export type TAwsHoneyTokenRowConfig = z.infer<typeof AwsHoneyTokenRowConfigSchema>;
+
+export const getHoneyTokenConfig = (honeyToken: { config?: unknown }) =>
+  AwsHoneyTokenRowConfigSchema.parse(honeyToken.config);
+
+export const getHoneyTokenManagedBy = (honeyToken: { config?: unknown }) => getHoneyTokenConfig(honeyToken).managedBy;
 
 export const AwsHoneyTokenEventMetadataSchema = z.object({
   accessKeyId: z.string(),

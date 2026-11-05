@@ -87,14 +87,18 @@ Log in as the machine identity, as [Step 2 of Create sessions with the API](/doc
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   -H "Authorization: Bearer <access-token>" \
   -H "Content-Type: application/json" \
-  -d '{"accessBundles": ["<access-bundle-name>"], "onBehalfOf": {"userEmail": "<user-email>"}, "ttl": "15m"}'
+  -d '{"accessBundle": "<access-bundle-name>", "onBehalfOf": {"userEmail": "<user-email>"}, "ttl": "15m"}'
 ```
 
 - In `onBehalfOf`, set either `userEmail` or `userId`, not both
-- In `accessBundles`, name a bundle that both the user and the machine identity can use
+- In `accessBundle`, name a bundle that both the user and the machine identity can use
 - `ttl` defaults to `1h`, instead of the `7d` default for other sessions
 
 Start the agent with the session token from the response, and revoke the session when the agent finishes, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
+
+<Tip>
+  You can also create the session with [the Python SDK](/sdks/languages/python#create-a-session-on-behalf-of-a-user) or [the Node.js SDK](/sdks/languages/node#create-a-session-on-behalf-of-a-user).
+</Tip>
 
 ### Find the access bundles a session can use
 

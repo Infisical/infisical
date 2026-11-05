@@ -6,6 +6,8 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
+import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -79,6 +81,7 @@ import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa 
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
   assertNoCertificateProfilesUsingCa,
+  assertPathLengthMatchesCa,
   buildAuthorityInfoAccessExtension,
   buildCaCrlParams,
   buildCrlDistributionPointUrls,
@@ -92,6 +95,7 @@ import {
   getCaCertChains,
   getCaSigner,
   getInternalCaExpiredAt,
+  getIssuedCaCertChain,
   isCaCrlAllowed,
   keyAlgorithmToAlgCfg,
   rebuildCaCrlAfterChange,
@@ -135,6 +139,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "countCasByOrgId"
     | "countInternalCasByOrgId"
+    | "findMaxSubCaDepth"
   >;
   internalCertificateAuthorityDAL: Pick<
     TInternalCertificateAuthorityDALFactory,
@@ -143,6 +148,10 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<
     TCertificateAuthorityCertDALFactory,
     "create" | "findOne" | "transaction" | "find" | "findById"
+  >;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findValidInCaHierarchy" | "lockCaHierarchyAndFindUnexpired"
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update" | "primaryNode">;
@@ -172,6 +181,7 @@ export type TInternalCertificateAuthorityServiceFactory = ReturnType<typeof inte
 export const internalCertificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificateTemplateDAL,
@@ -225,9 +235,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   const ROOT_CA_KEY_USAGES = x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign;
   // PQC root CAs also need digitalSignature per FIPS 204/205
   const PQC_ROOT_CA_KEY_USAGES = ROOT_CA_KEY_USAGES | x509.KeyUsageFlags.digitalSignature;
-  // Intermediate CAs: add digitalSignature + keyEncipherment for leaf cert operations
-  const PQC_CA_KEY_USAGES = ROOT_CA_KEY_USAGES | x509.KeyUsageFlags.digitalSignature;
-  const CLASSICAL_CA_KEY_USAGES = PQC_CA_KEY_USAGES | x509.KeyUsageFlags.keyEncipherment;
+  const INTERMEDIATE_CA_KEY_USAGES = ROOT_CA_KEY_USAGES | x509.KeyUsageFlags.digitalSignature;
 
   const $getSignatureKeyFamily = (sigAlg: string): string => {
     if (sigAlg.startsWith("ML-DSA")) return "ML-DSA";
@@ -853,9 +861,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     }
 
-    if (ca.internalCa.type === InternalCaType.ROOT)
-      throw new BadRequestError({ message: "Root CA cannot generate CSR" });
-
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     const { signer } = await getCaSigner({
@@ -867,26 +872,27 @@ export const internalCertificateAuthorityServiceFactory = ({
       caKeySourceService
     });
 
-    const effectivePathLength =
-      maxPathLength !== undefined && maxPathLength >= 0 ? maxPathLength : (ca.internalCa.maxPathLength ?? -1);
-    const resolvedPathLength =
-      effectivePathLength === -1 || effectivePathLength === null ? undefined : effectivePathLength;
+    const storedPathLength = ca.internalCa.maxPathLength ?? -1;
+    assertPathLengthMatchesCa({
+      storedPathLength,
+      requestedPathLength: maxPathLength,
+      allowNoLimitDefault: isInternal
+    });
+    const effectivePathLength = storedPathLength >= 0 ? storedPathLength : (maxPathLength ?? -1);
+    const resolvedPathLength = effectivePathLength === -1 ? undefined : effectivePathLength;
 
     const csrObj = await signer.createCsr({
       name: ca.internalCa.dn,
       extensions: [
         new x509.BasicConstraintsExtension(true, resolvedPathLength, true),
-        new x509.KeyUsagesExtension(
-          isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
-          true
-        ),
+        new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
         await x509.SubjectKeyIdentifierExtension.create(signer.caPublicKey)
-      ],
-      attributes: [new x509.ChallengePasswordAttribute("password")]
+      ]
     });
 
     return {
       csr: csrObj.toString("pem"),
+      maxPathLength: effectivePathLength,
       ca: expandInternalCa(ca)
     };
   };
@@ -965,6 +971,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const caCertObj = new x509.X509Certificate(decryptedCaCert);
+    // Copy the active certificate's limit so renewal never breaks sub-CAs already issued under it.
+    const currentPathLength = caCertObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
 
     let certificate = "";
     let certificateChain = "";
@@ -988,13 +996,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notAfter: new Date(notAfter),
           publicKey: signer.caPublicKey,
           extensions: [
-            new x509.BasicConstraintsExtension(
-              true,
-              ca.internalCa.maxPathLength === -1 || !ca.internalCa.maxPathLength
-                ? undefined
-                : ca.internalCa.maxPathLength,
-              true
-            ),
+            new x509.BasicConstraintsExtension(true, currentPathLength, true),
             new x509.KeyUsagesExtension(
               isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES,
               true
@@ -1031,6 +1033,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             },
             {
               activeCaCertId: newCaCert.id,
+              serialNumber: cert.serialNumber,
               notBefore: notBeforeDate,
               notAfter: new Date(notAfter)
             },
@@ -1091,12 +1094,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
         const csrObj = await signer.createCsr({
           name: ca.internalCa.dn,
-          extensions: [
-            new x509.KeyUsagesExtension(
-              isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES
-            )
-          ],
-          attributes: [new x509.ChallengePasswordAttribute("password")]
+          extensions: [new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES)]
         });
 
         const notBeforeDate = new Date();
@@ -1108,17 +1106,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           notAfter: new Date(notAfter),
           publicKey: csrObj.publicKey,
           extensions: [
-            new x509.KeyUsagesExtension(
-              isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
-              true
-            ),
-            new x509.BasicConstraintsExtension(
-              true,
-              ca.internalCa.maxPathLength === -1 || !ca.internalCa.maxPathLength
-                ? undefined
-                : ca.internalCa.maxPathLength,
-              true
-            ),
+            new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
+            new x509.BasicConstraintsExtension(true, currentPathLength, true),
             await x509.AuthorityKeyIdentifierExtension.create(parentCaCertObj, false),
             await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
           ]
@@ -1162,6 +1151,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             },
             {
               activeCaCertId: newCaCert.id,
+              serialNumber: intermediateCert.serialNumber,
               notBefore: notBeforeDate,
               notAfter: new Date(notAfter)
             },
@@ -1592,10 +1582,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       notAfter: notAfterDate,
       publicKey: csrObj.publicKey,
       extensions: [
-        new x509.KeyUsagesExtension(
-          isPqcAlgorithm(csrObj.publicKey.algorithm.name) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
-          true
-        ),
+        new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
         await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
         await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
@@ -1648,6 +1635,13 @@ export const internalCertificateAuthorityServiceFactory = ({
         ProjectPermissionCertificateAuthorityActions.Create,
         subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
       );
+    }
+
+    if (ca.internalCa.type === InternalCaType.ROOT) {
+      throw new BadRequestError({
+        message:
+          "Root CAs sign their own certificate, so you can't import one. To have another CA sign this CA, import a cross-signed certificate instead."
+      });
     }
 
     if (ca.internalCa.parentCaId && (!parentCaId || parentCaId !== ca.internalCa.parentCaId)) {
@@ -1716,6 +1710,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       [`${TableName.InternalCertificateAuthority}.serialNumber` as "serialNumber"]: parentSerialNumber
     });
 
+    const resolvedParentCaId = parentCaId ?? parentCa?.id;
+    const isParentChanging = Boolean(resolvedParentCaId) && resolvedParentCaId !== ca.internalCa.parentCaId;
+
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
       projectDAL,
@@ -1755,6 +1752,16 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     await certificateAuthorityCertDAL.transaction(async (tx) => {
+      if (isParentChanging && resolvedParentCaId) {
+        await assertCrossSignedCertsAllowSubCa({
+          parentCaId: resolvedParentCaId,
+          attachedCaId: ca.id,
+          certificateAuthorityDAL,
+          certificateAuthorityCrossSignedCertDAL,
+          tx
+        });
+      }
+
       const newCaCert = await certificateAuthorityCertDAL.create(
         {
           caId: ca.id,
@@ -1779,7 +1786,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notBefore: new Date(certObj.notBefore),
           notAfter: new Date(certObj.notAfter),
           serialNumber: certObj.serialNumber,
-          parentCaId: parentCa?.id,
+          parentCaId: resolvedParentCaId,
           activeCaCertId: newCaCert.id
         },
         tx
@@ -1865,13 +1872,11 @@ export const internalCertificateAuthorityServiceFactory = ({
       caKeySourceService
     });
 
-    const caKeyAlg = intermediateCa.internalCa.keyAlgorithm as CertKeyAlgorithm;
-
     const csrObj = await signer.createCsr({
       name: intermediateCa.internalCa.dn,
       extensions: [
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
-        new x509.KeyUsagesExtension(isPqcAlgorithm(caKeyAlg) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES, true),
+        new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
         await x509.SubjectKeyIdentifierExtension.create(signer.caPublicKey)
       ]
     });
@@ -2124,8 +2129,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       name: leafDn,
       keys: leafKeys,
       signingAlgorithm: keyGenAlg,
-      extensions: [new x509.KeyUsagesExtension(csrKeyUsageFlags)],
-      attributes: [new x509.ChallengePasswordAttribute("password")]
+      extensions: [new x509.KeyUsagesExtension(csrKeyUsageFlags)]
     });
 
     const { caSecret, signer } = await getCaSigner({
@@ -2302,15 +2306,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(skLeaf)
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: caCert.id,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)
@@ -2799,15 +2803,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)

@@ -1489,7 +1489,13 @@ export const appConnectionServiceFactory = ({
     }),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
-    databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    databricks: databricksConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsService,
+      gatewayV2Service,
+      gatewayPoolService
+    ),
     aws: awsConnectionService(connectAppConnectionById),
     kempLoadMaster: kempLoadMasterConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     imperva: impervaConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),

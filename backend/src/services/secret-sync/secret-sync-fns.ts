@@ -336,7 +336,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).syncSecrets(secretSync, payload);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.syncSecrets(secretSync, payload);
@@ -481,7 +483,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).getSecrets(secretSync);
       case SecretSync.Humanitec:
         secretMap = await HumanitecSyncFns.getSecrets(secretSync);
@@ -674,7 +678,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).removeSecrets(secretSync, payload);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.removeSecrets(secretSync, payload);
