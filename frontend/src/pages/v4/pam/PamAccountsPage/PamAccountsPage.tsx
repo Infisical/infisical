@@ -31,7 +31,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useV4Adapter } from "../../data/adapters";
 
-const route = "/v4/organizations/$orgId/pam/accounts";
+const route = "/v4/organizations/$orgId/pam/accounts/";
 const NOT_PORTED = "Not available in v4 yet";
 
 const ISSUE_LABELS: Record<PamAccountAccessibilityIssue, string> = {
