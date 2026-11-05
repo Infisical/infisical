@@ -6,11 +6,13 @@ export enum ClaudeCodeSecretDetectedAction {
   Report = "report"
 }
 
+export type TClaudeCodeDataSourceConfig = {
+  onSecretDetected: ClaudeCodeSecretDetectedAction;
+};
+
 export type TClaudeCodeDataSource = TSecretScanningDataSourceBase & {
   type: SecretScanningDataSource.ClaudeCode;
-  config: {
-    onSecretDetected: ClaudeCodeSecretDetectedAction;
-  };
+  config: TClaudeCodeDataSourceConfig;
 };
 
 export type TClaudeCodeDataSourceOption = {

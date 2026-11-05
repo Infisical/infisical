@@ -4059,14 +4059,22 @@ export const SecretScanningDataSources = {
     },
     CLAUDE_CODE: {
       onSecretDetected:
-        "What happens to a prompt that contains a secret nobody has reviewed yet: block (the default) holds the prompt back until the finding is resolved, marked as a false positive, or ignored; report lets the prompt through and only records the finding."
+        "What happens to a prompt that contains a secret that is new, was resolved and came back, or is still waiting for review: block (the default) holds the prompt back; report lets the prompt through and only records the finding. A secret whose newest finding is a false positive or ignored is always let through."
     }
   },
   CLAUDE_CODE: {
+    SECRET: {
+      secrets: "The secrets the Claude Code plugin's local scan found in the prompt.",
+      value:
+        "The secret value, exactly as the scan extracted it. It is only used to compute a blind index, and is never stored.",
+      ruleId: "The ID of the scan rule that found the secret."
+    },
+    CHECK_SECRETS: {
+      dataSourceId: "The ID of the Claude Code Data Source to check the secrets against."
+    },
     SUBMIT_PROMPT: {
       dataSourceId: "The ID of the Claude Code Data Source to submit the prompt to.",
-      prompt: "The full prompt that the Claude Code plugin's local scan flagged.",
-      fingerprints: "The fingerprint of each secret the local scan found: the hex SHA-256 digest of the secret.",
+      prompt: "The full prompt that holds the secrets. It is scanned in the background and is not stored.",
       sessionId: "The ID of the Claude Code session the prompt was submitted in.",
       cwd: "The working directory Claude Code was running in."
     }

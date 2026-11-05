@@ -30,7 +30,7 @@ import {
   CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP,
   doesDataSourceRequireConnection,
   doesDataSourceSupportDiscovery,
-  getClaudeCodeSecretDetectedAction,
+  getClaudeCodeConfig,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
@@ -82,9 +82,11 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
     });
   };
 
-  const handleSecretDetectedActionChange = async (
-    onSecretDetected: ClaudeCodeSecretDetectedAction
-  ) => {
+  const claudeCodeConfig = getClaudeCodeConfig(
+    dataSource.type === SecretScanningDataSource.ClaudeCode ? dataSource.config : undefined
+  );
+
+  const handleOnSecretDetectedChange = async (onSecretDetected: ClaudeCodeSecretDetectedAction) => {
     await updateDataSource.mutateAsync({
       dataSourceId: dataSource.id,
       type: dataSource.type,
@@ -138,47 +140,48 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Field orientation="horizontal" data-disabled={!canEdit}>
-                <FieldContent>
-                  <FieldTitle id="data-source-on-secret-detected-title">
-                    When a Secret Is Detected
-                  </FieldTitle>
-                  <FieldDescription id="data-source-on-secret-detected-help">
-                    {
-                      CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[
-                        getClaudeCodeSecretDetectedAction(dataSource.config)
-                      ].description
+              <FieldGroup>
+                <Field orientation="horizontal" data-disabled={!canEdit}>
+                  <FieldContent>
+                    <FieldTitle id="data-source-on-secret-detected-title">
+                      When a Secret Is Detected
+                    </FieldTitle>
+                    <FieldDescription id="data-source-on-secret-detected-help">
+                      {
+                        CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[claudeCodeConfig.onSecretDetected]
+                          .description
+                      }
+                    </FieldDescription>
+                  </FieldContent>
+                  <Select
+                    value={claudeCodeConfig.onSecretDetected}
+                    onValueChange={(value) =>
+                      handleOnSecretDetectedChange(value as ClaudeCodeSecretDetectedAction)
                     }
-                  </FieldDescription>
-                </FieldContent>
-                <Select
-                  value={getClaudeCodeSecretDetectedAction(dataSource.config)}
-                  onValueChange={(value) =>
-                    handleSecretDetectedActionChange(value as ClaudeCodeSecretDetectedAction)
-                  }
-                  disabled={!canEdit || updateDataSource.isPending}
-                >
-                  <SelectTrigger
-                    id="data-source-on-secret-detected"
-                    className="w-48 shrink-0"
-                    aria-labelledby="data-source-on-secret-detected-title"
-                    aria-describedby="data-source-on-secret-detected-help"
+                    disabled={!canEdit || updateDataSource.isPending}
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper" align="end" className="w-80">
-                    {Object.values(ClaudeCodeSecretDetectedAction).map((action) => (
-                      <SelectItem
-                        key={action}
-                        value={action}
-                        description={CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[action].description}
-                      >
-                        {CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[action].name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+                    <SelectTrigger
+                      id="data-source-on-secret-detected"
+                      className="w-48 shrink-0"
+                      aria-labelledby="data-source-on-secret-detected-title"
+                      aria-describedby="data-source-on-secret-detected-help"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper" align="end" className="w-80">
+                      {Object.values(ClaudeCodeSecretDetectedAction).map((action) => (
+                        <SelectItem
+                          key={action}
+                          value={action}
+                          description={CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[action].description}
+                        >
+                          {CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[action].name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldGroup>
             </CardContent>
           </Card>
         )}

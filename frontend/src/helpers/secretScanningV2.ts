@@ -7,7 +7,10 @@ import {
   SecretScanningFindingStatus,
   TSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
-import { ClaudeCodeSecretDetectedAction } from "@app/hooks/api/secretScanningV2/types/claude-code-data-source";
+import {
+  ClaudeCodeSecretDetectedAction,
+  TClaudeCodeDataSourceConfig
+} from "@app/hooks/api/secretScanningV2/types/claude-code-data-source";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 export const SECRET_SCANNING_DATA_SOURCE_MAP: Record<
@@ -62,19 +65,21 @@ export const CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP: Record<
   [ClaudeCodeSecretDetectedAction.Block]: {
     name: "Block the prompt",
     description:
-      "Claude Code blocks the prompt until its findings are marked as resolved, false positive, or ignored in Infisical."
+      "Claude Code blocks the prompt until the finding is marked as false positive or ignored. A resolved secret that comes back is recorded as a new finding."
   },
   [ClaudeCodeSecretDetectedAction.Report]: {
     name: "Report only",
     description:
-      "The prompt continues. Infisical records the secret as a finding and Claude Code shows a warning."
+      "The prompt continues with a warning until the finding is marked as false positive or ignored. A resolved secret that comes back is recorded as a new finding."
   }
 };
 
-// data sources created before this setting existed may not have a value, so they keep blocking prompts
-export const getClaudeCodeSecretDetectedAction = (config?: {
-  onSecretDetected?: ClaudeCodeSecretDetectedAction;
-}) => config?.onSecretDetected ?? ClaudeCodeSecretDetectedAction.Block;
+// data sources created before this setting existed may not have a value, so they get the backend default
+export const getClaudeCodeConfig = (
+  config?: Partial<TClaudeCodeDataSourceConfig>
+): TClaudeCodeDataSourceConfig => ({
+  onSecretDetected: config?.onSecretDetected ?? ClaudeCodeSecretDetectedAction.Block
+});
 
 // GitLab discovery relies on group-level webhooks, so a project-scoped data source cannot discover new projects.
 export const doesDataSourceSupportDiscovery = ({

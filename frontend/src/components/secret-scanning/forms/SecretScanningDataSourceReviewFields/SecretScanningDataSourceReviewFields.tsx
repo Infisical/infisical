@@ -13,7 +13,7 @@ import {
   CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP,
   doesDataSourceRequireConnection,
   doesDataSourceSupportDiscovery,
-  getClaudeCodeSecretDetectedAction,
+  getClaudeCodeConfig,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
@@ -21,6 +21,11 @@ import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 import { TSecretScanningDataSourceForm } from "../schemas";
+
+type TClaudeCodeFormConfig = Extract<
+  TSecretScanningDataSourceForm,
+  { type: SecretScanningDataSource.ClaudeCode }
+>["config"];
 
 const ReviewGroup = ({ title, children }: { title: string; children: ReactNode }) => (
   <DetailGroup>
@@ -69,6 +74,18 @@ const getConnectionDetails = (
   }
 };
 
+const ClaudeCodeScanOptions = ({ config }: { config: TClaudeCodeFormConfig }) => {
+  const { onSecretDetected } = getClaudeCodeConfig(config);
+
+  return (
+    <ReviewGroup title="Scan Options">
+      <ReviewDetail label="When a Secret Is Detected">
+        {CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[onSecretDetected].name}
+      </ReviewDetail>
+    </ReviewGroup>
+  );
+};
+
 export const SecretScanningDataSourceReviewFields = () => {
   const { control } = useFormContext<TSecretScanningDataSourceForm>();
   const form = useWatch({ control }) as TSecretScanningDataSourceForm;
@@ -83,15 +100,7 @@ export const SecretScanningDataSourceReviewFields = () => {
           <ReviewDetail label="Platform">{platform}</ReviewDetail>
         </ReviewGroup>
         {form.type === SecretScanningDataSource.ClaudeCode && (
-          <ReviewGroup title="Scan Options">
-            <ReviewDetail label="When a Secret Is Detected">
-              {
-                CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[
-                  getClaudeCodeSecretDetectedAction(form.config)
-                ].name
-              }
-            </ReviewDetail>
-          </ReviewGroup>
+          <ClaudeCodeScanOptions config={form.config} />
         )}
         <ReviewGroup title="Details">
           <ReviewDetail label="Name">{form.name}</ReviewDetail>

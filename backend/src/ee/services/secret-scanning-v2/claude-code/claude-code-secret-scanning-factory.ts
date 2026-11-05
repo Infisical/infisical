@@ -14,8 +14,8 @@ import {
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 
-import { getClaudeCodeFindingFingerprint } from "./claude-code-secret-scanning-fns";
 import {
   TClaudeCodeDataSourceInput,
   TClaudeCodeDataSourceWithConnection,
@@ -26,18 +26,14 @@ import {
 // become the data source's resources.
 export const ClaudeCodeSecretScanningFactory = ({ kmsService }: TSecretScanningFactoryParams) => {
   const initialize: TSecretScanningFactoryInitialize<TClaudeCodeDataSourceInput> = async (_, callback) => callback({});
-
   const postInitialization: TSecretScanningFactoryPostInitialization<TClaudeCodeDataSourceInput> = async () => {};
-
   const teardown: TSecretScanningFactoryTeardown<TClaudeCodeDataSourceWithConnection> = async () => {};
-
   const listRawResources: TSecretScanningFactoryListRawResources<TClaudeCodeDataSourceWithConnection> = async () => [];
+  const setupWebhook: TSecretScanningFactorySetupWebhook<TClaudeCodeDataSourceWithConnection> = async () => undefined;
 
-  const getFullScanPath: TSecretScanningFactoryGetFullScanPath<TClaudeCodeDataSourceWithConnection> = async () => {
+  const getFullScanPath: TSecretScanningFactoryGetFullScanPath<TClaudeCodeDataSourceWithConnection> = () => {
     throw new Error("Claude Code Data Sources only scan prompts as they are submitted");
   };
-
-  const setupWebhook: TSecretScanningFactorySetupWebhook<TClaudeCodeDataSourceWithConnection> = async () => undefined;
 
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<
     TClaudeCodeDataSourceInput["config"],
@@ -46,18 +42,21 @@ export const ClaudeCodeSecretScanningFactory = ({ kmsService }: TSecretScanningF
 
   const getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<
     TQueueClaudeCodeResourceDiffScan["payload"]
-  > = ({ submitter }) => ({
-    name: submitter.email || submitter.name,
-    externalId: submitter.id
-  });
+  > = (data) => {
+    return {
+      name: data.submitter.email || data.submitter.name,
+      externalId: data.submitter.id
+    };
+  };
 
   const getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<
     TClaudeCodeDataSourceWithConnection,
     TQueueClaudeCodeResourceDiffScan["payload"]
   > = async ({ dataSource, payload, configPath }) => {
-    const { encryptedPrompt, excludedFingerprints, submitter, sessionId, cwd, submittedAt } = payload;
+    const { orgId, submissionId, encryptedPrompt, excludedBlindIndexes, submitter, sessionId, cwd, submittedAt } =
+      payload;
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: dataSource.projectId
     });
@@ -66,18 +65,29 @@ export const ClaudeCodeSecretScanningFactory = ({ kmsService }: TSecretScanningF
 
     const findings = await scanContentAndGetFindings(prompt, configPath);
 
-    const excluded = new Set(excludedFingerprints);
+    // Generated the same way as secrets_v2.secretValueOrgBlindIndex, so a finding can later be matched against stored
+    // secrets without decrypting either.
+    const blindIndexer = await createOrgSecretBlindIndexer({ orgId, kmsService });
+
+    const excluded = new Set(excludedBlindIndexes);
     const findingsPayload = new Map<string, TFindingsPayload[number]>();
 
     for (const finding of findings) {
-      const fingerprint = getClaudeCodeFindingFingerprint(finding.Secret);
+      // eslint-disable-next-line no-await-in-loop
+      const secretFindingBlindIndex = await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(finding.Secret));
 
-      // a secret repeated in one prompt, or matched by several rules, is one finding; upserting it twice in one statement fails
+      // a secret repeated in one prompt, or matched by several rules, is one finding
       // eslint-disable-next-line no-continue
-      if (excluded.has(fingerprint) || findingsPayload.has(fingerprint)) continue;
+      if (excluded.has(secretFindingBlindIndex) || findingsPayload.has(secretFindingBlindIndex)) continue;
 
-      findingsPayload.set(fingerprint, {
+      // like a git finding, identified by where it is: the prompt, the rule, and the position in the prompt
+      const fingerprint = `${submissionId}:${finding.RuleID}:${finding.StartLine}:${finding.StartColumn}`;
+
+      findingsPayload.set(secretFindingBlindIndex, {
         fingerprint,
+        secretFindingBlindIndex,
+        // kept for matching against stored secrets later; the API never returns it
+        encryptedSecretValue: encryptor({ plainText: Buffer.from(finding.Secret) }).cipherTextBlob,
         severity: SecretScanningFindingSeverity.High,
         rule: finding.RuleID,
         details: {

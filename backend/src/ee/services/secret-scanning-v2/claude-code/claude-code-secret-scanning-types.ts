@@ -3,6 +3,8 @@ import { z } from "zod";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 
 import {
+  CheckClaudeCodeSecretsSchema,
+  ClaudeCodeDataSourceConfigSchema,
   ClaudeCodeDataSourceListItemSchema,
   ClaudeCodeDataSourceSchema,
   ClaudeCodeFindingSchema,
@@ -17,6 +19,12 @@ export type TClaudeCodeDataSourceInput = z.infer<typeof CreateClaudeCodeDataSour
 export type TClaudeCodeDataSourceListItem = z.infer<typeof ClaudeCodeDataSourceListItemSchema>;
 
 export type TClaudeCodeFinding = z.infer<typeof ClaudeCodeFindingSchema>;
+
+export type TClaudeCodeDataSourceConfig = z.infer<typeof ClaudeCodeDataSourceConfigSchema>;
+
+export type TCheckClaudeCodeSecretsDTO = z.infer<typeof CheckClaudeCodeSecretsSchema> & {
+  dataSourceId: string;
+};
 
 export type TClaudeCodeDataSourceWithConnection = TClaudeCodeDataSource & {
   connection: null;
@@ -35,10 +43,14 @@ export type TSubmitClaudeCodePromptDTO = z.infer<typeof SubmitClaudeCodePromptSc
 export type TClaudeCodePromptSubmission = {
   dataSourceId: string;
   submitter: TSubmitClaudeCodePromptDTO["submitter"];
+  // the org whose blind index key the scan uses, so its findings match secrets by value
+  orgId: string;
+  // one per submitted prompt; findings are fingerprinted by where they are in it
+  submissionId: string;
   // base64 KMS ciphertext; the prompt holds secrets and the job payload is stored in the queue
   encryptedPrompt: string;
-  // already recorded in the project, so the scan doesn't add them again under this submitter
-  excludedFingerprints: string[];
+  // blind indexes of secrets already recorded in the project, so the scan doesn't add them again under this submitter
+  excludedBlindIndexes: string[];
   sessionId?: string;
   cwd?: string;
   submittedAt: string;

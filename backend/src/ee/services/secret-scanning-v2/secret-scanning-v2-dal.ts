@@ -749,25 +749,34 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  const findFindingStatusesByProjectIdAndFingerprints = async (
+  // The status of the newest finding for each of these secrets in the project, by their org-level blind index. Only
+  // the newest counts: a secret resolved and later found again has a newer finding than the resolved one. Blind
+  // indexes are internal, so callers must not return them.
+  const findNewestFindingStatusesByProjectIdAndBlindIndexes = async (
     projectId: string,
-    fingerprints: string[],
+    blindIndexes: string[],
     tx?: Knex
   ) => {
     try {
       const findings = (await baseFindingQuery(tx)
         .where(`${TableName.SecretScanningDataSource}.projectId`, projectId)
-        .whereIn(`${TableName.SecretScanningFinding}.fingerprint`, fingerprints)
+        .whereIn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`, blindIndexes)
+        .distinctOn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`)
         .select(
-          db.ref("fingerprint").withSchema(TableName.SecretScanningFinding),
+          db.ref("secretFindingBlindIndex").withSchema(TableName.SecretScanningFinding),
           db.ref("status").withSchema(TableName.SecretScanningFinding)
-        )) as { fingerprint: string; status: string }[];
+        )
+        .orderBy([
+          { column: `${TableName.SecretScanningFinding}.secretFindingBlindIndex` },
+          { column: `${TableName.SecretScanningFinding}.createdAt`, order: "desc" },
+          { column: `${TableName.SecretScanningFinding}.id`, order: "desc" }
+        ])) as { secretFindingBlindIndex: string; status: string }[];
 
       return findings;
     } catch (error) {
       throw new DatabaseError({
         error,
-        name: "Find Statuses By Project ID And Fingerprints - Secret Scanning Finding"
+        name: "Find Newest Statuses By Project ID And Blind Indexes - Secret Scanning Finding"
       });
     }
   };
@@ -805,7 +814,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findByProjectId: findFindingsByProjectId,
       findByIdWithDetails: findFindingByIdWithDetails,
       countByProjectId: countFindingsByProjectId,
-      findStatusesByProjectIdAndFingerprints: findFindingStatusesByProjectIdAndFingerprints
+      findNewestStatusesByProjectIdAndBlindIndexes: findNewestFindingStatusesByProjectIdAndBlindIndexes
     },
     configs: configOrm
   };

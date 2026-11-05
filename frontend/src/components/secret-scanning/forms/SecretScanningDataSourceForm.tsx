@@ -21,7 +21,7 @@ import {
   CLAUDE_CODE_PLUGIN_SETUP_COMMAND,
   doesDataSourceRequireConnection,
   doesDataSourceSupportDiscovery,
-  getClaudeCodeSecretDetectedAction,
+  getClaudeCodeConfig,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
@@ -34,7 +34,6 @@ import {
   useCreateSecretScanningDataSource,
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2/mutations";
-import { ClaudeCodeSecretDetectedAction } from "@app/hooks/api/secretScanningV2/types/claude-code-data-source";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 import { SecretScanningDataSourceSchema, TSecretScanningDataSourceForm } from "./schemas";
@@ -64,7 +63,7 @@ const getDefaultConfig = (type: SecretScanningDataSource) => {
     case SecretScanningDataSource.GitLab:
       return { scope: GitLabDataSourceScope.Account };
     case SecretScanningDataSource.ClaudeCode:
-      return { onSecretDetected: ClaudeCodeSecretDetectedAction.Block };
+      return getClaudeCodeConfig();
     default:
       throw new Error(`Unhandled data source type: ${type}`);
   }
@@ -79,13 +78,10 @@ const getDefaultValues = (type: SecretScanningDataSource) =>
     config: getDefaultConfig(type)
   }) as DefaultValues<TSecretScanningDataSourceForm>;
 
-// Claude Code data sources created before the detection setting existed may not have a saved value
+// Claude Code data sources created before the scan setting existed may not have a saved value
 const getEditValues = (dataSource: TSecretScanningDataSource) =>
   dataSource.type === SecretScanningDataSource.ClaudeCode
-    ? {
-        ...dataSource,
-        config: { onSecretDetected: getClaudeCodeSecretDetectedAction(dataSource.config) }
-      }
+    ? { ...dataSource, config: getClaudeCodeConfig(dataSource.config) }
     : dataSource;
 
 const CONNECTION_STEP_FIELDS: Partial<Record<SecretScanningDataSource, TFormField[]>> = {
@@ -130,7 +126,7 @@ const SCAN_STEP_SUBTITLE: Partial<Record<SecretScanningDataSource, string>> = {
 
 const SCAN_STEP_INFO: Partial<Record<SecretScanningDataSource, string>> = {
   [SecretScanningDataSource.ClaudeCode]:
-    "With Block the prompt, Claude Code stops the prompt until its findings are reviewed in Infisical. With Report only, the prompt continues, Infisical records the secret as a finding, and the developer sees a warning. You can change this later."
+    "Infisical records each new secret as a finding. With Block the prompt, Claude Code blocks the prompt. With Report only, the prompt continues and the developer sees a warning. This stops when the finding is marked as false positive or ignored. If a resolved secret comes back, Infisical records it as a new finding. You can change this later."
 };
 
 const getReviewInfo = (type: SecretScanningDataSource, isEdit: boolean) => {

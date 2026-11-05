@@ -9,8 +9,12 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import { SecretScanningDataSources } from "@app/lib/api-docs";
 
-import { CLAUDE_CODE_MAX_FINGERPRINTS, CLAUDE_CODE_MAX_PROMPT_LENGTH } from "./claude-code-secret-scanning-constants";
-import { ClaudeCodeSecretDetectedAction } from "./claude-code-secret-scanning-enums";
+import {
+  CLAUDE_CODE_MAX_PROMPT_LENGTH,
+  CLAUDE_CODE_MAX_SECRET_LENGTH,
+  CLAUDE_CODE_MAX_SECRETS
+} from "./claude-code-secret-scanning-constants";
+import { ClaudeCodeSecretDetectedAction, ClaudeCodeSecretStatus } from "./claude-code-secret-scanning-enums";
 
 // Prompts are pushed by the Claude Code plugin, so there is nothing to configure and no scan settings apply.
 const OMITTED_SCAN_SETTINGS = {
@@ -20,8 +24,8 @@ const OMITTED_SCAN_SETTINGS = {
   isDiscoveryEnabled: true
 } as const;
 
+// Data sources created before this setting have no value for it, so the default keeps them blocking.
 export const ClaudeCodeDataSourceConfigSchema = z.object({
-  // data sources created before this setting have no value, so the default keeps them blocking
   onSecretDetected: z
     .nativeEnum(ClaudeCodeSecretDetectedAction)
     .default(ClaudeCodeSecretDetectedAction.Block)
@@ -101,21 +105,37 @@ export const ClaudeCodeFindingSchema = BaseSecretScanningFindingSchema.extend({
   details: ClaudeCodeFindingDetailsSchema
 });
 
+const ClaudeCodeSecretSchema = z.object({
+  // not trimmed: whitespace can be part of a secret, and the value must match what the scan extracts
+  value: z
+    .string()
+    .min(1)
+    .max(CLAUDE_CODE_MAX_SECRET_LENGTH)
+    .describe(SecretScanningDataSources.CLAUDE_CODE.SECRET.value),
+  ruleId: z.string().trim().min(1).max(128).describe(SecretScanningDataSources.CLAUDE_CODE.SECRET.ruleId)
+});
+
+const ClaudeCodeSecretsSchema = ClaudeCodeSecretSchema.array()
+  .min(1, "At least one secret required")
+  .max(CLAUDE_CODE_MAX_SECRETS)
+  .describe(SecretScanningDataSources.CLAUDE_CODE.SECRET.secrets);
+
+export const CheckClaudeCodeSecretsSchema = z.object({
+  secrets: ClaudeCodeSecretsSchema
+});
+
+export const ClaudeCodeSecretCheckResultSchema = z.object({
+  ruleId: z.string(),
+  status: z.nativeEnum(ClaudeCodeSecretStatus)
+});
+
 export const SubmitClaudeCodePromptSchema = z.object({
   prompt: z
     .string()
     .min(1, "Prompt required")
     .max(CLAUDE_CODE_MAX_PROMPT_LENGTH)
     .describe(SecretScanningDataSources.CLAUDE_CODE.SUBMIT_PROMPT.prompt),
-  fingerprints: z
-    .string()
-    .trim()
-    .min(1)
-    .max(128)
-    .array()
-    .min(1, "At least one fingerprint required")
-    .max(CLAUDE_CODE_MAX_FINGERPRINTS)
-    .describe(SecretScanningDataSources.CLAUDE_CODE.SUBMIT_PROMPT.fingerprints),
+  secrets: ClaudeCodeSecretsSchema,
   sessionId: z
     .string()
     .trim()
