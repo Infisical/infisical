@@ -2787,7 +2787,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
   color: var(--cli-muted);
 }
 
-.cli-ref .cli-cmd code:not(.cli-code code) {
+/* Inline code only: a fenced block in a command's description keeps Mintlify's code block styling. */
+.cli-ref .cli-cmd code:not(.cli-code code, pre code) {
   padding: 0.0625rem 0.3125rem;
   font-family: var(--cli-mono);
   font-size: 0.85em;
