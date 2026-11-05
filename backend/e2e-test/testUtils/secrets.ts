@@ -177,3 +177,40 @@ export const getSecretsV2 = (dto: {
       return payload;
     }
   );
+
+export const createSecretsBatchV4 = (dto: {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secrets: { secretKey: string; secretValue: string }[];
+  authToken: string;
+}) => {
+  const { authToken, ...body } = dto;
+  return request(
+    { method: "POST", url: "/api/v4/secrets/batch", headers: { authorization: `Bearer ${authToken}` }, body },
+    (res) => {
+      expect(res.statusCode).toBe(200);
+      return res.json<{ secrets: TRawSecret[] }>().secrets;
+    }
+  );
+};
+
+export const moveSecretsV4 = (dto: {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+  shouldOverwrite: boolean;
+  authToken: string;
+}) => {
+  const { authToken, ...body } = dto;
+  return request(
+    { method: "POST", url: "/api/v4/secrets/move", headers: { authorization: `Bearer ${authToken}` }, body },
+    (res) => {
+      expect(res.statusCode).toBe(200);
+      return res.json<{ isSourceUpdated: boolean; isDestinationUpdated: boolean }>();
+    }
+  );
+};

@@ -324,13 +324,14 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
   },
   useSecretVersionValue: ({ secretId, version }, options) => {
     const state = useStore().use();
-    if (options?.enabled === false) return { data: undefined, isPending: true, error: null };
+    if (options?.enabled === false)
+      return { data: undefined, isPending: true, error: null, refetch: async () => undefined };
     const secret = state.secrets.find((entry) => entry.id === secretId);
     const entry = state.versionHistory[secretId]?.find((item) => item.version === version);
     let value = entry?.value;
     if (entry?.redacted) value = "";
     else if (value === undefined && secret?.version === version) value = secret.value;
-    return { data: value, isPending: false, error: null };
+    return { data: value, isPending: false, error: null, refetch: async () => undefined };
   },
   useRedactSecretVersion: demoMutation((store, { versionId, secretId }) => {
     const version = Number(versionId.split(":v").at(-1));

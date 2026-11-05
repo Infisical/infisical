@@ -19,16 +19,11 @@ import { Switch } from "@app/components/v4/ui/switch";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import type { Resource, Secret } from "../../secrets-model";
+import type { Resource } from "../../secrets-model";
 import { childPath } from "../flows/shared";
 import type { EnvironmentOption, FlowFeedback } from "../flows/types";
 import type { OverlayHostProps } from "../row-actions/types";
-import {
-  isPathInsideFolder,
-  moveFolderResources,
-  planSecretMove,
-  relocate
-} from "./move-resources";
+import { isPathInsideFolder, moveFolderResources, planSecretMove } from "./move-resources";
 
 import styles from "./bulk-dialogs.module.css";
 
@@ -330,46 +325,8 @@ function MoveSecretsDialogContent({
       });
 
   const moveRotationStep =
-    (rotation: Rotation, destination: string): Step =>
-    (current) => {
-      if (
-        current.some(
-          (resource) =>
-            resource.kind === "rotation" &&
-            at(resource, destination, selectedPath) &&
-            resource.name === rotation.name
-        )
-      )
-        return {
-          error: `A Secret Rotation with the name "${rotation.name}" already exists at the secret path "${selectedPath}"`
-        };
-      const managed = current.filter(
-        (resource): resource is Secret =>
-          resource.kind === "secret" &&
-          at(resource, rotation.environment, sourcePath) &&
-          resource.managedBy === rotation.name
-      );
-      const managedNames = new Set(managed.map(({ name }) => name));
-      const conflicts = current.filter(
-        (resource) =>
-          resource.kind === "secret" &&
-          at(resource, destination, selectedPath) &&
-          managedNames.has(resource.name)
-      );
-      if (conflicts.length && !shouldOverwrite)
-        return {
-          error: `The following secrets already exist at the destination path "${selectedPath}": ${conflicts.map(({ name }) => name).join(", ")}. Set "overwriteDestination" to true to replace them.`
-        };
-      const conflictIds = new Set(conflicts.map(({ id }) => id));
-      const moving = new Set([rotation.id, ...managed.map(({ id }) => id)]);
-      return {
-        next: current
-          .filter(({ id }) => !conflictIds.has(id))
-          .map((resource) =>
-            moving.has(resource.id) ? relocate(resource, destination, selectedPath) : resource
-          )
-      };
-    };
+    (rotation: Rotation): Step =>
+    () => ({ error: `Secret rotation "${rotation.name}" cannot be moved here yet.` });
 
   const moveFolderStep =
     (folder: Folder, destination: string): Step =>
@@ -447,7 +404,7 @@ function MoveSecretsDialogContent({
     const rotationSteps: Step[] = [];
     const rotationFailures: string[] = [];
     rotationsToMove.forEach((rotation) => {
-      const step = moveRotationStep(rotation, destinationEnv);
+      const step = moveRotationStep(rotation);
       if ("error" in run(step)) rotationFailures.push(rotation.name);
       else rotationSteps.push(step);
     });
@@ -544,7 +501,7 @@ function MoveSecretsDialogContent({
         );
       }
       rotationsToMove.forEach((rotation) => {
-        const step = moveRotationStep(rotation, env);
+        const step = moveRotationStep(rotation);
         record(
           env,
           step,
