@@ -6,6 +6,7 @@ import { Knex } from "knex";
 
 import {
   ActionProjectType,
+  SecretType,
   TSecretFolders,
   TSecretFolderVersions,
   TSecretV2TagJunctionInsert,
@@ -35,10 +36,12 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1, previousSecretLocation } from "../secret-folder/secret-folder-events";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
+import { createSecretBlindIndexer, TSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { secretModifiedEvents } from "../secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { fnUpdateSecretLinkedReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSyncSecretsDTO } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TFolderCommitDALFactory } from "./folder-commit-dal";
 import { TFolderCommitQueueServiceFactory } from "./folder-commit-queue";
@@ -155,10 +158,13 @@ type ActorInfo = {
   message?: string;
 };
 
+type TSecretSyncPayload = TSyncSecretsDTO<boolean>;
+
 type StateChangeResult = {
   secretChangesCount: number;
   folderChangesCount: number;
   totalChanges: number;
+  referenceSyncs: TSecretSyncPayload[];
 };
 
 type TFolderCommitServiceFactoryDep = {
@@ -227,7 +233,17 @@ const buildDefaultCommitMessage = (changes: TCommitResourceChangeDTO[]) => {
   return `${summary.charAt(0).toUpperCase()}${summary.slice(1)}`;
 };
 
-type TBlindIndexRepairer = (version: TSecretVersionsV2) => Promise<TSecretVersionsV2> | TSecretVersionsV2;
+type TRestoreCrypto = {
+  repairBlindIndexes: (version: TSecretVersionsV2) => Promise<TSecretVersionsV2> | TSecretVersionsV2;
+  referenceRewrite?: {
+    orgId: string;
+    encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
+    decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
+    blindIndexer: TSecretBlindIndexer;
+  };
+};
+
+type TRestoredSecretRename = { secretId: string; oldSecretKey: string; newSecretKey: string };
 
 export const folderCommitServiceFactory = ({
   folderCommitDAL,
@@ -1024,20 +1040,23 @@ export const folderCommitServiceFactory = ({
 
   // A rollback recomputes the digests from the restored value instead of copying them from the version
   // row, so the secret version table (which is very large) never needed a digest migration.
-  const $buildBlindIndexRepairer = async (projectId: string, tx?: Knex): Promise<TBlindIndexRepairer> => {
+  const $buildRestoreCrypto = async (projectId: string, tx?: Knex): Promise<TRestoreCrypto> => {
     const project = await projectDAL.findById(projectId, tx);
-    if (!project) return (version) => version;
+    if (!project) return { repairBlindIndexes: (version) => version };
 
-    const [{ decryptor }, blindIndexer] = await Promise.all([
+    const [{ encryptor, decryptor }, blindIndexer] = await Promise.all([
       kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx),
       createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService, tx })
     ]);
 
-    return async (version) => {
-      if (!version.encryptedValue) return version;
+    return {
+      referenceRewrite: { orgId: project.orgId, encryptor, decryptor, blindIndexer },
+      repairBlindIndexes: async (version) => {
+        if (!version.encryptedValue) return version;
 
-      const value = decryptor({ cipherTextBlob: version.encryptedValue });
-      return { ...version, ...(await blindIndexer.generateBlindIndexes(value)) };
+        const value = decryptor({ cipherTextBlob: version.encryptedValue });
+        return { ...version, ...(await blindIndexer.generateBlindIndexes(value)) };
+      }
     };
   };
 
@@ -1049,14 +1068,15 @@ export const folderCommitServiceFactory = ({
     secretVersions: Record<string, TSecretVersionsV2>,
     actorInfo: ActorInfo,
     folderId: string,
-    repairBlindIndexes: TBlindIndexRepairer,
+    repairBlindIndexes: TRestoreCrypto["repairBlindIndexes"],
     tx?: Knex
   ) => {
     const commitChanges = [];
+    const renames: TRestoredSecretRename[] = [];
     const modifiedSecrets: { id: string; type: string; modificationType: EventModificationType }[] = [];
     const folder = await folderDAL.findById(folderId, tx);
     if (!folder) {
-      return [];
+      return { commitChanges: [], renames };
     }
     const project = await projectDAL.findById(folder.projectId, tx);
 
@@ -1173,6 +1193,14 @@ export const folderCommitServiceFactory = ({
 
         case "update":
           {
+            if (
+              latestVersion &&
+              latestVersion.key !== secretVersion.key &&
+              secretVersion.type === SecretType.Shared &&
+              !secretVersion.userId
+            ) {
+              renames.push({ secretId: change.id, oldSecretKey: latestVersion.key, newSecretKey: secretVersion.key });
+            }
             modifiedSecrets.push({
               id: change.id,
               type: secretVersion.type,
@@ -1311,7 +1339,7 @@ export const folderCommitServiceFactory = ({
       }
     }
 
-    return commitChanges;
+    return { commitChanges, renames };
   };
 
   /**
@@ -1324,7 +1352,7 @@ export const folderCommitServiceFactory = ({
     projectId,
     reconstructNewFolders,
     reconstructUpToCommit,
-    repairBlindIndexes,
+    restoreCrypto,
     step = 0,
     tx
   }: {
@@ -1334,10 +1362,11 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     reconstructNewFolders: boolean;
     reconstructUpToCommit?: string;
-    repairBlindIndexes: TBlindIndexRepairer;
+    restoreCrypto: TRestoreCrypto;
     step: number;
     tx?: Knex;
   }): Promise<StateChangeResult> => {
+    const referenceSyncs: TSecretSyncPayload[] = [];
     /**
      * Process folder changes when applying folder state differences
      */
@@ -1410,17 +1439,18 @@ export const folderCommitServiceFactory = ({
                     tx
                   });
                   if (subFolderDiff?.length > 0) {
-                    await applyFolderStateDifferencesFn({
+                    const subFolderResult = await applyFolderStateDifferencesFn({
                       differences: subFolderDiff,
                       actorInfo,
                       folderId: change.id,
                       projectId,
-                      repairBlindIndexes,
+                      restoreCrypto,
                       reconstructNewFolders,
                       reconstructUpToCommit,
                       step: step + 1,
                       tx
                     });
+                    referenceSyncs.push(...subFolderResult.referenceSyncs);
                   }
                 }
               }
@@ -1549,8 +1579,8 @@ export const folderCommitServiceFactory = ({
     );
 
     // Process changes in parallel
-    const [secretCommitChanges, folderCommitChanges] = await Promise.all([
-      processSecretChanges(differences, secretVersions, actorInfo, folderId, repairBlindIndexes, tx),
+    const [{ commitChanges: secretCommitChanges, renames }, folderCommitChanges] = await Promise.all([
+      processSecretChanges(differences, secretVersions, actorInfo, folderId, restoreCrypto.repairBlindIndexes, tx),
       processFolderChanges(differences, folderVersions)
     ]);
 
@@ -1572,13 +1602,47 @@ export const folderCommitServiceFactory = ({
       tx
     );
 
+    // Personal overrides are not part of point-in-time history, so restoring a shared secret's old key
+    // does not restore the references a rename rewrote in them. Rewrite them back the way a rename does.
+    const { referenceRewrite } = restoreCrypto;
+    if (renames.length && referenceRewrite) {
+      const [folderLocation] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+      if (folderLocation) {
+        for await (const rename of renames) {
+          await fnUpdateSecretLinkedReferences({
+            ...rename,
+            orgId: referenceRewrite.orgId,
+            projectId,
+            environment: folderLocation.environmentSlug,
+            secretPath: folderLocation.path,
+            folderId,
+            secretDAL: secretV2BridgeDAL,
+            secretVersionDAL: secretVersionV2BridgeDAL,
+            folderCommitService: { createCommit },
+            folderDAL,
+            secretQueueService: {
+              syncSecrets: async (payload) => {
+                referenceSyncs.push(payload);
+              }
+            },
+            eventEmitter,
+            encryptor: referenceRewrite.encryptor,
+            decryptor: referenceRewrite.decryptor,
+            blindIndexer: referenceRewrite.blindIndexer,
+            tx
+          });
+        }
+      }
+    }
+
     // Invalidate cache to reflect the changes
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
 
     return {
       secretChangesCount: secretChanges.length,
       folderChangesCount: folderChanges.length,
-      totalChanges: differences.length
+      totalChanges: differences.length,
+      referenceSyncs
     };
   };
 
@@ -1596,16 +1660,16 @@ export const folderCommitServiceFactory = ({
   }): Promise<StateChangeResult> => {
     // Resolved here, before any transaction is opened, because it reaches the KMS: an org on an
     // external provider would otherwise put a network call between BEGIN and COMMIT.
-    const repairBlindIndexes = await $buildBlindIndexRepairer(params.projectId, params.tx);
+    const restoreCrypto = await $buildRestoreCrypto(params.projectId, params.tx);
 
     // If a transaction was provided, use it directly
     if (params.tx) {
-      return applyFolderStateDifferencesFn({ ...params, repairBlindIndexes, step: 0 });
+      return applyFolderStateDifferencesFn({ ...params, restoreCrypto, step: 0 });
     }
 
     // Otherwise, start a new transaction
     return folderCommitDAL.transaction((newTx) =>
-      applyFolderStateDifferencesFn({ ...params, repairBlindIndexes, tx: newTx, step: 0 })
+      applyFolderStateDifferencesFn({ ...params, restoreCrypto, tx: newTx, step: 0 })
     );
   };
 
@@ -2170,8 +2234,9 @@ export const folderCommitServiceFactory = ({
     actorType: ActorType,
     projectId: string,
     message?: string
-  ): Promise<{ affectedFolderIds: string[] }> => {
+  ): Promise<{ affectedFolderIds: string[]; referenceSyncs: TSecretSyncPayload[] }> => {
     const affectedFolderIds: string[] = [];
+    const referenceSyncs: TSecretSyncPayload[] = [];
     await folderCommitDAL.transaction(async (tx) => {
       const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
       if (!targetCommit) {
@@ -2263,7 +2328,7 @@ export const folderCommitServiceFactory = ({
       for (const folder of sortedFolders) {
         const diff = folderDiffs.get(folder.id);
         if (diff) {
-          await applyFolderStateDifferences({
+          const result = await applyFolderStateDifferences({
             differences: diff,
             actorInfo: {
               actorType,
@@ -2277,11 +2342,12 @@ export const folderCommitServiceFactory = ({
             tx
           });
           affectedFolderIds.push(folder.id);
+          referenceSyncs.push(...result.referenceSyncs);
         }
       }
     });
 
-    return { affectedFolderIds };
+    return { affectedFolderIds, referenceSyncs };
   };
 
   const getLatestCommit = async ({
@@ -2434,7 +2500,8 @@ export const folderCommitServiceFactory = ({
       originalCommitId: commitId,
       revertCommitId: latestCommit?.id,
       changesReverted: revertResult.totalChanges,
-      folderId: commitToRevert.folderId
+      folderId: commitToRevert.folderId,
+      referenceSyncs: revertResult.referenceSyncs
     };
   };
 

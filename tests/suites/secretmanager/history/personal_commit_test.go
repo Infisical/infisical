@@ -110,4 +110,38 @@ func TestFolderCommit_PersonalOverride(t *testing.T) {
 		require.NotContains(t, bodies, override.ID)
 		require.Equal(t, personalValue+"-db.internal", secretmanager.GetSecret(t, proj, "dev", "CONN", secretmanager.As(owner), secretmanager.WithPersonal()).Value)
 	})
+	t.Run("should repair another user's override references when a rollback undoes a rename", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		owner := proj.NewUser(t, fixture.WithPrincipalName("owner"))
+		member := proj.NewUser(t, fixture.WithPrincipalName("member"))
+		viewer := proj.NewUser(t, fixture.WithPrincipalName("viewer"), fixture.WithRoles("viewer"))
+		secretmanager.CreateSecret(t, proj, "dev", "DB_HOST", "db.internal")
+		secretmanager.CreateSecret(t, proj, "dev", "CONN", "shared-${DB_HOST}")
+		secretmanager.CreateSecret(t, proj, "dev", "CONN", personalValue+"-${DB_HOST}", secretmanager.As(owner), secretmanager.WithPersonal())
+		target := headCommit(t, proj, "dev", "/")
+		renamed, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), "DB_HOST", api.UpdateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new("/"), NewSecretName: new("DATABASE_HOST"),
+		})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, renamed.StatusCode(), renamed.Body)
+
+		// Action
+		res, err := rollback(t, member, proj, "dev", folderID(t, proj, "dev", "/"), target.ID, false)
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Equal(t, "shared-db.internal", secretmanager.GetSecret(t, proj, "dev", "CONN").Value)
+		require.Equal(t, personalValue+"-db.internal", secretmanager.GetSecret(t, proj, "dev", "CONN", secretmanager.As(owner), secretmanager.WithPersonal()).Value)
+		for _, c := range commitsAt(t, viewer, proj, "dev", "/") {
+			changes, err := viewer.API.GetFolderCommitChangesWithResponse(t.Context(), c.ID, &api.GetFolderCommitChangesParams{ProjectId: proj.ID})
+			require.NoError(t, err)
+			requireStatus(t, http.StatusOK, changes.StatusCode(), changes.Body)
+			require.NotContains(t, string(changes.Body), personalValue)
+		}
+	})
 }

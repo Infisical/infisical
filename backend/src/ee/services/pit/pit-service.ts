@@ -28,7 +28,7 @@ import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/se
 import { SecretOperations, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
-import { TProcessNewCommitRawDTO } from "@app/services/secret/secret-types";
+import { TProcessNewCommitRawDTO, TSyncSecretsDTO } from "@app/services/secret/secret-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { shouldApplyPolicy } from "../secret-approval-policy/secret-approval-policy-fns";
@@ -74,6 +74,21 @@ export const pitServiceFactory = ({
   folderCommitDAL,
   secretQueueService
 }: TPitServiceFactoryDep) => {
+  const syncRenamedSecretReferences = async (payloads: TSyncSecretsDTO<boolean>[]) => {
+    await Promise.all(
+      payloads.map(async (syncPayload) => {
+        try {
+          await secretQueueService.syncSecrets(syncPayload);
+        } catch (error) {
+          logger.error(
+            error,
+            `Failed to queue secret sync for restored secret references [projectId=${syncPayload.projectId}] [secretPath=${syncPayload.secretPath}]`
+          );
+        }
+      })
+    );
+  };
+
   const getCommitsCount = async ({
     actor,
     actorId,
@@ -466,7 +481,7 @@ export const pitServiceFactory = ({
     }
 
     if (deepRollback) {
-      const { affectedFolderIds } = await folderCommitService.deepRollbackFolder(
+      const { affectedFolderIds, referenceSyncs } = await folderCommitService.deepRollbackFolder(
         commitId,
         env.id,
         actorId,
@@ -492,6 +507,7 @@ export const pitServiceFactory = ({
             })
           )
       );
+      await syncRenamedSecretReferences(referenceSyncs);
 
       return { success: true };
     }
@@ -529,6 +545,7 @@ export const pitServiceFactory = ({
         });
       }
     }
+    await syncRenamedSecretReferences(response.referenceSyncs);
 
     return {
       success: true,
@@ -553,7 +570,7 @@ export const pitServiceFactory = ({
     projectId: string;
     commitId: string;
   }) => {
-    const response = await folderCommitService.revertCommitChanges({
+    const { referenceSyncs, ...response } = await folderCommitService.revertCommitChanges({
       commitId,
       actor,
       actorId,
@@ -578,6 +595,7 @@ export const pitServiceFactory = ({
         });
       }
     }
+    await syncRenamedSecretReferences(referenceSyncs ?? []);
 
     return response;
   };
