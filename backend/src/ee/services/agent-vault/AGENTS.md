@@ -19,15 +19,15 @@ never in anything the agent holds.
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-variable/        global and personal variables and the reads behind Used By
-agent-vault-member/          product membership (list, add, role, remove)
+agent-vault-member/          project membership (list, add, role, remove)
 agent-vault-delegation/      which users a machine identity may start sessions on behalf of
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
 agent-vault-session/         mint, revoke, list, get, edit label
-agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
 agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
+agent-vault-project/         project resolver: projectId lookup and the temporary fallback
 ```
 
 Routes: `ee/routes/v1/agent-vault-routers/`, prefix `/api/v1/agent-vault`. CLI: `packages/cmd/agent_vault*.go`
@@ -36,21 +36,55 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## The project
 
-- One implicit project per org, created lazily by the `injectAgentVaultProjectId` preValidation hook, so
-  `GET /agent-vault/project` creates it on first access. That REST deviation is deliberate.
-- Generic project create and delete are blocked for this type, and the project is excluded from
-  `countOfBillableOrgProjects`. Break the exclusion and every org loses a workspace slot.
-- The lazy bootstrap seeds no members (PAM's sweeps in every org admin; this one deliberately does not). Org
-  admins join through `grant-admin-access`, from the product tile or the layout's `beforeLoad` when they arrive
-  by link, and that route is where the `agent_vault_identities` meter moves for them. Only org creation seeds
-  the creator.
+- Agent Vault projects are ordinary user-created projects (`POST /api/v1/projects` with `type: agent-vault`), one
+  per agentic system or team, each with its own admins and members, bundles, services, variables, skills, sessions,
+  proxies and session log settings. Create forces no default environments and refuses any template but the default.
+  The creator becomes admin. Rename and delete go through the generic project routes.
+- Nothing creates a project at org or sub-org creation, and there is no lazy bootstrap. Signup creates
+  `My first project` when the user picks Agent Vault; a migration renamed every existing project from `Agent Vault`
+  to `My first project` (slug kept).
+- There is no limit on how many Agent Vault projects an org holds. The projects stay out of
+  `countOfBillableOrgProjects`; break the exclusion and every org loses a workspace slot.
+- Each handler resolves its project after zod validation: `resolveRequestedProjectId(req, projectId, "query" | "body")`
+  (`ee/routes/v1/agent-vault-routers/agent-vault-router-fns.ts`) for lists, creates, project-level routes and lookups
+  by name, and `agentVaultProjectResolver.resolveFrom{AccessBundle,Skill,Proxy,Session,Variable,Authorization}` for
+  by-id routes, which take the project from the row and check the caller's membership in it. A project that is missing,
+  soft-deleted, of another type or in another org is a 404 that echoes only the sent id. On a by-id route, a row in a
+  project the caller isn't a member of is the row's own 404 (the resolver maps `ProjectMembershipNotFound`), never
+  the permission service's 403, which would confirm the id exists. Pass the resolved id after
+  any spread of `req.body` or `req.query`, never the raw value. A `projectId` sent in the place the route does not
+  read is a 400 rather than silently falling back: body routes check the raw query string, and query routes check a
+  flag that the one `preValidation` hook in `registerAgentVaultRouters` sets before zod strips the body. Both go with
+  the fallback.
+- A request without `projectId` falls back only to the org's original Agent Vault project
+  (`projects.isAgentVaultOriginal`, set by migration on the project old clients used, the newest live one at the
+  time), never to a project created since, and is a 400 when the org has none. The fallback is undocumented, logged
+  at info for each use, and goes after 2027-01-04 together with the column.
+- Org admins enter a project they aren't in through Join as Admin, which is audited and emails the project's
+  admins. Nothing joins them silently, and that route is where the `agent_vault_identities` meter moves for them.
+- Every removal outside Agent Vault's own members route (leaving, the generic project membership routes, a group's
+  removal, org exit) clears personal values through `applicationMembershipCleanupService`, which deletes the
+  actor's grants and then runs `clearPersonalValuesInProjects`: it looks up the projects where these actors saved a
+  value (`agentVaultPersonalValueDAL.findProjectIdsWithValues`) and runs `clearPersonalValuesAfterRevoke` in only
+  those, sorted, so org exit doesn't lock every Agent Vault project in the org. Callers run it after the project
+  membership delete, since the clear keeps values for anyone still an admin.
+- Leaving a group or deleting one (`removeUsersFromGroupByUserIds`, `removeIdentitiesFromGroup`, `deleteOwnedGroup`,
+  so SCIM, LDAP, SAML and OIDC sync too, and GitHub team sync on its own path) runs `clearPersonalValuesInProjects`
+  over the group's projects after the group rows are deleted, in the same transaction, so anyone who still reaches
+  the bundle another way keeps theirs. SAML and LDAP login sync remove one user from several groups in one
+  transaction, so they pass `deferPersonalValueClear` and clear once over the union of those groups' projects after
+  the loop: every group's membership row locks come before the clear's per-project advisory lock, the same order as
+  every other removal. It reads the groups' members only when one of those projects holds a value
+  (`findProjectIdsWithAnyValues`). Org exit deletes the actor's rows in the org's groups before
+  `revokeActorsInOrgs`, so the clear it runs sees them out of those groups.
+- Invites into an Agent Vault project, at signup and from the org's Members page, go through Agent Vault's member
+  service (`addProductMembers`), so they get its audit event and telemetry.
 - The traffic policy defaults to any-host (formerly Allow), in the DB default, the service and the dialog.
   Deliberate: the product brokers credentials, it is not an egress firewall, and under service-hosts the
   quickstart's agent could reach neither Anthropic nor npm until a bypass list exists. Settled with the
   product owner; service-hosts is documented as the hardening step.
-- Wherever code branches on `ProjectType.PAM`, add the Agent Vault arm: `AgentVaultIdentities` metering emits,
-  the admin-or-member predefined roles filter, `AuditLogStreamProduct`, `grantAgentVaultAccess` on the org
-  invite. See the root `AGENTS.md`.
+- Wherever code branches on `ProjectType.PAM` for metering or roles, check whether Agent Vault needs the same:
+  `AgentVaultIdentities` metering emits, the admin-or-member predefined roles filter, `AuditLogStreamProduct`.
 
 ## Grants and reachability
 
@@ -105,7 +139,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   its row behind, and `hasRole(Admin)` alone would fall through as member. An actor removed from the project
   surfaces as `ProjectMembershipNotFound`, which resolve turns into a 401 so the proxy drops the session on
   the next poll instead of riding its grace window.
-- Removing an actor from Agent Vault does not revoke their sessions. The sessions resolve to nothing while
+- Removing an actor from an Agent Vault project does not revoke their sessions. The sessions resolve to nothing while
   the actor is out and work again if the actor is added back.
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
@@ -120,9 +154,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
-- **Sessions are never deleted**, so the Sessions page is a full history and a session's row keeps the key its
-  logs need.
+- **Sessions are never deleted while the project exists**, so the Sessions page is a full history and a session's
+  row keeps the key its logs need. Deleting the project deletes its sessions (`ON DELETE CASCADE`).
 - Anyone with a session token can download its skills from Infisical with only the token (`GET /session/skills`).
+- `POST /session/revoke` revokes the session its `Authorization: Bearer agv_...` token names, so an agent holding
+  its token can end its own session. Like `/session/skills`, `inject-identity` skips it and it takes no other
+  credential. An unknown token is a 401; an already revoked or expired session is a 200, so it is idempotent. It
+  writes through `revokeIfActive`, skips the owner-reach check, and is audited with the session owner as actor.
 
 ## Sessions on behalf of users
 
@@ -131,7 +169,7 @@ belongs to the identity: `identityId` is the identity, so only it and Agent Vaul
 the session or read its session logs, and the user never sees it. The user is kept as
 `onBehalfOfUserId`, with `onBehalfOfUserName` and `onBehalfOfUserEmail` snapshotted like `actorName` and `actorEmail`;
 resolve uses the user's personal values, and the user's reach narrows the identity's. A delegation
-is one `agent_vault_delegations` row per identity, with a scope of `all-members` or `selected`, plus
+is one `agent_vault_delegations` row per identity and project, with a scope of `all-members` or `selected`, plus
 `agent_vault_delegation_subjects` rows naming users and groups. Both reference an Agent Vault membership (`membershipId`,
 `ON DELETE CASCADE`): the delegation its identity's, and each subject the user's or group's.
 
@@ -180,7 +218,7 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
 - **A subject is named by its own Agent Vault membership**, the rule bundle grants use: a user who reaches Agent
   Vault only through a group is covered by naming the group. Coverage itself is read live, so leaving the group
   ends it.
-- **Leaving Agent Vault by any path deletes the delegation rows**, through the membership FK cascade: Agent Vault's own
+- **Leaving an Agent Vault project by any path deletes its delegation rows**, through the membership FK cascade: Agent Vault's own
   removal, the generic project membership routes, leaving the org, SCIM delete, and deleting the actor. So adding the
   identity, user or group back restores nothing. Deactivating (SCIM or org) deletes nothing; mint and resolve refuse
   through the `isActive` check. Membership rows keep their id while the actor stays a member (role changes only touch
@@ -197,6 +235,8 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
   order. A remove or delete, which names no
   new subjects, still takes the identity's membership before the delegation row for the same reason. Every write locks
   the delegation row before reading or replacing it, and `updatedAt` moves only on a save or a real add or remove.
+- **Delegation routes take `projectId` in the query string on every method**, like the session log settings: they are
+  addressed by machine identity, and an identity can be in several Agent Vault projects.
 - **Delegation routes take no `AuthMode.OAUTH`.** The admin check reads the role, which a delegated token's scopes
   don't narrow, and a delegation lets an identity act as other users.
 
@@ -235,7 +275,7 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
   a tie by slice order, so the bundle's service gets the host.
 - **Secrets go when the session ends; the rest stays.** The credential, custom header values and substitution values are
   sealed together in `encryptedSecrets`, so deleting them is one write. The row keeps the name, type, hosts, rules,
-  credential type, header names and placeholders, since sessions are never deleted and the Sessions page shows what an
+  credential type, header names and placeholders, since sessions stay until their project is deleted and the Sessions page shows what an
   ended session could reach. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
   (`deleteSecretsOfEndedSessions`) catches sessions that expired or lost their owner, matching `deriveSessionStatus`.
   Neither writes the session row, so an ownerless session's `updatedAt` never moves. `ttl: never` is allowed, so such a
@@ -472,15 +512,15 @@ personal values can reference.
   from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only
   the new one.
 - **Losing a bundle through Agent Vault clears what an actor saved for its services**
-  (`clearPersonalValuesAfterRevoke`). It runs on a bundle revoke, on removal from Agent Vault, and on a demotion from
-  admin, for the actors named and the members of a named group, after that change is written. It takes the project's
+  (`clearPersonalValuesAfterRevoke`). It runs on a bundle revoke, on removal from the project, on leaving it, and on a
+  demotion from admin, for the actors named and the members of a named group, after that change is written. It takes the project's
   `ClearAgentVaultPersonalValues` advisory lock last, after those writes, so of two changes that each leave the
   other's access in place (a demotion and the revoke of the last grant) the second checks against the first once
   committed. It skips anyone who still holds the bundle through another grant, and anyone who is still a project
-  admin, since an admin reaches every bundle. Platform paths don't run it: group removal, a lapsed role, org or SCIM
-  removal, and the generic project membership routes (role change, deactivate, remove from project, leave, and their
-  identity and group forms, which also reach the Agent Vault project), so values can outlive the grant there and
-  return with a later one. They are only ever the same actor's, and resolve still checks reach. Deleting a personal
+  admin, since an admin reaches every bundle. Platform paths run it too: removal from the project through the generic
+  membership routes, leaving or deleting a group, and org exit (see [The project](#the-project)). A lapsed temporary
+  role and a role change through the generic routes don't, so values can outlive the grant there and return with a
+  later one. They are only ever the same actor's, and resolve still checks reach. Deleting a personal
   variable also clears the owner's values on bundles they no longer reach, which otherwise would hold the variable in
   place with nothing able to edit them. Personal variables survive all of this, and their Used By lists only the
   bundles the owner still reaches.
@@ -553,7 +593,7 @@ an installed copy.
   (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
   Listing versions checks `Edit`, so it is admin only. Creating, updating, restoring and deleting are admin only. Adding a skill to a bundle or removing it needs `Edit` on access bundles and `Read` on skills, and a
-  bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). Agent Vault
+  bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). A project
   holds at most 250 skills (`AGENT_VAULT_MAX_SKILLS`, checked under a per-project advisory lock on create).
 
 ## Credentials at rest
@@ -716,10 +756,9 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   storage types and stops at the cap, so it isn't a usage number.
 - **The settings body is `{ enabled: false }` or `{ enabled: true, storage }`.** Turning on always names the
   storage, so nothing guesses which one an `enabled: true` meant after an off cleared it.
-- **`/agent-vault/app-connections/aws/*` are the shared builders in `app-connection-endpoints.ts` called with
-  a `resolveScope`.** The project comes from the server, a connection outside Agent Vault is a 404 before any
-  permission check, and responses leave out `projectId`. `createAppConnection` refuses any app but AWS in this
-  project, the general routes included. The UI uses the general `/app-connections/aws` routes.
+- **External storage uses the generic `/app-connections/aws` routes with the project's `projectId`.**
+  `createAppConnection` refuses any app but AWS in an Agent Vault project. The connection's AWS External ID is the
+  project id (it was the org id), so a role that still trusts the org id fails until its trust policy changes.
 - **The admin role carries the CASL `AppConnections` subject**, the one exception to `hasRole(Admin)`, because
   the shared connection modals read CASL.
 
@@ -730,6 +769,13 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   keychain entries and any agent already running through it break until updated or restarted.
 - No sandbox, nothing stripped. The agent gets the parent's whole environment plus the proxy URL (session
   token inside) and the CA trust variables.
+- `sessions create` mints a session and prints only the token, so `$(...)` captures it; `-o json|yaml` prints
+  id, token, projectId, accessBundle, label and expiresAt. `--ttl` defaults to `never`; `--label` is optional.
+  `sessions revoke <session-id>` revokes by id, and `sessions revoke --session-token <token>` calls
+  `POST /session/revoke`, so an agent holding its token can end its own session. Neither prompts.
+- `sessions create`, `run --access-bundle` and `skills push` need a project, resolved in this order:
+  `--project-id`, `INFISICAL_AGENT_VAULT_PROJECT_ID`, `INFISICAL_PROJECT_ID`. With none the CLI stops with an error rather than leaning on the server fallback. It
+  prints the project and its source on stderr, and `profile current` shows them too.
 - The session flag is `--session-token`, not `--token`, so the root command's Infisical-token handling never
   reads it. The minting identity comes from `--client-id`/`--client-secret`, the access-token env vars, or the
   keyring login.
@@ -757,10 +803,6 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 
 ## Follow-ups
 
-- **Docs screenshots predate the MCP UI.** Retake them once the Agent Vault UI redesign lands:
-  `access-bundle-services.png` (columns are now Type and Target, and it should show an MCP row),
-  `service-template-picker.png` (the service type sidebar, the MCP Servers section, **Custom HTTP API**), and
-  `session-logs-view.png` (the Request column, with a tool call and a `tools/list` row).
 - **Raw passthrough over SOCKS5.** Non-HTTP TCP to hosts no service names could be spliced through untouched,
   so SSH and databases work for SOCKS5 clients other than E2B. That traffic would carry no credential and
   produce no request logs.

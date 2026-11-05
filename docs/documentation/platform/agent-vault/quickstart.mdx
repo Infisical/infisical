@@ -4,14 +4,29 @@ sidebarTitle: "Quickstart"
 description: "Store your credentials in an access bundle and connect the agents that use them."
 ---
 
-This quickstart walks you through the setup shared by every Agent Vault workflow. You'll create an [access bundle](/documentation/platform/agent-vault/access-bundles), add a [service](/documentation/platform/agent-vault/services) for each key your agent uses, and then continue with the guide for where your agent runs.
+This quickstart walks you through the setup shared by every Agent Vault workflow. You'll create an [Agent Vault project](/documentation/platform/agent-vault/projects), create an [access bundle](/documentation/platform/agent-vault/access-bundles), add a [service](/documentation/platform/agent-vault/services) for each key your agent uses, and then continue with the guide for where your agent runs.
 
 ## Prerequisites
 
-- An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)
+- An Infisical organization where you can create projects (organization admins and members can by default)
 - The API keys your agent uses, such as its model provider's key
 
-## Step 1: Add your credentials
+## Step 1: Create an Agent Vault project
+
+An Agent Vault project holds the credentials, members, and proxies for one agentic system or team. If you already have a project for this agent, such as **My first project**, open it and skip to [Step 2](#step-2-add-your-credentials).
+
+<Steps>
+  <Step>
+    On your organization's overview in Infisical, select **Agent Vault**.
+  </Step>
+  <Step>
+    Select **New Project**, enter a **Project Name**, then select **Create Project**.
+  </Step>
+</Steps>
+
+You become the project's admin.
+
+## Step 2: Add your credentials
 
 <Tabs>
   <Tab title="Infisical dashboard">
@@ -21,7 +36,7 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
 
     <Steps>
       <Step>
-        In Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**.
+        In your Agent Vault project, go to **Access Bundles**.
       </Step>
       <Step>
         Select **Create Access Bundle**. Give the access bundle a **Name**, such as `code-review`, then select **Create Access Bundle**.
@@ -72,11 +87,11 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
   <Tab title="API">
     ### Log in as a machine identity
 
-    You call the Infisical API as a [machine identity](/documentation/platform/identities/machine-identities) with the **Admin** role in Agent Vault.
+    You call the Infisical API as a [machine identity](/documentation/platform/identities/machine-identities) with the **Admin** role in your Agent Vault project.
 
     <Steps>
       <Step>
-        In Agent Vault, go to **Access Control** > **Machine Identities** and select **Add Machine Identity**.
+        In your Agent Vault project, go to **Access Control** > **Machine Identities** and select **Add Machine Identity**.
       </Step>
       <Step>
         On the **Create New** tab, enter a **Name**, choose **Admin** in **Role**, then select **Create**.
@@ -112,30 +127,34 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
 
     The response includes an `accessToken`, which you send with each request in the next steps.
 
+    ### Copy the project ID
+
+    Requests that create something in Agent Vault take the ID of the project to create it in. In your Agent Vault project, go to **Administration** > **Settings** and copy the **Project ID**.
+
     ### Create an access bundle
 
-    In Agent Vault, an [access bundle](/documentation/platform/agent-vault/access-bundles) defines the [services](/documentation/platform/agent-vault/services) your agents can reach. Call [the endpoint to create an access bundle](/api-reference/endpoints/agent-vault-access-bundles/create), replacing `<access-token>` with the `accessToken` from the login response. In the body, send a name for the access bundle:
+    In Agent Vault, an [access bundle](/documentation/platform/agent-vault/access-bundles) defines the [services](/documentation/platform/agent-vault/services) your agents can reach. Call [the endpoint to create an access bundle](/api-reference/endpoints/agent-vault-access-bundles/create), replacing `<access-token>` with the `accessToken` from the login response and `<project-id>` with the project ID. In the body, send the project ID and a name for the access bundle:
 
     <CodeGroup>
       ```bash US Cloud
       curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
-        -d '{"name": "code-review"}'
+        -d '{"projectId": "<project-id>", "name": "code-review"}'
       ```
 
       ```bash EU Cloud
       curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
-        -d '{"name": "code-review"}'
+        -d '{"projectId": "<project-id>", "name": "code-review"}'
       ```
 
       ```bash Self-hosted
       curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
-        -d '{"name": "code-review"}'
+        -d '{"projectId": "<project-id>", "name": "code-review"}'
       ```
     </CodeGroup>
 
@@ -223,7 +242,7 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
   </Tab>
 </Tabs>
 
-## Step 2: Connect your agents
+## Step 3: Connect your agents
 
 Pick the guide for where your agents run. Each guide continues from the access bundle you just created.
 

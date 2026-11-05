@@ -5,7 +5,9 @@ description: "Run the proxy that attaches credentials, set its traffic policy, a
 
 A proxy intercepts your agents' requests to the APIs they call, then attaches the necessary API credential to each request that matches a [service](/documentation/platform/agent-vault/services). You can run one proxy on its own host that several agents share, or a separate proxy for each agent, such as in a sidecar container.
 
-You create a proxy in Infisical, start it with the proxy token that Infisical shows you, and change its settings in Infisical afterwards. You can run the same proxy on as many machines as you need with one token, such as several machines behind a [load balancer](#high-availability).
+You create a proxy in an [Agent Vault project](/documentation/platform/agent-vault/projects), start it with the proxy token that Infisical shows you, and change its settings in Infisical afterwards. You can run the same proxy on as many machines as you need with one token, such as several machines behind a [load balancer](#high-availability).
+
+A proxy only serves sessions from its own project, so if you have more than one project, each project needs its own proxy. Each project can have up to 10 proxies.
 
 ## Choose where to run the proxy
 
@@ -38,7 +40,7 @@ If an API offers both WebSocket connections and plain HTTPS requests, configure 
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Proxies** and select **Create Proxy**.
+    In your Agent Vault project, go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
     Enter a **Name**. Optionally, add a **Description**. To set the [traffic policy](#traffic-policy), [exceptions](#exceptions), or [poll interval](#poll-interval) now, expand **Advanced Options**. You can change these settings later.
@@ -280,8 +282,8 @@ For this reason, we recommend running the proxy where only your agents can reach
 
 To give the proxy's CA to a sandbox provider, or to get the CA without connecting to the proxy, download it from Infisical:
 
-- **In Infisical:** on the **Proxies** page, select the download icon next to the fingerprint in the **Certificate Authority** column
-- **With the API:** call [the endpoint that gets a proxy's certificate authority](/api-reference/endpoints/agent-vault-proxies/get-ca) as an Agent Vault member or admin
+- **In Infisical:** on the **Proxies** page of your Agent Vault project, select the download icon next to the fingerprint in the **Certificate Authority** column
+- **With the API:** call [the endpoint that gets a proxy's certificate authority](/api-reference/endpoints/agent-vault-proxies/get-ca) as a member or admin of the proxy's Agent Vault project
 
 If the proxy serves [your own CA](#use-your-own-certificate-authority), Infisical doesn't have the certificate, so the download fails.
 
@@ -356,7 +358,7 @@ Clients sign in with a SOCKS5 username and password. The proxy ignores the usern
 
 - If the session isn't valid, the proxy refuses the sign-in and logs the reason, so the client reports a failed sign-in (if the password isn't a session token, the proxy logs the reason only with `--log-level debug`)
 - If the proxy can't check the session, such as when Infisical is unreachable, it accepts the sign-in and refuses the connection with a general failure, so the client can try again later
-- If you revoke a session while a connection is open, the next request on that connection gets a 403 with `the session is no longer valid` (within one [poll interval](#poll-interval))
+- If you revoke a session while a connection is open, the next request on that connection gets a 403 with `the session is no longer valid, or it belongs to a different Agent Vault project than this proxy` (within one [poll interval](#poll-interval))
 
 ### Requests to private addresses
 

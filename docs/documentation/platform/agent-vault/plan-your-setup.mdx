@@ -41,25 +41,25 @@ Configure the following options to get custom guidance and best practices tailor
   Before running an agent, you set up two things:
 
   <ul>
-    <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) in Infisical: a list of the [services](/documentation/platform/agent-vault/services) (the external APIs or MCP servers) that the agent can use, each with its real credential</li>
+    <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) in an [Agent Vault project](/documentation/platform/agent-vault/projects): a list of the [services](/documentation/platform/agent-vault/services) (the external APIs or MCP servers) that the agent can use, each with its real credential</li>
     <li>A running [proxy](/documentation/platform/agent-vault/proxies): a program outside the agent's environment that every request from the agent goes through</li>
   </ul>
 
   <AgentVaultSetupBranch building="scheduled">
     <Note>
-    One proxy stays running and handles the requests from every agent and every job, so you don't need a separate proxy for each job or each host.
+    One proxy stays running and handles the requests from every agent and every job in its Agent Vault project, so you don't need a separate proxy for each job or each host. If you have more than one project, each project needs its own proxy.
     </Note>
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="platform" runs="none,server,kubernetes,e2b,cursor">
     <Note>
-    One proxy stays running and handles the requests from every agent, so you don't need a separate proxy for each task.
+    One proxy stays running and handles the requests from every agent in its Agent Vault project, so you don't need a separate proxy for each task.
     </Note>
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="platform" runs="container,modal,daytona">
     <Note>
-    Each agent run starts its own proxy beside the agent. Every proxy starts from the same proxy token, so you create the proxy in Infisical once.
+    Each agent run starts its own proxy beside the agent. Every proxy starts from the same proxy token, so you create the proxy in your Agent Vault project once.
     </Note>
   </AgentVaultSetupBranch>
 </AgentVaultSetupStep>

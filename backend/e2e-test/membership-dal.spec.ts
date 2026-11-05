@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
@@ -24,6 +26,8 @@ const membershipDAL = membershipDALFactory(testDb);
 const removalDeps = {
   userDAL: userDALFactory(testDb),
   userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+  identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+  agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
   membershipGroupDAL: membershipGroupDALFactory(testDb),
   projectKeyDAL: projectKeyDALFactory(testDb),
   additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),

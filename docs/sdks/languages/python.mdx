@@ -821,7 +821,7 @@ deleted_folder = client.folders.delete_folder(
 
 This sub-class manages [Agent Vault sessions](/documentation/platform/agent-vault/sessions). A session lets an AI agent use the [services](/documentation/platform/agent-vault/services) in one [access bundle](/documentation/platform/agent-vault/access-bundles), the [inline services](/documentation/platform/agent-vault/inline-services) sent with the session, or both, until the session expires or someone revokes it.
 
-What the client can do with sessions depends on the [Agent Vault role](/documentation/platform/agent-vault/access-control#product-membership) of the user or machine identity that the client logs in as:
+What the client can do with sessions depends on the [role](/documentation/platform/agent-vault/access-control#product-membership) that the user or machine identity the client logs in as has in the Agent Vault project:
 
 | Role | Can create sessions with | Can list, get, label, and revoke |
 | --- | --- | --- |
@@ -829,7 +829,7 @@ What the client can do with sessions depends on the [Agent Vault role](/document
 | **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the member | The member's own sessions |
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.2.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.3.0 or newer.
 </Note>
 
 #### List sessions
@@ -838,6 +838,7 @@ What the client can do with sessions depends on the [Agent Vault role](/document
 from infisical_sdk import AgentVaultSessionScope, AgentVaultSessionStatus
 
 sessions = client.agent_vault.sessions.list(
+    project_id="<project-id>",
     scope=AgentVaultSessionScope.MINE, # Optional
     statuses=[AgentVaultSessionStatus.ACTIVE], # Optional
     search="nightly deploy", # Optional
@@ -847,6 +848,7 @@ sessions = client.agent_vault.sessions.list(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list sessions from
 - `scope` (Union[AgentVaultSessionScope, str], optional): whose sessions to list, either `AgentVaultSessionScope.MINE` (`"mine"`) for your own sessions or `AgentVaultSessionScope.ALL` (`"all"`) for every session if you're an admin (defaults to `AgentVaultSessionScope.MINE`)
 - `statuses` (List[Union[AgentVaultSessionStatus, str]], optional): the statuses to include, from `AgentVaultSessionStatus.ACTIVE` (`"active"`), `AgentVaultSessionStatus.REVOKED` (`"revoked"`), and `AgentVaultSessionStatus.EXPIRED` (`"expired"`) (defaults to all three)
 - `search` (str, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
@@ -874,6 +876,7 @@ session = client.agent_vault.sessions.get(
 
 ```python
 session = client.agent_vault.sessions.create(
+    project_id="<project-id>",
     access_bundle="<access-bundle-name>",
     ttl="1h", # Optional
     label="nightly deploy" # Optional
@@ -881,6 +884,7 @@ session = client.agent_vault.sessions.create(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the session in
 - `access_bundle` (str, optional): the name of the access bundle that the agent can use during the session (pass `access_bundle`, `services`, or both)
 - `ttl` (str, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`, or to `1h` for a session on behalf of a user)
 - `label` (str, optional): a short description of what the session is for, such as `nightly deploy` (up to 128 characters, without line breaks, tabs, or invisible characters)
@@ -899,6 +903,7 @@ If the client logs in as a machine identity with a [delegation](/documentation/p
 
 ```python
 session = client.agent_vault.sessions.create(
+    project_id="<project-id>",
     access_bundle="<access-bundle-name>",
     on_behalf_of_user_email="<user-email>"
 )
@@ -912,10 +917,11 @@ To find the access bundles that a session on behalf of the user can use, pass th
 
 #### Create a session with inline services
 
-If the client logs in as a user or machine identity with the **Admin** role in Agent Vault, the client can send inline services with a session, instead of or beside an access bundle. Inline services let you pass along credentials that your code already holds, without setting anything up in Agent Vault in advance.
+If the client logs in as a user or machine identity with the **Admin** role in the Agent Vault project, the client can send inline services with a session, instead of or beside an access bundle. Inline services let you pass along credentials that your code already holds, without setting anything up in Agent Vault in advance.
 
 ```python
 session = client.agent_vault.sessions.create(
+    project_id="<project-id>",
     ttl="1h",
     services=[
         {
@@ -963,7 +969,9 @@ Revoke a session when its agent finishes, even if the agent fails. The proxy sto
 If the agent can run longer than the client's access token lasts, log in again before you revoke the session, because the SDK doesn't renew the access token on its own. Set `ttl` close to how long the agent runs, so that the session expires soon after the agent finishes even if revoking the session fails.
 
 ```python
-session = client.agent_vault.sessions.create(access_bundle="<access-bundle-name>", ttl="1h")
+session = client.agent_vault.sessions.create(
+    project_id="<project-id>", access_bundle="<access-bundle-name>", ttl="1h"
+)
 try:
     run_agent(session.token) # Your code that starts the agent with the session token
 finally:
@@ -980,16 +988,17 @@ finally:
 
 This sub-class manages [Agent Vault proxies](/documentation/platform/agent-vault/proxies). A proxy attaches API credentials to the requests that agents send through it.
 
-To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.2.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.3.0 or newer.
 </Note>
 
 #### List proxies
 
 ```python
 proxies = client.agent_vault.proxies.list(
+    project_id="<project-id>",
     search="edge", # Optional
     order_by="name", # Optional
     order_direction="asc", # Optional
@@ -999,6 +1008,7 @@ proxies = client.agent_vault.proxies.list(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list proxies from
 - `search` (str, optional): text to find in proxy names and descriptions
 - `order_by` (str, optional): what to sort the proxies by, `name` or `createdAt` (defaults to `createdAt`)
 - `order_direction` (str, optional): the direction to sort in, `asc` or `desc` (defaults to `desc`)
@@ -1016,6 +1026,7 @@ If the client logs in as a member, each proxy's `trafficPolicy`, `allowedHosts`,
 from infisical_sdk import AgentVaultTrafficPolicy
 
 response = client.agent_vault.proxies.create(
+    project_id="<project-id>",
     name="edge-proxy",
     traffic_policy=AgentVaultTrafficPolicy.SERVICE_HOSTS, # Optional
     allowed_hosts=["pypi.org", "files.pythonhosted.org"], # Optional
@@ -1025,6 +1036,7 @@ response = client.agent_vault.proxies.create(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the proxy in
 - `name` (str): the name of the proxy, in lowercase letters, numbers, and hyphens (up to 64 characters)
 - `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.ANY_HOST` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.SERVICE_HOSTS` (`"service-hosts"`) to refuse requests to hosts that none of the session's services cover (defaults to `AgentVaultTrafficPolicy.ANY_HOST`; 1.1.0 calls `SERVICE_HOSTS` `AgentVaultTrafficPolicy.BUNDLE_HOSTS`, and that name still works)
 - `allowed_hosts` (Union[List[str], str], optional): hosts that agents can reach under `AgentVaultTrafficPolicy.SERVICE_HOSTS` even if none of the session's services cover them, as a list or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
@@ -1118,16 +1130,17 @@ proxy = client.agent_vault.proxies.revoke(
 
 This sub-class manages [Agent Vault access bundles](/documentation/platform/agent-vault/access-bundles) and who they're [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to. An access bundle is a list of services that an agent can use during a session.
 
-To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.2.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.3.0 or newer.
 </Note>
 
 #### List access bundles
 
 ```python
 bundles = client.agent_vault.access_bundles.list(
+    project_id="<project-id>",
     search="release", # Optional
     requires_setup=False, # Optional
     granted=True, # Optional
@@ -1139,6 +1152,7 @@ bundles = client.agent_vault.access_bundles.list(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list access bundles from
 - `search` (str, optional): text to find in access bundle names and descriptions
 - `requires_setup` (bool, optional): `True` to list only the access bundles with services that still need your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), or `False` to list the rest (defaults to listing both)
 - `granted` (bool, optional): `True` to list only the access bundles granted to you directly or through a group, or `False` to list the ones you can use only because you're an admin (defaults to listing both)
@@ -1174,19 +1188,21 @@ bundle = client.agent_vault.access_bundles.get(
 
 ```python
 bundle = client.agent_vault.access_bundles.create(
+    project_id="<project-id>",
     name="release",
     description="Release and deploy tools" # Optional
 )
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the access bundle in
 - `name` (str): the name of the access bundle, in lowercase letters, numbers, and hyphens (up to 64 characters)
 - `description` (str, optional): what the access bundle is for (up to 256 characters, without line breaks or tabs)
 
 **Returns:**
 - `AgentVaultAccessBundle`: the new access bundle
 
-Infisical grants the new access bundle to you, unless you're in Agent Vault only through a group. The SDK can't add services to an access bundle. To add them in Infisical, see [Services](/documentation/platform/agent-vault/services).
+Infisical grants the new access bundle to you, unless you're in the Agent Vault project only through a group. The SDK can't add services to an access bundle. To add them in Infisical, see [Services](/documentation/platform/agent-vault/services).
 
 #### Update access bundle
 
@@ -1252,7 +1268,7 @@ grantees = client.agent_vault.access_bundles.list_grantees(
 
 #### List available grantees
 
-List the Agent Vault members that an access bundle isn't granted to yet.
+List the members of the Agent Vault project that an access bundle isn't granted to yet.
 
 ```python
 from infisical_sdk import AgentVaultMemberType
@@ -1280,7 +1296,7 @@ members = client.agent_vault.access_bundles.list_available_grantees(
 
 Grant an access bundle to users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
 
-Each user, machine identity, and group must be a member of Agent Vault. If a user or machine identity is in Agent Vault only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to Agent Vault](/documentation/platform/agent-vault/access-control#adding-members).
+Each user, machine identity, and group must be a member of the Agent Vault project. If a user or machine identity is in the Agent Vault project only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to the Agent Vault project](/documentation/platform/agent-vault/access-control#adding-members).
 
 ```python
 response = client.agent_vault.access_bundles.grant(
@@ -1329,16 +1345,17 @@ response = client.agent_vault.access_bundles.revoke(
 
 This sub-class manages [delegations](/documentation/platform/agent-vault/sessions-on-behalf-of-users), which let a machine identity [create sessions on behalf of users](#create-a-session-on-behalf-of-a-user).
 
-To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
+To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.2.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.3.0 or newer.
 </Note>
 
 #### List delegations
 
 ```python
 delegations = client.agent_vault.delegations.list(
+    project_id="<project-id>",
     machine_identity_ids=["<machine-identity-id>"], # Optional
     limit=100, # Optional
     offset=0 # Optional
@@ -1346,6 +1363,7 @@ delegations = client.agent_vault.delegations.list(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list delegations from
 - `machine_identity_ids` (List[str], optional): the IDs of the machine identities whose delegations to list (up to 100)
 - `limit` (int, optional): the maximum number of delegations to return, from 1 to 100 (defaults to `100`)
 - `offset` (int, optional): the number of delegations to skip (defaults to `0`)
@@ -1359,11 +1377,13 @@ Get which users a machine identity can create sessions on behalf of. If the mach
 
 ```python
 delegation = client.agent_vault.delegations.get(
+    project_id="<project-id>",
     machine_identity_id="<machine-identity-id>"
 )
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to get the delegation from
 - `machine_identity_id` (str): the ID of the machine identity
 
 **Returns:**
@@ -1379,6 +1399,7 @@ Set which users a machine identity can create sessions on behalf of. The new del
 from infisical_sdk import AgentVaultDelegationScope
 
 delegation = client.agent_vault.delegations.set(
+    project_id="<project-id>",
     machine_identity_id="<machine-identity-id>",
     scope=AgentVaultDelegationScope.SELECTED,
     user_ids=["<user-id>"], # Optional
@@ -1387,8 +1408,9 @@ delegation = client.agent_vault.delegations.set(
 ```
 
 **Parameters:**
-- `machine_identity_id` (str): the ID of the machine identity, which must be a member of Agent Vault
-- `scope` (Union[AgentVaultDelegationScope, str]): either `AgentVaultDelegationScope.SELECTED` (`"selected"`) for only the users and groups that you pass, or `AgentVaultDelegationScope.ALL_MEMBERS` (`"all-members"`) for every Agent Vault member, admins included
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to set the delegation in
+- `machine_identity_id` (str): the ID of the machine identity, which must be a member of the Agent Vault project
+- `scope` (Union[AgentVaultDelegationScope, str]): either `AgentVaultDelegationScope.SELECTED` (`"selected"`) for only the users and groups that you pass, or `AgentVaultDelegationScope.ALL_MEMBERS` (`"all-members"`) for every member of the Agent Vault project, admins included
 - `user_ids` (List[str], optional): with `AgentVaultDelegationScope.SELECTED`, the IDs of the users that the machine identity can act on behalf of (up to 100)
 - `group_ids` (List[str], optional): with `AgentVaultDelegationScope.SELECTED`, the IDs of the groups whose members the machine identity can act on behalf of (up to 100)
 
@@ -1397,16 +1419,17 @@ delegation = client.agent_vault.delegations.set(
 
 With `AgentVaultDelegationScope.SELECTED`, pass at least one user or group. With `AgentVaultDelegationScope.ALL_MEMBERS`, pass no users or groups. To stop the machine identity from acting on behalf of anyone, [delete the delegation](#delete-delegation).
 
-Each user and group must be a member of Agent Vault. If a user is in Agent Vault only through a group, pass the group instead.
+Each user and group must be a member of the Agent Vault project. If a user is in the Agent Vault project only through a group, pass the group instead.
 
 #### List available users and groups
 
-List the Agent Vault users and groups that you can add to a machine identity's delegation.
+List the users and groups in the Agent Vault project that you can add to a machine identity's delegation.
 
 ```python
 from infisical_sdk import AgentVaultMemberType
 
 members = client.agent_vault.delegations.list_available_subjects(
+    project_id="<project-id>",
     machine_identity_id="<machine-identity-id>",
     actor_type=AgentVaultMemberType.USER, # Optional
     search="jsmith", # Optional
@@ -1416,6 +1439,7 @@ members = client.agent_vault.delegations.list_available_subjects(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list users and groups from
 - `machine_identity_id` (str): the ID of the machine identity
 - `actor_type` (Union[AgentVaultMemberType, str], optional): either `AgentVaultMemberType.USER` (`"user"`) to list only users or `AgentVaultMemberType.GROUP` (`"group"`) to list only groups (defaults to listing both)
 - `search` (str, optional): text to find in user names, usernames, email addresses, and group names
@@ -1434,6 +1458,7 @@ Add users and groups to a machine identity's delegation. The users and groups th
 
 ```python
 delegation = client.agent_vault.delegations.add_subjects(
+    project_id="<project-id>",
     machine_identity_id="<machine-identity-id>",
     user_ids=["<user-id>"], # Optional
     group_ids=["<group-id>"] # Optional
@@ -1441,6 +1466,7 @@ delegation = client.agent_vault.delegations.add_subjects(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) that the delegation is in
 - `machine_identity_id` (str): the ID of the machine identity
 - `user_ids` (List[str], optional): the IDs of the users to add (up to 100)
 - `group_ids` (List[str], optional): the IDs of the groups to add (up to 100)
@@ -1457,6 +1483,7 @@ Remove users and groups from a machine identity's delegation. Pass at least one 
 
 ```python
 delegation = client.agent_vault.delegations.remove_subjects(
+    project_id="<project-id>",
     machine_identity_id="<machine-identity-id>",
     user_ids=["<user-id>"], # Optional
     group_ids=["<group-id>"] # Optional
@@ -1464,6 +1491,7 @@ delegation = client.agent_vault.delegations.remove_subjects(
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) that the delegation is in
 - `machine_identity_id` (str): the ID of the machine identity
 - `user_ids` (List[str], optional): the IDs of the users to remove (up to 100)
 - `group_ids` (List[str], optional): the IDs of the groups to remove (up to 100)
@@ -1477,11 +1505,13 @@ Stop a machine identity from creating sessions on behalf of users. The proxy ref
 
 ```python
 delegation = client.agent_vault.delegations.delete(
+    project_id="<project-id>",
     machine_identity_id="<machine-identity-id>"
 )
 ```
 
 **Parameters:**
+- `project_id` (str): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to delete the delegation from
 - `machine_identity_id` (str): the ID of the machine identity
 
 **Returns:**

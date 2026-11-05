@@ -727,8 +727,18 @@ const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; gro
   groupIds: z.string().uuid().array().default([]).describe(docs.groupIds)
 });
 
-const namedCount = (body: { userIds: string[]; machineIdentityIds: string[]; groupIds: string[]; emails?: string[] }) =>
-  body.userIds.length + body.machineIdentityIds.length + body.groupIds.length + (body.emails?.length ?? 0);
+const namedCount = (body: {
+  userIds: string[];
+  machineIdentityIds: string[];
+  groupIds: string[];
+  emails?: string[];
+  usernames?: string[];
+}) =>
+  body.userIds.length +
+  body.machineIdentityIds.length +
+  body.groupIds.length +
+  (body.emails?.length ?? 0) +
+  (body.usernames?.length ?? 0);
 
 // x-default only shapes the docs: Mintlify pre-fills its request example from a default, and a required
 // enum without one is left out, so the copied example fails with a 422. Validation still requires role.
@@ -765,8 +775,8 @@ export const AgentVaultProductMemberIdsSchema = z
   .refine((body) => namedCount(body) > 0, atLeastOne)
   .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
 
-// One object, not an intersection: zod parses each side on its own, so the id side would strip emails
-// before the refines ran, failing an emails-only body and leaving the cap blind to them.
+// One object, not an intersection: zod parses each side on its own, so the id side would strip emails and
+// usernames before the refines ran, failing a body that names only those and leaving the cap blind to them.
 export const AgentVaultProductMemberAddSchema = z
   .object({
     ...memberIdsShape({
@@ -781,6 +791,15 @@ export const AgentVaultProductMemberAddSchema = z
       .default([])
       .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase")
       .describe(AGENT_VAULT.MEMBERSHIP.emails),
+    usernames: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .array()
+      .default([])
+      .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase")
+      .describe(AGENT_VAULT.MEMBERSHIP.usernames),
     role: AgentVaultProductRoleSchema
   })
   .refine((body) => namedCount(body) > 0, atLeastOne)
@@ -1064,3 +1083,12 @@ export const AgentVaultBundleSkillSchema = z.object({
   description: z.string().describe(AGENT_VAULT.SKILL.description),
   latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion)
 });
+
+export const AgentVaultProjectIdSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(36)
+  .optional()
+  .describe(AGENT_VAULT.projectId);

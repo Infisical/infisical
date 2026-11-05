@@ -204,8 +204,7 @@ export type SecretScanningOpenedProperties = {
 
 export type AgentVaultRedirectSource = "agent-proxy-moved-modal";
 
-// "go-to-agent-vault" sends the user into Agent Vault; "request-access" asks an admin to let them in.
-export type AgentVaultRedirectAction = "go-to-agent-vault" | "request-access";
+export type AgentVaultRedirectAction = "go-to-agent-vault";
 
 type AgentVaultRedirectClickedProperties = {
   projectId: string;

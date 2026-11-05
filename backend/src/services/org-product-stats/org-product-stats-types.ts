@@ -33,5 +33,6 @@ export type TOrgProductStats = {
     accessBundlesCount: number;
     servicesCount: number;
     proxiesCount: number;
+    projectsCount: number;
   };
 };

@@ -194,7 +194,6 @@ export const KeyStorePrefixes = {
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
-  AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
   AgentVaultOauthAuthorization: (authorizationId: string) =>
@@ -327,7 +326,6 @@ export const KeyStoreTtls = {
   LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
   AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
-  AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   OrgSecretScanningFindingsCountInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes

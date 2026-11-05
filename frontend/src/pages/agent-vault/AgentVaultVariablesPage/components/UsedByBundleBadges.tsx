@@ -4,7 +4,7 @@ import { PackageIcon } from "lucide-react";
 
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { OverflowBadgeList } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { TAgentVaultVariableUsedByService } from "@app/hooks/api/agentVault/types";
 
 type TBundleUsage = {
@@ -50,6 +50,7 @@ export const UsedByBundleBadges = ({
 }: {
   usedByServices: TAgentVaultVariableUsedByService[];
 }) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const bundles = useMemo(() => groupByBundle(usedByServices), [usedByServices]);
 
@@ -64,8 +65,8 @@ export const UsedByBundleBadges = ({
       getTooltip={renderBundleServices}
       getLinkProps={(bundle) =>
         linkOptions({
-          to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-          params: { orgId: currentOrg.id, accessBundleId: bundle.accessBundleId }
+          to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+          params: { orgId: currentOrg.id, projectId, accessBundleId: bundle.accessBundleId }
         })
       }
     />
