@@ -1,8 +1,8 @@
 import { useState } from "react";
 import slugify from "@sindresorhus/slugify";
-import { ArrowRightIcon } from "lucide-react";
 import { z } from "zod";
 
+import { FieldMapping, FieldMappingRow } from "@app/components/v4/patterns/field-mapping";
 import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
@@ -10,12 +10,12 @@ import { Combobox } from "@app/components/v4/ui/combobox";
 import { Field, FieldError } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Inline } from "@app/components/v4/ui/layout";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
+import { InfoTip } from "./secret-rotation/fields";
 import { DiscardDialog, secretsAt } from "./shared";
 import type { AddFlowProps } from "./types";
 import { ProviderLogo, WizardSheet } from "./wizard-sheet";
@@ -81,54 +81,33 @@ export function HoneyTokenMappingFields({
   onChange: (mapping: typeof DEFAULT_MAPPING) => void;
 }) {
   return (
-    <fieldset className={styles.mapping}>
-      <legend className={styles.srOnly}>Honey token secret mappings</legend>
-      <div className={styles.mappingGrid}>
-        <span className={styles.mappingHead}>Decoy credential</span>
-        <span />
-        <span className={styles.mappingHead}>
-          Secret name
-          <Tooltip content="The name of the secret that the decoy credential will be mapped to in your project.">
-            <span className={styles.hint}>
-              <Icon name="info" size={14} label="About secret names" />
-            </span>
-          </Tooltip>
-        </span>
-        {MAPPING_ITEMS.map((item) => {
-          const error = errors[`secretsMapping.${item.field}`];
-          const inputId = `honey-mapping-${item.field}`;
-          return (
-            <div key={item.field} className={styles.mappingRow}>
-              <span className={styles.mappingSource}>
-                <Icon name={item.icon} />
-                {item.name}
-              </span>
-              <span className={styles.mappingArrow}>
-                <Icon icon={ArrowRightIcon} />
-              </span>
-              <div className={styles.mappingTarget}>
-                <label htmlFor={inputId} className={styles.srOnly}>
-                  {`Secret name for ${item.name}`}
-                </label>
-                <Input
-                  id={inputId}
-                  mono
-                  value={mapping[item.field]}
-                  placeholder={DEFAULT_MAPPING[item.field]}
-                  invalid={Boolean(error)}
-                  autoComplete="off"
-                  spellCheck={false}
-                  trailing={<Badge tone="warn">Decoy</Badge>}
-                  onChange={(event) => {
-                    onChange({ ...mapping, [item.field]: event.target.value });
-                  }}
-                />
-                {error && <FieldError>{error}</FieldError>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    <Stack gap={16}>
+      <FieldMapping
+        legend="Honey token secret mappings"
+        sourceHeader="Decoy credential"
+        targetHeader="Secret name"
+        targetHint={
+          <InfoTip content="The name of the secret that the decoy credential will be mapped to in your project." />
+        }
+      >
+        {MAPPING_ITEMS.map((item) => (
+          <FieldMappingRow
+            key={item.field}
+            source={item.name}
+            icon={item.icon}
+            mono
+            value={mapping[item.field]}
+            placeholder={DEFAULT_MAPPING[item.field]}
+            error={errors[`secretsMapping.${item.field}`]}
+            autoComplete="off"
+            spellCheck={false}
+            trailing={<Badge tone="warn">Decoy</Badge>}
+            onChange={(event) => {
+              onChange({ ...mapping, [item.field]: event.target.value });
+            }}
+          />
+        ))}
+      </FieldMapping>
       {errors.secretsMapping && <FieldError>{errors.secretsMapping}</FieldError>}
       <Alert tone="info">
         <Icon name="info" />
@@ -137,7 +116,7 @@ export function HoneyTokenMappingFields({
           user with zero permissions. Any API call made with these credentials triggers an alert.
         </AlertDescription>
       </Alert>
-    </fieldset>
+    </Stack>
   );
 }
 

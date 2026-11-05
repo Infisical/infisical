@@ -317,8 +317,8 @@ export const SqlCredentialsRotationSchema = z.object({
     passwordRequirements: PasswordRequirementsSchema.optional()
   }),
   secretsMapping: z.object({
-    username: SecretNameSchema,
-    password: SecretNameSchema
+    username: z.string().trim().min(1, "Username secret name required").pipe(SecretNameSchema),
+    password: z.string().trim().min(1, "Password secret name required").pipe(SecretNameSchema)
   })
 });
 export const LdapPasswordRotationSchema = z
