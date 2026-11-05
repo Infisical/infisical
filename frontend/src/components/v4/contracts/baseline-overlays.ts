@@ -164,7 +164,11 @@ export const baselineOverlays = [
     title: "Dialog",
     group: "Overlays",
     summary: "Edit or inspect a task in a modal with a title and description.",
-    sourceFiles: ["src/components/v4/ui/dialog.tsx", "src/components/v4/lib/overlay-pending.ts"],
+    sourceFiles: [
+      "src/components/v4/ui/dialog.tsx",
+      "src/components/v4/lib/overlay-pending.ts",
+      "src/components/v4/lib/overlay-sections.tsx"
+    ],
     exports: [
       "Dialog",
       "DialogClose",
@@ -182,6 +186,7 @@ export const baselineOverlays = [
     behavior: [
       "open/onOpenChange or defaultOpen controls the Radix dialog. Trigger and Close compose native controls; scoped Content portals into V4Scope and caps its height at the viewport minus size-overlay-margin on each side.",
       "When DialogHeader, DialogSubheader or DialogFooter is a direct child (or inside a fragment), Content pins the header, and any DialogSubheader under it, above a full-width line rule, pins DialogFooter below a full-width line rule, and scrolls only the content between them. The rules are always visible, so the scroll region fades only at an edge without a rule. DialogSubheader runs the full width, without the space reserved for the close button, and the rule sits below it: use it for an artifact or legend the content needs, such as a step meter, a path preview or a filter row. Without a DialogFooter there is no bottom rule. Content without these slots renders unchanged.",
+      "A <form> may wrap the slots when it is DialogContent's only child, so a submit Button in DialogFooter submits it with no form id. The form draws no box (display: contents), so the pinned header and footer, the scroll region and its focus clearance are the same as without it. Only a plain <form> element is looked through.",
       "Corner close suits read-only or informational dialogs; footer close suits a dialog that ends in actions.",
       "pending on DialogContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close, DialogClose and the footer close while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the dialog, pending or not. Combobox and other popover lists inside the dialog are nested layers and do not dismiss it either.",
       "For a form, route onOpenChange(false) through useDiscardChangesGuard so a dirty dialog asks with DiscardChangesAlertDialog before it closes."
@@ -631,7 +636,11 @@ export const baselineOverlays = [
     title: "Sheet",
     group: "Overlays",
     summary: "Inspect or edit a task in a side panel.",
-    sourceFiles: ["src/components/v4/ui/sheet.tsx", "src/components/v4/lib/overlay-pending.ts"],
+    sourceFiles: [
+      "src/components/v4/ui/sheet.tsx",
+      "src/components/v4/lib/overlay-pending.ts",
+      "src/components/v4/lib/overlay-sections.tsx"
+    ],
     exports: [
       "Sheet",
       "SheetBody",
@@ -647,6 +656,7 @@ export const baselineOverlays = [
     referenceNames: ["Sheet"],
     behavior: [
       "SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child (or inside a fragment), Content pins the header, and any SheetSubheader under it, above a full-bleed line rule, pins SheetFooter below a full-bleed line rule, and scrolls only the body between them; header and footer share the overlay inset. The rules are structure and always show, at every size and while pending, so the scroll region fades only at an edge without a rule. SheetSubheader runs the full width, without the space reserved for the close button, and the rule sits below it: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. A sheet without SheetFooter has no bottom rule. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.",
+      "A <form> may wrap the slots when it is SheetContent's only child, so a submit Button in SheetFooter submits it with no form id. Content lays the form's slots out exactly as direct children (the form draws no box, display: contents): the same pinned header and footer, the same scroll region with its focus clearance and the same rules, with no layout shift. Only a plain <form> element is looked through; a component that renders one is treated as free-form content.",
       "Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action.",
       "SheetContent size sets the maximum width of a left or right sheet from a token: sm (size-sheet-sm, 384px, the default) for details and short forms, md (size-sheet-md, 512px) for create forms such as Create secret, and lg (size-sheet-lg, 672px) for form sheets with credentials, field pairs or a step bar, such as New connection and an auth method. The sheet is never wider than the viewport. Top and bottom sheets span the viewport and ignore size.",
       "pending on SheetContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close and SheetClose while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the sheet. Route onOpenChange(false) through useDiscardChangesGuard so a dirty form asks with DiscardChangesAlertDialog first."
@@ -694,6 +704,12 @@ export const baselineOverlays = [
         title: "Pending save and unsaved changes",
         module: "./examples/sheet/pending.tsx",
         states: ["controlled", "loading", "editing"]
+      },
+      {
+        id: "form",
+        title: "Form around the sections",
+        module: "./examples/sheet/form.tsx",
+        states: ["controlled", "overflow", "success"]
       }
     ],
     coverage: [
@@ -785,6 +801,24 @@ export const baselineOverlays = [
           }
         },
         {
+          id: "sheet-form",
+          when: "A sheet holds a form whose submit Button sits in the pinned footer.",
+          do: "Make a plain <form> SheetContent's only child and put SheetHeader, SheetBody and SheetFooter inside it, with a type submit Button in SheetFooter.",
+          avoid:
+            'Wrap only the body in the form and wire the footer Button with form="id", or wrap the slots in a div or a form component, which turns off the pinned layout.',
+          reason:
+            "The form owns its submit button and Enter-to-submit, and Content still pins the header and footer around one scroll region.",
+          evidence: [
+            "src/components/v4/ui/sheet.tsx",
+            "src/components/v4/lib/overlay-sections.tsx",
+            "src/pages/design-system/examples/sheet/form.tsx"
+          ],
+          detect: {
+            by: "review",
+            how: "Open the form example and compare the header, scroll region and footer boxes with the form unwrapped: they match to the pixel, the footer stays pinned while the body scrolls and Enter in the name field saves."
+          }
+        },
+        {
           id: "sheet-usage",
           when: "A side panel contains unsaved changes.",
           do: "Keep the draft on a rejected save and let the host protect dismissal while dirty.",
@@ -835,12 +869,13 @@ export const baselineOverlays = [
     title: "Tooltip",
     group: "Overlays",
     summary: "Explain a control on hover and keyboard focus.",
-    sourceFiles: ["src/components/v4/ui/tooltip.tsx"],
-    exports: ["Tooltip", "TooltipContent", "TooltipProvider", "TooltipTrigger"],
+    sourceFiles: ["src/components/v4/ui/tooltip.tsx", "src/components/v4/ui/controls.module.css"],
+    exports: ["Tooltip", "TooltipContent", "TooltipProvider", "TooltipText", "TooltipTrigger"],
     referenceNames: ["Tooltip"],
     behavior: [
       "The shortcut specimen owns a Mod+K binding scoped to its focused region. Its button and binding open the same local search, which filters fictional connections and exposes the selected record. Editing and composition keys remain with their controls.",
       "Tooltip opens after a hover delay and immediately from focus; side, alignment and a displayed shortcut are explicit.",
+      "TooltipText makes non-interactive text the tooltip trigger: it renders a span with tabIndex 0 (or, with asChild, puts that on its one child, such as StatusText or MiddleTruncate), draws the shared focus outline on keyboard focus and opens its content on hover and on focus. It adds no other styling, so the text keeps its own type and color. Inside a row with onRowActivate or a TableRow onClick, a click on it never activates the row.",
       "Content renders as one inline text run beside the shortcut, so inline code stays inside the sentence. It grows to size-tooltip-max (320px) and then wraps, breaking long inline code so it never runs past the surface. Content resets white-space, so a trigger inside a nowrap table cell or menu row never forces one long line; wrap is deprecated and has no effect. Menus, popovers, hover cards, dialogs and sheets reset white-space the same way."
     ],
     accessibility: [
@@ -867,6 +902,12 @@ export const baselineOverlays = [
         title: "Shortcut and controlled parts",
         module: "./examples/tooltip/parts.tsx",
         states: ["controlled", "keyboard"]
+      },
+      {
+        id: "text",
+        title: "Focusable text",
+        module: "./examples/tooltip/text.tsx",
+        states: ["default", "keyboard"]
       }
     ],
     coverage: [
@@ -943,6 +984,23 @@ export const baselineOverlays = [
       decision:
         "Choose Tooltip for a short supplemental control explanation. Use FieldDescription for required input guidance and Popover for interactive content.",
       rules: [
+        {
+          id: "tooltip-text",
+          when: "Plain text, a timestamp or a status needs a longer explanation, and the text itself is what carries it.",
+          do: "Wrap the text in TooltipText with the explanation as content, or pass asChild to make StatusText or MiddleTruncate the focusable text.",
+          avoid:
+            "Hand-roll a span with tabIndex 0 under Tooltip, use TooltipText to make text look or act like a button or link, or put a reason for a blocked action on nearby text instead of the action's own disabledReason.",
+          reason:
+            "Keyboard users reach the explanation the same way pointer users do, with one focus treatment, while the text keeps its non-interactive meaning.",
+          evidence: [
+            "src/components/v4/ui/tooltip.tsx",
+            "src/pages/design-system/examples/tooltip/text.tsx"
+          ],
+          detect: {
+            by: "review",
+            how: "Tab to each TooltipText in the text example: the focus outline shows on the text and the tooltip opens without a pointer, and the text has no button or link role or styling."
+          }
+        },
         {
           id: "tooltip-usage",
           when: "An icon-only action needs a discoverable description.",

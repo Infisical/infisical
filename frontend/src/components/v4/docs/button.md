@@ -62,10 +62,29 @@ Source evidence:
 - src/components/v4/ui/button.tsx
 - src/components/v4/ui/button-geometry.module.css
 
+### button-disabled-reason
+
+Owner: button.
+
+When an action is blocked by a permission, a plan or a missing prerequisite.
+
+Do: Keep the Button in place and pass disabledReason with the reason in one sentence, such as Only project admins can rotate this key.
+
+Avoid: Hide the action, pass disabled alone with no reason, or wrap a natively disabled Button in a span and a Tooltip to show why.
+
+Why: A natively disabled button cannot take focus, so keyboard users never reach a reason hung on it; disabledReason keeps it focusable and blocks activation in one place.
+
+Checked by: src/components/v4/ui/button.test.tsx. Clicks a submit Button with a disabledReason inside a form; neither onClick nor the form's submit runs, and the button is focusable with aria-disabled and the reason as its aria-description.
+
+Source evidence:
+- src/components/v4/ui/button.tsx
+- src/components/v4/ui/button.test.tsx
+- src/pages/design-system/examples/button/states.tsx
+
 ## State guidance
 
 - pending: Pass loading={pending}. The spinner overlays the button, so its width and padding stay the same whether loading is absent, false or true. With a leading icon the spinner replaces the icon and the label stays readable. Report success only after the actual operation completes.
-- disabled: Explain policy or prerequisites outside a disabled control because it cannot receive focus.
+- disabled: Pass disabledReason when the person can learn why the action is blocked; the Button stays focusable and its tooltip says why. Use native disabled only when the reason is already visible beside the control.
 
 ## Presentation rules
 
@@ -80,6 +99,7 @@ Why: Variant names belong in comparison captions. Product action labels identify
 - src/components/v4/ui/button.tsx
 - src/components/v4/ui/button-material.module.css
 - src/components/v4/ui/button-geometry.module.css
+- src/components/v4/ui/button.test.tsx
 - src/components/v4/tokens.json
 
 Exports: Button, buttonVariants. Source TypeScript defines the API.
@@ -92,6 +112,7 @@ Exports: Button, buttonVariants. Source TypeScript defines the API.
 ## Accessibility
 
 - Use a real button for an action and asChild with an anchor for navigation. Name icon-only buttons. Native disabled removes activation, while loading remains focusable and exposes busy/disabled semantics.
+- disabledReason disables the action without native disabled: the button sets aria-disabled, stays in the tab order, shows the reason in a Tooltip on hover and keyboard focus, and carries it as aria-description. Click, Enter, Space and form submission are blocked, so a submit Button with a reason never submits its form. It dims like native disabled, and the ink, accent and destructive variants keep their own disabled recipe.
 - The rendered button defaults to type button, so a Button inside a form never submits it by accident. Set type submit on the one Button that submits; an explicit type always wins. With asChild, Button sets no type and forwards only the one you pass, so an anchor child never gets a type attribute.
 
 ## Use cases
@@ -102,6 +123,7 @@ Exports: Button, buttonVariants. Source TypeScript defines the API.
 
 - The owner runs the operation and updates loading. Button does not start requests, show result notifications or impose a destructive confirmation.
 - Button has no read-only prop. Use disabled for unavailable actions, or show read-only content without an action.
+- With disabledReason set the reason replaces any label tooltip. Do not wrap the Button in another Tooltip while it has a reason: pass the wrapper content only while the action is enabled, as in Tooltip content={reason ? undefined : label}.
 
 ## Declared example coverage
 
@@ -143,6 +165,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 - idle: example `states`, visible label "Idle".
 - disabled: example `states`, visible label "Disabled".
+- disabled with reason: example `states`, visible label "Disabled with reason".
 - pending: example `states`, visible label "Loading".
 - pending with icon: example `states`, visible label "Loading with icon".
 - controlled loading=false: example `states`, visible label "Idle".
@@ -276,7 +299,7 @@ export default function Example() {
 
 ### Loading and disabled
 
-Save this example at `src/pages/design-system/examples/button/states.tsx`; its relative imports are generated for that exact path. States: default, loading, disabled.
+Save this example at `src/pages/design-system/examples/button/states.tsx`; its relative imports are generated for that exact path. States: default, loading, disabled, keyboard.
 
 Registry items used: @infisical/button. Additional packages: none. Install every listed item before compiling this example.
 
@@ -311,6 +334,12 @@ export default function Example() {
           <Button disabled>Save changes</Button>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button disabledReason="Only project admins can rotate this key.">Rotate key</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled with reason"}</figcaption>
       </figure>
     </div>
   );

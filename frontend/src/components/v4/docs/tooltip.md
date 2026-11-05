@@ -8,6 +8,24 @@ Choose Tooltip for a short supplemental control explanation. Use FieldDescriptio
 
 ## Usage rules
 
+### tooltip-text
+
+Owner: tooltip.
+
+When plain text, a timestamp or a status needs a longer explanation, and the text itself is what carries it.
+
+Do: Wrap the text in TooltipText with the explanation as content, or pass asChild to make StatusText or MiddleTruncate the focusable text.
+
+Avoid: Hand-roll a span with tabIndex 0 under Tooltip, use TooltipText to make text look or act like a button or link, or put a reason for a blocked action on nearby text instead of the action's own disabledReason.
+
+Why: Keyboard users reach the explanation the same way pointer users do, with one focus treatment, while the text keeps its non-interactive meaning.
+
+Checked by: review only. Look for: Tab to each TooltipText in the text example: the focus outline shows on the text and the tooltip opens without a pointer, and the text has no button or link role or styling.
+
+Source evidence:
+- src/components/v4/ui/tooltip.tsx
+- src/pages/design-system/examples/tooltip/text.tsx
+
 ### tooltip-usage
 
 Owner: tooltip.
@@ -42,13 +60,15 @@ Why: Redundant popups interrupt reading without supplying new information.
 ## Import and exports
 
 - src/components/v4/ui/tooltip.tsx
+- src/components/v4/ui/controls.module.css
 
-Exports: Tooltip, TooltipContent, TooltipProvider, TooltipTrigger. Source TypeScript defines the API.
+Exports: Tooltip, TooltipContent, TooltipProvider, TooltipText, TooltipTrigger. Source TypeScript defines the API.
 
 ## Behavior
 
 - The shortcut specimen owns a Mod+K binding scoped to its focused region. Its button and binding open the same local search, which filters fictional connections and exposes the selected record. Editing and composition keys remain with their controls.
 - Tooltip opens after a hover delay and immediately from focus; side, alignment and a displayed shortcut are explicit.
+- TooltipText makes non-interactive text the tooltip trigger: it renders a span with tabIndex 0 (or, with asChild, puts that on its one child, such as StatusText or MiddleTruncate), draws the shared focus outline on keyboard focus and opens its content on hover and on focus. It adds no other styling, so the text keeps its own type and color. Inside a row with onRowActivate or a TableRow onClick, a click on it never activates the row.
 - Content renders as one inline text run beside the shortcut, so inline code stays inside the sentence. It grows to size-tooltip-max (320px) and then wraps, breaking long inline code so it never runs past the surface. Content resets white-space, so a trigger inside a nowrap table cell or menu row never forces one long line; wrap is deprecated and has no effect. Menus, popovers, hover cards, dialogs and sheets reset white-space the same way.
 
 ## Accessibility
@@ -262,6 +282,47 @@ export default function Example() {
         />
       </TooltipProvider>
     </section>
+  );
+}
+```
+
+### Focusable text
+
+Save this example at `src/pages/design-system/examples/tooltip/text.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
+
+Registry items used: @infisical/text, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { StatusText } from "../../../../components/v4/ui/text";
+import { TooltipProvider, TooltipText } from "../../../../components/v4/ui/tooltip";
+
+export default function Example() {
+  return (
+    <TooltipProvider>
+      <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+        <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <p className="text-sm">
+              Last rotated <TooltipText content="2026-10-29 14:02 UTC">7 days ago</TooltipText>
+            </p>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{"Plain text"}</figcaption>
+        </figure>
+        <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <TooltipText
+              asChild
+              content="Auto-scan is disabled. Pushes to this repository do not trigger a scan."
+            >
+              <StatusText icon="clock">Paused</StatusText>
+            </TooltipText>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">
+            {"StatusText through asChild"}
+          </figcaption>
+        </figure>
+      </div>
+    </TooltipProvider>
   );
 }
 ```

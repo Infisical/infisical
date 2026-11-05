@@ -26,6 +26,26 @@ Source evidence:
 - src/components/v4/ui/sonner.tsx
 - src/pages/design-system/examples/toast/default.tsx
 
+### toast-shell-host
+
+Owner: toast.
+
+When a page inside the v4 shell needs to announce a result.
+
+Do: Call toast from @infisical/sonner and let the AppShell host show it, including from inside an open sheet or dialog.
+
+Avoid: Mount a page-local Toaster or a fixed ToastStack with its own store, or raise a toast's z-index to clear an overlay.
+
+Why: One host on the shared overlay layer keeps one queue and paints above every overlay by DOM order; page-local hosts duplicate the queue and fight the layer model.
+
+Checked by: review only. Look for: Open the sheet in the over-sheet example and save: the toast shows once, above the sheet, in both themes, and dismissing it leaves the sheet open.
+
+Source evidence:
+- src/components/v4/ui/sonner.tsx
+- src/components/v4/ui/top-bar.tsx
+- src/components/v4/scope.tsx
+- src/pages/design-system/examples/toast/over-sheet.tsx
+
 ### toast-one-feedback-owner
 
 Owner: toast.
@@ -60,8 +80,11 @@ Why: Repeated announcements interrupt the ongoing task.
 ## Import and exports
 
 - src/components/v4/ui/sonner.tsx
+- src/components/v4/ui/sonner.module.css
 - src/components/v4/ui/toast-stack.tsx
 - src/components/v4/ui/helpers.module.css
+- src/components/v4/ui/top-bar.tsx
+- src/components/v4/scope.tsx
 
 Exports: Toaster, toast, V4_TOASTER_ID, ToastStack, ToastItem. Source TypeScript defines the API.
 
@@ -69,6 +92,8 @@ Exports: Toaster, toast, V4_TOASTER_ID, ToastStack, ToastItem. Source TypeScript
 
 - Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist.
 - The v4 Toaster has its own toaster id (V4_TOASTER_ID), and the toast exported beside it routes every call to that id. The app's v3 Toaster only shows toasts without an id, so a v4 toast and a v3 toast never render twice, even when both Toasters are mounted on one page.
+- AppShell mounts the one toast host, so every page inside the v4 shell calls toast() without mounting a Toaster. Toaster is idempotent per toaster id: when a page or example still mounts its own, the first mounted instance renders and the others render nothing, so no toast shows twice; when it unmounts, the next one takes over.
+- Toaster portals into the V4Scope toast layer, a sibling placed right after the overlay container, and sits on the shared overlay layer (z-50). It follows every sheet, dialog and menu in DOM order, so a toast paints above an open sheet or dialog without a higher z-index. Its toasts keep pointer events while a modal turns them off for the page, and a click on one never dismisses the overlay under it. The notifications region is aria-live, so a modal never hides it from assistive technology.
 - Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content.
 
 ## Accessibility
@@ -81,6 +106,7 @@ Exports: Toaster, toast, V4_TOASTER_ID, ToastStack, ToastItem. Source TypeScript
 
 ## Limits
 
+- A modal sheet or dialog traps focus, so while one is open its toasts are reachable by pointer and announced, but Tab does not leave the modal to reach a toast action. Keep any recovery a toast offers reachable from the page as well.
 - Toaster/Sonner and controlled ToastStack are alternative owners, not a shared queue. The host creates results after actual settlement and handles action effects.
 - Call toast from @infisical/sonner, not from the sonner package: a plain sonner toast has no toaster id and goes to the app's v3 Toaster instead.
 
@@ -217,6 +243,70 @@ export default function Example() {
         </Button>
       </div>
     </div>
+  );
+}
+```
+
+### Toast above an open sheet
+
+Save this example at `src/pages/design-system/examples/toast/over-sheet.tsx`; its relative imports are generated for that exact path. States: default, success.
+
+Registry items used: @infisical/button, @infisical/field, @infisical/input, @infisical/sheet, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import { Field } from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+import * as UI from "../../../../components/v4/ui/sheet";
+import { toast } from "../../../../components/v4/ui/sonner";
+
+export default function Example() {
+  const [saved, setSaved] = useState("30");
+  const [draft, setDraft] = useState(saved);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <UI.Sheet>
+          <UI.SheetTrigger asChild>
+            <Button variant="outline">Edit rotation</Button>
+          </UI.SheetTrigger>
+          <UI.SheetContent>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSaved(draft);
+                toast.success("Rotation schedule saved", {
+                  description: `DATABASE_URL now rotates every ${draft} days.`
+                });
+              }}
+            >
+              <UI.SheetHeader>
+                <UI.SheetTitle>Rotation schedule</UI.SheetTitle>
+                <UI.SheetDescription>The sheet stays open after saving.</UI.SheetDescription>
+              </UI.SheetHeader>
+              <UI.SheetBody>
+                <Field label="Interval in days">
+                  <Input
+                    required
+                    inputMode="numeric"
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                  />
+                </Field>
+              </UI.SheetBody>
+              <UI.SheetFooter>
+                <Button type="submit" disabled={draft === saved}>
+                  Save schedule
+                </Button>
+              </UI.SheetFooter>
+            </form>
+          </UI.SheetContent>
+        </UI.Sheet>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{`Saved interval: ${saved} days`}</figcaption>
+    </figure>
   );
 }
 ```

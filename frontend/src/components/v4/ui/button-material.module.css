@@ -80,6 +80,9 @@
 .pending[data-v4-button] {
   cursor: progress;
 }
+.reasonDisabled[data-disabled-reason] {
+  opacity: 0.5;
+}
 .pendable {
   position: relative;
 }

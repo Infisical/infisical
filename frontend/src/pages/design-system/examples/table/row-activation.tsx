@@ -8,6 +8,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v4/ui/dropdown-menu";
+import {
+  RowActions,
+  Table,
+  TableActionsCell,
+  TableActionsHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v4/ui/table";
 import { Meta } from "@app/components/v4/ui/text";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
@@ -73,6 +84,37 @@ export default function RowActivation() {
           onRowActivate={open}
           footer={<Meta mono={false}>{status}</Meta>}
         />
+      </ExampleCell>
+      <ExampleCell align="stretch" label="Native TableRow onClick ignores its portaled menu">
+        <Table aria-label="Certificates, native table">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Common name</TableHead>
+              <TableHead>Expires</TableHead>
+              <TableActionsHead>Actions</TableActionsHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {certs.map((cert) => (
+              <TableRow key={cert.id} onClick={() => open(cert)}>
+                <TableCell>{cert.cn}</TableCell>
+                <TableCell>{cert.expires}</TableCell>
+                <TableActionsCell>
+                  <RowActions
+                    label={cert.cn}
+                    menu={
+                      <DropdownMenuItem
+                        onSelect={() => setStatus(`Renewal requested for ${cert.cn}.`)}
+                      >
+                        Renew
+                      </DropdownMenuItem>
+                    }
+                  />
+                </TableActionsCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </ExampleCell>
     </ExampleGrid>
   );

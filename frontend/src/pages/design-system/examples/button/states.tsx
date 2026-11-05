@@ -19,6 +19,9 @@ export default function Example() {
       <ExampleCell label="Disabled">
         <Button disabled>Save changes</Button>
       </ExampleCell>
+      <ExampleCell label="Disabled with reason">
+        <Button disabledReason="Only project admins can rotate this key.">Rotate key</Button>
+      </ExampleCell>
     </ExampleGrid>
   );
 }

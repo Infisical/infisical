@@ -1,11 +1,12 @@
 import * as React from "react";
-import { Tooltip as TooltipPrimitive } from "radix-ui";
+import { Slot, Tooltip as TooltipPrimitive } from "radix-ui";
 
 import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
 import { cn } from "../lib/utils";
 import { Kbd } from "./kbd";
 
+import controls from "./controls.module.css";
 import menu from "./menu.module.css";
 
 function TooltipProvider({
@@ -86,4 +87,36 @@ function TooltipContent({
 }
 TooltipContent.displayName = "TooltipContent";
 
-export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger };
+function TooltipText({
+  content,
+  side,
+  align,
+  asChild = false,
+  className,
+  ref,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<"span">, "content"> & {
+  /** The supplementary text the tooltip shows on hover and keyboard focus. */
+  content: React.ReactNode;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  /** Make the child element (StatusText, MiddleTruncate) the focusable text instead of a span. */
+  asChild?: boolean;
+  ref?: React.Ref<HTMLSpanElement>;
+}) {
+  const Comp = asChild ? Slot.Root : "span";
+  return (
+    <Tooltip content={content} side={side} align={align}>
+      <Comp
+        ref={ref}
+        data-slot="tooltip-text"
+        tabIndex={0}
+        className={cn(controls.focusOutline, className)}
+        {...props}
+      />
+    </Tooltip>
+  );
+}
+TooltipText.displayName = "TooltipText";
+
+export { Tooltip, TooltipContent, TooltipProvider, TooltipText, TooltipTrigger };

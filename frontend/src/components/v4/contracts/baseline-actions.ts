@@ -10,6 +10,7 @@ export const baselineActions = [
       "src/components/v4/ui/button.tsx",
       "src/components/v4/ui/button-material.module.css",
       "src/components/v4/ui/button-geometry.module.css",
+      "src/components/v4/ui/button.test.tsx",
       "src/components/v4/tokens.json"
     ],
     exports: ["Button", "buttonVariants"],
@@ -20,11 +21,13 @@ export const baselineActions = [
     ],
     accessibility: [
       "Use a real button for an action and asChild with an anchor for navigation. Name icon-only buttons. Native disabled removes activation, while loading remains focusable and exposes busy/disabled semantics.",
+      "disabledReason disables the action without native disabled: the button sets aria-disabled, stays in the tab order, shows the reason in a Tooltip on hover and keyboard focus, and carries it as aria-description. Click, Enter, Space and form submission are blocked, so a submit Button with a reason never submits its form. It dims like native disabled, and the ink, accent and destructive variants keep their own disabled recipe.",
       "The rendered button defaults to type button, so a Button inside a form never submits it by accident. Set type submit on the one Button that submits; an explicit type always wins. With asChild, Button sets no type and forwards only the one you pass, so an anchor child never gets a type attribute."
     ],
     limitations: [
       "The owner runs the operation and updates loading. Button does not start requests, show result notifications or impose a destructive confirmation.",
-      "Button has no read-only prop. Use disabled for unavailable actions, or show read-only content without an action."
+      "Button has no read-only prop. Use disabled for unavailable actions, or show read-only content without an action.",
+      "With disabledReason set the reason replaces any label tooltip. Do not wrap the Button in another Tooltip while it has a reason: pass the wrapper content only while the action is enabled, as in Tooltip content={reason ? undefined : label}."
     ],
     examples: [
       {
@@ -43,7 +46,7 @@ export const baselineActions = [
         id: "states",
         title: "Loading and disabled",
         module: "./examples/button/states.tsx",
-        states: ["default", "loading", "disabled"]
+        states: ["default", "loading", "disabled", "keyboard"]
       },
       {
         id: "composition",
@@ -156,6 +159,7 @@ export const baselineActions = [
         expected: [
           "idle",
           "disabled",
+          "disabled with reason",
           "invalid",
           "pending",
           "pending with icon",
@@ -169,6 +173,7 @@ export const baselineActions = [
         shown: [
           { value: "idle", exampleId: "states", label: "Idle" },
           { value: "disabled", exampleId: "states", label: "Disabled" },
+          { value: "disabled with reason", exampleId: "states", label: "Disabled with reason" },
           { value: "pending", exampleId: "states", label: "Loading" },
           { value: "pending with icon", exampleId: "states", label: "Loading with icon" },
           { value: "controlled loading=false", exampleId: "states", label: "Idle" },
@@ -261,6 +266,25 @@ export const baselineActions = [
             by: "review",
             how: "Measure a row action and a field action on the same page: the row action is a 28px box with a 16px glyph, the field action keeps its 24 or 28px box with a 12 or 14px glyph."
           }
+        },
+        {
+          id: "button-disabled-reason",
+          when: "An action is blocked by a permission, a plan or a missing prerequisite.",
+          do: "Keep the Button in place and pass disabledReason with the reason in one sentence, such as Only project admins can rotate this key.",
+          avoid:
+            "Hide the action, pass disabled alone with no reason, or wrap a natively disabled Button in a span and a Tooltip to show why.",
+          reason:
+            "A natively disabled button cannot take focus, so keyboard users never reach a reason hung on it; disabledReason keeps it focusable and blocks activation in one place.",
+          evidence: [
+            "src/components/v4/ui/button.tsx",
+            "src/components/v4/ui/button.test.tsx",
+            "src/pages/design-system/examples/button/states.tsx"
+          ],
+          detect: {
+            by: "test",
+            test: "src/components/v4/ui/button.test.tsx",
+            how: "Clicks a submit Button with a disabledReason inside a form; neither onClick nor the form's submit runs, and the button is focusable with aria-disabled and the reason as its aria-description."
+          }
         }
       ],
       states: [
@@ -272,7 +296,7 @@ export const baselineActions = [
         {
           state: "disabled",
           guidance:
-            "Explain policy or prerequisites outside a disabled control because it cannot receive focus."
+            "Pass disabledReason when the person can learn why the action is blocked; the Button stays focusable and its tooltip says why. Use native disabled only when the reason is already visible beside the control."
         }
       ],
       antiSlop: [

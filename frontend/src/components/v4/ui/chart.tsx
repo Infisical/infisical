@@ -8,6 +8,15 @@ import { cn } from "../lib/utils";
 import { useV4Theme } from "../scope";
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
+
+export const chartSeries = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)"
+] as const;
 type TooltipNameType = number | string;
 
 export type ChartConfig = Record<

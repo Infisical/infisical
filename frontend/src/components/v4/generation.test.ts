@@ -106,7 +106,7 @@ it("rejects a cva call the generator cannot read", () => {
     "const buttonVariants = (cva)("
   );
   expect(result.status).not.toBe(0);
-  expect(result.stderr).toContain("Unparsed cva call: src/components/v4/ui/button.tsx:14");
+  expect(result.stderr).toContain("Unparsed cva call: src/components/v4/ui/button.tsx:15");
 }, 20000);
 
 it("rejects a shared rule whose instruction opens with a lowercase scope fragment", () => {

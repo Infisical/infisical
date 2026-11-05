@@ -60,6 +60,7 @@ Why: A crowded modal makes orientation and recovery harder than a page would.
 
 - src/components/v4/ui/dialog.tsx
 - src/components/v4/lib/overlay-pending.ts
+- src/components/v4/lib/overlay-sections.tsx
 
 Exports: Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogSubheader, DialogTitle, DialogTrigger. Source TypeScript defines the API.
 
@@ -67,6 +68,7 @@ Exports: Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 
 - open/onOpenChange or defaultOpen controls the Radix dialog. Trigger and Close compose native controls; scoped Content portals into V4Scope and caps its height at the viewport minus size-overlay-margin on each side.
 - When DialogHeader, DialogSubheader or DialogFooter is a direct child (or inside a fragment), Content pins the header, and any DialogSubheader under it, above a full-width line rule, pins DialogFooter below a full-width line rule, and scrolls only the content between them. The rules are always visible, so the scroll region fades only at an edge without a rule. DialogSubheader runs the full width, without the space reserved for the close button, and the rule sits below it: use it for an artifact or legend the content needs, such as a step meter, a path preview or a filter row. Without a DialogFooter there is no bottom rule. Content without these slots renders unchanged.
+- A <form> may wrap the slots when it is DialogContent's only child, so a submit Button in DialogFooter submits it with no form id. The form draws no box (display: contents), so the pinned header and footer, the scroll region and its focus clearance are the same as without it. Only a plain <form> element is looked through.
 - Corner close suits read-only or informational dialogs; footer close suits a dialog that ends in actions.
 - pending on DialogContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close, DialogClose and the footer close while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the dialog, pending or not. Combobox and other popover lists inside the dialog are nested layers and do not dismiss it either.
 - For a form, route onOpenChange(false) through useDiscardChangesGuard so a dirty dialog asks with DiscardChangesAlertDialog before it closes.
@@ -111,7 +113,7 @@ Save this example at `src/pages/design-system/examples/dialog/default.tsx`; its 
 Registry items used: @infisical/button, @infisical/dialog, @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dialog";
@@ -121,7 +123,6 @@ import { Input } from "../../../../components/v4/ui/input";
 export default function Example() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("staging");
-  const formId = useId();
   return (
     <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
       <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
@@ -130,29 +131,26 @@ export default function Example() {
             <Button variant="outline">Edit environment</Button>
           </UI.DialogTrigger>
           <UI.DialogContent>
-            <UI.DialogHeader>
-              <UI.DialogTitle>Edit environment</UI.DialogTitle>
-              <UI.DialogDescription>Choose the name used in navigation.</UI.DialogDescription>
-            </UI.DialogHeader>
             <form
-              id={formId}
               onSubmit={(event) => {
                 event.preventDefault();
                 setOpen(false);
               }}
             >
+              <UI.DialogHeader>
+                <UI.DialogTitle>Edit environment</UI.DialogTitle>
+                <UI.DialogDescription>Choose the name used in navigation.</UI.DialogDescription>
+              </UI.DialogHeader>
               <Field label="Environment name">
                 <Input required value={name} onChange={(event) => setName(event.target.value)} />
               </Field>
+              <UI.DialogFooter>
+                <UI.DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </UI.DialogClose>
+                <Button type="submit">Save changes</Button>
+              </UI.DialogFooter>
             </form>
-            <UI.DialogFooter>
-              <UI.DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </UI.DialogClose>
-              <Button type="submit" form={formId}>
-                Save changes
-              </Button>
-            </UI.DialogFooter>
           </UI.DialogContent>
         </UI.Dialog>
       </div>

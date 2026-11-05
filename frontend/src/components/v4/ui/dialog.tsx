@@ -6,7 +6,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 
 import { OverlayPendingContext, useDismissGuard, useOverlayPending } from "../lib/overlay-pending";
-import { splitOverlaySections } from "../lib/overlay-sections";
+import { renderInForm, splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
 
@@ -92,7 +92,7 @@ function DialogContent({
       subheader: DialogSubheader,
       footer: DialogFooter
     },
-    { pinHeader: true }
+    { pinHeader: true, lookThroughForm: true }
   );
   return (
     <DialogPortal>
@@ -108,19 +108,23 @@ function DialogContent({
         {...guard}
       >
         <OverlayPendingContext value={pending}>
-          {sections ? (
-            <>
-              {sections.pinned.length > 0 && <div data-slot="dialog-head">{sections.pinned}</div>}
-              {sections.scroll.length > 0 && (
-                <div data-slot="dialog-scroll" data-scroll-fade="y">
-                  {sections.scroll}
-                </div>
-              )}
-              {sections.footer}
-            </>
-          ) : (
-            children
-          )}
+          {sections
+            ? renderInForm(
+                sections.form,
+                "dialog-form",
+                <>
+                  {sections.pinned.length > 0 && (
+                    <div data-slot="dialog-head">{sections.pinned}</div>
+                  )}
+                  {sections.scroll.length > 0 && (
+                    <div data-slot="dialog-scroll" data-scroll-fade="y">
+                      {sections.scroll}
+                    </div>
+                  )}
+                  {sections.footer}
+                </>
+              )
+            : children}
           {showCloseButton && (
             <DialogPrimitive.Close data-slot="dialog-close" asChild>
               <Button variant="ghost" className={overlay.close} size="icon-sm" disabled={pending}>

@@ -1039,8 +1039,13 @@ export const baselineContent = [
     title: "Chart",
     group: "Data display",
     summary: "Present numeric data with a shared legend and tooltip contract.",
-    sourceFiles: ["src/components/v4/ui/chart.tsx"],
+    sourceFiles: [
+      "src/components/v4/ui/chart.tsx",
+      "src/components/v4/tokens.json",
+      "src/components/v4/v4.css"
+    ],
     exports: [
+      "chartSeries",
       "ChartConfig",
       "ChartContainer",
       "ChartLegend",
@@ -1052,13 +1057,17 @@ export const baselineContent = [
     referenceNames: ["Chart"],
     behavior: [
       "ChartContainer provides Recharts responsive sizing and a ChartConfig mapping series keys to labels, icons and color or light/dark values. Tooltip and legend content consume that context.",
+      "The categorical palette is six tokens, chart-1 to chart-6, defined in tokens.json for both themes and exposed as --chart-N and --color-chart-N. chartSeries lists them in order as CSS values; index it (chartSeries[index % chartSeries.length]) instead of keeping a local palette. chart-6 is a blue the other five lack, 5.5:1 on surface in light and 6.7:1 on surface (6.9:1 on inset) in dark, and its nearest series, chart-2, is further from it in OKLab than any two of chart-1 to chart-5 are from each other.",
       "The hover cursor behind a hovered category is a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible. It never paints an opaque fill over the plot.",
       "While data loads, the chart region shows Skeleton bars shaped like the chart, with a status that names what is loading."
     ],
     accessibility: [
       "Provide an equivalent text summary for decisions that cannot be read from the chart alone."
     ],
-    limitations: ["A chart tooltip does not replace an accessible data summary."],
+    limitations: [
+      "A chart tooltip does not replace an accessible data summary.",
+      "chart-3 is the accent, 1.20:1 on the light surface, below the 3:1 non-text floor: in light, a bar, slice or line in chart-3 needs a value label or an adjacent edge to read. The other five series clear 3:1 on surface in both themes."
+    ],
     examples: [
       {
         id: "default",
@@ -1077,6 +1086,12 @@ export const baselineContent = [
         title: "States",
         module: "./examples/chart/states.tsx",
         states: ["loading", "empty", "error"]
+      },
+      {
+        id: "palette",
+        title: "Six-series palette",
+        module: "./examples/chart/palette.tsx",
+        states: ["default"]
       }
     ],
     coverage: [
@@ -2496,20 +2511,26 @@ export const baselineContent = [
     summary: "Announce a short-lived result through themed toast notifications.",
     sourceFiles: [
       "src/components/v4/ui/sonner.tsx",
+      "src/components/v4/ui/sonner.module.css",
       "src/components/v4/ui/toast-stack.tsx",
-      "src/components/v4/ui/helpers.module.css"
+      "src/components/v4/ui/helpers.module.css",
+      "src/components/v4/ui/top-bar.tsx",
+      "src/components/v4/scope.tsx"
     ],
     exports: ["Toaster", "toast", "V4_TOASTER_ID", "ToastStack", "ToastItem"],
     referenceNames: ["Toast", "ToastStack"],
     behavior: [
       "Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist.",
       "The v4 Toaster has its own toaster id (V4_TOASTER_ID), and the toast exported beside it routes every call to that id. The app's v3 Toaster only shows toasts without an id, so a v4 toast and a v3 toast never render twice, even when both Toasters are mounted on one page.",
+      "AppShell mounts the one toast host, so every page inside the v4 shell calls toast() without mounting a Toaster. Toaster is idempotent per toaster id: when a page or example still mounts its own, the first mounted instance renders and the others render nothing, so no toast shows twice; when it unmounts, the next one takes over.",
+      "Toaster portals into the V4Scope toast layer, a sibling placed right after the overlay container, and sits on the shared overlay layer (z-50). It follows every sheet, dialog and menu in DOM order, so a toast paints above an open sheet or dialog without a higher z-index. Its toasts keep pointer events while a modal turns them off for the page, and a click on one never dismisses the overlay under it. The notifications region is aria-live, so a modal never hides it from assistive technology.",
       "Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content."
     ],
     accessibility: [
       "ToastStack exposes status feedback and named action/dismiss buttons. Its auto-dismiss timer pauses while hovered or keyboard-focused, then resumes the remaining duration."
     ],
     limitations: [
+      "A modal sheet or dialog traps focus, so while one is open its toasts are reachable by pointer and announced, but Tab does not leave the modal to reach a toast action. Keep any recovery a toast offers reachable from the page as well.",
       "Toaster/Sonner and controlled ToastStack are alternative owners, not a shared queue. The host creates results after actual settlement and handles action effects.",
       "Call toast from @infisical/sonner, not from the sonner package: a plain sonner toast has no toaster id and goes to the app's v3 Toaster instead."
     ],
@@ -2525,6 +2546,12 @@ export const baselineContent = [
         title: "Trigger success and error notifications",
         module: "./examples/toast/parts.tsx",
         states: ["default"]
+      },
+      {
+        id: "over-sheet",
+        title: "Toast above an open sheet",
+        module: "./examples/toast/over-sheet.tsx",
+        states: ["default", "success"]
       }
     ],
     coverage: [
@@ -2601,6 +2628,25 @@ export const baselineContent = [
           detect: {
             by: "review",
             how: "Reject an operation and a clipboard write. No success toast appears before fulfillment, and a failure that needs repair remains recoverable after transient feedback disappears."
+          }
+        },
+        {
+          id: "toast-shell-host",
+          when: "A page inside the v4 shell needs to announce a result.",
+          do: "Call toast from @infisical/sonner and let the AppShell host show it, including from inside an open sheet or dialog.",
+          avoid:
+            "Mount a page-local Toaster or a fixed ToastStack with its own store, or raise a toast's z-index to clear an overlay.",
+          reason:
+            "One host on the shared overlay layer keeps one queue and paints above every overlay by DOM order; page-local hosts duplicate the queue and fight the layer model.",
+          evidence: [
+            "src/components/v4/ui/sonner.tsx",
+            "src/components/v4/ui/top-bar.tsx",
+            "src/components/v4/scope.tsx",
+            "src/pages/design-system/examples/toast/over-sheet.tsx"
+          ],
+          detect: {
+            by: "review",
+            how: "Open the sheet in the over-sheet example and save: the toast shows once, above the sheet, in both themes, and dismissing it leaves the sheet open."
           }
         },
         {

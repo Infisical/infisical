@@ -9,10 +9,12 @@ type Theme = "light" | "dark";
 const PortalContainerContext = React.createContext<HTMLElement | null | undefined>(undefined);
 const ThemeContext = React.createContext<Theme | undefined>(undefined);
 const CollisionBoundaryContext = React.createContext<HTMLElement | undefined>(undefined);
+const ToastLayerContext = React.createContext<HTMLElement | null>(null);
 
 export const useV4PortalContainer = () => React.useContext(PortalContainerContext);
 export const useV4CollisionBoundary = () => React.useContext(CollisionBoundaryContext);
 export const useV4Theme = () => React.useContext(ThemeContext);
+export const useV4ToastLayer = () => React.useContext(ToastLayerContext);
 
 function inheritedTheme(node: HTMLElement, fallback: Theme | undefined): Theme {
   let ancestor = node.parentElement;
@@ -40,6 +42,7 @@ export function V4Scope({
   const parentTheme = useV4Theme();
   const [wrapper, setWrapper] = React.useState<HTMLDivElement | null>(null);
   const [container, setContainer] = React.useState<HTMLDivElement | null>(null);
+  const [toastLayer, setToastLayer] = React.useState<HTMLDivElement | null>(null);
   const [inherited, setInherited] = React.useState<Theme>();
   const resolvedTheme = theme ?? inherited ?? parentTheme ?? "light";
   const assignWrapper = React.useCallback(
@@ -58,7 +61,9 @@ export function V4Scope({
   React.useLayoutEffect(() => {
     if (appliedTheme.current === resolvedTheme) return undefined;
     appliedTheme.current = resolvedTheme;
-    const scopes = [wrapper, container].filter((node): node is HTMLDivElement => Boolean(node));
+    const scopes = [wrapper, container, toastLayer].filter((node): node is HTMLDivElement =>
+      Boolean(node)
+    );
     scopes.forEach((node) => node.setAttribute("data-theme-switching", ""));
     scopes.forEach((node) => getComputedStyle(node).transitionProperty);
     const frame = requestAnimationFrame(() =>
@@ -68,7 +73,7 @@ export function V4Scope({
       cancelAnimationFrame(frame);
       scopes.forEach((node) => node.removeAttribute("data-theme-switching"));
     };
-  }, [resolvedTheme, wrapper, container]);
+  }, [resolvedTheme, wrapper, container, toastLayer]);
   React.useLayoutEffect(() => {
     if (!wrapper || theme !== undefined) return undefined;
     const update = () => setInherited(inheritedTheme(wrapper, parentTheme));
@@ -86,21 +91,32 @@ export function V4Scope({
     <MotionConfig reducedMotion="user">
       <ThemeContext value={resolvedTheme}>
         <PortalContainerContext value={container}>
-          <CollisionBoundaryContext value={portalContainer ?? undefined}>
-            <div
-              {...props}
-              ref={assignWrapper}
-              className={cn("v4", className)}
-              data-theme={resolvedTheme}
-            >
-              {children}
-            </div>
-            {portalContainer !== null &&
-              createPortal(
-                <div ref={setContainer} className="v4" data-theme={resolvedTheme} />,
-                portalContainer ?? document.body
-              )}
-          </CollisionBoundaryContext>
+          <ToastLayerContext value={toastLayer}>
+            <CollisionBoundaryContext value={portalContainer ?? undefined}>
+              <div
+                {...props}
+                ref={assignWrapper}
+                className={cn("v4", className)}
+                data-theme={resolvedTheme}
+              >
+                {children}
+              </div>
+              {portalContainer !== null &&
+                createPortal(
+                  <>
+                    <div ref={setContainer} className="v4" data-theme={resolvedTheme} />
+                    {/* After the overlay container, so a toast paints above every sheet and dialog on the same z-50 layer. */}
+                    <div
+                      ref={setToastLayer}
+                      className="v4"
+                      data-theme={resolvedTheme}
+                      data-slot="v4-toast-layer"
+                    />
+                  </>,
+                  portalContainer ?? document.body
+                )}
+            </CollisionBoundaryContext>
+          </ToastLayerContext>
         </PortalContainerContext>
       </ThemeContext>
     </MotionConfig>

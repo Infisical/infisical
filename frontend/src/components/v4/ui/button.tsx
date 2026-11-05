@@ -6,6 +6,7 @@ import { Slot } from "radix-ui";
 import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icon";
 import { Spinner } from "./spinner";
+import { Tooltip } from "./tooltip";
 
 import geometry from "./button-geometry.module.css";
 import styles from "./button-material.module.css";
@@ -55,7 +56,7 @@ const buttonVariants = cva(
     compoundVariants: [
       {
         variant: ["primary", "default", "danger-ghost", "outline", "secondary", "ghost", "link"],
-        className: [styles.paintTransition, "disabled:opacity-50"]
+        className: [styles.paintTransition, "disabled:opacity-50", styles.reasonDisabled]
       },
       { variant: "destructive", className: styles.paintTransition }
     ],
@@ -79,6 +80,7 @@ function Button({
   iconRight,
   iconOnly = false,
   selected,
+  disabledReason,
   children,
   onClickCapture,
   onPointerDownCapture,
@@ -103,11 +105,15 @@ function Button({
     iconRight?: IconName;
     iconOnly?: boolean;
     selected?: boolean;
+    /** Disables the action and says why: it stays focusable, shows the reason in a tooltip and exposes it as the accessible description. */
+    disabledReason?: string;
   } & { ref?: React.Ref<React.ComponentRef<"button">> }) {
   const Comp = asChild ? MotionSlot : MotionButton;
   const loading = loadingProp ?? false;
+  const reason = disabledReason || undefined;
   const inactive =
     loading ||
+    Boolean(reason) ||
     props.disabled ||
     props["aria-disabled"] === true ||
     props["aria-disabled"] === "true";
@@ -173,7 +179,7 @@ function Button({
       <span data-press="">{content(children)}</span>
     );
 
-  return (
+  const button = (
     <Comp
       ref={ref}
       data-slot="button"
@@ -181,10 +187,15 @@ function Button({
       data-size={size}
       type={asChild ? type : (type ?? "button")}
       {...props}
+      disabled={reason ? undefined : props.disabled}
       data-v4-button=""
       data-v4-button-material={material ? "" : undefined}
+      data-disabled-reason={reason ? "" : undefined}
       aria-busy={loading || undefined}
-      aria-disabled={loading || props.disabled || props["aria-disabled"] || undefined}
+      aria-disabled={
+        loading || Boolean(reason) || props.disabled || props["aria-disabled"] || undefined
+      }
+      aria-description={reason ?? props["aria-description"]}
       aria-pressed={selected ?? props["aria-pressed"]}
       className={cn(
         buttonVariants({ variant, size }),
@@ -218,6 +229,7 @@ function Button({
       {child}
     </Comp>
   );
+  return reason ? <Tooltip content={reason}>{button}</Tooltip> : button;
 }
 Button.displayName = "Button";
 

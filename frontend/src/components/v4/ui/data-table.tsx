@@ -101,17 +101,6 @@ export interface DataTableProps<Row> {
   /** Layout classes for the scroll container, such as a flex-fill height. */
   containerClassName?: string;
 }
-const interactiveTarget =
-  "a, button, input, select, textarea, label, summary, [contenteditable], [tabindex]:not(tr), [role=button], [role=checkbox], [role=combobox], [role=link], [role=menuitem], [role=switch], [role=tab], [data-row-interactive]";
-const activatesRow = (event: React.MouseEvent<HTMLTableRowElement>) => {
-  const row = event.currentTarget;
-  const target = event.target as Element;
-  if (event.button !== 0 || !row.contains(target)) return false;
-  const interactive = target.closest(interactiveTarget);
-  if (interactive && row.contains(interactive)) return false;
-  const selection = window.getSelection();
-  return !(selection && !selection.isCollapsed && row.contains(selection.anchorNode));
-};
 export function DataTable<Row>({
   label,
   rows,
@@ -458,13 +447,7 @@ export function DataTable<Row>({
                 onBlur={start + i === focusRow ? () => setFocusRow(null) : undefined}
                 data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
                 data-activatable={onRowActivate ? "" : undefined}
-                onClick={
-                  onRowActivate
-                    ? (event) => {
-                        if (activatesRow(event)) onRowActivate(row);
-                      }
-                    : undefined
-                }
+                onClick={onRowActivate ? () => onRowActivate(row) : undefined}
                 onKeyDown={(event) => {
                   if (event.target !== event.currentTarget) return;
                   if (event.key === "Enter" && onRowActivate) {

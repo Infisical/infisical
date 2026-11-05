@@ -18,6 +18,7 @@ import {
 } from "./dropdown-menu";
 import { Icon, type IconName } from "./icon";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./sheet";
+import { Toaster } from "./sonner";
 import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 import { Tooltip, TooltipProvider } from "./tooltip";
 
@@ -187,6 +188,7 @@ export function AppShell({
         className={cn(styles.shell, className)}
         {...props}
       />
+      <Toaster />
     </ShellContext>
   );
 }

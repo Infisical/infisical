@@ -44,6 +44,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
 }
 
 @font-face {
@@ -108,6 +109,7 @@
   --chart-3: var(--color-chart-3);
   --chart-4: var(--color-chart-4);
   --chart-5: var(--color-chart-5);
+  --chart-6: var(--color-chart-6);
   --radius: var(--radius-lg);
   --radius-xs: 0;
   --radius-sm: 0;
@@ -144,11 +146,12 @@
   --color-sidebar-accent-foreground: #010101;
   --color-sidebar-border: #e1e0db;
   --color-sidebar-ring: #010101;
-  --color-chart-1: #010101;
-  --color-chart-2: #565654;
-  --color-chart-3: #e3f047;
-  --color-chart-4: #2b5945;
-  --color-chart-5: #c0231b;
+  --color-chart-1: var(--v4-chart-1);
+  --color-chart-2: var(--v4-chart-2);
+  --color-chart-3: var(--v4-chart-3);
+  --color-chart-4: var(--v4-chart-4);
+  --color-chart-5: var(--v4-chart-5);
+  --color-chart-6: var(--v4-chart-6);
   --v4-accent: #e3f047;
   --v4-accent-2: #d3df29;
   --v4-on-accent: #010101;
@@ -203,11 +206,6 @@
   --color-sidebar-accent-foreground: #f1f0ea;
   --color-sidebar-border: #1b1c1d;
   --color-sidebar-ring: #f1f0ea;
-  --color-chart-1: #f1f0ea;
-  --color-chart-2: #b0b0a9;
-  --color-chart-3: #e3f047;
-  --color-chart-4: #8fc7a4;
-  --color-chart-5: #ff5a4f;
   --v4-accent: #e3f047;
   --v4-accent-2: #d1de23;
   --v4-on-accent: #010101;
@@ -484,7 +482,8 @@
   background: var(--v4-paper);
   border-radius: 0;
 }
-.v4 [data-sections] > [data-slot="dialog-footer"] {
+.v4 [data-sections] > [data-slot="dialog-footer"],
+.v4 [data-sections] > [data-slot="dialog-form"] > [data-slot="dialog-footer"] {
   flex: none;
   margin: 0;
 }
@@ -575,8 +574,13 @@
   flex-direction: column;
   border-bottom: var(--v4-size-control-border) solid var(--v4-line);
 }
-.v4 [data-sections] > [data-slot="sheet-footer"] {
+.v4 [data-sections] > [data-slot="sheet-footer"],
+.v4 [data-sections] > [data-slot="sheet-form"] > [data-slot="sheet-footer"] {
   border-top: var(--v4-size-control-border) solid var(--v4-line);
+}
+/* A form around the sections owns its footer submit; it draws no box, so the pinned layout is the same. */
+.v4 [data-sections] > :is([data-slot="sheet-form"], [data-slot="dialog-form"]) {
+  display: contents;
 }
 .v4
   :is(

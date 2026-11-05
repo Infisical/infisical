@@ -54,6 +54,7 @@ export const tableDefinition = {
     "Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.",
     "With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.",
     "onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.",
+    "TableRow's onClick applies the same filter, in one place that DataTable's onRowActivate also goes through: it runs only for a primary click whose target is inside the row's own DOM and not on an interactive element there. Clicks that bubble through React from portaled content opened from the row (a menu, popover or dialog) are ignored, so a native Table row needs no stopPropagation on its menus, buttons, checkboxes or actions cell.",
     "pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.",
     "loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.",
     "When every column declares a width, grows to fill the rest or is an actions column, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.",
@@ -384,12 +385,13 @@ export const tableDefinition = {
       {
         id: "table-row-activation",
         when: "Each row opens one detail page or sheet for its resource.",
-        do: "Pass onRowActivate with the same destination as the link or button in the primary cell, and keep selection on the checkbox and Space.",
+        do: "Pass onRowActivate (or, in a native Table, TableRow onClick) with the same destination as the link or button in the primary cell, and keep selection on the checkbox and Space.",
         avoid:
-          "Navigate from a cell's own onClick, give the row a button or link role, or let a row click change the selection.",
+          "Navigate from a cell's own onClick, give the row a button or link role, let a row click change the selection, or add stopPropagation to the row's controls and menus to keep them from activating it.",
         reason:
           "One handler keeps pointer, Enter and the named control in agreement, while the row's own controls keep their clicks and the row keeps native table semantics.",
         evidence: [
+          "src/components/v4/ui/table.tsx",
           "src/components/v4/ui/data-table.tsx",
           "src/components/v4/ui/data-table.test.tsx",
           "src/pages/design-system/examples/table/row-activation.tsx"
@@ -397,7 +399,7 @@ export const tableDefinition = {
         detect: {
           by: "test",
           test: "src/components/v4/ui/data-table.test.tsx",
-          how: "Clicks a cell, the row menu, the selection cell and a text selection, then presses Enter and Space on a focused row; only the cell click and Enter activate, and Space selects."
+          how: "Clicks a cell, the row menu, the selection cell and a text selection, then presses Enter and Space on a focused row; only the cell click and Enter activate, and Space selects. A native TableRow onClick ignores a click on a portaled menu item opened from the row and runs for a click on a cell."
         }
       },
       {

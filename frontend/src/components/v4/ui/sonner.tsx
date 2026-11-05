@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   type ExternalToast,
   toast as sonnerToast,
@@ -7,7 +9,7 @@ import {
   type ToasterProps
 } from "sonner";
 
-import { useV4Theme } from "../scope";
+import { useV4Theme, useV4ToastLayer } from "../scope";
 import { Icon } from "./icon";
 import { Spinner } from "./spinner";
 
@@ -47,10 +49,39 @@ export const toast = Object.assign(
   }
 );
 
+const mountedToasters = new Map<string, readonly object[]>();
+const toasterListeners = new Set<() => void>();
+const subscribeToasters = (listener: () => void) => {
+  toasterListeners.add(listener);
+  return () => {
+    toasterListeners.delete(listener);
+  };
+};
+const updateToasters = (id: string, change: (tokens: readonly object[]) => readonly object[]) => {
+  mountedToasters.set(id, change(mountedToasters.get(id) ?? []));
+  toasterListeners.forEach((listener) => listener());
+};
+
+const useOwnsToaster = (id: string) => {
+  const [token] = React.useState(() => ({}));
+  React.useLayoutEffect(() => {
+    updateToasters(id, (tokens) => [...tokens, token]);
+    return () => updateToasters(id, (tokens) => tokens.filter((item) => item !== token));
+  }, [id, token]);
+  return React.useSyncExternalStore(
+    subscribeToasters,
+    () => mountedToasters.get(id)?.[0] === token,
+    () => false
+  );
+};
+
 const Toaster = ({ ...props }: ToasterProps) => {
   const resolvedTheme = useV4Theme();
+  const layer = useV4ToastLayer();
+  const owns = useOwnsToaster(props.id ?? V4_TOASTER_ID);
+  if (!owns) return null;
 
-  return (
+  const toaster = (
     <Sonner
       theme={props.theme ?? resolvedTheme ?? "system"}
       className={styles.toaster}
@@ -79,6 +110,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       id={props.id ?? V4_TOASTER_ID}
     />
   );
+  return layer ? createPortal(toaster, layer) : toaster;
 };
 
 export { Toaster };

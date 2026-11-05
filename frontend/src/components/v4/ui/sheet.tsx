@@ -6,7 +6,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 
 import { OverlayPendingContext, useDismissGuard, useOverlayPending } from "../lib/overlay-pending";
-import { splitOverlaySections } from "../lib/overlay-sections";
+import { renderInForm, splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
 
@@ -93,7 +93,7 @@ function SheetContent({
       body: SheetBody,
       footer: SheetFooter
     },
-    { pinHeader: true }
+    { pinHeader: true, lookThroughForm: true }
   );
   return (
     <SheetPortal>
@@ -116,19 +116,23 @@ function SheetContent({
         {...guard}
       >
         <OverlayPendingContext value={pending}>
-          {sections ? (
-            <>
-              {sections.pinned.length > 0 && <div data-slot="sheet-head">{sections.pinned}</div>}
-              {sections.scroll.length > 0 && (
-                <div data-slot="sheet-scroll" data-scroll-fade="y">
-                  {sections.scroll}
-                </div>
-              )}
-              {sections.footer}
-            </>
-          ) : (
-            children
-          )}
+          {sections
+            ? renderInForm(
+                sections.form,
+                "sheet-form",
+                <>
+                  {sections.pinned.length > 0 && (
+                    <div data-slot="sheet-head">{sections.pinned}</div>
+                  )}
+                  {sections.scroll.length > 0 && (
+                    <div data-slot="sheet-scroll" data-scroll-fade="y">
+                      {sections.scroll}
+                    </div>
+                  )}
+                  {sections.footer}
+                </>
+              )
+            : children}
           {showCloseButton && (
             <SheetPrimitive.Close data-slot="sheet-close" asChild>
               <Button variant="ghost" className={overlay.close} size="icon-sm" disabled={pending}>

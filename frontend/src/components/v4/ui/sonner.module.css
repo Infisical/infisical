@@ -1,4 +1,5 @@
 .toaster[data-sonner-toaster] {
+  z-index: 50;
   font-family: var(--v4-type-row-title-font-family);
   color: var(--v4-toast-text);
 }
@@ -13,6 +14,8 @@
   background: var(--v4-toast-bg);
   color: var(--v4-toast-text);
   box-shadow: var(--v4-shadow-pop);
+  /* A modal sheet or dialog sets pointer-events: none on body; its toasts stay clickable. */
+  pointer-events: auto;
 }
 .icon[data-icon] {
   display: flex;

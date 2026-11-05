@@ -108,15 +108,16 @@ Owner: table.
 
 When each row opens one detail page or sheet for its resource.
 
-Do: Pass onRowActivate with the same destination as the link or button in the primary cell, and keep selection on the checkbox and Space.
+Do: Pass onRowActivate (or, in a native Table, TableRow onClick) with the same destination as the link or button in the primary cell, and keep selection on the checkbox and Space.
 
-Avoid: Navigate from a cell's own onClick, give the row a button or link role, or let a row click change the selection.
+Avoid: Navigate from a cell's own onClick, give the row a button or link role, let a row click change the selection, or add stopPropagation to the row's controls and menus to keep them from activating it.
 
 Why: One handler keeps pointer, Enter and the named control in agreement, while the row's own controls keep their clicks and the row keeps native table semantics.
 
-Checked by: src/components/v4/ui/data-table.test.tsx. Clicks a cell, the row menu, the selection cell and a text selection, then presses Enter and Space on a focused row; only the cell click and Enter activate, and Space selects.
+Checked by: src/components/v4/ui/data-table.test.tsx. Clicks a cell, the row menu, the selection cell and a text selection, then presses Enter and Space on a focused row; only the cell click and Enter activate, and Space selects. A native TableRow onClick ignores a click on a portaled menu item opened from the row and runs for a click on a cell.
 
 Source evidence:
+- src/components/v4/ui/table.tsx
 - src/components/v4/ui/data-table.tsx
 - src/components/v4/ui/data-table.test.tsx
 - src/pages/design-system/examples/table/row-activation.tsx
@@ -182,6 +183,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.
 - With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
 - onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.
+- TableRow's onClick applies the same filter, in one place that DataTable's onRowActivate also goes through: it runs only for a primary click whose target is inside the row's own DOM and not on an interactive element there. Clicks that bubble through React from portaled content opened from the row (a menu, popover or dialog) are ignored, so a native Table row needs no stopPropagation on its menus, buttons, checkboxes or actions cell.
 - pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.
 - loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.
 - When every column declares a width, grows to fill the rest or is an actions column, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.
@@ -1039,7 +1041,7 @@ export default function RowActions() {
 
 Save this example at `src/pages/design-system/examples/table/row-activation.tsx`; its relative imports are generated for that exact path. States: default, keyboard, controlled.
 
-Registry items used: @infisical/button, @infisical/data-table, @infisical/dropdown-menu, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/data-table, @infisical/dropdown-menu, @infisical/table, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -1052,6 +1054,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "../../../../components/v4/ui/dropdown-menu";
+import {
+  RowActions,
+  Table,
+  TableActionsCell,
+  TableActionsHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "../../../../components/v4/ui/table";
 import { Meta } from "../../../../components/v4/ui/text";
 
 type Cert = { id: string; cn: string; serial: string; expires: string };
@@ -1119,6 +1132,42 @@ export default function RowActivation() {
         </div>
         <figcaption className="text-muted-foreground text-xs">
           {"Whole row opens the certificate"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Table aria-label="Certificates, native table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Common name</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableActionsHead>Actions</TableActionsHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {certs.map((cert) => (
+                <TableRow key={cert.id} onClick={() => open(cert)}>
+                  <TableCell>{cert.cn}</TableCell>
+                  <TableCell>{cert.expires}</TableCell>
+                  <TableActionsCell>
+                    <RowActions
+                      label={cert.cn}
+                      menu={
+                        <DropdownMenuItem
+                          onSelect={() => setStatus(`Renewal requested for ${cert.cn}.`)}
+                        >
+                          Renew
+                        </DropdownMenuItem>
+                      }
+                    />
+                  </TableActionsCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Native TableRow onClick ignores its portaled menu"}
         </figcaption>
       </figure>
     </div>

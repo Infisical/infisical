@@ -96,12 +96,15 @@ Why: The visual encoding should support a comparison rather than imply extra cat
 ## Import and exports
 
 - src/components/v4/ui/chart.tsx
+- src/components/v4/tokens.json
+- src/components/v4/v4.css
 
-Exports: ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartStyle, ChartTooltip, ChartTooltipContent. Source TypeScript defines the API.
+Exports: chartSeries, ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartStyle, ChartTooltip, ChartTooltipContent. Source TypeScript defines the API.
 
 ## Behavior
 
 - ChartContainer provides Recharts responsive sizing and a ChartConfig mapping series keys to labels, icons and color or light/dark values. Tooltip and legend content consume that context.
+- The categorical palette is six tokens, chart-1 to chart-6, defined in tokens.json for both themes and exposed as --chart-N and --color-chart-N. chartSeries lists them in order as CSS values; index it (chartSeries[index % chartSeries.length]) instead of keeping a local palette. chart-6 is a blue the other five lack, 5.5:1 on surface in light and 6.7:1 on surface (6.9:1 on inset) in dark, and its nearest series, chart-2, is further from it in OKLab than any two of chart-1 to chart-5 are from each other.
 - The hover cursor behind a hovered category is a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible. It never paints an opaque fill over the plot.
 - While data loads, the chart region shows Skeleton bars shaped like the chart, with a status that names what is loading.
 
@@ -116,6 +119,7 @@ Exports: ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartStyl
 ## Limits
 
 - A chart tooltip does not replace an accessible data summary.
+- chart-3 is the accent, 1.20:1 on the light surface, below the 3:1 non-text floor: in light, a bar, slice or line in chart-3 needs a value label or an adjacent edge to read. The other five series clear 3:1 on surface in both themes.
 
 ## Declared example coverage
 
@@ -330,6 +334,74 @@ export default function Example() {
         <figcaption className="text-muted-foreground text-xs">{"Error"}</figcaption>
       </figure>
     </div>
+  );
+}
+```
+
+### Six-series palette
+
+Save this example at `src/pages/design-system/examples/chart/palette.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/chart. Additional packages: recharts@^3.8.1. Install every listed item before compiling this example.
+
+```tsx
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from "recharts";
+
+import * as UI from "../../../../components/v4/ui/chart";
+
+const counts = [24, 19, 15, 12, 9, 6];
+const data = UI.chartSeries.map((color, index) => ({
+  series: `chart-${index + 1}`,
+  count: counts[index],
+  color
+}));
+
+export default function Example() {
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <UI.ChartContainer
+          className="aspect-auto h-60"
+          config={{ count: { label: "Certificates", color: "var(--chart-1)" } }}
+        >
+          <BarChart
+            accessibilityLayer
+            data={data}
+            margin={{ top: 24, right: 12, bottom: 4, left: 0 }}
+          >
+            <CartesianGrid vertical={false} stroke="var(--v4-line)" />
+            <XAxis
+              dataKey="series"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "var(--v4-ink)", style: { fill: "var(--v4-ink)" } }}
+            />
+            <YAxis
+              width={36}
+              allowDecimals={false}
+              domain={[0, 30]}
+              tickCount={4}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "var(--v4-ink)", style: { fill: "var(--v4-ink)" } }}
+            />
+            <Bar isAnimationActive={false} dataKey="count" maxBarSize={40}>
+              {data.map((entry) => (
+                <Cell key={entry.series} fill={entry.color} />
+              ))}
+              <LabelList dataKey="count" position="top" fill="var(--v4-ink)" />
+            </Bar>
+          </BarChart>
+        </UI.ChartContainer>
+        <p className="text-sm">
+          Synthetic certificate counts by issuer: chart-1 24, chart-2 19, chart-3 15, chart-4 12,
+          chart-5 9, chart-6 6.
+        </p>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {"chart-1 to chart-6 in series order"}
+      </figcaption>
+    </figure>
   );
 }
 ```

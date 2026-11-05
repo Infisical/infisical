@@ -25,6 +25,25 @@ Checked by: review only. Look for: Open the long controlled review in both theme
 Source evidence:
 - src/components/v4/ui/sheet.tsx
 
+### sheet-form
+
+Owner: sheet.
+
+When a sheet holds a form whose submit Button sits in the pinned footer.
+
+Do: Make a plain <form> SheetContent's only child and put SheetHeader, SheetBody and SheetFooter inside it, with a type submit Button in SheetFooter.
+
+Avoid: Wrap only the body in the form and wire the footer Button with form="id", or wrap the slots in a div or a form component, which turns off the pinned layout.
+
+Why: The form owns its submit button and Enter-to-submit, and Content still pins the header and footer around one scroll region.
+
+Checked by: review only. Look for: Open the form example and compare the header, scroll region and footer boxes with the form unwrapped: they match to the pixel, the footer stays pinned while the body scrolls and Enter in the name field saves.
+
+Source evidence:
+- src/components/v4/ui/sheet.tsx
+- src/components/v4/lib/overlay-sections.tsx
+- src/pages/design-system/examples/sheet/form.tsx
+
 ### sheet-usage
 
 Owner: sheet.
@@ -60,12 +79,14 @@ Why: Repeated panels obscure which object and draft the person is editing.
 
 - src/components/v4/ui/sheet.tsx
 - src/components/v4/lib/overlay-pending.ts
+- src/components/v4/lib/overlay-sections.tsx
 
 Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetSubheader, SheetTitle, SheetTrigger. Source TypeScript defines the API.
 
 ## Behavior
 
 - SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child (or inside a fragment), Content pins the header, and any SheetSubheader under it, above a full-bleed line rule, pins SheetFooter below a full-bleed line rule, and scrolls only the body between them; header and footer share the overlay inset. The rules are structure and always show, at every size and while pending, so the scroll region fades only at an edge without a rule. SheetSubheader runs the full width, without the space reserved for the close button, and the rule sits below it: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. A sheet without SheetFooter has no bottom rule. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.
+- A <form> may wrap the slots when it is SheetContent's only child, so a submit Button in SheetFooter submits it with no form id. Content lays the form's slots out exactly as direct children (the form draws no box, display: contents): the same pinned header and footer, the same scroll region with its focus clearance and the same rules, with no layout shift. Only a plain <form> element is looked through; a component that renders one is treated as free-form content.
 - Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action.
 - SheetContent size sets the maximum width of a left or right sheet from a token: sm (size-sheet-sm, 384px, the default) for details and short forms, md (size-sheet-md, 512px) for create forms such as Create secret, and lg (size-sheet-lg, 672px) for form sheets with credentials, field pairs or a step bar, such as New connection and an auth method. The sheet is never wider than the viewport. Top and bottom sheets span the viewport and ignore size.
 - pending on SheetContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close and SheetClose while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the sheet. Route onOpenChange(false) through useDiscardChangesGuard so a dirty form asks with DiscardChangesAlertDialog first.
@@ -457,6 +478,99 @@ export default function Example() {
         />
       </div>
       <figcaption className="text-muted-foreground text-xs">{`Saved URL: ${saved}`}</figcaption>
+    </figure>
+  );
+}
+```
+
+### Form around the sections
+
+Save this example at `src/pages/design-system/examples/sheet/form.tsx`; its relative imports are generated for that exact path. States: controlled, overflow, success.
+
+Registry items used: @infisical/button, @infisical/field, @infisical/input, @infisical/layout, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import { Field } from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+import { Stack } from "../../../../components/v4/ui/layout";
+import * as UI from "../../../../components/v4/ui/sheet";
+
+const scopes = [
+  "secrets:read",
+  "secrets:write",
+  "folders:read",
+  "folders:write",
+  "imports:read",
+  "imports:write",
+  "dynamic-secrets:lease",
+  "integrations:read",
+  "integrations:sync",
+  "audit-logs:read",
+  "certificates:read",
+  "certificates:issue"
+];
+
+export default function Example() {
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState("ci-deployer");
+  const [draft, setDraft] = useState(saved);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <UI.Sheet
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (next) setDraft(saved);
+          }}
+        >
+          <UI.SheetTrigger asChild>
+            <Button variant="outline">Edit identity</Button>
+          </UI.SheetTrigger>
+          <UI.SheetContent size="md">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSaved(draft);
+                setOpen(false);
+              }}
+            >
+              <UI.SheetHeader>
+                <UI.SheetTitle>Edit identity</UI.SheetTitle>
+                <UI.SheetDescription>
+                  The form wraps the header, body and footer, so Save submits it without a form id.
+                </UI.SheetDescription>
+              </UI.SheetHeader>
+              <UI.SheetBody>
+                <Stack gap={16}>
+                  <Field label="Name">
+                    <Input
+                      required
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                    />
+                  </Field>
+                  {scopes.map((scope) => (
+                    <Field key={scope} label={scope}>
+                      <Input readOnly mono value="granted" />
+                    </Field>
+                  ))}
+                </Stack>
+              </UI.SheetBody>
+              <UI.SheetFooter>
+                <Button type="submit">Save identity</Button>
+                <UI.SheetClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </UI.SheetClose>
+              </UI.SheetFooter>
+            </form>
+          </UI.SheetContent>
+        </UI.Sheet>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{`Saved name: ${saved}`}</figcaption>
     </figure>
   );
 }

@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { V4Scope } from "../scope";
 import { DataTable, type DataTableColumn } from "./data-table";
 import { FloatingActionBar } from "./floating-action-bar";
+import { Table, TableBody, TableCell, TableRow } from "./table";
 import { TooltipProvider } from "./tooltip";
 
 type Row = { id: string; name: string; region: string };
@@ -112,6 +114,24 @@ it("activates a row from a cell click and Enter, but not from its controls", asy
   expect(onRowActivate).toHaveBeenLastCalledWith(rows[1]);
   await key(second.querySelector("td")!, "Enter");
   expect(onRowActivate).toHaveBeenCalledTimes(2);
+});
+
+it("runs a native TableRow onClick for a cell click but not for portaled content", async () => {
+  const onClick = vi.fn();
+  await render(
+    <Table aria-label="Hosts">
+      <TableBody>
+        <TableRow onClick={onClick}>
+          <TableCell>alpha</TableCell>
+          <TableCell>{createPortal(<span data-portaled="">Renew</span>, document.body)}</TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  );
+  await click(document.querySelector("[data-portaled]")!);
+  expect(onClick).not.toHaveBeenCalled();
+  await click(cell(0, 0));
+  expect(onClick).toHaveBeenCalledTimes(1);
 });
 
 it("ignores a click that ends a text selection inside the row", async () => {
