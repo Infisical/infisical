@@ -51,7 +51,7 @@ import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secret
 
 import { useV4Adapter } from "../../data/adapters";
 
-const route = "/v4/organizations/$orgId/secret-scanning/data-sources";
+const route = "/v4/organizations/$orgId/secret-scanning/data-sources/";
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
 
