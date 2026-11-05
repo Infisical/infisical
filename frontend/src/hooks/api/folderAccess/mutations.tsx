@@ -16,7 +16,8 @@ import {
 type TFolderAccessScope = { projectId: string; environmentSlug: string; secretPath: string };
 
 // a grant changes what the actor may read, so the roster and anything rendering the project's
-// secrets both go stale. the roster is invalidated across every page/search variant.
+// secrets both go stale. the roster is invalidated across every page/search variant, and a root
+// grant can reach every folder of its environment, so it refreshes every roster there.
 const invalidateFolderAccess = (
   queryClient: ReturnType<typeof useQueryClient>,
   { projectId, environmentSlug, secretPath }: TFolderAccessScope
@@ -36,7 +37,7 @@ const invalidateFolderAccess = (
       return (
         params?.projectId === projectId &&
         params?.environmentSlug === environmentSlug &&
-        params?.secretPath === secretPath
+        (secretPath === "/" || params?.secretPath === secretPath)
       );
     }
   });

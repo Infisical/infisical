@@ -325,7 +325,12 @@ describe("createAccessDating", () => {
   test("restarts the whole environment for an edited recursive grant and floors it for an expired one", () => {
     const edited = dating([
       { date: sept, permission: () => readsAll },
-      { date: oct, reach: { environment: "prod" }, restartsReach: true, permission: () => readsAll }
+      {
+        date: oct,
+        reach: { environment: "prod" },
+        restartsReach: { environment: "prod" },
+        permission: () => readsAll
+      }
     ]);
     expect(edited.accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(oct);
     expect(edited.accessSinceOf(actor, secretIn("prod", "other"))).toEqual(oct);
@@ -350,10 +355,17 @@ describe("createAccessDating", () => {
 
     const edited = dating([
       { date: sept, permission: () => readsAll },
-      { date: oct, reach: { folderId: "granted" }, restartsReach: true, permission: () => readsAll }
+      { date: oct, reach: { folderId: "granted" }, restartsReach: { folderId: "granted" }, permission: () => readsAll }
     ]);
     expect(edited.accessSinceOf(actor, secretIn("prod", "granted"))).toEqual(oct);
     expect(edited.accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(sept);
+
+    const recursionTurnedOff = dating([
+      { date: sept, permission: () => readsAll },
+      { date: oct, reach: { folderId: "root" }, restartsReach: { environment: "prod" }, permission: () => readsAll }
+    ]);
+    expect(recursionTurnedOff.accessSinceOf(actor, secretIn("prod", "nested"))).toEqual(oct);
+    expect(recursionTurnedOff.accessSinceOf(actor, secretIn("dev", "nested"))).toEqual(sept);
 
     const expiredRole = dating([{ date: sept, permission: () => readsAll }], {
       accessReopenedAt: new Map([["actor", oct]])

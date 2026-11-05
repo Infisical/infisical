@@ -66,7 +66,7 @@ const kindsOf = (actor: TFolderAccessActor) => {
   else if (actor.access || actor.inheritedAccess) kinds.push(FolderAccessKind.FolderGrant);
   else kinds.push(FolderAccessKind.ProjectRole);
   if (actor.access && actor.roles.length > 0) kinds.push(FolderAccessKind.Override);
-  if (actor.access?.isTemporary) kinds.push(FolderAccessKind.Temporary);
+  if ((actor.access ?? actor.inheritedAccess)?.isTemporary) kinds.push(FolderAccessKind.Temporary);
   if (actor.access?.isPermissionRecursive) kinds.push(FolderAccessKind.Recursive);
   if (!actor.access && actor.inheritedAccess) kinds.push(FolderAccessKind.Inherited);
   return kinds;

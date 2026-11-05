@@ -15,6 +15,7 @@ import {
   SecretReadNotJudgedReason,
   SecretReadObjectType,
   SecretReadStatus,
+  TAccessReach,
   TAccessSource,
   TMemberRole,
   TProjectAccess,
@@ -182,13 +183,11 @@ export const createAccessDating = (
       checks = new Map();
     }
     const subject = subjectOf(activity);
-    const reaches = (source: TAccessSource) =>
-      !source.reach ||
-      ("folderId" in source.reach
-        ? source.reach.folderId === activity.secret.folderId
-        : source.reach.environment === activity.environment);
+    const reaches = (reach?: TAccessReach) =>
+      !reach ||
+      ("folderId" in reach ? reach.folderId === activity.secret.folderId : reach.environment === activity.environment);
     const grants = (source: TAccessSource) => {
-      if (!reaches(source)) return false;
+      if (!reaches(source.reach)) return false;
       const permission = source.permission();
       let granted = checks.get(permission);
       if (granted === undefined) {
@@ -206,7 +205,7 @@ export const createAccessDating = (
       folderReopenedAt.get(`${actorId}:${activity.secret.folderId}`),
       environmentReopenedAt.get(`${actorId}:${activity.environment}`),
       accessReopenedAt.get(actorId),
-      ...sources.filter((source) => source.restartsReach && reaches(source)).map((source) => source.date)
+      ...sources.filter((source) => source.restartsReach && reaches(source.restartsReach)).map((source) => source.date)
     ];
     return floors.reduce((latest, floor) => (floor && (!latest || floor > latest) ? floor : latest), since);
   };

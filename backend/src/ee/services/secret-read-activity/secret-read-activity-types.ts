@@ -131,12 +131,15 @@ export type TProjectReader = {
 
 // One way an actor has access, and when it last changed. A folder grant only reaches secrets in its own folder, or
 // in every folder of its environment when it is recursive.
+export type TAccessReach = { folderId: string } | { environment: string };
+
 export type TAccessSource = {
   date?: Date;
-  reach?: { folderId: string } | { environment: string };
-  // A folder grant edited since it was created may have held access back before, so access within its reach dates
-  // from the edit.
-  restartsReach?: boolean;
+  reach?: TAccessReach;
+  // A folder grant edited since it was created may have held access back before, so access within the reach it may
+  // have had dates from the edit. A root grant may have been recursive before the edit, so this can be wider than
+  // its current reach.
+  restartsReach?: TAccessReach;
   permission: () => MongoAbility<ProjectPermissionSet, MongoQuery>;
 };
 
