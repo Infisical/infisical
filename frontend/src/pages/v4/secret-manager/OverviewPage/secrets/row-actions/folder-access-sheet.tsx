@@ -33,7 +33,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -224,11 +223,9 @@ function TierDropdown({
           <Icon icon={ShieldIcon} />
           {tierLabel(activeTier)}
         </DropdownMenuSubTrigger>
-        <DropdownMenuPortal>
-          <DropdownMenuSubContent className={styles.tierMenu}>
-            <TierOptions activeTier={activeTier} onSelectTier={onSelectTier} />
-          </DropdownMenuSubContent>
-        </DropdownMenuPortal>
+        <DropdownMenuSubContent className={styles.tierMenu}>
+          <TierOptions activeTier={activeTier} onSelectTier={onSelectTier} />
+        </DropdownMenuSubContent>
       </DropdownMenuSub>
       {onEditTemporaryAccess && (
         <DropdownMenuItem onSelect={onEditTemporaryAccess}>

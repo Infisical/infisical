@@ -115,7 +115,7 @@ export function DynamicSecretLeasesSheet({
         onClose();
       }}
     >
-      <SheetContent size="md" pending={pending}>
+      <SheetContent size="lg" pending={pending}>
         <SheetHeader>
           <SheetTitle>{headings[view].title}</SheetTitle>
           <SheetDescription>{headings[view].description}</SheetDescription>
