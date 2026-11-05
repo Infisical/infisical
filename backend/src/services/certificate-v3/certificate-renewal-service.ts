@@ -59,6 +59,7 @@ import {
   mapExtendedKeyUsageToLegacy,
   mapKeyUsageToLegacy
 } from "../certificate-common/certificate-constants";
+import { verifyCsrSignature } from "../certificate-common/certificate-csr-utils";
 import {
   detectSanType,
   extractCertificateFromBuffer,
@@ -1107,6 +1108,7 @@ export const certificateRenewalServiceFactory = ({
     let csrRenewalRequest: TCertificateRequest | null = null;
     if (keySource === CertificateRenewalKeySource.Csr && csr) {
       assertCsrRenewalAttributes(attributes);
+      await verifyCsrSignature(csr);
       csrRenewalRequest = buildCsrRenewalCertificateRequest({ csr, attributes });
     }
 

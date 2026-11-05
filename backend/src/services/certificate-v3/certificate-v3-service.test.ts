@@ -42,7 +42,8 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
   extractAlgorithmsFromCSR,
-  extractCertificateRequestFromCSR
+  extractCertificateRequestFromCSR,
+  verifyCsrSignature
 } from "../certificate-common/certificate-csr-utils";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
 import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./certificate-v3-service";
@@ -51,7 +52,8 @@ import { CertificateRenewalKeySource } from "./certificate-v3-types";
 vi.mock("../certificate-common/certificate-csr-utils", () => ({
   extractCertificateRequestFromCSR: vi.fn(),
   extractAlgorithmsFromCSR: vi.fn(),
-  buildSubjectOverrideForCsr: vi.fn()
+  buildSubjectOverrideForCsr: vi.fn(),
+  verifyCsrSignature: vi.fn()
 }));
 
 vi.mock("@peculiar/x509", async (importOriginal) => {
@@ -1429,6 +1431,42 @@ describe("CertificateV3Service", () => {
           })
         })
       );
+      expect(verifyCsrSignature).toHaveBeenCalledWith(mockCSR);
+    });
+
+    it("should reject a CSR whose signature does not verify before anything is signed or stored", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.CA,
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        slug: "test-profile-sign",
+        apiConfigId: "api-config-legacy"
+      } as any);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
+        id: "ca-123",
+        projectId: "project-123",
+        externalCa: undefined,
+        internalCa: { id: "internal-ca-123", keyAlgorithm: "RSA_2048", activeCaCertId: "cert-123" },
+        status: "ACTIVE",
+        enableDirectIssuance: true
+      } as any);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({ id: "policy-123" } as any);
+      vi.mocked(verifyCsrSignature).mockRejectedValueOnce(new BadRequestError({ message: "invalid CSR signature" }));
+
+      await expect(
+        service.signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "forged-csr",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.API,
+          ...mockActor
+        })
+      ).rejects.toThrow("invalid CSR signature");
+      expect(mockInternalCaService.signCertFromCa).not.toHaveBeenCalled();
+      expect(mockCertificateRequestService.createCertificateRequest).not.toHaveBeenCalled();
     });
 
     it("should throw ForbiddenRequestError when profile is not configured for API enrollment", async () => {

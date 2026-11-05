@@ -32,7 +32,8 @@ import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-auth
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
-  extractCertificateRequestFromCSR
+  extractCertificateRequestFromCSR,
+  getCsrSignatureError
 } from "@app/services/certificate-common/certificate-csr-utils";
 import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
@@ -446,6 +447,18 @@ export const pkiScepServiceFactory = ({
         }
       });
 
+    const csrSignatureError = await getCsrSignatureError(csrObj);
+    if (csrSignatureError) {
+      void logEnrollmentEvent({ status: ScepEnrollmentStatus.Failure, failReason: csrSignatureError });
+      return buildCertRepFailure({
+        raCertDer,
+        raPrivateKeyDer,
+        transactionId: parsed.transactionId,
+        recipientNonce: parsed.senderNonce,
+        failInfo: ScepFailInfo.BadRequest
+      });
+    }
+
     const validationHandler = $getValidationHandler(scepConfig.challengeType);
 
     const csrDer = Buffer.from(parsed.csr);
@@ -770,6 +783,33 @@ export const pkiScepServiceFactory = ({
         transactionId: parsed.transactionId,
         recipientNonce: parsed.senderNonce,
         failInfo
+      });
+    }
+
+    const csrSignatureError = await getCsrSignatureError(csrObj);
+    if (csrSignatureError) {
+      void auditLogService.createAuditLog({
+        projectId: profile.projectId,
+        actor: {
+          type: ActorType.SCEP_ACCOUNT,
+          metadata: { profileId: profile.id }
+        },
+        event: {
+          type: EventType.SCEP_RENEWAL,
+          metadata: {
+            ...auditMetadata,
+            status: ScepEnrollmentStatus.Failure,
+            failReason: csrSignatureError
+          }
+        }
+      });
+
+      return buildCertRepFailure({
+        raCertDer,
+        raPrivateKeyDer,
+        transactionId: parsed.transactionId,
+        recipientNonce: parsed.senderNonce,
+        failInfo: ScepFailInfo.BadRequest
       });
     }
 

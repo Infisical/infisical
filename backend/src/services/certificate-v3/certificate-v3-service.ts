@@ -80,7 +80,8 @@ import {
 import {
   buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
-  extractCertificateRequestFromCSR
+  extractCertificateRequestFromCSR,
+  verifyCsrSignature
 } from "../certificate-common/certificate-csr-utils";
 import { assertAwsPcaCustomExtensionLimit } from "../certificate-common/certificate-extension-fns";
 import {
@@ -1421,6 +1422,7 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found for this profile" });
     }
 
+    await verifyCsrSignature(csr);
     const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
     const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
@@ -1897,6 +1899,7 @@ export const certificateV3ServiceFactory = ({
       if (certificateOrder.customExtensions?.length) {
         throw new BadRequestError({ message: CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE });
       }
+      await verifyCsrSignature(certificateOrder.csr);
 
       const csrRequest = extractCertificateRequestFromCSR(certificateOrder.csr);
       certificateRequest = applyProfileDefaults(csrRequest, profile.defaults);

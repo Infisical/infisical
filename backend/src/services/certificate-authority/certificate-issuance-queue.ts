@@ -30,6 +30,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { CertificateIssuanceOperation, CertKeyAlgorithm } from "../certificate-common/certificate-constants";
+import { verifyCsrSignature } from "../certificate-common/certificate-csr-utils";
 import {
   calculateFinalRenewBeforeDays,
   resolveEffectiveApiConfig
@@ -463,6 +464,10 @@ export const certificateIssuanceQueueFactory = ({
 
       if (customExtensions?.length) {
         assertCaSupportsCustomExtensions((ca.externalCa?.type ?? CaType.INTERNAL) as CaType, customExtensions.length);
+      }
+
+      if (csr) {
+        await verifyCsrSignature(ensureCsrPemFormat(csr));
       }
 
       await setPending("Starting certificate issuance");

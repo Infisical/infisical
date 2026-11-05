@@ -1,7 +1,20 @@
+import { CertificationRequest } from "@peculiar/asn1-csr";
+import { AsnConvert } from "@peculiar/asn1-schema";
+import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { extractCertificateRequestFromCSR } from "./certificate-csr-utils";
+import { BadRequestError } from "@app/lib/errors";
+
+import {
+  extractCertificateRequestFromCSR,
+  getCsrSignatureError,
+  INVALID_CSR_SIGNATURE_MESSAGE,
+  UNVERIFIABLE_CSR_SIGNATURE_MESSAGE,
+  verifyCsrSignature
+} from "./certificate-csr-utils";
+
+vi.mock("@app/lib/logger", () => ({ logger: { warn: vi.fn() } }));
 
 // the extraction every CSR-based enrollment shares; fixtures produced with openssl
 const WINDOWS_ORDER_CSR = `-----BEGIN CERTIFICATE REQUEST-----
@@ -125,5 +138,126 @@ describe("extractCertificateRequestFromCSR custom extensions", () => {
     ]);
 
     expect(extractCertificateRequestFromCSR(csr).customExtensions?.map((entry) => entry.oid)).toEqual([CUSTOM_OID]);
+  });
+});
+
+describe("verifyCsrSignature", () => {
+  const RSA_PKCS1 = { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]) };
+  const RSA_PSS = { name: "RSA-PSS", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]) };
+
+  const KEY_TYPES: { label: string; keyParams: Algorithm & Record<string, unknown>; signingAlgorithm: Algorithm }[] = [
+    {
+      label: "RSA PKCS#1 v1.5 SHA-256",
+      keyParams: { ...RSA_PKCS1, hash: "SHA-256" },
+      signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" } as Algorithm
+    },
+    {
+      label: "RSA PKCS#1 v1.5 SHA-512",
+      keyParams: { ...RSA_PKCS1, hash: "SHA-512" },
+      signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-512" } as Algorithm
+    },
+    {
+      label: "RSA-PSS SHA-256",
+      keyParams: { ...RSA_PSS, hash: "SHA-256" },
+      signingAlgorithm: { name: "RSA-PSS", hash: "SHA-256", saltLength: 32 } as Algorithm
+    },
+    {
+      label: "ECDSA P-256",
+      keyParams: { name: "ECDSA", namedCurve: "P-256" },
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" } as Algorithm
+    },
+    {
+      label: "ECDSA P-384",
+      keyParams: { name: "ECDSA", namedCurve: "P-384" },
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-384" } as Algorithm
+    },
+    {
+      label: "ECDSA P-521",
+      keyParams: { name: "ECDSA", namedCurve: "P-521" },
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-512" } as Algorithm
+    },
+    { label: "Ed25519", keyParams: { name: "Ed25519" }, signingAlgorithm: { name: "Ed25519" } }
+  ];
+
+  const generateKeys = (keyParams: Algorithm) =>
+    crypto.subtle.generateKey(keyParams, true, ["sign", "verify"]) as Promise<CryptoKeyPair>;
+
+  const buildCsr = async (keyParams: Algorithm, signingAlgorithm: Algorithm) => {
+    const keys = await generateKeys(keyParams);
+    return x509.Pkcs10CertificateRequestGenerator.create({ name: "CN=host", keys, signingAlgorithm });
+  };
+
+  const swapPublicKey = async (csr: x509.Pkcs10CertificateRequest, keyParams: Algorithm) => {
+    const otherKeys = await generateKeys(keyParams);
+    const otherSpki = await crypto.subtle.exportKey("spki", otherKeys.publicKey);
+    const parsed = AsnConvert.parse(csr.rawData, CertificationRequest);
+    parsed.certificationRequestInfo.subjectPKInfo = AsnConvert.parse(otherSpki, SubjectPublicKeyInfo);
+    return new x509.Pkcs10CertificateRequest(AsnConvert.serialize(parsed)).toString("pem");
+  };
+
+  it.each(KEY_TYPES)("accepts a $label CSR signed by its own key", async ({ keyParams, signingAlgorithm }) => {
+    const csr = await buildCsr(keyParams, signingAlgorithm);
+
+    expect(await getCsrSignatureError(csr.toString("pem"))).toBeNull();
+    await expect(verifyCsrSignature(csr.toString("pem"))).resolves.toBeUndefined();
+  });
+
+  it.each(KEY_TYPES)(
+    "rejects a $label CSR whose public key is not the one that signed it",
+    async ({ keyParams, signingAlgorithm }) => {
+      const csr = await buildCsr(keyParams, signingAlgorithm);
+      const forged = await swapPublicKey(csr, keyParams);
+
+      expect(await getCsrSignatureError(forged)).toBe(INVALID_CSR_SIGNATURE_MESSAGE);
+      await expect(verifyCsrSignature(forged)).rejects.toBeInstanceOf(BadRequestError);
+    }
+  );
+
+  it("rejects a CSR whose subject was changed after signing", async () => {
+    const csr = await buildCsr(KEY_TYPES[3].keyParams, KEY_TYPES[3].signingAlgorithm);
+    const parsed = AsnConvert.parse(csr.rawData, CertificationRequest);
+    const other = await x509.Pkcs10CertificateRequestGenerator.create({
+      name: "CN=attacker.example.com",
+      keys: await generateKeys(KEY_TYPES[3].keyParams),
+      signingAlgorithm: KEY_TYPES[3].signingAlgorithm
+    });
+    parsed.certificationRequestInfo.subject = AsnConvert.parse(
+      other.rawData,
+      CertificationRequest
+    ).certificationRequestInfo.subject;
+    const tampered = new x509.Pkcs10CertificateRequest(AsnConvert.serialize(parsed)).toString("pem");
+
+    expect(await getCsrSignatureError(tampered)).toBe(INVALID_CSR_SIGNATURE_MESSAGE);
+  });
+
+  it("rejects a CSR with a corrupted signature", async () => {
+    const csr = await buildCsr(KEY_TYPES[0].keyParams, KEY_TYPES[0].signingAlgorithm);
+    const parsed = AsnConvert.parse(csr.rawData, CertificationRequest);
+    const signature = new Uint8Array(parsed.signature);
+    signature[signature.length - 1] = signature[signature.length - 1] === 0 ? 1 : 0;
+    parsed.signature = signature.buffer;
+    const corrupted = new x509.Pkcs10CertificateRequest(AsnConvert.serialize(parsed)).toString("pem");
+
+    expect(await getCsrSignatureError(corrupted)).toBe(INVALID_CSR_SIGNATURE_MESSAGE);
+  });
+
+  it("reports a CSR that cannot be parsed as a parse error, not a signature error", async () => {
+    await expect(verifyCsrSignature("not a csr")).rejects.toThrow("could not be parsed");
+  });
+
+  it("reports a signature algorithm it cannot verify as unsupported", async () => {
+    const csr = await buildCsr(KEY_TYPES[3].keyParams, KEY_TYPES[3].signingAlgorithm);
+    const parsed = AsnConvert.parse(csr.rawData, CertificationRequest);
+    parsed.signatureAlgorithm.algorithm = "1.3.6.1.4.1.99999.1";
+    const unsupported = new x509.Pkcs10CertificateRequest(AsnConvert.serialize(parsed)).toString("pem");
+
+    expect(await getCsrSignatureError(unsupported)).toBe(UNVERIFIABLE_CSR_SIGNATURE_MESSAGE);
+  });
+
+  it("accepts the openssl-generated fixtures", async () => {
+    for (const csr of [WINDOWS_ORDER_CSR, FORWARD_ORDER_CSR, DOMAIN_COMPONENTS_ONLY_CSR]) {
+      // eslint-disable-next-line no-await-in-loop
+      expect(await getCsrSignatureError(csr)).toBeNull();
+    }
   });
 });

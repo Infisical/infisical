@@ -1,5 +1,6 @@
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
+import { verifyCsrSignature } from "../certificate-common/certificate-csr-utils";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { CaType } from "./certificate-authority-enums";
 import { certificateIssuanceQueueFactory, TIssueCertificateFromProfileJobData } from "./certificate-issuance-queue";
@@ -12,6 +13,10 @@ const digicertFns = {
 };
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
+vi.mock("../certificate-common/certificate-csr-utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../certificate-common/certificate-csr-utils")>()),
+  verifyCsrSignature: vi.fn()
+}));
 vi.mock("./digicert/digicert-certificate-authority-fns", () => ({
   DigiCertCertificateAuthorityFns: () => digicertFns
 }));
@@ -177,5 +182,17 @@ describe("certificate issuance queue, DigiCert renewals", () => {
     await expect(runJob({ externalConfiguration: { reissue: true }, csr: "csr" })).rejects.toThrow(
       "invalid_order_status"
     );
+  });
+
+  test("fails a job whose stored CSR signature does not verify before the CA is called", async () => {
+    const runJob = buildQueue();
+    vi.mocked(verifyCsrSignature).mockRejectedValueOnce(new BadRequestError({ message: "invalid CSR signature" }));
+
+    await expect(runJob({ externalConfiguration: { reissue: true }, csr: "csr" })).rejects.toThrow(
+      "invalid CSR signature"
+    );
+    expect(verifyCsrSignature).toHaveBeenCalledWith(expect.stringContaining("csr"));
+    expect(digicertFns.reissueCertificate).not.toHaveBeenCalled();
+    expect(digicertFns.orderCertificate).not.toHaveBeenCalled();
   });
 });
