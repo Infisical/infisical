@@ -898,7 +898,7 @@ export function SecretRow({
         </TableRow>
         {showOverride && (
           <TableRow className={`${styles.row} ${styles.overrideRow}`}>
-            <TableCell className={styles.iconCell}>
+            <TableCell selection>
               <span className={styles.iconSlot}>
                 <Icon icon={GitBranchIcon} label="Personal override" />
               </span>
@@ -1008,7 +1008,7 @@ export function SecretRow({
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>
-                  <TableHead className={styles.iconCell} />
+                  <TableHead selection />
                   <TableHead className={styles.envName}>Environment</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead className={styles.revealHead}>
@@ -1030,7 +1030,7 @@ export function SecretRow({
                   const imported = handlers.importedFrom(environment.value, name);
                   const rows = [
                     <TableRow key={environment.value} className={styles.row}>
-                      <TableCell className={styles.iconCell} />
+                      <TableCell selection />
                       <TableCell
                         className={styles.envName}
                         data-override-rule={secret?.override !== undefined || undefined}
@@ -1108,7 +1108,7 @@ export function SecretRow({
                         key={`${environment.value}-override`}
                         className={`${styles.row} ${styles.overrideRow}`}
                       >
-                        <TableCell className={styles.iconCell} />
+                        <TableCell selection />
                         <TableCell className={styles.envName} data-override-rule />
                         <TableCell colSpan={2} className={styles.valueCell}>
                           <div className={styles.nameLine}>
