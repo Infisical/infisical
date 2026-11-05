@@ -3811,7 +3811,7 @@ export const secretV2BridgeServiceFactory = ({
       secretVersions: secretVersionNumbers
     });
     return secretVersions
-      .filter((el) => el.type !== SecretType.Personal || el.userId === actorId)
+      .filter((el) => !el.userId || el.userId === actorId)
       .map((el) => {
         const secretValueHidden = !hasSecretReadValueOrDescribePermission(
           permission,

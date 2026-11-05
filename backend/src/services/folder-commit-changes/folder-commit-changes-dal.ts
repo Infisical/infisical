@@ -3,7 +3,6 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
-  SecretType,
   TableName,
   TFolderCommitChanges,
   TFolderCommits,
@@ -13,6 +12,8 @@ import {
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
+
+import { filterToSharedSecretVersions } from "../secret-v2-bridge/secret-version-dal";
 
 export type TFolderCommitChangesDALFactory = ReturnType<typeof folderCommitChangesDALFactory>;
 
@@ -107,11 +108,7 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
           }
         })
-        .where((qb) => {
-          void qb
-            .whereNull(`${TableName.SecretVersionV2}.id`)
-            .orWhere(`${TableName.SecretVersionV2}.type`, SecretType.Shared);
-        })
+        .where(filterToSharedSecretVersions)
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .select(
           db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),

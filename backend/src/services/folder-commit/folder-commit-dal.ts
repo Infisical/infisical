@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
-  SecretType,
   TableName,
   TFolderCommitChanges,
   TFolderCommits,
@@ -13,6 +12,8 @@ import {
 import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
+
+import { filterToSharedSecretVersions } from "../secret-v2-bridge/secret-version-dal";
 
 export type TFolderCommitDALFactory = ReturnType<typeof folderCommitDALFactory>;
 
@@ -249,11 +250,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
           `${TableName.FolderCommitChanges}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
-        .where((qb) => {
-          void qb
-            .whereNull(`${TableName.SecretVersionV2}.id`)
-            .orWhere(`${TableName.SecretVersionV2}.type`, SecretType.Shared);
-        })
+        .where(filterToSharedSecretVersions)
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .select(
           db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),
@@ -487,11 +484,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
                   `${TableName.FolderCommitChanges}.folderCommitId`,
                   `${TableName.FolderCommit}.id`
                 ])
-                .where((typeQb) => {
-                  void typeQb
-                    .whereNull(`${TableName.SecretVersionV2}.id`)
-                    .orWhere(`${TableName.SecretVersionV2}.type`, SecretType.Shared);
-                })
+                .where(filterToSharedSecretVersions)
                 .where((resourceQb) => {
                   void resourceQb
                     .whereILike(`${TableName.SecretVersionV2}.key`, pattern)
@@ -528,11 +521,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersionV2}.id`
         )
         .whereIn(`${TableName.FolderCommitChanges}.folderCommitId`, commitIds)
-        .where((qb) => {
-          void qb
-            .whereNull(`${TableName.SecretVersionV2}.id`)
-            .orWhere(`${TableName.SecretVersionV2}.type`, SecretType.Shared);
-        })
+        .where(filterToSharedSecretVersions)
         .groupBy(
           `${TableName.FolderCommitChanges}.folderCommitId`,
           `${TableName.FolderCommitChanges}.changeType`,

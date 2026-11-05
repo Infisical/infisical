@@ -1132,6 +1132,7 @@ export const folderCommitServiceFactory = ({
                 folderId,
                 secretId: secretVersion.secretId,
                 version: nextVersion,
+                type: secretVersion.type,
                 encryptedValue: secretVersion.encryptedValue,
                 key: secretVersion.key,
                 encryptedComment: secretVersion.encryptedComment,
@@ -1217,6 +1218,7 @@ export const folderCommitServiceFactory = ({
             const newVersion = await secretVersionV2BridgeDAL.create(
               {
                 version: nextVersion,
+                type: secretVersion.type,
                 encryptedValue: secretVersion.encryptedValue,
                 key: secretVersion.key,
                 encryptedComment: secretVersion.encryptedComment,
