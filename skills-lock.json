@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "claude-md-improver": {
+      "source": "anthropics/claude-plugins-official",
+      "sourceType": "github",
+      "skillPath": "plugins/claude-md-management/skills/claude-md-improver/SKILL.md",
+      "computedHash": "d6707ed0467d9664d0f9d2c44724c8fb1814475ec6d3c62a5d54bbbe807e0775"
+    }
+  }
+}
