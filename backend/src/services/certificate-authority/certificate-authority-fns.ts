@@ -40,6 +40,24 @@ export const createSerialNumber = () => {
 // expiry leaves the certificate rejected as expired by a host whose clock runs ahead of ours
 export const getNotBeforeWithClockSkew = (issuedAt: Date) => new Date(issuedAt.getTime() - CERT_CLOCK_SKEW_MS);
 
+export const assertPathLengthMatchesCa = ({
+  storedPathLength,
+  requestedPathLength,
+  allowNoLimitDefault
+}: {
+  storedPathLength?: number | null;
+  requestedPathLength?: number;
+  // The signing-config install endpoints default to -1, meaning "keep the stored value".
+  allowNoLimitDefault: boolean;
+}) => {
+  const stored = storedPathLength ?? -1;
+  if (stored < 0 || requestedPathLength === undefined || requestedPathLength === stored) return;
+  if (allowNoLimitDefault && requestedPathLength === -1) return;
+  throw new BadRequestError({
+    message: `Path length ${requestedPathLength} doesn't match this CA's current certificate (${stored}). Use ${stored} or leave it out.`
+  });
+};
+
 export const getNotAfterWithClockSkew = (expiresAt: Date) => new Date(expiresAt.getTime() + CERT_CLOCK_SKEW_MS);
 
 export const assertCaInProfileProject = (ca: { projectId: string }, profile: { projectId: string }) => {

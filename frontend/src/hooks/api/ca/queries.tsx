@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -198,18 +198,25 @@ export const useGetCaCert = (caId: string) => {
   });
 };
 
-export const useGetCaCsr = (caId: string) => {
+export const useGetCaCsr = (
+  caId: string,
+  maxPathLength?: number,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
-    queryKey: caKeys.getCaCsr(caId),
+    queryKey: [...caKeys.getCaCsr(caId), { maxPathLength }],
     queryFn: async () => {
       const {
         data: { csr }
       } = await apiRequest.get<{
         csr: string;
-      }>(`/api/v1/cert-manager/ca/internal/${caId}/csr`);
+      }>(`/api/v1/cert-manager/ca/internal/${caId}/csr`, {
+        params: { maxPathLength }
+      });
       return csr;
     },
-    enabled: Boolean(caId)
+    placeholderData: keepPreviousData,
+    enabled: Boolean(caId) && (options?.enabled ?? true)
   });
 };
 
