@@ -54,7 +54,6 @@ export const AgentVaultSetupQuestions = () => {
     hermes: { light: "hermes.png", dark: "hermes.on-dark.png" },
     opencode: { light: "opencode.svg", dark: "opencode.on-dark.svg" },
     openclaw: { dark: "openclaw.svg" },
-    cursor: { light: "cursor.svg" },
   };
 
   const BUILDS = [
@@ -62,7 +61,7 @@ export const AgentVaultSetupQuestions = () => {
       id: "platform",
       label: "A service that starts agents for tasks",
       example: "Your own code, such as a Slack bot or a backend service, that starts a new agent for each task.",
-      runs: ["sandbox", "kubernetes", "container", "server"],
+      runs: ["sandbox", "kubernetes", "container", "server", "cursor"],
     },
     {
       id: "scheduled",
@@ -84,7 +83,10 @@ export const AgentVaultSetupQuestions = () => {
     { id: "kubernetes", label: "Kubernetes", example: "A pod in your own cluster." },
     { id: "sandbox", label: "A managed sandbox", example: "Such as Modal, Daytona, or E2B." },
     { id: "ci", label: "A CI runner", example: "Such as a GitHub Actions job." },
+    { id: "cursor", label: "Cursor Cloud Agents", example: "Cursor runs the agent, and its commands run on your Kubernetes cluster." },
   ];
+  // Cursor runs its own agent, so these answers skip the agent question.
+  const NO_AGENT_RUNS = ["cursor"];
 
   // Daytona's logo is black on a transparent background, so it's inverted in dark mode.
   const RUN_LOGOS = {
@@ -96,6 +98,7 @@ export const AgentVaultSetupQuestions = () => {
     kubernetes: [{ light: "stack/kubernetes.png" }],
     container: [{ light: "agent-vault-agents/docker.svg" }],
     ci: [{ light: "agent-vault-templates/GitHub.on-light.png", dark: "agent-vault-templates/GitHub.png" }],
+    cursor: [{ light: "agent-vault-agents/cursor.svg" }],
   };
 
   const AGENTS = [
@@ -104,7 +107,6 @@ export const AgentVaultSetupQuestions = () => {
     { id: "opencode", label: "OpenCode" },
     { id: "hermes", label: "Hermes Agent" },
     { id: "openclaw", label: "OpenClaw" },
-    { id: "cursor", label: "Cursor Cloud Agents" },
     { id: "custom", label: "Your own agent" },
   ];
 
@@ -116,10 +118,11 @@ export const AgentVaultSetupQuestions = () => {
       BUILDS.find((option) => option.id === params.get("building")) ?? BUILDS[0];
     const runs = RUNS.find((option) => option.id === params.get("runs"));
     const agent = AGENTS.find((option) => option.id === params.get("agent"));
+    const runsId = runs && build.runs.includes(runs.id) ? runs.id : null;
     return {
       building: build.id,
-      runs: runs && build.runs.includes(runs.id) ? runs.id : null,
-      agent: agent ? agent.id : null,
+      runs: runsId,
+      agent: agent && !NO_AGENT_RUNS.includes(runsId) ? agent.id : null,
     };
   };
 
@@ -147,6 +150,7 @@ export const AgentVaultSetupQuestions = () => {
       const build = BUILDS.find((option) => option.id === next.building);
       if (next.runs && !build.runs.includes(next.runs)) next.runs = null;
     }
+    if (NO_AGENT_RUNS.includes(next.runs)) next.agent = null;
     const params = new URLSearchParams(window.location.search);
     ["building", "runs", "agent"].forEach((key) => {
       if (next[key]) params.set(key, next[key]);
@@ -272,22 +276,24 @@ export const AgentVaultSetupQuestions = () => {
         </div>
       </section>
 
-      <section className="ifx-avsp__step" data-avsp-focus="agent">
-        <h2 className="ifx-avsp__step-title">Which agent?</h2>
-        <p className="ifx-avsp__step-desc">
-          Your answer decides which guide to follow and which command starts the agent.
-        </p>
-        <div className="ifx-avsp__cards">
-          {AGENTS.map((option) =>
-            renderOption("agent", option, (
-              <span className="ifx-avsp__card-agent">
-                <span className="ifx-avsp__card-icon">{renderAgentIcon(option.id)}</span>
-                <span className="ifx-avsp__card-label">{option.label}</span>
-              </span>
-            )),
-          )}
-        </div>
-      </section>
+      {!NO_AGENT_RUNS.includes(selection.runs) && (
+        <section className="ifx-avsp__step" data-avsp-focus="agent">
+          <h2 className="ifx-avsp__step-title">Which agent?</h2>
+          <p className="ifx-avsp__step-desc">
+            Your answer decides which guide to follow and which command starts the agent.
+          </p>
+          <div className="ifx-avsp__cards">
+            {AGENTS.map((option) =>
+              renderOption("agent", option, (
+                <span className="ifx-avsp__card-agent">
+                  <span className="ifx-avsp__card-icon">{renderAgentIcon(option.id)}</span>
+                  <span className="ifx-avsp__card-label">{option.label}</span>
+                </span>
+              )),
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
@@ -296,7 +302,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const RULES = {
     personal: { model: "user", runs: ["server", "container"] },
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server"] },
+    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server", "cursor"] },
   };
   const HOSTS = {
     server: "Server or VM",
@@ -304,6 +310,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     kubernetes: "Kubernetes pod",
     sandbox: "Managed sandbox",
     ci: "CI runner",
+    cursor: "Cursor worker pod",
   };
   // The Docker, Modal, and Daytona guides start a proxy with each agent. Every other setup shares one proxy.
   const PER_AGENT_PROXY_RUNS = ["container", "sandbox"];
@@ -317,7 +324,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
 
   const SELECTION_EVENT = "av-setup-selection-change";
 
-  const AGENT_IDS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "cursor", "custom"];
+  const AGENT_IDS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
@@ -327,11 +334,12 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
       : "platform";
     const runs = params.get("runs");
     const agent = params.get("agent");
+    const validRuns = RULES[building].runs.includes(runs) ? runs : null;
     return {
       building,
       model: RULES[building].model,
-      runs: RULES[building].runs.includes(runs) ? runs : null,
-      agent: AGENT_IDS.includes(agent) ? agent : null,
+      runs: validRuns,
+      agent: AGENT_IDS.includes(agent) && validRuns !== "cursor" ? agent : null,
     };
   };
 
@@ -410,11 +418,12 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   }, []);
 
   const sharesHost = selection.model === "job";
+  const isCursor = selection.runs === "cursor";
 
   const creator = {
     user: { label: "Orchestrator", sub: "You, in the dashboard" },
     job: { label: "Orchestrator", sub: "Infisical CLI in your job" },
-    orchestrator: { label: "Orchestrator", sub: "Your service" },
+    orchestrator: { label: "Orchestrator", sub: isCursor ? "Your spawn hook" : "Your service" },
   }[selection.model];
 
   let proxyLayout = "single";
@@ -458,7 +467,11 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
       id: "start",
       from: "creator",
       to: "agent",
-      label: selection.model === "orchestrator" ? "Start an agent with the token" : "Start the agent with the token",
+      label: isCursor
+        ? "Start a worker with the token"
+        : selection.model === "orchestrator"
+          ? "Start an agent with the token"
+          : "Start the agent with the token",
     },
     {
       id: "request",
@@ -479,7 +492,8 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
       label: "Revoke the session when the agent exits",
     });
   }
-  if (selection.model === "orchestrator") {
+  // Cursor doesn't tell the spawn hook when a worker exits, so the session lasts until its TTL runs out.
+  if (selection.model === "orchestrator" && !isCursor) {
     messages.push({
       id: "revoke",
       from: "creator",
@@ -682,16 +696,17 @@ export const AgentVaultSetupStep = ({ step, children }) => {
 
   const SELECTION_EVENT = "av-setup-selection-change";
 
-  const readModel = () => {
+  const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
     const building = params.get("building");
-    return Object.prototype.hasOwnProperty.call(MODELS, building) ? MODELS[building] : "orchestrator";
+    const model = Object.prototype.hasOwnProperty.call(MODELS, building) ? MODELS[building] : "orchestrator";
+    return { model, isCursor: model === "orchestrator" && params.get("runs") === "cursor" };
   };
 
-  const [model, setModel] = useState("orchestrator");
+  const [{ model, isCursor }, setSelection] = useState({ model: "orchestrator", isCursor: false });
 
   useEffect(() => {
-    const sync = () => setModel(readModel());
+    const sync = () => setSelection(readSelection());
     sync();
     window.addEventListener(SELECTION_EVENT, sync);
     window.addEventListener("popstate", sync);
@@ -720,7 +735,9 @@ export const AgentVaultSetupStep = ({ step, children }) => {
       title: {
         user: "You start the agent with the token",
         job: "The CLI starts the agent with the token",
-        orchestrator: "The orchestrator starts an agent with the token",
+        orchestrator: isCursor
+          ? "The orchestrator starts a worker with the token"
+          : "The orchestrator starts an agent with the token",
       }[model],
       route: `${creator} → Agent`,
     },
@@ -738,7 +755,7 @@ export const AgentVaultSetupStep = ({ step, children }) => {
   };
 
   const current = STEPS[step];
-  if (!current || (step === "revoke" && model === "user")) return null;
+  if (!current || (step === "revoke" && (model === "user" || isCursor))) return null;
 
   return (
     <section className="ifx-avsp__walk-step" data-avsp-focus={`step-${step}`}>
@@ -765,7 +782,7 @@ export const AgentVaultSetupSummary = () => {
   const RUNS = {
     personal: ["server", "container"],
     scheduled: ["server", "container", "ci"],
-    platform: ["sandbox", "kubernetes", "container", "server"],
+    platform: ["sandbox", "kubernetes", "container", "server", "cursor"],
   };
   const PLACES = {
     server: "on a server or VM",
@@ -780,7 +797,6 @@ export const AgentVaultSetupSummary = () => {
     opencode: "OpenCode",
     hermes: "Hermes Agent",
     openclaw: "OpenClaw",
-    cursor: "Cursor Cloud Agents",
     custom: "your own agent",
   };
 
@@ -792,10 +808,11 @@ export const AgentVaultSetupSummary = () => {
     const building = has(BUILDS, params.get("building")) ? params.get("building") : "platform";
     const runs = params.get("runs");
     const agent = params.get("agent");
+    const validRuns = RUNS[building].includes(runs) ? runs : null;
     return {
       building,
-      runs: RUNS[building].includes(runs) ? runs : null,
-      agent: has(AGENTS, agent) ? agent : null,
+      runs: validRuns,
+      agent: has(AGENTS, agent) && validRuns !== "cursor" ? agent : null,
     };
   };
 
@@ -812,8 +829,11 @@ export const AgentVaultSetupSummary = () => {
     };
   }, []);
 
+  const isCursor = selection.runs === "cursor";
   let buildText = BUILDS[selection.building];
-  if (selection.runs) {
+  if (isCursor) {
+    buildText = "a setup where Cursor Cloud Agents run their commands on your Kubernetes cluster";
+  } else if (selection.runs) {
     buildText =
       selection.building === "platform"
         ? `a service that starts agents ${PLACES[selection.runs]} for each task`
@@ -824,7 +844,7 @@ export const AgentVaultSetupSummary = () => {
   const agentText = selection.agent ? `, using ${AGENTS[selection.agent]}` : "";
   const missing = [];
   if (!selection.runs) missing.push("where the agent runs");
-  if (!selection.agent) missing.push("which agent you use");
+  if (!selection.agent && !isCursor) missing.push("which agent you use");
 
   return (
     <p>
@@ -843,9 +863,9 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
   const RULES = {
     personal: { model: "user", runs: ["server", "container"] },
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server"] },
+    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server", "cursor"] },
   };
-  const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "cursor", "custom"];
+  const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
@@ -855,11 +875,12 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
     const rule = RULES[buildingId];
     const runsId = params.get("runs");
     const agentId = params.get("agent");
+    const validRuns = rule.runs.includes(runsId) ? runsId : null;
     return {
       building: buildingId,
       model: rule.model,
-      runs: rule.runs.includes(runsId) ? runsId : null,
-      agent: ALL_AGENTS.includes(agentId) ? agentId : null,
+      runs: validRuns,
+      agent: ALL_AGENTS.includes(agentId) && validRuns !== "cursor" ? agentId : null,
     };
   };
 
