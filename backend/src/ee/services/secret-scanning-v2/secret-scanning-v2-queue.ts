@@ -39,6 +39,8 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/services/telemetry/telemetry-types";
 
+import { ClaudeCodeSecretDetectedAction } from "./claude-code/claude-code-secret-scanning-enums";
+import { filterClaudeCodeFindingsToRecord } from "./claude-code/claude-code-secret-scanning-fns";
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import {
   SecretScanningDataSource,
@@ -663,6 +665,8 @@ export const secretScanningV2QueueServiceFactory = ({
     }
   };
 
+  // Resolves to whether a scan was queued. Failures are logged rather than thrown, so a webhook is never retried
+  // because of them; a caller that must not lose the scan checks the result.
   const queueResourceDiffScan = async ({
     payload,
     dataSourceId,
@@ -727,7 +731,7 @@ export const secretScanningV2QueueServiceFactory = ({
         logger.info(
           `secretScanningV2Queue: skipping diff scan, resource was removed [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
         );
-        return;
+        return false;
       }
 
       const { resourceId, scanId } = queued;
@@ -747,11 +751,14 @@ export const secretScanningV2QueueServiceFactory = ({
           removeOnFail: true
         }
       );
+
+      return true;
     } catch (error) {
       logger.error(
         error,
         `secretScanningV2Queue: Failed to queue diff scan [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
       );
+      return false;
     }
   };
 
@@ -859,9 +866,20 @@ export const secretScanningV2QueueServiceFactory = ({
       const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
         let findings: TSecretScanningFindings[] = [];
 
-        if (findingsPayload.length) {
+        // A Claude Code secret is recorded only if it is still new or resurfaced when it is saved.
+        const findingsToRecord =
+          dataSource.type === SecretScanningDataSource.ClaudeCode
+            ? await filterClaudeCodeFindingsToRecord({
+                secretScanningV2DAL,
+                projectId: dataSource.projectId,
+                findings: findingsPayload,
+                tx
+              })
+            : findingsPayload;
+
+        if (findingsToRecord.length) {
           findings = await secretScanningV2DAL.findings.upsert(
-            findingsPayload.map((finding) => ({
+            findingsToRecord.map((finding) => ({
               ...finding,
               resourceId,
               scanId
@@ -1093,6 +1111,9 @@ export const secretScanningV2QueueServiceFactory = ({
                 numberOfSecrets: payload.numberOfSecrets,
                 isDiffScan: payload.isDiffScan,
                 isPromptScan,
+                isPromptBlocked:
+                  (dataSource.config as { onSecretDetected?: string } | null)?.onSecretDetected !==
+                  ClaudeCodeSecretDetectedAction.Report,
                 url: encodeURI(
                   `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
                 ),

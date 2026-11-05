@@ -1526,8 +1526,7 @@ export const secretScanningV2ServiceFactory = ({
       secretScanningV2DAL,
       secretScanningV2Queue,
       kmsService,
-      permissionService,
-      licenseService
+      permissionService
     })
   };
 };

@@ -1,4 +1,3 @@
-import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   TFindingsPayload,
@@ -13,6 +12,7 @@ import {
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 
@@ -53,8 +53,7 @@ export const ClaudeCodeSecretScanningFactory = ({ kmsService }: TSecretScanningF
     TClaudeCodeDataSourceWithConnection,
     TQueueClaudeCodeResourceDiffScan["payload"]
   > = async ({ dataSource, payload, configPath }) => {
-    const { orgId, submissionId, encryptedPrompt, excludedBlindIndexes, submitter, sessionId, cwd, submittedAt } =
-      payload;
+    const { orgId, submissionId, encryptedPrompt, submitter, sessionId, cwd, submittedAt } = payload;
 
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -69,16 +68,16 @@ export const ClaudeCodeSecretScanningFactory = ({ kmsService }: TSecretScanningF
     // secrets without decrypting either.
     const blindIndexer = await createOrgSecretBlindIndexer({ orgId, kmsService });
 
-    const excluded = new Set(excludedBlindIndexes);
     const findingsPayload = new Map<string, TFindingsPayload[number]>();
 
     for (const finding of findings) {
       // eslint-disable-next-line no-await-in-loop
       const secretFindingBlindIndex = await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(finding.Secret));
 
-      // a secret repeated in one prompt, or matched by several rules, is one finding
+      // a secret repeated in one prompt, or matched by several rules, is one finding. Whether it is recorded at all is
+      // decided when it is saved, by filterClaudeCodeFindingsToRecord.
       // eslint-disable-next-line no-continue
-      if (excluded.has(secretFindingBlindIndex) || findingsPayload.has(secretFindingBlindIndex)) continue;
+      if (findingsPayload.has(secretFindingBlindIndex)) continue;
 
       // like a git finding, identified by where it is: the prompt, the rule, and the position in the prompt
       const fingerprint = `${submissionId}:${finding.RuleID}:${finding.StartLine}:${finding.StartColumn}`;
@@ -108,7 +107,7 @@ export const ClaudeCodeSecretScanningFactory = ({ kmsService }: TSecretScanningF
       });
     }
 
-    return [...findingsPayload.values()];
+    return { findings: [...findingsPayload.values()] };
   };
 
   return {

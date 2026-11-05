@@ -211,7 +211,7 @@ const PageContent = () => {
                         value={CLAUDE_CODE_PLUGIN_INSTALL_COMMAND}
                         ariaLabel="Copy plugin install command"
                         size="2xs"
-                        className="h-5 w-5 shrink-0"
+                        className="shrink-0"
                         onClick={() =>
                           createNotification({
                             text: "Install command copied to clipboard",

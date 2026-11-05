@@ -1,26 +1,23 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
-import {
-  SecretScanningDataSource,
-  SecretScanningFindingStatus
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 
 import { ClaudeCodeSecretDetectedAction, ClaudeCodeSecretStatus } from "./claude-code-secret-scanning-enums";
+import { getClaudeCodeSecretStatus } from "./claude-code-secret-scanning-fns";
 import { ClaudeCodeDataSourceConfigSchema } from "./claude-code-secret-scanning-schemas";
 import {
   TCheckClaudeCodeSecretsDTO,
@@ -33,40 +30,17 @@ type TClaudeCodeSecretScanningServiceDep = {
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-};
-
-// What a secret's newest finding means for a prompt that holds it. A reviewer accepts a secret by marking it a false
-// positive or ignoring it, so it is never reported again. Resolved means the secret was dealt with, usually revoked
-// or rotated, so seeing it again is a new incident and it is recorded as a new finding.
-const getSecretStatus = (newestFindingStatus: string | undefined) => {
-  switch (newestFindingStatus) {
-    case undefined:
-    case SecretScanningFindingStatus.Resolved:
-      return ClaudeCodeSecretStatus.NewFinding;
-    case SecretScanningFindingStatus.FalsePositive:
-    case SecretScanningFindingStatus.Ignore:
-      return ClaudeCodeSecretStatus.Allowed;
-    default:
-      return ClaudeCodeSecretStatus.PendingResolution;
-  }
 };
 
 export const claudeCodeSecretScanningService = ({
   secretScanningV2DAL,
   secretScanningV2Queue,
   kmsService,
-  permissionService,
-  licenseService
+  permissionService
 }: TClaudeCodeSecretScanningServiceDep) => {
+  // No plan check: checking a prompt evaluates what the org already set up, and a downgrade must not stop it from
+  // working (backend/CODE_QUALITY.md, License checks). Creating and editing the data source stay gated.
   const $getClaudeCodeDataSource = async (dataSourceId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message: "Failed to check Claude Code prompt due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
 
     if (!dataSource)
@@ -123,7 +97,7 @@ export const claudeCodeSecretScanningService = ({
 
     return secrets.map(({ ruleId }, index) => {
       const blindIndex = blindIndexes[index];
-      return { ruleId, status: getSecretStatus(newestStatusByBlindIndex.get(blindIndex)), blindIndex };
+      return { ruleId, status: getClaudeCodeSecretStatus(newestStatusByBlindIndex.get(blindIndex)) };
     });
   };
 
@@ -158,7 +132,7 @@ export const claudeCodeSecretScanningService = ({
 
     // Secrets whose newest finding still stands are not recorded again, so resubmitting a prompt adds nothing.
     if (classified.every(({ status }) => status !== ClaudeCodeSecretStatus.NewFinding)) {
-      return { projectId: dataSource.projectId, isScanQueued: false };
+      return { projectId: dataSource.projectId, dataSourceName: dataSource.name, isScanQueued: false };
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -172,28 +146,26 @@ export const claudeCodeSecretScanningService = ({
       submissionId: crypto.nativeCrypto.randomUUID(),
       submitter,
       encryptedPrompt: encryptor({ plainText: Buffer.from(prompt) }).cipherTextBlob.toString("base64"),
-      // Secrets whose newest finding is open or accepted are left out, so they aren't recorded again under this
-      // submitter. Resolved secrets are not in this list: finding them again is a new finding.
-      excludedBlindIndexes: [
-        ...new Set(
-          classified
-            .filter(({ status }) => status !== ClaudeCodeSecretStatus.NewFinding)
-            .map(({ blindIndex }) => blindIndex)
-        )
-      ],
       sessionId,
       cwd,
       submittedAt: new Date().toISOString()
     };
 
-    await secretScanningV2Queue.queueResourceDiffScan({
+    const isScanQueued = await secretScanningV2Queue.queueResourceDiffScan({
       dataSourceType: SecretScanningDataSource.ClaudeCode,
       dataSourceId,
       payload,
       isDiscovered: true
     });
 
-    return { projectId: dataSource.projectId, isScanQueued: true };
+    // Fails the request rather than reporting success, so the plugin blocks the prompt instead of letting a secret
+    // through unrecorded.
+    if (!isScanQueued)
+      throw new InternalServerError({
+        message: "Infisical could not queue the scan of this prompt, so its secrets were not recorded. Try again."
+      });
+
+    return { projectId: dataSource.projectId, dataSourceName: dataSource.name, isScanQueued };
   };
 
   return {

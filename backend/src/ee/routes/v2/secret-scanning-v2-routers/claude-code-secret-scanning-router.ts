@@ -122,10 +122,11 @@ export const registerClaudeCodeSecretScanningRouter = async (server: FastifyZodP
               name: actor.type === ActorType.IDENTITY ? actor.metadata.name : req.permission.id
             };
 
-      const { projectId, isScanQueued } = await server.services.secretScanningV2.claudeCode.submitPrompt(
-        { ...req.body, dataSourceId, submitter },
-        req.permission
-      );
+      const { projectId, dataSourceName, isScanQueued } =
+        await server.services.secretScanningV2.claudeCode.submitPrompt(
+          { ...req.body, dataSourceId, submitter },
+          req.permission
+        );
 
       if (isScanQueued) {
         await server.services.auditLog.createAuditLog({
@@ -135,7 +136,8 @@ export const registerClaudeCodeSecretScanningRouter = async (server: FastifyZodP
             type: EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN,
             metadata: {
               type: SecretScanningDataSource.ClaudeCode,
-              dataSourceId
+              dataSourceId,
+              dataSourceName
             }
           }
         });

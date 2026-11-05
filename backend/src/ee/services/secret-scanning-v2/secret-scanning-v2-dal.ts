@@ -767,7 +767,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const findings = (await baseFindingQuery(tx)
+      const findings = (await baseFindingQuery(tx || db)
         .where(`${TableName.SecretScanningDataSource}.projectId`, projectId)
         .whereIn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`, blindIndexes)
         .distinctOn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`)

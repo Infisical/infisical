@@ -10,11 +10,13 @@ import {
   SecretScanningDataSource,
   SecretScanningFindingStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
-import { BadRequestError } from "@app/lib/errors";
+import { PgSqlLock } from "@app/keystore/keystore";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ClaudeCodeSecretDetectedAction, ClaudeCodeSecretStatus } from "./claude-code-secret-scanning-enums";
 import { ClaudeCodeSecretScanningFactory } from "./claude-code-secret-scanning-factory";
+import { filterClaudeCodeFindingsToRecord } from "./claude-code-secret-scanning-fns";
 import { claudeCodeSecretScanningService } from "./claude-code-secret-scanning-service";
 import { TClaudeCodeDataSourceWithConnection, TClaudeCodePromptSubmission } from "./claude-code-secret-scanning-types";
 
@@ -57,11 +59,12 @@ const setup = ({
   findings = [] as { value: string; status: string }[],
   type = SecretScanningDataSource.ClaudeCode,
   canTriggerScans = true,
-  config = {} as Record<string, unknown>
+  config = {} as Record<string, unknown>,
+  isScanQueued = true
 } = {}) => {
   const secretScanningV2DAL = {
     dataSources: {
-      findById: vi.fn(async () => ({ id: DATA_SOURCE_ID, projectId: PROJECT_ID, type, config }))
+      findById: vi.fn(async () => ({ id: DATA_SOURCE_ID, name: "claude-code", projectId: PROJECT_ID, type, config }))
     },
     findings: {
       // like the query, only the newest finding of each secret
@@ -74,7 +77,7 @@ const setup = ({
       })
     }
   };
-  const secretScanningV2Queue = { queueResourceDiffScan: vi.fn(async () => {}) };
+  const secretScanningV2Queue = { queueResourceDiffScan: vi.fn(async () => isScanQueued) };
 
   const permission = createMongoAbility(
     canTriggerScans
@@ -91,8 +94,7 @@ const setup = ({
     secretScanningV2DAL: secretScanningV2DAL as never,
     secretScanningV2Queue: secretScanningV2Queue as never,
     kmsService: kmsService as never,
-    permissionService: { getProjectPermission: vi.fn(async () => ({ permission })) } as never,
-    licenseService: { getPlan: vi.fn(async () => ({ secretScanning: true })) } as never
+    permissionService: { getProjectPermission: vi.fn(async () => ({ permission })) } as never
   });
 
   return { service, secretScanningV2DAL, secretScanningV2Queue };
@@ -223,7 +225,7 @@ describe("claudeCodeSecretScanningService.checkSecrets", () => {
 });
 
 describe("claudeCodeSecretScanningService.submitPrompt", () => {
-  test("queues an encrypted scan that skips open and accepted secrets but records resolved ones again", async () => {
+  test("queues an encrypted scan of the prompt when a secret is new", async () => {
     const { service, secretScanningV2Queue } = setup({
       findings: [
         { value: "known", status: SecretScanningFindingStatus.Unresolved },
@@ -234,6 +236,7 @@ describe("claudeCodeSecretScanningService.submitPrompt", () => {
 
     expect(await submit(service, "new", "known", "accepted", "resolved")).toEqual({
       projectId: PROJECT_ID,
+      dataSourceName: "claude-code",
       isScanQueued: true
     });
     expect(secretScanningV2Queue.queueResourceDiffScan).toHaveBeenCalledTimes(1);
@@ -245,7 +248,6 @@ describe("claudeCodeSecretScanningService.submitPrompt", () => {
     expect(isDiscovered).toBe(true);
     expect(payload.orgId).toBe(ORG_ID);
     expect(payload.submitter).toEqual(submitter);
-    expect(payload.excludedBlindIndexes).toEqual([blindIndexOf("known"), blindIndexOf("accepted")]);
     expect(payload.encryptedPrompt).not.toContain("known");
     expect(Buffer.from(payload.encryptedPrompt, "base64").toString()).toBe("my secrets: new known accepted resolved");
   });
@@ -255,8 +257,18 @@ describe("claudeCodeSecretScanningService.submitPrompt", () => {
       findings: [{ value: "known", status: SecretScanningFindingStatus.Unresolved }]
     });
 
-    expect(await submit(service, "known")).toEqual({ projectId: PROJECT_ID, isScanQueued: false });
+    expect(await submit(service, "known")).toEqual({
+      projectId: PROJECT_ID,
+      dataSourceName: "claude-code",
+      isScanQueued: false
+    });
     expect(secretScanningV2Queue.queueResourceDiffScan).not.toHaveBeenCalled();
+  });
+
+  test("fails when the scan cannot be queued, so the plugin blocks the prompt", async () => {
+    const { service } = setup({ isScanQueued: false });
+
+    await expect(submit(service, "new")).rejects.toBeInstanceOf(InternalServerError);
   });
 });
 
@@ -277,13 +289,12 @@ describe("ClaudeCodeSecretScanningFactory.getDiffScanFindingsPayload", () => {
       scanFinding("github-pat", "ghp_test"),
       scanFinding("github-pat", "ghp_test", 3),
       scanFinding("generic-api-key", "ghp_test", 1, 12),
-      scanFinding("stripe-access-token", "sk_test_known"),
       scanFinding("stripe-access-token", "sk_test_new", 2, 5)
     ]);
 
     const factory = ClaudeCodeSecretScanningFactory({ kmsService, appConnectionDAL: {} } as never);
 
-    const findings = await factory.getDiffScanFindingsPayload({
+    const { findings } = await factory.getDiffScanFindingsPayload({
       dataSource: { projectId: PROJECT_ID } as TClaudeCodeDataSourceWithConnection,
       resourceName: submitter.email,
       configPath: "/tmp/config.toml",
@@ -293,7 +304,6 @@ describe("ClaudeCodeSecretScanningFactory.getDiffScanFindingsPayload", () => {
         submissionId: "submission-1",
         submitter,
         encryptedPrompt: Buffer.from("the prompt").toString("base64"),
-        excludedBlindIndexes: [blindIndexOf("sk_test_known")],
         sessionId: "session-1",
         cwd: "/repo",
         submittedAt: "2026-10-24T00:00:00.000Z"
@@ -327,5 +337,80 @@ describe("ClaudeCodeSecretScanningFactory.getDiffScanFindingsPayload", () => {
       name: "jane@example.com",
       externalId: "user-1"
     });
+  });
+});
+
+describe("filterClaudeCodeFindingsToRecord", () => {
+  const findingOf = (value: string | null, fingerprint = `fp-${value}`) => ({
+    resourceName: submitter.email,
+    ruleId: "rule",
+    fingerprint,
+    severity: "high",
+    details: {},
+    secretFindingBlindIndex: value === null ? null : blindIndexOf(value),
+    encryptedSecretValue: null
+  });
+
+  test("keeps only new and resolved secrets, decided when the findings are saved", async () => {
+    const { secretScanningV2DAL } = setup({
+      findings: [
+        { value: "open", status: SecretScanningFindingStatus.Unresolved },
+        { value: "accepted", status: SecretScanningFindingStatus.FalsePositive },
+        { value: "ignored", status: SecretScanningFindingStatus.Ignore },
+        { value: "resolved", status: SecretScanningFindingStatus.Resolved }
+      ]
+    });
+    const tx = { raw: vi.fn(async () => {}) };
+
+    const kept = await filterClaudeCodeFindingsToRecord({
+      secretScanningV2DAL: secretScanningV2DAL as never,
+      projectId: PROJECT_ID,
+      findings: ["new", "open", "accepted", "ignored", "resolved", null].map((value) => findingOf(value)) as never,
+      tx: tx as never
+    });
+
+    expect(kept.map(({ fingerprint }) => fingerprint)).toEqual(["fp-new", "fp-resolved", "fp-null"]);
+    expect(secretScanningV2DAL.findings.findNewestStatusesByProjectIdAndBlindIndexes).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.any(Array),
+      tx
+    );
+  });
+
+  test("locks the project before it reads the findings", async () => {
+    const { secretScanningV2DAL } = setup();
+    const tx = { raw: vi.fn(async () => {}) };
+
+    await filterClaudeCodeFindingsToRecord({
+      secretScanningV2DAL: secretScanningV2DAL as never,
+      projectId: PROJECT_ID,
+      findings: [findingOf("b", "fp-1"), findingOf("a", "fp-2")] as never,
+      tx: tx as never
+    });
+
+    expect(tx.raw).toHaveBeenCalledTimes(1);
+    expect(tx.raw).toHaveBeenCalledWith("SELECT pg_advisory_xact_lock(?)", [
+      PgSqlLock.RecordClaudeCodeFindings(PROJECT_ID)
+    ]);
+    expect(tx.raw.mock.invocationCallOrder[0]).toBeLessThan(
+      secretScanningV2DAL.findings.findNewestStatusesByProjectIdAndBlindIndexes.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("takes no lock and reads nothing when no finding has a blind index", async () => {
+    const { secretScanningV2DAL } = setup();
+    const tx = { raw: vi.fn(async () => {}) };
+
+    const findings = [findingOf(null)];
+    const kept = await filterClaudeCodeFindingsToRecord({
+      secretScanningV2DAL: secretScanningV2DAL as never,
+      projectId: PROJECT_ID,
+      findings: findings as never,
+      tx: tx as never
+    });
+
+    expect(kept).toEqual(findings);
+    expect(tx.raw).not.toHaveBeenCalled();
+    expect(secretScanningV2DAL.findings.findNewestStatusesByProjectIdAndBlindIndexes).not.toHaveBeenCalled();
   });
 });

@@ -5,12 +5,16 @@ import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 import { BaseLink } from "./BaseLink";
 
-interface SecretScanningSecretsDetectedTemplateProps
-  extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
+interface SecretScanningSecretsDetectedTemplateProps extends Omit<
+  BaseEmailWrapperProps,
+  "title" | "preview" | "children"
+> {
   numberOfSecrets: number;
   isDiffScan: boolean;
-  // the secrets were found in a Claude Code prompt, which the plugin blocked until they are reviewed
+  // the secrets were found in a Claude Code prompt
   isPromptScan?: boolean;
+  // for a Claude Code prompt: whether the data source blocks prompts with secrets, or only reports them
+  isPromptBlocked?: boolean;
   authorName?: string;
   authorEmail?: string;
   resourceName: string;
@@ -24,6 +28,7 @@ export const SecretScanningSecretsDetectedTemplate = ({
   authorEmail,
   isDiffScan,
   isPromptScan,
+  isPromptBlocked = true,
   resourceName,
   url
 }: SecretScanningSecretsDetectedTemplateProps) => {
@@ -31,7 +36,11 @@ export const SecretScanningSecretsDetectedTemplate = ({
     return (
       <BaseEmailWrapper
         title="Incident Alert: Secret(s) Leaked"
-        preview="Infisical blocked a Claude Code prompt that contained secrets."
+        preview={
+          isPromptBlocked
+            ? "Infisical blocked a Claude Code prompt that contained secrets."
+            : "A Claude Code prompt that contained secrets was sent to Claude."
+        }
         siteUrl={siteUrl}
       >
         <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
@@ -48,11 +57,16 @@ export const SecretScanningSecretsDetectedTemplate = ({
                 (<BaseLink href={`mailto:${authorEmail}`}>{authorEmail}</BaseLink>)
               </>
             )}
-            . The prompt was blocked and was not sent to Claude.
+            .{" "}
+            {isPromptBlocked
+              ? "The prompt was blocked and was not sent to Claude."
+              : "The data source only reports secrets, so the prompt was sent to Claude. Treat these secrets as exposed."}
           </Text>
           <Text className="text-[14px]">
-            Prompts with these secrets stay blocked until the findings are marked as resolved, false positive, or
-            ignored.
+            {isPromptBlocked
+              ? "Prompts with these secrets stay blocked until the findings are marked as false positive or ignored."
+              : "Developers are warned about these secrets until the findings are marked as false positive or ignored."}{" "}
+            A resolved secret that is sent again is reported as a new finding.
           </Text>
           <Text className="text-[14px]">
             Review the findings in the <BaseLink href={url}>Infisical Dashboard</BaseLink>.

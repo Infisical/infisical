@@ -49,8 +49,6 @@ export type TClaudeCodePromptSubmission = {
   submissionId: string;
   // base64 KMS ciphertext; the prompt holds secrets and the job payload is stored in the queue
   encryptedPrompt: string;
-  // blind indexes of secrets already recorded in the project, so the scan doesn't add them again under this submitter
-  excludedBlindIndexes: string[];
   sessionId?: string;
   cwd?: string;
   submittedAt: string;

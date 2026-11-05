@@ -449,7 +449,8 @@ export const registerSecretScanningEndpoints = <
           type: EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN,
           metadata: {
             type,
-            dataSourceId
+            dataSourceId,
+            dataSourceName: dataSource.name
           }
         }
       });
@@ -494,6 +495,7 @@ export const registerSecretScanningEndpoints = <
           metadata: {
             type,
             dataSourceId,
+            dataSourceName: dataSource.name,
             resourceId
           }
         }
