@@ -426,6 +426,7 @@ export const removeUsersFromGroupByUserIds = async ({
   membershipGroupDAL,
   groupDAL,
   shouldFailOnMissingMembers = true,
+  deferPersonalValueClear = false,
   usageMeteringService,
   alertChannelRecipientDAL,
   eventEmitter,
@@ -437,7 +438,7 @@ export const removeUsersFromGroupByUserIds = async ({
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     if (userIds.length === 0) {
-      return { users: [], sendPamCancellations: () => {} };
+      return { users: [], sendPamCancellations: () => {}, projectIds: [] as string[] };
     }
 
     const foundMembers = await userDAL.find(
@@ -484,7 +485,7 @@ export const removeUsersFromGroupByUserIds = async ({
       // filter out users not in group for idempotent operation
       const filteredFoundMembers = foundMembers.filter((m) => existingUserGroupMembershipsUserIdsSet.has(m.id));
       if (filteredFoundMembers.length === 0) {
-        return { users: [], sendPamCancellations: () => {} };
+        return { users: [], sendPamCancellations: () => {}, projectIds: [] as string[] };
       }
       // continue with filtered list
       foundMembers.length = 0;
@@ -617,12 +618,14 @@ export const removeUsersFromGroupByUserIds = async ({
       );
     }
 
-    // After the group rows are gone, so the clear keeps only the values of users who still hold the bundle another way.
-    await clearPersonalValuesInProjects(
-      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
-      { projectIds, userIds: foundMembers.map((m) => m.id) },
-      tx
-    );
+    if (!deferPersonalValueClear) {
+      // After the group rows are gone, so the clear keeps only the values of users who still hold the bundle another way.
+      await clearPersonalValuesInProjects(
+        { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+        { projectIds, userIds: foundMembers.map((m) => m.id) },
+        tx
+      );
+    }
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
@@ -652,7 +655,11 @@ export const removeUsersFromGroupByUserIds = async ({
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
     usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
-    return { users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending), sendPamCancellations };
+    return {
+      users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending),
+      sendPamCancellations,
+      projectIds
+    };
   };
 
   if (outerTx) {

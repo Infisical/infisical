@@ -5040,6 +5040,7 @@ export const AGENT_VAULT = {
 
   SESSION: {
     sessionId: "The ID of the session.",
+    revokedAt: "When the session was revoked.",
     accessBundle:
       "The name of the access bundle this session carries. Leave it out to start a session with services of its own only.",
     accessBundleRead: "The access bundle this session carries. Null for a session with services of its own only.",

@@ -71,7 +71,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Leaving a group or deleting one (`removeUsersFromGroupByUserIds`, `removeIdentitiesFromGroup`, `deleteOwnedGroup`,
   so SCIM, LDAP, SAML and OIDC sync too, and GitHub team sync on its own path) runs `clearPersonalValuesInProjects`
   over the group's projects after the group rows are deleted, in the same transaction, so anyone who still reaches
-  the bundle another way keeps theirs. It reads the groups' members only when one of those projects holds a value
+  the bundle another way keeps theirs. SAML and LDAP login sync remove one user from several groups in one
+  transaction, so they pass `deferPersonalValueClear` and clear once over the union of those groups' projects after
+  the loop: every group's membership row locks come before the clear's per-project advisory lock, the same order as
+  every other removal. It reads the groups' members only when one of those projects holds a value
   (`findProjectIdsWithAnyValues`). Org exit deletes the actor's rows in the org's groups before
   `revokeActorsInOrgs`, so the clear it runs sees them out of those groups.
 - Invites into an Agent Vault project, at signup and from the org's Members page, go through Agent Vault's member

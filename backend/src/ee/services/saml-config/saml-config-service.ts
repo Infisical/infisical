@@ -53,7 +53,10 @@ import { ensureSsoAccountVerified, isStaleSsoAlias, syncSsoUserProfile } from "@
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TClearPersonalValuesInProjectsDeps } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import {
   findOrgIdByVerifiedDomain,
@@ -285,12 +288,13 @@ export const samlConfigServiceFactory = ({
         }
       }
 
+      const removedGroupProjectIds = new Set<string>();
       // eslint-disable-next-line no-await-in-loop
       for (const groupName of groupsToRemove) {
         if (groupName) {
           const group = orgGroupsMap.get(groupName);
           if (group) {
-            const { sendPamCancellations } = await removeUsersFromGroupByUserIds({
+            const { sendPamCancellations, projectIds } = await removeUsersFromGroupByUserIds({
               userIds: [userId],
               group,
               userDAL,
@@ -310,12 +314,21 @@ export const samlConfigServiceFactory = ({
               pamSessionDAL,
               gatewayV2Service,
               shouldFailOnMissingMembers: false,
+              deferPersonalValueClear: true,
               tx: transaction
             });
             pamCancellations.push(sendPamCancellations);
+            projectIds.forEach((projectId) => removedGroupProjectIds.add(projectId));
           }
         }
       }
+
+      // After every group's rows are locked, so the row locks come before the cleanup lock like every other removal.
+      await clearPersonalValuesInProjects(
+        { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+        { projectIds: [...removedGroupProjectIds], userIds: [userId] },
+        transaction
+      );
     };
 
     if (tx) {

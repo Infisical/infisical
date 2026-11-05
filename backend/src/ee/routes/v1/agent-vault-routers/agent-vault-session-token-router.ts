@@ -144,7 +144,7 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
         200: z.object({
           session: z.object({
             id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
-            revokedAt: z.date().nullable()
+            revokedAt: z.date().nullable().describe(AGENT_VAULT.SESSION.revokedAt)
           })
         })
       }

@@ -9,7 +9,10 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -757,10 +760,11 @@ export const ldapConfigServiceFactory = ({
           { tx }
         );
 
+        const removedGroupProjectIds = new Set<string>();
         for await (const group of groupsCurrentlyPartOf) {
           if (!toBePartOfGroupIdsSet.has(group.id)) {
             // remove user from group that they should no longer be part of
-            const { sendPamCancellations } = await removeUsersFromGroupByUserIds({
+            const { sendPamCancellations, projectIds } = await removeUsersFromGroupByUserIds({
               group,
               userIds: [newUser.id],
               userDAL,
@@ -779,11 +783,20 @@ export const ldapConfigServiceFactory = ({
               pamAccountDAL,
               pamSessionDAL,
               gatewayV2Service,
+              deferPersonalValueClear: true,
               tx
             });
             pamCancellations.push(sendPamCancellations);
+            projectIds.forEach((projectId) => removedGroupProjectIds.add(projectId));
           }
         }
+
+        // After every group's rows are locked, so the row locks come before the cleanup lock like every other removal.
+        await clearPersonalValuesInProjects(
+          { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+          { projectIds: [...removedGroupProjectIds], userIds: [newUser.id] },
+          tx
+        );
       }
 
       return newUser;

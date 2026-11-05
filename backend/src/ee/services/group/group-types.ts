@@ -164,6 +164,9 @@ export type TRemoveUsersFromGroupByUserIds = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
+  // Skip the Agent Vault personal value clear and return the group's project ids instead, for a caller that removes
+  // the same user from several groups in one transaction and clears once after every group's rows are locked.
+  deferPersonalValueClear?: boolean;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
