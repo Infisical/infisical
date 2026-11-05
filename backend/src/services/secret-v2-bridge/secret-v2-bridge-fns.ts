@@ -954,28 +954,42 @@ export const fnUpdateSecretLinkedReferences = async ({
   deferredSyncs,
   excludeSecretIds = []
 }: TFnUpdateSecretLinkedReferences) => {
+  const pathPart = secretPath === "/" ? "" : `.${secretPath.slice(1).replace(/\//g, ".")}`;
+  const oldNestedRef = `\${${environment}${pathPart}.${oldSecretKey}}`;
+  const newNestedRef = `\${${environment}${pathPart}.${newSecretKey}}`;
+
   // The renamed row already carries its new key, so it is mapped back to the old one and the merged view is
-  // exactly what a local reference in that folder resolved to before the rename.
+  // exactly what a local reference in that folder resolved to before the rename. An import from another
+  // project is dropped: the fetch would read the same path in this project, and it cannot hold the renamed
+  // secret anyway.
   const fetchFolderSecretsAsBeforeRename = createFetchFolderSecretsWithImports({
     projectId,
     folderDAL,
-    secretImportDAL,
     tx,
     secretDAL: {
       findByFolderId: async (args) =>
         (await secretDAL.findByFolderId(args)).map((s) => (s.id === secretId ? { ...s, key: oldSecretKey } : s))
+    },
+    secretImportDAL: {
+      findByIds: secretImportDAL.findByIds,
+      findByFolderIds: async (folderIds, importTx) =>
+        (await secretImportDAL.findByFolderIds(folderIds, importTx)).filter(
+          (imp) => !imp.importEnv.projectId || imp.importEnv.projectId === projectId
+        )
     }
   });
-  const folderResolvesToRenamedSecret = new Map<string, Promise<boolean>>();
-  const resolvesToRenamedSecret = (otherFolderId: string) => {
-    let resolved = folderResolvesToRenamedSecret.get(otherFolderId);
-    if (!resolved) {
-      resolved = fetchFolderSecretsAsBeforeRename({ folderId: otherFolderId }).then((secrets) =>
-        secrets.some((s) => s.key === oldSecretKey && s.id === secretId)
-      );
-      folderResolvesToRenamedSecret.set(otherFolderId, resolved);
+  type TLocalRefResolution = { pointsAtRenamedSecret: boolean; newKeyIsShadowed: boolean };
+  const localRefResolutions = new Map<string, Promise<TLocalRefResolution>>();
+  const resolveLocalRef = (otherFolderId: string) => {
+    let resolution = localRefResolutions.get(otherFolderId);
+    if (!resolution) {
+      resolution = fetchFolderSecretsAsBeforeRename({ folderId: otherFolderId }).then((secrets) => ({
+        pointsAtRenamedSecret: secrets.some((s) => s.key === oldSecretKey && s.id === secretId),
+        newKeyIsShadowed: secrets.some((s) => s.key === newSecretKey && s.id !== secretId)
+      }));
+      localRefResolutions.set(otherFolderId, resolution);
     }
-    return resolved;
+    return resolution;
   };
 
   // case: nested references, can be inferred directly from the secret references table
@@ -1032,10 +1046,13 @@ export const fnUpdateSecretLinkedReferences = async ({
 
     // checkk if this secret references the renamed secret at all (either locally or nested)
     // A local reference in another folder points at the renamed secret only when it resolves to it through
-    // that folder's imports.
-    const hasLocalRef =
-      localReferences.includes(oldSecretKey) &&
-      (secretToUpdate.folderId === folderId || (await resolvesToRenamedSecret(secretToUpdate.folderId)));
+    // that folder's imports. When that folder also has its own secret under the new key, a local reference
+    // would resolve to it instead, so the reference is written in its nested form.
+    const localRef =
+      localReferences.includes(oldSecretKey) && secretToUpdate.folderId !== folderId
+        ? await resolveLocalRef(secretToUpdate.folderId)
+        : { pointsAtRenamedSecret: localReferences.includes(oldSecretKey), newKeyIsShadowed: false };
+    const hasLocalRef = localRef.pointsAtRenamedSecret;
     const hasNestedRef = nestedReferences.some(
       (ref) => ref.environment === environment && ref.secretPath === secretPath && ref.secretKey === oldSecretKey
     );
@@ -1046,16 +1063,14 @@ export const fnUpdateSecretLinkedReferences = async ({
     }
 
     if (hasLocalRef) {
-      newValue = newValue.replace(new RE2(`\\$\\{${escapeRegex(oldSecretKey)}\\}`, "g"), `\${${newSecretKey}}`);
+      newValue = newValue.replace(
+        new RE2(`\\$\\{${escapeRegex(oldSecretKey)}\\}`, "g"),
+        localRef.newKeyIsShadowed ? newNestedRef : `\${${newSecretKey}}`
+      );
     }
 
     if (hasNestedRef) {
-      const pathPart = secretPath === "/" ? "" : `.${secretPath.slice(1).replace(/\//g, ".")}`;
-
-      const oldRef = `\${${environment}${pathPart}.${oldSecretKey}}`;
-      const newRef = `\${${environment}${pathPart}.${newSecretKey}}`;
-
-      newValue = newValue.split(oldRef).join(newRef);
+      newValue = newValue.split(oldNestedRef).join(newNestedRef);
     }
 
     if (newValue !== originalValue) {
