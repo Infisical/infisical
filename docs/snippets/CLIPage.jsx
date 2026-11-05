@@ -45,7 +45,11 @@ export const CLIPage = ({ title, description, movedAnchors = {}, removedAnchors 
       const movedFrom = longestPrefix(movedAnchors, hash);
       const candidates = movedFrom ? [hash, movedAnchors[movedFrom] + hash.slice(movedFrom.length)] : [hash];
       const id = candidates.find((candidate) => longestPrefix(removedAnchors, candidate));
-      return id ? removedAnchors[longestPrefix(removedAnchors, id)] : null;
+      if (!id) return null;
+      // The published docs live under /docs, while previews serve them from the root.
+      const path = window.location.pathname;
+      const base = path === "/docs" || path.startsWith("/docs/") ? "/docs" : "";
+      return base + removedAnchors[longestPrefix(removedAnchors, id)];
     };
     let hash = decodeURIComponent(window.location.hash.slice(1));
     const removedOnLoad = removedPage(hash);
