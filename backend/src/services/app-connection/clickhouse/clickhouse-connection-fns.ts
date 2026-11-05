@@ -5,6 +5,7 @@ import { gunzipSync } from "node:zlib";
 import { ClickHouseClient, createClient } from "@clickhouse/client";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
@@ -97,12 +98,28 @@ const runWithClient = async <T>(
   }
 };
 
+type TClickHouseGatewayDeps = {
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+};
+
 export const executeWithClickHouseClient = async <T>(
-  config: { credentials: TClickHouseConnection["credentials"]; gatewayId?: string | null },
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  connection: Pick<TClickHouseConnection, "credentials" | "gatewayId" | "gatewayPoolId">,
+  { gatewayV2Service, gatewayPoolService }: TClickHouseGatewayDeps,
   operation: (client: ClickHouseClient) => Promise<T>
 ): Promise<T> => {
-  const { credentials, gatewayId } = config;
+  const { credentials, gatewayId: directGatewayId, gatewayPoolId } = connection;
+
+  if (gatewayPoolId && !gatewayPoolService) {
+    throw new BadRequestError({
+      message: "This ClickHouse connection uses a Gateway pool, which is not supported on this operation"
+    });
+  }
+
+  const gatewayId =
+    gatewayPoolId && gatewayPoolService
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
+      : directGatewayId;
 
   if (gatewayId) {
     const [targetHost] = await verifyHostInputValidity({
@@ -136,7 +153,7 @@ export const validateClickHouseConnectionCredentials = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {
-    await executeWithClickHouseClient(config, gatewayV2Service, (client) =>
+    await executeWithClickHouseClient(config, { gatewayV2Service }, (client) =>
       executeClickHouseStatement(client, "SELECT 1")
     );
 

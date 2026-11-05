@@ -1,6 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import { ClickHouseClient } from "@clickhouse/client";
-
 import {
   TRotationFactory,
   TRotationFactoryGetSecretsPayload,
@@ -64,33 +62,11 @@ export const clickhouseCredentialsRotationFactory: TRotationFactory<
     });
   }
 
-  let resolvedConnection: typeof connection | undefined;
-  const getResolvedConnection = async () => {
-    if (!resolvedConnection) {
-      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-        gatewayId: connection.gatewayId,
-        gatewayPoolId: connection.gatewayPoolId
-      });
-      resolvedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
-    }
-    return resolvedConnection;
-  };
-
-  const $executeOperation = async <T>(
-    operation: (client: ClickHouseClient) => Promise<T>,
-    credentialsOverride?: TClickHouseCredentialsRotationGeneratedCredentials[number]
-  ) => {
-    const { credentials, gatewayId } = await getResolvedConnection();
-    return executeWithClickHouseClient(
-      { credentials: { ...credentials, ...credentialsOverride }, gatewayId },
-      gatewayV2Service,
-      operation
-    );
-  };
+  const gatewayDeps = { gatewayV2Service, gatewayPoolService };
 
   const $setPasswords = async (credentialsSet: TClickHouseCredentialsRotationGeneratedCredentials) => {
     try {
-      await $executeOperation(async (client) => {
+      await executeWithClickHouseClient(connection, gatewayDeps, async (client) => {
         for (const { username, password } of credentialsSet) {
           await executeClickHouseStatement(
             client,
@@ -105,7 +81,11 @@ export const clickhouseCredentialsRotationFactory: TRotationFactory<
 
   const $validateCredentials = async (credentials: TClickHouseCredentialsRotationGeneratedCredentials[number]) => {
     try {
-      await $executeOperation((client) => executeClickHouseStatement(client, "SELECT 1"), credentials);
+      await executeWithClickHouseClient(
+        { ...connection, credentials: { ...connection.credentials, ...credentials } },
+        gatewayDeps,
+        (client) => executeClickHouseStatement(client, "SELECT 1")
+      );
     } catch (error) {
       throw new Error(redactPasswords(error, [credentials]));
     }

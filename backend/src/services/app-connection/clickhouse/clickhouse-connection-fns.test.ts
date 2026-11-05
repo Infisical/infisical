@@ -37,14 +37,16 @@ const CREDENTIALS = {
   sslRejectUnauthorized: true
 };
 const GATEWAY_ID = "3c90c3cc-0d44-4b50-8888-8dd25736052a";
+const GATEWAY_POOL_ID = "8f0c3a8e-5b1d-4d6e-9c2a-1e7f4b6d2a90";
 
 const gatewayReturning = (details: unknown) => {
   const getPlatformConnectionDetailsByGatewayId = vi.fn(async () => details);
   return {
     getPlatformConnectionDetailsByGatewayId,
-    gatewayV2Service: { getPlatformConnectionDetailsByGatewayId } as unknown as Parameters<
-      typeof executeWithClickHouseClient
-    >[1]
+    gatewayDeps: {
+      gatewayV2Service: { getPlatformConnectionDetailsByGatewayId },
+      gatewayPoolService: { resolveEffectiveGatewayId: async () => GATEWAY_ID }
+    } as unknown as Parameters<typeof executeWithClickHouseClient>[1]
   };
 };
 
@@ -88,9 +90,9 @@ describe("executeWithClickHouseClient", () => {
   });
 
   it("connects directly through an agent pinned to the host when there is no gateway", async () => {
-    const { gatewayV2Service } = gatewayReturning(undefined);
+    const { gatewayDeps } = gatewayReturning(undefined);
 
-    await executeWithClickHouseClient({ credentials: CREDENTIALS }, gatewayV2Service, async () => undefined);
+    await executeWithClickHouseClient({ credentials: CREDENTIALS }, gatewayDeps, async () => undefined);
 
     expect(state.agentRequests).toEqual([
       ["https://clickhouse.example.com:8443", { ca: undefined, rejectUnauthorized: true }]
@@ -98,11 +100,11 @@ describe("executeWithClickHouseClient", () => {
   });
 
   it("brackets IPv6 hosts in the URL", async () => {
-    const { gatewayV2Service } = gatewayReturning(undefined);
+    const { gatewayDeps } = gatewayReturning(undefined);
 
     await executeWithClickHouseClient(
       { credentials: { ...CREDENTIALS, host: "2001:db8::10" } },
-      gatewayV2Service,
+      gatewayDeps,
       async () => undefined
     );
 
@@ -110,11 +112,11 @@ describe("executeWithClickHouseClient", () => {
   });
 
   it("connects through the gateway proxy and still verifies TLS against the real host", async () => {
-    const { gatewayV2Service, getPlatformConnectionDetailsByGatewayId } = gatewayReturning({ relayHost: "relay" });
+    const { gatewayDeps, getPlatformConnectionDetailsByGatewayId } = gatewayReturning({ relayHost: "relay" });
 
     await executeWithClickHouseClient(
       { credentials: CREDENTIALS, gatewayId: GATEWAY_ID },
-      gatewayV2Service,
+      gatewayDeps,
       async () => undefined
     );
 
@@ -132,12 +134,28 @@ describe("executeWithClickHouseClient", () => {
     ]);
   });
 
+  it("resolves a gateway pool to one of its gateways before connecting", async () => {
+    const { gatewayDeps, getPlatformConnectionDetailsByGatewayId } = gatewayReturning({ relayHost: "relay" });
+
+    await executeWithClickHouseClient(
+      { credentials: CREDENTIALS, gatewayPoolId: GATEWAY_POOL_ID },
+      gatewayDeps,
+      async () => undefined
+    );
+
+    expect(getPlatformConnectionDetailsByGatewayId).toHaveBeenCalledWith({
+      gatewayId: GATEWAY_ID,
+      targetHost: "clickhouse.example.com",
+      targetPort: 8443
+    });
+  });
+
   it("refuses to connect directly when the gateway is missing", async () => {
-    const { gatewayV2Service } = gatewayReturning(undefined);
+    const { gatewayDeps } = gatewayReturning(undefined);
     const operation = vi.fn();
 
     await expect(
-      executeWithClickHouseClient({ credentials: CREDENTIALS, gatewayId: GATEWAY_ID }, gatewayV2Service, operation)
+      executeWithClickHouseClient({ credentials: CREDENTIALS, gatewayId: GATEWAY_ID }, gatewayDeps, operation)
     ).rejects.toThrow(NotFoundError);
     expect(operation).not.toHaveBeenCalled();
     expect(state.agentRequests).toEqual([]);
