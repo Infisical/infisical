@@ -451,6 +451,7 @@ const MyProjectsForType = ({
 }: SubViewProps) => {
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
+  const [isDeletedProjectsExpanded, setIsDeletedProjectsExpanded] = useState(false);
   const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
     (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
   );
@@ -744,6 +745,8 @@ const MyProjectsForType = ({
               projectType={projectType}
               searchFilter={searchFilter}
               layout="table-rows"
+              isExpanded={isDeletedProjectsExpanded}
+              onExpandedChange={setIsDeletedProjectsExpanded}
             />
           </TableBody>
         </Table>
@@ -797,6 +800,8 @@ const MyProjectsForType = ({
           projectType={projectType}
           searchFilter={searchFilter}
           layout={projectsViewMode === ProjectsViewMode.GRID ? "grid" : "table"}
+          isExpanded={isDeletedProjectsExpanded}
+          onExpandedChange={setIsDeletedProjectsExpanded}
         />
       )}
       {hasProjects && (
@@ -826,6 +831,7 @@ const AllProjectsForType = ({
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
+  const [isDeletedProjectsExpanded, setIsDeletedProjectsExpanded] = useState(false);
 
   const {
     setPage,
@@ -1119,6 +1125,8 @@ const AllProjectsForType = ({
             projectType={projectType}
             searchFilter={debouncedSearch}
             layout="table-rows"
+            isExpanded={isDeletedProjectsExpanded}
+            onExpandedChange={setIsDeletedProjectsExpanded}
           />
         </TableBody>
       </Table>
@@ -1167,6 +1175,8 @@ const AllProjectsForType = ({
           projectType={projectType}
           searchFilter={debouncedSearch}
           layout="table"
+          isExpanded={isDeletedProjectsExpanded}
+          onExpandedChange={setIsDeletedProjectsExpanded}
         />
       )}
       {hasProjects && (

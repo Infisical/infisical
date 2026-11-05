@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
 import { format } from "date-fns";
 import { ChevronRightIcon, Ellipsis, HourglassIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
 
@@ -107,7 +107,7 @@ const DeletedProjectRow = ({
   const remaining = formatRemainingDuration(new Date(project.deleteAfter));
 
   return (
-    <TableRow className="bg-background hover:bg-background">
+    <TableRow>
       <TableCell className="w-0">
         <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-dashed border-border p-1">
           <ProjectIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
@@ -140,7 +140,7 @@ const DeletedProjectCard = ({
   const remaining = formatRemainingDuration(new Date(project.deleteAfter));
 
   return (
-    <Card className="h-full border-dashed bg-card/50 shadow-none">
+    <Card className="h-full">
       <CardHeader>
         <div className="flex min-w-0 items-start gap-3">
           <div className="shrink-0 rounded-sm border border-dashed border-border p-2">
@@ -182,9 +182,18 @@ type Props = {
   searchFilter: string;
   // "table-rows" joins the caller's projects table; "table" brings its own for when there is none.
   layout: "table-rows" | "table" | "grid";
+  // Owned by the caller because the group remounts whenever the list reloads or changes layout.
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
-export const RecentlyDeletedProjects = ({ projectType, searchFilter, layout }: Props) => {
+export const RecentlyDeletedProjects = ({
+  projectType,
+  searchFilter,
+  layout,
+  isExpanded,
+  onExpandedChange
+}: Props) => {
   const { permission } = useOrgPermission();
   const canAccessAllProjects = permission.can(
     OrgPermissionAdminConsoleAction.AccessAllProjects,
@@ -192,7 +201,6 @@ export const RecentlyDeletedProjects = ({ projectType, searchFilter, layout }: P
   );
   // Only Secrets Management projects get a restore grace period; other types are deleted outright.
   const isRestorable = projectType === ProjectType.SecretManager;
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const {
     data: deletedProjects = [],
@@ -305,11 +313,9 @@ export const RecentlyDeletedProjects = ({ projectType, searchFilter, layout }: P
   const dialogs = (
     <>
       <AlertDialog
+        isPending={restoreProject.isPending}
         open={popUp.restoreProject.isOpen}
-        onOpenChange={(isOpen) => {
-          if (!isOpen && restoreProject.isPending) return;
-          handlePopUpToggle("restoreProject", isOpen);
-        }}
+        onOpenChange={(isOpen) => handlePopUpToggle("restoreProject", isOpen)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -320,7 +326,7 @@ export const RecentlyDeletedProjects = ({ projectType, searchFilter, layout }: P
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={restoreProject.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <Button
               variant="project"
               size="sm"
@@ -380,7 +386,7 @@ export const RecentlyDeletedProjects = ({ projectType, searchFilter, layout }: P
         <button
           type="button"
           aria-expanded={isExpanded}
-          onClick={() => setIsExpanded((value) => !value)}
+          onClick={() => onExpandedChange(!isExpanded)}
           className="flex cursor-pointer items-center gap-2 rounded-sm text-left text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {disclosureLabel}
@@ -407,12 +413,12 @@ export const RecentlyDeletedProjects = ({ projectType, searchFilter, layout }: P
 
   const rows = (
     <>
-      <TableRow className="bg-background">
+      <TableRow>
         <TableCell colSpan={PROJECT_TABLE_COLUMN_COUNT} className="p-0">
           <button
             type="button"
             aria-expanded={isExpanded}
-            onClick={() => setIsExpanded((value) => !value)}
+            onClick={() => onExpandedChange(!isExpanded)}
             className="flex h-10 w-full cursor-pointer items-center gap-2 px-3 text-left text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           >
             {disclosureLabel}
@@ -421,7 +427,7 @@ export const RecentlyDeletedProjects = ({ projectType, searchFilter, layout }: P
       </TableRow>
       {isExpanded &&
         (isError ? (
-          <TableRow className="bg-background hover:bg-background">
+          <TableRow>
             <TableCell colSpan={PROJECT_TABLE_COLUMN_COUNT}>{loadError}</TableCell>
           </TableRow>
         ) : (
