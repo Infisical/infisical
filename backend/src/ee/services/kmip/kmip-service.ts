@@ -152,6 +152,7 @@ export const kmipServiceFactory = ({
         extensions: [
           // eslint-disable-next-line no-bitwise
           new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+          new x509.BasicConstraintsExtension(true, 1, true),
           await x509.SubjectKeyIdentifierExtension.create(rootCaKeys.publicKey)
         ]
       });

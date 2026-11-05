@@ -220,7 +220,7 @@ func TestKmipServer(t *testing.T) {
 		requireStatus(t, http.StatusNotFound, connect.StatusCode(), connect.Body)
 	})
 
-	t.Run("should issue a server-auth certificate with the configured hostnames, signed through the chain it is given", func(t *testing.T) {
+	t.Run("should issue a server-auth certificate with the configured hostnames that verifies against the root alone", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -240,7 +240,7 @@ func TestKmipServer(t *testing.T) {
 		require.Len(t, leaf.IPAddresses, 1)
 		require.True(t, leaf.IPAddresses[0].Equal(net.ParseIP("10.0.0.5")))
 		require.Equal(t, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, leaf.ExtKeyUsage)
-		requireIssuedThrough(t, cert.Certificate, cert.CertificateChain)
+		requireVerifies(t, cert.Certificate, cert.CertificateChain, x509.ExtKeyUsageServerAuth)
 		require.NotEmpty(t, cert.ClientCertificateChain)
 	})
 

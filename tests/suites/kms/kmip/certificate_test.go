@@ -13,7 +13,6 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
-	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +32,7 @@ func TestKmipClientCertificate_Issue(t *testing.T) {
 	h := harness.From(t)
 
 	for _, keyAlgorithm := range []string{"RSA_2048", "RSA_3072", "RSA_4096", "EC_prime256v1", "EC_secp384r1", "EC_secp521r1"} {
-		t.Run("should issue a client-auth certificate for the client and project that the KMIP server's client chain signs, with "+keyAlgorithm, func(t *testing.T) {
+		t.Run("should issue a client-auth certificate for the client and project that verifies against the root alone, with "+keyAlgorithm, func(t *testing.T) {
 			t.Parallel()
 
 			// Setup
@@ -53,8 +52,8 @@ func TestKmipClientCertificate_Issue(t *testing.T) {
 			require.Equal(t, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, leaf.ExtKeyUsage)
 			require.Equal(t, cert.SerialNumber, serialOf(t, cert.Certificate))
 			require.NotEmpty(t, cert.PrivateKey)
-			requireIssuedThrough(t, cert.Certificate, server.certificate.ClientCertificateChain)
-			requireIssuedThrough(t, server.certificate.Certificate, cert.CertificateChain)
+			requireVerifies(t, cert.Certificate, server.certificate.ClientCertificateChain, x509.ExtKeyUsageClientAuth)
+			requireVerifies(t, server.certificate.Certificate, cert.CertificateChain, x509.ExtKeyUsageServerAuth)
 		})
 	}
 
@@ -75,7 +74,7 @@ func TestKmipClientCertificate_Issue(t *testing.T) {
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		require.Empty(t, cert.PrivateKey)
 		require.True(t, key.PublicKey.Equal(parseCertificate(t, cert.Certificate).PublicKey))
-		requireIssuedThrough(t, cert.Certificate, server.certificate.ClientCertificateChain)
+		requireVerifies(t, cert.Certificate, server.certificate.ClientCertificateChain, x509.ExtKeyUsageClientAuth)
 	})
 
 	t.Run("should refuse a request Infisical cannot issue from", func(t *testing.T) {
@@ -124,31 +123,5 @@ func TestKmipClientCertificate_Issue(t *testing.T) {
 		// Assert
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Contains(t, apierr.Message(res.Body), "Upgrade your plan to enterprise")
-	})
-}
-
-// TestKmipCertificate_KnownIssues asserts the intended behaviour of KMIP certificates that is wrong today; each
-// subtest fails until its bug is fixed.
-func TestKmipCertificate_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should issue client and server chains that a standard X.509 verifier accepts", func(t *testing.T) {
-		t.Parallel()
-		spec.Why(t, "the organization's KMIP root CA has no basicConstraints cA=true, so RFC 5280 verifiers such as Go's reject every chain under it")
-
-		// Setup
-		tn := h.NewTenant(t)
-		proj := newProject(t, tn)
-		c := newClient(t, proj, "get")
-		server := enrollServer(t, tn)
-
-		// Action
-		res, cert := issueCertificate(t, proj, c.ID, map[string]any{"keyAlgorithm": "RSA_2048", "ttl": "30d"})
-
-		// Assert
-		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-		require.NoError(t, verifyChain(t, cert.Certificate, server.certificate.ClientCertificateChain, x509.ExtKeyUsageClientAuth))
-		require.NoError(t, verifyChain(t, server.certificate.Certificate, cert.CertificateChain, x509.ExtKeyUsageServerAuth))
 	})
 }

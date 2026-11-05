@@ -177,22 +177,9 @@ func parseChain(t *testing.T, chainPEM string) []*x509.Certificate {
 	return certs
 }
 
-// requireIssuedThrough checks every signature from the leaf up the chain to a self-signed root, without the CA
-// flag checks a full verifier adds (see TestKmipCertificate_KnownIssues).
-func requireIssuedThrough(t *testing.T, leafPEM, chainPEM string) {
-	t.Helper()
-	child := parseCertificate(t, leafPEM)
-	for _, parent := range parseChain(t, chainPEM) {
-		require.Equal(t, parent.Subject.String(), child.Issuer.String())
-		require.NoErrorf(t, parent.CheckSignature(child.SignatureAlgorithm, child.RawTBSCertificate, child.Signature),
-			"%s signed by %s", child.Subject, parent.Subject)
-		child = parent
-	}
-	require.Equal(t, child.Subject.String(), child.Issuer.String(), "the chain ends at a self-signed root")
-}
-
-// verifyChain runs the standard library's full X.509 verification of the leaf against the chain.
-func verifyChain(t *testing.T, leafPEM, chainPEM string, usage x509.ExtKeyUsage) error {
+// requireVerifies runs the standard library's full X.509 verification of the leaf, trusting only the chain's
+// root, the way an admin loads a CA into a trust store.
+func requireVerifies(t *testing.T, leafPEM, chainPEM string, usage x509.ExtKeyUsage) {
 	t.Helper()
 	certs := parseChain(t, chainPEM)
 	roots, intermediates := x509.NewCertPool(), x509.NewCertPool()
@@ -203,7 +190,7 @@ func verifyChain(t *testing.T, leafPEM, chainPEM string, usage x509.ExtKeyUsage)
 	_, err := parseCertificate(t, leafPEM).Verify(x509.VerifyOptions{
 		Roots: roots, Intermediates: intermediates, KeyUsages: []x509.ExtKeyUsage{usage},
 	})
-	return err
+	require.NoError(t, err)
 }
 
 // session is a KMIP client talking through a KMIP server: the server's token plus the headers the KMIP daemon
