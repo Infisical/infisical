@@ -110,6 +110,11 @@ import {
   validateCircleCIConnectionCredentials
 } from "./circleci";
 import {
+  ClickHouseConnectionMethod,
+  getClickHouseConnectionListItem,
+  validateClickHouseConnectionCredentials
+} from "./clickhouse";
+import {
   Cloud66ConnectionMethod,
   getCloud66ConnectionListItem,
   validateCloud66ConnectionCredentials
@@ -521,7 +526,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getHpeIloConnectionListItem(),
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
-    getJiraConnectionListItem()
+    getJiraConnectionListItem(),
+    getClickHouseConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -772,7 +778,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -850,6 +857,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case WinRMConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case ClickHouseConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case SnowflakeConnectionMethod.UsernameAndToken:
       return "Username & Token";
@@ -1101,7 +1109,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
-  [AppConnection.Jira]: platformManagedCredentialsNotSupported
+  [AppConnection.Jira]: platformManagedCredentialsNotSupported,
+  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
