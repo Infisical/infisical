@@ -6,7 +6,6 @@ import { Knex } from "knex";
 
 import {
   ActionProjectType,
-  SecretType,
   TSecretFolders,
   TSecretFolderVersions,
   TSecretV2TagJunctionInsert,
@@ -306,9 +305,7 @@ export const folderCommitServiceFactory = ({
       );
     }
 
-    const secretVersions = (await secretVersionV2BridgeDAL.findLatestVersionByFolderId(folderId, tx)).filter(
-      ({ type }) => type === SecretType.Shared
-    );
+    const secretVersions = await secretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId(folderId, tx);
     if (secretVersions.length > 0) {
       resources.push(
         ...secretVersions.map((secretVersion) => ({ secretVersionId: secretVersion.id, folderVersionId: undefined }))

@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   AccessScope,
+  SecretType,
   SecretVersionsV2Schema,
   TableName,
   TMemberships,
@@ -146,15 +147,16 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  // This will fetch all latest secret versions from a folder
-  const findLatestVersionByFolderId = async (folderId: string, tx?: Knex) => {
+  const findLatestSharedVersionsByFolderId = async (folderId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretVersionV2)
         .where(`${TableName.SecretVersionV2}.folderId`, folderId)
+        .where(`${TableName.SecretVersionV2}.type`, SecretType.Shared)
         .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretVersionV2}.secretId`)
         .join<TSecretVersionsV2, TSecretVersionsV2 & { secretId: string; max: number }>(
           (tx || db.replicaNode())(TableName.SecretVersionV2)
             .where(`${TableName.SecretVersionV2}.folderId`, folderId)
+            .where(`${TableName.SecretVersionV2}.type`, SecretType.Shared)
             .groupBy("secretId")
             .max("version")
             .select("secretId")
@@ -169,7 +171,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.SecretVersionV2));
       return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindLatestVersionByFolderId" });
+      throw new DatabaseError({ error, name: "FindLatestSharedVersionsByFolderId" });
     }
   };
 
@@ -630,7 +632,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     pruneOrphanedVersions,
     findLatestVersionMany,
     bulkUpdate,
-    findLatestVersionByFolderId,
+    findLatestSharedVersionsByFolderId,
     findVersionsBySecretIdWithActors,
     findBySecretId,
     findByIdsWithLatestVersion,

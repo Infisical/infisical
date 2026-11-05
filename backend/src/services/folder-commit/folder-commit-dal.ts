@@ -487,6 +487,11 @@ export const folderCommitDALFactory = (db: TDbClient) => {
                   `${TableName.FolderCommitChanges}.folderCommitId`,
                   `${TableName.FolderCommit}.id`
                 ])
+                .where((typeQb) => {
+                  void typeQb
+                    .whereNull(`${TableName.SecretVersionV2}.id`)
+                    .orWhere(`${TableName.SecretVersionV2}.type`, SecretType.Shared);
+                })
                 .where((resourceQb) => {
                   void resourceQb
                     .whereILike(`${TableName.SecretVersionV2}.key`, pattern)
@@ -517,8 +522,22 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       // tens of thousands of changes (a bulk import, a folder delete), and the caller only
       // needs the totals. Grouping caps this at one row per change kind per commit.
       const countRows = await trx(TableName.FolderCommitChanges)
-        .whereIn("folderCommitId", commitIds)
-        .groupBy("folderCommitId", "changeType", "isUpdate")
+        .leftJoin(
+          TableName.SecretVersionV2,
+          `${TableName.FolderCommitChanges}.secretVersionId`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .whereIn(`${TableName.FolderCommitChanges}.folderCommitId`, commitIds)
+        .where((qb) => {
+          void qb
+            .whereNull(`${TableName.SecretVersionV2}.id`)
+            .orWhere(`${TableName.SecretVersionV2}.type`, SecretType.Shared);
+        })
+        .groupBy(
+          `${TableName.FolderCommitChanges}.folderCommitId`,
+          `${TableName.FolderCommitChanges}.changeType`,
+          `${TableName.FolderCommitChanges}.isUpdate`
+        )
         .select<
           {
             folderCommitId: string;
@@ -529,11 +548,15 @@ export const folderCommitDALFactory = (db: TDbClient) => {
             totalCount: string;
           }[]
         >(
-          "folderCommitId",
-          "changeType",
-          "isUpdate",
-          trx.raw(`COUNT(*) FILTER (WHERE "secretVersionId" IS NOT NULL) AS "secretCount"`),
-          trx.raw(`COUNT(*) FILTER (WHERE "folderVersionId" IS NOT NULL) AS "folderCount"`),
+          `${TableName.FolderCommitChanges}.folderCommitId`,
+          `${TableName.FolderCommitChanges}.changeType`,
+          `${TableName.FolderCommitChanges}.isUpdate`,
+          trx.raw(`COUNT(*) FILTER (WHERE ?? IS NOT NULL) AS "secretCount"`, [
+            `${TableName.FolderCommitChanges}.secretVersionId`
+          ]),
+          trx.raw(`COUNT(*) FILTER (WHERE ?? IS NOT NULL) AS "folderCount"`, [
+            `${TableName.FolderCommitChanges}.folderVersionId`
+          ]),
           trx.raw(`COUNT(*) AS "totalCount"`)
         );
 
