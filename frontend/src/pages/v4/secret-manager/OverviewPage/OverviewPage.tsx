@@ -57,7 +57,7 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import type { TCreateDynamicSecretDTO } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import type { TProxiedServiceCredentialInput } from "@app/hooks/api/proxiedServices/types";
 import type { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
@@ -396,6 +396,7 @@ export const OverviewPage = () => {
           createHoneyToken.mutateAsync({
             projectId,
             type: HoneyTokenType.AWS,
+            config: { managedBy: HoneyTokenManagedBy.Organization },
             name: entry.name,
             description: entry.description || null,
             secretsMapping: honeyMapping(entry.mappedKeys),

@@ -8,7 +8,11 @@ import {
   DynamicSecretLeaseStatus,
   type TDynamicSecretLease
 } from "@app/hooks/api/dynamicSecretLease/types";
-import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import {
+  HoneyTokenManagedBy,
+  HoneyTokenStatus,
+  HoneyTokenType
+} from "@app/hooks/api/honeyTokens/enums";
 import type { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import {
@@ -295,6 +299,7 @@ const honeyToken = (
   createdAt: created,
   updatedAt: created,
   type: HoneyTokenType.AWS,
+  config: { managedBy: HoneyTokenManagedBy.Organization },
   secretsMapping: { accessKeyId: keys[0], secretAccessKey: keys[1] },
   environment: envOf(environment),
   folder: { path }
