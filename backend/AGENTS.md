@@ -1029,13 +1029,15 @@ itself whether the actor still reaches the org.
   live PAM sessions, across every project in the given orgs since those can exist in group-only projects.
   It runs in the caller's tx and hands back the PAM cancellation sender for after commit. Don't add another
   copy of that list.
-- **Removing a user from an org tears down synchronously; for an identity it depends on the path.** `deleteOrgMembershipsFn`
+- **Removing an actor from an org tears down synchronously.** `deleteOrgMembershipsFn`
   (org member removal, bulk removal, SCIM deprovision, the instance admin panel) drops the user's org rows in the sub-orgs, their
-  groups there and calls `revokeActorsInOrgs` for the org plus its sub-orgs in the same tx; its event only
-  lets the consumer confirm nothing's left. `membershipIdentityService.deleteMembership` just writes the
-  revocation marker and emits, so the consumer does all the project cleanup there. `identityService.deleteIdentity`
-  (the UI's "Remove From Sub-Organization") deletes the identity's rows in the org itself and emits anyway, like
-  `deleteOrgMembershipsFn`.
+  rows in groups those orgs own and calls `revokeActorsInOrgs` for the org plus its sub-orgs in the same tx; its event only
+  lets the consumer confirm nothing's left. Identities have one removal, `$removeIdentityFromOrg` in
+  `membership-identity-service.ts`, used by the org branch of `deleteMembership` and, through `removeIdentityFromOrg`,
+  by `identityService.deleteIdentity` (the UI's "Remove From Sub-Organization"). It takes `lockActorsForOrgAccess`, calls
+  `revokeActorsInOrgs` for the org and drops the identity's rows there, including those in the groups the org owns. It
+  only ever removes a root identity from a sub-org, so nothing is left for the consumer. In both cases only groups
+  the org owns: a root group linked into a sub-org belongs to the root, so it and the access it gives survive.
 - **The consumer (`org-access-reconcile`) rechecks against current state.** Orgs and actors come from the
   payload for group events, and from the org plus its sub-orgs for a membership removal. Per org it works in
   batches of 10 actors, each its own tx with `SET LOCAL statement_timeout` (30s) that locks the actors,
@@ -1314,6 +1316,13 @@ the same transaction. Keys are released on CA delete, on project hard delete, an
 fails after its key was made. AWS KMS schedules deletion with a 30-day window; HSM keeps its key. A
 failure is logged, never thrown, so the original outcome stands.
 
+### Cross-signed CA certificates and issued chains
+
+An internal CA holds at most one cross-signed certificate (`certificate_authority_cross_signed_certs`),
+managed by `ee/services/certificate-authority-cross-signed-cert/`. Every leaf issuance path builds its stored chain with `getIssuedCaCertChain` (`certificate-authority-fns.ts`),
+which swaps in the copy. Trust-anchor endpoints (CA certificate download, AIA, EST cacerts, SCEP GetCACert)
+keep using `getCaCertChain`, so they still return the self-signed CA.
+
 ### OIDC issuer (outbound workload identity federation)
 
 `services/oidc-issuer` signs short-lived JWTs that cloud providers exchange for access tokens, so a
@@ -1370,6 +1379,13 @@ EE routes register before community routes so they can override/extend endpoints
 - Fork PRs aren't scanned: they get a `skipped` check under the same name, unless the commit already has one of our checks (checks belong to the commit, so it would replace a real result).
 
 **Dynamic secret lease secrets needed at revoke time go in `dynamic_secret_leases.encryptedLeaseData`**, never in `externalEntityId` or `config` (both plaintext, and `externalEntityId` is returned by every lease route and logged in audit events). A provider opts in by listing the `create()` `data` keys in `persistedLeaseFields`; the lease service encrypts them with the project's SecretManager key and every revoke path passes them back as `metadata.leaseData`. Lease routes return `SanitizedDynamicSecretLeaseSchema` so the column never reaches a response. Secret *config* fields are listed separately in `DYNAMIC_SECRET_SECRET_FIELDS` (`providers/redact.ts`), as dotted paths so nested secrets work (`clientAuth.clientSecret`): reads strip them via `redactStoredInputs`, and an update that omits one keeps the stored value via `restoreOmittedSecretFields`, because the update merge is shallow.
+
+**Deleting a honey token row without revoking it leaks its AWS IAM user.** Revocation needs the project KMS
+key, so it must run before the project is gone (`honey-token-cleanup-service.ts`): folder and environment
+deletes leave a folderless row (`folderId` is `SET NULL`) that the `HoneyTokenCleanup` queue
+(`honey-token-cleanup-queue.ts`) reaps, and
+`deleteProject` and `deleteOrganizationById` revoke and mark the rows revoked before deleting, leaving the rows
+to the `projectId` cascade (so a failed delete leaves them, correctly marked revoked).
 
 **Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC
 transport over `@infisical/quic`, and `/api/v1/gateways`) is gone; `gateway-v2` and `gateway-pool` are the

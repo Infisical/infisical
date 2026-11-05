@@ -33,6 +33,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
+import { ClickHouseConnectionForm } from "./ClickHouseConnectionForm";
 import { Cloud66ConnectionForm } from "./Cloud66ConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { ConvexConnectionForm } from "./ConvexConnectionForm";
@@ -332,6 +333,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <RedisConnectionForm onSubmit={onSubmit} />;
       case AppConnection.MongoDB:
         return <MongoDBConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ClickHouse:
+        return <ClickHouseConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OctopusDeploy:
         return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Qovery:
@@ -655,6 +658,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <RedisConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.MongoDB:
         return <MongoDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.ClickHouse:
+        return <ClickHouseConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OctopusDeploy:
         return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Qovery:

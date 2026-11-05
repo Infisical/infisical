@@ -81,6 +81,17 @@ describe("lockActorsForOrgAccess", () => {
     expect((raws[1][1] as number[][])[0]).toHaveLength(ORG_ACCESS_LOCK_ESCALATION_THRESHOLD);
   });
 
+  test("locks one key for every spelling of an id, since postgres compares uuids case-insensitively", async () => {
+    const { tx, raws } = buildTx({ [ROOT_ORG_ID]: { rootOrgId: null } });
+
+    await dal.lockActorsForOrgAccess({ orgId: ROOT_ORG_ID, actorIds: ["  AbC-1 ", "abc-1"] }, tx);
+
+    expect(raws[1]).toEqual([
+      "SELECT pg_advisory_xact_lock(k) FROM unnest(?::int[]) AS k",
+      [[PgSqlLock.OrgAccessReconcile("abc-1")]]
+    ]);
+  });
+
   test("locks nothing for an empty set", async () => {
     const { tx, raws, tables } = buildTx({});
 

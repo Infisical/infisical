@@ -112,11 +112,11 @@ import {
 import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { DeletedProjectsTable } from "@app/pages/organization/ProjectsPage/components/DeletedProjectsTable";
 import {
   ProjectListToggle,
   ProjectListView
 } from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
+import { RecentlyDeletedProjects } from "@app/pages/organization/ProjectsPage/components/RecentlyDeletedProjects";
 
 import { ProjectSearchInput } from "./ProjectSearchInput";
 
@@ -415,9 +415,6 @@ const ProjectTypeContent = ({
           hideProjectListToggle={!canRequestAccess}
         />
       )}
-      {projectType === ProjectType.SecretManager && (
-        <DeletedProjectsTable projectType={projectType} />
-      )}
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
@@ -454,6 +451,7 @@ const MyProjectsForType = ({
 }: SubViewProps) => {
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
+  const [isDeletedProjectsExpanded, setIsDeletedProjectsExpanded] = useState(false);
   const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
     (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
   );
@@ -743,6 +741,13 @@ const MyProjectsForType = ({
                 </TableRow>
               );
             })}
+            <RecentlyDeletedProjects
+              projectType={projectType}
+              searchFilter={searchFilter}
+              layout="table-rows"
+              isExpanded={isDeletedProjectsExpanded}
+              onExpandedChange={setIsDeletedProjectsExpanded}
+            />
           </TableBody>
         </Table>
       );
@@ -789,6 +794,16 @@ const MyProjectsForType = ({
         isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
       {contentBody}
+      {/* In list view the projects table already holds the group, unless there is no table to join. */}
+      {!isProjectViewLoading && (projectsViewMode === ProjectsViewMode.GRID || !hasProjects) && (
+        <RecentlyDeletedProjects
+          projectType={projectType}
+          searchFilter={searchFilter}
+          layout={projectsViewMode === ProjectsViewMode.GRID ? "grid" : "table"}
+          isExpanded={isDeletedProjectsExpanded}
+          onExpandedChange={setIsDeletedProjectsExpanded}
+        />
+      )}
       {hasProjects && (
         <Pagination
           perPage={perPage}
@@ -816,6 +831,7 @@ const AllProjectsForType = ({
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
+  const [isDeletedProjectsExpanded, setIsDeletedProjectsExpanded] = useState(false);
 
   const {
     setPage,
@@ -1105,6 +1121,13 @@ const AllProjectsForType = ({
               </TableRow>
             );
           })}
+          <RecentlyDeletedProjects
+            projectType={projectType}
+            searchFilter={debouncedSearch}
+            layout="table-rows"
+            isExpanded={isDeletedProjectsExpanded}
+            onExpandedChange={setIsDeletedProjectsExpanded}
+          />
         </TableBody>
       </Table>
     );
@@ -1147,6 +1170,15 @@ const AllProjectsForType = ({
         isGridDisabled
       />
       {contentBody}
+      {isEmpty && (
+        <RecentlyDeletedProjects
+          projectType={projectType}
+          searchFilter={debouncedSearch}
+          layout="table"
+          isExpanded={isDeletedProjectsExpanded}
+          onExpandedChange={setIsDeletedProjectsExpanded}
+        />
+      )}
       {hasProjects && (
         <Pagination
           perPage={perPage}

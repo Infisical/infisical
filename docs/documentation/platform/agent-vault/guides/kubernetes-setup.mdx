@@ -347,7 +347,7 @@ echo "Run ID: $RUN_ID"
 SESSION=$(curl -fsS -X POST "$INFISICAL_URL/api/v1/agent-vault/sessions" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"accessBundles\": [\"<access-bundle-name>\"], \"ttl\": \"35m\", \"label\": \"kubernetes run $RUN_ID\"}")
+  -d "{\"accessBundle\": \"<access-bundle-name>\", \"ttl\": \"35m\", \"label\": \"kubernetes run $RUN_ID\"}")
 SESSION_ID=$(echo "$SESSION" | jq -r .session.id)
 
 cleanup() {

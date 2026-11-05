@@ -65,7 +65,7 @@ func TestUniversalAuth_Login(t *testing.T) {
 		tn := h.NewTenant(t)
 		sub := fixture.NewSubOrg(t, tn)
 		ua := newUA(t, tn, api.AttachUniversalAuthJSONRequestBody{})
-		linkIdentity(t, sub.Admin, ua.ID, "member")
+		sub.LinkIdentity(t, ua.ID, "member")
 
 		// Action
 		res := uaLogin(t, tn.Anonymous(t), ua.ClientID, ua.ClientSecret, sub.Slug)

@@ -344,7 +344,7 @@ export async function runAgent(prompt: string): Promise<string> {
   // the agent can't lose access mid-run.
   const { session } = await infisical("/api/v1/agent-vault/sessions", {
     token: accessToken,
-    body: { accessBundles: [ACCESS_BUNDLE], ttl: "20m" },
+    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" },
   });
 
   let sandbox: Sandbox | undefined;
@@ -499,8 +499,8 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 		} `json:"session"`
 	}
 	err = infisical(ctx, "/api/v1/agent-vault/sessions", login.AccessToken, map[string]any{
-		"accessBundles": []string{accessBundle},
-		"ttl":           "20m",
+		"accessBundle": accessBundle,
+		"ttl":          "20m",
 	}, &created)
 	if err != nil {
 		return "", err

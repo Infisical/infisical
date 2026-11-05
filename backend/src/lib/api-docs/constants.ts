@@ -667,7 +667,7 @@ export const KUBERNETES_AUTH = {
     verifyTlsCertificate:
       "Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and the resulting effective CA must be empty. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.",
     tokenReviewerJwt:
-      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
+      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token replaces the stored one and is used to validate service account tokens during authentication. Omit it, or send an empty string, to keep the stored JWT. Set it to null to remove the stored JWT; the client's own JWT is then used instead, which requires the client to have the system:auth-delegator ClusterRole binding. A stored JWT cannot be read back, so it must be supplied again when changing the host, gateway, gateway pool, CA certificate, or TLS verification.",
     tokenReviewMode:
       "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
@@ -686,6 +686,11 @@ export const KUBERNETES_AUTH = {
   },
   REVOKE: {
     identityId: "The ID of the machine identity to revoke the auth method for."
+  },
+  RESPONSE: {
+    tokenReviewerJwt:
+      "Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.",
+    hasTokenReviewerJwt: "Whether a token reviewer JWT is stored."
   }
 } as const;
 
@@ -2280,6 +2285,8 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   GET_CSR: {
     caId: "The ID of the CA to generate CSR from.",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the chain. Use -1 for no limit. A CA that already has a path length always keeps it.",
     csr: "The generated CSR from the CA."
   },
   RENEW_CA_CERT: {
@@ -2334,6 +2341,30 @@ export const CERTIFICATE_AUTHORITIES = {
     caId: "The ID of the CA to import the certificate for.",
     certificate: "The certificate body to import.",
     certificateChain: "The certificate chain to import."
+  },
+  IMPORT_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to import the cross-signed certificate for.",
+    certificate:
+      "The PEM-encoded cross-signed certificate: the CA's certificate signed by the old CA as a CA certificate. It must have the same subject, public key, and subject key identifier as the CA.",
+    certificateChain:
+      "The PEM-encoded certificates of the old CA, in order: start with the CA that signed the cross-signed certificate and end with its root. When the old root signed it directly, this is the old root's certificate."
+  },
+  GET_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to get the cross-signed certificate for."
+  },
+  DELETE_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to remove the cross-signed certificate from."
+  },
+  CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA the cross-signed certificate belongs to.",
+    certificate: "The PEM-encoded cross-signed certificate.",
+    certificateChain:
+      "The PEM-encoded certificates of the old CA, from the one that signed the cross-signed certificate up to its root.",
+    issuer: "The distinguished name of the CA that signed the cross-signed certificate.",
+    serialNumber: "The serial number of the cross-signed certificate.",
+    notBefore: "The date and time the cross-signed certificate becomes valid.",
+    notAfter:
+      "The date and time the cross-signed certificate expires. After this, new certificates no longer include it in their chain."
   },
   ISSUE_CERT: {
     caId: "The ID of the CA to issue the certificate from.",
@@ -3342,11 +3373,13 @@ export const AppConnections = {
     },
     OVH: {
       privateKey:
-        "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
+        "The PEM-encoded private key issued by OVHcloud KMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
       certificate:
-        "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
-      okmsDomain: "The OKMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
-      okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
+        "The PEM-encoded public certificate issued by OVHcloud KMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
+      okmsDomain: "The OVHcloud KMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
+      okmsId:
+        "The OVHcloud KMS instance identifier from the OVH Control Panel, used as a path segment in all API calls.",
+      token: "The access token used to authenticate to the OVHcloud KMS REST API"
     },
     SNOWFLAKE: {
       account: "The Snowflake account identifier (e.g., xy12345.us-east-1).",
@@ -3611,7 +3644,7 @@ export const SecretSyncs = {
       path: "The Hashicorp Vault path to sync secrets to."
     },
     OVH: {
-      path: "The path in OVH OKMS where secrets will be stored as key/value pairs."
+      path: "The path in OVHcloud KMS where secrets will be stored as key/value pairs."
     },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
@@ -4089,6 +4122,10 @@ export const SecretRotations = {
     GCP_SERVICE_ACCOUNT_KEY: {
       serviceAccountKey:
         "The name of the secret that the rotated service account key (the JSON key file) will be mapped to."
+    },
+    CLICKHOUSE_CREDENTIALS: {
+      username: "The name of the secret that the active username will be mapped to.",
+      password: "The name of the secret that the generated password will be mapped to."
     }
   }
 };
@@ -5002,8 +5039,9 @@ export const AGENT_VAULT = {
 
   SESSION: {
     sessionId: "The ID of the session.",
-    accessBundles:
-      "The access bundle this session carries, by name. A list that accepts one name at most. Leave it out to start a session with services of its own only.",
+    accessBundle:
+      "The name of the access bundle this session carries. Leave it out to start a session with services of its own only.",
+    accessBundleRead: "The access bundle this session carries. Null for a session with services of its own only.",
     inlineServices:
       "Services this session carries itself, alongside its access bundle's or without one. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
@@ -5179,4 +5217,23 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   optionsSearch: "Filters the values by this text.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
+};
+
+export const HONEY_TOKENS = {
+  CONFIG: {
+    config: "Settings that depend on the honey token's type.",
+    managedBy:
+      "Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating."
+  }
+};
+
+export const AWS_HONEY_TOKENS = {
+  LIST_DEPLOYMENT_OPTIONS: {
+    deploymentOptions:
+      "The AWS accounts a honey token can be created in, and whether each one can be used now. Send the chosen `managedBy` as `config.managedBy` when creating the honey token.",
+    managedBy:
+      "Who manages the AWS account. `instance` is the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud). `organization` is the AWS account your organization connected in Organization Settings.",
+    unavailableReason:
+      "Why this AWS account cannot be used now, or null when it can. For `instance`: `instance-not-configured` means the instance has no managed signing key, `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set, and `invalid-role-arn` means the managed role ARN is not an IAM role ARN. For `organization`: `account-not-connected` means your organization has not connected an AWS account, and `stack-verification-pending` means the CloudFormation stack is not verified yet."
+  }
 };
