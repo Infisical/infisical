@@ -54,6 +54,7 @@ export const AgentVaultSetupQuestions = () => {
     hermes: { light: "hermes.png", dark: "hermes.on-dark.png" },
     opencode: { light: "opencode.svg", dark: "opencode.on-dark.svg" },
     openclaw: { dark: "openclaw.svg" },
+    cursor: { light: "cursor.svg" },
   };
 
   const BUILDS = [
@@ -81,7 +82,7 @@ export const AgentVaultSetupQuestions = () => {
     { id: "server", label: "A server or VM", example: "Such as a dev box, a cloud VM, or a home server." },
     { id: "container", label: "A container", example: "Such as a Docker container or a dev container." },
     { id: "kubernetes", label: "Kubernetes", example: "A pod in your own cluster." },
-    { id: "sandbox", label: "A managed sandbox", example: "Such as Modal or Daytona." },
+    { id: "sandbox", label: "A managed sandbox", example: "Such as Modal, Daytona, or E2B." },
     { id: "ci", label: "A CI runner", example: "Such as a GitHub Actions job." },
   ];
 
@@ -90,6 +91,7 @@ export const AgentVaultSetupQuestions = () => {
     sandbox: [
       { light: "agent-vault-agents/modal.svg" },
       { light: "agent-vault-agents/daytona.svg", invertDark: true },
+      { light: "agent-vault-agents/e2b.svg" },
     ],
     kubernetes: [{ light: "stack/kubernetes.png" }],
     container: [{ light: "agent-vault-agents/docker.svg" }],
@@ -102,6 +104,7 @@ export const AgentVaultSetupQuestions = () => {
     { id: "opencode", label: "OpenCode" },
     { id: "hermes", label: "Hermes Agent" },
     { id: "openclaw", label: "OpenClaw" },
+    { id: "cursor", label: "Cursor Cloud Agents" },
     { id: "custom", label: "Your own agent" },
   ];
 
@@ -314,7 +317,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
 
   const SELECTION_EVENT = "av-setup-selection-change";
 
-  const AGENT_IDS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
+  const AGENT_IDS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "cursor", "custom"];
 
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
@@ -777,6 +780,7 @@ export const AgentVaultSetupSummary = () => {
     opencode: "OpenCode",
     hermes: "Hermes Agent",
     openclaw: "OpenClaw",
+    cursor: "Cursor Cloud Agents",
     custom: "your own agent",
   };
 
@@ -841,7 +845,7 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
     platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server"] },
   };
-  const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
+  const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "cursor", "custom"];
 
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
