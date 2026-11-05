@@ -61,7 +61,7 @@ export const AgentVaultSetupQuestions = () => {
       id: "platform",
       label: "A service that starts agents for tasks",
       example: "Your own code, such as a Slack bot or a backend service, that starts a new agent for each task.",
-      runs: ["sandbox", "kubernetes", "container", "server", "cursor"],
+      runs: ["sandbox", "e2b", "kubernetes", "container", "server", "cursor"],
     },
     {
       id: "scheduled",
@@ -81,7 +81,8 @@ export const AgentVaultSetupQuestions = () => {
     { id: "server", label: "A server or VM", example: "Such as a dev box, a cloud VM, or a home server." },
     { id: "container", label: "A container", example: "Such as a Docker container or a dev container." },
     { id: "kubernetes", label: "Kubernetes", example: "A pod in your own cluster." },
-    { id: "sandbox", label: "A managed sandbox", example: "Such as Modal, Daytona, or E2B." },
+    { id: "sandbox", label: "A managed sandbox", example: "Such as Modal or Daytona." },
+    { id: "e2b", label: "E2B sandboxes", example: "Sandboxes that send their traffic to one shared proxy." },
     { id: "ci", label: "A CI runner", example: "Such as a GitHub Actions job." },
     { id: "cursor", label: "Cursor Cloud Agents", example: "Cursor runs the agent, and its commands run on your Kubernetes cluster." },
   ];
@@ -93,8 +94,8 @@ export const AgentVaultSetupQuestions = () => {
     sandbox: [
       { light: "agent-vault-agents/modal.svg" },
       { light: "agent-vault-agents/daytona.svg", invertDark: true },
-      { light: "agent-vault-agents/e2b.svg" },
     ],
+    e2b: [{ light: "agent-vault-agents/e2b.svg" }],
     kubernetes: [{ light: "stack/kubernetes.png" }],
     container: [{ light: "agent-vault-agents/docker.svg" }],
     ci: [{ light: "agent-vault-templates/GitHub.on-light.png", dark: "agent-vault-templates/GitHub.png" }],
@@ -302,13 +303,14 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const RULES = {
     personal: { model: "user", runs: ["server", "container"] },
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server", "cursor"] },
+    platform: { model: "orchestrator", runs: ["sandbox", "e2b", "kubernetes", "container", "server", "cursor"] },
   };
   const HOSTS = {
     server: "Server or VM",
     container: "Container",
     kubernetes: "Kubernetes pod",
     sandbox: "Managed sandbox",
+    e2b: "E2B sandbox",
     ci: "CI runner",
     cursor: "Cursor worker pod",
   };
@@ -782,13 +784,14 @@ export const AgentVaultSetupSummary = () => {
   const RUNS = {
     personal: ["server", "container"],
     scheduled: ["server", "container", "ci"],
-    platform: ["sandbox", "kubernetes", "container", "server", "cursor"],
+    platform: ["sandbox", "e2b", "kubernetes", "container", "server", "cursor"],
   };
   const PLACES = {
     server: "on a server or VM",
     container: "in a container",
     kubernetes: "on Kubernetes",
     sandbox: "in a managed sandbox",
+    e2b: "in E2B sandboxes",
     ci: "in a CI runner",
   };
   const AGENTS = {
@@ -863,7 +866,7 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
   const RULES = {
     personal: { model: "user", runs: ["server", "container"] },
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server", "cursor"] },
+    platform: { model: "orchestrator", runs: ["sandbox", "e2b", "kubernetes", "container", "server", "cursor"] },
   };
   const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 
