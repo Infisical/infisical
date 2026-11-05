@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format, formatDistanceToNowStrict } from "date-fns";
 
 import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
@@ -12,7 +12,13 @@ import {
 } from "@app/components/v4/ui/data-table";
 import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyState,
+  EmptyTitle
+} from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
@@ -20,6 +26,13 @@ import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
 import { RowLink } from "@app/components/v4/ui/row-link";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v4/ui/sheet";
 import { Meta, StatusText } from "@app/components/v4/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
@@ -144,6 +157,9 @@ const Expiry = ({ session }: { session: TAgentVaultSession }) => {
 const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
   const agentVault = useV4Adapter("agentVault");
   const navigate = useNavigate();
+  const { sessionId } = useSearch({ from: route });
+  const setSessionId = (next: string | undefined) =>
+    navigate({ to: route, params: { orgId }, search: (prev) => ({ ...prev, sessionId: next }) });
   const { data: permission } = agentVault.useProjectPermission({ projectId });
   const isAdmin = Boolean(
     permission?.memberships.some((membership) =>
@@ -204,8 +220,9 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       text: (row) => row.label ?? "",
       render: (row) => (
         <RowLink
-          to="/v4/organizations/$orgId/$"
-          params={{ orgId, _splat: `agent-vault/sessions/${row.id}` }}
+          to={route}
+          params={{ orgId }}
+          search={(prev) => ({ ...prev, sessionId: row.id })}
           title={row.label ?? undefined}
           style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
         >
@@ -261,7 +278,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       {
         label: (row) => `View session logs for ${row.label ?? displayName(row.actor)}`,
         icon: "history",
-        onSelect: (row) => openPlaceholder(`agent-vault/sessions/${row.id}/logs`)
+        onSelect: (row) => setSessionId(row.id)
       }
     ],
     menuLabel: "Session options",
@@ -444,6 +461,26 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             ) : undefined
           }
         />
+        <Sheet open={Boolean(sessionId)} onOpenChange={(open) => !open && setSessionId(undefined)}>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>
+                {sessions.find((session) => session.id === sessionId)?.label ?? sessionId}
+              </SheetTitle>
+            </SheetHeader>
+            <SheetBody>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>This page isn&apos;t in v4 yet</EmptyTitle>
+                  <EmptyDescription>
+                    {`/organizations/${orgId}/agent-vault/sessions?sessionId=${sessionId}`}{" "}
+                    hasn&apos;t been ported to the new app. The demo shows the pages that have.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            </SheetBody>
+          </SheetContent>
+        </Sheet>
       </Stack>
     </TooltipProvider>
   );
