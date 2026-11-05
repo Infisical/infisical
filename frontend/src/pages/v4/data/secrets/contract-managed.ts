@@ -1,5 +1,6 @@
 import type { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
+import type { TAwsHoneyTokenDeploymentOption } from "@app/hooks/api/honeyToken/types";
 import type {
   TCreateHoneyTokenDTO,
   TCreateHoneyTokenResponse,
@@ -44,6 +45,9 @@ export type SecretsManagedAdapter = {
     projectId: string;
     enabled?: boolean;
   }) => V4QueryResult<Record<string, string>>;
+  useHoneyTokenDeploymentOptions: (options?: {
+    refetchOnWindowFocus?: "always";
+  }) => V4QueryResult<TAwsHoneyTokenDeploymentOption[]> & { refetch: () => unknown };
   useCreateHoneyToken: V4Mutation<TCreateHoneyTokenDTO, TCreateHoneyTokenResponse>;
   useUpdateHoneyToken: V4Mutation<TUpdateHoneyTokenDTO>;
   useResetHoneyToken: V4Mutation<TRevokeHoneyTokenDTO>;

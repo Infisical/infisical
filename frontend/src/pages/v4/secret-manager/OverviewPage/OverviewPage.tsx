@@ -396,7 +396,7 @@ export const OverviewPage = () => {
           createHoneyToken.mutateAsync({
             projectId,
             type: HoneyTokenType.AWS,
-            config: { managedBy: HoneyTokenManagedBy.Organization },
+            config: { managedBy: entry.managedBy ?? HoneyTokenManagedBy.Organization },
             name: entry.name,
             description: entry.description || null,
             secretsMapping: honeyMapping(entry.mappedKeys),

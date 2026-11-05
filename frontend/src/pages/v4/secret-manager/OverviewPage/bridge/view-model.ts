@@ -240,6 +240,7 @@ export const buildResources = ({
       id: entry.id,
       name: entry.name,
       provider: HONEY_TOKEN_MAP[entry.type]?.name ?? entry.type,
+      managedBy: entry.config?.managedBy,
       status: honeyStatusOf(entry.status),
       description: entry.description ?? "",
       mappedKeys: Object.values(entry.secretsMapping),

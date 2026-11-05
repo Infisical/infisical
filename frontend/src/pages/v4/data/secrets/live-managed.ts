@@ -1,4 +1,5 @@
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
+import { useListAwsHoneyTokenDeploymentOptions } from "@app/hooks/api/honeyToken/queries";
 import {
   useCreateHoneyToken,
   useResetHoneyToken,
@@ -34,6 +35,7 @@ export const secretsManagedLive: SecretsManagedAdapter = {
   useReconcileSecretRotation: useReconcileLocalAccountRotation,
   useCheckSecretRotationCredentials: useCheckSecretRotationV2Credentials,
   useHoneyTokenCredentials: useGetHoneyTokenCredentials,
+  useHoneyTokenDeploymentOptions: useListAwsHoneyTokenDeploymentOptions,
   useCreateHoneyToken,
   useUpdateHoneyToken,
   useResetHoneyToken,
