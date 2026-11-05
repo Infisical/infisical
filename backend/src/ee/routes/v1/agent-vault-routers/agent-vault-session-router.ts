@@ -173,7 +173,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
-        req.permission.orgId,
+        actorContext(req),
         req.params.sessionId
       );
       return server.services.agentVaultSession.getSessionById({
@@ -393,7 +393,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
-        req.permission.orgId,
+        actorContext(req),
         req.params.sessionId
       );
       const { session, previousLabel } = await server.services.agentVaultSession.updateSessionLabel({
@@ -439,7 +439,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
-        req.permission.orgId,
+        actorContext(req),
         req.params.sessionId
       );
       const { session, revokedNow } = await server.services.agentVaultSession.revokeSession({

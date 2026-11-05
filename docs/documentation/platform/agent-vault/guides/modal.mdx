@@ -51,7 +51,7 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Modal](https://modal.com) account, with a [Modal token](https://modal.com/docs/reference/cli/token) on the machine that runs your code (run `modal setup`, or set `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`)
 - The Modal SDK for your language: the [`modal`](https://pypi.org/project/modal/) package for Python, the [`modal`](https://www.npmjs.com/package/modal) package for TypeScript, or the [Modal Go SDK](https://pkg.go.dev/github.com/modal-labs/modal-client/go)
-- For Python, the [Infisical Python SDK](/sdks/languages/python) and the [`requests`](https://pypi.org/project/requests/) package
+- For Python, the [Infisical Python SDK](/sdks/languages/python), and for TypeScript, the [Infisical Node.js SDK](/sdks/languages/node)
 
 ## Step 1: Set up Agent Vault
 
@@ -187,7 +187,6 @@ This function runs one prompt in a new sandbox. At the top, replace `<project-id
 import os
 
 import modal
-import requests
 from infisical_sdk import InfisicalSDKClient
 
 from sandbox_image import app, image
@@ -232,16 +231,9 @@ def run_agent(prompt: str) -> str:
 
     # One session per run. The ttl outlasts the sandbox's 15-minute timeout, so
     # the agent can't lose access mid-run.
-    # The Python SDK can't choose an Agent Vault project yet, so this request
-    # calls the API directly with the SDK's access token.
-    created = requests.post(
-        f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
-        headers={"Authorization": f"Bearer {infisical.get_token()}"},
-        json={"projectId": PROJECT_ID, "accessBundle": ACCESS_BUNDLE, "ttl": "20m"},
-        timeout=30,
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
     )
-    created.raise_for_status()
-    session = created.json()["session"]
 
     sandbox = None
     try:
@@ -279,7 +271,7 @@ def run_agent(prompt: str) -> str:
         )
         # Modal shows each command's arguments in its dashboard, so the token
         # and the prompt go on stdin instead.
-        agent.stdin.write(session["token"] + "\n" + prompt)
+        agent.stdin.write(session.token + "\n" + prompt)
         agent.stdin.write_eof()
         agent.stdin.drain()
         output = agent.stdout.read()
@@ -289,7 +281,7 @@ def run_agent(prompt: str) -> str:
     finally:
         # Revoke first, so the session ends even if terminating fails.
         try:
-            infisical.agent_vault.sessions.revoke(session_id=session["id"])
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
         finally:
             if sandbox:
                 sandbox.terminate()
@@ -297,6 +289,7 @@ def run_agent(prompt: str) -> str:
 
 ```typescript TypeScript expandable
 // runAgent.ts
+import { InfisicalSDK } from "@infisical/sdk";
 import type { Sandbox } from "modal";
 
 import { app, image, modal } from "./sandboxImage.js";
@@ -329,34 +322,20 @@ const AGENT_ENV = {
   DISABLE_AUTOUPDATER: "1",
 };
 
-async function infisical(path: string, { token, body }: { token?: string; body?: unknown } = {}) {
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const response = await fetch(`${INFISICAL_URL}${path}`, {
-    method: "POST",
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) throw new Error(`Infisical returned ${response.status}: ${await response.text()}`);
-  return response.json();
-}
-
 export async function runAgent(prompt: string): Promise<string> {
   // The machine identity's credentials stay here and never enter the sandbox.
-  const { accessToken } = await infisical("/api/v1/auth/universal-auth/login", {
-    body: {
-      clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID,
-      clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET,
-    },
+  const infisical = new InfisicalSDK({ siteUrl: INFISICAL_URL });
+  await infisical.auth().universalAuth.login({
+    clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID!,
+    clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET!,
   });
 
   // One session per run. The ttl outlasts the sandbox's 15-minute timeout, so
   // the agent can't lose access mid-run.
-  const { session } = await infisical("/api/v1/agent-vault/sessions", {
-    token: accessToken,
-    body: { projectId: PROJECT_ID, accessBundle: ACCESS_BUNDLE, ttl: "20m" },
+  const session = await infisical.agentVault().sessions.create({
+    projectId: PROJECT_ID,
+    accessBundle: ACCESS_BUNDLE,
+    ttl: "20m",
   });
 
   let sandbox: Sandbox | undefined;
@@ -399,7 +378,7 @@ export async function runAgent(prompt: string): Promise<string> {
   } finally {
     // Revoke first, so the session ends even if terminating fails.
     try {
-      await infisical(`/api/v1/agent-vault/sessions/${session.id}/revoke`, { token: accessToken });
+      await infisical.agentVault().sessions.revoke(session.id);
     } finally {
       await sandbox?.terminate();
     }

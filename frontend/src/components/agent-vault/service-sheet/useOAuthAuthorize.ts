@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
-import { useProject } from "@app/context";
 import {
   AgentVaultOauthAuthorizationStatus,
   isTerminalOauthAuthorizationError,
@@ -35,8 +34,7 @@ export const useOAuthAuthorize = ({
 }: {
   onAuthorized: (authorization: TAgentVaultOauthAuthorization) => void;
 }) => {
-  const { projectId } = useProject();
-  const createAuthorization = useCreateAgentVaultOauthAuthorization(projectId);
+  const createAuthorization = useCreateAgentVaultOauthAuthorization();
   const [state, setState] = useState<TOAuthAuthorizeState>({ status: "idle" });
   const [isClientRequired, setIsClientRequired] = useState(false);
   const [redirectUri, setRedirectUri] = useState<string | null>(null);

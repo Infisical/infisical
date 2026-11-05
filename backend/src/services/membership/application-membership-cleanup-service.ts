@@ -1,20 +1,18 @@
 import { Knex } from "knex";
 
-import { ProjectType, RESOURCE_SCOPE } from "@app/db/schemas";
+import { RESOURCE_SCOPE } from "@app/db/schemas";
 import {
-  clearPersonalValuesAfterRevoke,
-  TClearPersonalValuesDeps
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
 } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TMembershipDALFactory } from "./membership-dal";
 
-type TApplicationMembershipCleanupServiceFactoryDep = TClearPersonalValuesDeps & {
+type TApplicationMembershipCleanupServiceFactoryDep = TClearPersonalValuesInProjectsDeps & {
   membershipDAL: Pick<TMembershipDALFactory, "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectTypesByIds">;
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
     "deleteStepApproversBySubject" | "deleteUserStepApproversInProjects" | "deleteUserBypassersInProjects"
@@ -28,45 +26,23 @@ const ORG_EXIT_APPROVAL_SCOPES = [...APPLICATION_APPROVAL_SCOPES, ApprovalPolicy
 
 export const applicationMembershipCleanupServiceFactory = ({
   membershipDAL,
-  projectDAL,
   approvalPolicyDAL,
   agentVaultPersonalValueDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL
 }: TApplicationMembershipCleanupServiceFactoryDep) => {
-  // Includes projects pending deletion, so restoring one can't bring back a removed actor's saved values.
-  const findAgentVaultProjectIds = async (projectIds: string[], tx: Knex) => {
-    if (!projectIds.length) return [];
-    const projects = await projectDAL.findProjectTypesByIds(projectIds, tx);
-    // Sorted so concurrent cleanups across several projects take the per-project advisory locks in one order.
-    return projects
-      .filter((project) => project.type === ProjectType.AgentVault)
-      .map((project) => project.id)
-      .sort();
-  };
-
   // Runs after the actor's project membership and grants are deleted, since the clear keeps the values of anyone who
-  // still holds a grant or a project admin role.
-  const clearAgentVaultPersonalValues = async (
-    {
-      projectIds,
-      userIds = [],
-      identityIds = [],
-      groupIds = []
-    }: { projectIds: string[]; userIds?: string[]; identityIds?: string[]; groupIds?: string[] },
+  // still holds a grant or a project admin role. Values only exist in Agent Vault projects, so other project ids
+  // find nothing.
+  const clearAgentVaultPersonalValues = (
+    args: { projectIds: string[]; userIds?: string[]; identityIds?: string[]; groupIds?: string[] },
     tx: Knex
-  ) => {
-    if (!userIds.length && !identityIds.length && !groupIds.length) return;
-    const agentVaultProjectIds = await findAgentVaultProjectIds(projectIds, tx);
-    for (const projectId of agentVaultProjectIds) {
-      // eslint-disable-next-line no-await-in-loop
-      await clearPersonalValuesAfterRevoke(
-        { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
-        { projectId, userIds, identityIds, groupIds },
-        tx
-      );
-    }
-  };
+  ) =>
+    clearPersonalValuesInProjects(
+      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+      args,
+      tx
+    );
 
   const cleanupActorApplicationMemberships = async (
     {

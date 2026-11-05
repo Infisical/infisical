@@ -211,7 +211,10 @@ export const AppConnectionRow = ({
                   params: {
                     orgId: currentOrg?.id || "",
                     projectId: project.id
-                  }
+                  },
+                  ...(project.type === ProjectType.AgentVault && {
+                    search: { selectedTab: "tab-session-logs" }
+                  })
                 } as never))}
               className="underline"
             >

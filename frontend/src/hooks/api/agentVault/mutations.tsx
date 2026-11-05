@@ -630,14 +630,14 @@ export const useRevealAgentVaultVariableValue = () =>
     }
   });
 
-export const useCreateAgentVaultOauthAuthorization = (projectId: string) =>
+export const useCreateAgentVaultOauthAuthorization = () =>
   useMutation({
     // The Authorize card shows every failure in place, discovery and registration ones naming the server.
     meta: { skipErrorToast: true },
     mutationFn: async (params: TCreateAgentVaultOauthAuthorizationDTO) => {
       const { data } = await apiRequest.post<TCreateAgentVaultOauthAuthorizationResponse>(
         "/api/v1/agent-vault/oauth/authorizations",
-        { ...params, projectId }
+        params
       );
       return data;
     }

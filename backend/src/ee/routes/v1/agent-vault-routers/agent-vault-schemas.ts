@@ -1084,4 +1084,11 @@ export const AgentVaultBundleSkillSchema = z.object({
   latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion)
 });
 
-export const AgentVaultProjectIdSchema = z.string().uuid().optional().describe(AGENT_VAULT.projectId);
+export const AgentVaultProjectIdSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(36)
+  .optional()
+  .describe(AGENT_VAULT.projectId);

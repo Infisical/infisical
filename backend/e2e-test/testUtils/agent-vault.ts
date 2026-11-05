@@ -2,8 +2,7 @@ import { ProjectType } from "@app/db/schemas";
 
 type TMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-// Every spec shares the seeded org, and a request without projectId falls back to the org's oldest Agent Vault
-// project, so delete each one a spec creates.
+// Every spec shares the seeded org, so delete each project a spec creates.
 export const createAgentVaultProject = async (dto: { authToken: string; name: string }) => {
   const res = await testServer.inject({
     method: "POST",
@@ -24,6 +23,16 @@ export const deleteAgentVaultProject = async (dto: { authToken: string; projectI
   expect(res.statusCode, res.payload).toBe(200);
 };
 
+// A request without projectId goes to the org's project marked isAgentVaultOriginal. Production gets the mark from a
+// migration, which ran before any project here existed, so a spec marks the project it wants that request to reach.
+// The column has no API, which is why this writes the row.
+export const markAgentVaultProjectOriginal = async (dto: { orgId: string; projectId: string }) => {
+  await testDb("projects")
+    .where({ orgId: dto.orgId, type: ProjectType.AgentVault })
+    .update({ isAgentVaultOriginal: false });
+  await testDb("projects").where({ id: dto.projectId }).update({ isAgentVaultOriginal: true });
+};
+
 // The routes that act on a whole project rather than on one row, so they name the project themselves.
 const PROJECT_LEVEL_PATHS = new Set([
   "/api/v1/agent-vault/access-bundles",
@@ -35,8 +44,7 @@ const PROJECT_LEVEL_PATHS = new Set([
   "/api/v1/agent-vault/members/available",
   "/api/v1/agent-vault/settings/session-logs",
   "/api/v1/agent-vault/settings/session-logs/health",
-  "/api/v1/agent-vault/settings/session-logs/cors-probe",
-  "/api/v1/agent-vault/oauth/authorizations"
+  "/api/v1/agent-vault/settings/session-logs/cors-probe"
 ]);
 
 // Session log settings and delegations take the project in the query string on every method. A delegation is

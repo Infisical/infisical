@@ -44,7 +44,7 @@ const sessionOwnerActor = (
     ? { type: ActorType.USER, metadata: { userId: session.userId, ...ownerUser } }
     : { type: ActorType.IDENTITY, metadata: { identityId: session.identityId!, name: session.actorName } };
 
-export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodProvider) => {
+export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodProvider) => {
   // Authenticated by the session token alone, which inject-identity skips for this path: the CLI holds no
   // other credential when it starts an agent from a `--session-token`.
   server.route({

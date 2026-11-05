@@ -113,7 +113,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
-        req.permission.orgId,
+        actorContext(req),
         req.params.proxyId
       );
       return server.services.agentVaultProxy.getProxyCa({
@@ -215,7 +215,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
-        req.permission.orgId,
+        actorContext(req),
         req.params.proxyId
       );
       const proxy = await server.services.agentVaultProxy.updateProxy({
@@ -272,7 +272,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
-        req.permission.orgId,
+        actorContext(req),
         req.params.proxyId
       );
       const proxy = await server.services.agentVaultProxy.deleteProxy({
@@ -313,7 +313,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
-        req.permission.orgId,
+        actorContext(req),
         req.params.proxyId
       );
       const { proxy, proxyToken } = await server.services.agentVaultProxy.rotateProxyToken({
@@ -362,7 +362,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
-        req.permission.orgId,
+        actorContext(req),
         req.params.proxyId
       );
       const proxy = await server.services.agentVaultProxy.revokeProxyAccess({

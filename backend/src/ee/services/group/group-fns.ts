@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { clearPersonalValuesInProjects } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -415,6 +416,8 @@ export const removeUsersFromGroupByUserIds = async ({
   actorId,
   userDAL,
   userGroupMembershipDAL,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL,
   projectKeyDAL,
   additionalPrivilegeDAL,
   tx: outerTx,
@@ -612,6 +615,13 @@ export const removeUsersFromGroupByUserIds = async ({
       );
     }
 
+    // After the group rows are gone, so the clear keeps only the values of users who still hold the bundle another way.
+    await clearPersonalValuesInProjects(
+      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+      { projectIds, userIds: foundMembers.map((m) => m.id) },
+      tx
+    );
+
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
     await emitGroupMembershipRemoved(
@@ -665,6 +675,8 @@ export const removeIdentitiesFromGroup = async ({
   membershipDAL,
   groupDAL,
   identityGroupMembershipDAL,
+  userGroupMembershipDAL,
+  agentVaultPersonalValueDAL,
   additionalPrivilegeDAL,
   usageMeteringService,
   eventEmitter,
@@ -764,6 +776,14 @@ export const removeIdentitiesFromGroup = async ({
           identityId: identityIdsArray
         }
       },
+      tx
+    );
+
+    // After the group rows are gone, so the clear keeps only the values of identities who still hold the bundle
+    // another way.
+    await clearPersonalValuesInProjects(
+      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+      { projectIds, identityIds: identityIdsArray },
       tx
     );
 

@@ -1014,7 +1014,6 @@ export const registerRoutes = async (
 
   const applicationMembershipCleanupService = applicationMembershipCleanupServiceFactory({
     membershipDAL,
-    projectDAL,
     approvalPolicyDAL,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
@@ -1480,7 +1479,8 @@ export const registerRoutes = async (
     membershipGroupService,
     pamAccountDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    agentVaultPersonalValueDAL
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1572,7 +1572,8 @@ export const registerRoutes = async (
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service,
     eventEmitter: eventOutboxService,
-    pamAccountDAL
+    pamAccountDAL,
+    agentVaultPersonalValueDAL
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -1709,7 +1710,9 @@ export const registerRoutes = async (
     keyStore,
     pamAccountDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1741,7 +1744,9 @@ export const registerRoutes = async (
     eventEmitter: eventOutboxService,
     pamAccountDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -2211,7 +2216,8 @@ export const registerRoutes = async (
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
     db,
-    keyStore
+    keyStore,
+    permissionService
   });
 
   const agentVaultMembershipService = agentVaultMembershipServiceFactory({
@@ -3352,7 +3358,9 @@ export const registerRoutes = async (
     eventEmitter: eventOutboxService,
     pamAccountDAL,
     pamSessionDAL,
-    gatewayV2Service
+    gatewayV2Service,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
   });
 
   const userActivationService = userActivationServiceFactory({

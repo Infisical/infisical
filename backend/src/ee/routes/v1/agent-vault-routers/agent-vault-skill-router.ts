@@ -143,7 +143,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
-        req.permission.orgId,
+        actorContext(req),
         req.params.skillId
       );
       const { skill, version } = await server.services.agentVaultSkill.getSkill({
@@ -190,7 +190,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
-        req.permission.orgId,
+        actorContext(req),
         req.params.skillId
       );
       const { skill, version, unchanged, previousName } = await server.services.agentVaultSkill.updateSkill({
@@ -255,7 +255,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
-        req.permission.orgId,
+        actorContext(req),
         req.params.skillId
       );
       const { skill, removedFromBundles } = await server.services.agentVaultSkill.deleteSkill({
@@ -302,7 +302,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
-        req.permission.orgId,
+        actorContext(req),
         req.params.skillId
       );
       return server.services.agentVaultSkill.listVersions({
@@ -329,7 +329,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
-        req.permission.orgId,
+        actorContext(req),
         req.params.skillId
       );
       const { skill, version } = await server.services.agentVaultSkill.getVersionFiles({
@@ -375,7 +375,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
-        req.permission.orgId,
+        actorContext(req),
         req.params.skillId
       );
       const { skill, version, fromVersion, unchanged } = await server.services.agentVaultSkill.restoreVersion({

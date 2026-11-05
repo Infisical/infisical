@@ -232,6 +232,8 @@ Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI a
 
 `av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does. Agent Vault is a different product from the agent proxy that [infisical sm agent-proxy](#sm-agent-proxy) runs.
 
+Agent Vault commands don't read `domain` from [the project config file](/cli/project-config#set-the-infisical-instance). To connect them to an instance other than US Cloud, pass `--domain`, set `INFISICAL_DOMAIN`, or log in to that instance.
+
 ## `agent-vault proxy`
 
 ```text

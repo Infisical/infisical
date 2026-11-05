@@ -142,7 +142,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromVariable(
-        req.permission.orgId,
+        actorContext(req),
         req.params.variableId
       );
       const { variable, previousKey } = await server.services.agentVaultVariable.updateVariable({
@@ -201,7 +201,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromVariable(
-        req.permission.orgId,
+        actorContext(req),
         req.params.variableId
       );
       const { variable } = await server.services.agentVaultVariable.deleteVariable({
@@ -246,7 +246,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromVariable(
-        req.permission.orgId,
+        actorContext(req),
         req.params.variableId
       );
       const { variable, value } = await server.services.agentVaultVariable.getVariableValue({

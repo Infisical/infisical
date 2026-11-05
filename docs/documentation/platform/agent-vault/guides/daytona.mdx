@@ -52,7 +52,7 @@ Every proxy starts from the same proxy token, so you set up the proxy once, no m
 - A [Daytona](https://www.daytona.io) organization on [Tier 3 or 4](https://www.daytona.io/docs/en/network-limits/#tier-based-network-restrictions), because on Tiers 1 and 2 you can't limit a sandbox to reaching the proxy, and the proxy can't reach Infisical
 - A [Daytona API key](https://www.daytona.io/docs/en/api-keys/) in the `DAYTONA_API_KEY` environment variable on the machine that runs your code
 - The Daytona SDK for your language: [Python](https://pypi.org/project/daytona/), [TypeScript](https://www.npmjs.com/package/@daytona/sdk), [Go](https://pkg.go.dev/github.com/daytona/clients/sdk-go) (with [`api-client-go`](https://pkg.go.dev/github.com/daytona/clients/api-client-go)), [Ruby](https://rubygems.org/gems/daytona), or [Java](https://central.sonatype.com/artifact/io.daytona/sdk) (with [Jackson](https://github.com/FasterXML/jackson-databind))
-- For Python, the [Infisical Python SDK](/sdks/languages/python) and the [`requests`](https://pypi.org/project/requests/) package
+- For Python, the [Infisical Python SDK](/sdks/languages/python), and for TypeScript, the [Infisical Node.js SDK](/sdks/languages/node)
 
 ## Step 1: Set up Agent Vault
 
@@ -208,7 +208,6 @@ This function runs one prompt in a new sandbox. At the top, replace `<project-id
 # run_agent.py
 import os
 
-import requests
 from daytona import CreateSandboxFromSnapshotParams, Daytona
 from infisical_sdk import InfisicalSDKClient
 
@@ -252,16 +251,9 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
 
     # One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
     # agent can't lose access mid-run.
-    # The Python SDK can't choose an Agent Vault project yet, so this request
-    # calls the API directly with the SDK's access token.
-    created = requests.post(
-        f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
-        headers={"Authorization": f"Bearer {infisical.get_token()}"},
-        json={"projectId": PROJECT_ID, "accessBundle": ACCESS_BUNDLE, "ttl": "20m"},
-        timeout=30,
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
     )
-    created.raise_for_status()
-    session = created.json()["session"]
 
     proxy_sandbox = None
     try:
@@ -313,7 +305,7 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
             f"infisical agent-vault run --telemetry=false --proxy {proxy_address} "
             "-- claude -p --permission-mode bypassPermissions < /tmp/prompt.txt'",
             cwd="/home/node",
-            env={**AGENT_ENV, "INFISICAL_AGENT_VAULT_SESSION_TOKEN": session["token"]},
+            env={**AGENT_ENV, "INFISICAL_AGENT_VAULT_SESSION_TOKEN": session.token},
             timeout=14 * 60,
         )
         if agent.exit_code != 0:
@@ -327,7 +319,7 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
             pass
         # Revoke first, so the session ends even if deleting fails.
         try:
-            infisical.agent_vault.sessions.revoke(session_id=session["id"])
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
         finally:
             if proxy_sandbox:
                 proxy_sandbox.delete()
@@ -336,6 +328,7 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
 ```typescript TypeScript expandable
 // runAgent.ts
 import type { Daytona, Sandbox } from "@daytona/sdk";
+import { InfisicalSDK } from "@infisical/sdk";
 
 import { SNAPSHOT } from "./sandboxImage.js";
 
@@ -364,34 +357,20 @@ const AGENT_ENV = {
   DISABLE_AUTOUPDATER: "1",
 };
 
-async function infisical(path: string, { token, body }: { token?: string; body?: unknown } = {}) {
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const response = await fetch(`${INFISICAL_URL}${path}`, {
-    method: "POST",
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) throw new Error(`Infisical returned ${response.status}: ${await response.text()}`);
-  return response.json();
-}
-
 export async function runAgent(daytona: Daytona, prompt: string): Promise<string> {
   // The machine identity's credentials stay here and never enter a sandbox.
-  const { accessToken } = await infisical("/api/v1/auth/universal-auth/login", {
-    body: {
-      clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID,
-      clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET,
-    },
+  const infisical = new InfisicalSDK({ siteUrl: INFISICAL_URL });
+  await infisical.auth().universalAuth.login({
+    clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID!,
+    clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET!,
   });
 
   // One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
   // agent can't lose access mid-run.
-  const { session } = await infisical("/api/v1/agent-vault/sessions", {
-    token: accessToken,
-    body: { projectId: PROJECT_ID, accessBundle: ACCESS_BUNDLE, ttl: "20m" },
+  const session = await infisical.agentVault().sessions.create({
+    projectId: PROJECT_ID,
+    accessBundle: ACCESS_BUNDLE,
+    ttl: "20m",
   });
 
   let proxySandbox: Sandbox | undefined;
@@ -451,7 +430,7 @@ export async function runAgent(daytona: Daytona, prompt: string): Promise<string
     await proxySandbox?.process.executeCommand(STOP_PROXY).catch(() => {});
     // Revoke first, so the session ends even if deleting fails.
     try {
-      await infisical(`/api/v1/agent-vault/sessions/${session.id}/revoke`, { token: accessToken });
+      await infisical.agentVault().sessions.revoke(session.id);
     } finally {
       await proxySandbox?.delete();
     }

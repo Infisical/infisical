@@ -209,6 +209,9 @@ After the agent runs, go to **Sessions** in your Agent Vault project and select 
   <Accordion title="The CLI fails with &quot;No access bundle named ... is granted to you&quot;">
     The machine identity doesn't have a grant on the access bundle, the name in `--access-bundle` is wrong, or the access bundle is in a different Agent Vault project from the one the CLI uses. Check the name on the **Access Bundles** page of the project, and [grant the bundle](#step-1-set-up-a-machine-identity) to the machine identity.
   </Accordion>
+  <Accordion title="Requests fail with &quot;the session is no longer valid&quot; as soon as the agent starts">
+    The proxy and the session are in different Agent Vault projects. A proxy only accepts sessions from its own project, so it refuses every request with a 403 and logs `agent-vault: refused, the session is no longer valid`. Set `--proxy` or `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` to the address of a proxy in the session's project, or [create a proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) in that project.
+  </Accordion>
   <Accordion title="The agent loses access to APIs partway through a run">
     If the agent's requests start failing with a 403 from the proxy, such as `CONNECT tunnel failed, response 403`, the session expired before the agent finished. Set a longer `--ttl`.
   </Accordion>

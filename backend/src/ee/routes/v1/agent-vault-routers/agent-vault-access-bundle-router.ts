@@ -210,7 +210,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const accessBundle = await server.services.agentVaultAccessBundle.getAccessBundleById({
@@ -248,7 +248,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const accessBundle = await server.services.agentVaultAccessBundle.updateAccessBundle({
@@ -298,7 +298,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const accessBundle = await server.services.agentVaultAccessBundle.deleteAccessBundle({
@@ -346,7 +346,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { service, accessBundleName } = await server.services.agentVaultAccessBundle.createService({
@@ -435,7 +435,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { service, accessBundleName, update, credentialReplaced } =
@@ -559,7 +559,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       return server.services.agentVaultAccessBundle.listMcpTools({
@@ -589,7 +589,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { service, accessBundleName } = await server.services.agentVaultAccessBundle.deleteService({
@@ -651,7 +651,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { personalValues } = await server.services.agentVaultPersonalValue.setPersonalValues({
@@ -710,7 +710,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { personalValues } = await server.services.agentVaultPersonalValue.deletePersonalValues({
@@ -757,7 +757,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       return server.services.agentVaultSkill.listBundleSkills({
@@ -789,7 +789,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { skill, accessBundle } = await server.services.agentVaultSkill.addToBundle({
@@ -841,7 +841,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { skill, accessBundle } = await server.services.agentVaultSkill.removeFromBundle({
@@ -896,7 +896,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       return server.services.agentVaultAccessBundle.listMembers({
@@ -934,7 +934,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       return server.services.agentVaultAccessBundle.listAvailableMembers({
@@ -969,7 +969,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.addMembers({
@@ -1031,7 +1031,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        req.permission.orgId,
+        actorContext(req),
         req.params.accessBundleId
       );
       const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.revokeMembers({

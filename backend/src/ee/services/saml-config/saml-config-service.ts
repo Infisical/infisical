@@ -53,6 +53,7 @@ import { ensureSsoAccountVerified, isStaleSsoAlias, syncSsoUserProfile } from "@
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TClearPersonalValuesInProjectsDeps } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import {
   findOrgIdByVerifiedDomain,
@@ -62,6 +63,7 @@ import {
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
+import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -128,6 +130,8 @@ type TSamlConfigServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
 
 export const samlConfigServiceFactory = ({
@@ -160,7 +164,9 @@ export const samlConfigServiceFactory = ({
   keyStore,
   pamAccountDAL,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -289,6 +295,8 @@ export const samlConfigServiceFactory = ({
               group,
               userDAL,
               userGroupMembershipDAL,
+              identityGroupMembershipDAL,
+              agentVaultPersonalValueDAL,
               membershipGroupDAL,
               groupDAL,
               projectKeyDAL,
