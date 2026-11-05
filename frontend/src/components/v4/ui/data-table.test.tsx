@@ -543,3 +543,40 @@ it("renders persistent row actions in the sticky tail, sized by their count", as
   expect(blocked.disabled).toBe(true);
   expect(blocked.getAttribute("aria-description")).toBe("Protected host");
 });
+
+it("draws a header row per group, indents its rows and selects across groups", async () => {
+  const onSelectionChange = vi.fn();
+  const onRowActivate = vi.fn();
+  await render(
+    <DataTable
+      label="Accounts"
+      groups={[
+        { id: "pg", label: "prod-postgres", meta: "1 account", rows: [rows[0]] },
+        { id: "empty", label: "empty", rows: [] },
+        { id: "my", label: "billing-mysql", rows: [rows[1]] }
+      ]}
+      columns={columns}
+      getRowId={(row) => row.id}
+      rowLabel={(row) => row.name}
+      selectable
+      onSelectionChange={onSelectionChange}
+      onRowActivate={onRowActivate}
+    />
+  );
+  const bodies = document.querySelectorAll("tbody");
+  expect(bodies).toHaveLength(2);
+  const header = bodies[0].querySelector("th[scope=rowgroup]")!;
+  expect(header.textContent).toBe("prod-postgres1 account");
+  expect(header.closest("tr")!.hasAttribute("tabindex")).toBe(false);
+  await key(header.closest("tr")!, "Enter");
+  expect(onRowActivate).not.toHaveBeenCalled();
+
+  const child = bodies[1].querySelector<HTMLTableRowElement>("tr[data-row-index]")!;
+  expect(child.getAttribute("aria-rowindex")).toBe("5");
+  expect(child.querySelector("[data-depth='1']")!.textContent).toBe("beta");
+  await key(child, "Enter");
+  expect(onRowActivate).toHaveBeenLastCalledWith(rows[1]);
+
+  await React.act(async () => box("Select all available rows in Accounts").click());
+  expect(onSelectionChange).toHaveBeenLastCalledWith(["a", "b"]);
+});

@@ -122,6 +122,25 @@ Source evidence:
 - src/components/v4/ui/data-table.test.tsx
 - src/pages/design-system/examples/table/row-activation.tsx
 
+### table-grouped-rows
+
+Owner: table.
+
+When rows belong to a parent the person scans by, such as search results grouped by folder or accounts by resource.
+
+Do: Pass groups with each parent's label, a count or other meta, its rows sorted within the group and, with rowActions, the parent's own actions. Use getRowChildren for one level of child rows under a parent row that is itself a resource row.
+
+Avoid: Fake a group with a full-width row in rows, indent a cell with local padding, put a checkbox on a group header or sort rows across groups.
+
+Why: One owner keeps the header semantics, the indent token, the selection column and the actions tail identical in every grouped table, and select-all stays one rule.
+
+Checked by: src/components/v4/ui/data-table.test.tsx. Renders groups with an empty one: each non-empty group is a tbody whose header is a th with scope rowgroup and is not focusable or activatable, rows are indented at depth 1 and keep Enter activation and their aria-rowindex, and select-all selects the eligible rows of every group.
+
+Source evidence:
+- src/components/v4/ui/data-table.tsx
+- src/components/v4/ui/data.module.css
+- src/pages/design-system/examples/table/grouped-rows.tsx
+
 ### table-loading-geometry
 
 Owner: table.
@@ -163,7 +182,7 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/frame.module.css
 - src/components/v4/tokens.json
 
-Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowIndicators, TableActionsHead, TableActionsCell, RowActions, RowAction, RowActionList, DataTableColumn, DataTableToggle, DataTableRowAction, DataTableRowActions, EnvMark. Source TypeScript defines the API.
+Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowIndicators, TableActionsHead, TableActionsCell, RowActions, RowAction, RowActionList, DataTableColumn, DataTableToggle, DataTableRowAction, DataTableRowActions, DataTableGroup, EnvMark. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -180,7 +199,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - TableRowActions is the end-aligned group inside the actions tail, with targets touching (space-row-actions-gap, 0). For a native Table, TableActionsHead and TableActionsCell take slots, the widest row's action count, and draw the same actions tail; RowActions renders the inline actions and More inside it. TableRowIndicators lays persistent row marks in size-target-row slots with size-glyph glyphs, pulled so the last glyph lands on the 12px content edge; marks never swap out for actions.
 - The selection column is size-row wide with its Checkbox centered between the frame edge and a persistent line-soft divider on its right, the same line as the actions tail divider, on the header and every row, at rest, hovered and selected.
 - The selection column always uses one hook, the selection prop on TableHead and TableCell (data-slot "table-selection"), in DataTable and in a native Table alike. It owns the width, padding, centered Checkbox and divider, and repaints the row's ground and its stripe, hover and selected layers on the cell, so the column reads as one band with its row and stays opaque if pinned. The selection cell counts as row-interactive, so a click on it never activates the row. Nothing else draws a selection column.
-- Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.
+- Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset, space-row-indent); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.
 - With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
 - onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.
 - TableRow's onClick applies the same filter, in one place that DataTable's onRowActivate also goes through: it runs only for a primary click whose target is inside the row's own DOM and not on an interactive element there. Clicks that bubble through React from portaled content opened from the row (a menu, popover or dialog) are ignored, so a native Table row needs no stopPropagation on its menus, buttons, checkboxes or actions cell.
@@ -204,6 +223,10 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - With onRowActivate, rows join the tab order without an interactive role, so the table keeps native row semantics and never nests a button or link role around the row's own controls. Enter activates the focused row and Space toggles its selection when the table is selectable. Keep a real link or button for the same destination in the primary cell, so screen reader users meet a named control.
 - Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows.
 - Toggle checkboxes are named, not left to the header: each cell is "<header> for <rowLabel>" and the header control is "<header> for every row in <label>" unless toggle.label overrides it. The header control announces mixed for some. A disabled cell carries its reason as its accessible description. An absent cell has no control; its dash is hidden from assistive technology and replaced by "<header> for <rowLabel>: not applicable". An adornment is a sibling of the Checkbox, never inside it, so a button mark is its own named control in the tab order with no nested interactive roles; give icon-only marks a visible tooltip and an accessible name.
+- Grouped rows: pass groups ({ id, label, rows, meta?, actions? }) instead of rows. Each group with rows is its own tbody whose first row is the group header: a th with scope rowgroup that spans the data columns on the tint ground, with the label in label type and meta (such as a count) in muted small type. The selection cell stays in place, empty, and with rowActions the actions tail holds the group's actions end-aligned like every other row. The frame stays one surface across the groups.
+- Rows under a group header, and child rows from getRowChildren (one level under a parent row), indent the primary column (or the first column when none is primary) by space-row-indent per depth. Only the primary cell moves: the selection column, the other columns and the actions tail keep their positions.
+- Group headers are not row-activatable and never join the tab order. Rows under them keep every row behavior: Tab, Enter with onRowActivate, Space to select. aria-rowindex and aria-rowcount count the header rows.
+- Selection with groups has no group checkbox: header select-all covers the eligible rows of every group and every child row, and its mixed state counts them the same way. A group header is never selected.
 
 ## Use cases
 
@@ -212,6 +235,10 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 ## Limits
 
 - The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.
+- Grouped rows: DataTable never reorders rows, so the host sorts within each group and keeps the groups in their own order; a sort never moves a row across groups. With getRowChildren the host sorts the parents and each parent's children separately, and children always follow their parent. Paginate the rows first and group the page, so a group cut by a page boundary repeats its header on the next page.
+- Grouped rows render every row: virtual is ignored with groups. getRowChildren works with virtual, since its rows stay one flat list.
+- Group headers have no checkbox and do not collapse. A group's own actions render only in the actions tail, so they need rowActions. Striped rows restart in each group.
+- getRowChildren is one level and visual: the table has no treegrid semantics, so a child row's rowLabel and primary cell must name it without its parent. Use groups when the parent relation must be announced.
 - There is no muted row state. Lowered opacity drops text below contrast and carries the state by color alone; mark an inactive row with a Badge in its name cell (for example Deactivated) and, when it cannot be acted on, a selectionDisabledReason.
 - Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
 - Only a final column may be pinned. rowActions.inline takes at most three actions, enforced by its tuple type; everything else goes in renderMenu. Use grow for a flexible resource column; an explicit numeric width takes precedence.
@@ -250,6 +277,8 @@ Source declarations and review criteria only. Generation checks references and c
 - row-activation: example `row-activation`, visible label "Certificates".
 - paginated: example `pagination`, visible label "Audit events".
 - loading: example `loading`, visible label "Keys, loading".
+- grouped: example `grouped-rows`, visible label "Accounts grouped by resource".
+- tree: example `grouped-rows`, visible label "Child rows under a parent row".
 
 ### column layout
 
@@ -1335,6 +1364,193 @@ export default function Loading() {
           </Stack>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Reload in place"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Grouped rows
+
+Save this example at `src/pages/design-system/examples/table/grouped-rows.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
+
+Registry items used: @infisical/badge, @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/table, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import { Badge } from "../../../../components/v4/ui/badge";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableGroup
+} from "../../../../components/v4/ui/data-table";
+import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
+import { Icon } from "../../../../components/v4/ui/icon";
+import { Inline } from "../../../../components/v4/ui/layout";
+import { RowActions } from "../../../../components/v4/ui/table";
+import { Meta } from "../../../../components/v4/ui/text";
+
+type Account = { id: string; name: string; type: string; lastAccess: string };
+type Resource = { id: string; name: string; accounts: Account[] };
+type Sort = { columnId: string; direction: "asc" | "desc" };
+
+const resources: Resource[] = [
+  {
+    id: "prod-postgres",
+    name: "prod-postgres",
+    accounts: [
+      { id: "pg-readonly", name: "readonly", type: "PostgreSQL", lastAccess: "2 hours ago" },
+      { id: "pg-admin", name: "admin", type: "PostgreSQL", lastAccess: "3 days ago" },
+      { id: "pg-migrator", name: "migrator", type: "PostgreSQL", lastAccess: "Never" }
+    ]
+  },
+  {
+    id: "billing-mysql",
+    name: "billing-mysql",
+    accounts: [
+      { id: "my-reporting", name: "reporting", type: "MySQL", lastAccess: "Yesterday" },
+      { id: "my-root", name: "root", type: "MySQL", lastAccess: "2 weeks ago" }
+    ]
+  },
+  {
+    id: "bastion",
+    name: "bastion.internal",
+    accounts: [{ id: "ssh-ops", name: "ops", type: "SSH", lastAccess: "5 minutes ago" }]
+  }
+];
+
+type Node = { id: string; name: string; kind: "resource" | "account"; children?: Node[] };
+const tree: Node[] = resources.slice(0, 2).map((resource) => ({
+  id: resource.id,
+  name: resource.name,
+  kind: "resource",
+  children: resource.accounts.map((account) => ({
+    id: account.id,
+    name: account.name,
+    kind: "account"
+  }))
+}));
+
+export default function GroupedRows() {
+  const [sort, setSort] = React.useState<Sort>({ columnId: "name", direction: "asc" });
+  const [selected, setSelected] = React.useState<string[]>([]);
+  const [status, setStatus] = React.useState("Nothing opened yet.");
+  const groups: DataTableGroup<Account>[] = resources.map((resource) => ({
+    id: resource.id,
+    label: (
+      <Inline gap={8} align="center" wrap={false}>
+        <Icon name="machine" />
+        <span>{resource.name}</span>
+      </Inline>
+    ),
+    meta: `${resource.accounts.length} ${resource.accounts.length === 1 ? "account" : "accounts"}`,
+    actions: (
+      <RowActions
+        label={resource.name}
+        menu={
+          <DropdownMenuItem onSelect={() => setStatus(`Copied the ID of ${resource.name}.`)}>
+            <Icon name="copy" />
+            Copy resource ID
+          </DropdownMenuItem>
+        }
+      />
+    ),
+    rows: [...resource.accounts].sort(
+      (a, b) => a.name.localeCompare(b.name) * (sort.direction === "asc" ? 1 : -1)
+    )
+  }));
+  const columns: DataTableColumn<Account>[] = [
+    {
+      id: "name",
+      header: "Account",
+      primary: true,
+      grow: true,
+      sortable: true,
+      text: (row) => row.name,
+      render: (row) => (
+        <Inline gap={8} align="center" wrap={false}>
+          <Icon name="user" />
+          <span>{row.name}</span>
+          <Badge tone="outline">{row.type}</Badge>
+        </Inline>
+      )
+    },
+    { id: "access", header: "Last access", width: 160, render: (row) => row.lastAccess }
+  ];
+  const treeColumns: DataTableColumn<Node>[] = [
+    {
+      id: "name",
+      header: "Name",
+      primary: true,
+      grow: true,
+      text: (row) => row.name,
+      render: (row) => (
+        <Inline gap={8} align="center" wrap={false}>
+          <Icon name={row.kind === "resource" ? "machine" : "user"} />
+          <span>{row.name}</span>
+        </Inline>
+      )
+    },
+    {
+      id: "kind",
+      header: "Kind",
+      width: 120,
+      render: (row) => (row.kind === "resource" ? "Resource" : "Account")
+    }
+  ];
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Accounts by resource"
+            groups={groups}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            sort={sort}
+            onSortChange={setSort}
+            selectable
+            selectedIds={selected}
+            onSelectionChange={setSelected}
+            onRowActivate={(row) => setStatus(`Opened ${row.name}.`)}
+            rowActions={{
+              inline: [
+                {
+                  label: "Launch session",
+                  icon: "terminal",
+                  onSelect: (row) => setStatus(`Launched a session as ${row.name}.`)
+                }
+              ],
+              renderMenu: (row) => (
+                <DropdownMenuItem onSelect={() => setStatus(`Copied the ID of ${row.name}.`)}>
+                  <Icon name="copy" />
+                  Copy account ID
+                </DropdownMenuItem>
+              )
+            }}
+            footer={<Meta mono={false}>{status}</Meta>}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Accounts grouped by resource, sorted within each group"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Resources and their accounts"
+            rows={tree}
+            getRowChildren={(row) => row.children}
+            columns={treeColumns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Child rows under a parent row"}
+        </figcaption>
       </figure>
     </div>
   );

@@ -67,9 +67,18 @@ export interface DataTableRowActions<Row> {
   menuDisabledReason?: (row: Row) => string | undefined;
   header?: string;
 }
-export interface DataTableProps<Row> {
-  label: string;
+export interface DataTableGroup<Row> {
+  id: string;
+  /** The header row's label, such as the parent resource's name or a link to it. */
+  label: React.ReactNode;
   rows: readonly Row[];
+  /** Muted text after the label, such as the group's row count. */
+  meta?: React.ReactNode;
+  /** The group's own actions, such as a RowActions menu, drawn in the actions tail. Needs rowActions. */
+  actions?: React.ReactNode;
+}
+interface DataTableBaseProps<Row> {
+  label: string;
   columns: readonly DataTableColumn<Row>[];
   getRowId: (row: Row) => string;
   rowLabel: (row: Row) => string;
@@ -100,10 +109,23 @@ export interface DataTableProps<Row> {
   containerRef?: React.Ref<HTMLDivElement>;
   /** Layout classes for the scroll container, such as a flex-fill height. */
   containerClassName?: string;
+  /** One level of child rows under a row, indented by space-row-indent. */
+  getRowChildren?: (row: Row) => readonly Row[] | undefined;
 }
+export type DataTableProps<Row> = DataTableBaseProps<Row> &
+  (
+    | { rows: readonly Row[]; groups?: never }
+    | {
+        /** Rows under full-width group header rows, one tbody per group. Groups with no rows are not drawn. */
+        groups: readonly DataTableGroup<Row>[];
+        rows?: never;
+      }
+  );
 export function DataTable<Row>({
   label,
-  rows,
+  rows: flatRows,
+  groups,
+  getRowChildren,
   columns,
   getRowId,
   rowLabel,
@@ -155,6 +177,19 @@ export function DataTable<Row>({
   });
   const effectiveRowHeight =
     measuredRow.requested === requestedRowHeight ? measuredRow.height : requestedRowHeight;
+  const expand = (list: readonly Row[], depth: number) =>
+    list.flatMap((row) => [
+      { row, depth },
+      ...(getRowChildren?.(row) ?? []).map((child) => ({ row: child, depth: depth + 1 }))
+    ]);
+  const sections = groups
+    ? groups
+        .filter((group) => group.rows.length > 0)
+        .map((group) => ({ group, entries: expand(group.rows, 1) }))
+    : [{ group: undefined, entries: expand(flatRows ?? [], 0) }];
+  const entries = sections.flatMap((section) => section.entries);
+  const rows = entries.map((entry) => entry.row);
+  const indentColumn = (columns.find((column) => column.primary) ?? columns[0])?.id;
   const isSelectable = (row: Row) => isSelectableProp(row) && !selectionDisabledReason?.(row);
   const selected = selectedIds ?? ownSelected;
   const eligible = rows.filter(isSelectable).map(getRowId);
@@ -165,7 +200,7 @@ export function DataTable<Row>({
   };
   const toggle = (id: string) =>
     update(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
-  const windowed = Boolean(height && virtual);
+  const windowed = Boolean(height && virtual && !groups);
   const windowSize =
     height && effectiveRowHeight ? Math.ceil(height / effectiveRowHeight) + 8 : rows.length;
   const start =
@@ -217,7 +252,7 @@ export function DataTable<Row>({
   React.useLayoutEffect(() => {
     if (!focusPending.current || focusRow === null) return;
     const row = scroll.current?.querySelector<HTMLElement>(
-      `tbody tr[aria-rowindex="${focusRow + 2}"]`
+      `tbody tr[data-row-index="${focusRow}"]`
     );
     if (!row) return;
     focusPending.current = false;
@@ -272,6 +307,95 @@ export function DataTable<Row>({
   ) : (
     rows.length > 0 && end
   );
+  const renderRow = (
+    { row, depth }: { row: Row; depth: number },
+    position: number,
+    rowIndex: number
+  ) => (
+    <TableRow
+      key={getRowId(row)}
+      aria-rowindex={rowIndex}
+      data-row-index={position}
+      tabIndex={onRowActivate ? 0 : position === focusRow ? -1 : undefined}
+      onBlur={position === focusRow ? () => setFocusRow(null) : undefined}
+      data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
+      data-activatable={onRowActivate ? "" : undefined}
+      onClick={onRowActivate ? () => onRowActivate(row) : undefined}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" && onRowActivate) {
+          event.preventDefault();
+          onRowActivate(row);
+        } else if (event.key === " " && selectable && isSelectable(row)) {
+          event.preventDefault();
+          toggle(getRowId(row));
+        }
+      }}
+      style={{ height: effectiveRowHeight }}
+    >
+      {selectable && (
+        <TableCell selection>
+          <SelectionBox
+            label={`Select ${rowLabel(row)}`}
+            checked={selected.includes(getRowId(row))}
+            disabled={!isSelectable(row)}
+            reason={selectionDisabledReason?.(row)}
+            onToggle={() => toggle(getRowId(row))}
+          />
+        </TableCell>
+      )}
+      {columns.map((column) => (
+        <TableCell
+          key={column.id}
+          className={column.actions ? styles.tableActions : undefined}
+          style={columnStyle(column)}
+          data-actions={column.actions || undefined}
+          data-pin={column.pin ?? column.actions}
+          data-row-interactive={column.actions || column.toggle ? true : undefined}
+        >
+          {column.toggle ? (
+            <ToggleCell
+              toggle={column.toggle}
+              row={row}
+              label={`${column.header} for ${rowLabel(row)}`}
+              rowId={getRowId(row)}
+            />
+          ) : column.actions ? (
+            <TableRowActions style={{ maxWidth: column.maxWidth }}>
+              {column.render?.(row, position)}
+            </TableRowActions>
+          ) : (
+            <div
+              className={column.primary ? styles.tablePrimary : styles.tableValue}
+              data-depth={depth > 0 && column.id === indentColumn ? depth : undefined}
+              style={{ maxWidth: column.maxWidth }}
+              title={column.text?.(row)}
+            >
+              {column.render?.(row, position)}
+            </div>
+          )}
+        </TableCell>
+      ))}
+      {rowActions && (
+        <TableActionsCell slots={slots} data-pin="true">
+          <RowActions
+            label={rowLabel(row)}
+            inline={
+              rowActions.inline?.map((action) => ({
+                label: typeof action.label === "string" ? action.label : action.label(row),
+                icon: action.icon,
+                disabledReason: action.disabledReason?.(row),
+                onSelect: () => action.onSelect(row)
+              })) as UpToThree<RowAction> | undefined
+            }
+            menu={rowActions.renderMenu?.(row)}
+            menuLabel={rowActions.menuLabel}
+            menuDisabledReason={rowActions.menuDisabledReason?.(row)}
+          />
+        </TableActionsCell>
+      )}
+    </TableRow>
+  );
   const scrollFrame = (
     <div
       ref={attachScroll}
@@ -283,7 +407,7 @@ export function DataTable<Row>({
     >
       <Table
         aria-label={label}
-        aria-rowcount={rows.length + 1}
+        aria-rowcount={rows.length + (groups ? sections.length : 0) + 1}
         aria-busy={loading || undefined}
         data-variant={variant}
         data-layout={fixedLayout ? "fixed" : undefined}
@@ -385,158 +509,111 @@ export function DataTable<Row>({
             )}
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {loading &&
-            Array.from({ length: skeletonRows }, (_, index) => (
-              <TableRow key={`loading-${index}`} aria-hidden data-loading>
-                {selectable && (
-                  <TableCell selection>
-                    <div className={styles.tableSelection}>
-                      <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
-                    </div>
-                  </TableCell>
-                )}
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    className={column.actions ? styles.tableActions : undefined}
-                    style={columnStyle(column)}
-                    data-actions={column.actions || undefined}
-                    data-pin={column.pin ?? column.actions}
-                  >
-                    {column.actions ? (
-                      <TableRowActions>
-                        <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
-                      </TableRowActions>
-                    ) : (
-                      <Skeleton
-                        className={styles.tableSkeleton}
-                        data-primary={column.primary || undefined}
-                        style={{ maxWidth: column.maxWidth }}
-                      />
-                    )}
-                  </TableCell>
-                ))}
-                {rowActions && (
-                  <TableActionsCell slots={slots} data-pin="true">
-                    <TableRowActions>
-                      {Array.from({ length: slots }, (_, slot) => (
-                        <span key={slot} className={styles.tableRowActionSkeleton}>
-                          <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
-                        </span>
-                      ))}
-                    </TableRowActions>
-                  </TableActionsCell>
-                )}
-              </TableRow>
-            ))}
-          {!loading && start > 0 && (
-            <TableRow aria-hidden data-spacer>
-              <TableCell
-                colSpan={span}
-                style={{ height: start * (effectiveRowHeight ?? 0), padding: 0 }}
-              />
-            </TableRow>
-          )}
-          {!loading &&
-            rows.slice(start, stop).map((row, i) => (
-              <TableRow
-                key={getRowId(row)}
-                aria-rowindex={start + i + 2}
-                tabIndex={onRowActivate ? 0 : start + i === focusRow ? -1 : undefined}
-                onBlur={start + i === focusRow ? () => setFocusRow(null) : undefined}
-                data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
-                data-activatable={onRowActivate ? "" : undefined}
-                onClick={onRowActivate ? () => onRowActivate(row) : undefined}
-                onKeyDown={(event) => {
-                  if (event.target !== event.currentTarget) return;
-                  if (event.key === "Enter" && onRowActivate) {
-                    event.preventDefault();
-                    onRowActivate(row);
-                  } else if (event.key === " " && selectable && isSelectable(row)) {
-                    event.preventDefault();
-                    toggle(getRowId(row));
-                  }
-                }}
-                style={{ height: effectiveRowHeight }}
-              >
-                {selectable && (
-                  <TableCell selection>
-                    <SelectionBox
-                      label={`Select ${rowLabel(row)}`}
-                      checked={selected.includes(getRowId(row))}
-                      disabled={!isSelectable(row)}
-                      reason={selectionDisabledReason?.(row)}
-                      onToggle={() => toggle(getRowId(row))}
-                    />
-                  </TableCell>
-                )}
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    className={column.actions ? styles.tableActions : undefined}
-                    style={columnStyle(column)}
-                    data-actions={column.actions || undefined}
-                    data-pin={column.pin ?? column.actions}
-                    data-row-interactive={column.actions || column.toggle ? true : undefined}
-                  >
-                    {column.toggle ? (
-                      <ToggleCell
-                        toggle={column.toggle}
-                        row={row}
-                        label={`${column.header} for ${rowLabel(row)}`}
-                        rowId={getRowId(row)}
-                      />
-                    ) : column.actions ? (
-                      <TableRowActions style={{ maxWidth: column.maxWidth }}>
-                        {column.render?.(row, start + i)}
-                      </TableRowActions>
-                    ) : (
-                      <div
-                        className={column.primary ? styles.tablePrimary : styles.tableValue}
-                        style={{ maxWidth: column.maxWidth }}
-                        title={column.text?.(row)}
-                      >
-                        {column.render?.(row, start + i)}
+        {(loading || !groups || !rows.length) && (
+          <TableBody>
+            {loading &&
+              Array.from({ length: skeletonRows }, (_, index) => (
+                <TableRow key={`loading-${index}`} aria-hidden data-loading>
+                  {selectable && (
+                    <TableCell selection>
+                      <div className={styles.tableSelection}>
+                        <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
                       </div>
-                    )}
-                  </TableCell>
-                ))}
-                {rowActions && (
-                  <TableActionsCell slots={slots} data-pin="true">
-                    <RowActions
-                      label={rowLabel(row)}
-                      inline={
-                        rowActions.inline?.map((action) => ({
-                          label:
-                            typeof action.label === "string" ? action.label : action.label(row),
-                          icon: action.icon,
-                          disabledReason: action.disabledReason?.(row),
-                          onSelect: () => action.onSelect(row)
-                        })) as UpToThree<RowAction> | undefined
-                      }
-                      menu={rowActions.renderMenu?.(row)}
-                      menuLabel={rowActions.menuLabel}
-                      menuDisabledReason={rowActions.menuDisabledReason?.(row)}
-                    />
-                  </TableActionsCell>
-                )}
+                    </TableCell>
+                  )}
+                  {columns.map((column) => (
+                    <TableCell
+                      key={column.id}
+                      className={column.actions ? styles.tableActions : undefined}
+                      style={columnStyle(column)}
+                      data-actions={column.actions || undefined}
+                      data-pin={column.pin ?? column.actions}
+                    >
+                      {column.actions ? (
+                        <TableRowActions>
+                          <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
+                        </TableRowActions>
+                      ) : (
+                        <Skeleton
+                          className={styles.tableSkeleton}
+                          data-primary={column.primary || undefined}
+                          style={{ maxWidth: column.maxWidth }}
+                        />
+                      )}
+                    </TableCell>
+                  ))}
+                  {rowActions && (
+                    <TableActionsCell slots={slots} data-pin="true">
+                      <TableRowActions>
+                        {Array.from({ length: slots }, (_, slot) => (
+                          <span key={slot} className={styles.tableRowActionSkeleton}>
+                            <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
+                          </span>
+                        ))}
+                      </TableRowActions>
+                    </TableActionsCell>
+                  )}
+                </TableRow>
+              ))}
+            {!loading && start > 0 && (
+              <TableRow aria-hidden data-spacer>
+                <TableCell
+                  colSpan={span}
+                  style={{ height: start * (effectiveRowHeight ?? 0), padding: 0 }}
+                />
               </TableRow>
-            ))}
-          {!loading && stop < rows.length && (
-            <TableRow aria-hidden data-spacer>
-              <TableCell
-                colSpan={span}
-                style={{ height: (rows.length - stop) * (effectiveRowHeight ?? 0), padding: 0 }}
-              />
-            </TableRow>
-          )}
-          {!loading && !rows.length && (
-            <TableRow>
-              <TableCell colSpan={span}>{empty}</TableCell>
-            </TableRow>
-          )}
-        </TableBody>
+            )}
+            {!loading &&
+              !groups &&
+              entries
+                .slice(start, stop)
+                .map((entry, i) => renderRow(entry, start + i, start + i + 2))}
+            {!loading && stop < rows.length && (
+              <TableRow aria-hidden data-spacer>
+                <TableCell
+                  colSpan={span}
+                  style={{ height: (rows.length - stop) * (effectiveRowHeight ?? 0), padding: 0 }}
+                />
+              </TableRow>
+            )}
+            {!loading && !rows.length && (
+              <TableRow>
+                <TableCell colSpan={span}>{empty}</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        )}
+        {!loading &&
+          groups &&
+          sections.map(({ group, entries: groupEntries }, index) => {
+            const offset = sections
+              .slice(0, index)
+              .reduce((sum, section) => sum + section.entries.length + 1, 0);
+            const before = sections
+              .slice(0, index)
+              .reduce((sum, section) => sum + section.entries.length, 0);
+            return (
+              <TableBody key={group?.id} data-group="">
+                <tr aria-rowindex={offset + 2} className={styles.tableGroupRow}>
+                  {selectable && <TableCell selection />}
+                  <th scope="rowgroup" colSpan={columns.length} className={styles.tableGroupHead}>
+                    <div className={styles.tableGroupLabel}>
+                      {group?.label}
+                      {group?.meta !== undefined && (
+                        <span className={styles.tableGroupMeta}>{group.meta}</span>
+                      )}
+                    </div>
+                  </th>
+                  {rowActions && (
+                    <TableActionsCell slots={slots} data-pin="true">
+                      {group?.actions}
+                    </TableActionsCell>
+                  )}
+                </tr>
+                {groupEntries.map((entry, i) => renderRow(entry, before + i, offset + i + 3))}
+              </TableBody>
+            );
+          })}
       </Table>
       {height && more && <div className={cn(frame.frameFoot, styles.tableMore)}>{more}</div>}
       {pagination && (

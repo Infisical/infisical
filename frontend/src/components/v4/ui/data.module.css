@@ -902,6 +902,59 @@ button.rowTitle::after {
 .tableSkeleton {
   width: 80%;
 }
+.tableScroll [data-depth="1"] {
+  padding-inline-start: calc(var(--v4-focus-clearance) + var(--v4-space-row-indent));
+}
+.tableScroll [data-depth="2"] {
+  padding-inline-start: calc(var(--v4-focus-clearance) + 2 * var(--v4-space-row-indent));
+}
+.tableGroupRow {
+  --v4-table-row-ground: var(--v4-tint);
+  --v4-table-row-layers: none;
+  background-color: var(--v4-tint);
+}
+.tableScroll th.tableGroupHead {
+  height: var(--v4-table-row-height, var(--v4-size-row));
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
+  color: var(--v4-ink);
+  text-align: start;
+  text-transform: none;
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-type-label-font-size);
+  line-height: var(--v4-type-label-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+  letter-spacing: var(--v4-type-label-letter-spacing);
+}
+.tableGroupLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--v4-focus-clearance);
+  margin: calc(-1 * var(--v4-focus-clearance));
+}
+.tableGroupMeta {
+  color: var(--v4-muted);
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+}
+/* Each group is its own tbody, so the frame's surface, edge and lift are drawn once across them instead of once per group. */
+.tableScroll tbody[data-group]:not(:first-of-type)::after {
+  border-top: 0;
+}
+.tableScroll tbody[data-group]:not(:last-of-type)::after {
+  border-bottom: 0;
+}
+.tableScroll tbody[data-group]:not(:last-of-type)::before {
+  box-shadow: none;
+}
+.tableScroll tbody[data-group]:not(:last-of-type) > tr:last-child > td {
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
 .tableSkeleton[data-primary] {
   width: 60%;
 }
