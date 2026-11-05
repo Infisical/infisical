@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { applyJitter } from "@app/lib/dates";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseClientFactory } from "../license-client";
@@ -120,22 +120,35 @@ export const usageMeteringServiceFactory = ({
 
   // Fire-and-forget like emit, but every event is a fact to deliver, so jobs are never debounced or
   // replaced (the server dedups on eventId); occurredAt is fixed now so a retry resends the same event.
-  // One job is one server request, so a batch the server rejects never takes other events with it.
+  // The server accepts or rejects a request whole, so each job (one request) holds a single dimension:
+  // a dimension the org's plan does not price is refused without taking other dimensions' events.
   const recordMeteringEvents = (orgId: string, events: TMeteringEventInput[]) => {
     if (!licenseClient.isEnabled() || !events.length) {
       return;
     }
 
     const now = new Date();
-    const payload = events.map((e) => ({
-      eventId: e.eventId,
-      dimensionKey: e.dimensionKey,
-      quantity: e.quantity,
-      occurredAt: (e.occurredAt ?? now).toISOString()
-    }));
+    const byDimension = new Map<string, TQueueJobTypes[QueueName.MeteringEvent]["payload"]["events"]>();
+    events.forEach((e) => {
+      const group = byDimension.get(e.dimensionKey) ?? [];
+      group.push({
+        eventId: e.eventId,
+        dimensionKey: e.dimensionKey,
+        quantity: e.quantity,
+        occurredAt: (e.occurredAt ?? now).toISOString()
+      });
+      byDimension.set(e.dimensionKey, group);
+    });
 
-    for (let i = 0; i < payload.length; i += MAX_USAGE_EVENTS_PER_REQUEST) {
-      const chunk = payload.slice(i, i + MAX_USAGE_EVENTS_PER_REQUEST);
+    const chunks = [...byDimension.values()].flatMap((group) => {
+      const parts = [];
+      for (let i = 0; i < group.length; i += MAX_USAGE_EVENTS_PER_REQUEST) {
+        parts.push(group.slice(i, i + MAX_USAGE_EVENTS_PER_REQUEST));
+      }
+      return parts;
+    });
+
+    chunks.forEach((chunk) => {
       void queueService
         .queue(
           QueueName.MeteringEvent,
@@ -152,10 +165,10 @@ export const usageMeteringServiceFactory = ({
         .catch((error) => {
           logger.error(
             error,
-            `usage-metering: failed to enqueue metering events [orgId=${orgId}] [count=${chunk.length}]`
+            `usage-metering: failed to enqueue metering events [orgId=${orgId}] [dimensionKey=${chunk[0].dimensionKey}] [count=${chunk.length}]`
           );
         });
-    }
+    });
   };
 
   return { emit, emitForProject, reconcile, recordMeteringEvents };

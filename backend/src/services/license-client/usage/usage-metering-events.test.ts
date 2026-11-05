@@ -49,7 +49,7 @@ describe("usageMeteringService.recordMeteringEvents", () => {
 
     svc.recordMeteringEvents(ORG_ID, [
       { eventId: "e1", dimensionKey: "pam_session_minutes", quantity: 3, occurredAt },
-      { eventId: "e2", dimensionKey: "secret_syncs", quantity: 1 }
+      { eventId: "e2", dimensionKey: "pam_session_minutes", quantity: 1 }
     ]);
     await flushAsync();
 
@@ -87,6 +87,23 @@ describe("usageMeteringService.recordMeteringEvents", () => {
       (call) => (call as unknown as [unknown, unknown, { events: unknown[] }])[2].events.length
     );
     expect(sizes).toEqual([1000, 1000, 500]);
+  });
+
+  test("gives each dimension its own jobs, so a refused dimension cannot take another's events", async () => {
+    const { svc, queue } = buildService(true);
+    svc.recordMeteringEvents(ORG_ID, [
+      { eventId: "p1", dimensionKey: "pam_session_minutes", quantity: 42 },
+      { eventId: "s1", dimensionKey: "secret_syncs", quantity: 1 },
+      { eventId: "p2", dimensionKey: "pam_session_minutes", quantity: 15 }
+    ]);
+    await flushAsync();
+
+    const jobs = queue.mock.calls.map((call) =>
+      (call as unknown as [unknown, unknown, { events: { eventId: string; dimensionKey: string }[] }])[2].events.map(
+        (e) => `${e.dimensionKey}:${e.eventId}`
+      )
+    );
+    expect(jobs).toEqual([["pam_session_minutes:p1", "pam_session_minutes:p2"], ["secret_syncs:s1"]]);
   });
 
   test("never throws into the caller when enqueue fails", async () => {
