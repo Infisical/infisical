@@ -1,4 +1,4 @@
-export const CLIPage = ({ title, description, movedAnchors = {}, children }) => {
+export const CLIPage = ({ title, description, movedAnchors = {}, removedAnchors = {}, children }) => {
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -25,17 +25,34 @@ export const CLIPage = ({ title, description, movedAnchors = {}, children }) => 
       const command = id.split("--")[0];
       return command !== id && document.getElementById(command) ? command : null;
     };
+    const longestPrefix = (map, id) =>
+      Object.keys(map)
+        .filter((old) => id === old || id.startsWith(`${old}-`))
+        .sort((a, b) => b.length - a.length)[0];
     const movedHash = (hash) => {
       if (!hash || document.getElementById(hash)) return null;
       if (commandOf(hash)) return commandOf(hash);
-      const movedFrom = Object.keys(movedAnchors)
-        .filter((old) => hash === old || hash.startsWith(`${old}-`))
-        .sort((a, b) => b.length - a.length)[0];
+      const movedFrom = longestPrefix(movedAnchors, hash);
       if (!movedFrom) return null;
       const moved = movedAnchors[movedFrom] + hash.slice(movedFrom.length);
       return document.getElementById(moved) ? moved : commandOf(moved);
     };
+    // A command that was removed from the CLI has no section left on this page, so
+    // `removedAnchors` sends its anchors to the page that still documents it. The anchor is checked
+    // as written before it's moved, for the same reason as in `movedHash`.
+    const removedPage = (hash) => {
+      if (!hash || document.getElementById(hash)) return null;
+      const movedFrom = longestPrefix(movedAnchors, hash);
+      const candidates = movedFrom ? [hash, movedAnchors[movedFrom] + hash.slice(movedFrom.length)] : [hash];
+      const id = candidates.find((candidate) => longestPrefix(removedAnchors, candidate));
+      return id ? removedAnchors[longestPrefix(removedAnchors, id)] : null;
+    };
     let hash = decodeURIComponent(window.location.hash.slice(1));
+    const removedOnLoad = removedPage(hash);
+    if (removedOnLoad) {
+      window.location.replace(removedOnLoad);
+      return undefined;
+    }
     const movedOnLoad = movedHash(hash);
     if (movedOnLoad) {
       hash = movedOnLoad;
@@ -126,6 +143,11 @@ export const CLIPage = ({ title, description, movedAnchors = {}, children }) => 
     // page was opened on would otherwise stay pinned over the new one.
     const onHashChange = () => {
       const hashNow = decodeURIComponent(window.location.hash.slice(1));
+      const removed = removedPage(hashNow);
+      if (removed) {
+        window.location.replace(removed);
+        return;
+      }
       const moved = movedHash(hashNow);
       const el = hashNow ? document.getElementById(moved || hashNow) : null;
       if (!el) return;
