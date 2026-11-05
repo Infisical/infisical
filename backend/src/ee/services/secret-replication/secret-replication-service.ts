@@ -1,8 +1,6 @@
 import path from "node:path";
 
-import { Knex } from "knex";
-
-import { SecretType, TSecretFolders, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
@@ -24,7 +22,6 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1 } from "@app/services/secret-folder/secret-folder-events";
-import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -46,6 +43,7 @@ import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-da
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
 import { MAX_REPLICATION_DEPTH } from "./secret-replication-constants";
+import { findOrCreateReplicationFolder, getReplicationFolderName } from "./secret-replication-fns";
 
 type TSecretReplicationServiceFactoryDep = {
   secretDAL: Pick<
@@ -111,7 +109,6 @@ export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicati
 const keystoreReplicationSuccessKey = (jobId: string, secretImportId: string) => `${jobId}-${secretImportId}`;
 const getReplicationKeyLockPrefix = (projectId: string, environmentSlug: string, secretPath: string) =>
   `REPLICATION_SECRET_${projectId}-${environmentSlug}-${secretPath}`;
-export const getReplicationFolderName = (importId: string) => `${ReservedFolders.SecretReplication}${importId}`;
 
 const getDecryptedKeyValue = (key: string, secret: TSecrets) => {
   const secretKey = crypto.encryption().symmetric().decrypt({
@@ -210,40 +207,6 @@ export const secretReplicationServiceFactory = ({
       });
     }
     return secrets;
-  };
-
-  // Finds or creates the reserved folder a replication import writes into. Returns undefined when the
-  // import is gone: a job lists its imports before it waits on the replication lock, so the import can be
-  // deleted (and its reserved folder with it) by the time the job reaches it, and creating the folder then
-  // would leave an orphan that nothing removes. The import stays locked while the folder is created, so a
-  // delete that runs at the same time waits for this transaction and then removes the new folder.
-  const $findOrCreateReplicationFolder = async (
-    destinationSecretImportId: string,
-    destinationFolder: { id: string; envId: string },
-    onCreate?: (folder: TSecretFolders, tx: Knex) => Promise<void>
-  ) => {
-    const name = getReplicationFolderName(destinationSecretImportId);
-    const existingFolder = await folderDAL.findOne({ parentId: destinationFolder.id, name, isReserved: true });
-    if (existingFolder) return existingFolder;
-
-    return folderDAL.transaction(async (tx) => {
-      const destinationSecretImport = await secretImportDAL.lockWithFolderAgainstDelete(
-        { importId: destinationSecretImportId, folderId: destinationFolder.id, envId: destinationFolder.envId },
-        tx
-      );
-      if (!destinationSecretImport) return undefined;
-
-      const folder = await folderDAL.findOne({ parentId: destinationFolder.id, name, isReserved: true }, tx);
-      if (folder) return folder;
-
-      const createdFolder = await folderDAL.create(
-        { parentId: destinationFolder.id, name, envId: destinationFolder.envId, isReserved: true },
-        tx
-      );
-      // Same transaction, otherwise a retry finds the folder already there and never emits.
-      if (onCreate) await onCreate(createdFolder, tx);
-      return createdFolder;
-    });
   };
 
   // IMPORTANT NOTE BEFORE READING THE FUNCTION
@@ -413,10 +376,12 @@ export const secretReplicationServiceFactory = ({
               destinationFolder.path,
               getReplicationFolderName(destinationSecretImport.id)
             );
-            const destinationReplicationFolder = await $findOrCreateReplicationFolder(
-              destinationSecretImport.id,
+            const destinationReplicationFolder = await findOrCreateReplicationFolder({
+              folderDAL,
+              secretImportDAL,
+              destinationSecretImportId: destinationSecretImport.id,
               destinationFolder,
-              (createdFolder, tx) =>
+              onCreate: (createdFolder, tx) =>
                 FolderModifiedEventV1.emit(
                   eventEmitter,
                   {
@@ -428,7 +393,7 @@ export const secretReplicationServiceFactory = ({
                   },
                   tx
                 )
-            );
+            });
             if (!destinationReplicationFolder) {
               logger.info(
                 { jobId: job.id, importId: destinationSecretImport.id },
@@ -739,10 +704,12 @@ export const secretReplicationServiceFactory = ({
             });
           }
 
-          const destinationReplicationFolder = await $findOrCreateReplicationFolder(
-            destinationSecretImport.id,
+          const destinationReplicationFolder = await findOrCreateReplicationFolder({
+            folderDAL,
+            secretImportDAL,
+            destinationSecretImportId: destinationSecretImport.id,
             destinationFolder
-          );
+          });
           if (!destinationReplicationFolder) {
             logger.info(
               { jobId: job.id, importId: destinationSecretImport.id },
