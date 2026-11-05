@@ -8,7 +8,8 @@ import {
   deleteAgentVaultProject,
   markAgentVaultProjectOriginal
 } from "e2e-test/testUtils/agent-vault";
-import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createIdentityActor } from "e2e-test/testUtils/identities";
 import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
 import { pollUntil } from "e2e-test/testUtils/poll";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
@@ -3933,83 +3934,107 @@ describe("Agent Vault V1 Router", async () => {
         }
       });
 
-      // What a removal from the group does: delete the link, and hold it until it commits. The save waits for it and
-      // then finds the bundle out of reach, so it can't land after the removal's clear and leave a value behind.
-      const saveWaitsForLinkDelete = async (
-        linkTable: "user_group_membership" | "identity_group_membership",
-        link: { userId: string } | { identityId: string },
-        save: () => ReturnType<typeof setValues>
-      ) => {
-        const trx = await testDb.transaction();
-        let pending: ReturnType<typeof setValues> | undefined;
+      // Only a parent-org identity leaves an org without being deleted, so the bundle lives in a sub-org it is linked
+      // into. The removal also takes it out of the sub-org's groups, which must happen before its values are cleared.
+      test("a machine identity removed from the org that owns the group giving it the bundle loses the values it saved", async () => {
+        const restoreLicense = overrideLicenseFeatures({ groups: true, subOrganization: true });
+        const root = await createIsolatedOrgAndProject("mp-org-exit-identity");
+        let identityId: string | undefined;
         try {
-          const { rows } = await trx.raw("select pg_backend_pid() as pid");
-          await trx(linkTable).where(link).delete();
-
-          pending = save();
-          await waitUntilBlockedBy(rows[0].pid);
-          await trx.commit();
-
-          expect((await pending).statusCode).toBe(404);
-        } catch (err) {
-          if (!trx.isCompleted()) await trx.rollback();
-          // Let the save finish before cleanup, so a failure here doesn't leave state for the tests after it.
-          await pending?.catch(() => undefined);
-          throw err;
-        }
-        expect(await valuesOf(link)).toHaveLength(0);
-      };
-
-      test("a user's save waits for their removal from the group that gave them the bundle, then 404s", async () => {
-        const bundle = await createAccessBundle(`mp-group-race-user-${Date.now()}`);
-        const service = await createService(bundle.id, {
-          name: "linear",
-          hostPattern: "mp-group-race-user.example.com",
-          credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
-        });
-        const group = await createProjectGroup(agentVaultProjectId, "mp-group-race-user", ProjectMembershipRole.Member);
-        const user = await createUser("mp-group-race-user");
-        try {
-          await addUserMembership({
-            userId: user.userId,
-            orgId: seedData1.organization.id,
-            role: OrgMembershipRole.Member
+          const sub = await createSubOrgAndProject({ rootOrgId: root.orgId, namePrefix: "mp-org-exit-identity-sub" });
+          const subOrgRequest = (method: "POST" | "DELETE", url: string, body?: Record<string, unknown>) =>
+            testServer.inject({
+              method,
+              url,
+              headers: { authorization: `Bearer ${sub.authToken}` },
+              ...(body ? { body } : {})
+            });
+          const subProjectId = await createAgentVaultProject({
+            authToken: sub.authToken,
+            name: `mp-org-exit-identity-${Date.now()}`
           });
-          await testDb("user_group_membership").insert({ groupId: group.id, userId: user.userId });
-          expect((await inject("POST", membersUrl(bundle.id), { groupIds: [group.id] })).statusCode).toBe(200);
-          const token = await createUserAccessToken({ userId: user.userId, orgId: seedData1.organization.id });
-          const asUser = agentVaultRequester(token, () => agentVaultProjectId);
+          const asSubAdmin = agentVaultRequester(sub.authToken, () => subProjectId);
 
-          await saveWaitsForLinkDelete("user_group_membership", { userId: user.userId }, () =>
-            setValues(asUser, bundle.id, service.id, { "credential-value": "raced" })
-          );
+          ({ identityId } = await createIdentityActor({
+            orgId: root.orgId,
+            authToken: root.authToken,
+            role: OrgMembershipRole.NoAccess
+          }));
+          const linked = await subOrgRequest("POST", `/api/v1/organization/identity-memberships/${identityId}`, {
+            roles: [{ role: OrgMembershipRole.NoAccess }]
+          });
+          expect(linked.statusCode, linked.payload).toBe(200);
+
+          const group = await subOrgRequest("POST", "/api/v1/groups", { name: `mp-org-exit-identity-${Date.now()}` });
+          expect(group.statusCode, group.payload).toBe(200);
+          const groupId = group.json().id as string;
+          expect(
+            (await subOrgRequest("POST", `/api/v1/groups/${groupId}/machine-identities/${identityId}`)).statusCode
+          ).toBe(200);
+          expect(
+            (
+              await asSubAdmin("POST", "/api/v1/agent-vault/members", {
+                groupIds: [groupId],
+                role: ProjectMembershipRole.Member
+              })
+            ).statusCode
+          ).toBe(200);
+
+          const bundleRes = await asSubAdmin("POST", "/api/v1/agent-vault/access-bundles", { name: "mp-org-exit" });
+          expect(bundleRes.statusCode, bundleRes.payload).toBe(200);
+          const bundleId = (bundleRes.json() as { accessBundle: { id: string } }).accessBundle.id;
+          const serviceRes = await asSubAdmin("POST", servicesUrl(bundleId), {
+            type: "http",
+            name: "linear",
+            hostPattern: "mp-org-exit-identity.example.com",
+            credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+          });
+          expect(serviceRes.statusCode, serviceRes.payload).toBe(200);
+          const serviceId = (serviceRes.json() as { service: { id: string } }).service.id;
+          expect((await asSubAdmin("POST", membersUrl(bundleId), { groupIds: [groupId] })).statusCode).toBe(200);
+
+          const ua = await testServer.inject({
+            method: "GET",
+            url: `/api/v1/auth/universal-auth/identities/${identityId}`,
+            headers: { authorization: `Bearer ${root.authToken}` }
+          });
+          expect(ua.statusCode).toBe(200);
+          const secret = await testServer.inject({
+            method: "POST",
+            url: `/api/v1/auth/universal-auth/identities/${identityId}/client-secrets`,
+            headers: { authorization: `Bearer ${root.authToken}` },
+            body: {}
+          });
+          expect(secret.statusCode).toBe(200);
+          const subOrg = (await testDb("organizations").where({ id: sub.subOrgId }).first()) as { slug: string };
+          const login = await testServer.inject({
+            method: "POST",
+            url: "/api/v1/auth/universal-auth/login",
+            body: {
+              clientId: ua.json().identityUniversalAuth.clientId as string,
+              clientSecret: secret.json().clientSecret as string,
+              organizationSlug: subOrg.slug
+            }
+          });
+          expect(login.statusCode, login.payload).toBe(200);
+          const asIdentity = agentVaultRequester(login.json().accessToken as string, () => subProjectId);
+          const saved = await setValues(asIdentity, bundleId, serviceId, { "credential-value": "lin" });
+          expect(saved.statusCode, saved.payload).toBe(200);
+          expect(await valuesOf({ identityId })).toHaveLength(1);
+
+          const removed = await subOrgRequest("DELETE", `/api/v1/organization/identity-memberships/${identityId}`);
+          expect(removed.statusCode, removed.payload).toBe(200);
+          expect(await valuesOf({ identityId })).toHaveLength(0);
         } finally {
-          await testDb("user_group_membership").where({ userId: user.userId }).delete();
-          await group.cleanup();
-          await deleteUsers([user.userId]);
-        }
-      });
-
-      test("a machine identity's save waits for its removal from the group that gave it the bundle, then 404s", async () => {
-        const bundle = await createAccessBundle(`mp-group-race-identity-${Date.now()}`);
-        const service = await createService(bundle.id, {
-          name: "linear",
-          hostPattern: "mp-group-race-identity.example.com",
-          credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
-        });
-        const group = await createProjectGroup(agentVaultProjectId, "mp-group-race-identity", ProjectMembershipRole.Member);
-        const member = await createMemberIdentity(`mp-group-race-identity-${Date.now()}`);
-        try {
-          await testDb("identity_group_membership").insert({ groupId: group.id, identityId: member.id });
-          expect((await inject("POST", membersUrl(bundle.id), { groupIds: [group.id] })).statusCode).toBe(200);
-
-          await saveWaitsForLinkDelete("identity_group_membership", { identityId: member.id }, () =>
-            setValues(member.as, bundle.id, service.id, { "credential-value": "raced" })
-          );
-        } finally {
-          await testDb("identity_group_membership").where({ identityId: member.id }).delete();
-          await member.cleanup();
-          await group.cleanup();
+          if (identityId) {
+            await testServer.inject({
+              method: "DELETE",
+              url: `/api/v1/identities/${identityId}`,
+              headers: { authorization: `Bearer ${root.authToken}` }
+            });
+          }
+          await root.cleanup();
+          restoreLicense();
         }
       });
     });

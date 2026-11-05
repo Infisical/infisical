@@ -12,11 +12,12 @@ const PROJECT_A = uuid(40);
 const PROJECT_B = uuid(41);
 const PROJECT_C = uuid(42);
 
-const build = (projectsWithValues: string[]) => {
+const build = (projectsWithValues: string[], projectsWithAnyValues = projectsWithValues) => {
   const tx = { raw: vi.fn() };
   const deps = {
     agentVaultPersonalValueDAL: {
       findProjectIdsWithValues: vi.fn().mockResolvedValue(projectsWithValues),
+      findProjectIdsWithAnyValues: vi.fn().mockResolvedValue(projectsWithAnyValues),
       deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0)
     },
     userGroupMembershipDAL: {
@@ -42,6 +43,7 @@ describe("clearPersonalValuesInProjects", () => {
       tx
     );
     expect(deps.userGroupMembershipDAL.find).not.toHaveBeenCalled();
+    expect(deps.agentVaultPersonalValueDAL.findProjectIdsWithAnyValues).not.toHaveBeenCalled();
     expect(tx.raw.mock.calls).toEqual([
       ["SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ClearAgentVaultPersonalValues(PROJECT_A)]],
       ["SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ClearAgentVaultPersonalValues(PROJECT_C)]]
@@ -56,14 +58,18 @@ describe("clearPersonalValuesInProjects", () => {
   });
 
   test("looks up and clears a group's members once", async () => {
-    const { tx, deps } = build([PROJECT_A]);
+    const { tx, deps } = build([PROJECT_A], [PROJECT_A]);
 
     await clearPersonalValuesInProjects(
       deps as never,
-      { projectIds: [PROJECT_A], userIds: [USER_ID], groupIds: [GROUP_ID] },
+      { projectIds: [PROJECT_B, PROJECT_A], userIds: [USER_ID], groupIds: [GROUP_ID] },
       tx as never
     );
 
+    expect(deps.agentVaultPersonalValueDAL.findProjectIdsWithAnyValues).toHaveBeenCalledWith(
+      [PROJECT_B, PROJECT_A],
+      tx
+    );
     expect(deps.userGroupMembershipDAL.find).toHaveBeenCalledWith({ $in: { groupId: [GROUP_ID] } }, { tx });
     expect(deps.identityGroupMembershipDAL.find).toHaveBeenCalledWith({ $in: { groupId: [GROUP_ID] } }, { tx });
     const actors = { userIds: [USER_ID, GROUP_USER_ID], identityIds: [GROUP_IDENTITY_ID] };
@@ -76,6 +82,17 @@ describe("clearPersonalValuesInProjects", () => {
       tx
     );
     expect(deps.userGroupMembershipDAL.find).toHaveBeenCalledTimes(1);
+  });
+
+  test("skips reading a group's members when none of its projects holds a value", async () => {
+    const { tx, deps } = build([PROJECT_A], []);
+
+    await clearPersonalValuesInProjects(deps as never, { projectIds: [PROJECT_A], groupIds: [GROUP_ID] }, tx as never);
+
+    expect(deps.userGroupMembershipDAL.find).not.toHaveBeenCalled();
+    expect(deps.identityGroupMembershipDAL.find).not.toHaveBeenCalled();
+    expect(deps.agentVaultPersonalValueDAL.findProjectIdsWithValues).not.toHaveBeenCalled();
+    expect(tx.raw).not.toHaveBeenCalled();
   });
 
   test("takes no lock when no project holds the actors' values", async () => {

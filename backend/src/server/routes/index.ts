@@ -1602,7 +1602,9 @@ export const registerRoutes = async (
     pamAccountDAL,
     pamSessionDAL,
     userDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services

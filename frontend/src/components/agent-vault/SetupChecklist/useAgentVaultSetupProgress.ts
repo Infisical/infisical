@@ -1,15 +1,13 @@
 import { linkOptions } from "@tanstack/react-router";
 
-import { useOrganization, useProject, useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { useLocalStorageState } from "@app/hooks";
-import { useGetUserProjects } from "@app/hooks/api";
 import {
   AgentVaultSessionScope,
   useListAgentVaultAccessBundles,
   useListAgentVaultProxies,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const DISMISSED_STORAGE_KEY = "agentVaultSetupChecklistDismissed";
@@ -32,7 +30,6 @@ export enum AgentVaultSetupStep {
 // Only admins can set Agent Vault up, and listing every session is admin-only on the server, so none
 // of these queries runs for a member.
 export const useAgentVaultSetupProgress = () => {
-  const { currentOrg } = useOrganization();
   const { projectId } = useProject();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
@@ -69,20 +66,8 @@ export const useAgentVaultSetupProgress = () => {
   );
   const queries = [proxies, newestBundles, fullestBundles, sessions];
 
-  // Dismissal is per project. It used to be keyed by org, when an org had one Agent Vault project, so an
-  // org key still counts for that project: the org's oldest one, as every other was created after it.
   const [dismissed, setDismissed] = useLocalStorageState(DISMISSED_STORAGE_KEY, NOTHING_DISMISSED);
-  const hasLegacyDismissal = Boolean(dismissed?.[currentOrg.id]);
-  // The project switcher in the navbar loads this list on every project page, so it is usually cached.
-  const userProjects = useGetUserProjects({ options: { enabled: isAdmin && hasLegacyDismissal } });
-  const [originalProject] = (userProjects.data ?? [])
-    .filter((project) => project.type === ProjectType.AgentVault)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const isOriginalProject = originalProject?.id === projectId;
-  // Hidden while the list loads, so a dismissed checklist doesn't flash in.
-  const isDismissed = Boolean(
-    dismissed?.[projectId] ?? (hasLegacyDismissal && (isOriginalProject || userProjects.isPending))
-  );
+  const isDismissed = Boolean(dismissed?.[projectId]);
 
   const isLoaded = queries.every((query) => Boolean(query.data));
   // A query with no data left after its retries would otherwise hold every caller waiting forever.
@@ -112,12 +97,7 @@ export const useAgentVaultSetupProgress = () => {
     isVisible: isIncomplete && !isDismissed,
     canRestore: isIncomplete && isDismissed,
     dismiss: () => setDismissed((current) => ({ ...current, [projectId]: true })),
-    restore: () =>
-      setDismissed((current) => ({
-        ...current,
-        [projectId]: undefined,
-        ...(isOriginalProject && { [currentOrg.id]: undefined })
-      })),
+    restore: () => setDismissed((current) => ({ ...current, [projectId]: undefined })),
     hasProxy,
     hasConnectedProxy,
     newestBundle,

@@ -358,7 +358,7 @@ Clients sign in with a SOCKS5 username and password. The proxy ignores the usern
 
 - If the session isn't valid, the proxy refuses the sign-in and logs the reason, so the client reports a failed sign-in (if the password isn't a session token, the proxy logs the reason only with `--log-level debug`)
 - If the proxy can't check the session, such as when Infisical is unreachable, it accepts the sign-in and refuses the connection with a general failure, so the client can try again later
-- If you revoke a session while a connection is open, the next request on that connection gets a 403 with `the session is no longer valid` (within one [poll interval](#poll-interval))
+- If you revoke a session while a connection is open, the next request on that connection gets a 403 with `the session is no longer valid, or it belongs to a different Agent Vault project than this proxy` (within one [poll interval](#poll-interval))
 
 ### Requests to private addresses
 

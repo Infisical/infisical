@@ -55,14 +55,15 @@ export const clearPersonalValuesAfterRevoke = async (
 export type TClearPersonalValuesInProjectsDeps = Omit<TClearPersonalValuesDeps, "agentVaultPersonalValueDAL"> & {
   agentVaultPersonalValueDAL: Pick<
     TAgentVaultPersonalValueDALFactory,
-    "deleteForActorsWithoutGrant" | "findProjectIdsWithValues"
+    "deleteForActorsWithoutGrant" | "findProjectIdsWithValues" | "findProjectIdsWithAnyValues"
   >;
 };
 
 /**
  * `clearPersonalValuesAfterRevoke` over every bundle, run only in the projects among `projectIds` where these actors
  * (or the members of these groups) saved a value. The projects come back sorted, so concurrent cleanups across
- * several projects take the per-project advisory locks in one order.
+ * several projects take the per-project advisory locks in one order. A group's members are read only when one of
+ * its projects holds a value, so a group exit in an org without Agent Vault values costs one query.
  */
 export const clearPersonalValuesInProjects = async (
   deps: TClearPersonalValuesInProjectsDeps,
@@ -76,6 +77,11 @@ export const clearPersonalValuesInProjects = async (
 ) => {
   if (!projectIds.length || (!userIds.length && !identityIds.length && !groupIds.length)) return;
 
+  const candidateProjectIds = groupIds.length
+    ? await deps.agentVaultPersonalValueDAL.findProjectIdsWithAnyValues(projectIds, tx)
+    : projectIds;
+  if (!candidateProjectIds.length) return;
+
   const [groupUsers, groupIdentities] = groupIds.length
     ? await Promise.all([
         deps.userGroupMembershipDAL.find({ $in: { groupId: groupIds } }, { tx }),
@@ -86,7 +92,7 @@ export const clearPersonalValuesInProjects = async (
   const actorIdentityIds = [...new Set([...identityIds, ...groupIdentities.map((row) => row.identityId)])];
 
   const valueProjectIds = await deps.agentVaultPersonalValueDAL.findProjectIdsWithValues(
-    { projectIds, userIds: actorUserIds, identityIds: actorIdentityIds },
+    { projectIds: candidateProjectIds, userIds: actorUserIds, identityIds: actorIdentityIds },
     tx
   );
   for (const projectId of valueProjectIds) {

@@ -504,7 +504,7 @@ The proxy token is only on the proxy's machine. If you think someone took contro
   <Accordion title="Connections from the sandbox fail right away">
     The proxy refused the connection before any request. Check the proxy's log for one of these lines:
 
-    - `agent-vault: refused, the session is no longer valid`: the session expired or was revoked, or the session is in a different Agent Vault project from the proxy
+    - `agent-vault: refused, the session is no longer valid, or it belongs to a different Agent Vault project than this proxy`: the session expired or was revoked, or the session is in a different Agent Vault project from the proxy
     - `agent-vault: refused, Infisical rejected this proxy's token`: someone rotated or revoked the proxy's token, so restart the proxy with the new token
     - `agent-vault: refused, the session could not be resolved`: the proxy couldn't reach Infisical to check the session
     - `agent-vault: a client spoke plain SOCKS5 to the TLS port`: the sandbox's `egress_proxy` has no `tls` setting

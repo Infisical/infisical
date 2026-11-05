@@ -69,8 +69,11 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   those, sorted, so org exit doesn't lock every Agent Vault project in the org. Callers run it after the project
   membership delete, since the clear keeps values for anyone still an admin.
 - Leaving a group or deleting one (`removeUsersFromGroupByUserIds`, `removeIdentitiesFromGroup`, `deleteOwnedGroup`,
-  so SCIM, LDAP, SAML and OIDC sync too) runs `clearPersonalValuesInProjects` over the group's projects after the
-  group rows are deleted, in the same transaction, so anyone who still reaches the bundle another way keeps theirs.
+  so SCIM, LDAP, SAML and OIDC sync too, and GitHub team sync on its own path) runs `clearPersonalValuesInProjects`
+  over the group's projects after the group rows are deleted, in the same transaction, so anyone who still reaches
+  the bundle another way keeps theirs. It reads the groups' members only when one of those projects holds a value
+  (`findProjectIdsWithAnyValues`). Org exit deletes the actor's rows in the org's groups before
+  `revokeActorsInOrgs`, so the clear it runs sees them out of those groups.
 - Invites into an Agent Vault project, at signup and from the org's Members page, go through Agent Vault's member
   service (`addProductMembers`), so they get its audit event and telemetry.
 - The traffic policy defaults to any-host (formerly Allow), in the DB default, the service and the dialog.
@@ -499,9 +502,8 @@ personal values can reference.
   member-provided field must be set once it's applied. The save takes the service row `FOR SHARE` and re-checks
   the fields it validated against, so an admin changing them either waits for it or makes it 409. It also takes
   whatever grants the caller's reach `FOR SHARE`: their grants on the bundle, or for an admin without one, their
-  admin role rows. Leaving a group deletes the caller's link to it and not the group's grant, so it first takes
-  their links to the groups granted the bundle `FOR SHARE`, in its own statement. A revoke, removal, group exit or
-  demotion then either waits for the save and clears it, or lands first and the save 404s.
+  admin role rows. A revoke, removal or demotion then either waits for the save and clears it, or lands first and
+  the save 404s.
 - **A service update deletes only the values that no longer apply**, in the same transaction that writes the
   service row: a credential type change deletes every member's values for the service, and taking a field back
   from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only

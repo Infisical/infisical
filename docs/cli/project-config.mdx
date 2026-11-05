@@ -201,7 +201,7 @@ The CLI picks the instance in this order:
 3. `general.domain` in `.infisical.yaml`, or `domain` in `.infisical.json`
 4. US Cloud (`https://app.infisical.com`)
 
-[Agent Vault commands](/cli/reference#agent-vault) skip step 3, so they never use `domain` from the file. To connect them to another instance, pass `--domain`, set `INFISICAL_DOMAIN`, or log in to that instance.
+[Agent Vault commands](/cli/reference#agent-vault) skip step 3, so they never use `domain` from the file. If the file names a different instance from the one they would use, they stop with an error instead of connecting. To connect them to another instance, pass `--domain`, set `INFISICAL_DOMAIN`, or log in to that instance.
 
 If you log in with your own account, [`infisical login`](/cli/reference#login) uses `domain` to choose the instance to log in to. After that:
 
