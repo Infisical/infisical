@@ -17,7 +17,15 @@ import {
 } from "./alert-dialog";
 import { ContextMenu, ContextMenuTrigger } from "./context-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./dialog";
-import { DropdownMenu, DropdownMenuTrigger } from "./dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from "./dropdown-menu";
 import { MultiStep } from "./multi-step";
 import { Sheet, SheetBody, SheetContent, SheetHeader, SheetSubheader, SheetTitle } from "./sheet";
 
@@ -198,4 +206,35 @@ it("passes the sheet size through MultiStep", async () => {
   expect(document.querySelector('[data-slot="sheet-content"]')?.getAttribute("data-size")).toBe(
     "lg"
   );
+});
+
+it("portals a submenu after its parent menu in the same scope container", async () => {
+  const menu = (subOpen: boolean) => (
+    <V4Scope>
+      <DropdownMenu open>
+        <DropdownMenuTrigger>Secret actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuSub open={subOpen}>
+            <DropdownMenuSubTrigger>Annotate</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem>Add comment</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </V4Scope>
+  );
+  await React.act(async () => root.render(menu(false)));
+  await React.act(async () => root.render(menu(true)));
+  const parent = document.querySelector('[data-slot="dropdown-menu-content"]');
+  const sub = document.querySelector('[data-slot="dropdown-menu-sub-content"]');
+  expect(parent).not.toBeNull();
+  expect(sub).not.toBeNull();
+  expect(parent?.contains(sub ?? null)).toBe(false);
+  expect(sub?.closest(".v4")).toBe(parent?.closest(".v4"));
+  expect([
+    ...document.querySelectorAll(
+      '[data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"]'
+    )
+  ]).toEqual([parent, sub]);
 });

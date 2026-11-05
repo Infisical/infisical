@@ -160,22 +160,36 @@ function ContextMenuSubContent({
   className,
   children,
   collisionPadding = 8,
+  sideOffset = 4,
+  alignOffset = -3,
   ref,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubContent>) {
   return (
-    <ContextMenuPrimitive.SubContent
-      ref={ref}
-      data-slot="context-menu-sub-content"
-      collisionPadding={collisionPadding}
-      collisionBoundary={useV4CollisionBoundary()}
-      className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
-      data-scroll-fade="y"
-      {...props}
-    >
-      {children}
-      <ListHighlight />
-    </ContextMenuPrimitive.SubContent>
+    <ContextMenuPrimitive.Portal container={useV4PortalContainer()}>
+      <ContextMenuPrimitive.SubContent
+        ref={ref}
+        data-slot="context-menu-sub-content"
+        collisionPadding={collisionPadding}
+        collisionBoundary={useV4CollisionBoundary()}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        className={cn(
+          "z-50",
+          menu.surface,
+          menu.panel,
+          menu.sub,
+          menu.inset,
+          menu.motion,
+          className
+        )}
+        data-scroll-fade="y"
+        {...props}
+      >
+        {children}
+        <ListHighlight />
+      </ContextMenuPrimitive.SubContent>
+    </ContextMenuPrimitive.Portal>
   );
 }
 ContextMenuSubContent.displayName = "ContextMenuSubContent";

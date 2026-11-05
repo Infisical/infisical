@@ -477,6 +477,7 @@ export const baselineOverlays = [
     referenceNames: ["Popover"],
     behavior: [
       "Radix open/onOpenChange controls a trigger-anchored region with side/alignment placement. Content portals into V4Scope and honors descendant Escape ownership.",
+      "Every v4 overlay (menu, submenu, popover, select, tooltip, hover card, dialog, sheet, alert dialog) shares one layer, z-50, in the V4Scope portal container. A nested overlay opens after its parent, so it mounts later in that container and paints above it; nothing stacks by a higher z-index.",
       "PopoverAnchor re-anchors on every open, so content placed against a custom anchor stays on it inside a Dialog or Sheet and under StrictMode, where the trigger can otherwise re-claim the anchor."
     ],
     accessibility: [

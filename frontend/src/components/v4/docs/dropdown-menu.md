@@ -26,6 +26,23 @@ Source evidence:
 - src/components/v4/ui/dropdown-menu.tsx
 - src/pages/design-system/examples/dropdown-menu/default.tsx
 
+### dropdown-menu-nested-layers
+
+Owner: dropdown-menu.
+
+When an overlay opens from inside another one: a submenu, a popover, select or dialog launched from a menu, or a tooltip inside a popover.
+
+Do: Let every overlay portal into the V4Scope container at the one overlay layer (z-50). The child opens after its parent, so it mounts later in that container and paints above it.
+
+Avoid: Render overlay content inline inside another overlay, or give one overlay a higher z-index or an isolating className to win a stacking fight.
+
+Why: Inline content is clipped by its parent's overflow and placed in its parent's transformed frame, so a submenu that flips can land behind the panel it came from.
+
+Checked by: src/components/v4/ui/overlay-regressions.test.tsx. Opens a submenu from an open DropdownMenu and checks the submenu sits outside the parent panel, in the same scope container, after it in DOM order.
+
+Source evidence:
+- src/components/v4/ui/dropdown-menu.tsx
+
 ## State guidance
 
 - checked: Control checkbox and radio items from actual preference state.
@@ -52,6 +69,7 @@ Exports: DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 - Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.
 - Radix Root owns open/onOpenChange. Action items close after onSelect; checkbox/radio changes stay open by default and can opt into closeOnSelect.
 - DropdownMenuItem takes an optional description, a muted second line under its label. A disabled item uses it for the reason it is unavailable, so the action stays visible and explains itself.
+- DropdownMenuSubContent portals into the V4Scope container like the root menu, never inside its parent panel, so the parent's overflow and entry motion cannot clip or hide it. It opens beside its SubTrigger row: sideOffset 4 (space-4) and alignOffset -3 (the menu inset) line its first row up with the trigger, and when the trailing side has no room within the collision padding (8, space-8) it flips to the leading side, still beside the parent and never over it.
 
 ## Accessibility
 

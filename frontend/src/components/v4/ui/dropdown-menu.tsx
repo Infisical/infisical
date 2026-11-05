@@ -302,22 +302,36 @@ function DropdownMenuSubContent({
   className,
   children,
   collisionPadding = 8,
+  sideOffset = 4,
+  alignOffset = -3,
   ref,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
   return (
-    <DropdownMenuPrimitive.SubContent
-      ref={ref}
-      data-slot="dropdown-menu-sub-content"
-      collisionPadding={collisionPadding}
-      collisionBoundary={useV4CollisionBoundary()}
-      className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
-      data-scroll-fade="y"
-      {...props}
-    >
-      {children}
-      <ListHighlight />
-    </DropdownMenuPrimitive.SubContent>
+    <DropdownMenuPrimitive.Portal container={useV4PortalContainer()}>
+      <DropdownMenuPrimitive.SubContent
+        ref={ref}
+        data-slot="dropdown-menu-sub-content"
+        collisionPadding={collisionPadding}
+        collisionBoundary={useV4CollisionBoundary()}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        className={cn(
+          "z-50",
+          menu.surface,
+          menu.panel,
+          menu.sub,
+          menu.inset,
+          menu.motion,
+          className
+        )}
+        data-scroll-fade="y"
+        {...props}
+      >
+        {children}
+        <ListHighlight />
+      </DropdownMenuPrimitive.SubContent>
+    </DropdownMenuPrimitive.Portal>
   );
 }
 DropdownMenuSubContent.displayName = "DropdownMenuSubContent";
