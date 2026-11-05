@@ -373,9 +373,9 @@ Replace `<kubectl-version>` with your cluster's Kubernetes version, such as `v1.
 
 ## Step 4: Create the workers' namespace
 
-Save this manifest as `cursor-workers.yaml` and apply it to your cluster before you deploy the controller in the next step. It creates the `cursor-workers` namespace that workers run in, and blocks incoming connections to its pods:
+Save this manifest as `cursor-workers.yaml` and apply it to your cluster before you deploy the controller in the next step. It creates the `cursor-workers` namespace that workers run in. It also blocks incoming connections to workers, and their connections to private networks and your cloud's metadata service.
 
-```yaml
+```yaml expandable
 # cursor-workers.yaml
 apiVersion: v1
 kind: Namespace
@@ -384,20 +384,55 @@ metadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
 ---
+# Workers can reach DNS, the proxy, and public addresses, but not private networks
+# or your cloud's metadata service.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: cursor-workers-no-ingress
+  name: cursor-workers
   namespace: cursor-workers
 spec:
   podSelector: {}
-  policyTypes: [Ingress]
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchExpressions:
+              - key: k8s-app
+                operator: In
+                values: [kube-dns, node-local-dns]
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agent-vault
+          podSelector:
+            matchLabels:
+              app: agent-vault-proxy
+      ports:
+        - port: 17323
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
 ```
 
 <Warning>
-This guide [doesn't limit outgoing connections from the worker](#workers’-outgoing-connections).
+This guide only blocks outgoing connections from the worker to private networks and your cloud's metadata service. [It doesn't block connections to the public internet](#workers’-outgoing-connections).
 
-This means that even if you set your proxy's traffic policy to **[Service hosts only](/documentation/platform/agent-vault/proxies#traffic-policy)**, any request that skips the proxy (such as with `curl --noproxy '*'`) can still reach any host the cluster can reach.
+This means that even if you set your proxy's traffic policy to **[Service hosts only](/documentation/platform/agent-vault/proxies#traffic-policy)**, any request that skips the proxy (such as with `curl --noproxy '*'`) can still reach any public host.
 </Warning>
 
 ## Step 5: Deploy the worker controller
@@ -651,7 +686,7 @@ If the setup works, each command shows this:
 
 1. GitHub returns the account that the service's token belongs to, even though the worker has no GitHub token
 2. The request reaches `example.com` without a credential and returns `200`, or, under **Service hosts only**, the proxy refuses it with `403`
-3. The request reaches `example.com` without going through the proxy, because this guide [doesn't limit the workers' outgoing connections](#workers’-outgoing-connections). If you limited them, the request fails instead
+3. The request reaches `example.com` without going through the proxy, because this guide [only blocks the workers' connections to private networks and your cloud's metadata service](#workers’-outgoing-connections). If you limited them further, the request fails instead
 4. The environment has no API keys, and the only token is the session token in `HTTPS_PROXY`
 
 In Agent Vault, go to **Sessions** and find the run's session by its label, `cursor <pod-name>`, where `<pod-name>` is the name of the worker pod. [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
@@ -681,7 +716,7 @@ Cursor doesn't tell the controller when a worker exits, so the session keeps wor
 
 The agent's commands run in the same pod as Cursor's worker process, which needs a direct connection to Cursor's hosts, `api2.cursor.sh` and `api2direct.cursor.sh`. That connection can't go through the proxy, even with Cursor's hosts as **[Exceptions](/documentation/platform/agent-vault/proxies#exceptions)** in the proxy's traffic policy, because the proxy decrypts every connection and only supports HTTP/1.1, while the worker connects over HTTP/2. This is why [only the agent's commands use the proxy](#build-the-worker’s-image), while the worker connects to Cursor directly.
 
-A standard NetworkPolicy can't allow hosts by name, so this guide doesn't limit the workers' outgoing connections. To limit where workers can connect, use a feature that can allow hosts by name, such as Cilium's `toFQDNs` or GKE's FQDN network policies.
+A standard NetworkPolicy can't allow hosts by name, so the policy in [Step 4](#step-4-create-the-workers’-namespace) only blocks workers from private networks and your cloud's metadata service. Workers can still reach any public host. To limit where workers can connect, use a feature that can allow hosts by name, such as Cilium's `toFQDNs` or GKE's FQDN network policies.
 
 <Warning>
 If you limit where workers can connect, don't allow Cursor's artifact hosts, `agent-stores.s3.us-east-1.amazonaws.com` and `cloud-agent-artifacts.s3.us-east-1.amazonaws.com`. Both are Amazon S3 hosts, so if you allow them by IP address, the agent can upload data to any S3 bucket.
