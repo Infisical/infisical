@@ -4,7 +4,7 @@ sidebarTitle: "Project configuration"
 description: "Configure how the Infisical CLI interacts with your directory."
 ---
 
-A project config file links a directory to an [Infisical project](/documentation/platform/project). When you run a command such as [`infisical sm run`](/cli/reference#sm-run) or [`infisical sm secrets`](/cli/reference#sm-secrets) in that directory, the CLI reads the project from the file, so you don't have to pass [`--projectId`](/cli/reference#sm-run--flag-projectid).
+A project config file links a directory to an [Infisical project](/documentation/platform/project). When you run a command such as [`infisical secrets-manager run`](/cli/reference#secrets-manager-run) or [`infisical secrets-manager secrets`](/cli/reference#secrets-manager-secrets) in that directory, the CLI reads the project from the file, so you don't have to pass [`--projectId`](/cli/reference#secrets-manager-run--flag-projectid).
 
 The file can also [choose an environment](#set-the-environment) and [a folder](#set-the-folder) for you, and [pin the Infisical instance](#set-the-infisical-instance) the project lives on.
 
@@ -39,7 +39,7 @@ secrets-management:
 `project-id` is the project's ID, and `version` is the version of the file format. To add more settings, edit the file as described in the sections that follow.
 
 <Note>
-  If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `infisical sm run`, [`infisical sm export`](/cli/reference#sm-export), and `infisical sm secrets` don't read the project from the file. Pass the project with `--projectId` or the `INFISICAL_PROJECT_ID` environment variable instead.
+  If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `infisical secrets-manager run`, [`infisical secrets-manager export`](/cli/reference#secrets-manager-export), and `infisical secrets-manager secrets` don't read the project from the file. Pass the project with `--projectId` or the `INFISICAL_PROJECT_ID` environment variable instead.
 </Note>
 
 If the directory already has `.infisical.yaml` or `.infisical.json`, `infisical init` asks before it writes a new `.infisical.yaml`. The new file holds only the project ID, and the CLI reads it instead of the old file, so you lose the settings in the old file. To keep those settings, edit the old file instead of running `infisical init`.
@@ -54,7 +54,7 @@ If the directory already has `.infisical.yaml` or `.infisical.json`, `infisical 
   The `environment`, `secret-path`, and `overrides.git-branch` keys in `.infisical.yaml` require CLI version 0.44.8 or later. Earlier versions read only the older `default-environment`, `default-secret-path`, and `mappings.git-branch-to-environment` keys. If a developer machine, CI pipeline, or container image runs an older version, [upgrade the CLI](/cli/upgrade) there before you commit the newer keys.
 </Note>
 
-Without an environment setting, commands read secrets from your project's [`dev` environment](/documentation/platform/secrets-mgmt/project#project-environments) unless you pass [`--env`](/cli/reference#sm-run--flag-env). To use a different environment by default, set `environment` under `secrets-management` to the environment's slug (`defaultEnvironment` in `.infisical.json`):
+Without an environment setting, commands read secrets from your project's [`dev` environment](/documentation/platform/secrets-mgmt/project#project-environments) unless you pass [`--env`](/cli/reference#secrets-manager-run--flag-env). To use a different environment by default, set `environment` under `secrets-management` to the environment's slug (`defaultEnvironment` in `.infisical.json`):
 
 <CodeGroup>
 
@@ -120,7 +120,7 @@ The CLI picks the environment in this order:
 
 ## Set the folder
 
-Without a folder setting, commands read secrets from the root of the environment (`/`) unless you pass [`--path`](/cli/reference#sm-run--flag-path). To read from a different [folder](/documentation/platform/folder) by default, set `secret-path` under `secrets-management` (`defaultSecretPath` in `.infisical.json`):
+Without a folder setting, commands read secrets from the root of the environment (`/`) unless you pass [`--path`](/cli/reference#secrets-manager-run--flag-path). To read from a different [folder](/documentation/platform/folder) by default, set `secret-path` under `secrets-management` (`defaultSecretPath` in `.infisical.json`):
 
 <CodeGroup>
 
@@ -148,8 +148,6 @@ The CLI picks the folder in this order:
 4. `/`
 
 The CLI still reads the older `default-secret-path` key in `.infisical.yaml`, but ignores it if `secret-path` is set.
-
-The [`infisical sm secrets folders`](/cli/reference#sm-secrets-folders) commands don't read either setting, so pass `--path` to work in a folder other than `/`.
 
 ## Set the Infisical instance
 
@@ -208,10 +206,10 @@ In each directory, the CLI checks for `.infisical.yaml` first, then `.infisical.
 
 ## Use the file from another directory
 
-To read the project from a file somewhere else, such as one package's directory in a monorepo, pass the directory to `infisical sm run` with [`--project-config-dir`](/cli/reference#sm-run--flag-project-config-dir):
+To read the project from a file somewhere else, such as one package's directory in a monorepo, pass the directory to `infisical secrets-manager run` with [`--project-config-dir`](/cli/reference#secrets-manager-run--flag-project-config-dir):
 
 ```bash
-infisical sm run --project-config-dir ./services/api -- npm run dev
+infisical secrets-manager run --project-config-dir ./services/api -- npm run dev
 ```
 
 The CLI checks only that directory, not its parent directories.
@@ -241,7 +239,7 @@ A list of branches, each with the environment slug to use on that branch, such a
 </ResponseField>
 
 <ResponseField name="secrets-management.secret-path" type="string">
-The folder to read secrets from when [`--path`](/cli/reference#sm-run--flag-path) and `INFISICAL_SECRET_PATH` aren't set. The `infisical sm` commands read it, except `infisical sm secrets folders`. In `.infisical.json`, the field is `defaultSecretPath`.
+The folder to read secrets from when [`--path`](/cli/reference#secrets-manager-run--flag-path) and `INFISICAL_SECRET_PATH` aren't set. In `.infisical.json`, the field is `defaultSecretPath`.
 </ResponseField>
 
 <ResponseField name="general.domain" type="string">

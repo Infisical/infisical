@@ -1355,20 +1355,22 @@
                   "cli/reference/relay",
                   "cli/reference/reset",
                   "cli/reference/scan",
-                  "cli/reference/service-token",
                   {
-                    "group": "infisical sm",
+                    "group": "infisical secrets-manager",
                     "expanded": true,
                     "pages": [
-                      "cli/reference/sm",
-                      "cli/reference/sm/agent-proxy",
-                      "cli/reference/sm/dynamic-secrets",
-                      "cli/reference/sm/export",
-                      "cli/reference/sm/projects",
-                      "cli/reference/sm/run",
-                      "cli/reference/sm/secrets"
+                      "cli/reference/secrets-manager",
+                      "cli/reference/secrets-manager/agent-proxy",
+                      "cli/reference/secrets-manager/dynamic-secrets",
+                      "cli/reference/secrets-manager/environments",
+                      "cli/reference/secrets-manager/export",
+                      "cli/reference/secrets-manager/folders",
+                      "cli/reference/secrets-manager/projects",
+                      "cli/reference/secrets-manager/run",
+                      "cli/reference/secrets-manager/secrets"
                     ]
                   },
+                  "cli/reference/service-token",
                   "cli/reference/ssh",
                   "cli/reference/token",
                   "cli/reference/user",
@@ -5066,24 +5068,52 @@
       "destination": "/cli/reference"
     },
     {
+      "source": "/cli/reference/sm",
+      "destination": "/cli/reference#secrets-manager"
+    },
+    {
+      "source": "/cli/reference/sm/agent-proxy",
+      "destination": "/cli/reference#secrets-manager-agent-proxy"
+    },
+    {
+      "source": "/cli/reference/sm/dynamic-secrets",
+      "destination": "/cli/reference#secrets-manager-dynamic-secrets"
+    },
+    {
+      "source": "/cli/reference/sm/export",
+      "destination": "/cli/reference#secrets-manager-export"
+    },
+    {
+      "source": "/cli/reference/sm/projects",
+      "destination": "/cli/reference#secrets-manager-projects"
+    },
+    {
+      "source": "/cli/reference/sm/run",
+      "destination": "/cli/reference#secrets-manager-run"
+    },
+    {
+      "source": "/cli/reference/sm/secrets",
+      "destination": "/cli/reference#secrets-manager-secrets"
+    },
+    {
       "source": "/cli/reference/dynamic-secrets",
-      "destination": "/cli/reference#sm-dynamic-secrets"
+      "destination": "/cli/reference#secrets-manager-dynamic-secrets"
     },
     {
       "source": "/cli/reference/export",
-      "destination": "/cli/reference#sm-export"
+      "destination": "/cli/reference#secrets-manager-export"
     },
     {
       "source": "/cli/reference/run",
-      "destination": "/cli/reference#sm-run"
+      "destination": "/cli/reference#secrets-manager-run"
     },
     {
       "source": "/cli/reference/secrets",
-      "destination": "/cli/reference#sm-secrets"
+      "destination": "/cli/reference#secrets-manager-secrets"
     },
     {
       "source": "/cli/commands/agent-proxy",
-      "destination": "/cli/reference#sm-agent-proxy"
+      "destination": "/cli/reference#secrets-manager-agent-proxy"
     },
     {
       "source": "/cli/commands/agent-vault",
@@ -5095,11 +5125,11 @@
     },
     {
       "source": "/cli/commands/dynamic-secrets",
-      "destination": "/cli/reference#sm-dynamic-secrets"
+      "destination": "/cli/reference#secrets-manager-dynamic-secrets"
     },
     {
       "source": "/cli/commands/export",
-      "destination": "/cli/reference#sm-export"
+      "destination": "/cli/reference#secrets-manager-export"
     },
     {
       "source": "/cli/commands/gateway",
@@ -5151,7 +5181,7 @@
     },
     {
       "source": "/cli/commands/run",
-      "destination": "/cli/reference#sm-run"
+      "destination": "/cli/reference#secrets-manager-run"
     },
     {
       "source": "/cli/commands/scan-git-changes",
@@ -5167,7 +5197,7 @@
     },
     {
       "source": "/cli/commands/secrets",
-      "destination": "/cli/reference#sm-secrets"
+      "destination": "/cli/reference#secrets-manager-secrets"
     },
     {
       "source": "/cli/commands/service-token",
