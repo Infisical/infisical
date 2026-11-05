@@ -418,12 +418,6 @@ export const kmipServiceFactory = ({
       ProjectPermissionSub.Kmip
     );
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
-      throw new BadRequestError({
-        message: "Failed to delete KMIP client. Upgrade your plan to enterprise."
-      });
-
     const deletedKmipClient = await kmipClientDAL.deleteById(id);
 
     return deletedKmipClient;

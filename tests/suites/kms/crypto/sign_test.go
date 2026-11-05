@@ -9,7 +9,6 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/kms"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
-	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,45 +141,29 @@ func TestKmsKey_SignVerify(t *testing.T) {
 		require.Equal(t, "KMS ED25519 key cannot be used with ECDSA_SHA_256 signing algorithm", apierr.Message(res.Body))
 	})
 
-	t.Run("should still return an ML-DSA key's public key once the plan no longer includes kms_pqc", func(t *testing.T) {
+	t.Run("should refuse signing and verifying with an existing ML-DSA key once the plan no longer includes kms_pqc, and still return its public key", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := newProject(t, tn)
 		key := kms.NewKey(t, proj, kms.WithUsage(kms.SignVerify), kms.WithAlgorithm("ML_DSA_44"))
+		signature := signOK(t, tn.Admin.API, key.ID, "ML_DSA_44", []byte("message"))
 		before := publicKey(t, proj, key.ID)
 		tn.SetPlan(t, license.Enterprise().Without(license.KMSPQC))
 
 		// Action
-		after := publicKey(t, proj, key.ID)
+		signRes, _ := sign(t, tn.Admin.API, key.ID, "ML_DSA_44", []byte("message"), false)
+		verifyRes, err := tn.Admin.API.VerifyWithKmsKeyWithBodyWithResponse(t.Context(), key.ID, "application/json", kms.JSON(t,
+			map[string]any{"signingAlgorithm": "ML_DSA_44", "data": b64([]byte("message")), "signature": b64(signature)}))
+		require.NoError(t, err)
 
 		// Assert
-		require.Equal(t, before, after)
-	})
-}
-
-// TestKmsKey_KnownIssues asserts the intended behaviour of KMS key operations that is wrong today; each subtest
-// fails until its bug is fixed.
-func TestKmsKey_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should keep signing and verifying with an existing ML-DSA key once the plan no longer includes kms_pqc", func(t *testing.T) {
-		t.Parallel()
-		spec.Ref(t, "backend/CODE_QUALITY.md#license-checks: existing objects keep working, only creating and editing is blocked")
-
-		// Setup
-		tn := h.NewTenant(t)
-		proj := newProject(t, tn)
-		key := kms.NewKey(t, proj, kms.WithUsage(kms.SignVerify), kms.WithAlgorithm("ML_DSA_44"))
-		tn.SetPlan(t, license.Enterprise().Without(license.KMSPQC))
-
-		// Action
-		res, out := sign(t, tn.Admin.API, key.ID, "ML_DSA_44", []byte("message"), false)
-
-		// Assert
-		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-		require.True(t, verify(t, tn.Admin.API, key.ID, "ML_DSA_44", []byte("message"), unb64(t, out.Signature), false))
+		const unlicensed = "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
+		requireStatus(t, http.StatusBadRequest, signRes.StatusCode(), signRes.Body)
+		require.Equal(t, unlicensed, apierr.Message(signRes.Body))
+		requireStatus(t, http.StatusBadRequest, verifyRes.StatusCode(), verifyRes.Body)
+		require.Equal(t, unlicensed, apierr.Message(verifyRes.Body))
+		require.Equal(t, before, publicKey(t, proj, key.ID))
 	})
 }

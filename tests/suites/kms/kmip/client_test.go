@@ -181,13 +181,6 @@ func TestKmipClient(t *testing.T) {
 		require.Equal(t, c, getClient(t, proj, c.ID))
 		require.Len(t, listClients(t, tn.Admin.API, api.ListKmipClientsParams{ProjectId: proj.ID}).KmipClients, 1)
 	})
-}
-
-// TestKmipClient_KnownIssues asserts the intended behaviour of KMIP clients that is wrong today; each subtest fails
-// until its bug is fixed.
-func TestKmipClient_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
 
 	t.Run("should delete a client when the plan no longer includes KMIP", func(t *testing.T) {
 		t.Parallel()
