@@ -185,6 +185,7 @@ func TestFolderCommit_PersonalOverride(t *testing.T) {
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		secretmanager.CreateFolder(t, proj, "dev", "/app")
 		secretmanager.CreateSecret(t, proj, "dev", "DB_HOST", "db.internal")
+		secretmanager.CreateSecret(t, proj, "dev", "LOCAL", "${DB_HOST}")
 		target := headCommit(t, proj, "dev", "/")
 		secretmanager.CreateSecret(t, proj, "dev", "CONN", "${dev.DB_HOST}", secretmanager.WithPath("/app"))
 		renamed, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), "DB_HOST", api.UpdateSecretV4JSONRequestBody{
@@ -200,5 +201,16 @@ func TestFolderCommit_PersonalOverride(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		require.Equal(t, "db.internal", secretmanager.GetSecret(t, proj, "dev", "CONN", secretmanager.WithPath("/app")).Value)
+		require.Equal(t, "db.internal", secretmanager.GetSecret(t, proj, "dev", "DB_HOST").Value)
+		local, err := tn.Admin.API.GetSecretByNameV4WithResponse(t.Context(), "LOCAL", &api.GetSecretByNameV4Params{
+			ProjectId: proj.ID, Environment: new("dev"), SecretPath: new("/"),
+			ExpandSecretReferences: new(api.GetSecretByNameV4ParamsExpandSecretReferencesFalse),
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, local.JSON200, "reading LOCAL returned %d: %s", local.StatusCode(), local.Body)
+		require.Equal(t, "${DB_HOST}", local.JSON200.Secret.SecretValue)
+		require.Equal(t, "db.internal", secretmanager.GetSecret(t, proj, "dev", "LOCAL").Value)
+		head := headCommit(t, proj, "dev", "/")
+		require.Equal(t, "Rollback to previous commit", head.Message, "the repair must not rewrite the secrets the rollback restored")
 	})
 }
