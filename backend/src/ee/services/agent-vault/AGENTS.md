@@ -499,8 +499,9 @@ personal values can reference.
   member-provided field must be set once it's applied. The save takes the service row `FOR SHARE` and re-checks
   the fields it validated against, so an admin changing them either waits for it or makes it 409. It also takes
   whatever grants the caller's reach `FOR SHARE`: their grants on the bundle, or for an admin without one, their
-  admin role rows. A revoke, removal or demotion then either waits for the save and clears it, or lands first and
-  the save 404s.
+  admin role rows. Leaving a group deletes the caller's link to it and not the group's grant, so it first takes
+  their links to the groups granted the bundle `FOR SHARE`, in its own statement. A revoke, removal, group exit or
+  demotion then either waits for the save and clears it, or lands first and the save 404s.
 - **A service update deletes only the values that no longer apply**, in the same transaction that writes the
   service row: a credential type change deletes every member's values for the service, and taking a field back
   from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only
@@ -768,8 +769,7 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   `sessions revoke <session-id>` revokes by id, and `sessions revoke --session-token <token>` calls
   `POST /session/revoke`, so an agent holding its token can end its own session. Neither prompts.
 - `sessions create`, `run --access-bundle` and `skills push` need a project, resolved in this order:
-  `--project-id`, `INFISICAL_AGENT_VAULT_PROJECT_ID`, `agent-vault.project-id` in `.infisical.yaml`,
-  `INFISICAL_PROJECT_ID`. With none the CLI stops with an error rather than leaning on the server fallback. It
+  `--project-id`, `INFISICAL_AGENT_VAULT_PROJECT_ID`, `INFISICAL_PROJECT_ID`. With none the CLI stops with an error rather than leaning on the server fallback. It
   prints the project and its source on stderr, and `profile current` shows them too.
 - The session flag is `--session-token`, not `--token`, so the root command's Infisical-token handling never
   reads it. The minting identity comes from `--client-id`/`--client-secret`, the access-token env vars, or the

@@ -3932,6 +3932,86 @@ describe("Agent Vault V1 Router", async () => {
           await group.cleanup();
         }
       });
+
+      // What a removal from the group does: delete the link, and hold it until it commits. The save waits for it and
+      // then finds the bundle out of reach, so it can't land after the removal's clear and leave a value behind.
+      const saveWaitsForLinkDelete = async (
+        linkTable: "user_group_membership" | "identity_group_membership",
+        link: { userId: string } | { identityId: string },
+        save: () => ReturnType<typeof setValues>
+      ) => {
+        const trx = await testDb.transaction();
+        let pending: ReturnType<typeof setValues> | undefined;
+        try {
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          await trx(linkTable).where(link).delete();
+
+          pending = save();
+          await waitUntilBlockedBy(rows[0].pid);
+          await trx.commit();
+
+          expect((await pending).statusCode).toBe(404);
+        } catch (err) {
+          if (!trx.isCompleted()) await trx.rollback();
+          // Let the save finish before cleanup, so a failure here doesn't leave state for the tests after it.
+          await pending?.catch(() => undefined);
+          throw err;
+        }
+        expect(await valuesOf(link)).toHaveLength(0);
+      };
+
+      test("a user's save waits for their removal from the group that gave them the bundle, then 404s", async () => {
+        const bundle = await createAccessBundle(`mp-group-race-user-${Date.now()}`);
+        const service = await createService(bundle.id, {
+          name: "linear",
+          hostPattern: "mp-group-race-user.example.com",
+          credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+        });
+        const group = await createProjectGroup(agentVaultProjectId, "mp-group-race-user", ProjectMembershipRole.Member);
+        const user = await createUser("mp-group-race-user");
+        try {
+          await addUserMembership({
+            userId: user.userId,
+            orgId: seedData1.organization.id,
+            role: OrgMembershipRole.Member
+          });
+          await testDb("user_group_membership").insert({ groupId: group.id, userId: user.userId });
+          expect((await inject("POST", membersUrl(bundle.id), { groupIds: [group.id] })).statusCode).toBe(200);
+          const token = await createUserAccessToken({ userId: user.userId, orgId: seedData1.organization.id });
+          const asUser = agentVaultRequester(token, () => agentVaultProjectId);
+
+          await saveWaitsForLinkDelete("user_group_membership", { userId: user.userId }, () =>
+            setValues(asUser, bundle.id, service.id, { "credential-value": "raced" })
+          );
+        } finally {
+          await testDb("user_group_membership").where({ userId: user.userId }).delete();
+          await group.cleanup();
+          await deleteUsers([user.userId]);
+        }
+      });
+
+      test("a machine identity's save waits for its removal from the group that gave it the bundle, then 404s", async () => {
+        const bundle = await createAccessBundle(`mp-group-race-identity-${Date.now()}`);
+        const service = await createService(bundle.id, {
+          name: "linear",
+          hostPattern: "mp-group-race-identity.example.com",
+          credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+        });
+        const group = await createProjectGroup(agentVaultProjectId, "mp-group-race-identity", ProjectMembershipRole.Member);
+        const member = await createMemberIdentity(`mp-group-race-identity-${Date.now()}`);
+        try {
+          await testDb("identity_group_membership").insert({ groupId: group.id, identityId: member.id });
+          expect((await inject("POST", membersUrl(bundle.id), { groupIds: [group.id] })).statusCode).toBe(200);
+
+          await saveWaitsForLinkDelete("identity_group_membership", { identityId: member.id }, () =>
+            setValues(member.as, bundle.id, service.id, { "credential-value": "raced" })
+          );
+        } finally {
+          await testDb("identity_group_membership").where({ identityId: member.id }).delete();
+          await member.cleanup();
+          await group.cleanup();
+        }
+      });
     });
 
     test("a save made against a stale credential type is refused, not stored under the new type", async () => {

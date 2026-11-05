@@ -243,13 +243,38 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
 
   /**
    * The owner's grants on the bundle, direct or through a group they are in, taken FOR SHARE. A revoke deletes these
-   * rows in its own transaction, so this waits for one in flight and then sees the rows gone.
+   * rows in its own transaction, so this waits for one in flight and then sees the rows gone. Leaving a group deletes
+   * the owner's link to it and not the group's grant, so those links are locked first, in their own statement: the
+   * grants read after it then sees a link that a removal in flight deleted as gone.
    */
   const lockGrantsForOwner = async (
     { projectId, accessBundleId, owner }: { projectId: string; accessBundleId: string; owner: TAgentVaultOwner },
     tx: Knex
   ): Promise<{ id: string }[]> => {
     try {
+      const groupsGranted = tx(TableName.Membership)
+        .where({
+          scope: RESOURCE_SCOPE,
+          scopeProjectId: projectId,
+          scopeResourceType: ResourceType.AgentVaultAccessBundle,
+          scopeResourceId: accessBundleId
+        })
+        .whereNotNull("actorGroupId")
+        .select("actorGroupId");
+      if (owner.userId) {
+        await tx(TableName.UserGroupMembership)
+          .where({ userId: owner.userId })
+          .whereIn("groupId", groupsGranted)
+          .forShare()
+          .select("id");
+      } else {
+        await tx(TableName.IdentityGroupMembership)
+          .where({ identityId: owner.identityId as string })
+          .whereIn("groupId", groupsGranted)
+          .forShare()
+          .select("id");
+      }
+
       return (await tx(TableName.Membership)
         .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
