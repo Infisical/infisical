@@ -448,7 +448,7 @@ func TestSecretReference_Rewrite(t *testing.T) {
 
 		// Assert
 		require.Equal(t, "${dev.DATABASE_HOST}:${DATABASE_HOST}", rawValue(t, proj, "dev", "/app", "CONN"))
-		require.Equal(t, "root-host:root-host", secretmanager.GetSecret(t, proj, "dev", "CONN", secretmanager.WithPath("/app")).Value)
+		require.Equal(t, "root-host:root-host", listedValue(t, proj, "dev", "/app", "CONN"))
 	})
 
 	t.Run("should write the nested form when the importing folder has its own secret under the new name", func(t *testing.T) {
@@ -471,7 +471,7 @@ func TestSecretReference_Rewrite(t *testing.T) {
 
 		// Assert
 		require.Equal(t, "${dev.DATABASE_HOST}:${dev.DATABASE_HOST}", rawValue(t, proj, "dev", "/app", "CONN"))
-		require.Equal(t, "root-host:root-host", secretmanager.GetSecret(t, proj, "dev", "CONN", secretmanager.WithPath("/app")).Value)
+		require.Equal(t, "root-host:root-host", listedValue(t, proj, "dev", "/app", "CONN"))
 	})
 
 	t.Run("should leave a local reference unchanged when it resolves through a cross-project import", func(t *testing.T) {

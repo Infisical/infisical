@@ -41,6 +41,28 @@ func rawValue(t *testing.T, proj *fixture.Project, env, secretPath, name string)
 	return res.JSON200.Secret.SecretValue
 }
 
+// listedValue reads a secret's value through the folder listing, the read that also resolves
+// local references through the folder's imports.
+func listedValue(t *testing.T, proj *fixture.Project, env, secretPath, name string) string {
+	t.Helper()
+	res, err := proj.Tenant().Admin.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
+		ProjectId:              &proj.ID,
+		Environment:            &env,
+		SecretPath:             &secretPath,
+		ViewSecretValue:        new(api.ListSecretsV4ParamsViewSecretValueTrue),
+		ExpandSecretReferences: new(api.ListSecretsV4ParamsExpandSecretReferencesTrue),
+	})
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing %s:%s returned %d: %s", env, secretPath, res.StatusCode(), apierr.Body(res.Body))
+	for _, s := range res.JSON200.Secrets {
+		if s.SecretKey == name {
+			return s.SecretValue
+		}
+	}
+	require.Failf(t, "secret not listed", "%s is not in %s:%s", name, env, secretPath)
+	return ""
+}
+
 // referenceNode is one node of a reference tree. The generated response leaves the
 // children untyped, so the body is decoded into this instead.
 type referenceNode struct {
