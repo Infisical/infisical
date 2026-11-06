@@ -13,6 +13,10 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -177,6 +181,7 @@ type TScimServiceFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   eventEmitter: TEventEmitter;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
 
 export const scimServiceFactory = ({
@@ -209,7 +214,8 @@ export const scimServiceFactory = ({
   pamSessionDAL,
   pamAccountDAL,
   gatewayV2Service,
-  eventEmitter
+  eventEmitter,
+  agentVaultPersonalValueDAL
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
 
@@ -1574,6 +1580,8 @@ export const scimServiceFactory = ({
           group,
           userIds: toRemoveUserIds,
           userGroupMembershipDAL,
+          identityGroupMembershipDAL,
+          agentVaultPersonalValueDAL,
           membershipGroupDAL,
           groupDAL,
           projectKeyDAL,
@@ -1834,6 +1842,9 @@ export const scimServiceFactory = ({
         tx
       );
       const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
+      const groupProjectIds = (
+        await membershipGroupDAL.find({ scope: AccessScope.Project, actorGroupId: groupId }, { tx })
+      ).map((membership) => membership.scopeProjectId as string);
       await emitGroupRemoved(
         eventEmitter,
         { groupId, orgIds, members: toOrgMembershipActors({ userIds, identityIds }) },
@@ -1844,6 +1855,14 @@ export const scimServiceFactory = ({
       if (!deleted.length) return deleted;
 
       await finalizeAlertRecipients();
+
+      // After the delete has cascaded to the group's grants and member rows, so the clear keeps only the values of
+      // members who still hold the bundle another way.
+      await clearPersonalValuesInProjects(
+        { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+        { projectIds: [...new Set(groupProjectIds)], userIds, identityIds },
+        tx
+      );
 
       sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
         userIds,

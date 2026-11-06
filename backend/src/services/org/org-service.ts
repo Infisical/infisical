@@ -12,7 +12,6 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
-import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -244,16 +243,10 @@ export const orgServiceFactory = ({
       { sort: [["createdAt", "desc"]], limit: 1 }
     );
 
-    const agentVaultProjects = await projectDAL.find(
-      { orgId: data.id, type: ProjectType.AgentVault },
-      { sort: [["createdAt", "desc"]], limit: 1 }
-    );
-
     return {
       ...data,
       userTokenExpiration: data.userTokenExpiration || appCfg.JWT_REFRESH_LIFETIME,
-      pamProjectId: pamProjects[0]?.id ?? null,
-      agentVaultProjectId: agentVaultProjects[0]?.id ?? null
+      pamProjectId: pamProjects[0]?.id ?? null
     };
   };
 
@@ -848,15 +841,6 @@ export const orgServiceFactory = ({
         tx
       );
 
-      await bootstrapAgentVaultProject(
-        {
-          orgId: org.id,
-          adminUserIds: userId ? [userId] : []
-        },
-        { projectDAL, membershipDAL, membershipRoleDAL },
-        tx
-      );
-
       // Orgs created from the admin console have no creator; their admins are invited afterwards, so the
       // project is left to the lazy resolver, which makes every org admin a project admin.
       if (userId) {
@@ -878,7 +862,6 @@ export const orgServiceFactory = ({
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
 
     usageMeteringService.emit(organization.id, PamIdentities.key);
-    usageMeteringService.emit(organization.id, AgentVaultIdentities.key);
 
     return organization;
   };

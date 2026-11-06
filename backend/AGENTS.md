@@ -125,7 +125,7 @@ exist to pin.
 
 CI (`.github/workflows/run-backend-tests.yml`) runs the e2e suite inside a FIPS image built
 from `Dockerfile.dev.fips`. The expensive, rarely-changing parts of that image (SoftHSM2,
-Oracle Instant Client, the FIPS OpenSSL 3.1.2 build and the PQC OpenSSL 3.5.6 build) live in
+Oracle Instant Client, the FIPS OpenSSL 3.1.2 build and the PQC OpenSSL 3.5.9 build) live in
 **`Dockerfile.fips-toolchain`**, which is published to
 `ghcr.io/infisical/backend-fips-toolchain` for amd64 and arm64 by
 `.github/workflows/publish-fips-toolchain.yml` on pushes to `main`.
@@ -1367,9 +1367,9 @@ EE routes register before community routes so they can override/extend endpoints
 
 **Certificate discovery**: before working on `pki-discovery-*` or `pki-installation-*`, read [`src/ee/services/pki-discovery/AGENTS.md`](src/ee/services/pki-discovery/AGENTS.md). Linux Server discovery splits work between the backend and the gateway's certificate scanner in the CLI repo, and keystore passwords live on installations, not jobs.
 
-**Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/AGENTS.md`](src/ee/services/agent-vault/AGENTS.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
+**Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/AGENTS.md`](src/ee/services/agent-vault/AGENTS.md). Agent Vault projects are user-created like any other project type, but their roles collapse to admin or member like PAM's, they have their own identities meter, and they stay out of the billable-project count. So a branch on `ProjectType.PAM` for metering, predefined roles or the billable-project count usually needs an Agent Vault arm too; one about the implicit project does not.
 
-**Secret Scanning** is single-project (see the root `AGENTS.md`): `secret-scanning-v2-project-bootstrap.ts` creates the project with the org when it has a creator to make admin (like PAM and Agent Vault), `secret-scanning-v2-project-resolver.ts` picks the active project and lazily creates it, with every org admin as project admin, for older orgs and for orgs created from the admin console, whose admins are only invited after the org exists, and routes that take `projectId` read `req.internalSecretScanningProjectId`. A data source covers the resources it has rows for (added by a user or discovered from a push); its `config` only says where to look (Bitbucket workspace, GitLab group), never which resources, so scans, "included" state and GitLab account-scope webhooks all key off rows. Stored configs may still carry the old `includeRepos` / `includeProjects` keys, which nothing reads.
+**Secret Scanning** is single-project (see the root `AGENTS.md`): `secret-scanning-v2-project-bootstrap.ts` creates the project with the org when it has a creator to make admin (like PAM), `secret-scanning-v2-project-resolver.ts` picks the active project and lazily creates it, with every org admin as project admin, for older orgs and for orgs created from the admin console, whose admins are only invited after the org exists, and routes that take `projectId` read `req.internalSecretScanningProjectId`. A data source covers the resources it has rows for (added by a user or discovered from a push); its `config` only says where to look (Bitbucket workspace, GitLab group), never which resources, so scans, "included" state and GitLab account-scope webhooks all key off rows. Stored configs may still carry the old `includeRepos` / `includeProjects` keys, which nothing reads.
 
 **Secret scanning scans and GitHub pull request checks**:
 - A scan's `trigger` (`SecretScanningScanTrigger`) records what started it, separate from `type` (`historical` / `realtime`). `metadata` (jsonb) holds trigger-specific data, is parsed by trigger, and is never returned raw by the API.

@@ -23,7 +23,7 @@ description: "How to fetch Infisical secrets in Ab Initio."
         export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$INFISICAL_CLIENT_ID --client-secret=$INFISICAL_CLIENT_SECRET --silent --plain)
 
         # Fetch secrets from Infisical
-        infisical secrets-manager export --projectId="<>" --env="prod" > infisical.env
+        infisical secrets-manager secrets export --projectId="<>" --env="prod" > infisical.env
 
         # Inject secrets as environment variables
         source infisical.env

@@ -7037,6 +7037,8 @@ interface AgentVaultSessionRevokeEvent {
     label: string | null;
     sessionOwner: string;
     accessBundleName: string | null;
+    // Set when the session was ended with its own token rather than by a signed-in user or identity.
+    revokedWithToken?: boolean;
     // Set when the machine identity in sessionOwner started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;

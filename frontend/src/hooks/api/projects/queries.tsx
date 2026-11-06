@@ -229,6 +229,10 @@ export const createWorkspace = (
   return apiRequest.post("/api/v1/projects", dto);
 };
 
+// Org product stats include project counts, so creating, deleting or restoring a project refreshes them.
+const isOrgProductStatsQuery = (query: { queryKey: readonly unknown[] }) =>
+  query.queryKey[1] === "organization-product-stats";
+
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
@@ -245,6 +249,7 @@ export const useCreateWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getAllUserProjects()
       });
+      queryClient.invalidateQueries({ predicate: isOrgProductStatsQuery });
     }
   });
 };
@@ -320,6 +325,7 @@ export const useDeleteWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
       });
+      queryClient.invalidateQueries({ predicate: isOrgProductStatsQuery });
     }
   });
 };
@@ -364,6 +370,7 @@ export const useRestoreProject = () => {
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
       });
+      queryClient.invalidateQueries({ predicate: isOrgProductStatsQuery });
     }
   });
 };

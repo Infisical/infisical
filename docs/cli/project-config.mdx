@@ -39,7 +39,7 @@ secrets-management:
 `project-id` is the project's ID, and `version` is the version of the file format. To add more settings, edit the file as described in the sections that follow.
 
 <Note>
-  If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `infisical secrets-manager run`, [`infisical secrets-manager export`](/cli/reference#secrets-manager-export), and `infisical secrets-manager secrets` don't read the project from the file. Pass the project with `--projectId` or the `INFISICAL_PROJECT_ID` environment variable instead.
+  If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `infisical secrets-manager run`, [`infisical secrets-manager secrets export`](/cli/reference#secrets-manager-secrets-export), and `infisical secrets-manager secrets` don't read the project from the file. Pass the project with `--projectId` or the `INFISICAL_PROJECT_ID` environment variable instead.
 </Note>
 
 If the directory already has `.infisical.yaml` or `.infisical.json`, `infisical init` asks before it writes a new `.infisical.yaml`. The new file holds only the project ID, and the CLI reads it instead of the old file, so you lose the settings in the old file. To keep those settings, edit the old file instead of running `infisical init`.
@@ -149,6 +149,20 @@ The CLI picks the folder in this order:
 
 The CLI still reads the older `default-secret-path` key in `.infisical.yaml`, but ignores it if `secret-path` is set.
 
+## Set the Agent Vault project
+
+[`infisical agent-vault run --access-bundle`](/cli/reference#agent-vault-run), [`infisical agent-vault sessions create`](/cli/reference#agent-vault-sessions-create), and [`infisical agent-vault skills push`](/cli/reference#agent-vault-skills-push) work in one [Agent Vault project](/documentation/platform/agent-vault/projects). These commands don't read the project from the project config file, because `secrets-management.project-id` is a Secrets Management project.
+
+To set the Agent Vault project, set `INFISICAL_AGENT_VAULT_PROJECT_ID` to the project's ID, or pass `--project-id`. To get the ID, see [Find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id).
+
+The CLI picks the Agent Vault project in this order:
+
+1. The `--project-id` flag
+2. The `INFISICAL_AGENT_VAULT_PROJECT_ID` environment variable
+3. The `INFISICAL_PROJECT_ID` environment variable
+
+If none of these is set, the command stops with an error. If you're logged in with a profile, run [`infisical profile current`](/cli/reference#profile-current) to see which project the CLI picked.
+
 ## Set the Infisical instance
 
 If your project is on EU Cloud, a dedicated instance, or a self-hosted instance, set `domain` under `general` to the instance's address (`domain` in `.infisical.json`):
@@ -184,6 +198,8 @@ The CLI picks the instance in this order:
 2. The `INFISICAL_DOMAIN` environment variable, or the older `INFISICAL_API_URL` if `INFISICAL_DOMAIN` isn't set
 3. `general.domain` in `.infisical.yaml`, or `domain` in `.infisical.json`
 4. US Cloud (`https://app.infisical.com`)
+
+[Agent Vault commands](/cli/reference#agent-vault) skip step 3, so they never use `domain` from the file. If the file names a different instance from the one they would use, they stop with an error instead of connecting. To connect them to another instance, pass `--domain`, set `INFISICAL_DOMAIN`, or log in to that instance.
 
 If you log in with your own account, [`infisical login`](/cli/reference#login) uses `domain` to choose the instance to log in to. After that:
 

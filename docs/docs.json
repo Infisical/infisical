@@ -700,6 +700,7 @@
                   "documentation/platform/agent-vault/quickstart",
                   "documentation/platform/agent-vault/why-agent-vault",
                   "documentation/platform/agent-vault/how-it-works",
+                  "documentation/platform/agent-vault/projects",
                   "documentation/platform/agent-vault/plan-your-setup"
                 ]
               },
@@ -1361,10 +1362,8 @@
                     "expanded": true,
                     "pages": [
                       "cli/reference/secrets-manager",
-                      "cli/reference/secrets-manager/agent-proxy",
                       "cli/reference/secrets-manager/dynamic-secrets",
                       "cli/reference/secrets-manager/environments",
-                      "cli/reference/secrets-manager/export",
                       "cli/reference/secrets-manager/folders",
                       "cli/reference/secrets-manager/projects",
                       "cli/reference/secrets-manager/run",
@@ -4664,6 +4663,7 @@
                       "api-reference/endpoints/agent-vault-sessions/create",
                       "api-reference/endpoints/agent-vault-sessions/update",
                       "api-reference/endpoints/agent-vault-sessions/revoke",
+                      "api-reference/endpoints/agent-vault-sessions/revoke-by-token",
                       "api-reference/endpoints/agent-vault-session-logs/list",
                       "api-reference/endpoints/agent-vault-session-logs/tail"
                     ]
@@ -4673,16 +4673,6 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-settings/get-session-log-settings",
                       "api-reference/endpoints/agent-vault-settings/update-session-log-settings"
-                    ]
-                  },
-                  {
-                    "group": "App connections",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-app-connections/list",
-                      "api-reference/endpoints/agent-vault-app-connections/get",
-                      "api-reference/endpoints/agent-vault-app-connections/create",
-                      "api-reference/endpoints/agent-vault-app-connections/update",
-                      "api-reference/endpoints/agent-vault-app-connections/delete"
                     ]
                   }
                 ]
@@ -5073,8 +5063,16 @@
       "destination": "/cli/reference#secrets-manager"
     },
     {
+      "source": "/cli/reference/secrets-manager/agent-proxy",
+      "destination": "/documentation/platform/agent-proxy/overview"
+    },
+    {
+      "source": "/cli/reference/secrets-manager/export",
+      "destination": "/cli/reference#secrets-manager-secrets-export"
+    },
+    {
       "source": "/cli/reference/sm/agent-proxy",
-      "destination": "/cli/reference#secrets-manager-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/overview"
     },
     {
       "source": "/cli/reference/sm/dynamic-secrets",
@@ -5082,7 +5080,7 @@
     },
     {
       "source": "/cli/reference/sm/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/reference/sm/projects",
@@ -5102,7 +5100,7 @@
     },
     {
       "source": "/cli/reference/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/reference/run",
@@ -5114,7 +5112,7 @@
     },
     {
       "source": "/cli/commands/agent-proxy",
-      "destination": "/cli/reference#secrets-manager-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/overview"
     },
     {
       "source": "/cli/commands/agent-vault",
@@ -5130,7 +5128,7 @@
     },
     {
       "source": "/cli/commands/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/commands/gateway",

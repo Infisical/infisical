@@ -16,6 +16,7 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { AGENT_VAULT_MAX_SKILLS_PER_BUNDLE } from "@app/helpers/agentVaultSkills";
 import { useDebounce } from "@app/hooks";
 import {
@@ -44,13 +45,15 @@ export const AddBundleSkillDialog = ({
   canCreateSkills,
   onCreateNew
 }: Props) => {
-  const addSkill = useAddAgentVaultAccessBundleSkill();
+  const { projectId } = useProject();
+  const addSkill = useAddAgentVaultAccessBundleSkill(projectId);
   const [skills, setSkills] = useState<TAgentVaultSkill[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [isAdding, setIsAdding] = useState(false);
 
   const { data, isFetching } = useListAgentVaultSkills(
+    projectId,
     { search: debouncedSearch.trim() || undefined, limit: PICKER_LIMIT },
     { enabled: isOpen }
   );

@@ -256,7 +256,7 @@ In the following steps, we explore how to create and use identities for your app
     - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
 
     <Note>
-      Infisical stores the token reviewer JWT as a write-only value, so it's never displayed after you save it. When you edit the auth method, leave **Token Reviewer JWT** blank to keep the stored token. To delete it, select **Remove stored token reviewer JWT**, or **Remove template-sourced token reviewer JWT** if the JWT was copied from an auth template.
+      Infisical stores the token reviewer JWT as a write-only value, so it's never displayed after you save it. When you edit the auth method, leave **Token Reviewer JWT** blank to keep the stored token. To delete it, select **Remove stored token reviewer JWT**. If the identity is linked to an auth template, first set **Configuration** to **Custom Configuration**, which unlinks the identity from the template on save, then select **Remove template-sourced token reviewer JWT**.
 
       If you change the Kubernetes host, gateway, gateway pool, CA certificate, or TLS verification while a token reviewer JWT is stored, enter the JWT again or remove it in the same update. Infisical rejects the change otherwise. Switching **Review Mode** to **Gateway as Reviewer** removes the stored JWT when you save.
     </Note>
