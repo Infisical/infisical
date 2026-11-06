@@ -32,7 +32,6 @@ type Props = {
 export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
   const {
     destination,
-    includeAllSubFolders,
     syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema }
   } = secretSync;
 
@@ -146,14 +145,6 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
                 )}
               </Detail>
               {AdditionalSyncOptionsComponent}
-              <Detail>
-                <DetailLabel>Include All Subfolders</DetailLabel>
-                <DetailValue>
-                  <Badge variant={includeAllSubFolders ? "success" : "neutral"}>
-                    {includeAllSubFolders ? "Enabled" : "Disabled"}
-                  </Badge>
-                </DetailValue>
-              </Detail>
               <Detail>
                 <DetailLabel>Secret Deletion Protection</DetailLabel>
                 <DetailValue>
