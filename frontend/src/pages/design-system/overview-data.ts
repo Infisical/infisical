@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "line-roles",
+    title: "Line roles",
+    description:
+      "line-soft is the default border for edges and the dividers that meet them, and line is kept for standalone rules.",
+    date: "2026-11-06",
+    commit: "3c11d43aee",
+    page: "rules"
+  },
+  {
     id: "approve-accent",
     title: "Accent Approve",
     description:
@@ -210,14 +219,5 @@ export const recentChanges: {
     date: "2026-11-04",
     commit: "cf39aaea7d",
     page: "top-bar"
-  },
-  {
-    id: "routed-workbench",
-    title: "Routed workbench",
-    description:
-      "The workbench runs on real routes with a nested, route-aware Sidebar, and old hash links redirect.",
-    date: "2026-11-04",
-    commit: "8c3ea0c678",
-    page: "sidebar"
   }
 ];
