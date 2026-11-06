@@ -661,6 +661,10 @@
   background: var(--v4-row-done-card);
   --v4-list-row-surface: var(--v4-row-done-card);
 }
+:where(.listShell[data-variant="divided"]) .listRow[data-resolved] {
+  background: var(--v4-row-done-divided);
+  --v4-list-row-surface: var(--v4-row-done-divided);
+}
 .listRow[data-disabled] {
   color: var(--v4-muted);
 }

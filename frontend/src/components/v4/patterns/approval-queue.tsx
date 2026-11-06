@@ -65,7 +65,7 @@ function itemRow({
             View diff
           </Button>
         )}
-        <Button variant="primary" size="sm" loading={pending} onClick={() => onApprove(request.id)}>
+        <Button variant="accent" size="sm" loading={pending} onClick={() => onApprove(request.id)}>
           Approve
         </Button>
       </>

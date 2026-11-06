@@ -21,6 +21,7 @@ export const approvalQueueDefinition = {
     "The variant passes straight through to List, which owns every ground, gap, rule, hover, press and resolved fill: framed (default) is List's tint frame with the eyebrow band, segmented makes each item a borderless tint card under a header row, and divided splits items with line-soft rules. The parts lower to ListHeader, ListSection, ListRow and ListFooter. The queue adds only its extras: the icon and failed tiles, the unread dot, the Approve, View diff, Undo and Retry actions, the resolved and failed states, and its default copy.",
     "Passing requests instead of children renders the composed queue for you: header Needs you with the waiting count, one item per request and a View history footer when historyHref is set. It takes the same variant.",
     "Actions sit in a second row under each request's text, so the age ends every title line in the same place.",
+    "Approve is the accent Button in every variant and in the props API: an approval moment keeps the accent (rule/accent-create). It stays accent while pending, with its spinner; View diff and Retry stay outline and Undo stays a link.",
     "New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry.",
     "onUndo is optional. Without it resolved rows stay in place with no action, for decisions the host cannot take back."
   ],
