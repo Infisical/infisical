@@ -792,7 +792,7 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 ## The CLI
 
 - **The proxy answers its own Infisical's session endpoints** for the session a request arrives on, through whichever
-  door the agent already uses (CONNECT, plain HTTP, SOCKS5). On the scheme, host and port of its `--domain`, it forwards
+  door the agent already uses (CONNECT, plain HTTP, SOCKS5). On the host and port of its `--domain`, over http or https whatever `--domain`'s scheme, it forwards
   two paths to Infisical with the session's own token as the Bearer token, whatever the client sent:
   `<api>/v1/agent-vault/session/services` and `<api>/v1/agent-vault/session/skills`. Every other request to that host
   goes through like any request, so the session's token reaches nothing else in Infisical. For a well-formed token, the
@@ -803,14 +803,22 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   (`busy`, `infisical_unreachable`, `method_not_allowed`, the session refusals) are JSON with a code and a hint, and
   their hints name the services URL. The proxy's port has no session endpoints, only `/_agent-vault/ca`.
 - **Every CONNECT answer names the proxy's Infisical** in `X-Agent-Vault-Api-Url`, and so does every refusal the proxy
-  writes. `agent-vault run` asks for it with a bare CONNECT before the agent starts (`agentvault.AskProxyAPIURL`), sets
-  `INFISICAL_AGENT_VAULT_API_URL` for the agent (an inherited value never passes through), and gets skills there
-  through the proxy, over TLS with the CA it just verified, so nothing between the host and the proxy can change a
-  skill. A proxy that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the
-  warning says the proxy is too old. Code that starts agents without `run` sets the variable to the proxy's API URL
-  itself. Infisical's skills audit event records the proxy's IP, not the agent host's. The CLI reads the proxy's own
-  `busy` and `infisical_unreachable` answers as the proxy's (`agentvault.IsInfisicalForwardRefusal`), and its
-  `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`).
+  writes and every session-endpoint answer. The published URL never carries `--domain`'s credentials, query or
+  fragment. `agent-vault run` asks with a bare CONNECT once the session is minted (`agentvault.AskProxyAPIURL`, inside
+  the same interrupt scope that revokes a minted session, with 20s for the proxy's own session lookup; no answer in
+  time is not "too old").
+  - The CONNECT answer crosses the network in the clear, so it is only a claim. `run` asks the session endpoints over
+    TLS with the CA it just verified, at the claimed host, port and path even when `--domain` is http (the proxy
+    answers them whatever the agent-side scheme), and uses the claim only if the answer from inside TLS names the same
+    URL and, when successful, carries the endpoint's decision. Otherwise the agent gets no variable, the skills come
+    from Infisical directly, and `run` warns that something may be changing the proxy's answers. With `--no-skills`, a
+    `HEAD` of the services list confirms the claim (logged as Listed Services).
+  - Only a confirmed URL becomes `INFISICAL_AGENT_VAULT_API_URL` (an inherited value never passes through). A proxy
+    that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the warning says the
+    proxy is too old. Code that starts agents without `run` sets the variable to the proxy's API URL itself.
+  - Infisical's skills audit event records the proxy's IP, not the agent host's. The CLI reads the proxy's own `busy`
+    and `infisical_unreachable` answers as the proxy's (`agentvault.IsInfisicalForwardRefusal`), and its
+    `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`).
 - **Every forwarded or refused response carries `X-Agent-Vault-Decision`** (and `X-Agent-Vault-Service` when a
   service matched), set after the upstream's headers so an upstream can't forge them. The proxy's own errors are
   JSON with an `error` code and a `hint`; `message` keeps the text the proxy always sent.
