@@ -298,6 +298,27 @@ func TestKmipOperation(t *testing.T) {
 		}
 	})
 
+	t.Run("should not let a client reach another project's keys by naming that project in the request", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj, other := newProject(t, tn), newProject(t, tn)
+		s, _ := newSession(t, proj, "get", "revoke", "locate")
+		elsewhere := kms.NewKey(t, other)
+		asOther := s.with(map[string]string{"x-kmip-project-id": other.ID})
+
+		for _, operation := range []string{"get", "revoke", "locate"} {
+			// Action
+			status, body := asOther.call(t, operation, sampleBody(operation, elsewhere.ID))
+
+			// Assert
+			require.Equalf(t, http.StatusNotFound, status, "%s: %s", operation, apierr.Body(body))
+			require.Equalf(t, "KMIP client cannot be found.", apierr.Message(body), "%s", operation)
+		}
+		require.Equal(t, elsewhere, kms.GetKey(t, other, elsewhere.ID))
+	})
+
 	t.Run("should accept an organization identity with KMIP proxy permission and refuse one without it", func(t *testing.T) {
 		t.Parallel()
 
