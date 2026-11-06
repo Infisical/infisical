@@ -1032,6 +1032,7 @@ export const scimServiceFactory = ({
               alias.id,
               {
                 externalId,
+                ...(externalId !== alias.externalId ? { isEmailVerified: false } : {}),
                 ...(newEmail ? { emails: unique([...(alias.emails ?? []), newEmail]) } : {})
               },
               tx
@@ -1049,7 +1050,8 @@ export const scimServiceFactory = ({
               email: email?.toLowerCase(),
               lastName,
               active,
-              ...(newEmail ? { previousEmail: user.username, newEmail } : {})
+              ...(newEmail ? { previousEmail: user.username, newEmail } : {}),
+              ...(userAliases[0].externalId !== externalId ? { previousUserName: userAliases[0].externalId } : {})
             }
           },
           tx
