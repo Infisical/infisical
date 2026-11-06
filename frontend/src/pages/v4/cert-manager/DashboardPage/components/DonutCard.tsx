@@ -86,6 +86,7 @@ export const DonutCard = ({
                   <Cell
                     key={slice.key}
                     fill={`var(--color-${slice.key})`}
+                    // v4-check-ignore cursor-pointer -- a slice with filters opens the filtered inventory, so it reads as a link
                     cursor={slice.filters ? "pointer" : undefined}
                   />
                 ))}

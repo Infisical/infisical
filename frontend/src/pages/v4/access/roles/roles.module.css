@@ -203,7 +203,6 @@
   background: none;
   color: inherit;
   text-align: start;
-  cursor: pointer;
 }
 .templateItem:hover {
   background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
