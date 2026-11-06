@@ -271,25 +271,72 @@ function InlineEditor({
 }
 
 function Indicators({ secret }: { secret: Secret }) {
-  const marks = [
-    secret.tags.length > 0 && {
-      icon: TagsIcon,
-      label: `${secret.tags.length} tag${secret.tags.length > 1 ? "s" : ""}`
-    },
-    secret.metadata.length > 0 && { icon: CodeXmlIcon, label: "Has metadata" },
-    secret.skipMultilineEncoding && { icon: WrapTextIcon, label: "Multi-line encoding disabled" }
-  ].filter(Boolean) as { icon: typeof TagsIcon; label: string }[];
-  if (!marks.length) return null;
+  if (!secret.skipMultilineEncoding) return null;
   return (
     <TableRowIndicators>
+      <Tooltip content="Multi-line encoding disabled">
+        <span className={styles.hint}>
+          <Icon icon={WrapTextIcon} label="Multi-line encoding disabled" />
+        </span>
+      </Tooltip>
+    </TableRowIndicators>
+  );
+}
+
+type Annotation = "comment" | "tags" | "metadata";
+
+function Annotations({
+  secret,
+  onOpen
+}: {
+  secret: Secret;
+  onOpen: (overlay: Annotation) => void;
+}) {
+  const marks = [
+    secret.comment && {
+      overlay: "comment",
+      icon: MessageSquareIcon,
+      label: "View comment",
+      hint: secret.comment
+    },
+    secret.tags.length > 0 && {
+      overlay: "tags",
+      icon: TagsIcon,
+      label: "View tags",
+      hint: secret.tags.join(", ")
+    },
+    secret.metadata.length > 0 && {
+      overlay: "metadata",
+      icon: CodeXmlIcon,
+      label: "View metadata",
+      hint: `${secret.metadata.length} metadata entr${secret.metadata.length > 1 ? "ies" : "y"}`
+    }
+  ].filter(Boolean) as {
+    overlay: Annotation;
+    icon: typeof TagsIcon;
+    label: string;
+    hint: string;
+  }[];
+  if (!marks.length) return null;
+  return (
+    <span className={styles.annotations}>
       {marks.map((mark) => (
-        <Tooltip key={mark.label} content={mark.label}>
-          <span className={styles.hint}>
-            <Icon icon={mark.icon} label={mark.label} />
-          </span>
+        <Tooltip key={mark.overlay} content={mark.hint}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            iconOnly
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(mark.overlay);
+            }}
+          >
+            <Icon icon={mark.icon} size={12} />
+            <span className="sr-only">{`${mark.label} for ${secret.name}`}</span>
+          </Button>
         </Tooltip>
       ))}
-    </TableRowIndicators>
+    </span>
   );
 }
 
@@ -298,15 +345,18 @@ function SecretActions({
   ctx,
   handlers,
   onInlineEdit,
-  onAddOverride
+  onAddOverride,
+  open,
+  setOpen
 }: {
   secret: Secret;
   ctx: RowContext;
   handlers: SecretRowHandlers;
   onInlineEdit: () => void;
   onAddOverride: () => void;
+  open: Overlay | undefined;
+  setOpen: (overlay: Overlay | undefined) => void;
 }) {
-  const [open, setOpen] = useState<Overlay>();
   const pending = useRef<() => void>(undefined);
   const keepFocus = useRef(false);
   const loader = useValueLoader();
@@ -821,8 +871,15 @@ export function SecretRow({
   revealAll: boolean;
   handlers: SecretRowHandlers;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [rowVisible, setRowVisible] = useState(false);
+  const expanded = ctx.expanded.includes(rowKey);
+  const setExpanded = (open: boolean) => ctx.onExpand(rowKey, open);
+  const [visibleOverride, setVisibleOverride] = useState<{ base: boolean; value: boolean }>();
+  const rowVisible = visibleOverride?.base === revealAll ? visibleOverride.value : revealAll;
+  const setRowVisible = (value: boolean) => setVisibleOverride({ base: revealAll, value });
+  const [overlay, setOverlay] = useState<Overlay>();
+  const [overlays, setOverlays] = useState<Record<string, Overlay | undefined>>({});
+  const overlayFor = (environment: string) => (next: Overlay | undefined) =>
+    setOverlays((current) => ({ ...current, [environment]: next }));
   const [editing, setEditing] = useState<string>();
   const [creatingOverride, setCreatingOverride] = useState<string[]>([]);
   const first = entries[0];
@@ -867,13 +924,7 @@ export function SecretRow({
               <span className={styles.truncate} title={name}>
                 {name}
               </span>
-              {first.comment && (
-                <Tooltip content={first.comment}>
-                  <span className={styles.hint}>
-                    <Icon icon={MessageSquareIcon} size={12} label="View secret comment" />
-                  </span>
-                </Tooltip>
-              )}
+              <Annotations secret={first} onOpen={setOverlay} />
               <PendingBadge type={ctx.pending?.[first.id]} />
             </div>
           </TableCell>
@@ -894,6 +945,8 @@ export function SecretRow({
               handlers={handlers}
               onInlineEdit={() => setEditing(first.environment)}
               onAddOverride={() => startCreating(first.environment)}
+              open={overlay}
+              setOpen={setOverlay}
             />
           </TableActionsCell>
         </TableRow>
@@ -965,19 +1018,28 @@ export function SecretRow({
             </span>
           </div>
         </TableCell>
-        {ctx.environments.map((environment) =>
-          expanded ? (
-            <TableCell key={environment.value} />
-          ) : (
+        {ctx.environments.map((environment) => {
+          if (expanded) return <TableCell key={environment.value} />;
+          const secret = entries.find((entry) => entry.environment === environment.value);
+          return (
             <StatusCell
               key={environment.value}
               status={status(environment.value)}
-              hasOverride={entries.some(
-                (entry) => entry.environment === environment.value && entry.override !== undefined
-              )}
+              hasOverride={secret?.override !== undefined}
+              annotations={
+                secret && (
+                  <Annotations
+                    secret={secret}
+                    onOpen={(next) => {
+                      setExpanded(true);
+                      overlayFor(environment.value)(next);
+                    }}
+                  />
+                )
+              }
             />
-          )
-        )}
+          );
+        })}
         <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
           <RowActions
             label={name}
@@ -1038,6 +1100,9 @@ export function SecretRow({
                       >
                         <span className={styles.nameLine}>
                           <span className={styles.truncate}>{environment.label}</span>
+                          {secret && (
+                            <Annotations secret={secret} onOpen={overlayFor(environment.value)} />
+                          )}
                           {!secret && imported && (
                             <Tooltip content={`Imported from ${imported}`}>
                               <span className={styles.hint}>
@@ -1083,6 +1148,8 @@ export function SecretRow({
                             handlers={handlers}
                             onInlineEdit={() => setEditing(environment.value)}
                             onAddOverride={() => startCreating(environment.value)}
+                            open={overlays[environment.value]}
+                            setOpen={overlayFor(environment.value)}
                           />
                         ) : (
                           <RowActions

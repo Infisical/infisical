@@ -1,6 +1,12 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { GitCommitIcon } from "lucide-react";
+import {
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
+  EyeIcon,
+  EyeOffIcon,
+  GitCommitIcon
+} from "lucide-react";
 
 import {
   AlertDialog,
@@ -39,7 +45,6 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
@@ -99,6 +104,7 @@ import { BulkTagDialog } from "./secrets/bulk/bulk-tag-dialog";
 import { type CopySecretsInvocation, CopySecretsSheet } from "./secrets/bulk/copy-secrets-sheet";
 import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
 import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
+import { EnvironmentPicker } from "./secrets/environment-picker";
 import { addFlows, type FlowFeedback, FlowToasts, type NewResource } from "./secrets/flows";
 import { childPath } from "./secrets/flows/shared";
 import {
@@ -199,6 +205,10 @@ export const OverviewPage = () => {
   const [paging, setPaging] = useState({ scope: "", page: 1 });
   const [perPage, setPerPage] = useState(100);
   const [revealAll, setRevealAll] = useState(false);
+  const [showValues, setShowValues] = useState(
+    () => localStorage.getItem("overview-reveal-all-values") === "true"
+  );
+  const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [editingFolder, setEditingFolder] = useState<Of<"folder">>();
   const [deletingFolder, setDeletingFolder] = useState<Of<"folder">>();
@@ -617,7 +627,6 @@ export const OverviewPage = () => {
   const pageCount = Math.max(1, Math.ceil(totalCount / perPage));
   const currentPage = Math.min(page, pageCount);
   const windowRows = ordered;
-  const isLastPage = currentPage === pageCount;
   useEffect(() => {
     const signature = recent.join("|");
     if (!signature || revealed.current === signature) return;
@@ -682,6 +691,11 @@ export const OverviewPage = () => {
           })
       );
   };
+  const secretKeysOnPage = windowRows
+    .filter(([, entries]) => entries[0].kind === "secret")
+    .map(([key]) => key);
+  const allOpen =
+    secretKeysOnPage.length > 0 && secretKeysOnPage.every((key) => expandedRows.includes(key));
   const ctx: RowContext = {
     environments: visibleEnvironments,
     single,
@@ -690,6 +704,13 @@ export const OverviewPage = () => {
     blockFor,
     selected,
     recent,
+    expanded: expandedRows,
+    onExpand: (key, open) =>
+      setExpandedRows((current) =>
+        open
+          ? [...current.filter((entry) => entry !== key), key]
+          : current.filter((entry) => entry !== key)
+      ),
     onToggleSelect: (key) =>
       setSelected(
         selected.includes(key) ? selected.filter((entry) => entry !== key) : [...selected, key]
@@ -970,7 +991,7 @@ export const OverviewPage = () => {
       directory: path,
       enabled: single
     }).data ?? 0;
-  const canQuickAdd = !writeBlock && isLastPage && totalCount > 0;
+  const canQuickAdd = !writeBlock && !loading && totalCount > 0;
   const gate = (reason: string | undefined, node: ReactNode) =>
     reason ? (
       <Tooltip content={reason}>
@@ -1261,12 +1282,15 @@ export const OverviewPage = () => {
   );
   const environmentMenu = (environment: { value: string; label: string }) => (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="xs" iconRight="chev-down">
-          {environment.label}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="center">
+      <span className={styles.truncate}>{environment.label}</span>
+      <span className={styles.push}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-xs" icon="chev-down" iconOnly>
+            {`${environment.label} options`}
+          </Button>
+        </DropdownMenuTrigger>
+      </span>
+      <DropdownMenuContent align="end">
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Sort secrets by recency</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
@@ -1361,18 +1385,17 @@ export const OverviewPage = () => {
                 />
                 <div className={styles.toolbar}>
                   <div className={styles.envPicker}>
-                    <MultiSelect
-                      label="Environments"
-                      options={noEnvironments ? [] : projectEnvironments}
-                      value={noEnvironments ? [] : environmentIds}
+                    <EnvironmentPicker
+                      projectId={projectId}
+                      environments={noEnvironments ? [] : projectEnvironments}
+                      selected={noEnvironments ? [] : environmentIds}
                       onChange={(value) => {
                         setEnvironmentIds(value);
                         setSort({ field: "name", direction: "asc" });
                         resetView();
                       }}
-                      placeholder="All environments"
-                      allLabel="All environments"
-                      searchable
+                      onCreated={() => projectQuery.refetch?.()}
+                      report={report}
                       disabled={unavailable}
                     />
                   </div>
@@ -1446,6 +1469,50 @@ export const OverviewPage = () => {
                     <FolderBreadcrumbBar
                       path={path}
                       single={single}
+                      actions={
+                        !single &&
+                        !unavailableState && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              disabled={!secretKeysOnPage.length}
+                              onClick={() =>
+                                setExpandedRows(
+                                  allOpen
+                                    ? []
+                                    : [...new Set([...expandedRows, ...secretKeysOnPage])]
+                                )
+                              }
+                            >
+                              <Icon icon={allOpen ? ChevronsDownUpIcon : ChevronsUpDownIcon} />
+                              {allOpen ? "Close all" : "Open all"}
+                            </Button>
+                            <Tooltip
+                              content={
+                                showValues
+                                  ? "Values of every secret you open are shown. Select to hide them."
+                                  : "Show values of open secrets and any you open later. Remembered in this browser."
+                              }
+                            >
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                aria-pressed={showValues}
+                                onClick={() => {
+                                  if (showValues)
+                                    localStorage.removeItem("overview-reveal-all-values");
+                                  else localStorage.setItem("overview-reveal-all-values", "true");
+                                  setShowValues(!showValues);
+                                }}
+                              >
+                                <Icon icon={showValues ? EyeOffIcon : EyeIcon} />
+                                {showValues ? "Hide values" : "Show values"}
+                              </Button>
+                            </Tooltip>
+                          </>
+                        )
+                      }
                       onNavigate={navigate}
                       report={report}
                     />
@@ -1527,7 +1594,7 @@ export const OverviewPage = () => {
                               </TableHead>
                             ) : (
                               visibleEnvironments.map((environment) => (
-                                <TableHead key={environment.value} className={styles.envHead}>
+                                <TableHead key={environment.value}>
                                   <div className={styles.headLine}>
                                     {environmentMenu(environment)}
                                   </div>
@@ -1566,55 +1633,6 @@ export const OverviewPage = () => {
                               </TableCell>
                             </TableRow>
                           )}
-                          {!loading &&
-                            windowRows.map(([key, entries]) => {
-                              const first = entries[0];
-                              if (first.kind === "import")
-                                return (
-                                  <ImportRow
-                                    key={key}
-                                    rowKey={key}
-                                    entries={entries as Of<"import">[]}
-                                    ctx={ctx}
-                                    sourceSecrets={sourceSecrets}
-                                    projectName={project}
-                                  />
-                                );
-                              if (first.kind === "folder")
-                                return (
-                                  <FolderRow
-                                    key={key}
-                                    rowKey={key}
-                                    entries={entries as Of<"folder">[]}
-                                    ctx={ctx}
-                                    onOpen={() =>
-                                      navigate(`${path === "/" ? "" : path}/${first.name}`)
-                                    }
-                                    onEdit={setEditingFolder}
-                                    onDelete={setDeletingFolder}
-                                  />
-                                );
-                              if (first.kind === "secret")
-                                return (
-                                  <SecretRow
-                                    key={key}
-                                    rowKey={key}
-                                    entries={entries as Secret[]}
-                                    ctx={ctx}
-                                    revealAll={revealAll}
-                                    handlers={handlers}
-                                  />
-                                );
-                              return (
-                                <KindRow
-                                  key={key}
-                                  rowKey={key}
-                                  kind={first.kind}
-                                  entries={entries}
-                                  ctx={ctx}
-                                />
-                              );
-                            })}
                           {canQuickAdd && (
                             <QuickAddRow
                               multiple={!single}
@@ -1664,6 +1682,55 @@ export const OverviewPage = () => {
                               }
                             />
                           )}
+                          {!loading &&
+                            windowRows.map(([key, entries]) => {
+                              const first = entries[0];
+                              if (first.kind === "import")
+                                return (
+                                  <ImportRow
+                                    key={key}
+                                    rowKey={key}
+                                    entries={entries as Of<"import">[]}
+                                    ctx={ctx}
+                                    sourceSecrets={sourceSecrets}
+                                    projectName={project}
+                                  />
+                                );
+                              if (first.kind === "folder")
+                                return (
+                                  <FolderRow
+                                    key={key}
+                                    rowKey={key}
+                                    entries={entries as Of<"folder">[]}
+                                    ctx={ctx}
+                                    onOpen={() =>
+                                      navigate(`${path === "/" ? "" : path}/${first.name}`)
+                                    }
+                                    onEdit={setEditingFolder}
+                                    onDelete={setDeletingFolder}
+                                  />
+                                );
+                              if (first.kind === "secret")
+                                return (
+                                  <SecretRow
+                                    key={key}
+                                    rowKey={key}
+                                    entries={entries as Secret[]}
+                                    ctx={ctx}
+                                    revealAll={single ? revealAll : showValues}
+                                    handlers={handlers}
+                                  />
+                                );
+                              return (
+                                <KindRow
+                                  key={key}
+                                  rowKey={key}
+                                  kind={first.kind}
+                                  entries={entries}
+                                  ctx={ctx}
+                                />
+                              );
+                            })}
                         </TableBody>
                       </Table>
                     )}

@@ -4,7 +4,7 @@ import type {
   TGetDashboardProjectSecretsOverviewDTO,
   TGetSecretValueDTO
 } from "@app/hooks/api/dashboard/types";
-import type { Project } from "@app/hooks/api/projects/types";
+import type { CreateEnvironmentDTO, Project, ProjectEnv } from "@app/hooks/api/projects/types";
 import type {
   TGetSecretApprovalRequestCount,
   TGetSecretApprovalRequestDetails,
@@ -36,7 +36,8 @@ import type { V4Mutation, V4QueryResult } from "../contract";
 import type { SecretsFlowsAdapter } from "./contract-flows";
 
 export type SecretsAdapter = SecretsFlowsAdapter & {
-  useProject: (projectId: string) => V4QueryResult<Project>;
+  useProject: (projectId: string) => V4QueryResult<Project> & { refetch?: () => unknown };
+  useCreateEnvironment: V4Mutation<CreateEnvironmentDTO, ProjectEnv>;
   useTags: (projectId: string) => V4QueryResult<UserWsTags>;
   useOverview: (
     dto: TGetDashboardProjectSecretsOverviewDTO

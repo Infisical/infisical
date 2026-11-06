@@ -21,6 +21,7 @@ import type { SecretsAdapter } from "./contract";
 import { secretsFlowsDemo } from "./demo-flows";
 import {
   childPath,
+  demoMutation,
   now,
   recordVersion,
   recovered,
@@ -309,6 +310,27 @@ export const secretsDemo: SecretsAdapter = {
       error: null
     };
   },
+  useCreateEnvironment: demoMutation((store, dto) => {
+    const project = store.get().projects.find((entry) => entry.id === dto.projectId);
+    if (!project) throw new Error("Project not found");
+    if (project.environments.some((entry) => entry.slug === dto.slug))
+      throw new Error("An environment with this slug already exists");
+    const environment = {
+      id: crypto.randomUUID(),
+      name: dto.name,
+      slug: dto.slug,
+      position: project.environments.length + 1
+    };
+    store.update((state) => ({
+      ...state,
+      projects: state.projects.map((entry) =>
+        entry.id === dto.projectId
+          ? { ...entry, environments: [...entry.environments, environment] }
+          : entry
+      )
+    }));
+    return environment;
+  }),
   useTags: (projectId) => ({
     data: useStore()
       .use()
