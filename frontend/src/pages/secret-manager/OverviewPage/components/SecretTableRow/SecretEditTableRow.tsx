@@ -1693,8 +1693,8 @@ export const SecretEditTableRow = ({
                 onFocus={() => setIsFieldFocused.on()}
                 renderReferenceTooltip={(reference) => (
                   <ResolvedReferenceTooltipContent
-                    environment={environment}
-                    secretPath={secretPath}
+                    environment={fetchSharedValueParams.environment}
+                    secretPath={fetchSharedValueParams.secretPath}
                     reference={reference}
                   />
                 )}

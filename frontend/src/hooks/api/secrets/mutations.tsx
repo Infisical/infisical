@@ -141,7 +141,8 @@ export const useUpdateSecretV3 = ({
       });
       queryClient.invalidateQueries({
         predicate: (query) =>
-          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[0] === "secret-reference-tree" ||
+            query.queryKey[0] === "expanded-secret-value") &&
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
@@ -284,7 +285,8 @@ export const useUpdateSecretBatch = ({
       });
       queryClient.invalidateQueries({
         predicate: (query) =>
-          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[0] === "secret-reference-tree" ||
+            query.queryKey[0] === "expanded-secret-value") &&
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
@@ -612,7 +614,8 @@ export const useCreateCommit = () => {
       });
       queryClient.invalidateQueries({
         predicate: (query) =>
-          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[0] === "secret-reference-tree" ||
+            query.queryKey[0] === "expanded-secret-value") &&
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({

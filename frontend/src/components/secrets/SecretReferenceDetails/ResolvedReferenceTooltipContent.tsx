@@ -39,6 +39,10 @@ export const ResolvedReferenceTooltipContent = ({
   secretPath,
   reference
 }: Omit<Props, "secretKey"> & { reference: string }) => {
+  if (!/^\$\{[a-zA-Z0-9-_.@]+(?: +[a-zA-Z0-9-_@]+)*\}$/.test(reference)) {
+    return "Not a valid reference, so it stays as written.";
+  }
+
   const parts = reference.slice(2, -1).split(".");
   if (parts[0]?.startsWith("@")) return "Cross-project references can't be previewed here.";
 
