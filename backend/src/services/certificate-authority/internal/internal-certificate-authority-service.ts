@@ -29,6 +29,7 @@ import {
 } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -93,6 +94,7 @@ import {
   getCaSigner,
   getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
+  rebuildCaCrl,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
 } from "../certificate-authority-fns";
@@ -152,7 +154,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
-  certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
+  certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find" | "primaryNode">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
@@ -1659,6 +1661,18 @@ export const internalCertificateAuthorityServiceFactory = ({
       projectDAL,
       kmsService
     });
+    if (caCert) {
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+      const currentCaCertObj = new x509.X509Certificate(
+        await kmsDecryptor({ cipherTextBlob: caCert.encryptedCertificate })
+      );
+      if (currentCaCertObj.subjectName.toString() !== certObj.subjectName.toString()) {
+        throw new BadRequestError({
+          message: `The certificate subject '${certObj.subject}' must exactly match the CA's current certificate subject '${currentCaCertObj.subject}', including the order of its fields. Certificates already issued by this CA name the current subject as their issuer, so changing it would break their revocation checks.`
+        });
+      }
+    }
+
     const kmsEncryptor = await kmsService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
@@ -1733,6 +1747,22 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
     });
+
+    try {
+      await rebuildCaCrl({
+        caId: ca.id,
+        certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
+        certificateAuthorityCrlDAL,
+        certificateAuthoritySecretDAL,
+        projectDAL,
+        certificateDAL,
+        kmsService,
+        caKeySourceService
+      });
+    } catch (err) {
+      logger.error(err, `Failed to rebuild CRL after importing CA certificate [caId=${ca.id}]`);
+    }
 
     if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE) {
       const existingConfig = await caSigningConfigDAL.findByCaId(ca.internalCa.id);

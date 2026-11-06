@@ -3968,6 +3968,7 @@ export const registerRoutes = async (
   const certificateAuthorityQueue = certificateAuthorityQueueFactory({
     certificateAuthorityCrlDAL,
     certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
     certificateAuthoritySecretDAL,
     certificateDAL,
     projectDAL,
