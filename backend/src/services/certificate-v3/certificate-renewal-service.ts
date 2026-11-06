@@ -207,6 +207,8 @@ type TCertificateRenewalServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findStepsByPolicyId">;
 };
 
+const MAX_RENEWAL_CHAIN_HOPS = 10;
+
 const isSourcedOutsideInfisical = (certificate: TCertificates) =>
   Boolean(certificate.source) && certificate.source !== CertificateSource.Issued;
 
@@ -2062,7 +2064,18 @@ export const certificateRenewalServiceFactory = ({
     };
   };
 
-  const renewApprovedCertificate = ({
+  const $findLatestRenewalOf = async (certificateId: string) => {
+    let latestCertificateId = certificateId;
+    for (let hop = 0; hop < MAX_RENEWAL_CHAIN_HOPS; hop += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      const certificate = await certificateDAL.findById(latestCertificateId);
+      if (!certificate?.renewedByCertificateId) return latestCertificateId;
+      latestCertificateId = certificate.renewedByCertificateId;
+    }
+    return latestCertificateId;
+  };
+
+  const renewApprovedCertificate = async ({
     certificateRequestId,
     organizationId,
     renewal,
@@ -2079,7 +2092,7 @@ export const certificateRenewalServiceFactory = ({
       actorAuthMethod: null,
       actorOrgId: organizationId,
       internal: true,
-      certificateId: renewal.certificateId,
+      certificateId: await $findLatestRenewalOf(renewal.certificateId),
       renewalKeySource: renewal.renewalKeySource,
       csr: renewal.csr,
       attributes: renewal.attributes,

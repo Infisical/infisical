@@ -8,6 +8,7 @@ import { TCertificateApprovalService } from "@app/services/certificate-v3/certif
 import { TCertificateRenewalServiceFactory } from "@app/services/certificate-v3/certificate-renewal-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
@@ -30,6 +31,7 @@ type TCertRequestApprovalResourceDep = {
     TCertificateRenewalServiceFactory,
     "renewApprovedCertificate" | "recordRejectedRenewal"
   >;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export const certRequestApprovalResourceFactory = ({
@@ -37,7 +39,8 @@ export const certRequestApprovalResourceFactory = ({
   certificateApprovalService,
   certificateRequestDAL,
   certificateRequestService,
-  certificateRenewalService
+  certificateRenewalService,
+  telemetryService
 }: TCertRequestApprovalResourceDep): TApprovalResource<
   TCertRequestPolicyInputs,
   TCertRequestPolicy,
@@ -147,6 +150,19 @@ export const certRequestApprovalResourceFactory = ({
         { error, certificateRequestId: certReqId, approvalRequestId: request.id },
         `Failed to issue certificate after approval [certificateRequestId=${certReqId}]`
       );
+      return;
+    }
+
+    const requesterDistinctId = request.machineIdentityId
+      ? `identity-${request.machineIdentityId}`
+      : request.requesterId && request.requesterEmail;
+    if (renewal && requesterDistinctId) {
+      await telemetryService.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateRenewed,
+        distinctId: requesterDistinctId,
+        organizationId: request.organizationId,
+        properties: { orgId: request.organizationId, projectId: request.projectId }
+      });
     }
   },
 

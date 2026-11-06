@@ -2896,6 +2896,31 @@ describe("CertificateV3Service", () => {
         expect(mockCertificateRequestDAL.attachCertificate).toHaveBeenCalledWith("held-req-1", "cert-456", {});
       });
 
+      it("applies an approved renewal to the certificate that replaced the original while it waited", async () => {
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        const reviewedCertificateRequest = await holdAndReadSnapshot();
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        vi.mocked(mockCertificateDAL.findById).mockImplementation((async (id: string) =>
+          id === "cert-123"
+            ? { ...mockOriginalCert, source: CertificateSource.Imported, renewedByCertificateId: "cert-200" }
+            : { ...mockOriginalCert, id, source: CertificateSource.Imported }) as never);
+        mockCertificateRequestDAL.updateById.mockResolvedValue({ id: "held-req-1", createdAt: new Date() });
+
+        const result = await service.renewApprovedCertificate({
+          certificateRequestId: "held-req-1",
+          organizationId: "org-123",
+          renewal: { certificateId: "cert-123", renewalKeySource: CertificateRenewalKeySource.New, caId: "ca-123" },
+          reviewedCertificateRequest
+        });
+
+        expect(result.status).toBe(CertificateRequestStatus.ISSUED);
+        expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
+          "cert-200",
+          expect.objectContaining({ renewedByCertificateId: "cert-456" }),
+          expect.anything()
+        );
+      });
+
       it("refuses an approved renewal when the profile moved to another certificate authority", async () => {
         setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
         const reviewedCertificateRequest = await holdAndReadSnapshot();
