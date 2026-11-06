@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
@@ -27,6 +29,7 @@ export type TIncidentIoRequesterFacts = {
 
 const MAX_OPTIONS = 100;
 const MAX_CHECKED_SCHEDULES = 20;
+const SCHEDULE_ID_REGEX = new RE2("^[0-9A-Z]{26}$");
 
 const anyOf = (values: string[]) => values.join(" or ");
 
@@ -39,10 +42,22 @@ const countByName = (schedules: TIncidentIoSchedule[]) => {
   return counts;
 };
 
-// A name only identifies a schedule while no other schedule has it; an ID always does
-const isNamedBy = (schedule: { id: string; name: string }, value: string, ambiguousNames: string[]) =>
-  schedule.id === value ||
-  (schedule.name.toLowerCase() === value.toLowerCase() && !ambiguousNames.includes(value.toLowerCase()));
+// An ID-shaped value only names the schedule with that ID, even once it's deleted, so no schedule can be named after it
+const isScheduleId = (value: string) => SCHEDULE_ID_REGEX.test(value);
+
+// A name only counts while no other schedule has it
+const getNamedSchedules = <T extends { id: string; name: string }>(
+  schedules: T[],
+  values: string[],
+  ambiguousNames: string[]
+) =>
+  schedules.filter((schedule) =>
+    values.some((value) =>
+      isScheduleId(value)
+        ? schedule.id === value
+        : schedule.name.toLowerCase() === value.toLowerCase() && !ambiguousNames.includes(value.toLowerCase())
+    )
+  );
 
 const readSchedules = async (conn: TIncidentIoConnection, signal?: AbortSignal) => {
   try {
@@ -70,9 +85,14 @@ export const INCIDENT_IO_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TIncident
         const all = await readSchedules(conn, deps.signal);
         const counts = countByName(all);
         const ambiguousNames = [
-          ...new Set(values.map((value) => value.toLowerCase()).filter((name) => (counts.get(name) ?? 0) > 1))
+          ...new Set(
+            values
+              .filter((value) => !isScheduleId(value))
+              .map((value) => value.toLowerCase())
+              .filter((name) => (counts.get(name) ?? 0) > 1)
+          )
         ];
-        const named = all.filter((schedule) => values.some((value) => isNamedBy(schedule, value, ambiguousNames)));
+        const named = getNamedSchedules(all, values, ambiguousNames);
         if (named.length > MAX_CHECKED_SCHEDULES) {
           throw new BadRequestError({
             message: `The rules name ${named.length} incident.io schedules, and Infisical checks at most ${MAX_CHECKED_SCHEDULES}`
@@ -103,6 +123,7 @@ export const INCIDENT_IO_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TIncident
         [IncidentIoRequesterConstraint.OnCall]: {
           label: "is on call in incident.io schedule",
           value: AutoApprovalConstraintValue.Many,
+          maxValues: MAX_CHECKED_SCHEDULES,
           listOptions: async (conn, { search }, deps) => {
             const schedules = await readSchedules(conn, deps.signal);
             const counts = countByName(schedules);
@@ -110,16 +131,15 @@ export const INCIDENT_IO_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TIncident
               .filter(({ name }) => !search || name.toLowerCase().includes(search.toLowerCase()))
               .sort((a, b) => a.name.localeCompare(b.name))
               .slice(0, MAX_OPTIONS)
-              .map(({ id, name }) =>
-                (counts.get(name.toLowerCase()) ?? 0) > 1
-                  ? { value: id, label: `${name} (${id})` }
-                  : { value: name, label: name }
-              );
+              .map(({ id, name }) => ({
+                value: id,
+                label: (counts.get(name.toLowerCase()) ?? 0) > 1 ? `${name} (${id})` : name
+              }));
           },
+          describeValues: (facts: TIncidentIoRequesterFacts, values) =>
+            values.map((value) => facts.schedules.find((schedule) => schedule.id === value)?.name ?? value),
           test: (facts: TIncidentIoRequesterFacts, values) => {
-            const named = facts.schedules.filter((schedule) =>
-              values.some((value) => isNamedBy(schedule, value, facts.ambiguousNames))
-            );
+            const named = getNamedSchedules(facts.schedules, values, facts.ambiguousNames);
             if (named.some((schedule) => schedule.onCall)) return { pass: true };
 
             const failed = named.find((schedule) => schedule.error);

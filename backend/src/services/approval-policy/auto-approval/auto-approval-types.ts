@@ -34,6 +34,8 @@ export type TAutoApprovalTestResult = { pass: boolean; reason?: string };
 export type TAutoApprovalConstraint<TConn, TFacts> = {
   label: string;
   value: AutoApprovalConstraintValue;
+  // Most distinct values a policy's rules can give this check in total, when each one costs a call to the service
+  maxValues?: number;
   // Picker values, filtered by search and by the values picked in the rule's other conditions
   listOptions?: (
     conn: TConn,
@@ -42,6 +44,8 @@ export type TAutoApprovalConstraint<TConn, TFacts> = {
   ) => Promise<TAutoApprovalOption[]>;
   // Pure; the reason is shown to requesters and approvers
   test: (facts: TFacts, values: string[], ctx: TAutoApprovalContext) => TAutoApprovalTestResult;
+  // How the condition's description shows its values, such as a schedule's name for its ID
+  describeValues?: (facts: TFacts, values: string[]) => string[];
 };
 
 export type TAutoApprovalSubjectInput<TConn> = {

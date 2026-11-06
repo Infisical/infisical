@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Combobox } from "@app/components/v3";
@@ -25,8 +25,6 @@ type Props = {
   onChange: (values: string[]) => void;
   isError?: boolean;
 };
-
-const toOption = (value: string): TAutoApprovalOption => ({ value, label: value });
 
 export const AutoApprovalValuePicker = ({
   policyType,
@@ -63,10 +61,26 @@ export const AutoApprovalValuePicker = ({
     retry: false
   });
 
+  // A picked value keeps its label while a search shows other options, such as a schedule's name for its ID
+  const [labels, setLabels] = useState(() => new Map<string, string>());
+  useEffect(() => {
+    if (!options.length) return;
+    setLabels(
+      (current) =>
+        new Map([...current, ...options.map(({ value, label }) => [value, label] as const)])
+    );
+  }, [options]);
+
   const selected = useMemo(
     () =>
-      values.map((value) => options.find((option) => option.value === value) ?? toOption(value)),
-    [values, options]
+      values.map(
+        (value): TAutoApprovalOption =>
+          options.find((option) => option.value === value) ?? {
+            value,
+            label: labels.get(value) ?? value
+          }
+      ),
+    [values, options, labels]
   );
 
   // Values are free text too: a label can be new, and the service may be unreachable while editing
