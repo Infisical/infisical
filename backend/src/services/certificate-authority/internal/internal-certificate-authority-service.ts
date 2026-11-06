@@ -93,6 +93,7 @@ import {
   getCaSigner,
   getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
+  rebuildCaCrl,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
 } from "../certificate-authority-fns";
@@ -1732,6 +1733,18 @@ export const internalCertificateAuthorityServiceFactory = ({
         },
         tx
       );
+    });
+
+    await rebuildCaCrl({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      certificateAuthorityCrlDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      certificateDAL,
+      kmsService,
+      caKeySourceService
     });
 
     if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE) {
