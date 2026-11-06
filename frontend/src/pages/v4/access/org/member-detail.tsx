@@ -183,14 +183,17 @@ const UserGroupsSection = ({ username }: { username: string }) => {
   ];
 
   const rowActions: DataTableRowActions<TGroupWithProjectMemberships> = {
-    inline: [
-      {
-        label: "Unassign from group",
-        icon: "trash",
-        disabledReason: () => (canEdit ? undefined : RESTRICTED),
-        onSelect: setRemoving
-      }
-    ]
+    renderMenu: (group) => (
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={!canEdit}
+        description={canEdit ? undefined : RESTRICTED}
+        onSelect={() => setRemoving(group)}
+      >
+        <Icon name="trash" />
+        Unassign from group
+      </DropdownMenuItem>
+    )
   };
 
   return (

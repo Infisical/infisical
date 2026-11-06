@@ -18,7 +18,7 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -323,31 +323,38 @@ export const OrgMembersTab = () => {
   ];
 
   const rowActions: DataTableRowActions<TOrgUserAccess> = {
-    inline: [
-      {
-        label: "Remove user",
-        icon: "trash",
-        disabledReason: (member) => {
-          if (isSelf(member.user)) return SELF_REASON;
-          if (!member.membership) return GROUP_ONLY;
-          return can(OrgPermissionMemberActions.Delete) ? undefined : RESTRICTED;
-        },
-        onSelect: setRemoving
-      }
-    ],
     menuDisabledReason: (member) => (isSelf(member.user) ? SELF_REASON : undefined),
     renderMenu: (member) => {
       const { membership } = member;
+      const canRemove = can(OrgPermissionMemberActions.Delete);
+      const removeReason = membership ? undefined : GROUP_ONLY;
+      const remove = (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={Boolean(removeReason) || !canRemove}
+            description={removeReason ?? (canRemove ? undefined : RESTRICTED)}
+            onSelect={() => setRemoving(member)}
+          >
+            <Icon name="trash" />
+            Remove user
+          </DropdownMenuItem>
+        </>
+      );
       if (!membership)
         return (
-          <DropdownMenuItem
-            disabled={!can(OrgPermissionMemberActions.Create)}
-            description={can(OrgPermissionMemberActions.Create) ? undefined : RESTRICTED}
-            onSelect={() => inviteAsDirectMember(member)}
-          >
-            <Icon name="user-plus" />
-            Invite as direct member
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem
+              disabled={!can(OrgPermissionMemberActions.Create)}
+              description={can(OrgPermissionMemberActions.Create) ? undefined : RESTRICTED}
+              onSelect={() => inviteAsDirectMember(member)}
+            >
+              <Icon name="user-plus" />
+              Invite as direct member
+            </DropdownMenuItem>
+            {remove}
+          </>
         );
       const pending =
         membership.isActive &&
@@ -390,6 +397,7 @@ export const OrgMembersTab = () => {
             <Icon name="user" />
             {membership.isActive ? "Deactivate user" : "Activate user"}
           </DropdownMenuItem>
+          {remove}
         </>
       );
     }

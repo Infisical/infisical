@@ -17,6 +17,7 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
@@ -109,14 +110,17 @@ export const ServiceTokensTab = () => {
   ];
 
   const rowActions: DataTableRowActions<ServiceToken> = {
-    inline: [
-      {
-        label: "Delete token",
-        icon: "trash",
-        disabledReason: () => (canDelete ? undefined : RESTRICTED),
-        onSelect: setDeleting
-      }
-    ]
+    renderMenu: (token) => (
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={!canDelete}
+        description={canDelete ? undefined : RESTRICTED}
+        onSelect={() => setDeleting(token)}
+      >
+        <Icon name="trash" />
+        Delete token
+      </DropdownMenuItem>
+    )
   };
 
   const remove = async () => {

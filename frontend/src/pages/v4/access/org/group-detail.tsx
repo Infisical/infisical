@@ -256,17 +256,19 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
   ];
 
   const rowActions: DataTableRowActions<TGroupMember> = {
-    inline: [
-      {
-        label: (member) =>
-          member.type === GroupMemberType.USER
-            ? "Remove user from group"
-            : "Remove identity from group",
-        icon: "trash",
-        disabledReason: () => (canEdit ? undefined : RESTRICTED),
-        onSelect: setRemoving
-      }
-    ]
+    renderMenu: (member) => (
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={!canEdit}
+        description={canEdit ? undefined : RESTRICTED}
+        onSelect={() => setRemoving(member)}
+      >
+        <Icon name="trash" />
+        {member.type === GroupMemberType.USER
+          ? "Remove user from group"
+          : "Remove identity from group"}
+      </DropdownMenuItem>
+    )
   };
 
   const remove = async (member: TGroupMember) => {

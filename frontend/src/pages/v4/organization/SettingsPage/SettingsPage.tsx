@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import {
   Empty,
   EmptyDescription,
@@ -32,6 +33,7 @@ import {
   EmptyTitle
 } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
+import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
@@ -288,7 +290,12 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
             getRowId={(row) => row.id}
             rowLabel={(row) => row.email}
             rowActions={{
-              inline: [{ label: "Remove contact", icon: "trash", onSelect: setRemoving }]
+              renderMenu: (row) => (
+                <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(row)}>
+                  <Icon name="trash" />
+                  Remove contact
+                </DropdownMenuItem>
+              )
             }}
             empty={
               <EmptyState

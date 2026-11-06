@@ -17,7 +17,7 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
@@ -141,10 +141,13 @@ export const ProjectRolesTab = () => {
             {custom ? <Icon icon={PencilIcon} /> : <Icon name="eye" />}
             {custom ? "Edit role" : "View role"}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
             disabled={!custom || !canDelete}
-            description={custom ? undefined : "Built-in roles cannot be deleted"}
+            description={
+              custom ? (!canDelete && RESTRICTED) || undefined : "Built-in roles cannot be deleted"
+            }
             onSelect={() => setDeleting(role)}
           >
             <Icon name="trash" />

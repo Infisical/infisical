@@ -17,7 +17,7 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
@@ -157,6 +157,7 @@ export const OrgGroupsTab = () => {
           <Icon name="user" />
           Manage members
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
           disabled={!can(OrgPermissionGroupActions.Delete)}

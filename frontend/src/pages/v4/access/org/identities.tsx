@@ -21,6 +21,7 @@ import {
 } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger
@@ -315,6 +316,7 @@ export const OrgIdentitiesTab = () => {
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
             disabled={!canDelete || row.identity.hasDeleteProtection}

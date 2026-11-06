@@ -8,6 +8,7 @@ import {
 } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger
@@ -132,73 +133,76 @@ export const ProjectIdentitiesTab = () => {
   ];
 
   const rowActions: DataTableRowActions<ProjectIdentityMembership> = {
-    inline: [
-      {
-        label: (row) =>
-          isProjectManaged(row.identity) ? "Delete machine identity" : "Remove from project",
-        icon: "trash",
-        disabledReason: (row) => {
-          if (!can(ProjectPermissionIdentityActions.Delete, row.identity.id)) return RESTRICTED;
-          if (isProjectManaged(row.identity) && row.identity.hasDeleteProtection)
-            return DELETE_PROTECTED;
-          return undefined;
-        },
-        onSelect: setRemoving
-      }
-    ],
-    renderMenu: ({ identity }) => (
-      <>
-        {isProjectManaged(identity) && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Icon name="key" />
-              Manage auth methods
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {identity.authMethods.map((method) => (
+    renderMenu: (row) => {
+      const { identity } = row;
+      let removeReason: string | undefined;
+      if (!can(ProjectPermissionIdentityActions.Delete, identity.id)) removeReason = RESTRICTED;
+      else if (isProjectManaged(identity) && identity.hasDeleteProtection)
+        removeReason = DELETE_PROTECTED;
+      return (
+        <>
+          {isProjectManaged(identity) && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Icon name="key" />
+                Manage auth methods
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {identity.authMethods.map((method) => (
+                  <DropdownMenuItem
+                    key={method}
+                    onSelect={() => {
+                      setAuthFor(identity.id);
+                      flows.view(method);
+                    }}
+                  >
+                    {identity.activeLockoutAuthMethods.includes(method) ? (
+                      <Icon name="lock" />
+                    ) : (
+                      <Icon name="key" />
+                    )}
+                    {authMethodName(method)}
+                  </DropdownMenuItem>
+                ))}
                 <DropdownMenuItem
-                  key={method}
+                  disabled={!can(ProjectPermissionIdentityActions.EditAuth, identity.id)}
+                  description={
+                    can(ProjectPermissionIdentityActions.EditAuth, identity.id)
+                      ? undefined
+                      : RESTRICTED
+                  }
                   onSelect={() => {
                     setAuthFor(identity.id);
-                    flows.view(method);
+                    flows.add();
                   }}
                 >
-                  {identity.activeLockoutAuthMethods.includes(method) ? (
-                    <Icon name="lock" />
-                  ) : (
-                    <Icon name="key" />
-                  )}
-                  {authMethodName(method)}
+                  <Icon name="plus" />
+                  Add auth method
                 </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem
-                disabled={!can(ProjectPermissionIdentityActions.EditAuth, identity.id)}
-                description={
-                  can(ProjectPermissionIdentityActions.EditAuth, identity.id)
-                    ? undefined
-                    : RESTRICTED
-                }
-                onSelect={() => {
-                  setAuthFor(identity.id);
-                  flows.add();
-                }}
-              >
-                <Icon name="plus" />
-                Add auth method
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
-        <DropdownMenuItem
-          disabled={!can(ProjectPermissionIdentityActions.AssumePrivileges, identity.id)}
-          description={ASSUME_HINT}
-          onSelect={() => setAssuming(identity.id)}
-        >
-          <Icon name="user" />
-          Assume privileges
-        </DropdownMenuItem>
-      </>
-    )
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+          <DropdownMenuItem
+            disabled={!can(ProjectPermissionIdentityActions.AssumePrivileges, identity.id)}
+            description={ASSUME_HINT}
+            onSelect={() => setAssuming(identity.id)}
+          >
+            <Icon name="user" />
+            Assume privileges
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={Boolean(removeReason)}
+            description={removeReason}
+            onSelect={() => setRemoving(row)}
+          >
+            <Icon name="trash" />
+            {isProjectManaged(identity) ? "Delete machine identity" : "Remove from project"}
+          </DropdownMenuItem>
+        </>
+      );
+    }
   };
 
   const searching = Boolean(debouncedSearch.trim() || roleFilter.length);

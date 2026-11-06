@@ -17,7 +17,7 @@ import {
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -480,6 +480,7 @@ export const AuthTemplatesSection = () => {
           <Icon name="eye" />
           View usages
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
           disabled={!canDelete}

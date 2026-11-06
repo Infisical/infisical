@@ -8,7 +8,7 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
@@ -115,27 +115,28 @@ export const ProjectMembersTab = () => {
   ];
 
   const rowActions: DataTableRowActions<TWorkspaceUser> = {
-    inline: [
-      {
-        label: "Remove user from project",
-        icon: UserXIcon,
-        disabledReason: (member) => {
-          if (isSelf(member)) return SELF_REASON;
-          return canDelete ? undefined : RESTRICTED;
-        },
-        onSelect: setRemoving
-      }
-    ],
     menuDisabledReason: (member) => (isSelf(member) ? SELF_REASON : undefined),
     renderMenu: (member) => (
-      <DropdownMenuItem
-        disabled={!canAssume(member)}
-        description={canAssume(member) ? ASSUME_DESCRIPTION : undefined}
-        onSelect={() => setAssuming({ id: member.user.id, type: ActorType.USER })}
-      >
-        <Icon name="user" />
-        Assume privileges
-      </DropdownMenuItem>
+      <>
+        <DropdownMenuItem
+          disabled={!canAssume(member)}
+          description={canAssume(member) ? ASSUME_DESCRIPTION : undefined}
+          onSelect={() => setAssuming({ id: member.user.id, type: ActorType.USER })}
+        >
+          <Icon name="user" />
+          Assume privileges
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!canDelete}
+          description={canDelete ? undefined : RESTRICTED}
+          onSelect={() => setRemoving(member)}
+        >
+          <Icon icon={UserXIcon} />
+          Remove user from project
+        </DropdownMenuItem>
+      </>
     )
   };
 

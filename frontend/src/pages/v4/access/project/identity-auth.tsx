@@ -18,7 +18,7 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -624,10 +624,13 @@ export const ProjectIdentityAuthSection = ({
           <Icon name="eye" />
           View auth method
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
           disabled={!canDelete || !isUniversal(method)}
-          description={isUniversal(method) ? undefined : UNSUPPORTED}
+          description={
+            (!canDelete && RESTRICTED) || (isUniversal(method) ? undefined : UNSUPPORTED)
+          }
           onSelect={() => flows.remove(method)}
         >
           <Icon name="trash" />

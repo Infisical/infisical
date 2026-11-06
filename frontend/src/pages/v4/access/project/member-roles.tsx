@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -329,14 +330,19 @@ export const MemberRolesSection = ({
         icon: "settings",
         disabledReason: () => (canEdit ? undefined : RESTRICTED),
         onSelect: setEditing
-      },
-      {
-        label: "Remove role",
-        icon: "trash",
-        disabledReason: () => (canEdit ? undefined : RESTRICTED),
-        onSelect: setRemoving
       }
-    ]
+    ],
+    renderMenu: (grant) => (
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={!canEdit}
+        description={canEdit ? undefined : RESTRICTED}
+        onSelect={() => setRemoving(grant)}
+      >
+        <Icon name="trash" />
+        Remove role
+      </DropdownMenuItem>
+    )
   };
 
   return (
