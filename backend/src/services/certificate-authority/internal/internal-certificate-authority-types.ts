@@ -397,6 +397,7 @@ export type TBuildIssuedCertificateChainDTO = {
 export type TRebuildCaCrlDTO = {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;

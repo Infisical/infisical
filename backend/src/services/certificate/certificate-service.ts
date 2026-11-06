@@ -816,6 +816,7 @@ export const certificateServiceFactory = ({
       await rebuildCaCrl({
         caId: ca.id,
         certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
         certificateAuthorityCrlDAL,
         certificateAuthoritySecretDAL,
         projectDAL,

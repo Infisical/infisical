@@ -675,6 +675,25 @@ export const getIssuedCaCertChain = async ({
   return { caCert, caCertChain, certificateChainPem };
 };
 
+export const getCaCrlIssuer = async ({
+  internalCa,
+  kmsId,
+  certificateAuthorityCertDAL,
+  kmsService
+}: Pick<TRebuildCaCrlDTO, "certificateAuthorityCertDAL" | "kmsService"> & {
+  internalCa: { dn: string; activeCaCertId?: string | null };
+  kmsId: string;
+}) => {
+  if (!internalCa.activeCaCertId) return internalCa.dn;
+
+  const caCert = await certificateAuthorityCertDAL.findById(internalCa.activeCaCertId);
+  if (!caCert) throw new NotFoundError({ message: `CA certificate with ID '${internalCa.activeCaCertId}' not found` });
+
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
+  const decryptedCaCert = await kmsDecryptor({ cipherTextBlob: caCert.encryptedCertificate });
+  return new x509.X509Certificate(decryptedCaCert).subjectName;
+};
+
 /**
  * Rebuilds the certificate revocation list (CRL)
  * for CA with id [caId]
@@ -682,6 +701,7 @@ export const getIssuedCaCertChain = async ({
 export const rebuildCaCrl = async ({
   caId,
   certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
   certificateAuthorityCrlDAL,
   certificateAuthoritySecretDAL,
   projectDAL,
@@ -716,8 +736,15 @@ export const rebuildCaCrl = async ({
   const nextUpdate = new Date(thisUpdate);
   nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
 
+  const issuer = await getCaCrlIssuer({
+    internalCa: ca.internalCa,
+    kmsId: keyId,
+    certificateAuthorityCertDAL,
+    kmsService
+  });
+
   const crl = await signer.createCrl({
-    issuer: ca.internalCa.dn,
+    issuer,
     thisUpdate,
     nextUpdate,
     entries: revokedCerts.map((revokedCert) => {
