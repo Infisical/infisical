@@ -48,7 +48,7 @@ export const ClickHouseConnectionUsernameAndPasswordCredentialsSchema = z.object
   sslEnabled: z.boolean().describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslEnabled),
   sslRejectUnauthorized: z.boolean().describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslRejectUnauthorized),
   sslCertificate: bidirectionalTransform(
-    z.string().trim().max(10240, "SSL certificate cannot exceed 10240 characters"),
+    z.string().trim().max(10240, "SSL certificate cannot exceed 10240 characters").optional(),
     (value) => value || undefined
   )
     .optional()

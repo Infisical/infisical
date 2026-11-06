@@ -39,7 +39,7 @@ export const PaloAltoNetworksConnectionBasicAuthCredentialsSchema = z.object({
     .optional()
     .describe(AppConnections.CREDENTIALS.PALO_ALTO_NETWORKS.sslRejectUnauthorized),
   sslCertificate: bidirectionalTransform(
-    z.string().trim().max(16384, "SSL certificate cannot exceed 16384 characters"),
+    z.string().trim().max(16384, "SSL certificate cannot exceed 16384 characters").optional(),
     (value) => value || undefined
   )
     .optional()
