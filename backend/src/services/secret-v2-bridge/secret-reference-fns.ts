@@ -88,6 +88,7 @@ export type TSecretReferenceTraceNode = {
   secretPath: string;
   // Present when this node references a secret from a different project
   projectSlug?: string;
+  exists?: boolean;
   children: TSecretReferenceTraceNode[];
 };
 
@@ -468,6 +469,7 @@ export const expandSecretReferencesFactory = ({
             secretPath: referencedSecretPath,
             environment: referencedSecretEnvironmentSlug,
             ...(referencedProjectSlug ? { projectSlug: referencedProjectSlug } : {}),
+            exists: referencedSecretExists,
             depth: depth + 1,
             secretKey: referencedSecretKey,
             trace
