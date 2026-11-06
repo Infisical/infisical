@@ -13,6 +13,8 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.AgentVaultPersonalValue, "oauthConfig")) {
+    // The column is the only thing that marks these rows as OAuth tokens; without it they read as typed values.
+    await knex(TableName.AgentVaultPersonalValue).whereNotNull("oauthConfig").delete();
     await knex.schema.alterTable(TableName.AgentVaultPersonalValue, (t) => {
       t.dropColumn("oauthConfig");
     });

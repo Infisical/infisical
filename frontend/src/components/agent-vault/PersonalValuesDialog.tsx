@@ -148,6 +148,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     target?.service;
   const personalValues = service?.personalValues;
   const setValues = useSetAgentVaultPersonalValues(projectId);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const deleteValues = useDeleteAgentVaultPersonalValues(projectId);
   // A member keeps at most MAX_PERSONAL_VARIABLES, so one page holds every one of them.
   const { data: variablePage } = useListAgentVaultVariables(
@@ -329,7 +330,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent isPending={isSubmitting || setValues.isPending}>
+      <DialogContent isPending={isSubmitting || setValues.isPending || isSigningIn}>
         <DialogHeader>
           <DialogTitle>
             {personalValues?.isConfigured ? "Update" : "Set Up"} Personal Values for {service?.name}
@@ -344,10 +345,16 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
               connection={oauthConnection}
               isSaving={setValues.isPending}
               onAuthorized={saveConnection}
+              onWaitingChange={setIsSigningIn}
             />
             <DialogFooter className="sm:justify-between">
               {removeButton}
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                isDisabled={isSigningIn}
+                onClick={() => onOpenChange(false)}
+              >
                 Close
               </Button>
             </DialogFooter>

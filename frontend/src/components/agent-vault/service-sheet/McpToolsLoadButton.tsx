@@ -16,6 +16,9 @@ import {
   FieldError,
   FieldLabel,
   Input,
+  Item,
+  ItemActions,
+  ItemContent,
   Spinner
 } from "@app/components/v3";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
@@ -37,6 +40,7 @@ type Props = {
   isLoading: boolean;
   // Resolves to why the load failed, or null once the list is loaded.
   onLoad: (own: TMcpToolsOwnCredential) => Promise<string | null>;
+  onGoToDetails: () => void;
   onGoToOwnApp: (message?: string) => void;
   onSignInChange?: (isSigningIn: boolean) => void;
 };
@@ -51,6 +55,7 @@ export const McpToolsLoadButton = ({
   label,
   isLoading,
   onLoad,
+  onGoToDetails,
   onGoToOwnApp,
   onSignInChange
 }: Props) => {
@@ -79,7 +84,7 @@ export const McpToolsLoadButton = ({
     setIsOpen(false);
   };
 
-  const { state, isClientRequired, authorize, cancel } = useOAuthAuthorize({
+  const { state, isClientRequired, isOAuthAdvertised, authorize, cancel } = useOAuthAuthorize({
     onAuthorized: (authorization) => {
       load({ authorizationId: authorization.id }).catch(() => undefined);
     }
@@ -159,7 +164,7 @@ export const McpToolsLoadButton = ({
   }
 
   const signInProblem = state.status === "failed" ? state.message : loadError;
-  const signInDetail = isWaiting ? "Finish signing in in the window that opened." : NOT_SAVED;
+  const signInDetail = isWaiting ? "Continue in the window that opened." : NOT_SAVED;
 
   return (
     <>
@@ -177,7 +182,9 @@ export const McpToolsLoadButton = ({
       <Dialog open={isOpen} onOpenChange={changeOpen}>
         <DialogContent isPending={isLoading}>
           <DialogHeader>
-            <DialogTitle>Load Tools From {host}</DialogTitle>
+            <DialogTitle className="truncate" title={`Load Tools From ${host}`}>
+              Load Tools From {host}
+            </DialogTitle>
             <DialogDescription>
               {isOAuth
                 ? `Sign in with your ${host} account to load the tools you can pick from.`
@@ -187,17 +194,19 @@ export const McpToolsLoadButton = ({
 
           {isOAuth ? (
             <div className="flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-4 rounded-md border border-border p-4">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-sm text-foreground">{host}</span>
+              <Item className="flex-nowrap px-0">
+                <ItemContent className="min-w-0">
+                  <span className="truncate text-sm text-foreground" title={host}>
+                    {host}
+                  </span>
                   {signInProblem ? (
                     <span className="text-xs text-danger">{signInProblem}</span>
                   ) : (
                     <span className="text-xs text-muted">{signInDetail}</span>
                   )}
-                </div>
-                {signInAction}
-              </div>
+                </ItemContent>
+                <ItemActions>{signInAction}</ItemActions>
+              </Item>
               {isSecretNeededAgain && !isClientRequired && !isWaiting && (
                 <div className="flex flex-col items-start gap-2 text-xs text-muted">
                   The server URL changed, so the saved client secret won&apos;t be sent to it. If
@@ -220,19 +229,49 @@ export const McpToolsLoadButton = ({
               )}
               {isClientRequired && !isWaiting && (
                 <div className="flex flex-col items-start gap-2 text-xs text-muted">
-                  {host} doesn&apos;t let Infisical register a client for the sign-in. Enter your
-                  OAuth app&apos;s client ID on the Credential step, then load the tools again.
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    onClick={() => {
-                      changeOpen(false);
-                      onGoToOwnApp();
-                    }}
-                  >
-                    Go to Credential Step
-                  </Button>
+                  {isOAuthAdvertised ? (
+                    <>
+                      {host} doesn&apos;t let Infisical register a client for the sign-in. Enter
+                      your OAuth app&apos;s client ID on the Credential step, then load the tools
+                      again.
+                    </>
+                  ) : (
+                    <>
+                      {host} doesn&apos;t look like it uses OAuth. Check the server URL on the
+                      Details step. If the server does use OAuth, enter your OAuth app&apos;s client
+                      ID on the Credential step, then load the tools again.
+                    </>
+                  )}
+                  <div className="flex gap-2">
+                    {!isOAuthAdvertised && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => {
+                          changeOpen(false);
+                          onGoToDetails();
+                        }}
+                      >
+                        Go to Details Step
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => {
+                        changeOpen(false);
+                        onGoToOwnApp(
+                          isOAuthAdvertised
+                            ? undefined
+                            : `${host} doesn't look like it uses OAuth. If the server does use OAuth, enter your OAuth app's client ID and secret below, then load the tools again.`
+                        );
+                      }}
+                    >
+                      Go to Credential Step
+                    </Button>
+                  </div>
                 </div>
               )}
               <DialogFooter>

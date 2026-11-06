@@ -52,6 +52,7 @@ import {
   generatePkce,
   generateState,
   hashAccessToken,
+  isClientRefusedError,
   isDeadLoginError,
   isMemberProvidedOauth,
   isSameState,
@@ -136,7 +137,7 @@ type TOauthTokenSnapshot = Omit<TLoadedOauthService, "secret" | "config">;
 type TOauthTokenHolder = {
   lockKey: string;
   logLabel: string;
-  deadLoginMessage: (reason: string) => string;
+  deadLoginMessage: (reason: string, refusal: { clientRefused: boolean; config: TAgentVaultOauthConfig }) => string;
   // Appended to a reason that names no recovery step, since the step differs for the service and for a member.
   reauthorizeStep: string;
   load: () => Promise<Omit<TLoadedOauthService, "secret"> | undefined>;
@@ -421,7 +422,7 @@ export const agentVaultOauthServiceFactory = ({
     if (memberConfig?.registration === AgentVaultOauthRegistration.Manual && discovery.issuer !== memberConfig.issuer) {
       throw oauthSetupError(
         serverUrl,
-        "the server now signs in through a different issuer than the one this service's OAuth app was set up for. Ask an admin of this access bundle to enter the OAuth app's client secret again in the service's settings, or the client ID and secret of an app registered with the new issuer."
+        "the server now signs in through a different issuer than the one this service's OAuth app was set up for. Ask a project admin to enter the OAuth app's client secret again in the service's settings, or the client ID and secret of an app registered with the new issuer."
       );
     }
 
@@ -492,7 +493,7 @@ export const agentVaultOauthServiceFactory = ({
     if (personal && (!client || !registration)) {
       throw oauthSetupError(
         serverUrl,
-        "the server didn't let Infisical register a client for your sign-in. Ask an admin of this access bundle to set the service up with their own OAuth app."
+        "the server didn't let Infisical register a client for your sign-in. Ask a project admin to set the service up with their own OAuth app."
       );
     }
     if (!client || !registration) {
@@ -859,8 +860,12 @@ export const agentVaultOauthServiceFactory = ({
     return {
       lockKey: KeyStorePrefixes.AgentVaultOauthPersonalRefreshLock(serviceId, ownerId),
       logLabel: `serviceId=${serviceId}] [ownerId=${ownerId}`,
-      deadLoginMessage: (reason) =>
-        `Your login to this service is no longer accepted (${reason}). Connect your account again.`,
+      // Reconnecting signs in with the admin's app again, so a refused app is only fixed by an admin. A dynamic client is
+      // registered afresh on reconnect.
+      deadLoginMessage: (reason, { clientRefused, config }) =>
+        clientRefused && config.registration === AgentVaultOauthRegistration.Manual
+          ? `The provider refused the OAuth app this service signs in with (${reason}). Reconnecting won't fix this. Ask a project admin to update the OAuth app on the service.`
+          : `Your login to this service is no longer accepted (${reason}). Connect your account again.`,
       reauthorizeStep: "Connect your account again.",
       load: async () => {
         const row = await agentVaultPersonalValueDAL.findOauthForOwner({ serviceId, owner });
@@ -1063,7 +1068,12 @@ export const agentVaultOauthServiceFactory = ({
 
       if (!result.ok) {
         if (isDeadLoginError(result.errorCode)) {
-          await markNeedsReauthorization(holder.deadLoginMessage(result.message));
+          await markNeedsReauthorization(
+            holder.deadLoginMessage(result.message, {
+              clientRefused: isClientRefusedError(result.errorCode),
+              config
+            })
+          );
         } else {
           await applyStatus({ lastError: result.message });
           logger.warn(`agentVaultOauth: token refresh failed [${holder.logLabel}] [error=${result.message}]`);
@@ -1147,7 +1157,8 @@ export const agentVaultOauthServiceFactory = ({
 
   // For a service whose sign-in each member does: the server is checked once at setup, so a URL with no OAuth fails
   // the save rather than every member's sign-in, and the client every member signs in with is settled here. Nothing
-  // is registered: each member's sign-in registers its own client, as an admin's reauthorization does.
+  // is kept: each member's sign-in registers its own client, as an admin's reauthorization does. A guessed /register
+  // is tried once here, and the client it creates is left unused.
   const prepareMemberOauth = async ({
     serverUrl,
     clientId,
@@ -1171,12 +1182,29 @@ export const agentVaultOauthServiceFactory = ({
           { registrationRequired: true }
         );
       }
-      if (!discovery.registrationEndpoint) {
-        throw oauthSetupError(
+      const noRegistration = () =>
+        oauthSetupError(
           serverUrl,
           "the server doesn't support automatic client registration. Enter the client ID (and secret, if it has one) of your own OAuth app, which every member then signs in with.",
           { registrationRequired: true }
         );
+      if (!discovery.registrationEndpoint) throw noRegistration();
+      // A guessed /register is only known to work once it does, so a client is registered and left unused rather than
+      // every member's sign-in failing later. An advertised endpoint is trusted, as an admin's own sign-in trusts it.
+      if (discovery.endpointsGuessed) {
+        try {
+          await registerOauthClient({
+            http,
+            serverUrl,
+            registrationEndpoint: discovery.registrationEndpoint,
+            redirectUri: redirectUri(),
+            grantTypesSupported: discovery.grantTypesSupported,
+            tokenEndpointAuthMethodsSupported: discovery.tokenEndpointAuthMethodsSupported
+          });
+        } catch (error) {
+          if (error instanceof OauthRegistrationError) throw noRegistration();
+          throw error;
+        }
       }
     }
     return {

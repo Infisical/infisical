@@ -963,6 +963,7 @@ export const ServiceSheet = ({
                       onLoaded={setLoadedTools}
                       isAuthorizationExpired={isAuthorizationRejected}
                       isCredentialMemberProvided={isMcpCredentialMemberProvided}
+                      onGoToDetails={() => setStep(stepKeys.indexOf(ServiceStep.Details))}
                       onGoToCredential={() => setStep(stepKeys.indexOf(ServiceStep.Credential))}
                       onSignInChange={setIsSigningIn}
                     />
@@ -1070,7 +1071,7 @@ export const ServiceSheet = ({
                   })();
                 }}
               >
-                Save
+                Remove and Save
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

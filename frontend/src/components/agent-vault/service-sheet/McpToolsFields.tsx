@@ -55,6 +55,7 @@ type Props = {
   isAuthorizationExpired: boolean;
   // Each member provides the credential, so Infisical has none of its own to list the tools with.
   isCredentialMemberProvided: boolean;
+  onGoToDetails: () => void;
   onGoToCredential: () => void;
   onSignInChange?: (isSigningIn: boolean) => void;
 };
@@ -66,6 +67,7 @@ export const McpToolsFields = ({
   onLoaded,
   isAuthorizationExpired,
   isCredentialMemberProvided,
+  onGoToDetails,
   onGoToCredential,
   onSignInChange
 }: Props) => {
@@ -219,6 +221,7 @@ export const McpToolsFields = ({
                     label={loadLabel}
                     isLoading={listTools.isPending}
                     onLoad={loadTools}
+                    onGoToDetails={onGoToDetails}
                     onGoToOwnApp={goToOwnApp}
                     onSignInChange={onSignInChange}
                   />

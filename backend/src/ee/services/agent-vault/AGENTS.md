@@ -557,13 +557,15 @@ set and how its connection is doing come from the same row.
   `registration`, and an admin-entered `clientId`), and `encryptedCredential` is `{ clientSecret }` for an admin-entered
   client with a secret, NULL otherwise. Anything that reads an OAuth service's sealed credential as tokens checks
   `isMemberProvidedOauth` first: resolve, refresh, scope reports, tool loading and the admin's reauthorization all do.
-- **The save runs discovery and registers nothing** (`prepareMemberOauth`): a server with no OAuth, or with no
-  registration and no admin-entered client, fails the save. Each member's sign-in registers its own client, as an
-  admin's reauthorization does, or uses the admin-entered one.
+- **The save runs discovery and keeps no client** (`prepareMemberOauth`): a server with no OAuth, or with no
+  registration and no admin-entered client, fails the save. A guessed `/register` is probed by registering a client
+  that is then left unused, so a save can create clients at the provider. Each member's sign-in registers its own
+  client, as an admin's reauthorization does, or uses the admin-entered one.
 - **A member signs in through the same authorization routes with `personal: true`**, which needs only bundle Read and
   a service that leaves sign-in to members. The record carries `personal`, and a claim refuses the wrong intent both
   ways, so a member's sign-in never becomes the service's credential and an admin's never a personal value. The claim
-  goes through the personal values PATCH as `{ oauthAuthorizationId }`, which re-checks under the service lock that the
+  goes through its own hidden route, `POST .../personal-values/oauth-connection` with `{ authorizationId }` (the
+  public PATCH takes typed values only), which re-checks under the service lock that the
   server, config and client secret are the ones the first read saw, and 409s otherwise.
 - **Whatever the tokens are bound to clears every connection in the update's transaction**: the server URL, the
   issuer, the client (id, registration mode, or a new secret), the credential type, or switching back to shared. The
@@ -692,8 +694,10 @@ code exchange and refresh; the proxy only ever receives the access token.
   credential stores no header name or prefix and its input is `authorizationId`, or, when members sign in, `memberProvidedFields` with an optional admin-entered `clientId`, `clientSecret` or `registration: "dynamic"`. Resolve refreshes a token that expires before the next poll; the proxy calls
   `credential-refresh` after an upstream 401. A failing provider never fails resolve for other services: it costs
   that service a stale token and a `lastError`. A refresh error that means the login is dead (`invalid_grant`, a
-  dropped client, providers' own revoked or expired refresh token codes: `DEAD_LOGIN_ERROR_CODES`) moves the service
-  to needs reauthorization, so it isn't retried every poll. Any token type but a proof-of-possession one (DPoP, MAC,
+  dropped client, providers' own revoked or expired refresh token codes: `isDeadLoginError`) moves the service
+  to needs reauthorization, so it isn't retried every poll. `isClientRefusedError` picks out the refusals of the client
+  itself (`invalid_client`, `unauthorized_client` and providers' names for them): for a member's connection through the admin's own OAuth app, the
+  message says reconnecting won't help and a project admin has to update the app. Any token type but a proof-of-possession one (DPoP, MAC,
   PoP) is sent as a bearer token, since servers may name their own (Slack's is `user`).
 - **Both proxy calls answer well inside the proxy's 15 second timeout.** Resolve waits 4 seconds in total for its
   refreshes and sends the stored token for any still running, which finish in the background. Token requests (the

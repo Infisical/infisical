@@ -13,7 +13,6 @@ import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { pick } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { openApiHidden } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -643,28 +642,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
         serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
-      body: z
-        .object({
-          values: AgentVaultPersonalValueInputSchema.array()
-            .min(1)
-            .max(2)
-            .optional()
-            .describe(AGENT_VAULT.PERSONAL_VALUE.values),
-          // Only the UI's browser sign-in can produce one, through routes that aren't public.
-          oauthAuthorizationId: z.string().uuid().optional().describe(openApiHidden()),
-          credentialType: z
-            .nativeEnum(AgentVaultCredentialType)
-            .optional()
-            .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
-        })
-        .refine((body) => body.values !== undefined || body.oauthAuthorizationId !== undefined, {
-          message: "Send the values to set in values.",
-          path: ["values"]
-        })
-        .refine((body) => body.values === undefined || body.oauthAuthorizationId === undefined, {
-          message: "Send either values or oauthAuthorizationId, not both.",
-          path: ["oauthAuthorizationId"]
-        }),
+      body: z.object({
+        values: AgentVaultPersonalValueInputSchema.array().min(1).max(2).describe(AGENT_VAULT.PERSONAL_VALUE.values),
+        credentialType: z
+          .nativeEnum(AgentVaultCredentialType)
+          .optional()
+          .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
+      }),
       response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -678,10 +662,74 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         serviceId: req.params.serviceId,
-        credentialType: req.body.credentialType,
-        ...(req.body.oauthAuthorizationId === undefined
-          ? { values: req.body.values! }
-          : { oauthAuthorizationId: req.body.oauthAuthorizationId })
+        values: req.body.values,
+        credentialType: req.body.credentialType
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET,
+          metadata: {
+            accessBundleId: personalValues.accessBundleId,
+            accessBundleName: personalValues.accessBundleName,
+            serviceId: personalValues.serviceId,
+            serviceName: personalValues.serviceName,
+            credentialType: personalValues.credentialType,
+            fields: req.body.values.map((value) => value.field),
+            variableKeys: [
+              ...new Set(
+                personalValues.fields
+                  .filter((field) => req.body.values.some((value) => value.field === field.field))
+                  .flatMap((field) => field.variableReferences.map((reference) => reference.key))
+              )
+            ]
+          }
+        }
+      });
+
+      return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
+    }
+  });
+
+  // Saves a member's completed OAuth sign-in as their connection to a service that leaves sign-in to members. Hidden
+  // like the authorization routes, since only the UI's browser sign-in can produce one.
+  server.route({
+    method: "POST",
+    url: "/:accessBundleId/services/:serviceId/personal-values/oauth-connection",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "connectAgentVaultServicePersonalOauth",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+      }),
+      body: z.object({
+        authorizationId: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
+        credentialType: z
+          .nativeEnum(AgentVaultCredentialType)
+          .optional()
+          .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
+      }),
+      response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      const { personalValues } = await server.services.agentVaultPersonalValue.connectOauth({
+        projectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        serviceId: req.params.serviceId,
+        authorizationId: req.body.authorizationId,
+        credentialType: req.body.credentialType
       });
       const oauthConnection = personalValues.fields.find((field) => field.oauth)?.oauth;
 
@@ -697,16 +745,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceId: personalValues.serviceId,
             serviceName: personalValues.serviceName,
             credentialType: personalValues.credentialType,
-            fields: req.body.oauthAuthorizationId
-              ? [AgentVaultVariableReferenceField.CredentialValue]
-              : (req.body.values ?? []).map((value) => value.field),
-            variableKeys: [
-              ...new Set(
-                personalValues.fields
-                  .filter((field) => req.body.values?.some((value) => value.field === field.field))
-                  .flatMap((field) => field.variableReferences.map((reference) => reference.key))
-              )
-            ],
+            fields: [AgentVaultVariableReferenceField.CredentialValue],
+            variableKeys: [],
             ...(oauthConnection
               ? { oauthIssuer: oauthConnection.issuer, oauthScopes: oauthConnection.grantedScopes }
               : {})

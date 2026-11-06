@@ -1,14 +1,25 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { format } from "date-fns";
+import { CheckIcon, InfoIcon } from "lucide-react";
 
-import { Button, Spinner } from "@app/components/v3";
+import {
+  Button,
+  IconButton,
+  Item,
+  ItemActions,
+  ItemContent,
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { AgentVaultOauthStatus } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultPersonalOauthConnection,
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
 
-import { OAuthStatusBadge, Scopes } from "./service-sheet/OAuthAuthorizeCard";
+import { OAuthStatusBadge } from "./service-sheet/OAuthAuthorizeCard";
 import { hostOf } from "./service-sheet/serviceSchema";
 import { useOAuthAuthorize } from "./service-sheet/useOAuthAuthorize";
 
@@ -18,10 +29,18 @@ type Props = {
   isSaving: boolean;
   // Saves the completed sign-in as the caller's connection, at once: there is no separate Save step.
   onAuthorized: (authorizationId: string) => Promise<void>;
+  // Closing the dialog mid sign-in stops the poll, so an approved sign-in would never be saved.
+  onWaitingChange: (isWaiting: boolean) => void;
 };
 
 /** The caller's own account connection for a service that leaves its OAuth sign-in to each member. */
-export const PersonalOAuthConnection = ({ service, connection, isSaving, onAuthorized }: Props) => {
+export const PersonalOAuthConnection = ({
+  service,
+  connection,
+  isSaving,
+  onAuthorized,
+  onWaitingChange
+}: Props) => {
   const serverUrl = service.serverUrl ?? "";
   const host = hostOf(serverUrl);
   const { state, authorize, cancel } = useOAuthAuthorize({
@@ -29,6 +48,10 @@ export const PersonalOAuthConnection = ({ service, connection, isSaving, onAutho
     onAuthorized: (authorization) => onAuthorized(authorization.id).catch(() => undefined)
   });
   const isWaiting = state.status === "starting" || state.status === "pending";
+  useEffect(() => {
+    onWaitingChange(isWaiting);
+    return () => onWaitingChange(false);
+  }, [isWaiting]);
 
   const connect = () => {
     authorize({
@@ -47,8 +70,13 @@ export const PersonalOAuthConnection = ({ service, connection, isSaving, onAutho
     detail = connection.lastError ?? `${host} no longer accepts this connection. Reconnect it.`;
   } else if (connection.status === AgentVaultOauthStatus.NeedsAdditionalScopes) {
     detail = "An agent requested scopes that aren't granted yet. Reconnect to add them.";
-  } else if (connection.authorizedAt) {
-    detail = `Connected on ${format(new Date(connection.authorizedAt), "MMM d, yyyy")}.`;
+  } else {
+    detail = (
+      <span className="flex items-center gap-1 text-success">
+        <CheckIcon className="size-3.5" />
+        Connected
+      </span>
+    );
   }
 
   const isProblem =
@@ -88,25 +116,64 @@ export const PersonalOAuthConnection = ({ service, connection, isSaving, onAutho
     );
   }
 
+  const requestedScopes =
+    connection?.requiredScopes.filter((scope) => !connection.grantedScopes.includes(scope)) ?? [];
+
   return (
-    <div className="flex items-start justify-between gap-4 rounded-md border border-border p-4">
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="flex flex-wrap items-center gap-2 text-sm text-foreground">
-          {host}
-          {connection && !problem && <OAuthStatusBadge status={connection.status} />}
+    <Item className="flex-nowrap px-0">
+      <ItemContent className="min-w-0">
+        <span className="flex min-w-0 items-center gap-2 text-sm text-foreground">
+          <span className="truncate" title={host}>
+            {host}
+          </span>
+          {connection && !problem && isProblem && <OAuthStatusBadge status={connection.status} />}
+          {connection && (
+            <Tooltip hoverable>
+              <TooltipTrigger asChild>
+                <IconButton
+                  type="button"
+                  variant="ghost-muted"
+                  size="2xs"
+                  className="shrink-0"
+                  aria-label="Connection details"
+                >
+                  <InfoIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent className="flex max-h-64 max-w-xs flex-col gap-1 overflow-y-auto">
+                {connection.authorizedAt && (
+                  <span>
+                    Connected on {format(new Date(connection.authorizedAt), "MMM d, yyyy")}
+                  </span>
+                )}
+                <span>Scopes:</span>
+                {connection.grantedScopes.length ? (
+                  connection.grantedScopes.map((scope) => (
+                    <span key={scope} className="break-all">
+                      {scope}
+                    </span>
+                  ))
+                ) : (
+                  <span>None</span>
+                )}
+                {requestedScopes.length > 0 && (
+                  <>
+                    <span>Requested:</span>
+                    {requestedScopes.map((scope) => (
+                      <span key={scope} className="break-all">
+                        {scope}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </span>
         {problem && <span className="text-xs text-danger">{problem}</span>}
         {!problem && detail && <span className="text-xs text-muted">{detail}</span>}
-        {connection && (
-          <Scopes
-            granted={connection.grantedScopes}
-            requested={connection.requiredScopes.filter(
-              (scope) => !connection.grantedScopes.includes(scope)
-            )}
-          />
-        )}
-      </div>
-      {action}
-    </div>
+      </ItemContent>
+      <ItemActions>{action}</ItemActions>
+    </Item>
   );
 };

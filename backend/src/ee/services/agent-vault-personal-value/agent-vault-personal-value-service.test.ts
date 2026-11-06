@@ -101,11 +101,11 @@ const setup = ({
   });
 
   const connect = () =>
-    service.setPersonalValues({
+    service.connectOauth({
       projectId: PROJECT_ID,
       accessBundleId: BUNDLE_ID,
       serviceId: SERVICE_ID,
-      oauthAuthorizationId: "authorization",
+      authorizationId: "authorization",
       ctx: {
         actor: ActorType.USER,
         actorId: USER_ID,
@@ -117,7 +117,7 @@ const setup = ({
   return { connect, create, restore, claimAuthorization };
 };
 
-describe("setPersonalValues with an OAuth authorization", () => {
+describe("connectOauth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

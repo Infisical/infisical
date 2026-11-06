@@ -14,6 +14,7 @@ import {
   AgentVaultOauthStatus,
   AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
+import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   describeServer,
   MAX_OAUTH_SCOPES,
@@ -407,21 +408,26 @@ export const requestToken = async ({
 // Refresh errors that mean the login is gone for good, so retrying on every poll only repeats the refusal. The
 // client codes mean the server dropped the registered client (the MCP SDK starts over on invalid_client too) or no
 // longer accepts its secret; the rest are providers' own names for a dead refresh token.
-const DEAD_LOGIN_ERROR_CODES = new Set([
-  "invalid_grant",
+const CLIENT_REFUSED_ERROR_CODES = new Set([
   "invalid_client",
   "unauthorized_client",
   "incorrect_client_credentials", // GitHub's invalid_client, sent with a 200
-  "bad_refresh_token", // GitHub
-  "invalid_refresh_token", // Slack
-  "token_revoked", // Slack
-  "token_expired", // Slack
   "bad_client_secret", // Slack's invalid_client
   "invalid_client_id" // Slack's invalid_client
 ]);
+const DEAD_TOKEN_ERROR_CODES = new Set([
+  "invalid_grant",
+  "bad_refresh_token", // GitHub
+  "invalid_refresh_token", // Slack
+  "token_revoked", // Slack
+  "token_expired" // Slack
+]);
+
+export const isClientRefusedError = (errorCode: string | null) =>
+  errorCode !== null && CLIENT_REFUSED_ERROR_CODES.has(errorCode);
 
 export const isDeadLoginError = (errorCode: string | null) =>
-  errorCode !== null && DEAD_LOGIN_ERROR_CODES.has(errorCode);
+  errorCode !== null && (DEAD_TOKEN_ERROR_CODES.has(errorCode) || CLIENT_REFUSED_ERROR_CODES.has(errorCode));
 
 export const exchangeAuthorizationCode = (
   args: Omit<Parameters<typeof requestToken>[0], "params"> & { code: string; codeVerifier: string; redirectUri: string }
@@ -481,8 +487,9 @@ export const oauthConnectionStatusOf = (config: TAgentVaultOauthConfig) => ({
   lastError: config.lastError ?? null
 });
 
-// What a member's sign-in is bound to on the service: its server, issuer, client and sealed client secret. Sealing is
-// randomized, so any secret an admin sends changes it, even the same one.
+// What a member's sign-in is bound to on the service: its server URL (not the rest of its config, such as the
+// transport), issuer, client and sealed client secret. Sealing is randomized, so any secret an admin sends changes it,
+// even the same one.
 export const memberOauthSetupOf = (service: {
   config?: unknown;
   credentialConfig?: unknown;
@@ -492,7 +499,7 @@ export const memberOauthSetupOf = (service: {
     .createHash("sha256")
     .update(
       JSON.stringify([
-        service.config ?? null,
+        getServiceServerUrl(service.config) ?? null,
         service.credentialConfig ?? null,
         service.encryptedCredential?.toString("base64") ?? null
       ])

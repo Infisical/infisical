@@ -26,6 +26,7 @@ import {
 } from "@app/components/v3";
 import { AgentVaultCredentialType, AgentVaultOauthStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { MemberProvidedToggle } from "./CredentialFields";
 import { ExpandableValueList } from "./ExpandableValueList";
@@ -197,16 +198,6 @@ export const OAuthAuthorizeCard = ({
   const isStoredClientKept =
     Boolean(storedMemberClientId) && clientId.trim() === storedMemberClientId;
 
-  const changeMemberProvided = (isOn: boolean) => {
-    // A sign-in made for the admin is never saved once members sign in for themselves.
-    if (isOn) {
-      cancel();
-      setValue("oauthAuthorizationId", "");
-      setValue("oauthAuthorizationRejection", "");
-    }
-    onMemberProvidedChange(isOn);
-  };
-
   const switchToOwnApp = () => {
     setIsUsingOwnApp(true);
     setValue("oauthAutomaticSetup", false);
@@ -223,6 +214,28 @@ export const OAuthAuthorizeCard = ({
     setValue("oauthAutomaticSetup", true);
     setValue("oauthClientId", "");
     setValue("oauthClientSecret", "");
+  };
+
+  const changeMemberProvided = (isOn: boolean) => {
+    // A sign-in made for the admin is never saved once members sign in for themselves.
+    if (isOn) {
+      cancel();
+      setValue("oauthAuthorizationId", "");
+      setValue("oauthAuthorizationRejection", "");
+      // Switching off and on again must not read as replacing the members' saved app on save.
+      const savedMemberClientId =
+        service?.credential.type === AgentVaultCredentialType.OAuth
+          ? (service.credential.clientId ?? "")
+          : "";
+      if (savedMemberClientId && !clientId.trim()) {
+        setValue("oauthClientId", savedMemberClientId);
+        switchToOwnApp();
+      }
+    } else {
+      // The members' client secret is never shown, so its client ID alone would fail at the provider.
+      switchToAutomaticSetup();
+    }
+    onMemberProvidedChange(isOn);
   };
 
   // Checked here rather than left to the form: the form validates on save, and the popup has to open
@@ -290,6 +303,23 @@ export const OAuthAuthorizeCard = ({
     >
       {authorizeLabel}
     </Button>
+  );
+
+  const memberAuthorizeButton = (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+        <span className="inline-block" tabIndex={0}>
+          <Button type="button" variant="av" size="sm" isDisabled>
+            Authorize
+          </Button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        Each member connects their own {host} account from the access bundle page, so there is
+        nothing to authorize here.
+      </TooltipContent>
+    </Tooltip>
   );
 
   const renderStatus = (): { head: ReactNode; details?: ReactNode } | null => {
@@ -384,6 +414,7 @@ export const OAuthAuthorizeCard = ({
           isOn={isMemberProvided}
           onChange={changeMemberProvided}
           isDisabled={isWaiting}
+          docsUrl={AgentVaultDocsUrls.mcpMemberProvidedCredential}
           about={
             <>
               <p>Choose whose account the proxy uses to reach {host}.</p>
@@ -401,11 +432,7 @@ export const OAuthAuthorizeCard = ({
       </div>
       <FieldContent>
         <div className="flex flex-col gap-3">
-          {isMemberProvided && (
-            <p className="text-sm text-muted">
-              Each member connects their own {host} account from the access bundle page.
-            </p>
-          )}
+          {isMemberProvided && !isOwnApp && <div>{memberAuthorizeButton}</div>}
           {!isMemberProvided && status && (
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -447,11 +474,7 @@ export const OAuthAuthorizeCard = ({
                       />
                     </InputGroupAddon>
                   </InputGroup>
-                  <FieldDescription>
-                    {isMemberProvided
-                      ? "Add this as a redirect URI in your OAuth app. Every member signs in with this app."
-                      : "Add this as a redirect URI in your OAuth app."}
-                  </FieldDescription>
+                  <FieldDescription>Add this as a redirect URI in your OAuth app.</FieldDescription>
                 </FieldContent>
               </Field>
               <div className="flex flex-col gap-4 md:flex-row md:gap-3">
@@ -487,7 +510,7 @@ export const OAuthAuthorizeCard = ({
                   </FieldContent>
                 </Field>
               </div>
-              {!isMemberProvided && <div>{authorizeButton}</div>}
+              <div>{isMemberProvided ? memberAuthorizeButton : authorizeButton}</div>
             </div>
           )}
 

@@ -285,7 +285,8 @@ export const MemberProvidedToggle = ({
   isOn,
   onChange,
   isDisabled,
-  about
+  about,
+  docsUrl = AgentVaultDocsUrls.memberProvidedValues
 }: {
   label: string;
   isOn: boolean;
@@ -293,6 +294,7 @@ export const MemberProvidedToggle = ({
   isDisabled?: boolean;
   /** Replaces the hover card's explanation, for a credential a member doesn't type. */
   about?: ReactNode;
+  docsUrl?: string;
 }) => {
   const id = useId();
   return (
@@ -319,7 +321,7 @@ export const MemberProvidedToggle = ({
             </>
           )}
           <a
-            href={AgentVaultDocsUrls.memberProvidedValues}
+            href={docsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-2 inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground"

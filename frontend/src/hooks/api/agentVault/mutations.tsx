@@ -697,10 +697,17 @@ export const useSetAgentVaultPersonalValues = (projectId: string) => {
       serviceId,
       ...params
     }: TSetAgentVaultPersonalValuesDTO) => {
-      const { data } = await apiRequest.patch<{ personalValues: TAgentVaultPersonalValues }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`,
-        params
-      );
+      const url = `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`;
+      const { data } =
+        "oauthAuthorizationId" in params
+          ? await apiRequest.post<{ personalValues: TAgentVaultPersonalValues }>(
+              `${url}/oauth-connection`,
+              {
+                authorizationId: params.oauthAuthorizationId,
+                credentialType: params.credentialType
+              }
+            )
+          : await apiRequest.patch<{ personalValues: TAgentVaultPersonalValues }>(url, params);
       return data.personalValues;
     },
     onSuccess: (_, { accessBundleId }) =>

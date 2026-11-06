@@ -580,6 +580,20 @@ describe("membersClearedNotice", () => {
     ).toBe(
       "Every member's token for this service will be removed, and sessions will use the token you set."
     );
+    expect(
+      membersClearedNotice(
+        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: "other-app" }),
+        memberOAuth("admin-app")
+      )?.description
+    ).toBe("Every member's connection will be removed. Each member has to connect again.");
+    expect(
+      membersClearedNotice(
+        mcpForm({ credentialType: AgentVaultCredentialType.Bearer, secret: "t" }),
+        memberOAuth()
+      )?.description
+    ).toBe(
+      "Every member's connection to mcp.linear.app will be removed, and sessions will use the credential you set."
+    );
   });
 
   it("asks nothing for edits that keep members' values", () => {

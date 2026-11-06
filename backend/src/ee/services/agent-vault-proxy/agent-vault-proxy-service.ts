@@ -969,11 +969,6 @@ export const agentVaultProxyServiceFactory = ({
     // they are an admin again.
     const inlineServiceRows = isOwnerAdmin ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id) : [];
 
-    // A token that expires before the proxy's next poll is refreshed now, which also keeps proxies that can't
-    // refresh on their own working. The proxy gives up on resolve after 15 seconds, and one refresh can wait on
-    // another's lock and then on a slow provider, so resolve waits for all of them together for a short budget
-    // only. A refresh that fails or is still running sends the stored token; one still running finishes in the
-    // background and stores its result for the next poll.
     // The values of whoever the session uses (its owner, or the user it acts for), read once: a member's OAuth
     // connection is refreshed below with the services' own tokens, and every value is applied after expansion.
     const owner = personalValuesOwner(session);
@@ -987,6 +982,11 @@ export const agentVaultProxyServiceFactory = ({
         .map((row) => [row.serviceId, row.oauthConfig as TAgentVaultOauthConfig])
     );
 
+    // A token that expires before the proxy's next poll is refreshed now, which also keeps proxies that can't
+    // refresh on their own working. The proxy gives up on resolve after 15 seconds, and one refresh can wait on
+    // another's lock and then on a slow provider, so resolve waits for all of them together for a short budget
+    // only. A refresh that fails or is still running sends the stored token; one still running finishes in the
+    // background and stores its result for the next poll.
     const refreshWithinSeconds = proxy.pollInterval + 60;
     const refreshedCredentials = new Map<
       string,
@@ -1027,6 +1027,13 @@ export const agentVaultProxyServiceFactory = ({
             if (error instanceof ConflictError) {
               logger.info(
                 `agentVaultResolve: service moved during its OAuth refresh, sending the stored token until the next poll [sessionId=${session.id}] [serviceId=${row.id}]`
+              );
+              return;
+            }
+            // The member disconnected, or an admin's edit ended every member's connection, while it ran.
+            if (error instanceof NotFoundError && isMemberProvidedOauth(row)) {
+              logger.info(
+                `agentVaultResolve: member's OAuth connection removed during its refresh [sessionId=${session.id}] [serviceId=${row.id}] [ownerId=${owner.userId ?? owner.identityId}]`
               );
               return;
             }

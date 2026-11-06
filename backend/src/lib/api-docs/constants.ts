@@ -4774,7 +4774,7 @@ export const AGENT_VAULT = {
     memberProvidedFields:
       "The credential fields each member sets for themselves: credential-value (a bearer token, a basic password, or an OAuth sign-in) and credential-username. Empty when the admin sets the whole credential.",
     oauthMemberProvidedFields:
-      "Leave the OAuth sign-in to each member: send `credential-value` here and no `authorizationId`. Each member connects their own account, and a session uses the account of the member who started it, or of the user a machine identity started it on behalf of. When you save, Infisical checks that members can sign in to the server, and refuses the save if the server needs your own OAuth app and you didn't send `clientId`. To go back to one account for every session, send an empty list and an `authorizationId`. Turning this on removes the stored connection, and turning it off removes every member's connection.",
+      "Leave the OAuth sign-in to each member: send `credential-value` here and no `authorizationId`. Each member connects their own account, and a session uses the account of the member who started it, or of the user a machine identity started it on behalf of. When you save, Infisical checks that the server supports OAuth, and refuses the save if the server doesn't let Infisical register as an OAuth client and you didn't send `clientId`. To go back to one account for every session, send an empty list and an `authorizationId`. Turning this on removes the stored connection, and turning it off removes every member's connection.",
     oauthClientId:
       "With the sign-in left to members: the client ID of your own OAuth app, which every member signs in with, for a server that doesn't support dynamic client registration. Register the app with the redirect URI `<your Infisical URL>/agent-vault/oauth/callback`. Omit on update to keep the current client. Changing it removes every member's connection.",
     oauthClientSecret:
@@ -4796,7 +4796,7 @@ export const AGENT_VAULT = {
     field:
       "Which value: credential-value (a bearer token, a basic password, or an OAuth sign-in) or credential-username (a basic username).",
     isSet: "Whether you have set this value.",
-    updatedAt: "When you last set this value, or null if you haven't.",
+    updatedAt: "When this value last changed, or null if you haven't set it.",
     variableReferences: "Your personal variables that this value uses.",
     values:
       "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",

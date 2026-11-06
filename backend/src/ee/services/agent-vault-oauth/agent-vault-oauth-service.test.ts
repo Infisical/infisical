@@ -7,6 +7,7 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -26,7 +27,7 @@ import {
   checkOauthClaimUnderLock,
   checkOauthServerUnderLock
 } from "./agent-vault-oauth-service";
-import { hashAccessToken } from "./agent-vault-oauth-token-fns";
+import { hashAccessToken, memberOauthSetupOf } from "./agent-vault-oauth-token-fns";
 import {
   AgentVaultOauthClientAuthMethod,
   AgentVaultOauthCompatibility,
@@ -115,6 +116,7 @@ const setup = ({
   const personalRows = new Map<string, TPersonalRow>();
   const tokenRequests: URLSearchParams[] = [];
   const registrations: unknown[] = [];
+  const lockKeys: string[][] = [];
   let registerHandler: () => TOauthHttpResponse = () => json(201, { client_id: "registered-client" });
   let lockHandler: (settings: unknown) => Promise<void> = async () => {};
   let lockTail = Promise.resolve();
@@ -166,7 +168,8 @@ const setup = ({
       deleteItem: async (key: string) => (store.delete(key) ? 1 : 0),
       ttl: async (key: string) => (store.has(key) ? (ttls.get(key) ?? -1) : -2),
       // A real mutex, so a second caller waits until the first one releases.
-      acquireLock: async (_keys: string[], _duration: number, settings?: unknown) => {
+      acquireLock: async (keys: string[], _duration: number, settings?: unknown) => {
+        lockKeys.push(keys);
         await lockHandler(settings);
         const previous = lockTail;
         let unlock = () => {};
@@ -353,6 +356,7 @@ const setup = ({
     personalRows,
     tokenRequests,
     registrations,
+    lockKeys,
     kms,
     decrypts: () => decrypts,
     onToken: (handler: typeof tokenHandler) => {
@@ -1931,6 +1935,145 @@ describe("a member's own sign-in", () => {
     expect(env.tokenRequests).toHaveLength(0);
   });
 
+  const manualMemberService = (issuer = "https://mcp.linear.app") =>
+    memberService({
+      credentialConfig: {
+        type: AgentVaultCredentialType.OAuth,
+        serverUrl: SERVER_URL,
+        issuer,
+        registration: AgentVaultOauthRegistration.Manual,
+        clientId: "admin-app"
+      },
+      encryptedCredential: sealBytes({ clientSecret: "admin-secret" })
+    });
+
+  const memberConnection = (accessToken: string, overrides: Partial<TAgentVaultOauthConfig> = {}): TPersonalRow => ({
+    id: crypto.randomUUID(),
+    serviceId: SERVICE_ID,
+    userId: USER_ID,
+    encryptedValue: sealBytes({ accessToken, refreshToken: `${accessToken}-refresh` }),
+    oauthConfig: oauthConfig({ accessTokenHash: hashAccessToken(accessToken), ...overrides })
+  });
+
+  test("is only for the service's own server URL", async () => {
+    const env = setup({ canEditBundles: false });
+    env.rows.set(SERVICE_ID, memberService());
+
+    await expect(
+      env.service.createAuthorization({
+        projectId: PROJECT_ID,
+        ctx: ctxOf(USER_ID),
+        accessBundleId: BUNDLE_ID,
+        serverUrl: "https://mcp.linear.app/other",
+        serviceId: SERVICE_ID,
+        personal: true
+      })
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  test("records the service setup it started under, so a save after an admin changed it is refused", async () => {
+    const env = setup({ canEditBundles: false });
+    const row = memberService();
+    env.rows.set(SERVICE_ID, row);
+
+    const { authorization } = await startPersonal(env);
+
+    expect(storedAuthorization(env, authorization!.id).memberSetup).toBe(memberOauthSetupOf(row));
+  });
+
+  test("never sends the admin-entered client's secret to an issuer other than the one it was set up with", async () => {
+    const env = setup({ canEditBundles: false });
+    env.rows.set(SERVICE_ID, manualMemberService("https://old-issuer.example.com"));
+
+    await expect(startPersonal(env)).rejects.toThrow(/different issuer/);
+    expect(env.tokenRequests).toHaveLength(0);
+  });
+
+  test("an admin reauthorizing the service never reuses the members' client as a shared sign-in's", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, manualMemberService());
+
+    await createAuthorization(env, { serviceId: SERVICE_ID });
+
+    expect(env.registrations).toHaveLength(1);
+  });
+
+  test("the members' client secret on the service row is never refreshed as the service's own tokens", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, manualMemberService());
+
+    await expect(
+      env.service.refreshServiceToken({
+        serviceId: SERVICE_ID,
+        projectId: PROJECT_ID,
+        rejectedTokenHash: hashAccessToken("anything"),
+        destination: DESTINATION
+      })
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  test("a member's refresh locks only that member's connection", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, memberService());
+    const mine = memberConnection("mine-access");
+    env.personalRows.set(mine.id, mine);
+
+    await env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      owner: { userId: USER_ID },
+      rejectedTokenHash: hashAccessToken("mine-access"),
+      destination: DESTINATION
+    });
+
+    expect(env.lockKeys).toEqual([[KeyStorePrefixes.AgentVaultOauthPersonalRefreshLock(SERVICE_ID, USER_ID)]]);
+  });
+
+  test("missing scopes reported for a member's token mark that member's connection", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, memberService());
+    const mine = memberConnection("mine-access");
+    env.personalRows.set(mine.id, mine);
+
+    await env.service.reportMissingScopes({
+      serviceId: SERVICE_ID,
+      owner: { userId: USER_ID },
+      rejectedTokenHash: hashAccessToken("mine-access"),
+      requiredScopes: ["write"],
+      hostPattern: "mcp.linear.app"
+    });
+
+    expect(mine.oauthConfig).toMatchObject({
+      status: AgentVaultOauthStatus.NeedsAdditionalScopes,
+      requiredScopes: ["write"]
+    });
+  });
+
+  test("a refused admin-entered app asks for an admin, while a refused registered client asks the member to reconnect", async () => {
+    const env = setup();
+    env.onToken(() => json(401, { error: "invalid_client" }));
+    const refuse = async (registration: AgentVaultOauthRegistration) => {
+      env.personalRows.clear();
+      const mine = memberConnection("mine-access", { registration });
+      env.personalRows.set(mine.id, mine);
+      await env.service.refreshServiceToken({
+        serviceId: SERVICE_ID,
+        projectId: PROJECT_ID,
+        owner: { userId: USER_ID },
+        rejectedTokenHash: hashAccessToken("mine-access"),
+        destination: DESTINATION
+      });
+      return (mine.oauthConfig as TAgentVaultOauthConfig).lastError;
+    };
+
+    env.rows.set(SERVICE_ID, manualMemberService());
+    expect(await refuse(AgentVaultOauthRegistration.Manual)).toContain(
+      "Ask a project admin to update the OAuth app on the service."
+    );
+    env.rows.set(SERVICE_ID, memberService());
+    expect(await refuse(AgentVaultOauthRegistration.Dynamic)).toContain("Connect your account again");
+  });
+
   test("a member with no connection gets a 404 rather than the service's or anyone else's token", async () => {
     const env = setup();
     env.rows.set(SERVICE_ID, memberService());
@@ -1989,6 +2132,15 @@ describe("setting up a service whose members sign in", () => {
     expect(
       (await env.service.prepareMemberOauth({ serverUrl: SERVER_URL, clientId: "admin-app", clientSecret: "s" })).config
     ).toMatchObject({ registration: AgentVaultOauthRegistration.Manual, clientId: "admin-app" });
+  });
+
+  test("a guessed registration endpoint is tried at save, and one that refuses asks for the admin's own client", async () => {
+    const env = setup({ metadata: {}, challenge: `Bearer realm="mcp"` });
+    env.onRegister(() => json(404, {}));
+
+    const refusal = env.service.prepareMemberOauth({ serverUrl: SERVER_URL });
+    await expect(refusal).rejects.toMatchObject({ details: { registrationRequired: true } });
+    expect(env.registrations).not.toHaveLength(0);
   });
 
   test("a server that doesn't advertise OAuth asks for the admin's own client", async () => {

@@ -49,7 +49,11 @@ import {
   TAgentVaultPersonalValueSummaryRow
 } from "./agent-vault-personal-value-dal";
 import { sameMemberProvidedFields } from "./agent-vault-personal-value-fns";
-import { TPersonalValuesByServiceDTO, TSetPersonalValuesDTO } from "./agent-vault-personal-value-types";
+import {
+  TConnectPersonalOauthDTO,
+  TPersonalValuesByServiceDTO,
+  TSetPersonalValuesDTO
+} from "./agent-vault-personal-value-types";
 
 type TAgentVaultPersonalValueServiceFactoryDep = {
   agentVaultPersonalValueDAL: TAgentVaultPersonalValueDALFactory;
@@ -70,7 +74,6 @@ export type TAgentVaultPersonalValueServiceFactory = ReturnType<typeof agentVaul
 // What an error calls each field, by the service's credential type. Never its value, which is secret.
 const fieldName = (credentialType: string, field: TAgentVaultMemberProvidedField) => {
   if (field === AgentVaultVariableReferenceField.CredentialUsername) return "username";
-  if (credentialType === AgentVaultCredentialType.OAuth) return "account";
   return credentialType === AgentVaultCredentialType.Basic ? "password" : "token";
 };
 
@@ -123,14 +126,14 @@ export const agentVaultPersonalValueServiceFactory = ({
     const fields = (service.memberProvidedFields as TAgentVaultMemberProvidedField[]).map((field) => {
       const saved = values.find((value) => value.serviceId === service.serviceId && value.field === field);
       // An OAuth sign-in left to members is the `credential-value` field, and its status is on that field's row.
-      const oauthConfig =
+      const isOauthField =
         service.credentialType === AgentVaultCredentialType.OAuth &&
-        field === AgentVaultVariableReferenceField.CredentialValue
-          ? (saved?.oauthConfig as TAgentVaultOauthConfig | null | undefined)
-          : null;
+        field === AgentVaultVariableReferenceField.CredentialValue;
+      const oauthConfig = isOauthField ? (saved?.oauthConfig as TAgentVaultOauthConfig | null | undefined) : null;
       return {
         field,
-        isSet: Boolean(saved),
+        // Resolve only uses an OAuth row that carries its connection, so one without it isn't set.
+        isSet: Boolean(saved) && (!isOauthField || Boolean(oauthConfig)),
         updatedAt: saved?.updatedAt ?? null,
         variableReferences: saved
           ? references
@@ -237,11 +240,7 @@ export const agentVaultPersonalValueServiceFactory = ({
    * `credential-value`: the sealed tokens in `encryptedValue` and the rest in `oauthConfig`. Claiming the authorization
    * is single use and only its creator can do it, so a link sent to someone else can't attach their account.
    */
-  const connectOauth = async ({
-    oauthAuthorizationId,
-    credentialType,
-    ...dto
-  }: TPersonalValuesByServiceDTO & { oauthAuthorizationId: string; credentialType?: AgentVaultCredentialType }) => {
+  const connectOauth = async ({ authorizationId, credentialType, ...dto }: TConnectPersonalOauthDTO) => {
     const { owner, service, isAdmin } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
@@ -259,7 +258,7 @@ export const agentVaultPersonalValueServiceFactory = ({
     }
 
     const claim = await agentVaultOauthService.claimAuthorization({
-      authorizationId: oauthAuthorizationId,
+      authorizationId,
       projectId: dto.projectId,
       accessBundleId: service.accessBundleId,
       serviceId: service.id,
@@ -343,7 +342,6 @@ export const agentVaultPersonalValueServiceFactory = ({
   };
 
   const setPersonalValues = async (input: TSetPersonalValuesDTO) => {
-    if (input.oauthAuthorizationId !== undefined) return connectOauth(input);
     const { values, credentialType, ...dto } = input;
 
     const { owner, service, isAdmin } = await findReachableService(dto);
@@ -529,5 +527,5 @@ export const agentVaultPersonalValueServiceFactory = ({
     });
   };
 
-  return { findStatusesForOwner, setPersonalValues, deletePersonalValues };
+  return { findStatusesForOwner, setPersonalValues, connectOauth, deletePersonalValues };
 };

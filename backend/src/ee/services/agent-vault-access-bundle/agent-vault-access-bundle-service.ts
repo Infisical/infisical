@@ -131,9 +131,11 @@ import {
 import {
   isStoredSecretReplaced,
   memberFieldsOf,
+  memberOauthChangeOf,
   mergeCredential,
   needsStoredSecretFor,
   nextMemberFieldsOf,
+  personalValuesToClearOf,
   splitCredential,
   TCredentialWrite
 } from "./agent-vault-credential-write-fns";
@@ -1388,8 +1390,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       effectiveCredentialConfig = config;
     }
 
-    // Each member's sign-in is bound to the service's server, issuer and client, so a change to any of them, or a new
-    // client secret, deletes every member's connection: their tokens can't be refreshed through anything else.
     let memberOauth: Awaited<ReturnType<typeof agentVaultOauthService.prepareMemberOauth>> | null = null;
     let oauthMembersRebound = false;
     if (endsMemberOauth && (credential?.type === AgentVaultCredentialType.OAuth || serverUrlChanged)) {
@@ -1402,12 +1402,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             : (oauthCredential?.clientId ?? storedMemberOauth?.clientId ?? null),
         clientSecret: oauthCredential?.clientSecret
       });
+      const { sameClient, membersRebound } = memberOauthChangeOf({
+        next: memberOauth.config,
+        stored: storedMemberOauth,
+        clientSecretSent: oauthCredential?.clientSecret !== undefined
+      });
       // A client is registered at one issuer, so its stored secret is never sent to another.
-      const sameClient =
-        storedMemberOauth !== undefined &&
-        memberOauth.config.registration === storedMemberOauth.registration &&
-        memberOauth.config.clientId === storedMemberOauth.clientId &&
-        memberOauth.config.issuer === storedMemberOauth.issuer;
       if (
         storedMemberOauth &&
         !sameClient &&
@@ -1421,11 +1421,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             "The server now signs in through a different OAuth issuer, so the stored client secret won't be sent to it. Enter the client secret again, or the client ID and secret of an OAuth app registered with the new issuer."
         });
       }
-      oauthMembersRebound =
-        !sameClient ||
-        oauthCredential?.clientSecret !== undefined ||
-        memberOauth.config.serverUrl !== storedMemberOauth?.serverUrl ||
-        memberOauth.config.issuer !== storedMemberOauth?.issuer;
+      oauthMembersRebound = membersRebound;
 
       // The admin-entered client's secret is kept unless one was sent or the client changed. Anything else the row
       // sealed (a shared sign-in's tokens, a bearer token) goes.
@@ -1676,17 +1672,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         // admin takes back drops that field's. A field members still provide keeps what they saved. The update above
         // wrote the service row, which is what a personal values save waits on.
         let personalValuesCleared = false;
-        if (memberFieldsChanged || oauthMembersRebound) {
-          if (credentialTypeChanged || !nextMemberFields?.length || oauthMembersRebound) {
-            const deleted = await agentVaultPersonalValueDAL.delete({ serviceId: service.id }, tx);
-            personalValuesCleared = deleted.length > 0;
-          } else {
-            const deletedCount = await agentVaultPersonalValueDAL.deleteForServiceExceptFields(
-              { serviceId: service.id, keepFields: nextMemberFields },
-              tx
-            );
-            personalValuesCleared = deletedCount > 0;
-          }
+        const toClear = personalValuesToClearOf({
+          credentialTypeChanged,
+          memberFieldsChanged,
+          nextMemberFields,
+          oauthMembersRebound
+        });
+        if (toClear === "all") {
+          const deleted = await agentVaultPersonalValueDAL.delete({ serviceId: service.id }, tx);
+          personalValuesCleared = deleted.length > 0;
+        } else if (toClear === "fields-taken-back") {
+          const deletedCount = await agentVaultPersonalValueDAL.deleteForServiceExceptFields(
+            { serviceId: service.id, keepFields: nextMemberFields! },
+            tx
+          );
+          personalValuesCleared = deletedCount > 0;
         }
 
         // Outside the lock, two concurrent PATCHes both pass the ownership check and the loser's writes no-op.

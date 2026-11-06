@@ -18,6 +18,7 @@ import {
   AgentVaultVariableReferenceField
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { MemberProvidedInput, MemberProvidedToggle, SecretInput } from "./CredentialFields";
 import { OAuthAuthorizeCard } from "./OAuthAuthorizeCard";
@@ -146,6 +147,7 @@ export const McpCredentialFields = ({
                   label="Token"
                   isOn={isMemberProvided}
                   onChange={setMemberProvided}
+                  docsUrl={AgentVaultDocsUrls.mcpMemberProvidedCredential}
                 />
               </div>
               <FieldContent>
