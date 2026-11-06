@@ -17,6 +17,7 @@ import {
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   type RowActionList,
   RowActions,
@@ -41,6 +42,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
+import { withoutDefaults } from "../../search-defaults";
 import {
   environments,
   readableValue,
@@ -59,12 +61,14 @@ import {
   StatusCell,
   stopRowClick
 } from "./overview-cells";
-import type { PermissionScope } from "./row-actions/permissions";
+import { type PermissionScope, useFolderAccessPlanBlock } from "./row-actions/permissions";
 import { canReconcile } from "./row-actions/rotation-actions";
 
 import styles from "./overview.module.css";
 
 type Of<K extends ResourceKind> = Extract<Resource, { kind: K }>;
+
+const OVERVIEW_ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/overview";
 
 const gate = (
   ctx: RowContext,
@@ -660,18 +664,19 @@ export function FolderRow({
   rowKey,
   entries,
   ctx,
-  onOpen,
+  secretPath,
   onEdit,
   onDelete
 }: {
   rowKey: string;
   entries: Of<"folder">[];
   ctx: RowContext;
-  onOpen: () => void;
+  secretPath: string;
   onEdit: (folder: Of<"folder">) => void;
   onDelete: (folder: Of<"folder">) => void;
 }) {
   const first = entries[0];
+  const planBlock = useFolderAccessPlanBlock();
   const folderScopes = entries.map((entry) => ({
     environment: entry.environment,
     secretPath: `${entry.path.replace(/\/$/, "")}/${entry.name}`
@@ -681,21 +686,33 @@ export function FolderRow({
   const editBlock = folderGate(ProjectPermissionActions.Edit, "edit this folder");
   const deleteBlock = folderGate(ProjectPermissionActions.Delete, "delete this folder");
   const accessBlock = ctx.single
-    ? folderGate(ProjectPermissionSecretFolderActions.ManageAccess, "manage access to this folder")
+    ? (folderGate(
+        ProjectPermissionSecretFolderActions.ManageAccess,
+        "manage access to this folder"
+      ) ?? planBlock)
     : "Select a single environment to manage folder access.";
   return (
     <TableRow
       data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
       data-pending={ctx.pending?.[first.id]}
-      className={`${styles.row} ${styles.clickable}`}
-      onClick={onOpen}
+      className={styles.row}
     >
       <SelectCell kind="folder" rowKey={rowKey} label={first.name} ctx={ctx} selectable />
       <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
         <div className={styles.nameLine}>
-          <span className={styles.truncate} title={first.name}>
+          <RowLink
+            from={OVERVIEW_ROUTE}
+            to="."
+            search={(previous) =>
+              withoutDefaults(
+                { ...previous, secretPath, search: "" },
+                { secretPath: "/", search: "", environments: [] }
+              )
+            }
+            title={first.name}
+          >
             {first.name}
-          </span>
+          </RowLink>
           {first.description && <InfoHint text={first.description} />}
           <PendingBadge type={ctx.pending?.[first.id]} />
         </div>

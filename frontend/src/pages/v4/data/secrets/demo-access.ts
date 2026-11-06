@@ -147,6 +147,7 @@ const remove = (store: DemoStore, actor: string, dto: GrantDto) =>
   }));
 
 export const secretsAccessDemo: SecretsAccessAdapter = {
+  useHasFolderAccessPlan: () => ({ data: true, isPending: false, error: null }),
   useFolderAccessUsers: (dto) => {
     const groups = split(useStore().use().folderAccess, dto, "user");
     return {

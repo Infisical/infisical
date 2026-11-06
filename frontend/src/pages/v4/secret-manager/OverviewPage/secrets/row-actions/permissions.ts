@@ -3,6 +3,8 @@ import { subject } from "@casl/ability";
 import type { ProjectPermissionSub } from "@app/context/ProjectPermissionContext/types";
 
 import { useProjectPermission } from "../../../../access/permissions";
+import { useV4Adapter } from "../../../../data/adapters";
+import { useV4Session } from "../../../../data/session/contract";
 
 export type PermissionScope = { environment: string; secretPath: string } & Record<string, unknown>;
 
@@ -27,4 +29,12 @@ export const useCreateBlock = (
     blockFor(sub, action, { environment, secretPath }, verb)
   );
   return blocks.length > 0 && blocks.every(Boolean) ? blocks[0] : undefined;
+};
+
+export const useFolderAccessPlanBlock = () => {
+  const { organization } = useV4Session();
+  const hasPlan = useV4Adapter("secrets").useHasFolderAccessPlan(organization.id).data;
+  return hasPlan === false
+    ? "Folder access controls aren't on your plan. Upgrade to grant access to specific folders."
+    : undefined;
 };

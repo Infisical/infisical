@@ -13,7 +13,7 @@ export type FlowScope = {
   visibleEnvironments: EnvironmentOption[];
 };
 
-export type FlowFeedback = { title: string; description?: string };
+export type FlowFeedback = { title: string; description?: string; share?: boolean };
 
 export type AddFlowProps = {
   open: boolean;

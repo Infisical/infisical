@@ -26,6 +26,7 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
+import { SecretInput } from "@app/components/v4/ui/secret-input";
 import { TableCell, TableRow } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
@@ -263,14 +264,16 @@ export function AddNewMenu({
 
 export function FolderBreadcrumbBar({
   path,
-  single,
+  accessBlock,
   actions,
+  onManageAccess,
   onNavigate,
   report
 }: {
   path: string;
-  single: boolean;
+  accessBlock?: string;
   actions?: ReactNode;
+  onManageAccess?: () => void;
   onNavigate: (path: string) => void;
   report: (message: string) => void;
 }) {
@@ -317,8 +320,14 @@ export function FolderBreadcrumbBar({
             </Button>
           </span>
         </Tooltip>
-        {single && (
-          <Button variant="ghost" size="xs" icon="user" disabledReason={NEXT_PHASE}>
+        {onManageAccess && (
+          <Button
+            variant="ghost"
+            size="xs"
+            icon="user"
+            disabledReason={accessBlock}
+            onClick={onManageAccess}
+          >
             Manage access
           </Button>
         )}
@@ -345,7 +354,7 @@ export function QuickAddRow({
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
-  const valueRef = useRef<HTMLInputElement>(null);
+  const valueRef = useRef<HTMLTextAreaElement>(null);
   const dirty = Boolean(key || value);
   const reset = () => {
     setKey("");
@@ -424,17 +433,15 @@ export function QuickAddRow({
       </TableCell>
       <TableCell colSpan={colSpan} className={styles.valueCell}>
         <div className={styles.nameLine}>
-          <Input
-            mono
+          <SecretInput
             className={styles.inlineInput}
             ref={valueRef}
             aria-label="New secret value"
             placeholder={multiple ? "Add a secret value (applies to all)" : "Add a secret value"}
-            autoComplete="off"
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={setValue}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                 event.preventDefault();
                 save();
               }
