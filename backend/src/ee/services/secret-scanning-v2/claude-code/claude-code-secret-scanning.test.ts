@@ -11,7 +11,7 @@ import {
   SecretScanningFindingStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ClaudeCodeSecretDetectedAction, ClaudeCodeSecretStatus } from "./claude-code-secret-scanning-enums";
@@ -60,7 +60,8 @@ const setup = ({
   type = SecretScanningDataSource.ClaudeCode,
   canTriggerScans = true,
   config = {} as Record<string, unknown>,
-  isScanQueued = true
+  isScanQueued = true,
+  projectOrgId = ORG_ID
 } = {}) => {
   const secretScanningV2DAL = {
     primaryNode: vi.fn(() => "primary"),
@@ -95,7 +96,8 @@ const setup = ({
     secretScanningV2DAL: secretScanningV2DAL as never,
     secretScanningV2Queue: secretScanningV2Queue as never,
     kmsService: kmsService as never,
-    permissionService: { getProjectPermission: vi.fn(async () => ({ permission })) } as never
+    permissionService: { getProjectPermission: vi.fn(async () => ({ permission })) } as never,
+    projectDAL: { findById: vi.fn(async () => ({ id: PROJECT_ID, orgId: projectOrgId })) } as never
   });
 
   return { service, secretScanningV2DAL, secretScanningV2Queue };
@@ -220,6 +222,12 @@ describe("claudeCodeSecretScanningService.checkSecrets", () => {
     expect(secretScanningV2DAL.dataSources.findById).toHaveBeenCalledWith(DATA_SOURCE_ID, "primary");
   });
 
+  test("answers a data source in another organization like a missing one, before checking permissions", async () => {
+    const { service } = setup({ projectOrgId: "org-2" });
+
+    await expect(check(service, "a")).rejects.toBeInstanceOf(NotFoundError);
+  });
+
   test("rejects a data source of another type", async () => {
     const { service } = setup({ type: SecretScanningDataSource.GitHub });
 
@@ -341,14 +349,14 @@ describe("ClaudeCodeSecretScanningFactory.getDiffScanFindingsPayload", () => {
     expect(
       findings.map(({ fingerprint, secretFindingBlindIndex }) => ({ fingerprint, secretFindingBlindIndex }))
     ).toEqual([
-      { fingerprint: "submission-1:github-pat:1:10", secretFindingBlindIndex: blindIndexOf("ghp_test") },
-      { fingerprint: "submission-1:stripe-access-token:2:5", secretFindingBlindIndex: blindIndexOf("sk_test_new") }
+      { fingerprint: "submission-1:github-pat:1:10:1:20", secretFindingBlindIndex: blindIndexOf("ghp_test") },
+      { fingerprint: "submission-1:stripe-access-token:2:5:2:15", secretFindingBlindIndex: blindIndexOf("sk_test_new") }
     ]);
     expect(findings[0].details).toMatchObject({
       ruleID: "github-pat",
       author: "jane",
       email: "jane@example.com",
-      fingerprint: "submission-1:github-pat:1:10",
+      fingerprint: "submission-1:github-pat:1:10:1:20",
       sessionId: "session-1",
       cwd: "/repo"
     });
@@ -386,11 +394,45 @@ describe("ClaudeCodeSecretScanningFactory.getDiffScanFindingsPayload", () => {
     expect(
       findings.map(({ fingerprint, secretFindingBlindIndex }) => ({ fingerprint, secretFindingBlindIndex }))
     ).toEqual([
-      { fingerprint: "submission-1:github-pat:1:10", secretFindingBlindIndex: blindIndexOf("ghp_test") },
-      { fingerprint: "submission-1:stripe-access-token:2:6", secretFindingBlindIndex: blindIndexOf("sk_live_missed") }
+      { fingerprint: "submission-1:github-pat:1:10:1:20", secretFindingBlindIndex: blindIndexOf("ghp_test") },
+      {
+        fingerprint: "submission-1:stripe-access-token:2:6:2:19",
+        secretFindingBlindIndex: blindIndexOf("sk_live_missed")
+      }
     ]);
     expect(findings[1].details).toMatchObject({ startLine: 2, endLine: 2, startColumn: 6, endColumn: 19 });
     expect(findings[1].encryptedSecretValue?.toString()).toBe("sk_live_missed");
+  });
+
+  test("gives a reported secret and a reported prefix of it their own fingerprints", async () => {
+    mockScanContentAndGetFindings.mockResolvedValueOnce([]);
+
+    const factory = ClaudeCodeSecretScanningFactory({ kmsService, appConnectionDAL: {} } as never);
+    const encrypt = (value: string) => Buffer.from(value).toString("base64");
+
+    const { findings } = await factory.getDiffScanFindingsPayload({
+      dataSource: { projectId: PROJECT_ID } as TClaudeCodeDataSourceWithConnection,
+      resourceName: submitter.email,
+      payload: {
+        dataSourceId: DATA_SOURCE_ID,
+        orgId: ORG_ID,
+        submissionId: "submission-1",
+        submitter,
+        encryptedPrompt: encrypt("key: sk_live_abcdef"),
+        encryptedReportedSecrets: encrypt(
+          JSON.stringify([
+            { value: "sk_live_abcdef", ruleId: "stripe-access-token" },
+            { value: "sk_live_abc", ruleId: "stripe-access-token" }
+          ])
+        ),
+        submittedAt: "2026-10-24T00:00:00.000Z"
+      }
+    });
+
+    expect(findings.map(({ fingerprint }) => fingerprint)).toEqual([
+      "submission-1:stripe-access-token:1:6:1:19",
+      "submission-1:stripe-access-token:1:6:1:16"
+    ]);
   });
 
   test("passes on whether the prompt was blocked, and treats jobs queued without it as blocked", () => {

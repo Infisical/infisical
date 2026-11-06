@@ -4894,6 +4894,7 @@ export const registerRoutes = async (
     permissionService,
     appConnectionService,
     licenseService,
+    projectDAL,
     secretScanningV2DAL,
     secretScanningV2Queue,
     kmsService,

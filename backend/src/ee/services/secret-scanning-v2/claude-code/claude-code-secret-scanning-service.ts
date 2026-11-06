@@ -14,6 +14,7 @@ import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/er
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 
 import { ClaudeCodeSecretDetectedAction, ClaudeCodeSecretStatus } from "./claude-code-secret-scanning-enums";
@@ -30,13 +31,15 @@ type TClaudeCodeSecretScanningServiceDep = {
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const claudeCodeSecretScanningService = ({
   secretScanningV2DAL,
   secretScanningV2Queue,
   kmsService,
-  permissionService
+  permissionService,
+  projectDAL
 }: TClaudeCodeSecretScanningServiceDep) => {
   // No plan check: checking a prompt evaluates what the org already set up, and a downgrade must not stop it from
   // working (backend/CODE_QUALITY.md, License checks). Creating and editing the data source stay gated.
@@ -44,8 +47,11 @@ export const claudeCodeSecretScanningService = ({
     // Primary: its config says whether to block, and a lagging replica would keep letting secrets through after an
     // admin switched from Report only to Block.
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, secretScanningV2DAL.primaryNode());
+    const project = dataSource ? await projectDAL.findById(dataSource.projectId) : undefined;
 
-    if (!dataSource)
+    // Another org's data source gets the same answer as a missing one, so its ID can't be used to learn that it exists
+    // (backend/CODE_QUALITY.md). Without this, the permission check below would answer 403.
+    if (!dataSource || project?.orgId !== actor.orgId)
       throw new NotFoundError({
         message: `Could not find Claude Code Data Source with ID "${dataSourceId}"`
       });

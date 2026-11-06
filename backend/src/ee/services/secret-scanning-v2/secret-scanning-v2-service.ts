@@ -68,6 +68,7 @@ import { TAppConnection } from "@app/services/app-connection/app-connection-type
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { claudeCodeSecretScanningService } from "./claude-code/claude-code-secret-scanning-service";
@@ -85,6 +86,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
@@ -102,6 +104,7 @@ export const secretScanningV2ServiceFactory = ({
   permissionService,
   appConnectionService,
   licenseService,
+  projectDAL,
   secretScanningV2Queue,
   appConnectionDAL,
   kmsService,
@@ -1516,7 +1519,8 @@ export const secretScanningV2ServiceFactory = ({
       secretScanningV2DAL,
       secretScanningV2Queue,
       kmsService,
-      permissionService
+      permissionService,
+      projectDAL
     })
   };
 };

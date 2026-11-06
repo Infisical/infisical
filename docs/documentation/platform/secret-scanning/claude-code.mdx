@@ -55,7 +55,7 @@ Infisical matches a secret to its findings with a blind index. A blind index is 
 - The blind index depends only on the secret value, so the same secret in a later prompt from any developer in the project matches the same findings (Infisical uses the newest of these findings to decide what happens to the secret)
 - When the plugin sends secret values to get their statuses, Infisical uses the values only to calculate the blind indexes. Infisical doesn't store or log the values or the blind indexes from this step, and the API doesn't return them
 - A finding stores the blind index of the secret and the secret value encrypted with the project's KMS key (the API never returns the encrypted value or the blind index)
-- The fingerprint of a finding comes from where the secret is in the prompt (`<prompt submission>:<rule>:<line>:<column>`), in the same way that the fingerprint of a finding in a repository comes from the commit, the file, and the line
+- The fingerprint of a finding comes from where the secret is in the prompt (`<prompt submission>:<rule>:<start line>:<start column>:<end line>:<end column>`), in the same way that the fingerprint of a finding in a repository comes from the commit, the file, and the line
 
 ## Block or report secrets
 

@@ -109,8 +109,10 @@ export const ClaudeCodeSecretScanningFactory = ({ kmsService }: TSecretScanningF
       // decided when it is saved, by filterDiffScanFindings.
       if (findingsPayload.has(secretFindingBlindIndex)) return;
 
-      // like a git finding, identified by where it is: the prompt, the rule, and the position in the prompt
-      const fingerprint = `${submissionId}:${finding.ruleId}:${finding.startLine}:${finding.startColumn}`;
+      // like a git finding, identified by where it is: the prompt, the rule, and the span in the prompt. The end is part
+      // of it because two secrets can start at the same place, such as a reported token and a shorter token that is
+      // its prefix, and the save fails on a repeated fingerprint.
+      const fingerprint = `${submissionId}:${finding.ruleId}:${finding.startLine}:${finding.startColumn}:${finding.endLine}:${finding.endColumn}`;
 
       findingsPayload.set(secretFindingBlindIndex, {
         fingerprint,
