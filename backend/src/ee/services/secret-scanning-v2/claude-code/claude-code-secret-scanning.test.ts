@@ -63,6 +63,7 @@ const setup = ({
   isScanQueued = true
 } = {}) => {
   const secretScanningV2DAL = {
+    primaryNode: vi.fn(() => "primary"),
     dataSources: {
       findById: vi.fn(async () => ({ id: DATA_SOURCE_ID, name: "claude-code", projectId: PROJECT_ID, type, config }))
     },
@@ -211,6 +212,14 @@ describe("claudeCodeSecretScanningService.checkSecrets", () => {
     ]);
   });
 
+  test("reads the data source from the primary, so a switch to blocking applies at once", async () => {
+    const { service, secretScanningV2DAL } = setup();
+
+    await check(service, "a");
+
+    expect(secretScanningV2DAL.dataSources.findById).toHaveBeenCalledWith(DATA_SOURCE_ID, "primary");
+  });
+
   test("rejects a data source of another type", async () => {
     const { service } = setup({ type: SecretScanningDataSource.GitHub });
 
@@ -250,6 +259,24 @@ describe("claudeCodeSecretScanningService.submitPrompt", () => {
     expect(payload.submitter).toEqual(submitter);
     expect(payload.encryptedPrompt).not.toContain("known");
     expect(Buffer.from(payload.encryptedPrompt, "base64").toString()).toBe("my secrets: new known accepted resolved");
+    expect(payload.isPromptBlocked).toBe(true);
+    // only the new and resurfaced secrets, encrypted
+    expect(JSON.parse(Buffer.from(payload.encryptedReportedSecrets!, "base64").toString())).toEqual(
+      secretsOf("new", "resolved")
+    );
+  });
+
+  test("records that the prompt was let through when the data source only reports", async () => {
+    const { service, secretScanningV2Queue } = setup({
+      config: { onSecretDetected: ClaudeCodeSecretDetectedAction.Report }
+    });
+
+    await submit(service, "new");
+
+    const [{ payload }] = secretScanningV2Queue.queueResourceDiffScan.mock.calls[0] as unknown as [
+      { payload: TClaudeCodePromptSubmission }
+    ];
+    expect(payload.isPromptBlocked).toBe(false);
   });
 
   test("queues nothing when no secret is new", async () => {
@@ -328,6 +355,54 @@ describe("ClaudeCodeSecretScanningFactory.getDiffScanFindingsPayload", () => {
     expect(findings[0].encryptedSecretValue?.toString()).toBe("ghp_test");
     expect(JSON.stringify(findings.map(({ encryptedSecretValue, ...rest }) => rest))).not.toContain("ghp_test");
     expect(JSON.stringify(findings.map(({ encryptedSecretValue, ...rest }) => rest))).not.toContain("sk_test_new");
+  });
+
+  test("records a reported secret that the server's scan missed, located in the prompt", async () => {
+    mockScanContentAndGetFindings.mockResolvedValueOnce([scanFinding("github-pat", "ghp_test")]);
+
+    const factory = ClaudeCodeSecretScanningFactory({ kmsService, appConnectionDAL: {} } as never);
+    const encrypt = (value: string) => Buffer.from(value).toString("base64");
+
+    const { findings } = await factory.getDiffScanFindingsPayload({
+      dataSource: { projectId: PROJECT_ID } as TClaudeCodeDataSourceWithConnection,
+      resourceName: submitter.email,
+      payload: {
+        dataSourceId: DATA_SOURCE_ID,
+        orgId: ORG_ID,
+        submissionId: "submission-1",
+        submitter,
+        encryptedPrompt: encrypt("token ghp_test\nkey: sk_live_missed"),
+        encryptedReportedSecrets: encrypt(
+          JSON.stringify([
+            { value: "ghp_test", ruleId: "github-pat" },
+            { value: "sk_live_missed", ruleId: "stripe-access-token" },
+            { value: "not_in_the_prompt", ruleId: "generic-api-key" }
+          ])
+        ),
+        submittedAt: "2026-10-24T00:00:00.000Z"
+      }
+    });
+
+    expect(
+      findings.map(({ fingerprint, secretFindingBlindIndex }) => ({ fingerprint, secretFindingBlindIndex }))
+    ).toEqual([
+      { fingerprint: "submission-1:github-pat:1:10", secretFindingBlindIndex: blindIndexOf("ghp_test") },
+      { fingerprint: "submission-1:stripe-access-token:2:6", secretFindingBlindIndex: blindIndexOf("sk_live_missed") }
+    ]);
+    expect(findings[1].details).toMatchObject({ startLine: 2, endLine: 2, startColumn: 6, endColumn: 19 });
+    expect(findings[1].encryptedSecretValue?.toString()).toBe("sk_live_missed");
+  });
+
+  test("passes on whether the prompt was blocked, and treats jobs queued without it as blocked", () => {
+    const factory = ClaudeCodeSecretScanningFactory({ kmsService, appConnectionDAL: {} } as never);
+
+    expect(factory.getDiffScanNotificationDetails?.({ isPromptBlocked: false } as TClaudeCodePromptSubmission)).toEqual(
+      { isPromptScan: true, isPromptBlocked: false }
+    );
+    expect(factory.getDiffScanNotificationDetails?.({} as TClaudeCodePromptSubmission)).toEqual({
+      isPromptScan: true,
+      isPromptBlocked: true
+    });
   });
 
   test("names each developer's resource by email, keyed by their ID", () => {

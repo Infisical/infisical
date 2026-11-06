@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import {
   TSecretScanningDataSources,
   TSecretScanningFindings,
@@ -197,15 +199,23 @@ export type TQueueSecretScanningSendNotification = {
   resourceName: string;
 } & (
   | { status: SecretScanningScanStatus.Failed; errorMessage: string }
-  | {
+  | ({
       status: SecretScanningScanStatus.Completed;
       numberOfSecrets: number;
       scanId: string;
       isDiffScan: boolean;
       authorName?: string;
       authorEmail?: string;
-    }
+    } & TSecretScanningNotificationDetails)
 );
+
+// What a provider adds to a diff scan's notification, from the job payload.
+export type TSecretScanningNotificationDetails = {
+  // the secrets were found in a Claude Code prompt rather than a commit
+  isPromptScan?: boolean;
+  // whether the prompt was blocked, as decided when it was submitted; only set when isPromptScan is
+  isPromptBlocked?: boolean;
+};
 
 export type TCloneRepository = {
   cloneUrl: string;
@@ -267,6 +277,19 @@ export type TSecretScanningScanReportCompletion = {
 export type TSecretScanningFactoryGetRealtimeScanReport<P extends TQueueSecretScanningResourceDiffScan["payload"]> = (
   payload: P
 ) => TSecretScanningScanReport | undefined;
+
+// Picks which of a diff scan's findings to save. Runs inside the transaction that saves them, so a provider whose
+// findings depend on earlier ones (Claude Code skips secrets that were already reviewed) decides from committed state.
+export type TSecretScanningFactoryFilterDiffScanFindings<T extends TSecretScanningDataSourceWithConnection> = (params: {
+  dataSource: T;
+  findings: TFindingsPayload;
+  secretScanningV2DAL: Pick<TSecretScanningV2DALFactory, "findings">;
+  tx: Knex;
+}) => Promise<TFindingsPayload>;
+
+export type TSecretScanningFactoryGetDiffScanNotificationDetails<
+  P extends TQueueSecretScanningResourceDiffScan["payload"]
+> = (payload: P) => TSecretScanningNotificationDetails;
 
 // Built from the saved scan, for a scan whose worker died before it could close its report.
 export type TSecretScanningFactoryGetScanReport = (params: {
@@ -351,6 +374,8 @@ export type TSecretScanningFactory<
   validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<I["config"], T>;
   getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<P>;
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;
+  filterDiffScanFindings?: TSecretScanningFactoryFilterDiffScanFindings<T>;
+  getDiffScanNotificationDetails?: TSecretScanningFactoryGetDiffScanNotificationDetails<P>;
   getRealtimeScanReport?: TSecretScanningFactoryGetRealtimeScanReport<P>;
   getScanReport?: TSecretScanningFactoryGetScanReport;
   // Processes webhook events beyond pushes, in the worker; only providers that receive them implement it.

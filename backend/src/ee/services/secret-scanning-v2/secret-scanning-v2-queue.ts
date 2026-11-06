@@ -39,8 +39,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/services/telemetry/telemetry-types";
 
-import { ClaudeCodeSecretDetectedAction } from "./claude-code/claude-code-secret-scanning-enums";
-import { filterClaudeCodeFindingsToRecord } from "./claude-code/claude-code-secret-scanning-fns";
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import {
   SecretScanningDataSource,
@@ -866,16 +864,14 @@ export const secretScanningV2QueueServiceFactory = ({
       const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
         let findings: TSecretScanningFindings[] = [];
 
-        // A Claude Code secret is recorded only if it is still new or resurfaced when it is saved.
-        const findingsToRecord =
-          dataSource.type === SecretScanningDataSource.ClaudeCode
-            ? await filterClaudeCodeFindingsToRecord({
-                secretScanningV2DAL,
-                projectId: dataSource.projectId,
-                findings: findingsPayload,
-                tx
-              })
-            : findingsPayload;
+        const findingsToRecord = factory.filterDiffScanFindings
+          ? await factory.filterDiffScanFindings({
+              dataSource: { ...dataSource, connection } as TSecretScanningDataSourceWithConnection,
+              findings: findingsPayload,
+              secretScanningV2DAL,
+              tx
+            })
+          : findingsPayload;
 
         if (findingsToRecord.length) {
           findings = await secretScanningV2DAL.findings.upsert(
@@ -938,7 +934,8 @@ export const secretScanningV2QueueServiceFactory = ({
             numberOfSecrets: newFindings.length,
             scanId,
             authorName: finding?.details?.author,
-            authorEmail: finding?.details?.email
+            authorEmail: finding?.details?.email,
+            ...factory.getDiffScanNotificationDetails?.(payload)
           },
           { jobId: `secret-scanning-notification-${scanId}` }
         );
@@ -1064,7 +1061,7 @@ export const secretScanningV2QueueServiceFactory = ({
       });
 
       const timestamp = new Date().toISOString();
-      const isPromptScan = dataSource.type === SecretScanningDataSource.ClaudeCode;
+      const isPromptScan = payload.status === SecretScanningScanStatus.Completed && Boolean(payload.isPromptScan);
       let detectedIn = " in";
       if (isPromptScan) detectedIn = " in a Claude Code prompt from";
       else if (payload.status === SecretScanningScanStatus.Completed && payload.isDiffScan)
@@ -1111,9 +1108,7 @@ export const secretScanningV2QueueServiceFactory = ({
                 numberOfSecrets: payload.numberOfSecrets,
                 isDiffScan: payload.isDiffScan,
                 isPromptScan,
-                isPromptBlocked:
-                  (dataSource.config as { onSecretDetected?: string } | null)?.onSecretDetected !==
-                  ClaudeCodeSecretDetectedAction.Report,
+                isPromptBlocked: payload.isPromptBlocked,
                 url: encodeURI(
                   `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
                 ),

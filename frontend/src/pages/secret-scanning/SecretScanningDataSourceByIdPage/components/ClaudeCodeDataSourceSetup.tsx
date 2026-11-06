@@ -10,6 +10,9 @@ type Props = {
 
 export const ClaudeCodeDataSourceSetup = ({ dataSourceName }: Props) => (
   <div className="flex w-full flex-col gap-2 text-left text-xs leading-relaxed text-muted">
+      <Code>infisical login</Code>, plus <Code>jq</Code> and <Code>curl</Code>. Their project role
+      must allow triggering data source scans. Without these, the plugin blocks every prompt.
+    </p>
     <p>1. Install the Infisical plugin for Claude Code:</p>
     <CodeBlock label="Install Command" value={CLAUDE_CODE_PLUGIN_INSTALL_COMMAND} />
     <p>

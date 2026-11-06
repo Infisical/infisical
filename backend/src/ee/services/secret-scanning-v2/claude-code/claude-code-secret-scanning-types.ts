@@ -40,6 +40,8 @@ export type TSubmitClaudeCodePromptDTO = z.infer<typeof SubmitClaudeCodePromptSc
   };
 };
 
+export type TClaudeCodeReportedSecret = TSubmitClaudeCodePromptDTO["secrets"][number];
+
 export type TClaudeCodePromptSubmission = {
   dataSourceId: string;
   submitter: TSubmitClaudeCodePromptDTO["submitter"];
@@ -49,6 +51,11 @@ export type TClaudeCodePromptSubmission = {
   submissionId: string;
   // base64 KMS ciphertext; the prompt holds secrets and the job payload is stored in the queue
   encryptedPrompt: string;
+  // base64 KMS ciphertext of the new secrets the plugin's scan reported (TClaudeCodeReportedSecret[]), recorded even
+  // when the server's scan of the prompt misses them
+  encryptedReportedSecrets?: string;
+  // whether the plugin blocked the prompt, decided from the data source's setting when the prompt was submitted
+  isPromptBlocked?: boolean;
   sessionId?: string;
   cwd?: string;
   submittedAt: string;

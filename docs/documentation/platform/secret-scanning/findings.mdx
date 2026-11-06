@@ -26,9 +26,9 @@ A finding from a [Claude Code](/documentation/platform/secret-scanning/claude-co
 
 The status of the newest finding for a secret also controls the plugin:
 
-- **Unresolved**: With **Block the prompt** (the default), Infisical blocks every prompt that contains the secret; with **Report only**, Infisical allows the prompt and warns the developer
+- **Unresolved**: With **Block the prompt** (the default), Infisical blocks every prompt that contains the secret. With **Report only**, Infisical allows the prompt and warns the developer
 - **False Positive** or **Ignore**: Infisical allows prompts that contain the secret, for every developer in the project, and doesn't report the secret again
-- **Resolved**: The secret was usually revoked or rotated, so a prompt that contains it again is a new incident; Infisical records a new finding (the **Resolved** finding stays as history), and blocks the prompt or warns the developer
+- **Resolved**: The secret was usually revoked or rotated, so a prompt that contains it again is a new incident. Infisical records a new finding (the **Resolved** finding stays as history), and blocks the prompt or warns the developer
 
 To let developers use a secret in Claude Code, mark its finding as **False Positive** or **Ignore**, not **Resolved**. For more information, see [How Infisical handles a detected secret](/documentation/platform/secret-scanning/claude-code#how-infisical-handles-a-detected-secret).
 
@@ -68,6 +68,8 @@ Your comment appears as **Remarks** in the finding's details, and when you hover
 When a scan finds secrets, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning. The notification links to the findings from that scan. If a scan fails, the same members get a notification with the error instead.
 
 If a scan of a new push finds secrets, Infisical also notifies the author of the commit if they're a member. If the push has commits from more than one author, Infisical notifies only one of them.
+
+If a scan of a [Claude Code](/documentation/platform/secret-scanning/claude-code#notifications) prompt finds secrets, Infisical also notifies the developer who submitted the prompt if they're a member.
 
 <Note>
   If you self-host Infisical, scan notifications need an [email service](/self-hosting/configuration/envars#email-service) configured. Without one, Infisical doesn't send the email or the in-app notification.

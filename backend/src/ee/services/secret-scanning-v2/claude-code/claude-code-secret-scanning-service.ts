@@ -41,7 +41,9 @@ export const claudeCodeSecretScanningService = ({
   // No plan check: checking a prompt evaluates what the org already set up, and a downgrade must not stop it from
   // working (backend/CODE_QUALITY.md, License checks). Creating and editing the data source stay gated.
   const $getClaudeCodeDataSource = async (dataSourceId: string, actor: OrgServiceActor) => {
-    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+    // Primary: its config says whether to block, and a lagging replica would keep letting secrets through after an
+    // admin switched from Report only to Block.
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, secretScanningV2DAL.primaryNode());
 
     if (!dataSource)
       throw new NotFoundError({
@@ -102,7 +104,7 @@ export const claudeCodeSecretScanningService = ({
   };
 
   // The plugin calls this with the secrets its local scan found, before it sends anything else. It sends the prompt
-  // only when this asks for it, so a prompt whose secrets are all known never leaves the developer's machine.
+  // only when this asks for it, so Infisical never receives a prompt whose secrets are all known.
   const checkSecrets = async ({ dataSourceId, secrets }: TCheckClaudeCodeSecretsDTO, actor: OrgServiceActor) => {
     const { dataSource, config } = await $getClaudeCodeDataSource(dataSourceId, actor);
 
@@ -126,12 +128,13 @@ export const claudeCodeSecretScanningService = ({
     { dataSourceId, prompt, secrets, submitter, sessionId, cwd }: TSubmitClaudeCodePromptDTO,
     actor: OrgServiceActor
   ) => {
-    const { dataSource } = await $getClaudeCodeDataSource(dataSourceId, actor);
+    const { dataSource, config } = await $getClaudeCodeDataSource(dataSourceId, actor);
 
     const classified = await $classifySecrets({ secrets, projectId: dataSource.projectId, actor });
+    const newSecrets = secrets.filter((_, index) => classified[index].status === ClaudeCodeSecretStatus.NewFinding);
 
     // Secrets whose newest finding still stands are not recorded again, so resubmitting a prompt adds nothing.
-    if (classified.every(({ status }) => status !== ClaudeCodeSecretStatus.NewFinding)) {
+    if (!newSecrets.length) {
       return { projectId: dataSource.projectId, dataSourceName: dataSource.name, isScanQueued: false };
     }
 
@@ -146,6 +149,10 @@ export const claudeCodeSecretScanningService = ({
       submissionId: crypto.nativeCrypto.randomUUID(),
       submitter,
       encryptedPrompt: encryptor({ plainText: Buffer.from(prompt) }).cipherTextBlob.toString("base64"),
+      encryptedReportedSecrets: encryptor({
+        plainText: Buffer.from(JSON.stringify(newSecrets))
+      }).cipherTextBlob.toString("base64"),
+      isPromptBlocked: config.onSecretDetected !== ClaudeCodeSecretDetectedAction.Report,
       sessionId,
       cwd,
       submittedAt: new Date().toISOString()

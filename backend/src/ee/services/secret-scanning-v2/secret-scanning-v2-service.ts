@@ -148,18 +148,12 @@ export const secretScanningV2ServiceFactory = ({
     return app;
   };
 
+  // No plan check: reads stay available after a downgrade (backend/CODE_QUALITY.md, License checks), and the Claude
+  // Code plugin needs them to keep checking prompts.
   const $checkListSecretScanningDataSourcesByProjectIdPermissions = async (
     projectId: string,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Data Sources due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -203,18 +197,12 @@ export const secretScanningV2ServiceFactory = ({
     return dataSources as TSecretScanningDataSourceWithDetails[];
   };
 
+  // No plan check: reads stay available after a downgrade (backend/CODE_QUALITY.md, License checks), and the Claude
+  // Code plugin needs them to keep checking prompts.
   const findSecretScanningDataSourceById = async (
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
 
     if (!dataSource)
@@ -971,6 +959,12 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${sourceName}`
       });
 
+    // Removing a developer deletes their findings, and with them the reviews that allow a secret for everyone.
+    if (dataSource.type === SecretScanningDataSource.ClaudeCode)
+      throw new BadRequestError({
+        message: "Claude Code Data Source resources are the developers who submitted prompts, and can't be removed."
+      });
+
     const resource = await secretScanningV2DAL.resources.findOne({ id: resourceId, dataSourceId });
 
     if (!resource)
@@ -1401,15 +1395,9 @@ export const secretScanningV2ServiceFactory = ({
     };
   };
 
+  // No plan check: reads stay available after a downgrade (backend/CODE_QUALITY.md, License checks), and the Claude
+  // Code plugin needs them to keep checking prompts.
   const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
