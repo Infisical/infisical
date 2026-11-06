@@ -15,7 +15,9 @@ import {
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField,
-  TAgentVaultMemberProvidedField
+  isNativeServiceType,
+  TAgentVaultMemberProvidedField,
+  TAgentVaultNativeServiceType
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultOauthCredentialSummary,
@@ -62,7 +64,30 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
   [AgentVaultCredentialType.Basic]: "Basic Auth",
   [AgentVaultCredentialType.Passthrough]: "Pass-through",
-  [AgentVaultCredentialType.OAuth]: "OAuth"
+  [AgentVaultCredentialType.OAuth]: "OAuth",
+  [AgentVaultCredentialType.SshKey]: "SSH Key"
+};
+
+// A database or SSH login has no HTTP header, so "Basic Auth" would misdescribe it.
+export const NATIVE_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
+  [AgentVaultCredentialType.Basic]: "Username and Password",
+  [AgentVaultCredentialType.SshKey]: "SSH Key"
+};
+
+export const credentialLabel = (
+  serviceType: AgentVaultServiceType,
+  credentialType: AgentVaultCredentialType
+) =>
+  (isNativeServiceType(serviceType) && NATIVE_CREDENTIAL_LABELS[credentialType]) ||
+  CREDENTIAL_LABELS[credentialType];
+
+export const NATIVE_CREDENTIAL_TYPES: Record<
+  TAgentVaultNativeServiceType,
+  AgentVaultCredentialType[]
+> = {
+  [AgentVaultServiceType.Postgres]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Mysql]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Ssh]: [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey]
 };
 
 export const HTTP_CREDENTIAL_TYPES = [
@@ -79,7 +104,85 @@ export const OAUTH_STATUS_LABELS: Record<AgentVaultOauthStatus, string> = {
 
 export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {
   [AgentVaultServiceType.Http]: "HTTP API",
-  [AgentVaultServiceType.Mcp]: "MCP Server"
+  [AgentVaultServiceType.Mcp]: "MCP Server",
+  [AgentVaultServiceType.Postgres]: "PostgreSQL",
+  [AgentVaultServiceType.Mysql]: "MySQL",
+  [AgentVaultServiceType.Ssh]: "SSH"
+};
+
+export type TServiceKind = "http" | "mcp" | "native";
+
+export const serviceKindOf = (serviceType: AgentVaultServiceType): TServiceKind => {
+  if (serviceType === AgentVaultServiceType.Mcp) return "mcp";
+  if (isNativeServiceType(serviceType)) return "native";
+  return "http";
+};
+
+export const hasDatabase = (serviceType: AgentVaultServiceType) =>
+  serviceType === AgentVaultServiceType.Postgres || serviceType === AgentVaultServiceType.Mysql;
+
+// The agent reaches a database or SSH service at `<name>.svc.agent-vault`, and a DNS label stops at 63 bytes.
+export const MAX_NATIVE_SERVICE_NAME_LENGTH = 63;
+const MAX_NATIVE_HOST_LENGTH = 253;
+const MAX_NATIVE_DATABASE_LENGTH = 64;
+const MAX_NATIVE_CA_LENGTH = 16384;
+const MAX_SSH_KEY_LENGTH = 16384;
+
+const SSH_KEY_VARIABLE_MESSAGE =
+  "An SSH key credential can't use variables yet, so this can't contain double braces. Enter the value itself.";
+// A key spans lines, so only tabs and line breaks are allowed among the control characters.
+// eslint-disable-next-line no-control-regex
+const SSH_KEY_TEXT_RE = /^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]*$/;
+
+export const nativeHostError = (value: string): string | null => {
+  const host = value.trim();
+  if (!host) return "Enter the server's host name or IP address.";
+  if (host.length > MAX_NATIVE_HOST_LENGTH) {
+    return `The host can be at most ${MAX_NATIVE_HOST_LENGTH} characters.`;
+  }
+  if (/\s/.test(host)) return "The host can't contain spaces.";
+  if (host.includes("://")) return "Enter only the host, without a scheme such as postgres://.";
+  if (host.includes("/")) return "Enter only the host, without a path.";
+  if (host.includes("*")) return "Enter one specific host. Wildcards aren't supported here.";
+  const unbracketed = host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
+  // More than one colon is an IPv6 address; one alone is a port.
+  if (unbracketed.split(":").length === 2) {
+    return "Enter the port in the Port field, not as part of the host.";
+  }
+  return null;
+};
+
+export const nativePortError = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the port.";
+  const port = Number(trimmed);
+  if (!/^\d+$/.test(trimmed) || port < 1 || port > 65535) {
+    return "The port must be a whole number between 1 and 65535.";
+  }
+  return null;
+};
+
+const certificateAuthorityError = (value: string): string | null => {
+  const pem = value.trim();
+  if (!pem) return null;
+  if (pem.length > MAX_NATIVE_CA_LENGTH) {
+    return `The certificate authority can be at most ${MAX_NATIVE_CA_LENGTH} characters.`;
+  }
+  if (!/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/.test(pem)) {
+    return "Paste the CA certificate in PEM format, starting with -----BEGIN CERTIFICATE-----.";
+  }
+  return null;
+};
+
+const sshKeyTextError = (value: string): string | null => {
+  if (value.includes("{{") || value.includes("}}")) return SSH_KEY_VARIABLE_MESSAGE;
+  if (value.length > MAX_SSH_KEY_LENGTH) {
+    return `This can be at most ${MAX_SSH_KEY_LENGTH} characters.`;
+  }
+  if (!SSH_KEY_TEXT_RE.test(value)) {
+    return "This can't contain control characters other than line breaks. Paste the key file's contents as they are.";
+  }
+  return null;
 };
 
 export const TRANSPORT_LABELS: Record<AgentVaultMcpTransport, string> = {
@@ -231,6 +334,21 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Review]: []
 };
 
+export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
+  [ServiceStep.Template]: [],
+  [ServiceStep.Details]: ["name", "host", "port", "database", "tlsEnabled", "tlsVerify", "tlsCa"],
+  [ServiceStep.Credential]: [
+    "credentialType",
+    "username",
+    "secret",
+    "memberProvidedFields",
+    "sshPrivateKey",
+    "sshCertificate"
+  ],
+  [ServiceStep.Tools]: [],
+  [ServiceStep.Review]: []
+};
+
 export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
   [ServiceStep.Details]: ["name", "serverUrl", "transport"],
@@ -308,6 +426,15 @@ export const buildServiceSchema = (
       serverUrl: z.string(),
       transport: z.nativeEnum(AgentVaultMcpTransport),
       hosts: z.array(z.string()),
+      // A database or SSH service's server. The port stays text so a half-typed value can be shown and refused.
+      host: z.string(),
+      port: z.string(),
+      database: z.string(),
+      tlsEnabled: z.boolean(),
+      tlsVerify: z.boolean(),
+      tlsCa: z.string(),
+      sshPrivateKey: z.string(),
+      sshCertificate: z.string(),
       // In the form rather than component state so the resolver sees it: trigger() wipes anything set with
       // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
@@ -367,6 +494,41 @@ export const buildServiceSchema = (
     })
     .superRefine((data, ctx) => {
       const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
+      const isHttp = data.serviceType === AgentVaultServiceType.Http;
+      const issue = (path: string, message: string) =>
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+      if (isNativeServiceType(data.serviceType)) {
+        if (data.name.length > MAX_NATIVE_SERVICE_NAME_LENGTH) {
+          issue(
+            "name",
+            `A database or SSH service's name can be at most ${MAX_NATIVE_SERVICE_NAME_LENGTH} characters.`
+          );
+        }
+        const hostIssue = nativeHostError(data.host);
+        if (hostIssue) issue("host", hostIssue);
+        const portIssue = nativePortError(data.port);
+        if (portIssue) issue("port", portIssue);
+        if (hasDatabase(data.serviceType)) {
+          if (!data.database.trim()) issue("database", "Enter the database to connect to.");
+          else if (data.database.trim().length > MAX_NATIVE_DATABASE_LENGTH) {
+            issue(
+              "database",
+              `The database name can be at most ${MAX_NATIVE_DATABASE_LENGTH} characters.`
+            );
+          }
+          const caIssue = certificateAuthorityError(data.tlsCa);
+          if (caIssue) issue("tlsCa", caIssue);
+        }
+        if (!NATIVE_CREDENTIAL_TYPES[data.serviceType].includes(data.credentialType)) {
+          issue(
+            "credentialType",
+            data.serviceType === AgentVaultServiceType.Ssh
+              ? "An SSH service takes a password or an SSH key."
+              : "A database service takes a username and password."
+          );
+        }
+      }
       if (isMcp) {
         const urlError = serverUrlError(data.serverUrl);
         if (urlError) {
@@ -441,15 +603,15 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp) addHostIssues(data.hosts, ctx, ["hosts"]);
-      const hostDraft = isMcp ? "" : data.hostDraft.trim();
+      if (isHttp) addHostIssues(data.hosts, ctx, ["hosts"]);
+      const hostDraft = isHttp ? data.hostDraft.trim() : "";
       if (hostDraft) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hosts"],
           message: hostError(hostDraft, data.hosts) ?? `Add "${hostDraft}" or clear it.`
         });
-      } else if (!isMcp && data.hosts.length === 0) {
+      } else if (isHttp && data.hosts.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hosts"],
@@ -457,7 +619,7 @@ export const buildServiceSchema = (
         });
       }
 
-      const pathDraft = isMcp ? "" : data.pathDraft.trim();
+      const pathDraft = isHttp ? data.pathDraft.trim() : "";
       if (pathDraft) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -474,7 +636,7 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp && data.methods.length === 0) {
+      if (isHttp && data.methods.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["methods"],
@@ -482,7 +644,7 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp) addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
+      if (isHttp) addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
 
       const hasHeaderShape = data.credentialType === AgentVaultCredentialType.Bearer;
 
@@ -632,6 +794,7 @@ export const buildServiceSchema = (
       if (
         data.credentialType !== AgentVaultCredentialType.Passthrough &&
         data.credentialType !== AgentVaultCredentialType.OAuth &&
+        data.credentialType !== AgentVaultCredentialType.SshKey &&
         !isSecretMemberProvided
       ) {
         addReferenceIssue(data.secret, ["secret"]);
@@ -656,6 +819,33 @@ export const buildServiceSchema = (
       const isUnchanged = data.secret === UNCHANGED_SECRET;
 
       const typeChanged = Boolean(service) && service?.credential.type !== data.credentialType;
+      // Nothing is stored to keep on create or after a type change, so every part has to be entered.
+      const needsNewValue = !service || typeChanged;
+
+      if (data.credentialType === AgentVaultCredentialType.SshKey) {
+        const username = data.username ?? "";
+        if (username !== UNCHANGED_SECRET) {
+          if (!username.trim()) {
+            if (needsNewValue) issue("username", "Enter the user to log in as.");
+          } else {
+            const usernameIssue = sshKeyTextError(username);
+            if (usernameIssue) issue("username", usernameIssue);
+          }
+        }
+        if (data.sshPrivateKey !== UNCHANGED_SECRET) {
+          if (!data.sshPrivateKey.trim()) {
+            if (needsNewValue) issue("sshPrivateKey", "Paste the private key.");
+          } else {
+            const keyIssue = sshKeyTextError(data.sshPrivateKey);
+            if (keyIssue) issue("sshPrivateKey", keyIssue);
+          }
+        }
+        if (data.sshCertificate !== UNCHANGED_SECRET) {
+          const certificateIssue = sshKeyTextError(data.sshCertificate);
+          if (certificateIssue) issue("sshCertificate", certificateIssue);
+        }
+        return;
+      }
       // A field each member used to set has nothing stored for the admin to keep.
       const wasMemberProvided = (field: TAgentVaultMemberProvidedField) =>
         !typeChanged && storedMemberFields(service).includes(field);
@@ -669,6 +859,17 @@ export const buildServiceSchema = (
           !data.secret
         ) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
+        }
+        return;
+      }
+
+      // Every database and SSH login names its user, so a password alone isn't enough.
+      if (isNativeServiceType(data.serviceType)) {
+        if (isUsernameMemberProvided) return;
+        const hasUsername =
+          data.username === UNCHANGED_SECRET ? !typeChanged : Boolean(data.username);
+        if (!hasUsername) {
+          issue("username", "Enter the username to log in as, or leave it to each member.");
         }
         return;
       }

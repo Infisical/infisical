@@ -234,7 +234,9 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     [missingKeys, variables, requestVariable]
   );
 
-  const template = service ? findTemplateForHostPattern(service.hostPattern) : undefined;
+  const template = service?.hostPattern
+    ? findTemplateForHostPattern(service.hostPattern)
+    : undefined;
   const providerName = template?.name ?? service?.name;
 
   const storedKeysOf = (field: TAgentVaultMemberProvidedField) =>

@@ -188,6 +188,7 @@ export const SessionDetailSheet = ({
                                 <span className="flex min-w-0 items-center gap-2">
                                   <ServiceIcon
                                     hostPattern={service.hostPattern}
+                                    serviceType={service.type}
                                     className="size-5"
                                   />
                                   <span className="truncate">{service.name}</span>

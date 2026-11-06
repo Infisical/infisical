@@ -19,19 +19,28 @@ import {
   AgentVaultTemplateCategory,
   POPULAR_AGENT_VAULT_TEMPLATES
 } from "@app/helpers/agentVaultTemplates";
-import { AgentVaultServiceType } from "@app/hooks/api/agentVault";
+import {
+  AGENT_VAULT_NATIVE_SERVICE_TYPES,
+  AgentVaultServiceType,
+  TAgentVaultNativeServiceType
+} from "@app/hooks/api/agentVault";
 
-type TTypeFilter = AgentVaultServiceType | "all";
+import { NATIVE_SERVICE_META } from "./nativeServiceMeta";
+
+type TTypeFilter = AgentVaultServiceType.Http | AgentVaultServiceType.Mcp | "native" | "all";
 
 const MCP_SECTION_DESCRIPTION =
   "Remote MCP servers. The proxy attaches the credential to requests for them.";
 const HTTP_SECTION_DESCRIPTION =
   "Web APIs your agent calls directly. The proxy attaches the credential to requests for their hosts.";
+const NATIVE_SECTION_DESCRIPTION =
+  "Databases and servers your agent connects to by name. The proxy logs in for it.";
 
 const TYPE_FILTERS: { value: TTypeFilter; label: string }[] = [
   { value: "all", label: "All Types" },
   { value: AgentVaultServiceType.Mcp, label: "MCP Servers" },
-  { value: AgentVaultServiceType.Http, label: "HTTP APIs" }
+  { value: AgentVaultServiceType.Http, label: "HTTP APIs" },
+  { value: "native", label: "Other Protocols" }
 ];
 
 // MCP cards sit under the "MCP Servers" heading, so a tag would only repeat it.
@@ -125,6 +134,24 @@ const CustomCard = ({
   />
 );
 
+const NativeCard = ({
+  serviceType,
+  onSelect
+}: {
+  serviceType: TAgentVaultNativeServiceType;
+  onSelect: () => void;
+}) => {
+  const { label, icon: Icon, description } = NATIVE_SERVICE_META[serviceType];
+  return (
+    <SelectableCard
+      media={<Icon className="h-5 w-5 text-label-secondary" />}
+      name={label}
+      description={description}
+      onSelect={onSelect}
+    />
+  );
+};
+
 const Grid = ({ children }: { children: ReactNode }) => (
   <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">{children}</div>
 );
@@ -148,8 +175,9 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TTypeFilter>("all");
 
-  const showsHttp = typeFilter !== AgentVaultServiceType.Mcp;
-  const showsMcp = typeFilter !== AgentVaultServiceType.Http;
+  const showsHttp = typeFilter === "all" || typeFilter === AgentVaultServiceType.Http;
+  const showsMcp = typeFilter === "all" || typeFilter === AgentVaultServiceType.Mcp;
+  const showsNative = typeFilter === "all" || typeFilter === "native";
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -161,7 +189,12 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
       );
     return {
       mcp: AGENT_VAULT_MCP_TEMPLATES.filter(matches),
-      http: AGENT_VAULT_TEMPLATES.filter(matches)
+      http: AGENT_VAULT_TEMPLATES.filter(matches),
+      native: AGENT_VAULT_NATIVE_SERVICE_TYPES.filter((serviceType) =>
+        [NATIVE_SERVICE_META[serviceType].label, serviceType].some((value) =>
+          value.toLowerCase().includes(term)
+        )
+      )
     };
   }, [search]);
 
@@ -186,14 +219,32 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
     />
   );
 
+  const nativeSection = (serviceTypes: readonly TAgentVaultNativeServiceType[]) =>
+    serviceTypes.length > 0 && (
+      <div>
+        <SectionHeader title="Other Protocols" description={NATIVE_SECTION_DESCRIPTION} />
+        <Grid>
+          {serviceTypes.map((serviceType) => (
+            <NativeCard
+              key={serviceType}
+              serviceType={serviceType}
+              onSelect={() => onSelect(null, serviceType)}
+            />
+          ))}
+        </Grid>
+      </div>
+    );
+
   // Each section keeps its custom card even when nothing of its type matches, so a custom service is always one
   // click away.
   const renderSearch = ({
     mcp,
-    http
+    http,
+    native
   }: {
     mcp: AgentVaultTemplate[];
     http: AgentVaultTemplate[];
+    native: TAgentVaultNativeServiceType[];
   }) => (
     <>
       {showsMcp && (
@@ -207,6 +258,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
           </Grid>
         </div>
       )}
+      {showsNative && nativeSection(native)}
       {showsHttp && (
         <div>
           <SectionHeader title="HTTP APIs" description={HTTP_SECTION_DESCRIPTION} />
@@ -234,6 +286,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
           </Grid>
         </div>
       )}
+      {showsNative && nativeSection(AGENT_VAULT_NATIVE_SERVICE_TYPES)}
       {showsHttp && (
         <div>
           <SectionHeader title="HTTP APIs" description={HTTP_SECTION_DESCRIPTION} />
@@ -295,7 +348,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
             aria-label="Search service templates"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search templates (e.g., OpenAI, Anthropic, Linear MCP, GitHub...)"
+            placeholder="Search templates (e.g., OpenAI, Anthropic, Linear MCP, PostgreSQL...)"
           />
         </InputGroup>
 

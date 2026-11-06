@@ -1,4 +1,8 @@
-import { AgentVaultServiceType, sessionLogRecordKey } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultServiceType,
+  isNativeServiceType,
+  sessionLogRecordKey
+} from "@app/hooks/api/agentVault";
 import {
   TAgentVaultSessionLogGap,
   TAgentVaultSessionLogGapReason,
@@ -118,9 +122,25 @@ export const matchesSessionLogSearch = (record: TAgentVaultSessionLogRecord, sea
     ...(record.mcp?.calls ?? []).flatMap((call) =>
       [call.method, call.tool ?? ""].map((field) => field.toLowerCase())
     ),
+    ...[record.native?.statement, record.native?.command, record.native?.file].map((field) =>
+      (field ?? "").toLowerCase()
+    ),
     `${host}${path}`,
     `${host}:${record.port}${path}`
   ].some((field) => field.includes(term));
+};
+
+export const isNativeSessionLogRecord = (record: TAgentVaultSessionLogRecord) =>
+  isNativeServiceType(record.serviceType) || record.native !== undefined;
+
+// One line for the row: what the agent ran, or what kind of exchange it was.
+export const nativeSessionLogSummary = (record: TAgentVaultSessionLogRecord) => {
+  const { native } = record;
+  if (!native) return "";
+  const text = native.statement ?? native.command ?? native.file;
+  if (text) return text.replace(/\s+/g, " ").trim();
+  if (native.shell) return "Interactive shell";
+  return native.note ?? "";
 };
 
 export const sessionLogMcpCalls = (

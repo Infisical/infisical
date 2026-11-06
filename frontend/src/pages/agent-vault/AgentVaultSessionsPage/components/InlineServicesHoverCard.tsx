@@ -32,7 +32,11 @@ export const InlineServicesList = ({ services }: ListProps) => (
         const target = inlineServiceTarget(service);
         return (
           <div key={service.id} className="flex min-w-0 items-center gap-2">
-            <ServiceIcon hostPattern={service.hostPattern} className="size-5" />
+            <ServiceIcon
+              hostPattern={service.hostPattern}
+              serviceType={service.type}
+              className="size-5"
+            />
             <span className="truncate">{service.name}</span>
             {/* A service sent without a name goes by its host, which would only repeat here. */}
             {target !== service.name && (

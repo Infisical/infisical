@@ -42,12 +42,15 @@ import {
 import { findVariableReferences, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 import { useDebounce, useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
+  AGENT_VAULT_NATIVE_DEFAULT_PORTS,
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
+  isNativeServiceType,
   SERVICE_SAVE_HANDLED_ERROR_CODES,
   TAgentVaultMemberProvidedField,
+  TAgentVaultNativeServiceType,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultService,
   useUpdateAgentVaultService
@@ -60,6 +63,7 @@ import {
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
+import { NATIVE_SERVICE_META } from "../nativeServiceMeta";
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
 import { VariableFormDialog } from "../VariableFormDialog";
 import { CredentialFields } from "./CredentialFields";
@@ -67,6 +71,8 @@ import { DetailsFields } from "./DetailsFields";
 import { McpCredentialFields } from "./McpCredentialFields";
 import { McpDetailsFields } from "./McpDetailsFields";
 import { McpToolsFields, TLoadedMcpTools } from "./McpToolsFields";
+import { NativeCredentialFields } from "./NativeCredentialFields";
+import { NativeDetailsFields } from "./NativeDetailsFields";
 import { ReviewFields } from "./ReviewFields";
 import { buildCreateServiceRequest, buildUpdateServiceRequest } from "./serviceRequest";
 import {
@@ -76,11 +82,14 @@ import {
   isOAuthAuthorizationMissing,
   MCP_SERVICE_STEP_FIELDS,
   McpToolScope,
+  NATIVE_SERVICE_STEP_FIELDS,
   SERVICE_STEP_FIELDS,
   SERVICE_TYPE_LABELS,
+  serviceKindOf,
   ServiceStep,
   storedMemberFields,
   TServiceForm,
+  TServiceKind,
   UNCHANGED_SECRET
 } from "./serviceSchema";
 import {
@@ -88,7 +97,7 @@ import {
   NO_STORED_KEYS,
   ServiceVariablesContext
 } from "./ServiceVariablesContext";
-import { MCP_SERVICE_STEPS, SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
+import { MCP_SERVICE_STEPS, nativeServiceSteps, SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
@@ -97,6 +106,14 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   serverUrl: "",
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: [],
+  host: "",
+  port: "",
+  database: "",
+  tlsEnabled: true,
+  tlsVerify: true,
+  tlsCa: "",
+  sshPrivateKey: "",
+  sshCertificate: "",
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -125,6 +142,19 @@ const BLANK_MCP_SERVICE_FORM: TServiceForm = {
   serviceType: AgentVaultServiceType.Mcp,
   credentialType: AgentVaultCredentialType.OAuth
 };
+
+const STEP_FIELDS_OF_KIND: Record<TServiceKind, Record<ServiceStep, string[]>> = {
+  http: SERVICE_STEP_FIELDS,
+  mcp: MCP_SERVICE_STEP_FIELDS,
+  native: NATIVE_SERVICE_STEP_FIELDS
+};
+
+const blankNativeForm = (serviceType: TAgentVaultNativeServiceType): TServiceForm => ({
+  ...BLANK_SERVICE_FORM,
+  serviceType,
+  port: String(AGENT_VAULT_NATIVE_DEFAULT_PORTS[serviceType]),
+  credentialType: AgentVaultCredentialType.Basic
+});
 
 const mcpFormFromTemplate = (picked: AgentVaultMcpTemplate | null): TServiceForm => {
   if (!picked) return BLANK_MCP_SERVICE_FORM;
@@ -214,11 +244,13 @@ const PrefillTypeField = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper">
-            {Object.values(AgentVaultServiceType).map((type) => (
-              <SelectItem key={type} value={type}>
-                {SERVICE_TYPE_LABELS[type]}
-              </SelectItem>
-            ))}
+            {Object.values(AgentVaultServiceType)
+              .filter((type) => !isNativeServiceType(type))
+              .map((type) => (
+                <SelectItem key={type} value={type}>
+                  {SERVICE_TYPE_LABELS[type]}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </FieldContent>
@@ -353,8 +385,11 @@ export const ServiceSheet = ({
     formState: { errors, isDirty, isSubmitting }
   } = formMethods;
 
-  const isMcp = watch("serviceType") === AgentVaultServiceType.Mcp;
-  const stepFields = isMcp ? MCP_SERVICE_STEP_FIELDS : SERVICE_STEP_FIELDS;
+  const formServiceType = watch("serviceType");
+  const kind = serviceKindOf(formServiceType);
+  const isMcp = kind === "mcp";
+  const nativeType = isNativeServiceType(formServiceType) ? formServiceType : null;
+  const stepFields = STEP_FIELDS_OF_KIND[kind];
 
   // Only the keys the form references are looked up, never the whole list.
   const [secret, username, customHeaders, substitutions] = useWatch({
@@ -399,9 +434,11 @@ export const ServiceSheet = ({
   // template step would replace that host.
   const hasTemplateStep = !isUpdate && !prefillHost;
   const steps = useMemo(() => {
-    const all = isMcp ? MCP_SERVICE_STEPS : SERVICE_STEPS;
+    let all = SERVICE_STEPS;
+    if (nativeType) all = nativeServiceSteps(nativeType);
+    else if (isMcp) all = MCP_SERVICE_STEPS;
     return hasTemplateStep ? all : all.filter((meta) => meta.step !== ServiceStep.Template);
-  }, [hasTemplateStep, isMcp]);
+  }, [hasTemplateStep, isMcp, nativeType]);
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -453,9 +490,41 @@ export const ServiceSheet = ({
     setStep(0);
     setTemplate(null);
     setLoadedTools(null);
-    setOpenItem(service?.type === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
+    setOpenItem(
+      service?.type === AgentVaultServiceType.Mcp || isNativeServiceType(service?.type)
+        ? ""
+        : ADVANCED_ITEM
+    );
 
-    if (service?.type === AgentVaultServiceType.Mcp) {
+    if (service && isNativeServiceType(service.type)) {
+      const { credential } = service;
+      const memberProvidedFields = storedMemberFields(service);
+      const storedValue = (field: TAgentVaultMemberProvidedField) =>
+        memberProvidedFields.includes(field) ? "" : UNCHANGED_SECRET;
+      const isSshKey = credential.type === AgentVaultCredentialType.SshKey;
+      reset({
+        ...blankNativeForm(service.type),
+        name: service.name,
+        host: service.host ?? "",
+        port: String(service.port ?? AGENT_VAULT_NATIVE_DEFAULT_PORTS[service.type]),
+        database: service.database ?? "",
+        tlsEnabled: service.tls?.enabled ?? true,
+        tlsVerify: service.tls?.verify ?? true,
+        tlsCa: service.tls?.ca ?? "",
+        credentialType: credential.type,
+        username:
+          credential.type === AgentVaultCredentialType.Basic
+            ? storedValue(AgentVaultVariableReferenceField.CredentialUsername)
+            : UNCHANGED_SECRET,
+        secret:
+          credential.type === AgentVaultCredentialType.Basic
+            ? storedValue(AgentVaultVariableReferenceField.CredentialValue)
+            : "",
+        memberProvidedFields,
+        sshPrivateKey: isSshKey ? UNCHANGED_SECRET : "",
+        sshCertificate: isSshKey && credential.hasCertificate ? UNCHANGED_SECRET : ""
+      });
+    } else if (service?.type === AgentVaultServiceType.Mcp) {
       const { credential } = service;
       const isBearer = credential.type === AgentVaultCredentialType.Bearer;
       reset({
@@ -485,7 +554,7 @@ export const ServiceSheet = ({
       reset({
         ...BLANK_SERVICE_FORM,
         name: service.name,
-        hosts: displayHostPattern(service.hostPattern).split(", "),
+        hosts: service.hostPattern ? displayHostPattern(service.hostPattern).split(", ") : [],
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
         // the same defaults a new service gets. Left undefined, the submit would send an empty
@@ -551,7 +620,10 @@ export const ServiceSheet = ({
     serviceType: AgentVaultServiceType
   ) => {
     setTemplate(picked);
-    if (serviceType === AgentVaultServiceType.Mcp) {
+    if (isNativeServiceType(serviceType)) {
+      setOpenItem("");
+      reset(blankNativeForm(serviceType));
+    } else if (serviceType === AgentVaultServiceType.Mcp) {
       setOpenItem("");
       reset(mcpFormFromTemplate(picked?.serviceType === AgentVaultServiceType.Mcp ? picked : null));
     } else {
@@ -638,6 +710,10 @@ export const ServiceSheet = ({
           hostPattern: ServiceStep.Details,
           serverUrl: ServiceStep.Details,
           transport: ServiceStep.Details,
+          host: ServiceStep.Details,
+          port: ServiceStep.Details,
+          database: ServiceStep.Details,
+          tls: ServiceStep.Details,
           allowedMethods: ServiceStep.Details,
           allowedPathPrefixes: ServiceStep.Details,
           allowedTools: ServiceStep.Tools,
@@ -650,10 +726,18 @@ export const ServiceSheet = ({
           hostPattern: isMcp ? "serverUrl" : "hosts",
           allowedMethods: "methods",
           allowedPathPrefixes: "pathPrefixes",
+          tls: "tlsCa",
           credential:
             data.credentialType === AgentVaultCredentialType.OAuth
               ? "oauthAuthorizationId"
               : "secret"
+        };
+        const FORM_FIELD_OF_CREDENTIAL_PART: Record<string, keyof TServiceForm> = {
+          username: "username",
+          password: "secret",
+          value: "secret",
+          privateKey: "sshPrivateKey",
+          certificate: "sshCertificate"
         };
 
         let earliestStep: number | null = null;
@@ -667,10 +751,14 @@ export const ServiceSheet = ({
             return;
           }
 
-          const target =
-            issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
-              ? (issue.path.join(".") as keyof TServiceForm)
-              : (FORM_FIELD_OF[root] ?? (root as keyof TServiceForm));
+          const credentialPart =
+            root === "credential"
+              ? FORM_FIELD_OF_CREDENTIAL_PART[String(issue.path[1])]
+              : undefined;
+          let target = credentialPart ?? FORM_FIELD_OF[root] ?? (root as keyof TServiceForm);
+          if (issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")) {
+            target = issue.path.join(".") as keyof TServiceForm;
+          }
 
           setError(target, { type: "server", message: issue.message });
           const index = stepKeys.indexOf(issueStep);
@@ -714,7 +802,10 @@ export const ServiceSheet = ({
     await goNext();
   };
 
-  const customName = isMcp ? "Custom MCP Server" : "Custom HTTP API";
+  let customName = "Custom HTTP API";
+  if (nativeType) customName = NATIVE_SERVICE_META[nativeType].label;
+  else if (isMcp) customName = "Custom MCP Server";
+  const NativeIcon = nativeType ? NATIVE_SERVICE_META[nativeType].icon : null;
 
   const stepDescription = (meta: (typeof SERVICE_STEPS)[number]) => {
     if (meta.step === ServiceStep.Template) return template?.name ?? customName;
@@ -799,6 +890,7 @@ export const ServiceSheet = ({
                 {template && (
                   <ProviderIcon icon={template.image} alt="" className="size-6 object-contain" />
                 )}
+                {NativeIcon && <NativeIcon className="size-5 text-label-secondary" />}
                 {template?.name ?? (isUpdate ? service?.name : customName)}
                 <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
               </SheetTitle>
@@ -862,7 +954,9 @@ export const ServiceSheet = ({
                           onChange={switchPrefillType}
                         />
                       )}
-                      {isMcp ? <McpDetailsFields /> : <DetailsFields />}
+                      {kind === "native" && <NativeDetailsFields />}
+                      {kind === "mcp" && <McpDetailsFields />}
+                      {kind === "http" && <DetailsFields />}
                     </div>
                   )}
                   {current.step === ServiceStep.Credential && isMcp && (
@@ -876,7 +970,20 @@ export const ServiceSheet = ({
                       />
                     </ServiceVariablesContext.Provider>
                   )}
-                  {current.step === ServiceStep.Credential && !isMcp && (
+                  {current.step === ServiceStep.Credential && nativeType && (
+                    <ServiceVariablesContext.Provider value={serviceVariables}>
+                      <NativeCredentialFields
+                        serviceType={nativeType}
+                        storedType={service?.credential.type}
+                        storedMemberFields={storedMemberFields(service)}
+                        hasStoredCertificate={
+                          service?.credential.type === AgentVaultCredentialType.SshKey &&
+                          service.credential.hasCertificate
+                        }
+                      />
+                    </ServiceVariablesContext.Provider>
+                  )}
+                  {current.step === ServiceStep.Credential && kind === "http" && (
                     <ServiceVariablesContext.Provider value={serviceVariables}>
                       <div className="flex flex-col gap-5">
                         <CredentialFields

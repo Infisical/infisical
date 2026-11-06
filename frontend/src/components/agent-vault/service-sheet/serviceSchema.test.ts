@@ -4,7 +4,8 @@ import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
   AgentVaultOauthStatus,
-  AgentVaultServiceType
+  AgentVaultServiceType,
+  AgentVaultVariableReferenceField
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
@@ -29,6 +30,14 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   serverUrl: SERVER_URL,
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: [],
+  host: "",
+  port: "",
+  database: "",
+  tlsEnabled: true,
+  tlsVerify: true,
+  tlsCa: "",
+  sshPrivateKey: "",
+  sshCertificate: "",
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -58,6 +67,10 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
     type: AgentVaultServiceType.Mcp,
     serverUrl,
     transport: AgentVaultMcpTransport.StreamableHttp,
+    host: null,
+    port: null,
+    database: null,
+    tls: null,
     allowedMethods: null,
     allowedPathPrefixes: null,
     allowedTools: null,
@@ -380,5 +393,84 @@ describe("buildServiceSchema with allowed tools", () => {
     expect(toolIssues({ allowedTools: names(MAX_ALLOWED_TOOLS + 1) })).toEqual([
       ["allowedTools", `You can select at most ${MAX_ALLOWED_TOOLS} tools.`]
     ]);
+  });
+});
+
+const nativeForm = (overrides: Partial<TServiceForm> = {}): TServiceForm =>
+  mcpForm({
+    serviceType: AgentVaultServiceType.Mysql,
+    name: "orders-db",
+    serverUrl: "",
+    host: "db.internal",
+    port: "3306",
+    database: "orders",
+    credentialType: AgentVaultCredentialType.Basic,
+    username: "agent",
+    ...overrides
+  });
+
+const issuesOf = (form: TServiceForm) => {
+  const result = buildServiceSchema().safeParse(form);
+  return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+};
+
+describe("buildServiceSchema with a database or SSH service", () => {
+  it("accepts a database service without a password", () => {
+    expect(issuesOf(nativeForm())).toEqual([]);
+  });
+
+  it("asks for a username unless members set it", () => {
+    expect(issuesOf(nativeForm({ username: "", secret: "pw" }))).toEqual(["username"]);
+    expect(
+      issuesOf(
+        nativeForm({
+          username: "",
+          memberProvidedFields: [AgentVaultVariableReferenceField.CredentialUsername]
+        })
+      )
+    ).toEqual([]);
+  });
+
+  it("refuses a port in the host and a port out of range", () => {
+    expect(issuesOf(nativeForm({ host: "db.internal:3306", port: "70000" }))).toEqual([
+      "host",
+      "port"
+    ]);
+  });
+
+  it("accepts an IPv6 host", () => {
+    expect(issuesOf(nativeForm({ host: "fd00::1" }))).toEqual([]);
+  });
+
+  it("asks for an SSH key's username and private key, and refuses variables in them", () => {
+    const ssh = { serviceType: AgentVaultServiceType.Ssh, database: "", port: "22" };
+    expect(
+      issuesOf(
+        nativeForm({
+          ...ssh,
+          credentialType: AgentVaultCredentialType.SshKey,
+          username: "",
+          sshPrivateKey: ""
+        })
+      )
+    ).toEqual(["username", "sshPrivateKey"]);
+    expect(
+      issuesOf(
+        nativeForm({
+          ...ssh,
+          credentialType: AgentVaultCredentialType.SshKey,
+          username: "{{SSH_USER}}",
+          sshPrivateKey: "key"
+        })
+      )
+    ).toEqual(["username"]);
+  });
+
+  it("refuses an SSH key for a database service", () => {
+    expect(
+      issuesOf(
+        nativeForm({ credentialType: AgentVaultCredentialType.SshKey, sshPrivateKey: "key" })
+      )
+    ).toContain("credentialType");
   });
 });

@@ -2,17 +2,23 @@ import {
   AgentVaultCredentialType,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
-  TAgentVaultMemberProvidedField
+  isNativeServiceType,
+  TAgentVaultMemberProvidedField,
+  TAgentVaultNativeServiceType
 } from "@app/hooks/api/agentVault";
 import {
+  TAgentVaultBasicCredentialInput,
   TAgentVaultCredentialInput,
   TAgentVaultCredentialUpdate,
+  TAgentVaultSshKeyCredentialInput,
+  TAgentVaultSshKeyCredentialUpdate,
   TCreateAgentVaultServiceDTO,
   TListAgentVaultMcpToolsDTO,
   TUpdateAgentVaultServiceDTO
 } from "@app/hooks/api/agentVault/types";
 
 import {
+  hasDatabase,
   isAllMethods,
   McpToolScope,
   newOAuthAuthorizationId,
@@ -44,24 +50,27 @@ const memberFieldsOf = (data: TServiceForm) => {
   };
 };
 
+const buildBasicCredential = (data: TServiceForm): TAgentVaultBasicCredentialInput => {
+  const { basic, isMemberProvided } = memberFieldsOf(data);
+  return {
+    type: AgentVaultCredentialType.Basic,
+    username: isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername)
+      ? undefined
+      : (data.username ?? ""),
+    password: isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)
+      ? undefined
+      : (data.secret ?? ""),
+    memberProvidedFields: basic
+  };
+};
+
 // A member-provided field is sent without a value: each member sets their own.
 const buildHttpCredential = (data: TServiceForm): TAgentVaultCredentialInput => {
-  const { bearer, basic, isMemberProvided } = memberFieldsOf(data);
+  const { bearer } = memberFieldsOf(data);
   if (data.credentialType === AgentVaultCredentialType.Passthrough) {
     return { type: AgentVaultCredentialType.Passthrough };
   }
-  if (data.credentialType === AgentVaultCredentialType.Basic) {
-    return {
-      type: AgentVaultCredentialType.Basic,
-      username: isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername)
-        ? undefined
-        : (data.username ?? ""),
-      password: isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)
-        ? undefined
-        : (data.secret ?? ""),
-      memberProvidedFields: basic
-    };
-  }
+  if (data.credentialType === AgentVaultCredentialType.Basic) return buildBasicCredential(data);
   return {
     ...bearerCredential(data),
     value: bearer.length ? undefined : (data.secret ?? ""),
@@ -158,11 +167,93 @@ const buildMcpFields = (data: TServiceForm) => ({
   allowedTools: data.toolScope === McpToolScope.Selected ? data.allowedTools : null
 });
 
+const buildSshKeyCredential = (data: TServiceForm): TAgentVaultSshKeyCredentialInput => ({
+  type: AgentVaultCredentialType.SshKey,
+  username: (data.username ?? "").trim(),
+  privateKey: data.sshPrivateKey.trim(),
+  ...(data.sshCertificate.trim() ? { certificate: data.sshCertificate.trim() } : {})
+});
+
+// A part left at the sentinel keeps what is stored; an emptied certificate is removed.
+const buildSshKeyCredentialPatch = (data: TServiceForm): TAgentVaultSshKeyCredentialUpdate => {
+  const certificate = data.sshCertificate.trim();
+  return {
+    type: AgentVaultCredentialType.SshKey,
+    ...(data.username === UNCHANGED_SECRET ? {} : { username: (data.username ?? "").trim() }),
+    ...(data.sshPrivateKey === UNCHANGED_SECRET ? {} : { privateKey: data.sshPrivateKey.trim() }),
+    ...(data.sshCertificate === UNCHANGED_SECRET ? {} : { certificate: certificate || null })
+  };
+};
+
+const buildNativeConnection = (
+  data: TServiceForm & { serviceType: TAgentVaultNativeServiceType }
+) => ({
+  name: data.name,
+  host: data.host.trim(),
+  port: Number(data.port.trim()),
+  ...(hasDatabase(data.serviceType)
+    ? {
+        database: data.database.trim(),
+        tls: {
+          enabled: data.tlsEnabled,
+          verify: data.tlsVerify,
+          ca: data.tlsCa.trim() || null
+        }
+      }
+    : {})
+});
+
+const buildNativeCreateRequest = (
+  accessBundleId: string,
+  data: TServiceForm,
+  serviceType: TAgentVaultNativeServiceType
+): TCreateAgentVaultServiceDTO => {
+  const { name, host, port } = buildNativeConnection({ ...data, serviceType });
+  if (serviceType === AgentVaultServiceType.Ssh) {
+    return {
+      accessBundleId,
+      type: serviceType,
+      name,
+      host,
+      port,
+      credential:
+        data.credentialType === AgentVaultCredentialType.SshKey
+          ? buildSshKeyCredential(data)
+          : buildBasicCredential(data)
+    };
+  }
+  const tlsCa = data.tlsCa.trim();
+  return {
+    accessBundleId,
+    type: serviceType,
+    name,
+    host,
+    port,
+    database: data.database.trim(),
+    tls: {
+      enabled: data.tlsEnabled,
+      verify: data.tlsVerify,
+      ...(tlsCa ? { ca: tlsCa } : {})
+    },
+    credential: buildBasicCredential(data)
+  };
+};
+
+const buildNativeCredentialPatch = (
+  data: TServiceForm
+): TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate =>
+  data.credentialType === AgentVaultCredentialType.SshKey
+    ? buildSshKeyCredentialPatch(data)
+    : buildHttpCredentialPatch(data);
+
 export const buildCreateServiceRequest = (
   accessBundleId: string,
   data: TServiceForm
-): TCreateAgentVaultServiceDTO =>
-  data.serviceType === AgentVaultServiceType.Mcp
+): TCreateAgentVaultServiceDTO => {
+  if (isNativeServiceType(data.serviceType)) {
+    return buildNativeCreateRequest(accessBundleId, data, data.serviceType);
+  }
+  return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         type: AgentVaultServiceType.Mcp,
@@ -175,13 +266,23 @@ export const buildCreateServiceRequest = (
         ...buildHttpFields(data),
         credential: buildHttpCredential(data)
       };
+};
 
 export const buildUpdateServiceRequest = (
   accessBundleId: string,
   serviceId: string,
   data: TServiceForm
-): TUpdateAgentVaultServiceDTO =>
-  data.serviceType === AgentVaultServiceType.Mcp
+): TUpdateAgentVaultServiceDTO => {
+  if (isNativeServiceType(data.serviceType)) {
+    return {
+      accessBundleId,
+      serviceId,
+      type: data.serviceType,
+      ...buildNativeConnection({ ...data, serviceType: data.serviceType }),
+      credential: buildNativeCredentialPatch(data)
+    };
+  }
+  return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         serviceId,
@@ -196,6 +297,7 @@ export const buildUpdateServiceRequest = (
         ...buildHttpFields(data),
         credential: buildHttpCredentialPatch(data)
       };
+};
 
 // The credential and headers go as an update sends them, so on edit a value left untouched falls back to
 // the saved service's.

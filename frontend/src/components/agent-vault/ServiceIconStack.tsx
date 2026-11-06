@@ -1,14 +1,18 @@
 import { ComponentPropsWithoutRef, forwardRef, useMemo, useState } from "react";
-import { GlobeIcon } from "lucide-react";
+import { GlobeIcon, LucideIcon, ServerIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { cn } from "@app/components/v3/utils";
 import { findAnyTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
+import { AgentVaultServiceType, isNativeServiceType } from "@app/hooks/api/agentVault";
+
+import { NATIVE_SERVICE_META } from "./nativeServiceMeta";
 
 type TServiceIcon = {
   label: string;
   image?: string;
+  icon?: LucideIcon;
 };
 
 const labelOf = (pattern: string) => {
@@ -25,12 +29,34 @@ const iconFromHostPattern = (hostPattern: string): TServiceIcon => {
   return { label: template?.name ?? labelOf(hostPattern), image: template?.image };
 };
 
-const iconsFromHostPatterns = (hostPatterns: string[]): TServiceIcon[] => {
-  const byLabel = new Map<string, TServiceIcon>();
+// A database or SSH service has no host pattern, so its icon comes from its type.
+const iconOf = ({
+  hostPattern,
+  serviceType
+}: {
+  hostPattern?: string | null;
+  serviceType?: AgentVaultServiceType | null;
+}): TServiceIcon => {
+  if (isNativeServiceType(serviceType)) {
+    const meta = NATIVE_SERVICE_META[serviceType];
+    return { label: meta.label, icon: meta.icon };
+  }
+  if (hostPattern) return iconFromHostPattern(hostPattern);
+  return { label: "Service", icon: ServerIcon };
+};
 
-  hostPatterns.forEach((pattern) => {
-    const icon = iconFromHostPattern(pattern);
+const iconsFromServices = (
+  hostPatterns: string[],
+  serviceTypes: AgentVaultServiceType[]
+): TServiceIcon[] => {
+  const byLabel = new Map<string, TServiceIcon>();
+  const add = (icon: TServiceIcon) => {
     if (icon.label && !byLabel.has(icon.label)) byLabel.set(icon.label, icon);
+  };
+
+  hostPatterns.forEach((pattern) => add(iconFromHostPattern(pattern)));
+  serviceTypes.forEach((serviceType) => {
+    if (isNativeServiceType(serviceType)) add(iconOf({ serviceType }));
   });
 
   return [...byLabel.values()];
@@ -49,6 +75,7 @@ type TServiceChipProps = ComponentPropsWithoutRef<"div"> & { icon: TServiceIcon 
 const ServiceChip = forwardRef<HTMLDivElement, TServiceChipProps>(
   ({ icon, className, ...props }, ref) => {
     const [hasImageError, setHasImageError] = useState(false);
+    const FallbackIcon = icon.icon ?? GlobeIcon;
 
     return (
       <div ref={ref} className={cn(chipClassName, className)} {...props}>
@@ -60,7 +87,7 @@ const ServiceChip = forwardRef<HTMLDivElement, TServiceChipProps>(
             onError={() => setHasImageError(true)}
           />
         ) : (
-          <GlobeIcon className="size-3.5" />
+          <FallbackIcon className="size-3.5" />
         )}
       </div>
     );
@@ -71,24 +98,37 @@ ServiceChip.displayName = "ServiceChip";
 
 export const ServiceIcon = ({
   hostPattern,
+  serviceType,
   className
 }: {
-  hostPattern: string;
+  hostPattern?: string | null;
+  serviceType?: AgentVaultServiceType | null;
   className?: string;
 }) => {
-  const icon = useMemo(() => iconFromHostPattern(hostPattern), [hostPattern]);
+  const icon = useMemo(() => iconOf({ hostPattern, serviceType }), [hostPattern, serviceType]);
   return <ServiceChip icon={icon} className={className} />;
 };
 
-// Host patterns collapse to one chip per provider.
+// Host patterns collapse to one chip per provider, and database and SSH services to one per type.
 type Props = {
   hostPatterns: string[];
+  serviceTypes?: AgentVaultServiceType[];
   maxVisible?: number;
   className?: string;
 };
 
-export const ServiceIconStack = ({ hostPatterns, maxVisible = 4, className }: Props) => {
-  const icons = useMemo(() => iconsFromHostPatterns(hostPatterns), [hostPatterns]);
+const NO_SERVICE_TYPES: AgentVaultServiceType[] = [];
+
+export const ServiceIconStack = ({
+  hostPatterns,
+  serviceTypes = NO_SERVICE_TYPES,
+  maxVisible = 4,
+  className
+}: Props) => {
+  const icons = useMemo(
+    () => iconsFromServices(hostPatterns, serviceTypes),
+    [hostPatterns, serviceTypes]
+  );
 
   if (icons.length === 0) return <span className="text-muted">&mdash;</span>;
 
