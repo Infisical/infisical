@@ -2219,7 +2219,8 @@ export const baselineContent = [
     exports: ["Separator"],
     referenceNames: ["Separator"],
     behavior: [
-      "Separator supports soft, labeled and vertical boundaries. It separates content without adding a new card."
+      "Separator supports soft, labeled and vertical boundaries. It separates content without adding a new card.",
+      "A lone Separator is a standalone rule, so its default draws in line; soft draws in line-soft for a divider that meets other borders."
     ],
     accessibility: [
       "Decorative separators do not become landmarks or tab stops; keep meaningful section labels as text."

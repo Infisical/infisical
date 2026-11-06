@@ -90,7 +90,7 @@ export const recentChanges: {
     id: "line-roles",
     title: "Line roles",
     description:
-      "line-soft is the default border for edges and the dividers that meet them, and line is kept for standalone rules.",
+      "line-soft is the default border for edges and the dividers that meet them, and line is kept for standalone rules such as a lone Separator.",
     date: "2026-11-06",
     commit: "3c11d43aee",
     page: "rules"

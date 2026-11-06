@@ -48,6 +48,7 @@ Exports: Separator. Source TypeScript defines the API.
 ## Behavior
 
 - Separator supports soft, labeled and vertical boundaries. It separates content without adding a new card.
+- A lone Separator is a standalone rule, so its default draws in line; soft draws in line-soft for a divider that meets other borders.
 
 ## Accessibility
 
