@@ -113,6 +113,7 @@ import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
 import { FolderActions } from "./secrets/row-actions/folder-actions";
 import { HoneyTokenActions } from "./secrets/row-actions/honey-token-actions";
 import { ImportActions } from "./secrets/row-actions/import-actions";
+import { useManagedBlock } from "./secrets/row-actions/permissions";
 import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-actions";
 import { RotationActions } from "./secrets/row-actions/rotation-actions";
 import type { RowAction } from "./secrets/row-actions/types";
@@ -181,6 +182,7 @@ export const OverviewPage = () => {
   const adapter = useV4Adapter("secrets");
   const session = useV4Session();
   const projectQuery = adapter.useProject(projectId);
+  const blockFor = useManagedBlock(projectId);
   const tagList = adapter.useTags(projectId).data ?? [];
   const folderTree = adapter.useProjectFolders(projectId).data;
   const createCommit = adapter.useCreateCommit();
@@ -685,6 +687,7 @@ export const OverviewPage = () => {
     single,
     path,
     writeBlock,
+    blockFor,
     selected,
     recent,
     onToggleSelect: (key) =>
