@@ -39,6 +39,9 @@ tr:is(:hover, :focus-within) .rowHint {
   width: 100%;
   max-width: 256px;
 }
+.roleSelect > span {
+  width: 100%;
+}
 .removeList {
   display: flex;
   flex-direction: column;

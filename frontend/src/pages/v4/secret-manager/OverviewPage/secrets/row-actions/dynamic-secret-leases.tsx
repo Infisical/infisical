@@ -25,13 +25,17 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Spinner } from "@app/components/v4/ui/spinner";
 import {
+  RowActions,
   Table,
+  TableActionsCell,
+  TableActionsHead,
   TableBody,
   TableCell,
   TableHead,
@@ -192,7 +196,7 @@ export function DynamicSecretLeaseList({
             <TableHead>Lease ID</TableHead>
             <TableHead>State</TableHead>
             <TableHead>Expires in</TableHead>
-            <TableHead className={styles.actionColumn} aria-label="Actions" />
+            <TableActionsHead slots={canRenew ? 2 : 1} />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -222,50 +226,49 @@ export function DynamicSecretLeaseList({
                   </span>
                 </Tooltip>
               </TableCell>
-              <TableCell>
-                <div className={styles.actions}>
-                  {canRenew && (
-                    <Tooltip content="Renew lease">
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        iconOnly
-                        icon="sync"
-                        aria-label="Renew lease"
-                        onClick={() => setRenewLeaseId(id)}
-                      />
-                    </Tooltip>
-                  )}
-                  <Tooltip content="Revoke lease">
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      iconOnly
-                      icon="trash"
-                      aria-label="Revoke lease"
-                      onClick={() => {
-                        setRevoke({ leaseId: id, isForced: false });
-                        setRevokeOpen(true);
-                      }}
-                    />
-                  </Tooltip>
-                  {status === "failed-deletion" && (
-                    <Tooltip content="Force delete lease. This removes the lease from Infisical without revoking it in the external provider.">
-                      <Button
-                        variant="danger-ghost"
-                        size="icon-xs"
-                        iconOnly
-                        icon="trash"
-                        aria-label="Force delete lease"
-                        onClick={() => {
-                          setRevoke({ leaseId: id, isForced: true });
+              <TableActionsCell slots={canRenew ? 2 : 1}>
+                <RowActions
+                  label={id}
+                  inline={
+                    canRenew
+                      ? [
+                          {
+                            label: "Renew lease",
+                            icon: "sync",
+                            onSelect: () => setRenewLeaseId(id)
+                          }
+                        ]
+                      : []
+                  }
+                  menu={
+                    <>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => {
+                          setRevoke({ leaseId: id, isForced: false });
                           setRevokeOpen(true);
                         }}
-                      />
-                    </Tooltip>
-                  )}
-                </div>
-              </TableCell>
+                      >
+                        <Icon name="trash" />
+                        Revoke lease
+                      </DropdownMenuItem>
+                      {status === "failed-deletion" && (
+                        <DropdownMenuItem
+                          variant="destructive"
+                          description="Removes the lease from Infisical without revoking it in the external provider."
+                          onSelect={() => {
+                            setRevoke({ leaseId: id, isForced: true });
+                            setRevokeOpen(true);
+                          }}
+                        >
+                          <Icon name="trash" />
+                          Force delete lease
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  }
+                />
+              </TableActionsCell>
             </TableRow>
           ))}
         </TableBody>

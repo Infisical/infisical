@@ -20,6 +20,12 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -735,12 +741,33 @@ const CreateButton = ({ allowed, onClick }: { allowed: boolean; onClick: () => v
   </Gate>
 );
 
-const RevokeButton = ({ allowed, onClick }: { allowed: boolean; onClick: () => void }) => (
-  <Gate allowed={allowed}>
-    <Button variant="ghost" size="sm" disabled={!allowed} onClick={onClick}>
-      Revoke
-    </Button>
-  </Gate>
+const RevokeMenu = ({
+  allowed,
+  label,
+  onClick
+}: {
+  allowed: boolean;
+  label: string;
+  onClick: () => void;
+}) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
+        {`More actions for ${label}`}
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={!allowed}
+        description={allowed ? undefined : RESTRICTED}
+        onSelect={onClick}
+      >
+        <Icon name="trash" />
+        Revoke
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
 );
 
 const ClientSecrets = ({ identityId, canEdit }: { identityId: string; canEdit: boolean }) => {
@@ -818,7 +845,13 @@ const ClientSecrets = ({ identityId, canEdit }: { identityId: string; canEdit: b
                 {expiryLabel(secret.createdAt, secret.clientSecretTTL)}
               </>
             }
-            actions={<RevokeButton allowed={canEdit} onClick={() => setRevoking(secret)} />}
+            actions={
+              <RevokeMenu
+                allowed={canEdit}
+                label={secret.description || secret.clientSecretPrefix}
+                onClick={() => setRevoking(secret)}
+              />
+            }
           />
         ))}
       </List>
@@ -961,7 +994,13 @@ const AccessTokens = ({ identityId, canEdit }: { identityId: string; canEdit: bo
               label={token.name || token.id}
               title={<code>{token.name || "Unnamed token"}</code>}
               description={`${usesLabel(token.accessTokenNumUses, token.accessTokenNumUsesLimit)}, ${expiryLabel(token.createdAt, token.accessTokenTTL)}`}
-              actions={<RevokeButton allowed={canEdit} onClick={() => setRevoking(token)} />}
+              actions={
+                <RevokeMenu
+                  allowed={canEdit}
+                  label={token.name || token.id}
+                  onClick={() => setRevoking(token)}
+                />
+              }
             />
           ))}
       </List>

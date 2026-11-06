@@ -854,10 +854,13 @@ const DeletedProjects = ({ projectType }: { projectType: ProjectType }) => {
           getRowId={(row) => row.id}
           rowLabel={(row) => row.name}
           rowActions={{
-            inline: [
-              { label: "Restore project", icon: "history", onSelect: setRestoring },
-              { label: "Permanently delete project", icon: "trash", onSelect: setDeleting }
-            ]
+            inline: [{ label: "Restore project", icon: "history", onSelect: setRestoring }],
+            renderMenu: (row) => (
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(row)}>
+                <Icon name="trash" />
+                Permanently delete project
+              </DropdownMenuItem>
+            )
           }}
         />
       )}

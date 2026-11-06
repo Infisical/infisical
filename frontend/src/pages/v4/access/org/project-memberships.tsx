@@ -24,8 +24,10 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
+import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
@@ -438,15 +440,18 @@ export const ProjectMembershipsSection = ({
   ];
 
   const rowActions: DataTableRowActions<ProjectMembershipRow> = {
-    inline: [
-      { label: "Access project", icon: "external", onSelect: openProject },
-      {
-        label: "Remove from project",
-        icon: "trash",
-        disabledReason: () => (canEdit ? undefined : RESTRICTED),
-        onSelect: setRemoving
-      }
-    ]
+    inline: [{ label: "Access project", icon: "external", onSelect: openProject }],
+    renderMenu: (row) => (
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={!canEdit}
+        description={canEdit ? undefined : RESTRICTED}
+        onSelect={() => setRemoving(row)}
+      >
+        <Icon name="trash" />
+        Remove from project
+      </DropdownMenuItem>
+    )
   };
 
   const addButton = (variant: "outline" | "primary") => (

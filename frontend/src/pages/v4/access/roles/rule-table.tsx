@@ -8,9 +8,11 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
+import { Icon } from "@app/components/v4/ui/icon";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
@@ -332,27 +334,38 @@ export const RuleTable = (props: RuleTableProps) => {
         label: editable ? "Edit rule" : "View rule",
         icon: "settings",
         onSelect: edit
-      },
-      {
-        label: "Duplicate rule",
-        icon: "copy",
-        disabledReason: () => (editable ? undefined : reason),
-        onSelect: (row) =>
-          onChange({
-            ...draft,
-            [row.config.subject]: [
-              ...(draft[row.config.subject] ?? []),
-              { ...structuredClone(row.rule), id: ruleId() }
-            ]
-          })
-      },
-      {
-        label: "Delete rule",
-        icon: "trash",
-        disabledReason: () => (editable ? undefined : reason),
-        onSelect: (row) => removeRows([row.key])
       }
-    ]
+    ],
+    renderMenu: (row) => (
+      <>
+        <DropdownMenuItem
+          disabled={!editable}
+          description={editable ? undefined : reason}
+          onSelect={() =>
+            onChange({
+              ...draft,
+              [row.config.subject]: [
+                ...(draft[row.config.subject] ?? []),
+                { ...structuredClone(row.rule), id: ruleId() }
+              ]
+            })
+          }
+        >
+          <Icon name="copy" />
+          Duplicate rule
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!editable}
+          description={editable ? undefined : reason}
+          onSelect={() => removeRows([row.key])}
+        >
+          <Icon name="trash" />
+          Delete rule
+        </DropdownMenuItem>
+      </>
+    )
   };
 
   const policyCount = subjects.filter((config) => draft[config.subject]?.length).length;

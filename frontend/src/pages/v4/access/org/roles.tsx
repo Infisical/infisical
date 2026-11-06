@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -293,15 +293,20 @@ export const OrgRolesTab = () => {
             </DropdownMenuItem>
           )}
           {custom && (
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!canDelete || roleIsDefault}
-              description={roleIsDefault ? DEFAULT_REASON : undefined}
-              onSelect={() => setDeleting(role)}
-            >
-              <Icon name="trash" />
-              Delete role
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={!canDelete || roleIsDefault}
+                description={
+                  (!canDelete && RESTRICTED) || (roleIsDefault ? DEFAULT_REASON : undefined)
+                }
+                onSelect={() => setDeleting(role)}
+              >
+                <Icon name="trash" />
+                Delete role
+              </DropdownMenuItem>
+            </>
           )}
         </>
       );

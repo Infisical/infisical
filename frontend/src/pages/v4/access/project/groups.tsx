@@ -7,7 +7,9 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@app/components/v4/ui/data-table";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
+import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
 import {
   ProjectPermissionActions,
@@ -76,14 +78,17 @@ export const ProjectGroupsTab = () => {
   ];
 
   const rowActions: DataTableRowActions<TGroupMembership> = {
-    inline: [
-      {
-        label: "Remove group from project",
-        icon: UserRoundXIcon,
-        disabledReason: () => (canDelete ? undefined : RESTRICTED),
-        onSelect: setRemoving
-      }
-    ]
+    renderMenu: (group) => (
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={!canDelete}
+        description={canDelete ? undefined : RESTRICTED}
+        onSelect={() => setRemoving(group)}
+      >
+        <Icon icon={UserRoundXIcon} />
+        Remove group from project
+      </DropdownMenuItem>
+    )
   };
 
   return (

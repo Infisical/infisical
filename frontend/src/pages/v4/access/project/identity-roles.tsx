@@ -25,8 +25,10 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
+import { Icon } from "@app/components/v4/ui/icon";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
@@ -344,19 +346,25 @@ export const IdentityRoleDetailsSection = ({
         icon: "settings",
         disabledReason: () => (canEdit ? undefined : RESTRICTED),
         onSelect: setModifying
-      },
-      {
-        label: "Remove role",
-        icon: "trash",
-        disabledReason: () => {
-          if (!canEdit) return RESTRICTED;
-          return membership.roles.length > 1
-            ? undefined
-            : "A machine identity needs at least one role";
-        },
-        onSelect: setRemoving
       }
-    ]
+    ],
+    renderMenu: (grant) => {
+      let removeReason: string | undefined;
+      if (!canEdit) removeReason = RESTRICTED;
+      else if (membership.roles.length <= 1)
+        removeReason = "A machine identity needs at least one role";
+      return (
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={Boolean(removeReason)}
+          description={removeReason}
+          onSelect={() => setRemoving(grant)}
+        >
+          <Icon name="trash" />
+          Remove role
+        </DropdownMenuItem>
+      );
+    }
   };
 
   const hasRoles = membership.roles.length > 0;
