@@ -37,9 +37,9 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   }'
 ```
 
-An inline service has the same fields as an [HTTP API](/documentation/platform/agent-vault/http-apis) or an [MCP server](/documentation/platform/agent-vault/mcp-servers) in an access bundle, with these differences:
+An inline service has the same fields as an [HTTP API](/documentation/platform/agent-vault/http-apis), an [MCP server](/documentation/platform/agent-vault/mcp-servers), or a [database or SSH server](/documentation/platform/agent-vault/databases-and-ssh) in an access bundle, with these differences:
 
-- `name` is optional (without a name, the service goes by its first host on the **Sessions** page and in the [session logs](/documentation/platform/agent-vault/session-logs))
+- `name` is optional for HTTP APIs and MCP servers (without a name, the service goes by its first host on the **Sessions** page and in the [session logs](/documentation/platform/agent-vault/session-logs)), and required for a database or SSH server, since the agent connects to it by name
 - Credentials, custom header values, and substitution values can't use [variables](/documentation/platform/agent-vault/variables), so they can't contain text in double braces, such as `{{GITHUB_TOKEN}}`
 - An MCP server can't use [OAuth](/documentation/platform/agent-vault/mcp-servers#oauth), or limit the agent to some of its [tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools)
 - A credential can't use [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values)

@@ -198,12 +198,12 @@ A service represents one external system that an agent can reach, such as GitHub
 - **Custom headers**: Extra headers the proxy adds to each request
 - **Substitutions** (HTTP APIs): Placeholders the proxy replaces with real values
 
-Agent Vault supports two types of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis) and [MCP servers](/documentation/platform/agent-vault/mcp-servers).
+Agent Vault supports three kinds of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis), [MCP servers](/documentation/platform/agent-vault/mcp-servers), and [databases and SSH servers](/documentation/platform/agent-vault/databases-and-ssh).
 
 You don't give services to an agent directly. You add services to an access bundle, and a session gives the agent access to the services in its access bundle.
 
 <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
-  Anything an AI agent talks to during a session, such as an API or an MCP server.
+  Anything an AI agent talks to during a session, such as an API, an MCP server, a database, or an SSH server.
 </Card>
 
 ### Access bundles
