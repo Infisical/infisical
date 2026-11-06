@@ -19,6 +19,8 @@ export const demoSession: V4Session = {
     { id: "platform-core", name: "platform-core", type: ProjectType.SecretManager },
     { id: "kms-keys", name: "kms-keys", type: ProjectType.KMS },
     { id: "edge-signing", name: "edge-signing", type: ProjectType.KMS },
+    { id: "agent-platform", name: "agent-platform", type: ProjectType.AgentVault },
+    { id: "support-agents", name: "support-agents", type: ProjectType.AgentVault },
     { id: "secret-scanning", name: "secret-scanning", type: ProjectType.SecretScanning },
     { id: "internal-pki", name: "internal-pki", type: ProjectType.CertificateManager }
   ]

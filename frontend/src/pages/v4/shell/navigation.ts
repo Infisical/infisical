@@ -57,12 +57,14 @@ export const productHome = (product: ShellProduct) => {
   if (product.type === ProjectType.CertificateManager) return "/cert-manager/overview";
   if (product.type === ProjectType.SecretScanning) return "/secret-scanning/data-sources";
   if (product.type === ProjectType.PAM) return "/pam/accounts";
-  if (product.type === ProjectType.AgentVault) return "/agent-vault/sessions";
   return `/projects/${product.slug}`;
 };
 
 export const projectBase = (type: ProjectType, projectId: string) =>
   `/projects/${productOf(type).slug}/${projectId}`;
+
+export const projectHome = (type: ProjectType, projectId: string) =>
+  `${projectBase(type, projectId)}/${type === ProjectType.AgentVault ? "sessions" : "overview"}`;
 
 const access = (path: string): ShellNavItem => ({
   id: "access",
@@ -152,21 +154,21 @@ export const productSections = (product: ShellProduct): readonly ShellNavSection
         path: `${base}/product-settings`
       }
     );
-  } else {
-    if (product.type === ProjectType.KMS) {
-      items.push({
+  } else if (product.type === ProjectType.KMS) {
+    items.push(
+      {
         id: "kmip-servers",
         label: "KMIP servers",
         icon: "machine",
         path: `${base}/kmip-servers`
-      });
-    }
-    items.push({
-      id: "product-settings",
-      label: "Product settings",
-      icon: "settings",
-      path: `/projects/product-settings/${product.slug}`
-    });
+      },
+      {
+        id: "product-settings",
+        label: "Product settings",
+        icon: "settings",
+        path: `/projects/product-settings/${product.slug}`
+      }
+    );
   }
   return [{ items }];
 };
@@ -275,24 +277,23 @@ export const pamSections: readonly ShellNavSection[] = [
   { label: "Configure", items: [access(pam)] }
 ];
 
-const agentVault = "/agent-vault";
-export const agentVaultSections: readonly ShellNavSection[] = [
+export const agentVaultSections = (base: string): readonly ShellNavSection[] => [
   {
     items: [
-      { id: "sessions", label: "Sessions", icon: "user", path: `${agentVault}/sessions` },
+      { id: "sessions", label: "Sessions", icon: "user", path: `${base}/sessions` },
       {
         id: "access-bundles",
         label: "Access bundles",
         icon: "folder",
-        path: `${agentVault}/access-bundles`
+        path: `${base}/access-bundles`
       },
-      { id: "variables", label: "Variables", icon: "key", path: `${agentVault}/variables` },
-      { id: "skills", label: "Skills", icon: "file", path: `${agentVault}/skills` }
+      { id: "variables", label: "Variables", icon: "key", path: `${base}/variables` },
+      { id: "skills", label: "Skills", icon: "file", path: `${base}/skills` }
     ]
   },
   {
     label: "Infrastructure",
-    items: [{ id: "proxies", label: "Proxies", icon: "machine", path: `${agentVault}/proxies` }]
+    items: [{ id: "proxies", label: "Proxies", icon: "machine", path: `${base}/proxies` }]
   },
-  { label: "Administration", items: [access(agentVault), audit(agentVault), settings(agentVault)] }
+  { label: "Administration", items: [access(base), audit(base), settings(base)] }
 ];

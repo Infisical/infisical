@@ -24,6 +24,7 @@ import {
   products,
   productSections,
   projectBase,
+  projectHome,
   projectSections,
   scanningSections,
   settingsSections,
@@ -74,21 +75,27 @@ export const CommandPalette = ({
       );
     const projectSectionsOf = (type: ProjectType, id: string) => {
       const projectPath = projectBase(type, id);
+      if (type === ProjectType.AgentVault) return agentVaultSections(projectPath);
       return type === ProjectType.KMS ? kmsSections(projectPath) : projectSections(projectPath);
     };
     const productPages = (product: (typeof products)[number]) => {
       if (product.type === ProjectType.CertificateManager) return pkiSections;
       if (product.type === ProjectType.SecretScanning) return scanningSections;
       if (product.type === ProjectType.PAM) return pamSections;
-      if (product.type === ProjectType.AgentVault) return agentVaultSections;
-      if (product.type === ProjectType.SecretManager || product.type === ProjectType.KMS)
+      if (
+        product.type === ProjectType.SecretManager ||
+        product.type === ProjectType.KMS ||
+        product.type === ProjectType.AgentVault
+      )
         return productSections(product);
       return [];
     };
     const result: CommandMenuGroup[] = [];
     if (
       project &&
-      (project.type === ProjectType.SecretManager || project.type === ProjectType.KMS)
+      (project.type === ProjectType.SecretManager ||
+        project.type === ProjectType.KMS ||
+        project.type === ProjectType.AgentVault)
     ) {
       result.push({
         label: project.name,
@@ -125,7 +132,10 @@ export const CommandPalette = ({
       label: "Projects",
       items: session.projects
         .filter(
-          (entry) => entry.type === ProjectType.SecretManager || entry.type === ProjectType.KMS
+          (entry) =>
+            entry.type === ProjectType.SecretManager ||
+            entry.type === ProjectType.KMS ||
+            entry.type === ProjectType.AgentVault
         )
         .map((entry) => ({
           id: `project-entity:${entry.id}`,
@@ -133,7 +143,7 @@ export const CommandPalette = ({
           kind: "project" as const,
           mono: true,
           description: productOf(entry.type).label,
-          onSelect: () => go(`${projectBase(entry.type, entry.id)}/overview`)
+          onSelect: () => go(projectHome(entry.type, entry.id))
         })),
       searchOnly: true,
       limit: 8

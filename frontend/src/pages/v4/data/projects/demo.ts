@@ -102,7 +102,19 @@ const store = createFixtureStore<ProjectsState>({
       "Signing keys for edge workers",
       "2026-04-22T13:00:00Z"
     ),
-    project("hsm-vault", ProjectType.KMS, "HSM-backed root keys", "2025-09-08T07:40:00Z", "none")
+    project("hsm-vault", ProjectType.KMS, "HSM-backed root keys", "2025-09-08T07:40:00Z", "none"),
+    project(
+      "agent-platform",
+      ProjectType.AgentVault,
+      "Release, eval and engineering agents",
+      "2026-10-30T09:00:00Z"
+    ),
+    project(
+      "support-agents",
+      ProjectType.AgentVault,
+      "Agents that triage and hand off support tickets",
+      "2026-11-02T15:30:00Z"
+    )
   ],
   favorites: ["payments-api"],
   requests: new Map([["mobile-app", new Date("2026-11-02T17:12:00Z")]]),

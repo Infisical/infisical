@@ -19,6 +19,7 @@ import {
   productOf,
   productSections,
   projectBase,
+  projectHome,
   settingsSections,
   type ShellNavSection
 } from "./navigation";
@@ -116,12 +117,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       parent: "product",
       sections: toSidebar(at.level, at.sections)
     });
-  } else if (
-    at.level === "pki" ||
-    at.level === "scanning" ||
-    at.level === "pam" ||
-    at.level === "agent-vault"
-  ) {
+  } else if (at.level === "pki" || at.level === "scanning" || at.level === "pam") {
     levels.push({
       id: at.level,
       label: product?.label ?? at.level,
@@ -185,7 +181,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       ? {
           label: project?.name ?? at.projectId,
           mono: true,
-          href: resolve(`${base}${projectBase(product.type, at.projectId)}/overview`),
+          href: resolve(`${base}${projectHome(product.type, at.projectId)}`),
           switcher: {
             label: "Switch project",
             options: session.projects

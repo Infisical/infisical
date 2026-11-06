@@ -97,10 +97,12 @@ type Sort = { columnId: string; direction: "asc" | "desc" };
 
 const LIST_ONLY = "Disabled across All Project view.";
 
-const homeRoute = (type: ProjectType) =>
-  type === ProjectType.KMS
-    ? ("/v4/organizations/$orgId/projects/kms/$projectId/overview" as const)
-    : ("/v4/organizations/$orgId/projects/secret-management/$projectId/overview" as const);
+const homeRoute = (type: ProjectType) => {
+  if (type === ProjectType.KMS) return "/v4/organizations/$orgId/projects/kms/$projectId/overview";
+  if (type === ProjectType.AgentVault)
+    return "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions";
+  return "/v4/organizations/$orgId/projects/secret-management/$projectId/overview";
+};
 
 const sortBy = (sort: Sort) => sort.columnId as SearchProjectSortBy;
 const sortDirection = (sort: Sort) =>
@@ -277,13 +279,15 @@ const ProjectCard = ({
       action={favorite}
       footer={
         <Inline gap={16} justify="between">
-          <Inline gap={4} align="center">
-            <Icon icon={LayersIcon} size={14} />
-            <span>
-              <strong>{environmentCount}</strong>{" "}
-              {environmentCount === 1 ? "Environment" : "Environments"}
-            </span>
-          </Inline>
+          {project.type !== ProjectType.AgentVault && (
+            <Inline gap={4} align="center">
+              <Icon icon={LayersIcon} size={14} />
+              <span>
+                <strong>{environmentCount}</strong>{" "}
+                {environmentCount === 1 ? "Environment" : "Environments"}
+              </span>
+            </Inline>
+          )}
           <span>
             Created <strong>{created(project)}</strong>
           </span>
@@ -1148,7 +1152,11 @@ export const ProjectTypePage = () => {
   const projectType = urlSlugToProjectType(type);
   if (!projectType)
     return <Navigate replace to="/v4/organizations/$orgId/projects" params={{ orgId }} />;
-  if (projectType !== ProjectType.SecretManager && projectType !== ProjectType.KMS)
+  if (
+    projectType !== ProjectType.SecretManager &&
+    projectType !== ProjectType.KMS &&
+    projectType !== ProjectType.AgentVault
+  )
     return (
       <Navigate
         replace

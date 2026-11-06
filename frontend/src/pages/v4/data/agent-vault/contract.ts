@@ -15,16 +15,17 @@ export type TAgentVaultAccessBundleList = NonNullable<
 >;
 
 export type AgentVaultAdapter = {
-  useProjectId: (orgId: string) => V4QueryResult<string>;
   useProjectPermission: (
     dto: TGetUserProjectPermissionDTO
   ) => V4QueryResult<{ memberships: { roles: { role: string }[] }[] }>;
   useSessions: (
     orgId: string,
+    projectId: string,
     params: TListAgentVaultSessionsDTO
   ) => V4QueryResult<TAgentVaultSessionList>;
   useAccessBundles: (
     orgId: string,
+    projectId: string,
     params: TListAgentVaultAccessBundlesDTO
   ) => V4QueryResult<TAgentVaultAccessBundleList>;
 };

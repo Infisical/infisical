@@ -3,7 +3,7 @@ import type { VirtualRouteNode } from "@tanstack/virtual-file-routes";
 import { routes } from "../src/routes";
 
 const productRoute =
-  /^\/organizations\/\$orgId\/(projects\/(\$type|secret-management|cert-manager|kms|secret-scanning|pam|agent-vault|product-settings)|secret-manager|cert-manager|kms|secret-scanning|pam|agent-vault)(\/|$)/;
+  /^\/organizations\/\$orgId\/(projects\/(\$type|secret-management|cert-manager|kms|secret-scanning|pam|agent-vault|product-settings)|secret-manager|cert-manager|kms|secret-scanning|pam)(\/|$)/;
 
 const leaves = (nodes: VirtualRouteNode[] = [], prefix = ""): string[] =>
   nodes.flatMap((node) => {
