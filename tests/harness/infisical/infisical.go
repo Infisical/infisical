@@ -111,8 +111,13 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		// https although the server listens on plain http: nothing dials SITE_URL, and a
 		// delegated approval system refuses a callback URL that is not https.
 		"SITE_URL": fmt.Sprintf("https://%s:%d", self, port),
-		// The release images ship a separate OpenSSL for ML-DSA under /opt/openssl-pqc;
-		// backend/Dockerfile does not, and its system OpenSSL already has ML-DSA.
+		// The backend signs with ML-DSA, the post-quantum algorithm KMS keys offer, by running
+		// an `openssl` binary: PQC_OPENSSL_BIN_PATH, else /opt/openssl-pqc/bin/openssl. The
+		// release images (Dockerfile.standalone-infisical, the FIPS image) build an OpenSSL
+		// 3.5 into that path; backend/Dockerfile, which the harness builds, does not, so every
+		// ML-DSA call would fail with a 500. The image's own Debian OpenSSL is also 3.5 and
+		// supports ML-DSA, so the suites run the same backend code against that build instead
+		// of the release's.
 		"PQC_OPENSSL_BIN_PATH": "/usr/bin/openssl",
 	}
 	if m.runModes != "" {
