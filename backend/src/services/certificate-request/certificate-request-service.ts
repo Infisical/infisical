@@ -74,7 +74,7 @@ const subjectAlternativeNameSchema = z.object({
   value: z.string().max(500)
 });
 
-const certificateRequestDataSchema = z
+export const certificateRequestDataSchema = z
   .object({
     profileId: z.string().guid().optional(),
     applicationId: z.string().guid().optional(),
