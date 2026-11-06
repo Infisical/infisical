@@ -4696,6 +4696,11 @@ export const AGENT_VAULT = {
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
+    description:
+      "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it.",
+    updateDescription:
+      "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it. Send null or an empty string to remove it.",
+    descriptionRead: "What the service is for, or null if it has no description. Agents in a session can read it.",
     type: "The service type: `http` for an HTTP API, or `mcp` for a remote MCP server. Can't be changed after the service is created.",
     updateType: "The service's type, `http` or `mcp`. Must match the type the service was created with.",
     serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
@@ -4892,7 +4897,13 @@ export const AGENT_VAULT = {
     offset: "How many skills to skip.",
     totalCount: "How many skills match the filters, across every page.",
     sessionSkills:
-      "The latest version of each skill on the session's access bundles that the session's owner can still reach, ordered by name."
+      "The latest version of each skill on the session's access bundles that the session's owner can still reach, plus the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name.",
+    includeBuiltin:
+      "Whether to include infisical-agent-vault, the built-in skill that tells an agent how to work behind the Agent Vault proxy. Defaults to true.",
+    isBuiltin:
+      "Whether this is the built-in infisical-agent-vault skill, which Agent Vault provides, rather than a skill from the library.",
+    builtinName: "The name of the built-in skill, `infisical-agent-vault`. A skill in the library can't use this name.",
+    builtinDescription: "What the built-in skill is for, taken from the `description` in its SKILL.md."
   },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",
@@ -5100,6 +5111,24 @@ export const AGENT_VAULT = {
       "The user the machine identity in actor started this session on behalf of, or null when the session is the actor's own.",
     onBehalfOfType: "Always user: a machine identity starts sessions only on behalf of users.",
     onBehalfOfUserIdRead: "The ID of the user, or null once the user is deleted."
+  },
+  SESSION_SERVICES: {
+    agentVault:
+      "The proxy the request came through: its name, its Infisical CLI version, and its traffic policy. Each is null when the request didn't come through a proxy in the session's project.",
+    trafficPolicy:
+      "any-host if the proxy forwards requests to hosts no service covers, service-hosts if it refuses them.",
+    session: "The session's label, its expiry as an RFC 3339 time, and the name of its access bundle.",
+    services: "The services the session can use, bundle services first, then the session's own.",
+    hosts: "The host patterns the service covers, as an admin wrote them.",
+    url: "The URL to call: an MCP server's URL, or for an HTTP service with exactly one host that isn't a wildcard, that host's URL.",
+    status:
+      "ready, or needs-personal-values if the session's owner hasn't set every personal value the service needs. The proxy refuses requests to the service until they do.",
+    credential:
+      "What the proxy adds to each request: its type, the header it sets, and whether it adds one at all. Never the credential itself.",
+    customHeaders: "The names of the headers the proxy adds. Never their values.",
+    placeholders: "Text the agent writes where a secret goes, and the parts of a request the proxy replaces it in.",
+    howToUse: "One paragraph that tells an agent how to call the service.",
+    notes: "Facts about working behind the proxy that apply to every service."
   },
   DELEGATION: {
     machineIdentityId: "The ID of the machine identity the delegation belongs to.",

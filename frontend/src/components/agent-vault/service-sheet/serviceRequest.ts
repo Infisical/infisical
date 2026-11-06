@@ -161,32 +161,39 @@ const buildMcpFields = (data: TServiceForm) => ({
 export const buildCreateServiceRequest = (
   accessBundleId: string,
   data: TServiceForm
-): TCreateAgentVaultServiceDTO =>
-  data.serviceType === AgentVaultServiceType.Mcp
+): TCreateAgentVaultServiceDTO => {
+  const description = data.description.trim() || undefined;
+  return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
+        description,
         credential: buildMcpCredential(data)
       }
     : {
         accessBundleId,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
+        description,
         credential: buildHttpCredential(data)
       };
+};
 
 export const buildUpdateServiceRequest = (
   accessBundleId: string,
   serviceId: string,
   data: TServiceForm
-): TUpdateAgentVaultServiceDTO =>
-  data.serviceType === AgentVaultServiceType.Mcp
+): TUpdateAgentVaultServiceDTO => {
+  // Null rather than left out, so clearing the field removes the saved description.
+  const description = data.description.trim() || null;
+  return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         serviceId,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
+        description,
         ...withCredential(buildMcpCredentialPatch(data))
       }
     : {
@@ -194,8 +201,10 @@ export const buildUpdateServiceRequest = (
         serviceId,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
+        description,
         credential: buildHttpCredentialPatch(data)
       };
+};
 
 // The credential and headers go as an update sends them, so on edit a value left untouched falls back to
 // the saved service's.

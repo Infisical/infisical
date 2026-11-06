@@ -5,8 +5,10 @@ import {
   CircleHelpIcon,
   CircleXIcon,
   KeyIcon,
+  ListIcon,
   type LucideIcon,
   PlusIcon,
+  SendIcon,
   ServerIcon,
   ShieldBanIcon
 } from "lucide-react";
@@ -70,6 +72,18 @@ export const DECISION_PRESENTATION: Record<
     variant: "danger",
     icon: CircleXIcon,
     iconClassName: "text-danger"
+  },
+  [AgentVaultSessionLogDecision.Discovery]: {
+    label: "Listed Services",
+    variant: "neutral",
+    icon: ListIcon,
+    iconClassName: "text-neutral"
+  },
+  [AgentVaultSessionLogDecision.Infisical]: {
+    label: "Sent to Infisical",
+    variant: "neutral",
+    icon: SendIcon,
+    iconClassName: "text-neutral"
   }
 };
 
@@ -86,13 +100,23 @@ const statusTone = (status: number) => {
   return "text-foreground";
 };
 
-// Agent Vault answers Blocked and Error requests itself, so their status is its own reply, not the
-// upstream's.
+// Agent Vault answers Blocked and Error requests itself, and sends Discovery and Infisical requests to Infisical for the
+// session, so none of their statuses come from the host the request named.
 const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Blocked ||
-  decision === AgentVaultSessionLogDecision.Error;
+  decision === AgentVaultSessionLogDecision.Error ||
+  decision === AgentVaultSessionLogDecision.Discovery ||
+  decision === AgentVaultSessionLogDecision.Infisical;
 
 const proxyAnswerDescription = (record: TAgentVaultSessionLogRecord) => {
+  if (record.decision === AgentVaultSessionLogDecision.Discovery) {
+    return record.status === 200
+      ? "The agent asked Agent Vault which services this session can use, and Agent Vault listed them"
+      : `The agent asked Agent Vault which services this session can use, and Agent Vault returned ${httpStatusLabel(record.status)}`;
+  }
+  if (record.decision === AgentVaultSessionLogDecision.Infisical) {
+    return `Agent Vault sent this request to Infisical for the session, and Infisical returned ${httpStatusLabel(record.status)}`;
+  }
   const answer = `Agent Vault returned ${httpStatusLabel(record.status)}`;
   return record.decision === AgentVaultSessionLogDecision.Blocked
     ? `${answer} without sending this request to ${record.host}`

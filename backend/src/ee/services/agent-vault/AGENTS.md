@@ -156,11 +156,23 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
 - **Sessions are never deleted while the project exists**, so the Sessions page is a full history and a session's
   row keeps the key its logs need. Deleting the project deletes its sessions (`ON DELETE CASCADE`).
-- Anyone with a session token can download its skills from Infisical with only the token (`GET /session/skills`).
+- Anyone with a session token can read its skills and its services list with only the token, from Infisical
+  (`GET /session/skills`, `GET /session/services`) or through any proxy at the reserved name (see [The CLI](#the-cli)).
 - `POST /session/revoke` revokes the session its `Authorization: Bearer agv_...` token names, so an agent holding
   its token can end its own session. Like `/session/skills`, `inject-identity` skips it and it takes no other
   credential. An unknown token is a 401; an already revoked or expired session is a 200, so it is idempotent. It
   writes through `revokeIfActive`, skips the owner-reach check, and is audited with the session owner as actor.
+- **The agent reads the services list word for word.** `GET /session/services`
+  (`agent-vault-session-services-fns.ts`) builds it from the rows resolve reads, without decrypting anything: the
+  session's label and expiry, and each service's name, description, hosts, rules and placeholders, never a credential
+  or a value. A service's description is written for that, so it also refuses invisible characters
+  (`AgentVaultServiceDescriptionSchema`). Its wording (`howToUse`, the notes) was measured with agents together with the
+  built-in skill, so change the two together and measure again. A forwarding proxy names itself
+  (`X-Agent-Vault-Proxy-Id`, `X-Agent-Vault-Proxy-Version`); a proxy in the session's project adds its traffic policy,
+  and anything else (no id, a malformed one, another project's) only leaves the policy out. Not audited, like resolve.
+- **A session token the replica doesn't have yet is looked up again on the primary** (`$findSessionByToken`, used by
+  resolve, skills and services), so a session minted a moment ago isn't refused while the replica catches up. A proxy
+  remembers a refusal for 5 seconds, so a refused first request would also refuse the agent's first requests.
 
 ## Sessions on behalf of users
 
@@ -580,8 +592,8 @@ an installed copy.
   audit event (data-access class). So does `GET /skills/:skillId`, which returns the latest version's files with the
   skill (for that version); the list routes return no files and write none.
 - **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
-  intersection as the services), sorted by name, read from the primary. The proxy is not involved: the CLI calls it
-  with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
+  intersection as the services), sorted by name, read from the primary. The CLI calls it through the proxy's reserved
+  name, or directly behind an older proxy, with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
   parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
   and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
   proxy. A call that returns at least one skill writes one `agent-vault-skills-delivered` audit event
@@ -589,6 +601,18 @@ an installed copy.
   actor (a user named as they are now, or from the session's snapshot if they are gone) and the session's access
   bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
   count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
+- **`GET /session/skills` also returns the built-in `infisical-agent-vault` skill** (`isBuiltin: true`, left out with
+  `includeBuiltin=false`), so an orchestrator that installs skills without `agent-vault run` gets it too. Its file
+  is `agent-vault-skill/builtin-skill/SKILL.md`, read beside its loader at runtime (a dedicated `tsdown` copy rule
+  ships it to `dist`), with a fixed id and version 1. It is not audited or counted: it holds no project data, and
+  every session start would record it. Infisical holds the only copy; the CLI and the proxy keep none. The name is
+  reserved: create and update refuse it (`assertSkillNameNotReserved`), and a library skill created under it before
+  the reservation is replaced by the built-in in the response.
+- **`GET /skills/builtin` serves the built-in skill to the dashboard** (`getBuiltinSkill`): skill `Read` without the
+  bundle reachability filter, since every agent gets it whatever its bundle, not audited, and no `version` in the
+  response. The frontend pins it above the library on the Skills page and in each bundle's Skills card, and
+  `SkillSheet` opens a read-only body for it by its fixed id (`AGENT_VAULT_BUILTIN_SKILL_ID`, which has to match
+  `AGENT_VAULT_BUILTIN_SKILL_ID` here).
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
   (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
@@ -764,6 +788,39 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 
 ## The CLI
 
+- **The proxy answers the reserved name `agent-vault.invalid`** for the session a request arrives on, through whichever
+  door the agent already uses (CONNECT, plain HTTP, SOCKS5). It forwards a fixed list of Infisical session paths to
+  its own `--domain`: the services list (at `/services`, `/` and the full API path) and
+  `/api/v1/agent-vault/session/skills`. It sets the session's own token as the Bearer token, whatever the client sent,
+  so the name reaches nothing else in Infisical and a token handed to an agent can't act as another session. `.invalid`
+  never resolves, so the proxy can't shadow a real host, and outside a proxy the request fails at DNS. For a
+  well-formed token the CONNECT for the name opens before the session check (`reservedNameDefersGate`), and the
+  session is checked inside, so a refused session reads as JSON with its hint over TLS rather than a CONNECT failure
+  curl can't show. SOCKS5 checks the session at login, before it knows the target, so it can't defer. At most 8 such
+  requests run at once and the rest queue inside a 25s budget. Infisical's answer passes through unchanged; the
+  proxy's own refusals (`busy`, `infisical_unreachable`, `not_found`, `method_not_allowed`, the session refusals) are
+  JSON with a code and a hint. The proxy's port has no session endpoints, only `/_agent-vault/ca`.
+- **Every forwarded or refused response carries `X-Agent-Vault-Decision`** (and `X-Agent-Vault-Service` when a
+  service matched), set after the upstream's headers so an upstream can't forge them. The proxy's own errors are
+  JSON with an `error` code and a `hint`; `message` keeps the text the proxy always sent.
+- **`agent-vault run` gets skills through the reserved name**, over TLS with the CA it just verified, so nothing
+  between the host and the proxy can change a skill. A proxy that forwards these requests marks every answer with
+  `X-Agent-Vault-Decision`, a refused CONNECT included. An unmarked answer (an older proxy refusing the tunnel, or
+  failing to reach the name upstream) sends the CLI to Infisical directly, and if that fails too, the warning names
+  the proxy as too old. Infisical's skills audit event records the proxy's IP, not the agent host's. The CLI reads
+  the proxy's own `busy` and `infisical_unreachable` answers as the proxy's (`agentvault.IsInfisicalForwardRefusal`),
+  and its `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`).
+- **The built-in `infisical-agent-vault` skill** comes with the other skills unless `--no-agent-vault-skill` (sent as
+  `includeBuiltin=false`) or `--no-skills`. It decides whether it applies by probing
+  `https://agent-vault.invalid/services`, never by reading an environment variable: installed skills outlive the
+  run, a sandbox started without `agent-vault run` sets none, and Claude Code 2.1.72 blanks `$VAR` in any piped shell
+  command. Only a failed name lookup means "not behind Agent Vault". Agents follow its wording closely: a gate line
+  ending "Tell the user." made them ask before acting on unrelated tasks, and one pointing at `SSL_CERT_FILE` sent them
+  to print their environment, proxy URL and session token included. Rerun the eval after any change to it.
+- **Reserved-name requests go in the session log**, host `agent-vault.invalid` and no service: the services list
+  with decision `discovery` (**Listed Services**), the other forwarded requests with `infisical` (**Sent to
+  Infisical**), and a refused path with `blocked`. The frontend never offers Add Service for that host; an older
+  frontend shows a raw value with its fallback badge.
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
   pin checked before anything is written. Re-enrolling a proxy replaces its CA, so pins, mounted copies,
   keychain entries and any agent already running through it break until updated or restarted.

@@ -20,6 +20,7 @@ const SERVER_URL = "https://mcp.linear.app/mcp";
 const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   serviceType: AgentVaultServiceType.Http,
   name: "stripe",
+  description: "",
   serverUrl: "",
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: ["api.stripe.com"],
@@ -98,6 +99,21 @@ describe("buildCreateServiceRequest", () => {
   it("sends null for every method and no path prefixes", () => {
     const request = buildCreateServiceRequest("bundle-1", form());
     expect(request).toMatchObject({ allowedMethods: null, allowedPathPrefixes: null });
+  });
+
+  it("sends a trimmed description for either type, and leaves a blank one out", () => {
+    expect(
+      buildCreateServiceRequest("bundle-1", form({ description: " Payments, read only " }))
+    ).toMatchObject({ description: "Payments, read only" });
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ description: "Issues for the platform team" })
+      )
+    ).toMatchObject({ description: "Issues for the platform team" });
+    expect(buildCreateServiceRequest("bundle-1", form({ description: "  " })).description).toBe(
+      undefined
+    );
   });
 
   it("builds basic and pass-through credentials", () => {
@@ -214,6 +230,7 @@ describe("buildUpdateServiceRequest", () => {
       serviceId: "service-1",
       type: AgentVaultServiceType.Http,
       name: "stripe",
+      description: null,
       hostPattern: "api.stripe.com",
       allowedMethods: null,
       allowedPathPrefixes: null,
@@ -266,6 +283,7 @@ describe("buildUpdateServiceRequest", () => {
       serviceId: "service-1",
       type: AgentVaultServiceType.Mcp,
       name: "linear-mcp",
+      description: null,
       serverUrl: SERVER_URL,
       transport: AgentVaultMcpTransport.StreamableHttp,
       allowedTools: null,
@@ -305,6 +323,15 @@ describe("buildUpdateServiceRequest", () => {
         form({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
       )
     ).not.toHaveProperty("allowedTools");
+  });
+
+  it("sends a trimmed description, and null to remove it once the field is cleared", () => {
+    expect(
+      buildUpdateServiceRequest("bundle-1", "service-1", form({ description: " Payments " }))
+    ).toMatchObject({ description: "Payments" });
+    expect(
+      buildUpdateServiceRequest("bundle-1", "service-1", mcpForm({ description: "  " }))
+    ).toMatchObject({ description: null });
   });
 
   it("never sends a header name or prefix for OAuth", () => {

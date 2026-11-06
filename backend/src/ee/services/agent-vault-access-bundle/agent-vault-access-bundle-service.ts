@@ -448,6 +448,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       id: service.id,
       accessBundleId: service.accessBundleId,
       name: service.name,
+      description: service.description ?? null,
       type: service.type as AgentVaultServiceType,
       // Flat, like the create and update bodies, so a client can send back what it read (all but the credential, whose
       // secret is never returned). Null for an http service.
@@ -966,6 +967,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     accessBundleId,
     type,
     name,
+    description,
     hostPattern: requestedHostPattern,
     serverUrl,
     transport,
@@ -1074,6 +1076,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           {
             accessBundleId: bundle.id,
             name,
+            description: description ?? null,
             type: serviceType.type,
             config: serviceConfig,
             hostPattern,
@@ -1164,6 +1167,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     serviceId,
     type,
     name,
+    description,
     credential,
     customHeaders,
     hostPattern: sentHostPattern,
@@ -1206,7 +1210,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
     // The schema's check sees the read-back fields too, so a request holding only those reaches here with nothing to
     // change.
-    if ([name, credential, customHeaders, ...Object.values(sentFields)].every((value) => value === undefined)) {
+    if (
+      [name, description, credential, customHeaders, ...Object.values(sentFields)].every((value) => value === undefined)
+    ) {
       throw new BadRequestError({ message: "Provide at least one field besides 'type' to update" });
     }
     const {
@@ -1497,6 +1503,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
         const hasColumnUpdate =
           name !== undefined ||
+          description !== undefined ||
           reconciled.hostPattern !== undefined ||
           reconciled.serviceConfig !== undefined ||
           allowedMethods !== undefined ||
@@ -1511,6 +1518,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
                 name,
                 hostPattern: reconciled.hostPattern,
                 ...(reconciled.serviceConfig === undefined ? {} : { config: reconciled.serviceConfig }),
+                ...(description === undefined ? {} : { description }),
                 // `null` clears the restriction, `undefined` leaves the column alone.
                 ...(allowedMethods === undefined ? {} : { allowedMethods }),
                 ...(allowedPathPrefixes === undefined ? {} : { allowedPathPrefixes }),

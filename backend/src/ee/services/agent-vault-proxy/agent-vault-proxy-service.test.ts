@@ -33,6 +33,7 @@ const SERVER_URL = "https://mcp.linear.app/mcp";
 const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServiceRow => ({
   id: SERVICE_ID,
   name: "linear",
+  description: null,
   accessBundleName: "bundle",
   type: AgentVaultServiceType.Mcp,
   hostPattern: "mcp.linear.app",
@@ -67,8 +68,21 @@ const setup = (
   variables: { id: string; encryptedValue: Buffer }[] = [],
   {
     inlineRows = [],
-    isOwnerAdmin = true
-  }: { inlineRows?: TAgentVaultSessionInlineServices[]; isOwnerAdmin?: boolean } = {}
+    isOwnerAdmin = true,
+    label = null,
+    proxy = {
+      projectId: PROJECT_ID,
+      orgId: "org-1",
+      pollInterval: 60,
+      name: "prod-proxy",
+      trafficPolicy: "bundle-hosts"
+    }
+  }: {
+    inlineRows?: TAgentVaultSessionInlineServices[];
+    isOwnerAdmin?: boolean;
+    label?: string | null;
+    proxy?: { projectId: string; orgId: string; pollInterval: number; name: string; trafficPolicy: string };
+  } = {}
 ) => {
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
@@ -78,7 +92,7 @@ const setup = (
   );
   const service = agentVaultProxyServiceFactory({
     agentVaultProxyDAL: {
-      findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
+      findByIdWithOrg: async () => proxy
     } as never,
     agentVaultResolveDAL: { findResolvableServices: async () => rows, findSessionSkills: async () => [] },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -87,7 +101,7 @@ const setup = (
     agentVaultPersonalValueDAL: { findForResolve: async () => [] },
     agentVaultSessionDAL: {
       findByTokenHash: async () =>
-        ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null }) as never
+        ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null, label }) as never
     } as never,
     agentVaultSessionInlineServiceDAL: {
       findBySessionId: findInlineServices,
@@ -316,6 +330,55 @@ describe("resolve's lazy refresh", () => {
       source: "oauth",
       expiresAt: null
     });
+  });
+});
+
+describe("the services list a session's agent reads", () => {
+  const noRefresh = async () => {
+    throw new Error("listing services never refreshes a token");
+  };
+
+  test("describes the services, and the proxy that asked when it is in the session's project", async () => {
+    const { service, createCipherPairWithDataKey } = setup(noRefresh, [serviceRow({ description: "Issues" })], [], {
+      label: "nightly triage"
+    });
+    const listed = await service.getSessionServices({
+      sessionToken: "token",
+      proxyId: "proxy-1",
+      proxyVersion: "0.44.0"
+    });
+
+    expect(listed.agentVault).toEqual({ proxy: "prod-proxy", version: "0.44.0", trafficPolicy: "service-hosts" });
+    expect(listed.session).toEqual({ label: "nightly triage", expiresAt: null, accessBundle: "bundle" });
+    expect(listed.services).toMatchObject([
+      {
+        name: "linear",
+        description: "Issues",
+        type: "mcp",
+        url: SERVER_URL,
+        transport: "streamable-http",
+        credential: { type: "oauth", header: "Authorization", addedByProxy: true }
+      }
+    ]);
+    // Nothing in the list is ever sealed, so building it never derives a key.
+    expect(createCipherPairWithDataKey).not.toHaveBeenCalled();
+  });
+
+  test("leaves the proxy out when it belongs to another project, or none named itself", async () => {
+    const elsewhere = setup(noRefresh, [serviceRow()], [], {
+      proxy: { projectId: "other-project", orgId: "org-1", pollInterval: 60, name: "theirs", trafficPolicy: "any-host" }
+    });
+    const named = await elsewhere.service.getSessionServices({ sessionToken: "token", proxyId: "proxy-2" });
+    expect(named.agentVault).toEqual({ proxy: null, version: null, trafficPolicy: null });
+
+    const direct = await setup(noRefresh, [serviceRow()]).service.getSessionServices({ sessionToken: "token" });
+    expect(direct.agentVault).toEqual({ proxy: null, version: null, trafficPolicy: null });
+  });
+
+  test("lists inline services only while the session's owner is an admin", async () => {
+    const owner = setup(noRefresh, [], [], { isOwnerAdmin: false });
+    await owner.service.getSessionServices({ sessionToken: "token" });
+    expect(owner.findInlineServices).not.toHaveBeenCalled();
   });
 });
 

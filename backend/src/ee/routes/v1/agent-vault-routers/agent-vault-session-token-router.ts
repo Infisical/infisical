@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { TAgentVaultSessions } from "@app/db/schemas";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
+import { getAgentVaultBuiltinSkill } from "@app/ee/services/agent-vault-skill/agent-vault-builtin-skill";
+import { AgentVaultServiceType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType, IdentityActor, UserActor, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -33,8 +35,44 @@ const SessionSkillSchema = z.object({
   name: z.string().describe(AGENT_VAULT.SKILL.name),
   version: z.number().describe(AGENT_VAULT.SKILL.version),
   sha256: z.string().describe(AGENT_VAULT.SKILL.sha256),
-  files: AgentVaultSkillFilesResponseSchema
+  files: AgentVaultSkillFilesResponseSchema,
+  isBuiltin: z.boolean().describe(AGENT_VAULT.SKILL.isBuiltin)
 });
+
+const SessionServiceSchema = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+  type: z.nativeEnum(AgentVaultServiceType),
+  hosts: z.string().array().describe(AGENT_VAULT.SESSION_SERVICES.hosts),
+  url: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.url),
+  transport: z.string().optional(),
+  status: z.enum(["ready", "needs-personal-values"]).describe(AGENT_VAULT.SESSION_SERVICES.status),
+  credential: z
+    .object({
+      type: z.enum(["bearer", "oauth", "basic", "none"]),
+      header: z.string().optional(),
+      addedByProxy: z.boolean()
+    })
+    .describe(AGENT_VAULT.SESSION_SERVICES.credential),
+  customHeaders: z.string().array().describe(AGENT_VAULT.SESSION_SERVICES.customHeaders),
+  placeholders: z
+    .object({ placeholder: z.string(), surfaces: z.string().array() })
+    .array()
+    .describe(AGENT_VAULT.SESSION_SERVICES.placeholders),
+  allowedMethods: z.string().array().nullable(),
+  allowedPathPrefixes: z.string().array().nullable(),
+  allowedTools: z.string().array().nullable(),
+  howToUse: z.string().describe(AGENT_VAULT.SESSION_SERVICES.howToUse)
+});
+
+// Optional and never refused: a value that isn't a proxy ID or a short version only leaves the traffic policy out.
+const ProxyIdHeaderSchema = z.string().uuid();
+const ProxyVersionHeaderSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[\x21-\x7e]+$/);
 
 const sessionOwnerActor = (
   session: TAgentVaultSessions,
@@ -52,11 +90,18 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
     url: "/skills",
     config: { rateLimit: readLimit },
     schema: {
-      hide: true,
+      hide: false,
       operationId: "listAgentVaultSessionSkills",
       description:
-        "Get the latest files of every skill on the calling session's access bundles, ordered by name. Authenticate with the session token as `Authorization: Bearer agv_...`. Called once when an agent starts.",
+        "Get the files of every skill an agent in a session should have: the latest version of each skill on the session's access bundle, and the built-in infisical-agent-vault skill, ordered by name. Authenticate with the session token as `Authorization: Bearer agv_...`. Use it to install skills where an agent runs without `infisical agent-vault run`, such as in a sandbox you create from code.",
       tags: [ApiDocsTags.AgentVaultSkills],
+      querystring: z.object({
+        includeBuiltin: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .default("true")
+          .describe(AGENT_VAULT.SKILL.includeBuiltin)
+      }),
       response: {
         200: z.object({
           skills: SessionSkillSchema.array().describe(AGENT_VAULT.SKILL.sessionSkills)
@@ -71,10 +116,19 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
         });
       }
 
-      const { skills, session, ownerUser, onBehalfOfUser, orgId } =
-        await server.services.agentVaultProxy.getSessionSkills({
-          sessionToken: authorization.data
-        });
+      const {
+        skills: reachableSkills,
+        session,
+        ownerUser,
+        onBehalfOfUser,
+        orgId
+      } = await server.services.agentVaultProxy.getSessionSkills({
+        sessionToken: authorization.data
+      });
+      const builtin = req.query.includeBuiltin ? await getAgentVaultBuiltinSkill() : null;
+      // The built-in skill is delivered in place of a library skill created under its name before it was reserved.
+      // It isn't audited or counted below: it holds no project data, and every session would otherwise record it.
+      const skills = builtin ? reachableSkills.filter((skill) => skill.name !== builtin.name) : reachableSkills;
 
       const actor = sessionOwnerActor(session, ownerUser);
       if (skills.length > 0) {
@@ -122,14 +176,78 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
           .catch(() => {});
       }
 
-      return {
-        skills: skills.map(({ id, name, version, sha256, files }) => ({ id, name, version, sha256, files }))
-      };
+      const delivered = skills.map(({ id, name, version, sha256, files }) => ({
+        id,
+        name,
+        version,
+        sha256,
+        files,
+        isBuiltin: false
+      }));
+      if (builtin) {
+        const { id, name, version, sha256, files } = builtin;
+        delivered.push({ id, name, version, sha256, files, isBuiltin: true });
+      }
+      return { skills: delivered.sort((a, b) => Buffer.compare(Buffer.from(a.name), Buffer.from(b.name))) };
     }
   });
 
   // Ends the session the token belongs to, like Vault's token revoke. The same token-only auth as /skills, so a
   // script that minted a session can end it without keeping its id.
+  // Authenticated by the session token alone, like the skills above. A proxy forwards an agent's request here with the
+  // session's own token and names itself, so the list can say how that proxy treats hosts no service covers.
+  server.route({
+    method: "GET",
+    url: "/services",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAgentVaultSessionServices",
+      description:
+        "List the services a session can use: what each one is for, the hosts or server it covers, what the proxy adds to requests, what it allows, and how an agent calls it. Never a credential or a value the proxy fills in. Authenticate with the session token as `Authorization: Bearer agv_...`. An agent behind the proxy reaches this list at `https://agent-vault.invalid/services`.",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      response: {
+        200: z.object({
+          agentVault: z
+            .object({
+              proxy: z.string().nullable(),
+              version: z.string().nullable(),
+              trafficPolicy: z
+                .enum(["any-host", "service-hosts"])
+                .nullable()
+                .describe(AGENT_VAULT.SESSION_SERVICES.trafficPolicy)
+            })
+            .describe(AGENT_VAULT.SESSION_SERVICES.agentVault),
+          session: z
+            .object({
+              label: z.string().nullable(),
+              expiresAt: z.string().nullable(),
+              accessBundle: z.string().nullable()
+            })
+            .describe(AGENT_VAULT.SESSION_SERVICES.session),
+          services: SessionServiceSchema.array().describe(AGENT_VAULT.SESSION_SERVICES.services),
+          notes: z.string().array().describe(AGENT_VAULT.SESSION_SERVICES.notes)
+        })
+      }
+    },
+    handler: async (req) => {
+      const authorization = SessionTokenAuthorizationSchema.safeParse(req.headers.authorization);
+      if (!authorization.success) {
+        throw new UnauthorizedError({
+          message: "Send an Agent Vault session token in the Authorization header, as 'Bearer agv_...'."
+        });
+      }
+
+      const proxyId = ProxyIdHeaderSchema.safeParse(req.headers["x-agent-vault-proxy-id"]);
+      const proxyVersion = ProxyVersionHeaderSchema.safeParse(req.headers["x-agent-vault-proxy-version"]);
+      return server.services.agentVaultProxy.getSessionServices({
+        sessionToken: authorization.data,
+        proxyId: proxyId.success ? proxyId.data : undefined,
+        proxyVersion: proxyVersion.success ? proxyVersion.data : undefined
+      });
+    }
+  });
+
   server.route({
     method: "POST",
     url: "/revoke",

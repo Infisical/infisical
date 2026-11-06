@@ -36,6 +36,7 @@ import {
 import { useOrganization, useProjectPermission, useProject } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
+  AGENT_VAULT_RESERVED_HOST,
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   AgentVaultSessionLogDecision,
   AgentVaultSessionLogStorageType,
@@ -705,6 +706,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
               const isAddable =
                 canAddService &&
                 !record.service &&
+                record.host !== AGENT_VAULT_RESERVED_HOST &&
                 (record.decision === AgentVaultSessionLogDecision.Blocked ||
                   record.decision === AgentVaultSessionLogDecision.Passthrough) &&
                 !addedHosts.has(hostPatternFor(record));

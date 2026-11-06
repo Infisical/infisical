@@ -54,6 +54,7 @@ import {
 } from "@app/helpers/agentVaultSkills";
 import { useDiscardChangesGuard } from "@app/hooks";
 import {
+  AGENT_VAULT_BUILTIN_SKILL_ID,
   agentVaultKeys,
   SkillVersionConflictError,
   useGetAgentVaultSkill,
@@ -64,6 +65,7 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
+import { BuiltinSkillSheetBody } from "./BuiltinSkillSheetBody";
 import { DeleteSkillDialog } from "./DeleteSkillDialog";
 import { downloadSkillVersion } from "./downloadSkillVersion";
 import { RollBackSkillAlertDialog } from "./RollBackSkillAlertDialog";
@@ -565,6 +567,9 @@ export const SkillSheet = () => {
 
   const updateSkill = useUpdateAgentVaultSkill(projectId);
   const requestCloseRef = useRef<() => void>(closeSheet);
+  const isBuiltin = shownSkillId === AGENT_VAULT_BUILTIN_SKILL_ID;
+  // The built-in skill can't be edited, so nothing guards its close.
+  if (isBuiltin) requestCloseRef.current = closeSheet;
 
   return (
     <Sheet open={Boolean(skillId)} onOpenChange={(open) => !open && requestCloseRef.current()}>
@@ -575,15 +580,19 @@ export const SkillSheet = () => {
         onOpenAutoFocus={(event) => event.preventDefault()}
         onEscapeKeyDown={handleSkillEditorEscape}
       >
-        <SkillSheetBody
-          key={shownSkillId}
-          shownSkillId={shownSkillId}
-          closeSheet={closeSheet}
-          updateSkill={updateSkill}
-          registerRequestClose={(requestClose) => {
-            requestCloseRef.current = requestClose;
-          }}
-        />
+        {isBuiltin ? (
+          <BuiltinSkillSheetBody />
+        ) : (
+          <SkillSheetBody
+            key={shownSkillId}
+            shownSkillId={shownSkillId}
+            closeSheet={closeSheet}
+            updateSkill={updateSkill}
+            registerRequestClose={(requestClose) => {
+              requestCloseRef.current = requestClose;
+            }}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );

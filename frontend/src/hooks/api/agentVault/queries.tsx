@@ -31,6 +31,7 @@ import {
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultBuiltinSkill,
   TAgentVaultBundleSkill,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultDelegationDetail,
@@ -145,6 +146,9 @@ export const agentVaultKeys = {
     [...agentVaultKeys.skillLists(orgId, projectId), params] as const,
   skill: (orgId: string, projectId: string, skillId: string) =>
     [...agentVaultKeys.skills(orgId, projectId), "detail", skillId] as const,
+  // Outside skills(), since no change to the library changes it.
+  builtinSkill: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.all(orgId, projectId), "builtin-skill"] as const,
   skillVersions: (orgId: string, projectId: string, skillId: string) =>
     [...agentVaultKeys.skill(orgId, projectId, skillId), "versions"] as const,
   skillVersion: (orgId: string, projectId: string, skillId: string, version: number) =>
@@ -894,6 +898,27 @@ export const useGetAgentVaultSkill = (projectId: string, skillId: string) => {
       return data.skill;
     },
     enabled: Boolean(skillId)
+  });
+};
+
+export const useGetAgentVaultBuiltinSkill = (
+  projectId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.builtinSkill(currentOrg.id, projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ skill: TAgentVaultBuiltinSkill }>(
+        "/api/v1/agent-vault/skills/builtin",
+        { params: { projectId } }
+      );
+      return data.skill;
+    },
+    // It changes only when Infisical is updated.
+    staleTime: Infinity,
+    enabled
   });
 };
 

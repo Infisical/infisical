@@ -52,6 +52,7 @@ import {
   AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH
 } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
+import { containsLogUnsafeCharacters } from "@app/lib/validator/log-safe-text";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 
 export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
@@ -63,6 +64,16 @@ export const AgentVaultDescriptionSchema = z
   .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
   // Blank and absent read the same, so a blank description is stored as null rather than "".
   .transform((description) => description || null);
+
+export const AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE =
+  "A description can't contain invisible characters, such as zero-width spaces or text direction marks.";
+
+// Agents in a session read a service's description, so it also refuses characters that render as nothing: text pasted
+// from elsewhere could otherwise carry instructions that an admin reviewing the service can't see.
+export const AgentVaultServiceDescriptionSchema = AgentVaultDescriptionSchema.refine(
+  (description) => description === null || !containsLogUnsafeCharacters(description),
+  AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE
+);
 
 export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.SERVICE.hostPattern);
 
@@ -337,6 +348,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.type),
       name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
+      description: AgentVaultServiceDescriptionSchema.optional().describe(AGENT_VAULT.SERVICE.description),
       hostPattern: AgentVaultHostPatternSchema,
       allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
       allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
@@ -352,6 +364,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
       name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
+      description: AgentVaultServiceDescriptionSchema.optional().describe(AGENT_VAULT.SERVICE.description),
       serverUrl: AgentVaultServerUrlSchema,
       transport: AgentVaultMcpTransportSchema,
       credential: AgentVaultMcpCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
@@ -374,6 +387,9 @@ export const AgentVaultUpdateServiceBodySchema = z
       .object({
         type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.updateType),
         name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
+        description: AgentVaultServiceDescriptionSchema.nullable()
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.updateDescription),
         hostPattern: AgentVaultHostPatternSchema.optional(),
         allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
         allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
@@ -389,6 +405,9 @@ export const AgentVaultUpdateServiceBodySchema = z
       .object({
         type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.updateType),
         name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
+        description: AgentVaultServiceDescriptionSchema.nullable()
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.updateDescription),
         serverUrl: AgentVaultServerUrlSchema.optional(),
         transport: AgentVaultMcpTransportSchema.optional(),
         credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
@@ -471,6 +490,10 @@ const AgentVaultInlineSubstitutionsInputSchema = AgentVaultInlineSubstitutionInp
 
 const inlineServiceNameSchema = AgentVaultNameSchema.optional().describe(AGENT_VAULT.SESSION.inlineServiceName);
 
+const inlineServiceDescriptionSchema = AgentVaultServiceDescriptionSchema.optional().describe(
+  AGENT_VAULT.SERVICE.description
+);
+
 // Each option also takes the other type's fields, hidden from the docs, so the session service can refuse them with a
 // message naming the field, as a bundle service's create does.
 const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
@@ -478,6 +501,7 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.type),
       name: inlineServiceNameSchema,
+      description: inlineServiceDescriptionSchema,
       hostPattern: AgentVaultHostPatternSchema,
       allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
       allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
@@ -493,6 +517,7 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
       name: inlineServiceNameSchema,
+      description: inlineServiceDescriptionSchema,
       serverUrl: AgentVaultServerUrlSchema,
       transport: AgentVaultMcpTransportSchema,
       credential: inlineCredentialInputSchema({ mcp: true }).describe(AGENT_VAULT.SESSION.inlineMcpCredential),
@@ -532,6 +557,7 @@ export const AgentVaultInlineServicesInputSchema = AgentVaultInlineServiceInputS
 export const AgentVaultInlineServiceSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
   name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
+  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
   type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
   serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
   transport: z.nativeEnum(AgentVaultMcpTransport).nullable().describe(AGENT_VAULT.SERVICE.transportRead),
@@ -612,6 +638,7 @@ export const AgentVaultServiceSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
+  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
   type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
   serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
   transport: z.nativeEnum(AgentVaultMcpTransport).nullable().describe(AGENT_VAULT.SERVICE.transportRead),

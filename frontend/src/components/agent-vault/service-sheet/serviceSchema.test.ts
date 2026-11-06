@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "@app/helpers/agentVaultControlChars";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
@@ -26,6 +27,7 @@ const SERVER_URL = "https://mcp.linear.app/mcp";
 const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   serviceType: AgentVaultServiceType.Mcp,
   name: "linear-mcp",
+  description: "",
   serverUrl: SERVER_URL,
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: [],
@@ -54,6 +56,7 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
     id: "service-1",
     accessBundleId: "bundle-1",
     name: "linear-mcp",
+    description: null,
     hostPattern: "mcp.linear.app",
     type: AgentVaultServiceType.Mcp,
     serverUrl,
@@ -380,5 +383,25 @@ describe("buildServiceSchema with allowed tools", () => {
     expect(toolIssues({ allowedTools: names(MAX_ALLOWED_TOOLS + 1) })).toEqual([
       ["allowedTools", `You can select at most ${MAX_ALLOWED_TOOLS} tools.`]
     ]);
+  });
+});
+
+describe("buildServiceSchema with a description", () => {
+  const descriptionIssues = (description: string) =>
+    (
+      buildServiceSchema().safeParse(
+        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL, description })
+      ).error?.issues ?? []
+    )
+      .filter((issue) => issue.path.join(".") === "description")
+      .map((issue) => issue.message);
+
+  it("is optional, and refuses what the API refuses with the API's message", () => {
+    expect(descriptionIssues("")).toEqual([]);
+    expect(descriptionIssues("Issues for the platform team")).toEqual([]);
+    expect(descriptionIssues("x".repeat(257))).toEqual([
+      "A description can be at most 256 characters"
+    ]);
+    expect(descriptionIssues("line\nbreak")).toEqual([AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE]);
   });
 });

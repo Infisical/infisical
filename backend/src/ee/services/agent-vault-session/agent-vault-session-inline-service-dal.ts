@@ -17,6 +17,7 @@ const SUMMARY_COLUMNS = [
   "sessionId",
   "position",
   "name",
+  "description",
   "type",
   "config",
   "hostPattern",

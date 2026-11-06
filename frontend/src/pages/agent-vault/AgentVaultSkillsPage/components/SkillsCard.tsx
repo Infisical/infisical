@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   DownloadIcon,
+  EyeIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -10,9 +11,13 @@ import {
   TrashIcon
 } from "lucide-react";
 
+import { BuiltinSkillBadge } from "@app/components/agent-vault/skills/BuiltinSkillBadge";
 import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkillSheet";
 import { DeleteSkillDialog } from "@app/components/agent-vault/skills/DeleteSkillDialog";
-import { downloadSkillVersion } from "@app/components/agent-vault/skills/downloadSkillVersion";
+import {
+  downloadSkillFiles,
+  downloadSkillVersion
+} from "@app/components/agent-vault/skills/downloadSkillVersion";
 import { SkillBundleBadges } from "@app/components/agent-vault/skills/SkillBundleBadges";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
 import { createNotification } from "@app/components/notifications";
@@ -67,6 +72,7 @@ import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   agentVaultKeys,
   fetchAgentVaultSkillVersion,
+  useGetAgentVaultBuiltinSkill,
   useListAgentVaultSkills
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
@@ -119,6 +125,17 @@ export const SkillsCard = () => {
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
   const hasSkills = totalCount > 0 || Boolean(searchTerm);
+
+  // Pinned above the library on the first page, and matched like the server matches library skills.
+  const { data: builtinSkill } = useGetAgentVaultBuiltinSkill(projectId);
+  const loweredSearch = searchTerm.toLowerCase();
+  const shownBuiltinSkill =
+    builtinSkill &&
+    page === 1 &&
+    (builtinSkill.name.includes(loweredSearch) ||
+      builtinSkill.description.toLowerCase().includes(loweredSearch))
+      ? builtinSkill
+      : null;
 
   const openSkill = (skill: Pick<TAgentVaultSkill, "id">) => openSheet(skill.id);
 
@@ -176,7 +193,7 @@ export const SkillsCard = () => {
         </CardContent>
       )}
 
-      {!isPending && displayed.length === 0 ? (
+      {!isPending && displayed.length === 0 && !shownBuiltinSkill ? (
         <CardContent>
           <Empty className="border">
             <EmptyHeader>
@@ -218,6 +235,62 @@ export const SkillsCard = () => {
                   <TableCell variant="action" />
                 </TableRow>
               ))}
+            {!isPending && shownBuiltinSkill && (
+              <TableRow linked>
+                <TableCell isTruncatable>
+                  <div className="flex items-center gap-x-1.5">
+                    <RowLink
+                      to="/organizations/$orgId/projects/agent-vault/$projectId/skills"
+                      params={{ orgId: currentOrg.id, projectId }}
+                      search={{ skillId: shownBuiltinSkill.id }}
+                      title={shownBuiltinSkill.description}
+                    >
+                      {shownBuiltinSkill.name}
+                    </RowLink>
+                    <BuiltinSkillBadge />
+                  </div>
+                </TableCell>
+                <TableCell isTruncatable>{shownBuiltinSkill.description}</TableCell>
+                <TableCell>
+                  <span className="text-sm text-muted">All access bundles</span>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-muted">By Infisical</span>
+                </TableCell>
+                <TableCell variant="action">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        variant="ghost"
+                        size="xs"
+                        aria-label="Open skill actions"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <MoreHorizontalIcon />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      sideOffset={2}
+                      align="end"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <DropdownMenuItem onClick={() => openSkill(shownBuiltinSkill)}>
+                        <EyeIcon />
+                        View Skill
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          downloadSkillFiles(shownBuiltinSkill.name, shownBuiltinSkill.files)
+                        }
+                      >
+                        <DownloadIcon />
+                        Download
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            )}
             {!isPending &&
               displayed.map((skill) => (
                 <TableRow key={skill.id} linked>

@@ -9,6 +9,7 @@ export type TAgentVaultResolveDALFactory = ReturnType<typeof agentVaultResolveDA
 export type TResolveServiceRow = {
   id: string;
   name: string;
+  description: string | null;
   accessBundleName: string;
   type: string;
   hostPattern: string;
@@ -84,6 +85,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.AgentVaultService),
           db.ref("name").withSchema(TableName.AgentVaultService),
+          db.ref("description").withSchema(TableName.AgentVaultService),
           db.ref("type").withSchema(TableName.AgentVaultService),
           db.ref("hostPattern").withSchema(TableName.AgentVaultService),
           db.ref("config").withSchema(TableName.AgentVaultService),

@@ -87,8 +87,18 @@ export enum AgentVaultSessionLogDecision {
   Brokered = "brokered",
   Passthrough = "passthrough",
   Blocked = "blocked",
-  Error = "error"
+  Error = "error",
+  // The agent asked for the services its session can use, which the proxy gets from Infisical for the session.
+  Discovery = "discovery",
+  // Another request the proxy sent to Infisical for the session, such as the CLI getting the session's skills.
+  Infisical = "infisical"
 }
+
+// The name an agent reaches its session's services and skills at, through its proxy. No service can cover it.
+export const AGENT_VAULT_RESERVED_HOST = "agent-vault.invalid";
+
+// Infisical gives the built-in skill this fixed ID, so a skill sheet can tell it apart before anything loads.
+export const AGENT_VAULT_BUILTIN_SKILL_ID = "8f1c2d4e-6a7b-4c3d-9e8f-0a1b2c3d4e5f";
 
 /** Which value of a service uses a variable. A basic credential's password is its credential-value. */
 export enum AgentVaultVariableReferenceField {

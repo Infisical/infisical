@@ -218,7 +218,9 @@ This function runs one shell command in a new sandbox and returns the command's 
 
 ```python Python expandable
 # run_in_sandbox.py
+import base64
 import os
+import shlex
 
 import requests
 from e2b import Sandbox
@@ -232,6 +234,8 @@ PROXY_ADDRESS = "<proxy-dns-name>:1080"
 TEMPLATE = "base"
 SANDBOX_TIMEOUT = 15 * 60
 SANDBOX_ENV = {}
+# Claude Code's skills folder. For Codex or OpenCode, use /home/user/.agents/skills.
+SKILLS_DIR = "/home/user/.claude/skills"
 
 CA_PATH = "/usr/local/share/ca-certificates/agent-vault-ca.crt"
 # Points the tools that don't read the system trust store at the proxy's CA.
@@ -290,6 +294,22 @@ def run_in_sandbox(command: str) -> str:
             f"install -m 644 /tmp/agent-vault-ca.pem {CA_PATH} && update-ca-certificates",
             user="root",
         )
+        # Lets the agent list its services. Any public address works, because E2B sends the proxy this name.
+        sandbox.commands.run("echo '1.1.1.1 agent-vault.invalid' >> /etc/hosts", user="root")
+        # The session's skills, including the one that tells the agent how to work behind the proxy.
+        # The SDK has no method for them either, and the session token is the only credential this request takes.
+        skills = requests.get(
+            f"{INFISICAL_URL}/api/v1/agent-vault/session/skills",
+            headers={"Authorization": f"Bearer {session.token}"},
+            timeout=30,
+        )
+        skills.raise_for_status()
+        for skill in skills.json()["skills"]:
+            for file in skill["files"]:
+                path = f"{SKILLS_DIR}/{skill['name']}/{file['path']}"
+                sandbox.files.write(path, base64.b64decode(file["contentBase64"]))
+                if file["mode"] == "0755":
+                    sandbox.commands.run(f"chmod 755 {shlex.quote(path)}")
         result = sandbox.commands.run(command, timeout=SANDBOX_TIMEOUT - 60)
         return result.stdout
     finally:
@@ -314,6 +334,8 @@ const PROXY_ADDRESS = "<proxy-dns-name>:1080";
 const TEMPLATE = "base";
 const SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
 const SANDBOX_ENV: Record<string, string> = {};
+// Claude Code's skills folder. For Codex or OpenCode, use /home/user/.agents/skills.
+const SKILLS_DIR = "/home/user/.claude/skills";
 
 const CA_PATH = "/usr/local/share/ca-certificates/agent-vault-ca.crt";
 // Points the tools that don't read the system trust store at the proxy's CA.
@@ -322,6 +344,8 @@ const CA_ENV = Object.fromEntries(
     (name) => [name, CA_PATH],
   ),
 );
+
+const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 
 export async function runInSandbox(command: string): Promise<string> {
   // The machine identity's credentials stay here and never enter the sandbox.
@@ -371,6 +395,23 @@ export async function runInSandbox(command: string): Promise<string> {
     await sandbox.commands.run(`install -m 644 /tmp/agent-vault-ca.pem ${CA_PATH} && update-ca-certificates`, {
       user: "root",
     });
+    // Lets the agent list its services. Any public address works, because E2B sends the proxy this name.
+    await sandbox.commands.run("echo '1.1.1.1 agent-vault.invalid' >> /etc/hosts", { user: "root" });
+    // The session's skills, including the one that tells the agent how to work behind the proxy.
+    // The SDK has no method for them either, and the session token is the only credential this request takes.
+    const skillsResponse = await fetch(`${INFISICAL_URL}/api/v1/agent-vault/session/skills`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!skillsResponse.ok) throw new Error(`Infisical returned ${skillsResponse.status}: ${await skillsResponse.text()}`);
+    const { skills } = await skillsResponse.json();
+    for (const skill of skills) {
+      for (const file of skill.files) {
+        const path = `${SKILLS_DIR}/${skill.name}/${file.path}`;
+        await sandbox.files.write(path, new Blob([Buffer.from(file.contentBase64, "base64")]));
+        if (file.mode === "0755") await sandbox.commands.run(`chmod 755 ${shellQuote(path)}`);
+      }
+    }
     const result = await sandbox.commands.run(command, { timeoutMs: SANDBOX_TIMEOUT_MS - 60_000 });
     return result.stdout;
   } finally {
@@ -387,6 +428,11 @@ export async function runInSandbox(command: string): Promise<string> {
 </CodeGroup>
 
 The function adds the proxy's CA to the sandbox's system trust store, and sets the variables that [`agent-vault run`](/documentation/platform/agent-vault/proxies#certificate-trust) sets for the tools that don't read that store.
+
+The function also prepares the sandbox for an agent, as `agent-vault run` does on other hosts:
+
+- It installs the session's [skills](/documentation/platform/agent-vault/skills) from the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint, including Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill), which tells the agent how to work behind the proxy
+- It adds `agent-vault.invalid` to the sandbox's `/etc/hosts`, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery) (the sandbox looks up every hostname before it connects, and `agent-vault.invalid` isn't in DNS)
 
 To keep the same CA when you rotate the proxy's token, [use your own CA](/documentation/platform/agent-vault/proxies#use-your-own-certificate-authority). Infisical doesn't have your own CA, so read its certificate from a file instead of [getting it from Infisical](/api-reference/endpoints/agent-vault-proxies/get-ca).
 
@@ -510,6 +556,9 @@ The proxy token is only on the proxy's machine. If you think someone took contro
     - `agent-vault: a client spoke plain SOCKS5 to the TLS port`: the sandbox's `egress_proxy` has no `tls` setting
 
     If none of these lines appears, the password might not be a session token, or E2B might not trust the SOCKS5 port's certificate. Start the proxy with `--log-level debug` to log these refusals too.
+  </Accordion>
+  <Accordion title="The agent can't list its services">
+    If `curl https://agent-vault.invalid/services` fails in the sandbox with `Could not resolve host`, check that your code adds `agent-vault.invalid` to the sandbox's `/etc/hosts`, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does. If the request returns something other than the list of services, check that the sandbox's `allow_out` (`allowOut` in TypeScript) has a domain entry, such as `*`. E2B sends the proxy the hostname, instead of the address, only for traffic that a domain entry lets through.
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked while the sandbox was running. Set the session's `ttl` a few minutes longer than the sandbox's timeout, so the session lasts as long as the sandbox can run.
