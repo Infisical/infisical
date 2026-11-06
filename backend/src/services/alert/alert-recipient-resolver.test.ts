@@ -22,6 +22,12 @@ const buildResolver = (opts: {
 }) => {
   const usersById = new Map(opts.users.map((u) => [u.id, u]));
   const rolesFor = (id: string) => opts.projectMemberRoles?.[id] ?? [{ role: "member" }];
+  // Like the real member listings, which left-join the org membership: no row at all reads as active.
+  const memberUser = (id: string) => ({
+    id,
+    isOrgMembershipActive: !(opts.deactivatedUserIds ?? []).includes(id),
+    isOrgMembershipPending: (opts.invitedUserIds ?? []).includes(id)
+  });
   return alertRecipientResolverFactory({
     userDAL: {
       find: async ({ $in }: { $in: { id: string[] } }) =>
@@ -65,11 +71,11 @@ const buildResolver = (opts: {
     } as never,
     projectMembershipDAL: {
       findAllProjectMembers: async () =>
-        (opts.projectMemberUserIds ?? []).map((id) => ({ user: { id }, roles: rolesFor(id) }))
+        (opts.projectMemberUserIds ?? []).map((id) => ({ user: memberUser(id), roles: rolesFor(id) }))
     } as never,
     groupProjectDAL: {
       findAllProjectGroupMembers: async () =>
-        (opts.projectGroupMemberUserIds ?? []).map((id) => ({ user: { id }, roles: rolesFor(id) }))
+        (opts.projectGroupMemberUserIds ?? []).map((id) => ({ user: memberUser(id), roles: rolesFor(id) }))
     } as never,
     emailDomainDAL: {
       find: async () => (opts.verifiedDomains ?? []).map((domain) => ({ domain }))
@@ -430,5 +436,62 @@ describe("alert recipient resolver — project admins", () => {
     );
 
     expect(result.get("c1")).toEqual([]);
+  });
+});
+
+describe("alert recipient resolver — project-wide recipients without a direct org membership", () => {
+  test("include sub-org members who reach the org only through a linked group", async () => {
+    const resolver = buildResolver({
+      users: [user("u1")],
+      orgUserIds: [],
+      projectMemberUserIds: ["u1"],
+      projectMemberRoles: { u1: [{ role: "admin" }] }
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([
+        ["members", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]],
+        ["admins", [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "proj-1" }]]
+      ]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(result.get("members")?.map((r) => r.email)).toEqual(["u1@example.com"]);
+    expect(result.get("admins")?.map((r) => r.email)).toEqual(["u1@example.com"]);
+  });
+
+  test("drop a member who was invited to the org and never accepted", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2")],
+      orgUserIds: ["u1"],
+      invitedUserIds: ["u2"],
+      projectMemberUserIds: ["u1", "u2"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([["c1", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]]]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(result.get("c1")?.map((r) => r.email)).toEqual(["u1@example.com"]);
+  });
+
+  test("do not let a user picked by name skip the org check through another channel", async () => {
+    const resolver = buildResolver({
+      users: [user("u1")],
+      orgUserIds: [],
+      projectMemberUserIds: ["u1"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([
+        ["named", [{ principalType: AlertPrincipalType.USER, principalId: "u1" }]],
+        ["everyone", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]]
+      ]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(result.get("named")).toEqual([]);
+    expect(result.get("everyone")?.map((r) => r.email)).toEqual(["u1@example.com"]);
   });
 });

@@ -80,31 +80,29 @@ export const alertRecipientResolverFactory = ({
     const projectMemberIds = new Set<string>();
     const projectAdminIds = new Set<string>();
     if ((wantsProjectMembers || wantsProjectAdmins) && scope.projectId) {
-      // Direct members and members through a project group, so "everyone in the project" matches who
-      // the scope check below lets through.
+      // Direct members and members through a project group. These skip the org check below, which needs a
+      // direct org row: in a sub-org everyone gets in through a linked root group and would be dropped.
+      // Their own org status still excludes deactivated and invited users.
       const [directMembers, projectGroupMembers] = await Promise.all([
         projectMembershipDAL.findAllProjectMembers(scope.projectId),
         groupProjectDAL.findAllProjectGroupMembers(scope.projectId)
       ]);
-      [...directMembers, ...projectGroupMembers].forEach((member) => {
-        if (wantsProjectMembers) {
-          projectMemberIds.add(member.user.id);
-          allUserIds.add(member.user.id);
-        }
-        if (wantsProjectAdmins && holdsActiveAdminRole(member.roles)) {
-          projectAdminIds.add(member.user.id);
-          allUserIds.add(member.user.id);
-        }
-      });
+      [...directMembers, ...projectGroupMembers]
+        .filter((member) => member.user.isOrgMembershipActive && !member.user.isOrgMembershipPending)
+        .forEach((member) => {
+          if (wantsProjectMembers) projectMemberIds.add(member.user.id);
+          if (wantsProjectAdmins && holdsActiveAdminRole(member.roles)) projectAdminIds.add(member.user.id);
+        });
     }
 
     const { userIds: inScopeUserIds, groupIds: inScopeGroupIds } = await resolvePrincipalsInScope(
       { orgDAL, projectDAL },
       { orgId: scope.orgId, projectId: scope.projectId, userIds: [...allUserIds], groupIds: [...allGroupIds] }
     );
+    const usersToLoad = new Set([...inScopeUserIds, ...projectMemberIds, ...projectAdminIds]);
     const usersById = new Map<string, Awaited<ReturnType<typeof userDAL.find>>[number]>();
-    if (inScopeUserIds.size > 0) {
-      const users = await userDAL.find({ $in: { id: [...inScopeUserIds] } });
+    if (usersToLoad.size > 0) {
+      const users = await userDAL.find({ $in: { id: [...usersToLoad] } });
       users.forEach((user) => usersById.set(user.id, user));
     }
 
@@ -116,11 +114,13 @@ export const alertRecipientResolverFactory = ({
       for (const recipient of rows) {
         switch (recipient.principalType) {
           case AlertPrincipalType.USER:
-            userIds.add(recipient.principalId);
+            if (inScopeUserIds.has(recipient.principalId)) userIds.add(recipient.principalId);
             break;
           case AlertPrincipalType.GROUP:
             if (inScopeGroupIds.has(recipient.principalId)) {
-              (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
+              (groupMembers.get(recipient.principalId) ?? [])
+                .filter((userId) => inScopeUserIds.has(userId))
+                .forEach((userId) => userIds.add(userId));
             }
             break;
           case AlertPrincipalType.PROJECT_MEMBERS:
@@ -143,7 +143,6 @@ export const alertRecipientResolverFactory = ({
 
       const resolved: TAlertRecipient[] = [];
       userIds.forEach((userId) => {
-        // usersById only holds in-scope users, so out-of-scope recipients are skipped here.
         const user = usersById.get(userId);
         if (user?.email) {
           resolved.push({ userId: user.id, email: user.email, firstName: user.firstName });
