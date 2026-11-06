@@ -11,7 +11,11 @@ import {
   CommitType,
   type TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
-import { SecretType } from "@app/hooks/api/secrets/types";
+import {
+  type TSecretDependencyTreeNode,
+  type TSecretReferenceTraceNode,
+  SecretType
+} from "@app/hooks/api/secrets/types";
 
 import type { SecretsAdapter } from "./contract";
 import { secretsFlowsDemo } from "./demo-flows";
@@ -205,6 +209,84 @@ const overviewOf = (
   };
 };
 
+type DemoTarget = { env: string; path: string; key: string };
+
+const referencesOf = (secret: DemoSecret): DemoTarget[] =>
+  [...(secret.value ?? "").matchAll(/\$\{([^}]+)\}/g)].map((match) => {
+    const segments = match[1].trim().split(".");
+    if (segments.length === 1) return { env: secret.env, path: secret.path, key: segments[0] };
+    return {
+      env: segments[0],
+      path: `/${segments.slice(1, -1).join("/")}`,
+      key: segments.at(-1) ?? ""
+    };
+  });
+
+const traceOf = (
+  state: SecretsFixtures,
+  projectId: string,
+  target: DemoTarget,
+  seen: string[]
+): TSecretReferenceTraceNode => {
+  const id = `${target.env} ${target.path} ${target.key}`;
+  const secret = state.secrets.find(secretAt(projectId, target.env, target.path, target.key));
+  return {
+    key: target.key,
+    value: secret?.value,
+    environment: target.env,
+    secretPath: target.path,
+    children:
+      secret && !seen.includes(id)
+        ? referencesOf(secret).map((child) => traceOf(state, projectId, child, [...seen, id]))
+        : []
+  };
+};
+
+const expandedOf = (node: TSecretReferenceTraceNode): string =>
+  node.children.reduce(
+    (value, child) =>
+      value.replace(
+        /\$\{([^}]+)\}/,
+        child.children.length ? expandedOf(child) : (child.value ?? "")
+      ),
+    node.value ?? ""
+  );
+
+const dependentsOf = (
+  state: SecretsFixtures,
+  projectId: string,
+  target: DemoTarget,
+  seen: string[]
+): TSecretDependencyTreeNode => {
+  const id = `${target.env} ${target.path} ${target.key}`;
+  return {
+    key: target.key,
+    environment: target.env,
+    secretPath: target.path,
+    children: seen.includes(id)
+      ? []
+      : state.secrets
+          .filter(
+            (secret) =>
+              secret.projectId === projectId &&
+              referencesOf(secret).some(
+                (reference) =>
+                  reference.env === target.env &&
+                  reference.path === target.path &&
+                  reference.key === target.key
+              )
+          )
+          .map((secret) =>
+            dependentsOf(
+              state,
+              projectId,
+              { env: secret.env, path: secret.path, key: secret.key },
+              [...seen, id]
+            )
+          )
+  };
+};
+
 const reviewed = (request: TSecretApprovalRequest, patch: Partial<TSecretApprovalRequest>) =>
   ({ ...request, ...patch, updatedAt: now() }) as TSecretApprovalRequest;
 
@@ -267,6 +349,31 @@ export const secretsDemo: SecretsAdapter = {
       data: dto.isOverride
         ? { value: undefined, valueOverride: secret.valueOverride ?? "" }
         : { value: secret.value ?? "", valueOverride: undefined },
+      isPending: false,
+      error: null
+    };
+  },
+  useSecretReferenceTree: (dto) => {
+    const state = useStore().use();
+    const tree = traceOf(
+      state,
+      dto.projectId,
+      { env: dto.environmentSlug, path: dto.secretPath, key: dto.secretKey },
+      []
+    );
+    return { data: { tree, value: expandedOf(tree) }, isPending: false, error: null };
+  },
+  useSecretReferences: (dto) => {
+    const state = useStore().use();
+    return {
+      data: {
+        tree: dependentsOf(
+          state,
+          dto.projectId,
+          { env: dto.environment, path: dto.secretPath, key: dto.secretKey },
+          []
+        )
+      },
       isPending: false,
       error: null
     };

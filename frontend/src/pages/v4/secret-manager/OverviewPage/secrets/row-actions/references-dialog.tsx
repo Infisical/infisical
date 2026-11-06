@@ -13,65 +13,91 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import type {
+  TSecretDependencyTreeNode,
+  TSecretReferenceTraceNode
+} from "@app/hooks/api/secrets/types";
 
-import { readableValue, type Resource, type Scope, type Secret } from "../../secrets-model";
-import {
-  expandReferences,
-  findSecret as find,
-  referencesIn,
-  resolveReference as resolve
-} from "../secret-references";
+import { useV4Adapter } from "../../../../data/adapters";
+import type { Scope, Secret } from "../../secrets-model";
 
 import styles from "./row-actions.module.css";
 
-const location = (target: Scope) => `${target.environment} ${target.path}`;
+const location = (target: Pick<Scope, "environment" | "path">) =>
+  `${target.environment} ${target.path}`;
 
-export const dependentsOf = (resources: readonly Resource[], secret: Secret) =>
-  resources.filter(
-    (resource): resource is Secret =>
-      resource.kind === "secret" &&
-      resource.id !== secret.id &&
-      resource.project === secret.project &&
-      referencesIn(readableValue(resource) ?? "").some((reference) => {
-        const target = resolve(reference, resource);
-        return (
-          target.environment === secret.environment &&
-          target.path === secret.path &&
-          target.key === secret.name
-        );
-      })
-  );
+export type Dependent = {
+  id: string;
+  name: string;
+  environment: string;
+  path: string;
+  children: Dependent[];
+};
+
+const toDependent = (node: TSecretDependencyTreeNode, parent: string): Dependent => {
+  const id = `${parent}>${node.environment} ${node.secretPath} ${node.key}`;
+  return {
+    id,
+    name: node.key,
+    environment: node.environment,
+    path: node.secretPath,
+    children: node.children.map((child) => toDependent(child, id))
+  };
+};
+
+export const useDependents = (secret: Secret) => {
+  const { data } = useV4Adapter("secrets").useSecretReferences({
+    projectId: secret.project,
+    environment: secret.environment,
+    secretPath: secret.path,
+    secretKey: secret.name
+  });
+  return data?.tree.children.map((child) => toDependent(child, "root")) ?? [];
+};
+
+const toDependentNode = (dependent: Dependent): FileTreeNode => ({
+  id: dependent.id,
+  name: dependent.name,
+  icon: "key",
+  meta: location(dependent),
+  ...(dependent.children.length
+    ? { children: dependent.children.map(toDependentNode), type: "folder" as const }
+    : { type: "file" as const })
+});
+
+const lastTarget = (id: string) => (id.split(">").at(-1) ?? "").split(" ");
 
 export function ReferencesDialog({
   open,
   secret,
-  resources,
   onOpenChange,
   onNavigate
 }: {
   open: boolean;
   secret: Secret;
-  resources: readonly Resource[];
   onOpenChange: (open: boolean) => void;
   onNavigate: (environment: string, path: string, key: string) => void;
 }) {
-  const nodeFor = (reference: string, base: Scope, seen: string[]): FileTreeNode => {
-    const target = resolve(reference, base);
-    const id = `${location(target)} ${target.key}`;
-    const found = find(resources, target);
+  const { data: trace, error } = useV4Adapter("secrets").useSecretReferenceTree({
+    projectId: secret.project,
+    environmentSlug: secret.environment,
+    secretPath: secret.path,
+    secretKey: secret.name
+  });
+  const dependents = useDependents(secret);
+  let circular = false;
+  const nodeFor = (node: TSecretReferenceTraceNode, seen: string[]): FileTreeNode => {
+    const id = `${node.environment} ${node.secretPath} ${node.key}`;
     const loops = seen.includes(id);
-    const children =
-      found && !loops
-        ? referencesIn(readableValue(found) ?? "").map((child) =>
-            nodeFor(child, found, [...seen, id])
-          )
-        : [];
+    if (loops) circular = true;
+    const children = loops ? [] : node.children.map((child) => nodeFor(child, [...seen, id]));
+    const target = { environment: node.environment, path: node.secretPath };
     return {
       id: [...seen, id].join(">"),
-      name: target.key,
+      name: node.key,
       icon: "key",
       meta:
-        found && readableValue(found) ? (
+        node.value || node.children.length ? (
           location(target)
         ) : (
           <span className={styles.nodeMeta}>
@@ -87,15 +113,9 @@ export function ReferencesDialog({
     };
   };
   const self = `${location(secret)} ${secret.name}`;
-  const tree = referencesIn(readableValue(secret) ?? "").map((reference) =>
-    nodeFor(reference, secret, [self])
-  );
-  const {
-    value: expanded,
-    circular,
-    forbidden
-  } = expandReferences(readableValue(secret) ?? "", secret, resources);
-  const dependents = dependentsOf(resources, secret);
+  const tree = trace?.tree.children.map((child) => nodeFor(child, [self])) ?? [];
+  const forbidden = Boolean(error);
+  const expanded = trace?.value ?? "";
   const go = (environment: string, path: string, key: string) => {
     onOpenChange(false);
     onNavigate(environment, path, key);
@@ -145,7 +165,7 @@ export function ReferencesDialog({
                   selectable="all"
                   selected={null}
                   onSelect={(id) => {
-                    const [environment, path, key] = (id.split(">").at(-1) ?? "").split(" ");
+                    const [environment, path, key] = lastTarget(id);
                     go(environment, path, key);
                   }}
                   empty={
@@ -179,20 +199,15 @@ export function ReferencesDialog({
                     icon: "key",
                     meta: location(secret),
                     type: "folder",
-                    children: dependents.map((dependent) => ({
-                      id: dependent.id,
-                      name: dependent.name,
-                      icon: "key",
-                      meta: location(dependent),
-                      type: "file"
-                    }))
+                    children: dependents.map(toDependentNode)
                   }
                 ]}
                 defaultExpanded={["root"]}
                 selected={null}
                 onSelect={(id) => {
-                  const dependent = dependents.find((entry) => entry.id === id);
-                  if (dependent) go(dependent.environment, dependent.path, dependent.name);
+                  if (id === "root") return;
+                  const [environment, path, key] = lastTarget(id);
+                  go(environment, path, key);
                 }}
               />
               {!dependents.length && (

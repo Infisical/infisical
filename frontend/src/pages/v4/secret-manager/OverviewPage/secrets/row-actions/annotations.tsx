@@ -391,7 +391,7 @@ export function ReminderSheet({
           }
         : { nextReminderDate: form.nextReminderDate?.toISOString() }),
       message: form.message,
-      recipients: reminder?.recipients ?? ["All project members"]
+      recipients: reminder?.recipients ?? []
     });
   };
   const every = form.repeatDays && form.repeatDays > 1 ? `${form.repeatDays} days` : "day";
@@ -509,7 +509,7 @@ export function ReminderSheet({
                   Email
                 </span>
                 <SmallText muted>
-                  {`Recipients: ${(reminder?.recipients ?? ["All project members"]).join(", ")}`}
+                  {`Recipients: ${reminder?.recipients?.length ? reminder.recipients.join(", ") : "All project members"}`}
                 </SmallText>
               </div>
             </div>

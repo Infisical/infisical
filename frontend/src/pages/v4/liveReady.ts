@@ -19,6 +19,9 @@ const LIVE_READY_ROUTES = [
   "/v4/organizations/$orgId/identities/$identityId",
   "/v4/organizations/$orgId/groups/$groupId",
   "/v4/organizations/$orgId/roles/$roleId",
+  "/v4/organizations/$orgId/projects/secret-management/$projectId/overview",
+  "/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
+  "/v4/organizations/$orgId/projects/secret-management/$projectId/approval",
   ...projectAccessRoutes
 ].map(segmentsOf);
 

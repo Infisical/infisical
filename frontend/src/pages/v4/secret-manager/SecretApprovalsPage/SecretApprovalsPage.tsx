@@ -79,8 +79,12 @@ const RequestTitle = ({
   request: TSecretApprovalRequest;
   environment: string;
 }) => {
-  const keys = request.commits.map((commit) => commit.secretKey);
+  const keys = request.commits.flatMap((commit) => (commit.secretKey ? [commit.secretKey] : []));
   const shown = keys.slice(0, 2);
+  if (!shown.length) {
+    const verb = verbOf(request);
+    return `${verb.charAt(0).toUpperCase()}${verb.slice(1)} in ${environment.toLowerCase()}`;
+  }
   return (
     <>
       {shown.map((key, index) => (
@@ -266,7 +270,11 @@ const RequestDetail = ({
                     <TableCell>
                       <code>{commit.secretKey}</code>
                     </TableCell>
-                    <TableCell>{`v${commit.secret?.version ?? commit.version}`}</TableCell>
+                    <TableCell>
+                      {(commit.secret?.version ?? commit.version) === undefined
+                        ? "New"
+                        : `v${commit.secret?.version ?? commit.version}`}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

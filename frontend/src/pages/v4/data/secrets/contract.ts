@@ -24,6 +24,10 @@ import type {
   TCreateSecretsV3DTO,
   TDeleteSecretBatchDTO,
   TDeleteSecretsV3DTO,
+  TGetSecretReferencesDTO,
+  TGetSecretReferenceTreeDTO,
+  TSecretDependencyTreeNode,
+  TSecretReferenceTraceNode,
   TUpdateSecretsV3DTO
 } from "@app/hooks/api/secrets/types";
 import type { UserWsTags } from "@app/hooks/api/tags/types";
@@ -40,7 +44,13 @@ export type SecretsAdapter = SecretsFlowsAdapter & {
   useSecretValue: (
     dto: TGetSecretValueDTO,
     options?: { enabled?: boolean }
-  ) => V4QueryResult<DashboardSecretValue>;
+  ) => V4QueryResult<DashboardSecretValue> & { isFetching?: boolean };
+  useSecretReferenceTree: (
+    dto: TGetSecretReferenceTreeDTO
+  ) => V4QueryResult<{ tree: TSecretReferenceTraceNode; value: string }>;
+  useSecretReferences: (
+    dto: TGetSecretReferencesDTO
+  ) => V4QueryResult<{ tree: TSecretDependencyTreeNode }>;
   useCreateSecret: V4Mutation<TCreateSecretsV3DTO>;
   useUpdateSecret: V4Mutation<TUpdateSecretsV3DTO>;
   useDeleteSecret: V4Mutation<TDeleteSecretsV3DTO>;

@@ -242,7 +242,8 @@ export const OverviewPage = () => {
   const pageScope = JSON.stringify([path, environmentIds, debounced, types, tags, sort, perPage]);
   const page = paging.scope === pageScope ? paging.page : 1;
   const setPage = (next: number) => setPaging({ scope: pageScope, page: next });
-  const include = (kind: ResourceKind) => !types.length || types.includes(kind);
+  const include = (kind: ResourceKind) =>
+    (!tags.length || kind === "secret") && (!types.length || types.includes(kind));
   const overview = adapter.useOverview({
     projectId,
     environments: visibleEnvironments.map((environment) => environment.value),
@@ -252,7 +253,7 @@ export const OverviewPage = () => {
     sortEnvironment: sort.environment,
     includeFolders: include("folder"),
     includeDynamicSecrets: include("dynamic"),
-    includeSecrets: tags.length > 0 || include("secret"),
+    includeSecrets: include("secret"),
     includeImports: include("import"),
     includeSecretRotations: include("rotation"),
     includeHoneyTokens: include("honey"),
@@ -597,8 +598,12 @@ export const OverviewPage = () => {
           sortValue(a).localeCompare(sortValue(b)) * (sort.direction === "desc" ? -1 : 1)
       )
   );
+  const unmatchedImports = query.trim()
+    ? [...groups.values()].filter((entries) => entries[0].kind === "import").length -
+      matches.filter(([, entries]) => entries[0].kind === "import").length
+    : 0;
   const totals: Record<ResourceKind, number> = {
-    import: overview.data?.totalImportCount ?? 0,
+    import: (overview.data?.totalImportCount ?? 0) - unmatchedImports,
     folder: overview.data?.totalFolderCount ?? 0,
     dynamic: overview.data?.totalDynamicSecretCount ?? 0,
     rotation: overview.data?.totalSecretRotationCount ?? 0,
@@ -606,7 +611,7 @@ export const OverviewPage = () => {
     proxy: overview.data?.totalProxiedServiceCount ?? 0,
     secret: overview.data?.totalSecretCount ?? 0
   };
-  const totalCount = Math.max(overview.data?.totalCount ?? 0, ordered.length);
+  const totalCount = Math.max((overview.data?.totalCount ?? 0) - unmatchedImports, ordered.length);
   const pageCount = Math.max(1, Math.ceil(totalCount / perPage));
   const currentPage = Math.min(page, pageCount);
   const windowRows = ordered;
@@ -1008,6 +1013,7 @@ export const OverviewPage = () => {
       setEnvironmentIds([environment]);
       setQuery(key);
     },
+    onRefresh: () => overview.refetch(),
     importedFrom,
     resources,
     tagOptions
