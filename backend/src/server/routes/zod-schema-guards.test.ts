@@ -260,25 +260,38 @@ const outcome = (parse: () => { success: boolean; data?: unknown }, pick: (data:
 // schema on undefined and kept the result. Zod 4 first asks the schema whether the key may be absent (its
 // optin), so z.unknown(), z.any(), z.custom(), z.coerce.boolean() or a union with z.undefined() reject the
 // missing key, and an .optional() field skips its own .refine() when the key is missing.
+// Routes share field schemas (every generated row schema, for one), so each field is judged once.
+const absentKeyChangeByField = new WeakMap<object, boolean>();
+
+const treatsAbsentKeyDifferently = (field: any) => {
+  const cached = absentKeyChangeByField.get(field);
+  if (cached !== undefined) return cached;
+  const zod3 = outcome(
+    () => field.safeParse(undefined),
+    (data) => data
+  );
+  const zod4 = outcome(
+    () => z.object({ key: field }).safeParse({}),
+    (data) => data.key
+  );
+  const changed = !(zod3 === undefined && zod4 === undefined) && !isDeepStrictEqual(zod3, zod4);
+  absentKeyChangeByField.set(field, changed);
+  return changed;
+};
+
 const findAbsentKeyChanges = (root: unknown) => {
   const paths = new Set<string>();
   walkSchema(root, (node, context) => {
     if (node._zod.def.type !== "object") return;
     Object.entries(node._zod.def.shape ?? {}).forEach(([key, field]: [string, any]) => {
-      const zod3 = outcome(
-        () => field.safeParse(undefined),
-        (data) => data
-      );
-      const zod4 = outcome(
-        () => z.object({ [key]: field }).safeParse({}),
-        (data) => data[key]
-      );
-      if (zod3 === undefined && zod4 === undefined) return;
-      if (!isDeepStrictEqual(zod3, zod4)) paths.add(context.path ? `${context.path}.${key}` : key);
+      if (treatsAbsentKeyDifferently(field)) paths.add(context.path ? `${context.path}.${key}` : key);
     });
   });
   return [...paths];
 };
+
+// These walk every route or every exported schema, so their cost grows with the API rather than the change.
+const SWEEP_TIMEOUT_MS = 60_000;
 
 const ABSENT_KEY_EXPLANATION = [
   "Zod 4 treats a missing key differently from Zod 3 for these fields. A z.unknown(), z.any(), z.custom() or",
@@ -504,67 +517,87 @@ describe("exported schemas avoid Zod 4 behavior changes", () => {
     expect(offenders, `${OMITTED_FIELD_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
   });
 
-  test("no exported schema throws on input it rejects", () => {
-    const offenders = [...exportedSchemas].flatMap(([schema, label]) => {
-      const message = throwOnJunk(schema);
-      return message ? [`${label}: ${message}`] : [];
-    });
-    expect(offenders, `${THROWS_ON_INPUT_EXPLANATION}\n\nOffending schemas:\n${offenders.join("\n")}`).toEqual([]);
-  });
+  test(
+    "no exported schema throws on input it rejects",
+    () => {
+      const offenders = [...exportedSchemas].flatMap(([schema, label]) => {
+        const message = throwOnJunk(schema);
+        return message ? [`${label}: ${message}`] : [];
+      });
+      expect(offenders, `${THROWS_ON_INPUT_EXPLANATION}\n\nOffending schemas:\n${offenders.join("\n")}`).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS
+  );
 
-  test("no exported schema treats a missing key differently from Zod 3", () => {
-    const offenders = [...exportedSchemas].flatMap(([schema, label]) =>
-      findAbsentKeyChanges(schema).map((fieldPath) => `${label}: ${fieldPath}`)
-    );
-    expect(offenders, `${ABSENT_KEY_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
-  });
+  test(
+    "no exported schema treats a missing key differently from Zod 3",
+    () => {
+      const offenders = [...exportedSchemas].flatMap(([schema, label]) =>
+        findAbsentKeyChanges(schema).map((fieldPath) => `${label}: ${fieldPath}`)
+      );
+      expect(offenders, `${ABSENT_KEY_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS
+  );
 });
 
 describe("schemas report bad input instead of throwing", () => {
-  test("no route request schema throws on input it rejects", () => {
-    const offenders = routes.flatMap((route) =>
-      REQUEST_PARTS.flatMap((part) =>
-        schemasOf(route, part).flatMap(([label, root]) => {
-          const message = root ? throwOnJunk(root) : undefined;
-          return message ? [`${String(route.method)} ${route.url} ${label}: ${message}`] : [];
-        })
-      )
-    );
-    expect(offenders, `${THROWS_ON_INPUT_EXPLANATION}\n\nOffending schemas:\n${offenders.join("\n")}`).toEqual([]);
-  });
+  test(
+    "no route request schema throws on input it rejects",
+    () => {
+      const offenders = routes.flatMap((route) =>
+        REQUEST_PARTS.flatMap((part) =>
+          schemasOf(route, part).flatMap(([label, root]) => {
+            const message = root ? throwOnJunk(root) : undefined;
+            return message ? [`${String(route.method)} ${route.url} ${label}: ${message}`] : [];
+          })
+        )
+      );
+      expect(offenders, `${THROWS_ON_INPUT_EXPLANATION}\n\nOffending schemas:\n${offenders.join("\n")}`).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS
+  );
 });
 
 describe("route schemas treat a missing key the way Zod 3 did", () => {
-  test("no route schema treats a missing key differently from Zod 3", () => {
-    const offenders = routes.flatMap((route) =>
-      ALL_PARTS.flatMap((part) =>
-        schemasOf(route, part).flatMap(([label, root]) =>
-          findAbsentKeyChanges(root).map((fieldPath) => `${String(route.method)} ${route.url} ${label}: ${fieldPath}`)
+  test(
+    "no route schema treats a missing key differently from Zod 3",
+    () => {
+      const offenders = routes.flatMap((route) =>
+        ALL_PARTS.flatMap((part) =>
+          schemasOf(route, part).flatMap(([label, root]) =>
+            findAbsentKeyChanges(root).map((fieldPath) => `${String(route.method)} ${route.url} ${label}: ${fieldPath}`)
+          )
         )
-      )
-    );
-    expect(offenders, `${ABSENT_KEY_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
-  });
+      );
+      expect(offenders, `${ABSENT_KEY_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
+    },
+    SWEEP_TIMEOUT_MS
+  );
 });
 
 describe("the OpenAPI spec builds for every route", () => {
   test.each([
     { mode: "published", transform: jsonSchemaTransform },
     { mode: "full", transform: fullJsonSchemaTransform }
-  ])("$mode", ({ transform }) => {
-    const openapiObject = { openapi: "3.0.3" };
-    const failures: string[] = [];
-    routes.forEach((route) => {
-      try {
-        // The transform sets schema.hide on the route schema it is given.
-        transform({ schema: { ...(route.schema ?? {}) }, url: route.url, route, openapiObject } as never);
-      } catch (error) {
-        failures.push(`${String(route.method)} ${route.url}: ${(error as Error).message}`);
-      }
-    });
-    expect(failures).toEqual([]);
-    expect(() => jsonSchemaTransformObject({ openapiObject } as never)).not.toThrow();
-  });
+  ])(
+    "$mode",
+    ({ transform }) => {
+      const openapiObject = { openapi: "3.0.3" };
+      const failures: string[] = [];
+      routes.forEach((route) => {
+        try {
+          // The transform sets schema.hide on the route schema it is given.
+          transform({ schema: { ...(route.schema ?? {}) }, url: route.url, route, openapiObject } as never);
+        } catch (error) {
+          failures.push(`${String(route.method)} ${route.url}: ${(error as Error).message}`);
+        }
+      });
+      expect(failures).toEqual([]);
+      expect(() => jsonSchemaTransformObject({ openapiObject } as never)).not.toThrow();
+    },
+    SWEEP_TIMEOUT_MS
+  );
 });
 
 describe("requests leave omitted optional fields alone", () => {
