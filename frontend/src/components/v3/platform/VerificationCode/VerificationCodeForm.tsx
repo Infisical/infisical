@@ -85,6 +85,7 @@ export const VerificationCodeForm = ({
     if (hasError && !isPending) {
       setHasChangedSinceError(false);
       setHasFailedVerification(true);
+      setHasAttemptedVerification(false);
       onChangeRef.current("", "reset");
     }
   }, [hasError, isPending]);
