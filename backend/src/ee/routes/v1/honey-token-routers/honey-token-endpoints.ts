@@ -31,12 +31,12 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
 }: {
   server: FastifyZodProvider;
   type: TType;
-  configSchema: z.ZodType<THoneyTokenConfigByType[TType], z.ZodTypeDef, unknown>;
-  testConnectionResponseSchema: z.ZodType<THoneyTokenTestConnectionResponseByType[TType], z.ZodTypeDef, unknown>;
-  decryptedConfigSchema: z.ZodType<THoneyTokenConfigByType[TType], z.ZodTypeDef, unknown>;
+  configSchema: z.ZodType<THoneyTokenConfigByType[TType], unknown>;
+  testConnectionResponseSchema: z.ZodType<THoneyTokenTestConnectionResponseByType[TType], unknown>;
+  decryptedConfigSchema: z.ZodType<THoneyTokenConfigByType[TType], unknown>;
 }) => {
   const upsertBodySchema = z.object({
-    connectionId: z.string().uuid(),
+    connectionId: z.string().guid(),
     config: configSchema
   });
   const routeTestConnectionResponseSchema: z.ZodTypeAny = testConnectionResponseSchema;

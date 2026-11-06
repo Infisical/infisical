@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -30,7 +31,7 @@ export const GcpConnectionSchema = z.intersection(
 export const SanitizedGcpConnectionSchema = z.discriminatedUnion("method", [
   BaseGcpConnectionSchema.extend({
     method: z.literal(GcpConnectionMethod.ServiceAccountImpersonation),
-    credentials: GcpConnectionServiceAccountImpersonationCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(
     JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GCP]} (Service Account Impersonation)` })
   )

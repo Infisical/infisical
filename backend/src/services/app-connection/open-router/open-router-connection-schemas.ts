@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -25,7 +26,7 @@ export const OpenRouterConnectionSchema = BaseOpenRouterConnectionSchema.extend(
 export const SanitizedOpenRouterConnectionSchema = z.discriminatedUnion("method", [
   BaseOpenRouterConnectionSchema.extend({
     method: z.literal(OpenRouterConnectionMethod.ApiKey),
-    credentials: z.object({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.OpenRouter]} (API Key)` }))
 ]);
 

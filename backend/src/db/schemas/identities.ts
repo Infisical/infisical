@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentitiesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   authMethod: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   hasDeleteProtection: z.boolean().default(false),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   projectId: z.string().nullable().optional()
 });
 

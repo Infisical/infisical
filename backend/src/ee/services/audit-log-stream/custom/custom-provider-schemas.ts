@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { bidirectionalTransform } from "@app/lib/zod";
+
 import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
@@ -30,7 +32,7 @@ export const SanitizedCustomProviderSchema = BaseCustomProviderSchema.extend({
   credentials: z.object({
     url: CustomProviderCredentialsSchema.shape.url,
     // Return header keys and a redacted value
-    headers: CustomProviderCredentialsSchema.shape.headers.transform((headers) =>
+    headers: bidirectionalTransform(CustomProviderCredentialsSchema.shape.headers, (headers) =>
       headers.map((header) => ({ ...header, value: REDACTED_CREDENTIAL_VALUE }))
     )
   })

@@ -30,7 +30,7 @@ export const registerVenafiConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listVenafiApplications",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -59,10 +59,10 @@ export const registerVenafiConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listVenafiIssuingTemplates",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
-        applicationId: z.string().uuid("Application ID must be a valid UUID")
+        applicationId: z.string().guid("Application ID must be a valid UUID")
       }),
       response: {
         200: z

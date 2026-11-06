@@ -10,10 +10,10 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit } from "@app/server/config/rateLimiter";
 import { getClientDisconnectSignal } from "@app/server/lib/client-disconnect";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
+import { fastJsonSerializerCompiler } from "@app/server/lib/serializer-compiler";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -48,7 +48,7 @@ const DuplicateSecretAttributesSchema = z
     metadata: z.boolean().default(false),
     skipMultilineEncoding: z.boolean().default(false)
   })
-  .default({});
+  .prefault({});
 
 const convertStringBoolean = (defaultValue: boolean = false) => {
   return z
@@ -61,7 +61,7 @@ type TSecretReferenceNode = z.infer<typeof SecretReferenceNode> & { children: TS
 
 const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReferenceNode.extend({
   children: z.lazy(() => SecretReferenceNodeTree.array())
-});
+}).meta({ id: "SecretReferenceNode" });
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -666,7 +666,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
-        metadata: z.record(z.string()).optional(),
+        metadata: z.record(z.string(), z.string()).optional(),
         secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         secretReminderNote: z
           .string()
@@ -681,7 +681,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .describe(RAW_SECRETS.UPDATE.secretReminderRepeatDays),
         secretReminderRecipients: z
           .string()
-          .uuid()
+          .guid()
           .array()
           .optional()
           .describe(RAW_SECRETS.UPDATE.secretReminderRecipients),
@@ -1012,7 +1012,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .default("/")
           .transform(removeTrailingSlash)
           .describe(RAW_SECRETS.DUPLICATE_SECRET.destinationSecretPath),
-        secretIds: z.array(z.string().trim().uuid()).min(1).max(50).describe(RAW_SECRETS.DUPLICATE_SECRET.secretIds),
+        secretIds: z.array(z.string().trim().guid()).min(1).max(50).describe(RAW_SECRETS.DUPLICATE_SECRET.secretIds),
         shouldOverwrite: z.boolean().default(false).describe(RAW_SECRETS.DUPLICATE_SECRET.shouldOverwrite),
         attributesToCopy: DuplicateSecretAttributesSchema.describe(RAW_SECRETS.DUPLICATE_SECRET.attributesToCopy)
       }),
@@ -1117,7 +1117,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .describe(RAW_SECRETS.CREATE.secretValue),
             secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
             skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
-            metadata: z.record(z.string()).optional(),
+            metadata: z.record(z.string(), z.string()).optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
           })

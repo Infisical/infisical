@@ -30,7 +30,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       params: SignerIdParamsSchema,
       body: z
         .object({
-          caId: z.string().uuid(),
+          caId: z.string().guid(),
           commonName: z.string().trim().min(1).max(256).optional(),
           certificateTtlDays: z.number().int().min(1).max(3650).optional(),
           keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
@@ -104,7 +104,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       description:
         "Check that the HSM private key matches the certificate in an existing DigiCert order, without creating or changing a signer.",
       body: z.object({
-        caId: z.string().uuid().describe("The DigiCert certificate authority the order belongs to."),
+        caId: z.string().guid().describe("The DigiCert certificate authority the order belongs to."),
         externalOrderId: ExternalOrderIdSchema.describe("The DigiCert order whose certificate to check."),
         certificate: SignerCertificateInputSchema.pick({
           hsmConnectorId: true,
@@ -152,7 +152,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
         "Switch the signer to the certificate already issued in an existing DigiCert order, signing with that certificate's private key on the HSM. DigiCert does not reissue or revoke anything.",
       params: SignerIdParamsSchema,
       body: z.object({
-        caId: z.string().uuid().describe("The DigiCert certificate authority the order belongs to."),
+        caId: z.string().guid().describe("The DigiCert certificate authority the order belongs to."),
         externalOrderId: ExternalOrderIdSchema.describe("The DigiCert order whose certificate the signer will use."),
         certificate: SignerCertificateInputSchema.pick({
           hsmConnectorId: true,

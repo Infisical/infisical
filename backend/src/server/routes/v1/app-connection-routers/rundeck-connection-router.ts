@@ -31,7 +31,7 @@ export const registerRundeckConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listRundeckProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

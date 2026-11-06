@@ -95,7 +95,7 @@ export const registerCertificateAuthorityEndpoints = <
         caName: z.string()
       }),
       querystring: z.object({
-        projectId: z.string().uuid()
+        projectId: z.string().guid()
       }),
       response: {
         200: responseSchema
@@ -226,7 +226,7 @@ export const registerCertificateAuthorityEndpoints = <
         caName: z.string()
       }),
       body: z.object({
-        projectId: z.string().uuid()
+        projectId: z.string().guid()
       }),
       response: {
         200: responseSchema

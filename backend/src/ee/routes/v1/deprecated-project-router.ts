@@ -85,11 +85,11 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
                   .optional(),
                 event: z.object({
                   type: z.string(),
-                  metadata: z.any()
+                  metadata: z.any().optional()
                 }),
                 actor: z.object({
                   type: z.string(),
-                  metadata: z.any()
+                  metadata: z.any().optional()
                 })
               })
             )

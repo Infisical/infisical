@@ -10,14 +10,14 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const OrgAgentProxyConfigSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   rootCaKeyAlgorithm: z.string(),
   rootCaIssuedAt: z.date(),
   rootCaExpiration: z.date(),
   rootCaSerialNumber: z.string(),
   encryptedRootCaCertificate: zodBuffer,
   encryptedRootCaPrivateKey: zodBuffer,
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

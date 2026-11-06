@@ -8,17 +8,17 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AuditReportsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string().nullable().optional(),
-  requestedByUserId: z.string().uuid().nullable().optional(),
+  requestedByUserId: z.string().guid().nullable().optional(),
   status: z.string().default("pending"),
-  reportConfigs: z.unknown(),
+  reportConfigs: z.unknown().optional(),
   emailRecipients: z.string().array(),
   resultSummary: z.unknown().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid().nullable().optional()
+  orgId: z.string().guid().nullable().optional()
 });
 
 export type TAuditReports = z.infer<typeof AuditReportsSchema>;

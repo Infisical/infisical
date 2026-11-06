@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultPersonalValueReferencesSchema = z.object({
-  id: z.string().uuid(),
-  personalValueId: z.string().uuid(),
-  variableId: z.string().uuid(),
+  id: z.string().guid(),
+  personalValueId: z.string().guid(),
+  variableId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

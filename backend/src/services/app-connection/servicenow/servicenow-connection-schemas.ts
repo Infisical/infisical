@@ -2,6 +2,7 @@ import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -13,24 +14,25 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { ServiceNowConnectionMethod } from "./servicenow-connection-enums";
 
 export const ServiceNowConnectionBasicAuthCredentialsSchema = z.object({
-  instanceUrl: z
-    .string()
-    .trim()
-    .max(512, "Instance URL cannot exceed 512 characters")
-    .url("Invalid Instance URL")
-    .refine((value) => value.startsWith("https://"), "Instance URL must use HTTPS")
-    .refine((value) => {
-      let url: URL;
-      try {
-        url = new URL(value);
-      } catch {
-        // zod runs refinements even after `.url()` fails, and `.url()` has already reported this value
-        return true;
-      }
-      return (url.pathname === "" || url.pathname === "/") && !url.search && !url.hash;
-    }, "Instance URL must be the base URL of your ServiceNow instance, without a path or query string")
-    .transform(removeTrailingSlash)
-    .describe(AppConnections.CREDENTIALS.SERVICENOW.instanceUrl),
+  instanceUrl: bidirectionalTransform(
+    z
+      .string()
+      .trim()
+      .max(512, "Instance URL cannot exceed 512 characters")
+      .url("Invalid Instance URL")
+      .refine((value) => value.startsWith("https://"), "Instance URL must use HTTPS")
+      .refine((value) => {
+        let url: URL;
+        try {
+          url = new URL(value);
+        } catch {
+          // zod runs refinements even after `.url()` fails, and `.url()` has already reported this value
+          return true;
+        }
+        return (url.pathname === "" || url.pathname === "/") && !url.search && !url.hash;
+      }, "Instance URL must be the base URL of your ServiceNow instance, without a path or query string"),
+    removeTrailingSlash
+  ).describe(AppConnections.CREDENTIALS.SERVICENOW.instanceUrl),
   username: z
     .string()
     .trim()

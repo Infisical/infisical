@@ -102,7 +102,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
+          proxyId: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId),
           name: z.string().describe(AGENT_VAULT.PROXY.name),
           config: ProxyConfigSchema,
           rootCa: RootCaSchema.optional()
@@ -156,11 +156,11 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         .nullish(),
       response: {
         200: z.object({
-          sessionId: z.string().uuid(),
+          sessionId: z.string().guid(),
           expiresAt: z.date().nullable(),
           services: z
             .object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               name: z.string(),
               accessBundleName: z.string().nullable(),
               type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
@@ -219,7 +219,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         "Get a new access token after the MCP server rejected the current one. Returns 409 if the service now points at a different server.",
       tags: [ApiDocsTags.AgentVaultProxies],
       headers: SessionHeaderSchema,
-      params: z.object({ serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId) }),
+      params: z.object({ serviceId: z.string().guid().describe(AGENT_VAULT.SERVICE.serviceId) }),
       body: z.object({
         hostPattern: AgentVaultHostPatternSchema.describe(AGENT_VAULT.CREDENTIAL_REFRESH.hostPattern),
         rejectedTokenHash: RejectedTokenHashSchema.describe(AGENT_VAULT.CREDENTIAL_REFRESH.rejectedTokenHash)
@@ -254,7 +254,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         "Record the scopes an MCP server asked for in an insufficient_scope challenge, so the service shows it needs reauthorizing with them. The token is not refreshed. A report for a token that is no longer current changes nothing. A 409 means the service's host pattern no longer matches `hostPattern`.",
       tags: [ApiDocsTags.AgentVaultProxies],
       headers: SessionHeaderSchema,
-      params: z.object({ serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId) }),
+      params: z.object({ serviceId: z.string().guid().describe(AGENT_VAULT.SERVICE.serviceId) }),
       body: z.object({
         hostPattern: AgentVaultHostPatternSchema.describe(AGENT_VAULT.CREDENTIAL_REFRESH.hostPattern),
         rejectedTokenHash: RejectedTokenHashSchema.describe(AGENT_VAULT.CREDENTIAL_REFRESH.rejectedTokenHash),
@@ -300,7 +300,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       description:
         "Returns a presigned URL to upload an encrypted session log chunk to, and shows the chunk in the live view. If you send the same `chunkId` again, you get a new URL for the same object.",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
-      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      params: z.object({ sessionId: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId) }),
       body: AgentVaultSessionLogChunkCreateSchema,
       response: { 200: AgentVaultSessionLogChunkCreateResponseSchema }
     },

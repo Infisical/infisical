@@ -9,7 +9,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const ApiEnrollmentSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   autoRenew: z.boolean(),
   renewBeforeDays: z.number().int().nullable()
 });
@@ -25,8 +25,8 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
       description: "Enable or update the API enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       body: z.object({
         autoRenew: z.boolean().default(false),
@@ -34,8 +34,8 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
       }),
       response: {
         200: z.object({
-          applicationId: z.string().uuid(),
-          profileId: z.string().uuid(),
+          applicationId: z.string().guid(),
+          profileId: z.string().guid(),
           api: ApiEnrollmentSchema
         })
       }
@@ -96,13 +96,13 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
       description: "Disable the API enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       response: {
         200: z.object({
-          applicationId: z.string().uuid(),
-          profileId: z.string().uuid()
+          applicationId: z.string().guid(),
+          profileId: z.string().guid()
         })
       }
     },

@@ -5,7 +5,7 @@ import { recordDynamicSecretStatusChangeMetric } from "@app/lib/telemetry/metric
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 
-const LeaseDataSchema = z.record(z.string());
+const LeaseDataSchema = z.record(z.string(), z.string());
 
 export const pickPersistedLeaseData = (data: unknown, fields: string[]): Record<string, string> => {
   const source = data && typeof data === "object" ? (data as Record<string, unknown>) : {};

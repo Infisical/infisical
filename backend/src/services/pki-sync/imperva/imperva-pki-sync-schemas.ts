@@ -50,11 +50,11 @@ export const CreateImpervaPkiSyncSchema = z.object({
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: ImpervaPkiSyncConfigSchema,
   syncOptions: ImpervaPkiSyncOptionsSchema,
-  subscriberId: z.string().uuid().nullish(),
-  connectionId: z.string().uuid(),
+  subscriberId: z.string().guid().nullish(),
+  connectionId: z.string().guid(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
-  applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional(),
+  applicationId: z.string().guid().optional(),
+  certificateIds: z.array(z.string().guid()).optional(),
   filters: PkiSyncFiltersField
 });
 
@@ -64,8 +64,8 @@ export const UpdateImpervaPkiSyncSchema = z.object({
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: ImpervaPkiSyncConfigSchema.optional(),
   syncOptions: ImpervaPkiSyncOptionsSchema.optional(),
-  subscriberId: z.string().uuid().nullish(),
-  connectionId: z.string().uuid().optional(),
+  subscriberId: z.string().guid().nullish(),
+  connectionId: z.string().guid().optional(),
   filters: UpdatePkiSyncFiltersField
 });
 

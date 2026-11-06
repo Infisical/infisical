@@ -30,7 +30,7 @@ export const registerCircleCIConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listCircleCIOrganizations",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

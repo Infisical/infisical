@@ -126,7 +126,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       description: "Update a global variable, or a personal one of your own",
       tags: [ApiDocsTags.AgentVaultVariables],
       params: z.object({
-        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+        variableId: z.string().guid().describe(AGENT_VAULT.VARIABLE.variableId)
       }),
       body: z
         .object({
@@ -194,7 +194,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
         "Delete a global variable, or a personal one of your own. A variable in use, by a service or by your personal values, can't be deleted.",
       tags: [ApiDocsTags.AgentVaultVariables],
       params: z.object({
-        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+        variableId: z.string().guid().describe(AGENT_VAULT.VARIABLE.variableId)
       }),
       response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
     },
@@ -239,7 +239,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       description: "Get the value of a global variable, or a personal one of your own",
       tags: [ApiDocsTags.AgentVaultVariables],
       params: z.object({
-        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+        variableId: z.string().guid().describe(AGENT_VAULT.VARIABLE.variableId)
       }),
       response: { 200: z.object({ value: z.string().describe(AGENT_VAULT.VARIABLE.revealedValue) }) }
     },

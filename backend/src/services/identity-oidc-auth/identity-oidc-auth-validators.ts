@@ -10,7 +10,7 @@ export const validateOidcAuthAudiencesField = z.string().trim().default("").tran
 // "field omitted"; the service defaults the custom path to ""
 export const validateOidcAuthAudiencesFieldOptional = z.string().trim().transform(formatOidcAudiences).optional();
 
-export const validateOidcBoundClaimsField = z.record(z.string()).transform((data) => {
+export const validateOidcBoundClaimsField = z.record(z.string(), z.string()).transform((data) => {
   const formattedClaims: Record<string, string> = {};
   Object.keys(data).forEach((key) => {
     formattedClaims[key] = formatCommaSeparatedPolicyValues(data[key]);

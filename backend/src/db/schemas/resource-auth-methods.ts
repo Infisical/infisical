@@ -8,14 +8,14 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ResourceAuthMethodsSchema = z.object({
-  id: z.string().uuid(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  gatewayId: z.string().guid().nullable().optional(),
   method: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  relayId: z.string().uuid().nullable().optional(),
-  kmipServerId: z.string().uuid().nullable().optional(),
-  agentVaultProxyId: z.string().uuid().nullable().optional()
+  relayId: z.string().guid().nullable().optional(),
+  kmipServerId: z.string().guid().nullable().optional(),
+  agentVaultProxyId: z.string().guid().nullable().optional()
 });
 
 export type TResourceAuthMethods = z.infer<typeof ResourceAuthMethodsSchema>;

@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ExternalGroupOrgRoleMappingsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   groupName: z.string(),
   role: z.string(),
-  roleId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid(),
+  roleId: z.string().guid().nullable().optional(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -22,7 +22,7 @@ const OkmsIdSchema = z
   .string()
   .trim()
   .min(1, "OVHcloud KMS ID required")
-  .uuid("OVHcloud KMS ID must be a UUID (e.g. 734b9b45-8b1a-469c-b140-b10bd6540017)")
+  .guid("OVHcloud KMS ID must be a UUID (e.g. 734b9b45-8b1a-469c-b140-b10bd6540017)")
   .describe(AppConnections.CREDENTIALS.OVH.okmsId);
 
 export const OvhConnectionCertificateCredentialsSchema = z.object({

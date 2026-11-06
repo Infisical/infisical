@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const GroupProjectMembershipsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  groupId: z.string().uuid(),
+  groupId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

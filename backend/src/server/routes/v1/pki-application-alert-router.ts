@@ -135,8 +135,8 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         "Deprecated: legacy application alerts can no longer be edited. Use the alerts API (/api/v1/alerts) instead.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
-        applicationId: z.string().uuid(),
-        alertId: z.string().uuid()
+        applicationId: z.string().guid(),
+        alertId: z.string().guid()
       }),
       body: UpdatePkiAlertV2Schema,
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
@@ -197,8 +197,8 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). Delete a legacy alert from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
-        applicationId: z.string().uuid(),
-        alertId: z.string().uuid()
+        applicationId: z.string().guid(),
+        alertId: z.string().guid()
       }),
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
     },

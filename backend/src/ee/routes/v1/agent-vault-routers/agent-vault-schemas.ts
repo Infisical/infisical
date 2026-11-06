@@ -171,7 +171,7 @@ const basicCredentialInput = z.object({
 const passthroughCredentialInput = z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) });
 const oauthCredentialInput = z.object({
   type: z.literal(AgentVaultCredentialType.OAuth),
-  authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.authorizationId)
+  authorizationId: z.string().guid().describe(AGENT_VAULT.SERVICE.authorizationId)
 });
 
 const docsTitle = (title: string, hidden = false) => JSON.stringify({ title, ...(hidden ? { "x-hidden": true } : {}) });
@@ -228,7 +228,7 @@ const credentialUpdateSchema = ({ mcp }: { mcp: boolean }) =>
       z
         .object({
           type: z.literal(AgentVaultCredentialType.OAuth),
-          authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
+          authorizationId: z.string().guid().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
         })
         .describe(docsTitle("OAuth", true))
     ])
@@ -445,7 +445,7 @@ const inlineCredentialInputSchema = ({ mcp }: { mcp: boolean }) =>
       z
         .object({
           type: z.literal(AgentVaultCredentialType.OAuth),
-          authorizationId: z.string().uuid().optional()
+          authorizationId: z.string().guid().optional()
         })
         .describe(docsTitle("OAuth", true))
     ])
@@ -530,7 +530,7 @@ export const AgentVaultInlineServicesInputSchema = AgentVaultInlineServiceInputS
 
 // The sealed values are never in here, and the serializer emits only what this schema lists.
 export const AgentVaultInlineServiceSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
+  id: z.string().guid().describe(AGENT_VAULT.SESSION.inlineServiceId),
   name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
   type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
   serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
@@ -570,7 +570,7 @@ export const AgentVaultInlineServiceSchema = z.object({
 // The service sheet's unsaved values, so the tools are listed with the credential a save would store. `serviceId`
 // names the saved service whose stored values fill in what is left out.
 export const AgentVaultListMcpToolsBodySchema = z.object({
-  serviceId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.serviceId),
+  serviceId: z.string().guid().optional().describe(AGENT_VAULT.SERVICE.serviceId),
   serverUrl: AgentVaultServerUrlSchema,
   transport: AgentVaultMcpTransportSchema,
   credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
@@ -578,7 +578,7 @@ export const AgentVaultListMcpToolsBodySchema = z.object({
 });
 
 const variableReferenceBase = {
-  variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+  variableId: z.string().guid().describe(AGENT_VAULT.VARIABLE.variableId),
   key: z.string().describe(AGENT_VAULT.VARIABLE.key)
 };
 
@@ -593,14 +593,14 @@ export const AgentVaultVariableReferenceSchema = z.discriminatedUnion("field", [
     .object({
       ...variableReferenceBase,
       field: z.literal(AgentVaultVariableReferenceField.CustomHeader).describe(AGENT_VAULT.SERVICE.referenceField),
-      customHeaderId: z.string().uuid().describe(AGENT_VAULT.SERVICE.referenceCustomHeaderId)
+      customHeaderId: z.string().guid().describe(AGENT_VAULT.SERVICE.referenceCustomHeaderId)
     })
     .describe(JSON.stringify({ title: "Custom Header" })),
   z
     .object({
       ...variableReferenceBase,
       field: z.literal(AgentVaultVariableReferenceField.Substitution).describe(AGENT_VAULT.SERVICE.referenceField),
-      substitutionId: z.string().uuid().describe(AGENT_VAULT.SERVICE.referenceSubstitutionId)
+      substitutionId: z.string().guid().describe(AGENT_VAULT.SERVICE.referenceSubstitutionId)
     })
     .describe(JSON.stringify({ title: "Substitution" }))
 ]);
@@ -609,8 +609,8 @@ export const AgentVaultVariableReferenceSchema = z.discriminatedUnion("field", [
 // wire on every service route: the serializer emits `result.data`, so anything absent here is dropped,
 // and anything required here but missing from a projection is a 500 rather than a leak.
 export const AgentVaultServiceSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+  id: z.string().guid().describe(AGENT_VAULT.SERVICE.serviceId),
+  accessBundleId: z.string().guid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
   serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
@@ -622,7 +622,7 @@ export const AgentVaultServiceSchema = z.object({
   credential: AgentVaultCredentialSummarySchema,
   customHeaders: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.customHeaderId),
+      id: z.string().guid().describe(AGENT_VAULT.SERVICE.customHeaderId),
       name: z.string().describe(AGENT_VAULT.SERVICE.customHeaderName),
       prefix: z.string().describe(AGENT_VAULT.SERVICE.customHeaderPrefix)
     })
@@ -630,7 +630,7 @@ export const AgentVaultServiceSchema = z.object({
     .describe(AGENT_VAULT.SERVICE.customHeaders),
   substitutions: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.substitutionId),
+      id: z.string().guid().describe(AGENT_VAULT.SERVICE.substitutionId),
       placeholder: z.string().describe(AGENT_VAULT.SERVICE.placeholder),
       surfaces: z.nativeEnum(AgentVaultSubstitutionSurface).array().describe(AGENT_VAULT.SERVICE.surfaces)
     })
@@ -659,15 +659,15 @@ export const AgentVaultVariableValueSchema = z
   .refine((value) => value.trim().length > 0, "A value can't be only spaces.");
 
 export const AgentVaultVariableSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+  id: z.string().guid().describe(AGENT_VAULT.VARIABLE.variableId),
   key: z.string().describe(AGENT_VAULT.VARIABLE.key),
   scope: z.nativeEnum(AgentVaultVariableScope).describe(AGENT_VAULT.VARIABLE.scope),
   usedByServices: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceId),
+      id: z.string().guid().describe(AGENT_VAULT.VARIABLE.usedByServiceId),
       name: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceName),
       hostPattern: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceHostPattern),
-      accessBundleId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleId),
+      accessBundleId: z.string().guid().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleId),
       accessBundleName: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleName)
     })
     .array()
@@ -690,7 +690,7 @@ export const AgentVaultPersonalValuesSchema = z
         updatedAt: z.date().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.updatedAt),
         variableReferences: z
           .object({
-            variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+            variableId: z.string().guid().describe(AGENT_VAULT.VARIABLE.variableId),
             key: z.string().describe(AGENT_VAULT.VARIABLE.key)
           })
           .array()
@@ -722,9 +722,9 @@ export const AgentVaultPersonalValueInputSchema = z.discriminatedUnion("field", 
 ]);
 
 const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; groupIds: string }) => ({
-  userIds: z.string().uuid().array().default([]).describe(docs.userIds),
-  machineIdentityIds: z.string().uuid().array().default([]).describe(docs.machineIdentityIds),
-  groupIds: z.string().uuid().array().default([]).describe(docs.groupIds)
+  userIds: z.string().guid().array().default([]).describe(docs.userIds),
+  machineIdentityIds: z.string().guid().array().default([]).describe(docs.machineIdentityIds),
+  groupIds: z.string().guid().array().default([]).describe(docs.groupIds)
 });
 
 const namedCount = (body: {
@@ -831,7 +831,7 @@ export const AgentVaultMemberRevokeIdsSchema = z
 const actorTypeSchema = <T extends AgentVaultMemberType>(type: T) =>
   z.literal(type).describe(AGENT_VAULT.MEMBER.actorType);
 
-const actorIdSchema = z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId);
+const actorIdSchema = z.string().guid().describe(AGENT_VAULT.MEMBER.actorId);
 
 const actorRefSchemas = {
   user: z
@@ -874,7 +874,7 @@ const actorSchemas = <Id extends z.ZodTypeAny>(
     .describe(JSON.stringify({ title: "Machine identity" }))
 });
 
-const memberActorSchemas = actorSchemas(z.string().uuid(), AGENT_VAULT.MEMBER);
+const memberActorSchemas = actorSchemas(z.string().guid(), AGENT_VAULT.MEMBER);
 
 const groupActorSchema = z
   .object({
@@ -884,7 +884,7 @@ const groupActorSchema = z
   })
   .describe(JSON.stringify({ title: "Group" }));
 
-const sessionActorSchemas = actorSchemas(z.string().uuid().nullable(), AGENT_VAULT.SESSION);
+const sessionActorSchemas = actorSchemas(z.string().guid().nullable(), AGENT_VAULT.SESSION);
 
 export const AgentVaultSessionActorSchema = z.discriminatedUnion("type", [
   sessionActorSchemas.user,
@@ -894,7 +894,7 @@ export const AgentVaultSessionActorSchema = z.discriminatedUnion("type", [
 // Shaped like a session's user actor, so a client shows the user a session acts for the way it shows an owner.
 export const AgentVaultSessionOnBehalfOfSchema = sessionActorSchemas.user.extend({
   type: z.literal(AgentVaultMemberType.User).describe(AGENT_VAULT.SESSION.onBehalfOfType),
-  id: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION.onBehalfOfUserIdRead)
+  id: z.string().guid().nullable().describe(AGENT_VAULT.SESSION.onBehalfOfUserIdRead)
 });
 
 // No .default().optional(): the optional wraps the default and the default never applies.
@@ -928,7 +928,7 @@ const productActorSchemas = {
       id: actorIdSchema,
       name: z.string().describe(AGENT_VAULT.MEMBER.identityName),
       isManagedByAgentVault: z.boolean().describe(AGENT_VAULT.MEMBER.isManagedByAgentVault),
-      orgId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.machineIdentityOrgId)
+      orgId: z.string().guid().nullable().describe(AGENT_VAULT.MEMBER.machineIdentityOrgId)
     })
     .describe(JSON.stringify({ title: "Machine identity" }))
 };
@@ -1037,7 +1037,7 @@ export const AgentVaultSkillVersionParamSchema = z.coerce
   .describe(AGENT_VAULT.SKILL.version);
 
 export const AgentVaultSkillSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+  id: z.string().guid().describe(AGENT_VAULT.SKILL.skillId),
   name: z.string().describe(AGENT_VAULT.SKILL.name),
   description: z.string().describe(AGENT_VAULT.SKILL.description),
   latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion),
@@ -1048,7 +1048,7 @@ export const AgentVaultSkillSchema = z.object({
 export const AgentVaultSkillDetailSchema = AgentVaultSkillSchema.extend({
   accessBundles: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.SKILL.accessBundleId),
+      id: z.string().guid().describe(AGENT_VAULT.SKILL.accessBundleId),
       name: z.string().describe(AGENT_VAULT.SKILL.accessBundleName)
     })
     .array()
@@ -1056,7 +1056,7 @@ export const AgentVaultSkillDetailSchema = AgentVaultSkillSchema.extend({
 });
 
 export const AgentVaultSkillVersionSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SKILL.versionId),
+  id: z.string().guid().describe(AGENT_VAULT.SKILL.versionId),
   version: z.number().describe(AGENT_VAULT.SKILL.version),
   sha256: z.string().describe(AGENT_VAULT.SKILL.sha256),
   sizeBytes: z.number().describe(AGENT_VAULT.SKILL.sizeBytes),
@@ -1078,7 +1078,7 @@ export const AgentVaultSkillVersionWithFilesSchema = AgentVaultSkillVersionSchem
 });
 
 export const AgentVaultBundleSkillSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+  id: z.string().guid().describe(AGENT_VAULT.SKILL.skillId),
   name: z.string().describe(AGENT_VAULT.SKILL.name),
   description: z.string().describe(AGENT_VAULT.SKILL.description),
   latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion)

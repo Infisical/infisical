@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
 import { DistinguishedNameRegex, LdapUrlRegex, UserPrincipalNameRegex } from "@app/lib/regex";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -30,10 +31,7 @@ export const LdapConnectionSimpleBindCredentialsSchema = z.object({
     .describe(AppConnections.CREDENTIALS.LDAP.dn),
   password: z.string().trim().min(1, "Password required").describe(AppConnections.CREDENTIALS.LDAP.password),
   sslRejectUnauthorized: z.boolean().optional().describe(AppConnections.CREDENTIALS.LDAP.sslRejectUnauthorized),
-  sslCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
+  sslCertificate: bidirectionalTransform(z.string().trim().optional(), (value) => value || undefined)
     .optional()
     .describe(AppConnections.CREDENTIALS.LDAP.sslCertificate)
 });

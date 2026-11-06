@@ -20,7 +20,7 @@ export const SecretModifiedEventV1 = defineEvent({
   action: "modified",
   version: 1,
   data: z.object({
-    secretId: z.string().uuid(),
+    secretId: z.string().guid(),
     projectId: z.string().min(1),
     environment: z.string().min(1),
     secretPath: z.string().min(1),

@@ -33,10 +33,10 @@ const certManagerGroupMembershipRoleSchema = z.object({
 });
 
 const certManagerGroupMembershipSchema = z.object({
-  id: z.string().uuid(),
-  groupId: z.string().uuid(),
+  id: z.string().guid(),
+  groupId: z.string().guid(),
   group: GroupsSchema.pick({ id: true, name: true, slug: true }).extend({
-    orgId: z.string().uuid().optional()
+    orgId: z.string().guid().optional()
   }),
   roles: z.array(certManagerGroupMembershipRoleSchema),
   createdAt: z.date(),
@@ -77,7 +77,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "getCertManagerGroup",
-      params: z.object({ groupId: z.string().uuid() }),
+      params: z.object({ groupId: z.string().guid() }),
       response: { 200: z.object({ groupMembership: certManagerGroupMembershipSchema }) }
     },
     handler: async (req) => {
@@ -104,9 +104,9 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "addCertManagerGroup",
-      params: z.object({ groupId: z.string().uuid() }),
+      params: z.object({ groupId: z.string().guid() }),
       body: z.object({
-        role: z.string().trim().min(1).default(ProjectMembershipRole.Member).optional(),
+        role: z.string().trim().min(1).optional(),
         roles: z
           .array(
             z.union([
@@ -184,7 +184,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "updateCertManagerGroup",
-      params: z.object({ groupId: z.string().uuid() }),
+      params: z.object({ groupId: z.string().guid() }),
       body: RolesUpdateBodySchema,
       response: { 200: z.object({ roles: ProjectUserMembershipRolesSchema.array() }) }
     },
@@ -231,7 +231,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "removeCertManagerGroup",
-      params: z.object({ groupId: z.string().uuid() }),
+      params: z.object({ groupId: z.string().guid() }),
       response: {
         200: z.object({
           groupMembership: certManagerGroupMembershipSchema

@@ -3,6 +3,7 @@ import z from "zod";
 import { AppConnections } from "@app/lib/api-docs";
 import { isValidIp } from "@app/lib/ip";
 import { isValidHostname } from "@app/lib/validator/validate-hostname";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -37,11 +38,10 @@ export const HpeIloConnectionBasicAuthCredentialsSchema = z.object({
     .max(512, "Password cannot exceed 512 characters")
     .describe(AppConnections.CREDENTIALS.HPE_ILO.password),
   sslRejectUnauthorized: z.boolean().optional().describe(AppConnections.CREDENTIALS.HPE_ILO.sslRejectUnauthorized),
-  sslCertificate: z
-    .string()
-    .trim()
-    .max(16384, "SSL certificate cannot exceed 16384 characters")
-    .transform((value) => value || undefined)
+  sslCertificate: bidirectionalTransform(
+    z.string().trim().max(16384, "SSL certificate cannot exceed 16384 characters").optional(),
+    (value) => value || undefined
+  )
     .optional()
     .describe(AppConnections.CREDENTIALS.HPE_ILO.sslCertificate)
 });

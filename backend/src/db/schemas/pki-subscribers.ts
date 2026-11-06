@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiSubscribersSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   projectId: z.string(),
-  caId: z.string().uuid().nullable().optional(),
+  caId: z.string().guid().nullable().optional(),
   name: z.string(),
   commonName: z.string(),
   subjectAlternativeNames: z.string().array(),

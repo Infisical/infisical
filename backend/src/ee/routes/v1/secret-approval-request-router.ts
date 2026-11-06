@@ -50,7 +50,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         200: z.object({
           approvals: SecretApprovalRequestsSchema.extend({
             secretPath: z.string(),
-            policyId: z.string().uuid().nullable(),
+            policyId: z.string().guid().nullable(),
             policy: z.object({
               id: z.string(),
               name: z.string(),
@@ -148,7 +148,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     schema: {
       operationId: "mergeSecretApprovalRequest",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       body: z.object({
         bypassReason: z.string().max(1000).optional(),
@@ -233,7 +233,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     schema: {
       operationId: "reviewSecretApprovalRequest",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       body: z.object({
         status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
@@ -299,7 +299,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     schema: {
       operationId: "updateSecretApprovalRequestStatus",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       body: z.object({
         status: z.nativeEnum(RequestState)
@@ -365,13 +365,13 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     schema: {
       operationId: "getSecretApprovalRequest",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
           approval: SecretApprovalRequestsSchema.merge(
             z.object({
-              policyId: z.string().uuid().nullable(),
+              policyId: z.string().guid().nullable(),
               policy: z.object({
                 id: z.string(),
                 name: z.string(),

@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretSnapshotsSchema = z.object({
-  id: z.string().uuid(),
-  envId: z.string().uuid(),
-  folderId: z.string().uuid(),
-  parentFolderId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  envId: z.string().guid(),
+  folderId: z.string().guid(),
+  parentFolderId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

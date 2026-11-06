@@ -11,7 +11,7 @@ import {
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 
 export const AcmeCertificateAuthorityConfigurationSchema = z.object({
-  dnsAppConnectionId: z.string().uuid().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsAppConnectionId),
+  dnsAppConnectionId: z.string().guid().trim().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsAppConnectionId),
   // soon, differentiate via the provider property
   dnsProviderConfig: z.object({
     provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.ACME.provider),
@@ -21,7 +21,10 @@ export const AcmeCertificateAuthorityConfigurationSchema = z.object({
   accountEmail: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.accountEmail),
   eabKid: z.string().trim().max(64).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.eabKid),
   eabHmacKey: z.string().trim().max(512).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.eabHmacKey),
-  dnsResolver: z.string().trim().ip().optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsResolver)
+  dnsResolver: z
+    .union([z.string().trim().ipv4(), z.string().trim().ipv6()])
+    .optional()
+    .describe(CertificateAuthorities.CONFIGURATIONS.ACME.dnsResolver)
 });
 
 export const AcmeCertificateAuthorityCredentialsSchema = z.object({

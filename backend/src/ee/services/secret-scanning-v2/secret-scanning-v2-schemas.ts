@@ -29,12 +29,12 @@ export const BaseSecretScanningDataSourceSchema = ({
     encryptedCredentials: true
   }).extend({
     type: z.literal(type),
-    connectionId: isConnectionRequired ? z.string().uuid() : z.null(),
+    connectionId: isConnectionRequired ? z.string().guid() : z.null(),
     connection: isConnectionRequired
       ? z.object({
           app: z.literal(SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]),
           name: z.string(),
-          id: z.string().uuid()
+          id: z.string().guid()
         })
       : z.null()
   });
@@ -58,7 +58,7 @@ export const BaseCreateSecretScanningDataSourceSchema = ({
       .nullish()
       .describe(SecretScanningDataSources.CREATE(type).description),
     connectionId: isConnectionRequired
-      ? z.string().uuid().describe(SecretScanningDataSources.CREATE(type).connectionId)
+      ? z.string().guid().describe(SecretScanningDataSources.CREATE(type).connectionId)
       : z.undefined(),
     isAutoScanEnabled: z.boolean().optional().describe(SecretScanningDataSources.CREATE(type).isAutoScanEnabled),
     isHistoricalScanEnabled: z
@@ -117,7 +117,7 @@ export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit
   details: true
 }).extend({
   projectId: z.string(),
-  dataSourceId: z.string().uuid(),
+  dataSourceId: z.string().guid(),
   dataSourceName: z.string(),
   resourceName: z.string()
 });

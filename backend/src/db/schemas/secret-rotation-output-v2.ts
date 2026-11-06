@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretRotationOutputV2Schema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   key: z.string(),
-  secretId: z.string().uuid(),
-  rotationId: z.string().uuid()
+  secretId: z.string().guid(),
+  rotationId: z.string().guid()
 });
 
 export type TSecretRotationOutputV2 = z.infer<typeof SecretRotationOutputV2Schema>;

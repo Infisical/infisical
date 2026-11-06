@@ -33,7 +33,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "listAwsKmsKeys",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         region: z.nativeEnum(AWSRegion),
@@ -70,7 +70,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "listAwsIamUsers",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

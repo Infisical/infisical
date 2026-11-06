@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const MembershipsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   scope: z.string(),
-  actorUserId: z.string().uuid().nullable().optional(),
-  actorIdentityId: z.string().uuid().nullable().optional(),
-  actorGroupId: z.string().uuid().nullable().optional(),
-  scopeOrgId: z.string().uuid(),
+  actorUserId: z.string().guid().nullable().optional(),
+  actorIdentityId: z.string().guid().nullable().optional(),
+  actorGroupId: z.string().guid().nullable().optional(),
+  scopeOrgId: z.string().guid(),
   scopeProjectId: z.string().nullable().optional(),
   isActive: z.boolean().default(true),
   status: z.string().nullable().optional(),

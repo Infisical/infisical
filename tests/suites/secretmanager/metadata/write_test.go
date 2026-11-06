@@ -36,7 +36,7 @@ func TestSecretMetadata_Write(t *testing.T) {
 
 		// Assert
 		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "creating returned %s", res.Body)
-		require.Contains(t, string(res.Body), "String must contain at most 255 character(s)")
+		require.Contains(t, string(res.Body), "Too big: expected string to have <=255 characters")
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
 
@@ -51,7 +51,7 @@ func TestSecretMetadata_Write(t *testing.T) {
 
 		// Assert
 		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "creating returned %s", res.Body)
-		require.Contains(t, string(res.Body), "String must contain at most 1020 character(s)")
+		require.Contains(t, string(res.Body), "Too big: expected string to have <=1020 characters")
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
 

@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AlertHistorySchema = z.object({
-  id: z.string().uuid(),
-  alertId: z.string().uuid(),
+  id: z.string().guid(),
+  alertId: z.string().guid(),
   triggeredAt: z.date().nullable().optional(),
   status: z.string(),
   createdAt: z.date(),

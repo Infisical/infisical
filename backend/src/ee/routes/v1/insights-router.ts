@@ -26,6 +26,7 @@ import {
 } from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
+import { withoutDefault } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { BaseSecretNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -35,23 +36,26 @@ import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 // the generators use, so request validation and generation never drift.
 const AuditReportRequestConfigSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(AuditReportType.StaleSecrets), inputs: StaleSecretsInputsSchema.optional() }),
-  z.object({ type: z.literal(AuditReportType.DuplicateSecrets), inputs: NoInputsSchema.optional() }),
-  z.object({ type: z.literal(AuditReportType.SecretValidationCompliance), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(AuditReportType.DuplicateSecrets), inputs: withoutDefault(NoInputsSchema).optional() }),
+  z.object({
+    type: z.literal(AuditReportType.SecretValidationCompliance),
+    inputs: withoutDefault(NoInputsSchema).optional()
+  }),
   z.object({ type: z.literal(AuditReportType.UpcomingRotations), inputs: DaysAheadInputsSchema.optional() }),
-  z.object({ type: z.literal(AuditReportType.FailedRotations), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(AuditReportType.FailedRotations), inputs: withoutDefault(NoInputsSchema).optional() }),
   z.object({ type: z.literal(AuditReportType.UpcomingReminders), inputs: DaysAheadInputsSchema.optional() }),
   z.object({ type: z.literal(AuditReportType.SecretAccessLog), inputs: SecretAccessLogInputsSchema.optional() })
 ]);
 
 const AuditReportConfigSchema = z.object({
   type: z.nativeEnum(AuditReportType),
-  inputs: z.record(z.unknown())
+  inputs: z.record(z.string(), z.unknown())
 });
 
 const AuditReportSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  requestedByUserId: z.string().uuid().nullable(),
+  requestedByUserId: z.string().guid().nullable(),
   status: z.nativeEnum(AuditReportStatus),
   reportConfigs: z.array(AuditReportConfigSchema),
   emailRecipients: z.string().array(),
@@ -64,22 +68,31 @@ const AuditReportSchema = z.object({
 // Org-scoped counterparts. None of the org report types take inputs today; the discriminated union
 // mirrors the project one so a type can grow inputs later without reshaping the request.
 const OrgAuditReportRequestConfigSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal(OrgAuditReportType.OrgUsageSummary), inputs: NoInputsSchema.optional() }),
-  z.object({ type: z.literal(OrgAuditReportType.OrgNeedsAttention), inputs: NoInputsSchema.optional() }),
-  z.object({ type: z.literal(OrgAuditReportType.OrgAuthMethods), inputs: NoInputsSchema.optional() }),
-  z.object({ type: z.literal(OrgAuditReportType.OrgStaticSecretUsage), inputs: NoInputsSchema.optional() }),
-  z.object({ type: z.literal(OrgAuditReportType.OrgSecretAccessVolume), inputs: NoInputsSchema.optional() })
+  z.object({ type: z.literal(OrgAuditReportType.OrgUsageSummary), inputs: withoutDefault(NoInputsSchema).optional() }),
+  z.object({
+    type: z.literal(OrgAuditReportType.OrgNeedsAttention),
+    inputs: withoutDefault(NoInputsSchema).optional()
+  }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgAuthMethods), inputs: withoutDefault(NoInputsSchema).optional() }),
+  z.object({
+    type: z.literal(OrgAuditReportType.OrgStaticSecretUsage),
+    inputs: withoutDefault(NoInputsSchema).optional()
+  }),
+  z.object({
+    type: z.literal(OrgAuditReportType.OrgSecretAccessVolume),
+    inputs: withoutDefault(NoInputsSchema).optional()
+  })
 ]);
 
 const OrgAuditReportSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
-  requestedByUserId: z.string().uuid().nullable(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
+  requestedByUserId: z.string().guid().nullable(),
   status: z.nativeEnum(AuditReportStatus),
   reportConfigs: z.array(
     z.object({
       type: z.nativeEnum(OrgAuditReportType),
-      inputs: z.record(z.unknown())
+      inputs: z.record(z.string(), z.unknown())
     })
   ),
   emailRecipients: z.string().array(),
@@ -358,7 +371,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: true,
       operationId: "deleteOrgSecretsAuditReport",
-      params: z.object({ reportId: z.string().uuid() }),
+      params: z.object({ reportId: z.string().guid() }),
       response: {
         200: OrgAuditReportSchema
       }
@@ -527,7 +540,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.projectId),
         actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorType),
-        actorId: z.string().uuid().describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorId)
+        actorId: z.string().guid().describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorId)
       }),
       response: {
         200: UnusedAccessActorSchema
@@ -984,7 +997,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: true,
       operationId: "getProjectSecretsAuditReport",
-      params: z.object({ projectId: z.string().trim(), reportId: z.string().uuid() }),
+      params: z.object({ projectId: z.string().trim(), reportId: z.string().guid() }),
       response: {
         200: AuditReportSchema
       }
@@ -1015,7 +1028,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: true,
       operationId: "deleteProjectSecretsAuditReport",
-      params: z.object({ projectId: z.string().trim(), reportId: z.string().uuid() }),
+      params: z.object({ projectId: z.string().trim(), reportId: z.string().guid() }),
       response: {
         200: AuditReportSchema
       }

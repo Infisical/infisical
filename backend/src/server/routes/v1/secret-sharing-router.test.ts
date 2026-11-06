@@ -1,7 +1,8 @@
+import { serializerCompiler, ZodTypeProvider } from "@fastify/type-provider-zod";
 import Fastify, { FastifyInstance } from "fastify";
 import { vi } from "vitest";
 
-import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "@app/server/plugins/fastify-zod";
+import { validatorCompiler } from "@app/server/lib/validator-compiler";
 
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 

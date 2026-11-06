@@ -630,7 +630,7 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
     configType: z.literal(TotpConfigType.URL),
     url: z
       .string()
-      .url()
+      .url({ abort: true })
       .trim()
       .min(1)
       .refine((val) => {
@@ -1074,10 +1074,14 @@ export const DynamicSecretOAuth2Schema = z.discriminatedUnion("grantType", [
             .min(1, "Parameter name is required")
             .max(128)
             .refine((key) => OAUTH2_PARAM_KEY_REGEX.test(key), "Parameter name contains invalid characters")
-            .refine(
-              (key) => !OAUTH2_RESERVED_PARAMS.has(key.toLowerCase()),
-              (key) => ({ message: `'${key}' is set by Infisical and can't be used as an extra parameter` })
-            ),
+            .superRefine((key, ctx) => {
+              if (OAUTH2_RESERVED_PARAMS.has(key.toLowerCase())) {
+                ctx.addIssue({
+                  code: "custom",
+                  message: `'${key}' is set by Infisical and can't be used as an extra parameter`
+                });
+              }
+            }),
           value: z.string().trim().min(1, "Parameter value is required").max(2048)
         })
       )

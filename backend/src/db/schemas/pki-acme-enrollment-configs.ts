@@ -10,13 +10,13 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAcmeEnrollmentConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   encryptedEabSecret: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date(),
   skipDnsOwnershipVerification: z.boolean().default(false),
   skipEabBinding: z.boolean().default(false),
-  applicationProfileId: z.string().uuid().nullable().optional()
+  applicationProfileId: z.string().guid().nullable().optional()
 });
 
 export type TPkiAcmeEnrollmentConfigs = z.infer<typeof PkiAcmeEnrollmentConfigsSchema>;

@@ -32,7 +32,7 @@ export const registerCloud66ConnectionRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "listCloud66Stacks",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z

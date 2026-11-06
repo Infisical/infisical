@@ -37,7 +37,6 @@ import {
 } from "./cert-request/cert-request-policy-types";
 import {
   TCodeSigningPolicy,
-  TCodeSigningPolicyConditions,
   TCodeSigningPolicyConstraints,
   TCodeSigningPolicyInputs,
   TCodeSigningRequest,
@@ -73,7 +72,6 @@ export type TApprovalPolicyInputs =
 export type TApprovalPolicyConditions =
   | TPamAccessPolicyConditions
   | TCertRequestPolicyConditions
-  | TCodeSigningPolicyConditions
   | TSecretAccessPolicyConditions;
 export type TApprovalPolicyConstraints =
   | TPamAccessPolicyConstraints

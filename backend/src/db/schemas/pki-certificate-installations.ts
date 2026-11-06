@@ -10,10 +10,10 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiCertificateInstallationsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   locationType: z.string(),
-  locationDetails: z.unknown(),
+  locationDetails: z.unknown().optional(),
   locationFingerprint: z.string(),
   name: z.string().nullable().optional(),
   type: z.string().default("unknown"),

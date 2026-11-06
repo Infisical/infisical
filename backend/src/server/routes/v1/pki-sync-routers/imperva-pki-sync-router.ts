@@ -39,7 +39,7 @@ export const registerImpervaPkiSyncRouter = async (server: FastifyZodProvider, e
       ...(enableOperationId ? { operationId: "listImpervaSites" } : {}),
       description: "List the websites available on Imperva for the specified connection.",
       querystring: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

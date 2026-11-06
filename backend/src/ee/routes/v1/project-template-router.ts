@@ -53,7 +53,7 @@ const SanitizedProjectTemplateSchema = ProjectTemplatesSchema.extend({
     .nullable(),
   identities: z
     .object({
-      identityId: z.string().uuid(),
+      identityId: z.string().guid(),
       identityName: z.string(),
       roles: z.string().array()
     })
@@ -157,7 +157,7 @@ const ProjectTemplateGroupsSchema = z
 
 const ProjectTemplateIdentitiesSchema = z
   .object({
-    identityId: z.string().uuid(),
+    identityId: z.string().guid(),
     roles: z.string().trim().min(1).array().min(1)
   })
   .array()
@@ -263,7 +263,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       tags: [ApiDocsTags.ProjectTemplates],
       description: "Get a project template by ID.",
       params: z.object({
-        templateId: z.string().uuid()
+        templateId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -368,7 +368,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       operationId: "updateProjectTemplate",
       tags: [ApiDocsTags.ProjectTemplates],
       description: "Update a project template.",
-      params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.UPDATE.templateId) }),
+      params: z.object({ templateId: z.string().guid().describe(ProjectTemplates.UPDATE.templateId) }),
       body: z
         .object({
           name: slugSchema({ field: "name" })
@@ -447,7 +447,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       operationId: "deleteProjectTemplate",
       tags: [ApiDocsTags.ProjectTemplates],
       description: "Delete a project template.",
-      params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.DELETE.templateId) }),
+      params: z.object({ templateId: z.string().guid().describe(ProjectTemplates.DELETE.templateId) }),
       response: {
         200: z.object({
           projectTemplate: SanitizedProjectTemplateSchema

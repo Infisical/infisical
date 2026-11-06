@@ -28,7 +28,7 @@ export const registerChefConnectionRouter = async (server: FastifyZodProvider) =
     },
     schema: {
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -55,7 +55,7 @@ export const registerChefConnectionRouter = async (server: FastifyZodProvider) =
     },
     schema: {
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         dataBagName: z.string()

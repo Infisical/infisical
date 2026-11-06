@@ -10,11 +10,11 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ExternalCertificateAuthoritiesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   type: z.string(),
-  appConnectionId: z.string().uuid().nullable().optional(),
-  dnsAppConnectionId: z.string().uuid().nullable().optional(),
-  caId: z.string().uuid(),
+  appConnectionId: z.string().guid().nullable().optional(),
+  dnsAppConnectionId: z.string().guid().nullable().optional(),
+  caId: z.string().guid(),
   credentials: zodBuffer.nullable().optional(),
   configuration: z.unknown().nullable().optional()
 });

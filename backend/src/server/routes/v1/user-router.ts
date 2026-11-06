@@ -467,7 +467,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
                 attestationObject: z.string()
               })
               .passthrough(),
-            clientExtensionResults: z.record(z.unknown()).default({}),
+            clientExtensionResults: z.record(z.string(), z.unknown()).default({}),
             type: z.literal("public-key")
           })
           .passthrough(),
@@ -537,7 +537,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
                 signature: z.string()
               })
               .passthrough(),
-            clientExtensionResults: z.record(z.unknown()).optional(),
+            clientExtensionResults: z.record(z.string(), z.unknown()).optional(),
             type: z.literal("public-key")
           })
           .passthrough()
@@ -600,7 +600,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteWebAuthnCredential",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       querystring: z.object({
         mfaSessionId: z.string().trim().optional()

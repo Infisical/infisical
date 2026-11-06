@@ -1,13 +1,14 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { fastifyRequestContext } from "@fastify/request-context";
+import { serializerCompiler, ZodTypeProvider } from "@fastify/type-provider-zod";
 import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 
+import { validatorCompiler } from "@app/server/lib/validator-compiler";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { injectPermissionDeniedAuditLog } from "./audit-log-permission-denied";
-import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./fastify-zod";
 
 const ORG_ID = "org-1";
 const PROJECT_ID = "11111111-1111-1111-1111-111111111111";

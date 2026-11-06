@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ApprovalRequestStepEligibleApproversSchema = z.object({
-  id: z.string().uuid(),
-  stepId: z.string().uuid(),
-  userId: z.string().uuid().nullable().optional(),
-  groupId: z.string().uuid().nullable().optional()
+  id: z.string().guid(),
+  stepId: z.string().guid(),
+  userId: z.string().guid().nullable().optional(),
+  groupId: z.string().guid().nullable().optional()
 });
 
 export type TApprovalRequestStepEligibleApprovers = z.infer<typeof ApprovalRequestStepEligibleApproversSchema>;

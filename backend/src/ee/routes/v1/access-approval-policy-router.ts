@@ -71,7 +71,8 @@ const requestExpirationTimeSchema = z
     return val;
   });
 
-const accessApprovalPolicyPubSchema = sapPubSchema.extend({
+// Access approval policies reuse the secret approval policy shape but have no machine identity bypass.
+const accessApprovalPolicyPubSchema = sapPubSchema.omit({ bypassForMachineIdentities: true }).extend({
   delegatedApproval: DelegatedApprovalSchema.nullable().optional()
 });
 

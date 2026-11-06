@@ -12,8 +12,8 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { MicrosoftIntuneConnectionMethod } from "./microsoft-intune-connection-enums";
 
 export const MicrosoftIntuneConnectionClientSecretInputCredentialsSchema = z.object({
-  tenantId: z.string().uuid().trim().min(1, "Tenant ID required"),
-  clientId: z.string().uuid().trim().min(1, "Client ID required"),
+  tenantId: z.string().guid().trim().min(1, "Tenant ID required"),
+  clientId: z.string().guid().trim().min(1, "Client ID required"),
   clientSecret: z.string().trim().min(1, "Client Secret required")
 });
 

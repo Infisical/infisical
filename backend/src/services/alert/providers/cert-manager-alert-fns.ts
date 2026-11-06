@@ -44,7 +44,7 @@ const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 export const filterIdsSchema = (field: string, noun: string) =>
   z
-    .array(z.string().toLowerCase().uuid())
+    .array(z.string().toLowerCase().guid())
     .min(1, `${field} must list at least one ${noun}. To cover them all, leave ${field} out.`)
     .max(MAX_CERTIFICATE_ALERT_FILTER_IDS, `${field} can list at most ${MAX_CERTIFICATE_ALERT_FILTER_IDS} ${noun}s`)
     .superRefine((ids, ctx) => {

@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { ms } from "@app/lib/ms";
+import { bidirectionalTransform } from "@app/lib/zod";
 
 import {
   BaseApprovalPolicySchema,
@@ -14,8 +15,8 @@ import {
 import { CodeSigningScopeField } from "./code-signing-policy-enums";
 
 export const CodeSigningPolicyInputsSchema = z.object({
-  signerId: z.string().uuid(),
-  approvalPolicyId: z.string().uuid()
+  signerId: z.string().guid(),
+  approvalPolicyId: z.string().guid()
 });
 
 export const CodeSigningPolicyConditionsSchema = z.object({}).array();
@@ -33,22 +34,15 @@ export const MAX_SIGNING_COMMAND_LENGTH = 32767;
 
 const SHA256_HEX_RE = new RE2("^[a-fA-F0-9]{64}$");
 
+const emptyToUndefined = (value: string | undefined) => (value === "" ? undefined : value);
+
 const scopeText = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max)
-    .optional()
-    .transform((value) => (value === "" ? undefined : value));
+  bidirectionalTransform(z.string().trim().max(max).optional(), emptyToUndefined).optional();
 
 const scopeSha256 = (message: string) =>
-  z
-    .string()
-    .trim()
-    .max(64)
-    .optional()
-    .transform((value) => (value === "" ? undefined : value))
-    .refine((value) => value === undefined || SHA256_HEX_RE.test(value), message);
+  bidirectionalTransform(z.string().trim().max(64).optional(), emptyToUndefined)
+    .refine((value) => value === undefined || SHA256_HEX_RE.test(value), message)
+    .optional();
 
 export const CodeSigningScopeSchema = z.object({
   [CodeSigningScopeField.Command]: scopeText(MAX_SIGNING_COMMAND_LENGTH),
@@ -58,13 +52,12 @@ export const CodeSigningScopeSchema = z.object({
   ),
   [CodeSigningScopeField.Hostname]: scopeText(256),
   [CodeSigningScopeField.OsUsername]: scopeText(256),
-  [CodeSigningScopeField.IpAddress]: z
-    .string()
-    .trim()
-    .max(45)
-    .optional()
-    .transform((value) => (value === "" ? undefined : value))
-    .refine((value) => value === undefined || z.string().ip().safeParse(value).success, "Must be a valid IP address"),
+  [CodeSigningScopeField.IpAddress]: bidirectionalTransform(z.string().trim().max(45).optional(), emptyToUndefined)
+    .refine(
+      (value) => value === undefined || z.union([z.ipv4(), z.ipv6()]).safeParse(value).success,
+      "Must be a valid IP address"
+    )
+    .optional(),
   [CodeSigningScopeField.DataHash]: scopeSha256("Data hash must be a 64-character SHA-256 hex string")
 });
 
@@ -87,8 +80,8 @@ export const CodeSigningPolicyConstraintsSchema = z
   });
 
 export const CodeSigningPolicyRequestDataSchema = z.object({
-  signerId: z.string().uuid(),
-  approvalPolicyId: z.string().uuid(),
+  signerId: z.string().guid(),
+  approvalPolicyId: z.string().guid(),
   signerName: z.string(),
   justification: z.string().max(512).optional(),
   requestedWindowDuration: SigningWindowDurationSchema.optional(),
@@ -132,7 +125,7 @@ export const CreateCodeSigningRequestSchema = BaseCreateApprovalRequestSchema.ex
 
 export const CodeSigningRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({
   attributes: z.object({
-    signerId: z.string().uuid(),
+    signerId: z.string().guid(),
     signerName: z.string(),
     maxSignings: z.number().int().positive().optional(),
     windowStart: z.string().datetime().optional(),

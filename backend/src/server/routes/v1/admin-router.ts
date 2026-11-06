@@ -42,11 +42,11 @@ const SuperAdminSchema = SanitizedUserSchema.extend({
 });
 
 const SanitizedSuperAdminSchema = z.object({
-  id: z.string().uuid(),
-  initialized: z.boolean().default(false).nullable().optional(),
-  allowSignUp: z.boolean().default(true).nullable().optional(),
+  id: z.string().guid(),
+  initialized: z.boolean().nullable().optional(),
+  allowSignUp: z.boolean().nullable().optional(),
   allowedSignUpDomain: z.string().nullable().optional(),
-  defaultAuthOrgId: z.string().uuid().nullable().optional(),
+  defaultAuthOrgId: z.string().guid().nullable().optional(),
   enabledLoginMethods: z.string().array().nullable().optional(),
   authConsentContent: z.string().nullable().optional(),
   pageFrameContent: z.string().nullable().optional(),
@@ -54,7 +54,7 @@ const SanitizedSuperAdminSchema = z.object({
   // Populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion: z.string().nullable().optional(),
   // Super admin-only fields (omitted for non-super-admin callers)
-  instanceId: z.string().uuid().optional(),
+  instanceId: z.string().guid().optional(),
   createdAt: z.date().optional(),
   trustLdapEmails: z.boolean().nullish(),
   onboardingCompleted: z.boolean().optional(),
@@ -194,7 +194,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           })
           .optional(),
         allowedStorageHostnames: StorageHostnameSchema.array().max(50).optional(),
-        envOverrides: z.record(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string()).optional()
+        envOverrides: z
+          .partialRecord(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string())
+          .optional()
       }),
       response: {
         200: z.object({
@@ -237,7 +239,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         adminsOnly: z
           .string()
           .transform((val) => val === "true")
-          .default("false")
+          .prefault("false")
       }),
       response: {
         200: z.object({
@@ -1347,7 +1349,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "createAdminEmailDomain",
       body: z.object({
-        orgId: z.string().uuid(),
+        orgId: z.string().guid(),
         domain: z.string().trim().toLowerCase().min(1)
       }),
       response: {
@@ -1376,7 +1378,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteAdminEmailDomain",
       params: z.object({
-        emailDomainId: z.string().uuid()
+        emailDomainId: z.string().guid()
       }),
       response: {
         200: z.object({

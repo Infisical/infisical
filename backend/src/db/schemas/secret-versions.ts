@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretVersionsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   version: z.number().default(1),
   type: z.string().default("shared"),
   secretBlindIndex: z.string().nullable().optional(),
@@ -23,14 +23,14 @@ export const SecretVersionsSchema = z.object({
   secretCommentTag: z.string().nullable().optional(),
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
-  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  skipMultilineEncoding: z.boolean().nullable().optional(),
   algorithm: z.string().default("aes-256-gcm"),
   keyEncoding: z.string().default("utf8"),
   metadata: z.unknown().nullable().optional(),
-  envId: z.string().uuid().nullable().optional(),
-  secretId: z.string().uuid(),
-  folderId: z.string().uuid(),
-  userId: z.string().uuid().nullable().optional(),
+  envId: z.string().guid().nullable().optional(),
+  secretId: z.string().guid(),
+  folderId: z.string().guid(),
+  userId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -112,7 +112,7 @@ export const BaseSecretValidationRuleSchema = SecretValidationRulesSchema.omit({
   encryptedInputs: true,
   envId: true
 }).extend({
-  environment: z.object({ id: z.string().uuid(), name: z.string(), slug: z.string() }).nullable()
+  environment: z.object({ id: z.string().guid(), name: z.string(), slug: z.string() }).nullable()
 });
 
 export const GenericCreateSecretValidationRuleFieldsSchema = (type: SecretValidationRuleType) => {

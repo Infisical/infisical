@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ApprovalPolicyAutoApprovalRulesSchema = z.object({
-  id: z.string().uuid(),
-  policyId: z.string().uuid(),
+  id: z.string().guid(),
+  policyId: z.string().guid(),
   position: z.number(),
   name: z.string(),
   createdAt: z.date(),

@@ -8,19 +8,19 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningFindingsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   rule: z.string(),
   severity: z.string(),
   status: z.string().default("unresolved"),
   triageComment: z.string().nullable().optional(),
   fingerprint: z.string(),
-  details: z.unknown(),
-  scanId: z.string().uuid(),
+  details: z.unknown().optional(),
+  scanId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  resourceId: z.string().uuid(),
+  resourceId: z.string().guid(),
   confidence: z.string().nullable().optional(),
-  triagedByUserId: z.string().uuid().nullable().optional(),
+  triagedByUserId: z.string().guid().nullable().optional(),
   triagedAt: z.date().nullable().optional(),
   resolvedAt: z.date().nullable().optional()
 });

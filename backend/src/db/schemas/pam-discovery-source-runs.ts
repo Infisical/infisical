@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamDiscoverySourceRunsSchema = z.object({
-  id: z.string().uuid(),
-  discoverySourceId: z.string().uuid(),
+  id: z.string().guid(),
+  discoverySourceId: z.string().guid(),
   status: z.string(),
   triggeredBy: z.string(),
   discoveredCount: z.number().default(0),

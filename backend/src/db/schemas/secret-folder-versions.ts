@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretFolderVersionsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
-  version: z.number().default(1).nullable().optional(),
+  version: z.number().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  envId: z.string().uuid(),
-  folderId: z.string().uuid(),
+  envId: z.string().guid(),
+  folderId: z.string().guid(),
   description: z.string().nullable().optional()
 });
 

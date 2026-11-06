@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const GithubAppConnectionsSchema = z.object({
-  id: z.string().uuid(),
-  appConnectionId: z.string().uuid(),
-  githubAppId: z.string().uuid(),
+  id: z.string().guid(),
+  appConnectionId: z.string().guid(),
+  githubAppId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

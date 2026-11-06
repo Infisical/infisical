@@ -13,8 +13,8 @@ import { ApplicationIdParamsSchema } from "../pki-application-schemas";
 import { ApplicationMemberSchema, RemoveResponseSchema, RoleBodySchema } from "./schemas";
 
 const GroupParamsSchema = z.object({
-  applicationId: z.string().uuid(),
-  groupId: z.string().uuid()
+  applicationId: z.string().guid(),
+  groupId: z.string().guid()
 });
 
 export const registerPkiApplicationGroupMembershipRouter = async (server: FastifyZodProvider) => {

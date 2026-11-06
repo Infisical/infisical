@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const WorkflowIntegrationsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   integration: z.string(),
   slug: z.string(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   description: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

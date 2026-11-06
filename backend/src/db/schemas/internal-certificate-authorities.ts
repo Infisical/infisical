@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const InternalCertificateAuthoritiesSchema = z.object({
-  id: z.string().uuid(),
-  parentCaId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  parentCaId: z.string().guid().nullable().optional(),
   type: z.string(),
   friendlyName: z.string(),
   organization: z.string(),
@@ -24,8 +24,8 @@ export const InternalCertificateAuthoritiesSchema = z.object({
   keyAlgorithm: z.string(),
   notBefore: z.date().nullable().optional(),
   notAfter: z.date().nullable().optional(),
-  activeCaCertId: z.string().uuid().nullable().optional(),
-  caId: z.string().uuid(),
+  activeCaCertId: z.string().guid().nullable().optional(),
+  caId: z.string().guid(),
   autoRenewalEnabled: z.boolean().default(false),
   autoRenewalDaysBeforeExpiry: z.number().nullable().optional(),
   lastRenewalStatus: z.string().nullable().optional(),

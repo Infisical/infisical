@@ -55,7 +55,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
       tags: [ApiDocsTags.PkiSigners],
       description: "Add a group to a signer",
       params: SignerIdParamsSchema,
-      body: z.object({ groupId: z.string().uuid(), role: SignerRoleSchema.default("operator") }),
+      body: z.object({ groupId: z.string().guid(), role: SignerRoleSchema.default("operator") }),
       response: { 200: SignerMemberSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -111,7 +111,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
       operationId: "updateSignerGroupRole",
       tags: [ApiDocsTags.PkiSigners],
       description: "Update a group's role on a signer",
-      params: z.object({ signerId: z.string().uuid(), groupId: z.string().uuid() }),
+      params: z.object({ signerId: z.string().guid(), groupId: z.string().guid() }),
       body: RoleBodySchema,
       response: { 200: z.object({ membership: SignerMemberSchema }) }
     },
@@ -169,7 +169,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
       operationId: "removeSignerGroupMember",
       tags: [ApiDocsTags.PkiSigners],
       description: "Remove a group from a signer",
-      params: z.object({ signerId: z.string().uuid(), groupId: z.string().uuid() }),
+      params: z.object({ signerId: z.string().guid(), groupId: z.string().guid() }),
       response: { 200: RemoveSignerMemberResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

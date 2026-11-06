@@ -7,7 +7,7 @@ import { oidcIssuerLimit } from "@app/server/config/rateLimiter";
 const CACHE_CONTROL = `public, max-age=${60 * 60}, must-revalidate`;
 
 const OrgParamsSchema = z.object({
-  organizationId: z.string().uuid()
+  organizationId: z.string().guid()
 });
 
 // Public and shaped by OIDC Discovery and RFC 7517, not the house envelope. The paths are part of each org's

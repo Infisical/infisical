@@ -29,7 +29,7 @@ import {
 } from "./agent-vault-schemas";
 
 const SkillIdParamsSchema = z.object({
-  skillId: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId)
+  skillId: z.string().guid().describe(AGENT_VAULT.SKILL.skillId)
 });
 
 const SkillVersionParamsSchema = SkillIdParamsSchema.extend({ version: AgentVaultSkillVersionParamSchema });

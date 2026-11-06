@@ -8,14 +8,14 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretFoldersSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
-  version: z.number().default(1).nullable().optional(),
+  version: z.number().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  envId: z.string().uuid(),
-  parentId: z.string().uuid().nullable().optional(),
-  isReserved: z.boolean().default(false).nullable().optional(),
+  envId: z.string().guid(),
+  parentId: z.string().guid().nullable().optional(),
+  isReserved: z.boolean().nullable().optional(),
   description: z.string().nullable().optional(),
   lastSecretModified: z.date().nullable().optional()
 });

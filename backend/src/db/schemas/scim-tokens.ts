@@ -11,10 +11,10 @@ export const ScimTokensSchema = z.object({
   id: z.string(),
   ttlDays: z.coerce.number().default(365),
   description: z.string(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  expiryNotificationSent: z.boolean().default(false).nullable().optional()
+  expiryNotificationSent: z.boolean().nullable().optional()
 });
 
 export type TScimTokens = z.infer<typeof ScimTokensSchema>;

@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultServiceCustomHeadersSchema = z.object({
-  id: z.string().uuid(),
-  serviceId: z.string().uuid(),
+  id: z.string().guid(),
+  serviceId: z.string().guid(),
   name: z.string(),
   prefix: z.string(),
   encryptedValue: zodBuffer,

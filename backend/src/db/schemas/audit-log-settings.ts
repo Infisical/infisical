@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AuditLogSettingsSchema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   projectId: z.string().nullable().optional(),
   eventClass: z.string(),
   isEnabled: z.boolean().default(true),

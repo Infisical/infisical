@@ -42,13 +42,13 @@ const OrgUserAccessGroupSchema = GroupsSchema.pick({ id: true, name: true, slug:
   roles: z
     .object({
       role: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRole),
-      roleId: z.string().uuid().nullable().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoleId)
+      roleId: z.string().guid().nullable().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoleId)
     })
     .array()
     .describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoles)
 });
 
-const commaSeparatedEnumList = <T extends z.EnumLike>(enumObj: T) => {
+const commaSeparatedEnumList = <T extends Readonly<Record<string, string>>>(enumObj: T) => {
   const values = Object.values(enumObj);
   return z
     .string()
@@ -328,11 +328,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                 event: z.object({
                   type: z.string(),
                   class: z.nativeEnum(AuditLogEventClass),
-                  metadata: z.any()
+                  metadata: z.any().optional()
                 }),
                 actor: z.object({
                   type: z.string(),
-                  metadata: z.any()
+                  metadata: z.any().optional()
                 })
               })
             )
@@ -474,7 +474,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description:
         "List every user with access to the organization, through a direct membership, through groups, or both",
       params: z.object({
-        organizationId: z.string().trim().uuid().describe(ORGANIZATIONS.LIST_USER_ACCESS.organizationId)
+        organizationId: z.string().trim().guid().describe(ORGANIZATIONS.LIST_USER_ACCESS.organizationId)
       }),
       response: {
         200: z.object({
@@ -764,7 +764,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: z
             .object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               username: z.string(),
               email: z.string().nullable().optional(),
               firstName: z.string().nullable().optional(),
@@ -798,7 +798,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           identities: z
             .object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               name: z.string(),
               hasDeleteProtection: z.boolean()
             })

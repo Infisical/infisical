@@ -15,7 +15,7 @@ export const EventBusSchema = z.object({
   type: z.nativeEnum(EventBusServiceEvents),
   timestamp: z.string().datetime(),
   sourceContainer: z.string(),
-  payload: z.unknown()
+  payload: z.unknown().optional()
 });
 
 export type TEventBusEvent = z.infer<typeof EventBusSchema>;

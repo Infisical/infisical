@@ -11,10 +11,10 @@ import { ActorAuthMethod, ActorType, AuthMode } from "@app/services/auth/auth-ty
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MemberSchema = z.object({
-  membershipId: z.string().uuid(),
-  userId: z.string().uuid().nullable().optional(),
-  identityId: z.string().uuid().nullable().optional(),
-  groupId: z.string().uuid().nullable().optional(),
+  membershipId: z.string().guid(),
+  userId: z.string().guid().nullable().optional(),
+  identityId: z.string().guid().nullable().optional(),
+  groupId: z.string().guid().nullable().optional(),
   email: z.string().nullable().optional().describe("The user's email. Null for group and identity members."),
   username: z
     .string()
@@ -30,15 +30,15 @@ const MemberSchema = z.object({
 });
 
 const MemberResultSchema = z.object({
-  membershipId: z.string().uuid(),
-  userId: z.string().uuid().optional(),
-  identityId: z.string().uuid().optional(),
-  groupId: z.string().uuid().optional(),
+  membershipId: z.string().guid(),
+  userId: z.string().guid().optional(),
+  identityId: z.string().guid().optional(),
+  groupId: z.string().guid().optional(),
   role: z.string(),
   createdAt: z.date()
 });
 
-export const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().uuid() });
+export const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().guid() });
 
 const actorCtx = (req: {
   internalPamProjectId: string;
@@ -150,7 +150,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       tags: [ApiDocsTags.PamMemberships],
       body: z
         .object({
-          userIds: z.string().uuid().array().default([]).describe("User IDs to add"),
+          userIds: z.string().guid().array().default([]).describe("User IDs to add"),
           emails: z
             .string()
             .email()
@@ -200,7 +200,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "updatePamProductUserMemberRole",
       description: "Update a PAM product user member's role",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ userId: z.string().uuid().describe("The ID of the user") }),
+      params: z.object({ userId: z.string().guid().describe("The ID of the user") }),
       body: z.object({ role: z.nativeEnum(PamProductRole).describe("The role to assign") }),
       response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
@@ -230,7 +230,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "removePamProductUserMember",
       description: "Remove a user from the PAM product",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ userId: z.string().uuid().describe("The ID of the user") }),
+      params: z.object({ userId: z.string().guid().describe("The ID of the user") }),
       response: { 200: MemberResultSchema.pick({ membershipId: true, userId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -255,7 +255,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "addPamProductGroupMember",
       description: "Add a group to the PAM product",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: z.object({ groupId: z.string().guid().describe("The ID of the group") }),
       body: z.object({ role: z.nativeEnum(PamProductRole).describe("The role to assign") }),
       response: { 200: MemberResultSchema }
     },
@@ -285,7 +285,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "updatePamProductGroupMemberRole",
       description: "Update a PAM product group member's role",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: z.object({ groupId: z.string().guid().describe("The ID of the group") }),
       body: z.object({ role: z.nativeEnum(PamProductRole).describe("The role to assign") }),
       response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
@@ -315,7 +315,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "removePamProductGroupMember",
       description: "Remove a group from the PAM product",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: z.object({ groupId: z.string().guid().describe("The ID of the group") }),
       response: { 200: MemberResultSchema.pick({ membershipId: true, groupId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -345,8 +345,8 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
           members: z.array(
             MemberSchema.extend({
               name: z.string(),
-              identityProjectId: z.string().uuid().nullable().optional(),
-              identityOrgId: z.string().uuid().nullable().optional()
+              identityProjectId: z.string().guid().nullable().optional(),
+              identityOrgId: z.string().guid().nullable().optional()
             })
           )
         })
@@ -367,7 +367,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "addPamProductIdentityMember",
       description: "Add an identity to the PAM product",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: z.object({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       body: z.object({ role: z.nativeEnum(PamProductRole).describe("The role to assign") }),
       response: { 200: MemberResultSchema }
     },
@@ -397,7 +397,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "updatePamProductIdentityMemberRole",
       description: "Update a PAM product identity member's role",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: z.object({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       body: z.object({ role: z.nativeEnum(PamProductRole).describe("The role to assign") }),
       response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
@@ -427,7 +427,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       operationId: "removePamProductIdentityMember",
       description: "Remove an identity from the PAM product",
       tags: [ApiDocsTags.PamMemberships],
-      params: z.object({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: z.object({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       response: { 200: MemberResultSchema.pick({ membershipId: true, identityId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -447,7 +447,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
 };
 
 export const registerPamFolderMembershipRouter = async (server: FastifyZodProvider) => {
-  const folderParam = z.object({ folderId: z.string().uuid().describe("The ID of the folder") });
+  const folderParam = z.object({ folderId: z.string().guid().describe("The ID of the folder") });
 
   server.route({
     method: "GET",
@@ -498,7 +498,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "addPamFolderUserMember",
       description: "Add a user to a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      params: folderParam.extend({ userId: z.string().guid().describe("The ID of the user") }),
       body: z.object({
         role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
         expiry: z
@@ -537,7 +537,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "updatePamFolderUserMemberRole",
       description: "Update a user member's role in a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      params: folderParam.extend({ userId: z.string().guid().describe("The ID of the user") }),
       body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
       response: { 200: FolderMemberResultSchema.omit({ createdAt: true }) }
     },
@@ -567,7 +567,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "removePamFolderUserMember",
       description: "Remove a user from a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      params: folderParam.extend({ userId: z.string().guid().describe("The ID of the user") }),
       response: { 200: FolderMemberResultSchema.pick({ membershipId: true, folderId: true, userId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -594,7 +594,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "addPamFolderGroupMember",
       description: "Add a group to a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: folderParam.extend({ groupId: z.string().guid().describe("The ID of the group") }),
       body: z.object({
         role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
         expiry: z
@@ -633,7 +633,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "updatePamFolderGroupMemberRole",
       description: "Update a group member's role in a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: folderParam.extend({ groupId: z.string().guid().describe("The ID of the group") }),
       body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
       response: { 200: FolderMemberResultSchema.omit({ createdAt: true }) }
     },
@@ -663,7 +663,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "removePamFolderGroupMember",
       description: "Remove a group from a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: folderParam.extend({ groupId: z.string().guid().describe("The ID of the group") }),
       response: { 200: FolderMemberResultSchema.pick({ membershipId: true, folderId: true, groupId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -711,7 +711,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "addPamFolderIdentityMember",
       description: "Add an identity to a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: folderParam.extend({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       body: z.object({
         role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
         expiry: z
@@ -750,7 +750,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "updatePamFolderIdentityMemberRole",
       description: "Update an identity member's role in a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: folderParam.extend({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
       response: { 200: FolderMemberResultSchema.omit({ createdAt: true }) }
     },
@@ -780,7 +780,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
       operationId: "removePamFolderIdentityMember",
       description: "Remove an identity from a folder",
       tags: [ApiDocsTags.PamMemberships],
-      params: folderParam.extend({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: folderParam.extend({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       response: { 200: FolderMemberResultSchema.pick({ membershipId: true, folderId: true, identityId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -802,8 +802,8 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
 };
 
 export const registerPamAccountMembershipRouter = async (server: FastifyZodProvider) => {
-  const AccountMemberResultSchema = MemberResultSchema.extend({ accountId: z.string().uuid() });
-  const accountParam = z.object({ accountId: z.string().uuid().describe("The ID of the account") });
+  const AccountMemberResultSchema = MemberResultSchema.extend({ accountId: z.string().guid() });
+  const accountParam = z.object({ accountId: z.string().guid().describe("The ID of the account") });
 
   server.route({
     method: "GET",
@@ -854,7 +854,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "addPamAccountUserMember",
       description: "Add a user to an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      params: accountParam.extend({ userId: z.string().guid().describe("The ID of the user") }),
       body: z.object({
         role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
         expiry: z
@@ -893,7 +893,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "updatePamAccountUserMemberRole",
       description: "Update a user member's role in an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      params: accountParam.extend({ userId: z.string().guid().describe("The ID of the user") }),
       body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
       response: { 200: AccountMemberResultSchema.omit({ createdAt: true }) }
     },
@@ -923,7 +923,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "removePamAccountUserMember",
       description: "Remove a user from an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ userId: z.string().uuid().describe("The ID of the user") }),
+      params: accountParam.extend({ userId: z.string().guid().describe("The ID of the user") }),
       response: { 200: AccountMemberResultSchema.pick({ membershipId: true, accountId: true, userId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -950,7 +950,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "addPamAccountGroupMember",
       description: "Add a group to an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: accountParam.extend({ groupId: z.string().guid().describe("The ID of the group") }),
       body: z.object({
         role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
         expiry: z
@@ -989,7 +989,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "updatePamAccountGroupMemberRole",
       description: "Update a group member's role in an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: accountParam.extend({ groupId: z.string().guid().describe("The ID of the group") }),
       body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
       response: { 200: AccountMemberResultSchema.omit({ createdAt: true }) }
     },
@@ -1019,7 +1019,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "removePamAccountGroupMember",
       description: "Remove a group from an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ groupId: z.string().uuid().describe("The ID of the group") }),
+      params: accountParam.extend({ groupId: z.string().guid().describe("The ID of the group") }),
       response: { 200: AccountMemberResultSchema.pick({ membershipId: true, accountId: true, groupId: true }) }
     },
     config: { rateLimit: writeLimit },
@@ -1067,7 +1067,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "addPamAccountIdentityMember",
       description: "Add an identity to an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: accountParam.extend({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       body: z.object({
         role: z.nativeEnum(PamResourceRole).describe("The role to assign"),
         expiry: z
@@ -1106,7 +1106,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "updatePamAccountIdentityMemberRole",
       description: "Update an identity member's role in an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: accountParam.extend({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       body: z.object({ role: z.nativeEnum(PamResourceRole).describe("The role to assign") }),
       response: { 200: AccountMemberResultSchema.omit({ createdAt: true }) }
     },
@@ -1136,7 +1136,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
       operationId: "removePamAccountIdentityMember",
       description: "Remove an identity from an account",
       tags: [ApiDocsTags.PamMemberships],
-      params: accountParam.extend({ identityId: z.string().uuid().describe("The ID of the machine identity") }),
+      params: accountParam.extend({ identityId: z.string().guid().describe("The ID of the machine identity") }),
       response: { 200: AccountMemberResultSchema.pick({ membershipId: true, accountId: true, identityId: true }) }
     },
     config: { rateLimit: writeLimit },

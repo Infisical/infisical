@@ -1,11 +1,12 @@
 import cookie from "@fastify/cookie";
+import { serializerCompiler, ZodTypeProvider } from "@fastify/type-provider-zod";
 import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { validatorCompiler } from "@app/server/lib/validator-compiler";
 
-import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./fastify-zod";
 import { injectSecretScanningProjectId } from "./inject-secret-scanning-project-id";
 
 const ORG_ID = "org-1";

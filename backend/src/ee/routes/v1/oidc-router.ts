@@ -17,6 +17,7 @@ import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { partialWithoutDefaults } from "@app/lib/zod";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -282,8 +283,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           bearerAuth: []
         }
       ],
-      body: z
-        .object({
+      body: partialWithoutDefaults(
+        z.object({
           allowedEmailDomains: z
             .string()
             .trim()
@@ -316,8 +317,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             .optional()
             .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm)
         })
-        .partial()
-        .merge(z.object({ organizationId: z.string().describe(OidcSSo.UPDATE_CONFIG.organizationId) })),
+      ).merge(z.object({ organizationId: z.string().describe(OidcSSo.UPDATE_CONFIG.organizationId) })),
       response: {
         200: SanitizedOidcConfigSchema.pick({
           id: true,

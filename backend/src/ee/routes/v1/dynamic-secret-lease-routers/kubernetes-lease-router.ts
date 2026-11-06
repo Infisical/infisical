@@ -46,7 +46,7 @@ export const registerKubernetesDynamicSecretLeaseRouter = async (server: Fastify
         200: z.object({
           lease: SanitizedDynamicSecretLeaseSchema,
           dynamicSecret: SanitizedDynamicSecretSchema,
-          data: z.unknown()
+          data: z.unknown().optional()
         })
       }
     },

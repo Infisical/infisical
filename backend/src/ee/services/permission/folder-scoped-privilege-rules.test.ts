@@ -58,7 +58,7 @@ describe("folder-scoped privilege deny coverage", () => {
   // The single source of truth for "which subjects can be scoped by secretPath" is the permission
   // API schema itself, so enumerate it rather than hardcoding the list here.
   const secretPathScopedSubjects = ProjectPermissionV2Schema.options.flatMap((option) => {
-    const shape = (option as z.AnyZodObject).shape as Record<string, z.ZodTypeAny | undefined>;
+    const shape = (option as z.ZodObject).shape as Record<string, z.ZodTypeAny | undefined>;
     const subjectValue = (shape.subject as z.ZodLiteral<string>).value;
     if (!(Object.values(ProjectPermissionSub) as string[]).includes(subjectValue)) return [];
     if (DENY_EXEMPT_SUBJECTS.includes(subjectValue)) return [];

@@ -56,7 +56,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
       tags: [ApiDocsTags.PkiSigners],
       description: "Add a machine identity to a signer",
       params: SignerIdParamsSchema,
-      body: z.object({ identityId: z.string().uuid(), role: SignerRoleSchema.default("operator") }),
+      body: z.object({ identityId: z.string().guid(), role: SignerRoleSchema.default("operator") }),
       response: { 200: SignerMemberSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -112,7 +112,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
       operationId: "updateSignerIdentityRole",
       tags: [ApiDocsTags.PkiSigners],
       description: "Update a machine identity's role on a signer",
-      params: z.object({ signerId: z.string().uuid(), identityId: z.string().uuid() }),
+      params: z.object({ signerId: z.string().guid(), identityId: z.string().guid() }),
       body: RoleBodySchema,
       response: { 200: z.object({ membership: SignerMemberSchema }) }
     },
@@ -170,7 +170,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
       operationId: "removeSignerIdentityMember",
       tags: [ApiDocsTags.PkiSigners],
       description: "Remove a machine identity from a signer",
-      params: z.object({ signerId: z.string().uuid(), identityId: z.string().uuid() }),
+      params: z.object({ signerId: z.string().guid(), identityId: z.string().guid() }),
       response: { 200: RemoveSignerMemberResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

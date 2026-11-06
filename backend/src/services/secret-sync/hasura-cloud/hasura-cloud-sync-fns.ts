@@ -35,7 +35,7 @@ const ZGetTenantEnv = z.object({
     getTenantEnv: z.object({
       hash: z.string(),
       envVars: z.object({
-        environment: z.record(z.string()).optional()
+        environment: z.record(z.string(), z.string()).optional()
       })
     })
   })
@@ -45,7 +45,7 @@ const ZUpdateTenantEnv = z.object({
   data: z.object({
     updateTenantEnv: z.object({
       hash: z.string(),
-      envVars: z.record(z.any())
+      envVars: z.record(z.string(), z.any())
     })
   })
 });

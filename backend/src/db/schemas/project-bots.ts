@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectBotsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   isActive: z.boolean().default(false),
   encryptedPrivateKey: z.string(),
@@ -20,7 +20,7 @@ export const ProjectBotsSchema = z.object({
   encryptedProjectKey: z.string().nullable().optional(),
   encryptedProjectKeyNonce: z.string().nullable().optional(),
   projectId: z.string(),
-  senderId: z.string().uuid().nullable().optional(),
+  senderId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -8,17 +8,17 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiSignersSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
   status: z.string().default("active"),
-  certificateId: z.string().uuid().nullable().optional(),
-  approvalPolicyId: z.string().uuid().nullable().optional(),
+  certificateId: z.string().guid().nullable().optional(),
+  approvalPolicyId: z.string().guid().nullable().optional(),
   lastSignedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  caId: z.string().uuid().nullable().optional(),
+  caId: z.string().guid().nullable().optional(),
   commonName: z.string().nullable().optional(),
   certificateTtlDays: z.number().nullable().optional(),
   certificateRenewBeforeDays: z.number().nullable().optional(),

@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamRevampBackupSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   entityType: z.string(),
   entityId: z.string(),
   before: z.unknown().nullable().optional(),

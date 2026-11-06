@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AlertChannelRecipientsSchema = z.object({
-  id: z.string().uuid(),
-  channelId: z.string().uuid(),
+  id: z.string().guid(),
+  channelId: z.string().guid(),
   principalType: z.string(),
   principalId: z.string(),
   createdAt: z.date(),

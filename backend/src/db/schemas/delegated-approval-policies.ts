@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const DelegatedApprovalPoliciesSchema = z.object({
-  id: z.string().uuid(),
-  policyId: z.string().uuid(),
+  id: z.string().guid(),
+  policyId: z.string().guid(),
   type: z.string(),
-  connectionId: z.string().uuid(),
+  connectionId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

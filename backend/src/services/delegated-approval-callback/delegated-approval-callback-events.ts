@@ -6,9 +6,9 @@ import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-en
 // What the callback route emits once it has accepted a decision notification. The consumer that reads
 // the decision back lives in delegated-approval-decision; the contract stays with the emitter.
 export const DelegatedApprovalCallbackEventPayloadSchema = z.object({
-  delegatedRequestId: z.string().uuid(),
-  approvalRequestId: z.string().uuid(),
-  orgId: z.string().uuid(),
+  delegatedRequestId: z.string().guid(),
+  approvalRequestId: z.string().guid(),
+  orgId: z.string().guid(),
   event: z.nativeEnum(DelegatedApprovalCallbackEvent),
   externalId: z.string().trim().min(1).max(255)
 });

@@ -49,7 +49,7 @@ const ExpirationConditionSchema = ExpiryFieldsSchema.strict();
 const EventConditionSchema = z.object({}).strict().nullish();
 
 const assertValidApplicationId = (applicationId: string) => {
-  if (!z.string().uuid().safeParse(applicationId).success) {
+  if (!z.string().guid().safeParse(applicationId).success) {
     throw new BadRequestError({ message: `Invalid application ID '${applicationId}': must be a UUID` });
   }
 };

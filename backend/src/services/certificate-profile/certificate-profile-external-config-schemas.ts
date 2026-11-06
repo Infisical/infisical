@@ -87,6 +87,13 @@ export const createExternalConfigSchema = (caType?: CaType | null) => {
 /**
  * Union type of all possible external configuration schemas
  */
+// Profiles without an external CA config parse to {}; typed as an open record because Zod 4 infers
+// an empty object as Record<string, never>, which no stored config satisfies.
+const EmptyExternalConfigSchema = z.object({}) as unknown as z.ZodType<
+  Record<string, unknown>,
+  Record<string, unknown>
+>;
+
 export const ExternalConfigUnionSchema = z
   .union([
     AzureAdCsExternalConfigSchema,
@@ -97,7 +104,7 @@ export const ExternalConfigUnionSchema = z
     AwsAcmPublicCaExternalConfigSchema,
     VenafiTppExternalConfigSchema,
     GoDaddyExternalConfigSchema,
-    z.object({})
+    EmptyExternalConfigSchema
   ])
   .nullable()
   .optional();

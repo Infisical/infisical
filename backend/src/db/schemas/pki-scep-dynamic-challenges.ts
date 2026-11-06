@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiScepDynamicChallengesSchema = z.object({
-  id: z.string().uuid(),
-  scepConfigId: z.string().uuid(),
+  id: z.string().guid(),
+  scepConfigId: z.string().guid(),
   hashedChallenge: z.string(),
   expiresAt: z.date(),
   createdAt: z.date(),

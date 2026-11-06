@@ -6,8 +6,8 @@ import { CaSigningConfigType } from "./ca-signing-config-enums";
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
 export const VenafiDestinationConfigSchema = z.object({
-  applicationId: z.string().uuid(),
-  issuingTemplateId: z.string().uuid(),
+  applicationId: z.string().guid(),
+  issuingTemplateId: z.string().guid(),
   validityPeriod: z.number().int().positive().optional()
 });
 

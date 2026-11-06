@@ -94,7 +94,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         "Make the calling organization admin an admin of a PAM folder, replacing any role they already hold on it. Only users holding the organization Admin role can call this, and every call is recorded in the audit log.",
       tags: [ApiDocsTags.PamFolders],
       params: z.object({
-        folderId: z.string().uuid().describe("The ID of the folder")
+        folderId: z.string().guid().describe("The ID of the folder")
       }),
       response: {
         200: FolderMemberResultSchema
@@ -145,7 +145,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       description: "Get the caller's effective resource permissions on this folder.",
       tags: [ApiDocsTags.PamFolders],
       params: z.object({
-        folderId: z.string().uuid().describe("The ID of the folder")
+        folderId: z.string().guid().describe("The ID of the folder")
       }),
       response: {
         200: z.object({
@@ -186,7 +186,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       description: "Get a PAM folder by ID",
       tags: [ApiDocsTags.PamFolders],
       params: z.object({
-        folderId: z.string().uuid().describe("The ID of the folder")
+        folderId: z.string().guid().describe("The ID of the folder")
       }),
       response: {
         200: z.object({
@@ -275,7 +275,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       description: "Update a PAM folder",
       tags: [ApiDocsTags.PamFolders],
       params: z.object({
-        folderId: z.string().uuid().describe("The ID of the folder")
+        folderId: z.string().guid().describe("The ID of the folder")
       }),
       body: z.object({
         name: slugSchema({ field: "Name" }).optional().describe("New name"),
@@ -335,7 +335,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       description: "Delete a PAM folder",
       tags: [ApiDocsTags.PamFolders],
       params: z.object({
-        folderId: z.string().uuid().describe("The ID of the folder")
+        folderId: z.string().guid().describe("The ID of the folder")
       }),
       response: {
         200: z.object({ folder: SanitizedFolderSchema })

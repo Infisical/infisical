@@ -29,7 +29,7 @@ const SessionTokenAuthorizationSchema = z
   );
 
 const SessionSkillSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+  id: z.string().guid().describe(AGENT_VAULT.SKILL.skillId),
   name: z.string().describe(AGENT_VAULT.SKILL.name),
   version: z.number().describe(AGENT_VAULT.SKILL.version),
   sha256: z.string().describe(AGENT_VAULT.SKILL.sha256),
@@ -143,7 +143,7 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           session: z.object({
-            id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+            id: z.string().guid().describe(AGENT_VAULT.SESSION.sessionId),
             revokedAt: z.date().nullable().describe(AGENT_VAULT.SESSION.revokedAt)
           })
         })

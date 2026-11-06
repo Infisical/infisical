@@ -18,7 +18,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
       operationId: "setPkiApplicationEstEnrollment",
       description: "Enable or update the EST enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
+      params: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }),
       body: z.object({
         passphrase: z.string().min(8),
         disableBootstrapCaValidation: z.boolean().optional().default(false),
@@ -26,9 +26,9 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
       }),
       response: {
         200: z.object({
-          applicationId: z.string().uuid(),
-          profileId: z.string().uuid(),
-          est: z.object({ id: z.string().uuid(), disableBootstrapCaValidation: z.boolean() })
+          applicationId: z.string().guid(),
+          profileId: z.string().guid(),
+          est: z.object({ id: z.string().guid(), disableBootstrapCaValidation: z.boolean() })
         })
       }
     },
@@ -85,9 +85,9 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
       operationId: "clearPkiApplicationEstEnrollment",
       description: "Disable the EST enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
+      params: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }),
       response: {
-        200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() })
+        200: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),

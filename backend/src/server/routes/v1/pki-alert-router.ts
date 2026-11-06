@@ -33,27 +33,27 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         "Deprecated: legacy PKI alerts can no longer be created. Use the alerts API (/api/v1/alerts) instead.",
       tags: [ApiDocsTags.PkiAlerting],
       body: BasePkiAlertV2Schema.extend({
-        projectId: z.string().uuid().optional().describe(openApiHidden()),
-        applicationId: z.string().uuid().optional().describe("Optional Application this alert is scoped to")
+        projectId: z.string().guid().optional().describe(openApiHidden()),
+        applicationId: z.string().guid().optional().describe("Optional Application this alert is scoped to")
       }),
       response: {
         200: z.object({
           alert: z.object({
-            id: z.string().uuid(),
+            id: z.string().guid(),
             name: z.string(),
             description: z.string().nullable(),
             eventType: z.nativeEnum(PkiAlertEventType),
             alertBefore: z.string().optional(),
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
-            projectId: z.string().uuid(),
-            applicationId: z.string().uuid().nullable(),
+            projectId: z.string().guid(),
+            applicationId: z.string().guid().nullable(),
             notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
-                id: z.string().uuid(),
+                id: z.string().guid(),
                 channelType: z.nativeEnum(PkiAlertChannelType),
-                config: z.record(z.any()),
+                config: z.record(z.string(), z.any()),
                 enabled: z.boolean(),
                 createdAt: z.date(),
                 updatedAt: z.date()
@@ -109,32 +109,32 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). List PKI alerts.",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
-        applicationId: z.string().uuid().optional(),
+        applicationId: z.string().guid().optional(),
         search: z.string().optional(),
         eventType: z.nativeEnum(PkiAlertEventType).optional(),
         enabled: z.coerce.boolean().optional(),
         limit: z.coerce.number().min(1).max(100).default(20),
         offset: z.coerce.number().min(0).default(0),
-        projectId: z.string().uuid().optional().describe(openApiHidden())
+        projectId: z.string().guid().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
           alerts: z.array(
             z.object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               name: z.string(),
               description: z.string().nullable(),
               eventType: z.nativeEnum(PkiAlertEventType),
               alertBefore: z.string().optional(),
               filters: z.array(PkiFilterRuleSchema),
               enabled: z.boolean(),
-              applicationId: z.string().uuid().nullable(),
+              applicationId: z.string().guid().nullable(),
               notificationConfig: NotificationConfigSchema.nullable(),
               channels: z.array(
                 z.object({
-                  id: z.string().uuid(),
+                  id: z.string().guid(),
                   channelType: z.nativeEnum(PkiAlertChannelType),
-                  config: z.record(z.any()),
+                  config: z.record(z.string(), z.any()),
                   enabled: z.boolean(),
                   createdAt: z.date(),
                   updatedAt: z.date()
@@ -184,26 +184,26 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). Get a PKI alert by ID.",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
-        alertId: z.string().uuid().describe("Alert ID")
+        alertId: z.string().guid().describe("Alert ID")
       }),
       response: {
         200: z.object({
           alert: z.object({
-            id: z.string().uuid(),
+            id: z.string().guid(),
             name: z.string(),
             description: z.string().nullable(),
             eventType: z.nativeEnum(PkiAlertEventType),
             alertBefore: z.string().optional(),
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
-            projectId: z.string().uuid(),
-            applicationId: z.string().uuid().nullable(),
+            projectId: z.string().guid(),
+            applicationId: z.string().guid().nullable(),
             notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
-                id: z.string().uuid(),
+                id: z.string().guid(),
                 channelType: z.nativeEnum(PkiAlertChannelType),
-                config: z.record(z.any()),
+                config: z.record(z.string(), z.any()),
                 enabled: z.boolean(),
                 createdAt: z.date(),
                 updatedAt: z.date()
@@ -256,27 +256,27 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         "Deprecated: legacy PKI alerts can no longer be edited. Use the alerts API (/api/v1/alerts) instead.",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
-        alertId: z.string().uuid().describe("Alert ID")
+        alertId: z.string().guid().describe("Alert ID")
       }),
       body: UpdatePkiAlertV2Schema,
       response: {
         200: z.object({
           alert: z.object({
-            id: z.string().uuid(),
+            id: z.string().guid(),
             name: z.string(),
             description: z.string().nullable(),
             eventType: z.nativeEnum(PkiAlertEventType),
             alertBefore: z.string().optional(),
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
-            projectId: z.string().uuid(),
-            applicationId: z.string().uuid().nullable(),
+            projectId: z.string().guid(),
+            applicationId: z.string().guid().nullable(),
             notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
-                id: z.string().uuid(),
+                id: z.string().guid(),
                 channelType: z.nativeEnum(PkiAlertChannelType),
-                config: z.record(z.any()),
+                config: z.record(z.string(), z.any()),
                 enabled: z.boolean(),
                 createdAt: z.date(),
                 updatedAt: z.date()
@@ -333,26 +333,26 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         "Deprecated: application alerts are managed with the alerts API (/api/v1/alerts). Delete a PKI alert.",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
-        alertId: z.string().uuid().describe("Alert ID")
+        alertId: z.string().guid().describe("Alert ID")
       }),
       response: {
         200: z.object({
           alert: z.object({
-            id: z.string().uuid(),
+            id: z.string().guid(),
             name: z.string(),
             description: z.string().nullable(),
             eventType: z.nativeEnum(PkiAlertEventType),
             alertBefore: z.string().optional(),
             filters: z.array(PkiFilterRuleSchema),
             enabled: z.boolean(),
-            projectId: z.string().uuid(),
-            applicationId: z.string().uuid().nullable(),
+            projectId: z.string().guid(),
+            applicationId: z.string().guid().nullable(),
             notificationConfig: NotificationConfigSchema.nullable(),
             channels: z.array(
               z.object({
-                id: z.string().uuid(),
+                id: z.string().guid(),
                 channelType: z.nativeEnum(PkiAlertChannelType),
-                config: z.record(z.any()),
+                config: z.record(z.string(), z.any()),
                 enabled: z.boolean(),
                 createdAt: z.date(),
                 updatedAt: z.date()
@@ -402,7 +402,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "List certificates that match an alert's filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
-        alertId: z.string().uuid().describe("Alert ID")
+        alertId: z.string().guid().describe("Alert ID")
       }),
       querystring: z.object({
         limit: z.coerce.number().min(1).max(100).default(20),
@@ -412,7 +412,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           certificates: z.array(
             z.object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               serialNumber: z.string(),
               commonName: z.string(),
               san: z.array(z.string()),
@@ -454,7 +454,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       description: "Preview certificates that would match the given filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
-        projectId: z.string().uuid().optional().describe(openApiHidden()),
+        projectId: z.string().guid().optional().describe(openApiHidden()),
         filters: z.array(PkiFilterRuleSchema),
         alertBefore: z
           .string()
@@ -468,7 +468,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           certificates: z.array(
             z.object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               serialNumber: z.string(),
               commonName: z.string(),
               san: z.array(z.string()),

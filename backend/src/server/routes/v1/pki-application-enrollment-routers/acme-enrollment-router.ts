@@ -18,7 +18,7 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
       operationId: "setPkiApplicationAcmeEnrollment",
       description: "Enable or update the ACME enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
+      params: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }),
       body: z
         .object({
           skipDnsOwnershipVerification: z.boolean().optional().default(false),
@@ -30,10 +30,10 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
         }),
       response: {
         200: z.object({
-          applicationId: z.string().uuid(),
-          profileId: z.string().uuid(),
+          applicationId: z.string().guid(),
+          profileId: z.string().guid(),
           acme: z.object({
-            id: z.string().uuid(),
+            id: z.string().guid(),
             skipDnsOwnershipVerification: z.boolean(),
             skipEabBinding: z.boolean()
           })
@@ -93,8 +93,8 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
       operationId: "clearPkiApplicationAcmeEnrollment",
       description: "Disable the ACME enrollment method for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
-      response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }
+      params: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }),
+      response: { 200: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
@@ -142,11 +142,11 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
       operationId: "revealPkiApplicationAcmeEabSecret",
       description: "Reveal the ACME EAB secret for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
+      params: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }),
       response: {
         200: z.object({
-          applicationId: z.string().uuid(),
-          profileId: z.string().uuid(),
+          applicationId: z.string().guid(),
+          profileId: z.string().guid(),
           eabKid: z.string(),
           eabSecret: z.string()
         })
@@ -188,8 +188,8 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
       operationId: "rotatePkiApplicationAcmeEabSecret",
       description: "Rotate the ACME EAB secret for a profile on an application.",
       tags: [ApiDocsTags.PkiApplications],
-      params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
-      response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }
+      params: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }),
+      response: { 200: z.object({ applicationId: z.string().guid(), profileId: z.string().guid() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {

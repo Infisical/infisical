@@ -159,7 +159,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         200: z.object({
           requests: AccessApprovalRequestsSchema.extend({
             // A global policy is hard-deleted, so its requests keep their history without a policy id.
-            policyId: z.string().uuid().nullable(),
+            policyId: z.string().guid().nullable(),
             environmentName: z.string(),
             isApproved: z.boolean(),
             privilege: z
@@ -170,7 +170,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
                 temporaryRange: z.string().nullish(),
                 temporaryAccessStartTime: z.date().nullish(),
                 temporaryAccessEndTime: z.date().nullish(),
-                permissions: z.unknown()
+                permissions: z.unknown().optional()
               })
               .nullable(),
             policy: z.object({
@@ -347,7 +347,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     schema: {
       operationId: "retryAccessApprovalRequestDelegatedDispatch",
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -400,7 +400,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       description:
         "Cancel a pending access request that an external approval system is reviewing. The requester can cancel their own request, and users who can edit the project's approval policies can cancel any of them.",
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       response: {
         200: z.object({

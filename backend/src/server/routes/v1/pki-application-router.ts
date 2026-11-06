@@ -39,7 +39,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       body: z.object({
         name: ApplicationNameSchema,
         description: z.string().max(256).optional(),
-        profileIds: z.array(z.string().uuid()).optional()
+        profileIds: z.array(z.string().guid()).optional()
       }),
       response: {
         200: z.object({ application: PkiApplicationsSchema })
@@ -110,7 +110,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
               .filter(Boolean);
             return ids.length > 0 ? ids : undefined;
           })
-          .pipe(z.array(z.string().uuid()).optional())
+          .pipe(z.array(z.string().guid()).optional())
       }),
       response: {
         200: z.object({

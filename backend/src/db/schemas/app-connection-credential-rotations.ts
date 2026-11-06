@@ -10,12 +10,12 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AppConnectionCredentialRotationsSchema = z.object({
-  id: z.string().uuid(),
-  connectionId: z.string().uuid(),
+  id: z.string().guid(),
+  connectionId: z.string().guid(),
   strategy: z.string(),
   encryptedStrategyConfig: zodBuffer,
   rotationInterval: z.number(),
-  rotateAtUtc: z.unknown(),
+  rotateAtUtc: z.unknown().optional(),
   rotationStatus: z.string(),
   lastRotationAttemptedAt: z.date().nullable().optional(),
   lastRotatedAt: z.date().nullable().optional(),

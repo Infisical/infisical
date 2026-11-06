@@ -35,11 +35,11 @@ const projectGroupMembershipRoleSchema = z.object({
 });
 
 const projectGroupMembershipSchema = z.object({
-  id: z.string().uuid(),
-  groupId: z.string().uuid(),
+  id: z.string().guid(),
+  groupId: z.string().guid(),
   projectId: z.string(),
   group: GroupsSchema.pick({ id: true, name: true, slug: true }).extend({
-    orgId: z.string().uuid().optional()
+    orgId: z.string().guid().optional()
   }),
   roles: z.array(projectGroupMembershipRoleSchema),
   createdAt: z.date(),
@@ -106,10 +106,10 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
-        groupId: z.string().uuid()
+        groupId: z.string().guid()
       }),
       body: z.object({
-        role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess).optional(),
+        role: z.string().trim().min(1).optional(),
         roles: z
           .array(
             z.union([
@@ -207,7 +207,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
-        groupId: z.string().uuid()
+        groupId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -252,7 +252,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
-        groupId: z.string().uuid()
+        groupId: z.string().guid()
       }),
       body: z.object({
         roles: z
@@ -334,7 +334,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
-        groupId: z.string().uuid()
+        groupId: z.string().guid()
       }),
       response: {
         200: z.object({

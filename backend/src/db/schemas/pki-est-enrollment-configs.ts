@@ -10,13 +10,13 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiEstEnrollmentConfigsSchema = z.object({
-  id: z.string().uuid(),
-  disableBootstrapCaValidation: z.boolean().default(false).nullable().optional(),
+  id: z.string().guid(),
+  disableBootstrapCaValidation: z.boolean().nullable().optional(),
   hashedPassphrase: z.string(),
   encryptedCaChain: zodBuffer.nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  applicationProfileId: z.string().uuid().nullable().optional()
+  applicationProfileId: z.string().guid().nullable().optional()
 });
 
 export type TPkiEstEnrollmentConfigs = z.infer<typeof PkiEstEnrollmentConfigsSchema>;

@@ -31,10 +31,10 @@ const orgGroupMembershipRoleSchema = z.object({
 });
 
 const orgGroupMembershipSchema = z.object({
-  id: z.string().uuid(),
-  groupId: z.string().uuid(),
+  id: z.string().guid(),
+  groupId: z.string().guid(),
   group: GroupsSchema.pick({ id: true, name: true, slug: true }).extend({
-    orgId: z.string().uuid().optional()
+    orgId: z.string().guid().optional()
   }),
   roles: z.array(orgGroupMembershipRoleSchema),
   createdAt: z.date(),
@@ -56,8 +56,8 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       description: "List organization group memberships",
       security: [{ bearerAuth: [] }],
       querystring: z.object({
-        limit: z.coerce.number().min(1).max(100).default(100).optional(),
-        offset: z.coerce.number().min(0).default(0).optional(),
+        limit: z.coerce.number().min(1).max(100).optional(),
+        offset: z.coerce.number().min(0).optional(),
         search: z.string().optional(),
         roles: z
           .union([z.string(), z.array(z.string())])
@@ -116,7 +116,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         "Create organization group membership (link group to current org). Sub-org only: links a parent-org group.",
       security: [{ bearerAuth: [] }],
       params: z.object({
-        groupId: z.string().uuid().describe("The ID of the group to link to the current organization")
+        groupId: z.string().guid().describe("The ID of the group to link to the current organization")
       }),
       body: z.object({
         roles: z
@@ -208,7 +208,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       description: "Get organization group membership by group ID.",
       security: [{ bearerAuth: [] }],
       params: z.object({
-        groupId: z.string().uuid()
+        groupId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -247,7 +247,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       description: "Update organization group membership roles.",
       security: [{ bearerAuth: [] }],
       params: z.object({
-        groupId: z.string().uuid()
+        groupId: z.string().guid()
       }),
       body: z.object({
         roles: z
@@ -334,13 +334,13 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         "Unlink a group from the current organization. Only applicable in sub-organizations where the group is linked; cannot be used in the organization that owns the group.",
       security: [{ bearerAuth: [] }],
       params: z.object({
-        groupId: z.string().uuid()
+        groupId: z.string().guid()
       }),
       response: {
         200: z.object({
           groupMembership: z.object({
-            id: z.string().uuid(),
-            groupId: z.string().uuid(),
+            id: z.string().guid(),
+            groupId: z.string().guid(),
             orgId: z.string(),
             createdAt: z.date(),
             updatedAt: z.date()

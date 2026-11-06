@@ -31,7 +31,7 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listRenderServices",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z
@@ -60,7 +60,7 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listRenderEnvironmentGroups",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z

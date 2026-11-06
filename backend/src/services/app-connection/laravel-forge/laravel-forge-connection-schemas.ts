@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -25,7 +26,7 @@ export const LaravelForgeConnectionSchema = BaseLaravelForgeConnectionSchema.ext
 export const SanitizedLaravelForgeConnectionSchema = z.discriminatedUnion("method", [
   BaseLaravelForgeConnectionSchema.extend({
     method: z.literal(LaravelForgeConnectionMethod.ApiToken),
-    credentials: LaravelForgeConnectionApiTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.LaravelForge]} (API Token)` }))
 ]);
 

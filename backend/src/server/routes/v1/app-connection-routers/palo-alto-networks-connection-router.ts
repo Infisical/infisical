@@ -32,7 +32,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     schema: {
       operationId: "listPaloAltoNetworksTemplates",
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
+        connectionId: z.string().guid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
       }),
       response: {
         200: z.object({
@@ -58,7 +58,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     schema: {
       operationId: "listPaloAltoNetworksSslTlsServiceProfiles",
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
+        connectionId: z.string().guid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
       }),
       querystring: z.object({
         template: PanOsObjectNameSchema("Template")
@@ -95,7 +95,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     schema: {
       operationId: "listPaloAltoNetworksCertificates",
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
+        connectionId: z.string().guid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
       }),
       querystring: z.object({
         template: PanOsObjectNameSchema("Template")

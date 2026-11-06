@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalRequestSecretTagsSchema = z.object({
-  id: z.string().uuid(),
-  secretId: z.string().uuid(),
-  tagId: z.string().uuid(),
+  id: z.string().guid(),
+  secretId: z.string().guid(),
+  tagId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -1,9 +1,10 @@
+import { serializerCompiler, ZodTypeProvider } from "@fastify/type-provider-zod";
 import Fastify, { FastifyInstance } from "fastify";
 import { vi } from "vitest";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PermissionBoundaryError } from "@app/lib/errors";
-import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "@app/server/plugins/fastify-zod";
+import { validatorCompiler } from "@app/server/lib/validator-compiler";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";

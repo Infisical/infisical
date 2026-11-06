@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultServiceVariableReferencesSchema = z.object({
-  id: z.string().uuid(),
-  serviceId: z.string().uuid(),
-  variableId: z.string().uuid(),
+  id: z.string().guid(),
+  serviceId: z.string().guid(),
+  variableId: z.string().guid(),
   field: z.string(),
-  customHeaderId: z.string().uuid().nullable().optional(),
-  substitutionId: z.string().uuid().nullable().optional(),
+  customHeaderId: z.string().guid().nullable().optional(),
+  substitutionId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

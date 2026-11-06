@@ -15,7 +15,7 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 const AzureEntraIdScimSyncDestinationConfigSchema = z.object({
   servicePrincipalId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .min(1, "Service Principal ID required")
     .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_ENTRA_ID_SCIM.servicePrincipalId),
@@ -35,7 +35,7 @@ const AzureEntraIdScimSyncOptionsConfig: TSyncOptionsConfig = {
 const AzureEntraIdScimSyncOptionsReadSchema = z.object({
   secretId: z
     .string()
-    .uuid()
+    .guid()
     .optional()
     .describe("The ID of the Infisical secret whose value will be used as the SCIM provisioning token.")
 });

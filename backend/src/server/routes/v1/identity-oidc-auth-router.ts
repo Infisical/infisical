@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OIDC_AUTH } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { partialWithoutDefaults } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -172,7 +173,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       }),
       body: z
         .object({
-          templateId: z.string().uuid().optional().describe(OIDC_AUTH.ATTACH.templateId),
+          templateId: z.string().guid().optional().describe(OIDC_AUTH.ATTACH.templateId),
           // no zod defaults on the template-managed fields: a default would make them
           // indistinguishable from caller-supplied values, so template attaches could not
           // reject them; the service defaults them on the custom path
@@ -327,8 +328,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       params: z.object({
         identityId: z.string().trim().describe(OIDC_AUTH.UPDATE.identityId)
       }),
-      body: z
-        .object({
+      body: partialWithoutDefaults(
+        z.object({
           oidcDiscoveryUrl: z.string().url().min(1).describe(OIDC_AUTH.UPDATE.oidcDiscoveryUrl),
           caCert: z.string().trim().default("").describe(OIDC_AUTH.UPDATE.caCert),
           boundIssuer: z.string().min(1).describe(OIDC_AUTH.UPDATE.boundIssuer),
@@ -360,9 +361,9 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
             .describe(OIDC_AUTH.UPDATE.accessTokenMaxTTL),
           accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.UPDATE.accessTokenNumUsesLimit)
         })
-        .partial()
+      )
         .extend({
-          templateId: z.string().uuid().nullable().optional().describe(OIDC_AUTH.UPDATE.templateId)
+          templateId: z.string().guid().nullable().optional().describe(OIDC_AUTH.UPDATE.templateId)
         })
         .superRefine((data, ctx) => {
           if (data.templateId) {

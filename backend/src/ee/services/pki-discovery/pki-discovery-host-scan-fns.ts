@@ -303,7 +303,7 @@ export const runGatewayScan = async <TFailure extends TGatewayScanFailure, TResu
     protocol: GatewayProxyProtocol;
     call: (port: number) => Promise<{ ok: true; result: unknown } | TFailure>;
     describeFailure: (failure: TFailure) => string;
-    schema: z.ZodType<TResult, z.ZodTypeDef, unknown>;
+    schema: z.ZodType<TResult, unknown>;
     logLabel: string;
   },
   deps: THostScanDeps

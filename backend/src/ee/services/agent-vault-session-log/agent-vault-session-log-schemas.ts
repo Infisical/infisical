@@ -99,7 +99,7 @@ const DefaultStorageSchema = z
 const ExternalStorageSchema = z
   .object({
     type: z.literal(ObjectStorageType.External),
-    appConnectionId: z.string().uuid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
+    appConnectionId: z.string().guid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
     bucket: s3BucketNameSchema.describe(AGENT_VAULT.SESSION_LOGS.bucket),
     region: z.nativeEnum(AWSRegion).describe(AGENT_VAULT.SESSION_LOGS.region),
     keyPrefix: keyPrefixSchema(256).optional().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
@@ -117,7 +117,7 @@ const AgentVaultSessionLogStorageViewSchema = z
     z
       .object({
         type: z.literal(ObjectStorageType.External),
-        appConnectionId: z.string().uuid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
+        appConnectionId: z.string().guid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
         bucket: z.string().describe(AGENT_VAULT.SESSION_LOGS.bucket),
         region: z.string().describe(AGENT_VAULT.SESSION_LOGS.region),
         keyPrefix: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)

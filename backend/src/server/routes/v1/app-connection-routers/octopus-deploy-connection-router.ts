@@ -31,7 +31,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
     schema: {
       operationId: "listOctopusDeploySpaces",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.array(
@@ -63,7 +63,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
     schema: {
       operationId: "listOctopusDeployProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         spaceId: z.string().min(1, "Space ID is required")
@@ -102,7 +102,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
     schema: {
       operationId: "getOctopusDeployScopeValues",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         spaceId: z.string().min(1, "Space ID is required"),

@@ -20,7 +20,7 @@ const DelegationScopeSchema = z
   .describe(JSON.stringify({ description: AGENT_VAULT.DELEGATION.scope, example: AgentVaultDelegationScope.Selected }));
 
 const DelegationUserSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.userId),
+  id: z.string().guid().describe(AGENT_VAULT.DELEGATION.userId),
   username: z.string().describe(AGENT_VAULT.DELEGATION.username),
   email: z.string().nullable().describe(AGENT_VAULT.DELEGATION.email),
   firstName: z.string().nullable().describe(AGENT_VAULT.DELEGATION.firstName),
@@ -29,7 +29,7 @@ const DelegationUserSchema = z.object({
 });
 
 const DelegationGroupSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.groupId),
+  id: z.string().guid().describe(AGENT_VAULT.DELEGATION.groupId),
   name: z.string().describe(AGENT_VAULT.DELEGATION.groupName),
   addedAt: z.date().describe(AGENT_VAULT.DELEGATION.addedAt)
 });
@@ -37,7 +37,7 @@ const DelegationGroupSchema = z.object({
 const DelegationSchema = z.object({
   machineIdentity: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.machineIdentityId),
+      id: z.string().guid().describe(AGENT_VAULT.DELEGATION.machineIdentityId),
       name: z.string().describe(AGENT_VAULT.DELEGATION.machineIdentityName)
     })
     .describe(AGENT_VAULT.DELEGATION.machineIdentity),
@@ -51,7 +51,7 @@ const DelegationSchema = z.object({
 const missingAccessBundlesSchema = (description: string) =>
   z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.accessBundleId),
+      id: z.string().guid().describe(AGENT_VAULT.DELEGATION.accessBundleId),
       name: z.string().describe(AGENT_VAULT.DELEGATION.accessBundleName)
     })
     .array()
@@ -76,7 +76,7 @@ const DelegationDetailSchema = DelegationSchema.extend({
 const subjectIdsSchema = (description: string, example: string) =>
   z
     .string()
-    .uuid()
+    .guid()
     .array()
     .max(MAX_DELEGATION_SUBJECTS)
     .default([])
@@ -98,7 +98,7 @@ const SubjectChangeBodySchema = (docs: { userIds: string; groupIds: string }) =>
 const projectQuery = z.object({ projectId: AgentVaultProjectIdSchema });
 
 const machineIdentityParams = z.object({
-  machineIdentityId: z.string().uuid().describe(AGENT_VAULT.DELEGATION.machineIdentityId)
+  machineIdentityId: z.string().guid().describe(AGENT_VAULT.DELEGATION.machineIdentityId)
 });
 
 const auditDelegationFields = (delegation: z.infer<typeof DelegationSchema>) => ({
@@ -135,7 +135,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
           .max(100 * 40)
           .optional()
           .transform((val) => (val ? [...new Set(val.split(",").map((id) => id.trim()))] : undefined))
-          .pipe(z.string().uuid().array().max(100).optional())
+          .pipe(z.string().guid().array().max(100).optional())
           .describe(AGENT_VAULT.DELEGATION.machineIdentityIds),
         limit: z.coerce.number().int().min(1).max(100).default(100).describe(AGENT_VAULT.DELEGATION.limit),
         offset: z.coerce.number().int().min(0).max(10000).default(0).describe(AGENT_VAULT.DELEGATION.offset),
@@ -202,7 +202,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
           scope: DelegationScopeSchema,
           userIds: z
             .string()
-            .uuid()
+            .guid()
             .array()
             .max(MAX_DELEGATION_SUBJECTS)
             .default([])
@@ -215,7 +215,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
             ),
           groupIds: z
             .string()
-            .uuid()
+            .guid()
             .array()
             .max(MAX_DELEGATION_SUBJECTS)
             .default([])

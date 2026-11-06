@@ -47,12 +47,12 @@ export const CreateAwsElasticLoadBalancerPkiSyncSchema = z.object({
   description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsElasticLoadBalancerPkiSyncConfigSchema,
-  syncOptions: AwsElasticLoadBalancerPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: AwsElasticLoadBalancerPkiSyncOptionsSchema.optional().prefault({}),
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
-  applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional(),
+  applicationId: z.string().guid().optional(),
+  certificateIds: z.array(z.string().guid()).optional(),
   filters: PkiSyncFiltersField
 });
 

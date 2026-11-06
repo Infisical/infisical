@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ResourceKubernetesAuthsSchema = z.object({
-  id: z.string().uuid(),
-  authMethodId: z.string().uuid(),
+  id: z.string().guid(),
+  authMethodId: z.string().guid(),
   kubernetesHost: z.string().nullable().optional(),
   encryptedKubernetesCaCertificate: zodBuffer.nullable().optional(),
   encryptedKubernetesTokenReviewerJwt: zodBuffer.nullable().optional(),
@@ -20,8 +20,8 @@ export const ResourceKubernetesAuthsSchema = z.object({
   allowedAudience: z.string().default(""),
   verifyTlsCertificate: z.boolean().default(true),
   tokenReviewMode: z.string().default("api"),
-  gatewayV2Id: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional(),
+  gatewayV2Id: z.string().guid().nullable().optional(),
+  gatewayPoolId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

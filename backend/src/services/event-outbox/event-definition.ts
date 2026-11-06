@@ -19,7 +19,7 @@ export enum EventModificationType {
 }
 
 // Throws at module load so a bad name fails on boot, not on a request.
-export const defineEvent = <TData extends z.AnyZodObject>({
+export const defineEvent = <TData extends z.ZodObject>({
   domain,
   entity,
   action,

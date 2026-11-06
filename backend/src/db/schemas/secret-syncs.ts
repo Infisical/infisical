@@ -8,17 +8,17 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretSyncsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
   destination: z.string(),
   isAutoSyncEnabled: z.boolean().default(true),
   version: z.number().default(1),
-  destinationConfig: z.unknown(),
-  syncOptions: z.unknown(),
+  destinationConfig: z.unknown().optional(),
+  syncOptions: z.unknown().optional(),
   projectId: z.string(),
-  folderId: z.string().uuid().nullable().optional(),
-  connectionId: z.string().uuid(),
+  folderId: z.string().guid().nullable().optional(),
+  connectionId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   syncStatus: z.string().nullable().optional(),

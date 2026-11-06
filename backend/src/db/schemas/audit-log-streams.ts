@@ -10,14 +10,14 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AuditLogStreamsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   url: z.string().nullable().optional(),
   encryptedHeadersCiphertext: z.string().nullable().optional(),
   encryptedHeadersIV: z.string().nullable().optional(),
   encryptedHeadersTag: z.string().nullable().optional(),
   encryptedHeadersAlgorithm: z.string().nullable().optional(),
   encryptedHeadersKeyEncoding: z.string().nullable().optional(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   provider: z.string().default("custom"),

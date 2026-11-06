@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretReadActivitySchema = z.object({
-  objectId: z.string().uuid(),
+  objectId: z.string().guid(),
   objectType: z.string(),
-  actorId: z.string().uuid(),
+  actorId: z.string().guid(),
   actorType: z.string(),
   lastReadAt: z.date(),
   readMonth: z.date()

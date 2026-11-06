@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AuthTokensSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   type: z.string(),
   phoneNumber: z.string().nullable().optional(),
   tokenHash: z.string(),
@@ -16,8 +16,8 @@ export const AuthTokensSchema = z.object({
   expiresAt: z.date(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid().nullable().optional(),
+  userId: z.string().guid().nullable().optional(),
+  orgId: z.string().guid().nullable().optional(),
   aliasId: z.string().nullable().optional(),
   payload: z.string().nullable().optional()
 });

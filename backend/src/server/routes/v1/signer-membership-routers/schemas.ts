@@ -1,19 +1,19 @@
 import { z } from "zod";
 
-export const SignerIdParamsSchema = z.object({ signerId: z.string().uuid() });
+export const SignerIdParamsSchema = z.object({ signerId: z.string().guid() });
 
 export const SignerRoleSchema = z.enum(["admin", "operator", "auditor"]);
 
 export const RoleBodySchema = z.object({ role: SignerRoleSchema });
 
 export const SignerMemberSchema = z.object({
-  membershipId: z.string().uuid(),
-  signerId: z.string().uuid(),
-  actorUserId: z.string().uuid().nullable().optional(),
-  actorIdentityId: z.string().uuid().nullable().optional(),
-  actorGroupId: z.string().uuid().nullable().optional(),
+  membershipId: z.string().guid(),
+  signerId: z.string().guid(),
+  actorUserId: z.string().guid().nullable().optional(),
+  actorIdentityId: z.string().guid().nullable().optional(),
+  actorGroupId: z.string().guid().nullable().optional(),
   role: z.string(),
-  customRoleId: z.string().uuid().nullable().optional(),
+  customRoleId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   details: z
@@ -29,10 +29,10 @@ export const SignerMemberSchema = z.object({
 });
 
 export const EffectiveSignerMemberSchema = z.object({
-  actorUserId: z.string().uuid().nullable(),
-  actorIdentityId: z.string().uuid().nullable(),
+  actorUserId: z.string().guid().nullable(),
+  actorIdentityId: z.string().guid().nullable(),
   role: z.string(),
-  viaGroupIds: z.array(z.string().uuid()),
+  viaGroupIds: z.array(z.string().guid()),
   isDirect: z.boolean(),
   details: z
     .object({
@@ -45,6 +45,6 @@ export const EffectiveSignerMemberSchema = z.object({
 });
 
 export const RemoveSignerMemberResponseSchema = z.object({
-  membershipId: z.string().uuid(),
-  signerId: z.string().uuid()
+  membershipId: z.string().guid(),
+  signerId: z.string().guid()
 });

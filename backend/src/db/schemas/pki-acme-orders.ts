@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAcmeOrdersSchema = z.object({
-  id: z.string().uuid(),
-  accountId: z.string().uuid(),
-  certificateId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  accountId: z.string().guid(),
+  certificateId: z.string().guid().nullable().optional(),
   notBefore: z.date().nullable().optional(),
   notAfter: z.date().nullable().optional(),
   expiresAt: z.date(),

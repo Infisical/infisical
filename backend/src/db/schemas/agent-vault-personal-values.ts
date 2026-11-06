@@ -10,13 +10,13 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultPersonalValuesSchema = z.object({
-  id: z.string().uuid(),
-  serviceId: z.string().uuid(),
+  id: z.string().guid(),
+  serviceId: z.string().guid(),
   field: z.string(),
-  customHeaderId: z.string().uuid().nullable().optional(),
-  substitutionId: z.string().uuid().nullable().optional(),
-  userId: z.string().uuid().nullable().optional(),
-  identityId: z.string().uuid().nullable().optional(),
+  customHeaderId: z.string().guid().nullable().optional(),
+  substitutionId: z.string().guid().nullable().optional(),
+  userId: z.string().guid().nullable().optional(),
+  identityId: z.string().guid().nullable().optional(),
   encryptedValue: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date()

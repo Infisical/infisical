@@ -26,14 +26,14 @@ const ApprovalPolicyStepSchema = z.object({
   approvers: z
     .object({
       type: z.nativeEnum(ApproverType),
-      id: z.string().uuid()
+      id: z.string().guid()
     })
     .array()
 });
 
 const BypasserSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal(ApproverType.User), id: z.string().uuid() }),
-  z.object({ type: z.literal(ApproverType.Group), id: z.string().uuid() })
+  z.object({ type: z.literal(ApproverType.User), id: z.string().guid() }),
+  z.object({ type: z.literal(ApproverType.Group), id: z.string().guid() })
 ]);
 
 const MaxRequestTtlSchema = z.string().refine(
@@ -56,7 +56,7 @@ export const BaseApprovalPolicySchema = ApprovalPoliciesSchema.extend({
 
 export const BaseCreateApprovalPolicySchema = z.object({
   scope: z.nativeEnum(ApprovalPolicyScope),
-  scopeId: z.string().uuid(),
+  scopeId: z.string().guid(),
   name: z.string().min(1).max(128),
   maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array(),
@@ -88,7 +88,7 @@ const ApprovalRequestStepSchema = ApprovalRequestStepsSchema.extend({
   approvers: z
     .object({
       type: z.nativeEnum(ApproverType),
-      id: z.string().uuid()
+      id: z.string().guid()
     })
     .array(),
   approvals: ApprovalRequestApprovalsSchema.array()
@@ -104,7 +104,7 @@ export const BaseApprovalRequestSchema = ApprovalRequestsSchema.omit({ autoAppro
 
 export const BaseCreateApprovalRequestSchema = z.object({
   scope: z.nativeEnum(ApprovalPolicyScope),
-  scopeId: z.string().uuid(),
+  scopeId: z.string().guid(),
   justification: auditSafeText(z.string().max(256), { allowMultiline: true }).nullable().optional(),
   requestDuration: z
     .string()

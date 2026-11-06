@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ResourceGcpAuthsSchema = z.object({
-  id: z.string().uuid(),
-  authMethodId: z.string().uuid(),
+  id: z.string().guid(),
+  authMethodId: z.string().guid(),
   type: z.string().default("gce"),
   allowedServiceAccounts: z.string().default(""),
   allowedProjects: z.string().default(""),

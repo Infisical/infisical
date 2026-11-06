@@ -20,7 +20,7 @@ export const extractAccountIdFromKid = (kid: string, profileId: string, applicat
   if (!kid.startsWith(kidPrefix)) {
     throw new AcmeAccountDoesNotExistError({ message: "KID must start with the profile account URL" });
   }
-  return z.string().uuid().parse(kid.slice(kidPrefix.length));
+  return z.string().guid().parse(kid.slice(kidPrefix.length));
 };
 
 export const validateIpIdentifier = (identifier: string): boolean => {

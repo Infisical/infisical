@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const KmsKeysSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   description: z.string().nullable().optional(),
-  isDisabled: z.boolean().default(false).nullable().optional(),
-  isReserved: z.boolean().default(true).nullable().optional(),
-  orgId: z.string().uuid(),
+  isDisabled: z.boolean().nullable().optional(),
+  isReserved: z.boolean().nullable().optional(),
+  orgId: z.string().guid(),
   name: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),

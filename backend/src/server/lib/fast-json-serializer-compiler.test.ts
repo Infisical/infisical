@@ -1,8 +1,10 @@
+import { ZodTypeProvider } from "@fastify/type-provider-zod";
 import Fastify from "fastify";
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { fastJsonSerializerCompiler, serializerCompiler, validatorCompiler, ZodTypeProvider } from "./fastify-zod";
+import { createSerializerCompiler, fastJsonSerializerCompiler } from "./serializer-compiler";
+import { validatorCompiler } from "./validator-compiler";
 
 const responseSchema = z.object({
   secrets: z
@@ -38,7 +40,7 @@ const handlerData = {
 const buildServer = () => {
   const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
-  app.setSerializerCompiler(serializerCompiler);
+  app.setSerializerCompiler(createSerializerCompiler({ legacyParseFallback: false }));
 
   app.get("/zod", { schema: { response: { 200: responseSchema } } }, async () => handlerData as never);
   app.get(
@@ -71,6 +73,29 @@ describe("fastJsonSerializerCompiler", () => {
     const [firstSecret] = fastRes.json<TBody>().secrets;
     expect(firstSecret.tags).toEqual([{ id: "t1", slug: "prod" }]);
     expect(firstSecret.createdAt).toBe("2026-10-30T13:00:00.000Z");
+  });
+
+  // fast-json-stringify works from the JSON schema, so it writes a .default() the handler left out (as Zod 3's
+  // parse did, where z.encode fails) and does not run .trim() or other overwrites. These pin that difference.
+  test("fills a defaulted field the handler left out and leaves string overwrites unapplied", async () => {
+    const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
+    app.setValidatorCompiler(validatorCompiler);
+    app.setSerializerCompiler(createSerializerCompiler({ legacyParseFallback: false }));
+    const schema = z.object({
+      metadata: z.object({ key: z.string().trim(), isEncrypted: z.boolean().default(false) }).array()
+    });
+    const data = { metadata: [{ key: " k " }] };
+    app.get("/zod", { schema: { response: { 200: schema } } }, async () => data as never);
+    app.get(
+      "/fast",
+      { serializerCompiler: fastJsonSerializerCompiler, schema: { response: { 200: schema } } },
+      async () => data as never
+    );
+
+    const [zodRes, fastRes] = await Promise.all([app.inject("/zod"), app.inject("/fast")]);
+    expect(zodRes.statusCode).toBe(500);
+    expect(fastRes.statusCode).toBe(200);
+    expect(fastRes.json()).toEqual({ metadata: [{ key: " k ", isEncrypted: false }] });
   });
 
   test("leaves non-2xx responses on the zod serializer", async () => {

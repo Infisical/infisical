@@ -51,7 +51,7 @@ export const registerSyncPkiEndpoints = ({
     filters?: TPkiSyncFilters | null;
     removalOptions?: Record<string, unknown>;
   }>;
-  removalOptionsSchema?: z.AnyZodObject;
+  removalOptionsSchema?: z.ZodObject;
   healthCheckTestSchema?: z.ZodType<{
     connectionId: string;
     applicationId?: string;
@@ -411,7 +411,7 @@ export const registerSyncPkiEndpoints = ({
         tags: [ApiDocsTags.PkiSyncs],
         description: `Run the configured health check for the specified ${destinationName} PKI Sync without delivering certificates.`,
         params: z.object({
-          pkiSyncId: z.string().uuid()
+          pkiSyncId: z.string().guid()
         }),
         response: {
           200: HealthCheckResponseSchema

@@ -138,15 +138,16 @@ const headerNameSchema = (reserved: string[]) =>
       (key) => httpHeaderNameRegex.test(key),
       "Header names can only contain letters, digits, and -_.!#$%&'*+^`|~"
     )
-    .refine(
-      (key) => !reserved.includes(key.toLowerCase()),
-      (key) => ({
+    .superRefine((key, ctx) => {
+      if (!reserved.includes(key.toLowerCase())) return;
+      ctx.addIssue({
+        code: "custom",
         message:
           key.toLowerCase() === "authorization"
             ? "Use Authentication to set the 'Authorization' header"
             : `Header '${key}' is set by Infisical and cannot be overridden`
-      })
-    );
+      });
+    });
 
 const headerValueSchema = (label: string) =>
   z
@@ -162,10 +163,14 @@ const WebhookChannelHeaderSchema = z
       .min(1, "Header values cannot be empty")
       .max(4096, "Header values cannot be longer than 4096 characters")
   })
-  .refine(
-    (header) => httpHeaderValueRegex.test(header.value),
-    (header) => ({ message: `The value for header '${header.key}' ${UNSENDABLE_CHARACTER_MESSAGE}`, path: ["value"] })
-  );
+  .superRefine((header, ctx) => {
+    if (httpHeaderValueRegex.test(header.value)) return;
+    ctx.addIssue({
+      code: "custom",
+      message: `The value for header '${header.key}' ${UNSENDABLE_CHARACTER_MESSAGE}`,
+      path: ["value"]
+    });
+  });
 
 export const WebhookChannelConfigSchema = z
   .object({

@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultSkillVersionsSchema = z.object({
-  id: z.string().uuid(),
-  skillId: z.string().uuid(),
+  id: z.string().guid(),
+  skillId: z.string().guid(),
   version: z.number(),
   encryptedFiles: zodBuffer,
   sha256: z.string(),

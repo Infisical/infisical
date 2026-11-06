@@ -8,9 +8,9 @@ import { CertKeySource } from "@app/services/signer/signer-enums";
 
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
-export const SignerIdParamsSchema = z.object({ signerId: z.string().uuid() });
+export const SignerIdParamsSchema = z.object({ signerId: z.string().guid() });
 
-export const SignerRequestParamsSchema = SignerIdParamsSchema.extend({ requestId: z.string().uuid() });
+export const SignerRequestParamsSchema = SignerIdParamsSchema.extend({ requestId: z.string().guid() });
 
 export const ExternalOrderIdSchema = z.string().trim().min(1).max(32);
 
@@ -41,7 +41,7 @@ export const SignerExternalConfigurationSchema = z.object({
 
 export const SignerCertificateInputSchema = z.object({
   keySource: z.enum([CertKeySource.Infisical, CertKeySource.Hsm]).optional(),
-  hsmConnectorId: z.string().uuid().optional(),
+  hsmConnectorId: z.string().guid().optional(),
   hsmKeyLabel: HsmKeyLabelSchema.refine((v) => RE_NO_NEWLINES.test(v), "Key label must not contain newline characters")
     .optional()
     .describe(
@@ -161,8 +161,8 @@ export const ApprovalPolicyBodySchema = z
         stepNumber: z.number().int().min(1),
         name: z.string().trim().max(64).nullable().optional(),
         requiredApprovals: z.number().int().min(1),
-        approverUserIds: z.array(z.string().uuid()).default([]),
-        approverGroupIds: z.array(z.string().uuid()).default([])
+        approverUserIds: z.array(z.string().guid()).default([]),
+        approverGroupIds: z.array(z.string().guid()).default([])
       })
     ),
     constraints: z

@@ -22,7 +22,7 @@ export const registerGroupOrgMembershipRouter = async (server: FastifyZodProvide
         200: z.object({
           groups: z
             .object({
-              id: z.string().uuid(),
+              id: z.string().guid(),
               name: z.string(),
               slug: z.string()
             })

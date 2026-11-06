@@ -30,7 +30,7 @@ export const registerAzureEntraIdConnectionRouter = async (server: FastifyZodPro
     schema: {
       operationId: "listAzureEntraIdScimServicePrincipals",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         search: z.string().trim().optional()

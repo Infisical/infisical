@@ -85,7 +85,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getCertManagerUser",
-      params: z.object({ userId: z.string().trim().uuid() }),
+      params: z.object({ userId: z.string().trim().guid() }),
       response: {
         200: z.object({
           membership: ProjectMembershipsSchema.extend({
@@ -203,7 +203,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "updateCertManagerUser",
-      params: z.object({ userId: z.string().trim().uuid() }),
+      params: z.object({ userId: z.string().trim().guid() }),
       body: RolesUpdateBodySchema,
       response: { 200: z.object({ roles: ProjectUserMembershipRolesSchema.array() }) }
     },
@@ -314,7 +314,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "removeCertManagerUser",
-      params: z.object({ userId: z.string().trim().uuid() }),
+      params: z.object({ userId: z.string().trim().guid() }),
       response: { 200: z.object({ membership: ProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

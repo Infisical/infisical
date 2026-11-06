@@ -18,29 +18,29 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { ChannelRecipientSchema, CreateChannelInputSchema, UpdateChannelInputSchema } from "./alert-channel-schemas";
 
 const AlertResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable(),
   resourceType: z.string(),
   resourceId: z.string().nullable(),
   eventType: z.string(),
   triggerType: z.string(),
-  condition: z.unknown().nullable(),
+  condition: z.unknown().nullish(),
   enabled: z.boolean(),
   orgId: z.string(),
   projectId: z.string().nullable(),
   resourceName: z.string().nullable().optional(),
   filters: z
-    .record(z.array(z.object({ id: z.string(), name: z.string().nullable() })))
+    .record(z.string(), z.array(z.object({ id: z.string(), name: z.string().nullable() })))
     .optional()
     .describe(ALERTING.GET.filters),
   channels: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.string().guid(),
       name: z.string(),
       channelType: z.string(),
       enabled: z.boolean(),
-      config: z.record(z.unknown()),
+      config: z.record(z.string(), z.unknown()),
       recipients: z.array(z.object({ principalType: z.string(), principalId: z.string() }))
     })
   ),
@@ -80,11 +80,11 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         name: z.string().min(1).max(255).describe(ALERTING.CREATE.name),
         description: z.string().max(1000).optional().describe(ALERTING.CREATE.description),
         resourceType: z.string().trim().min(1).max(255).describe(ALERTING.CREATE.resourceType),
-        resourceId: z.string().uuid().nullable().optional().describe(ALERTING.CREATE.resourceId),
+        resourceId: z.string().guid().nullable().optional().describe(ALERTING.CREATE.resourceId),
         eventType: z.string().trim().min(1).max(255).describe(ALERTING.CREATE.eventType),
         condition: z.unknown().optional().describe(ALERTING.CREATE.condition),
         enabled: z.boolean().optional().describe(ALERTING.CREATE.enabled),
-        projectId: z.string().uuid().nullable().optional().describe(ALERTING.CREATE.projectId),
+        projectId: z.string().guid().nullable().optional().describe(ALERTING.CREATE.projectId),
         channels: z
           .array(CreateChannelInputSchema)
           .min(1)
@@ -124,12 +124,12 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       description: "Send a test notification through a saved channel or a channel described in the request.",
       body: z.object({
         resourceType: z.string().trim().min(1).max(255).describe(ALERTING.TEST_CHANNEL.resourceType),
-        resourceId: z.string().uuid().nullable().optional().describe(ALERTING.TEST_CHANNEL.resourceId),
-        projectId: z.string().uuid().nullable().optional().describe(ALERTING.TEST_CHANNEL.projectId),
-        alertId: z.string().uuid().optional().describe(ALERTING.TEST_CHANNEL.alertId),
-        channelId: z.string().uuid().optional().describe(ALERTING.TEST_CHANNEL.channelId),
+        resourceId: z.string().guid().nullable().optional().describe(ALERTING.TEST_CHANNEL.resourceId),
+        projectId: z.string().guid().nullable().optional().describe(ALERTING.TEST_CHANNEL.projectId),
+        alertId: z.string().guid().optional().describe(ALERTING.TEST_CHANNEL.alertId),
+        channelId: z.string().guid().optional().describe(ALERTING.TEST_CHANNEL.channelId),
         channelType: z.nativeEnum(AlertChannelType),
-        config: z.record(z.unknown()).default({}),
+        config: z.record(z.string(), z.unknown()).default({}),
         recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
       }),
       response: {
@@ -183,8 +183,8 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       description: "List the alerts on a resource type.",
       querystring: z.object({
         resourceType: z.string().trim().min(1).max(255).describe(ALERTING.LIST.resourceType),
-        resourceId: z.string().uuid().optional().describe(ALERTING.LIST.resourceId),
-        projectId: z.string().uuid().optional().describe(ALERTING.LIST.projectId),
+        resourceId: z.string().guid().optional().describe(ALERTING.LIST.resourceId),
+        projectId: z.string().guid().optional().describe(ALERTING.LIST.projectId),
         enabled: z
           .enum(["true", "false"])
           .transform((value) => value === "true")
@@ -215,7 +215,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       operationId: "getAlertById",
       tags: [ApiDocsTags.Alerting],
       description: "Get an alert by ID.",
-      params: z.object({ alertId: z.string().uuid().describe(ALERTING.GET.alertId) }),
+      params: z.object({ alertId: z.string().guid().describe(ALERTING.GET.alertId) }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -240,7 +240,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       operationId: "updateAlert",
       tags: [ApiDocsTags.Alerting],
       description: "Update an alert.",
-      params: z.object({ alertId: z.string().uuid().describe(ALERTING.UPDATE.alertId) }),
+      params: z.object({ alertId: z.string().guid().describe(ALERTING.UPDATE.alertId) }),
       body: z.object({
         name: z.string().min(1).max(255).optional().describe(ALERTING.UPDATE.name),
         description: z.string().max(1000).nullable().optional().describe(ALERTING.UPDATE.description),
@@ -287,8 +287,8 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       operationId: "deleteAlert",
       tags: [ApiDocsTags.Alerting],
       description: "Delete an alert and its channels.",
-      params: z.object({ alertId: z.string().uuid().describe(ALERTING.DELETE.alertId) }),
-      response: { 200: z.object({ alert: z.object({ id: z.string().uuid() }) }) }
+      params: z.object({ alertId: z.string().guid().describe(ALERTING.DELETE.alertId) }),
+      response: { 200: z.object({ alert: z.object({ id: z.string().guid() }) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {

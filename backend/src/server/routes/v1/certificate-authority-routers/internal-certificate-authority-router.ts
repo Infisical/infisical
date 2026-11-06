@@ -37,7 +37,7 @@ const CROSS_SIGNED_CERT_PEM_MAX_LENGTH = 100_000;
 const CROSS_SIGNED_CERT_CHAIN_PEM_MAX_LENGTH = 500_000;
 
 const CaCrossSignedCertResponseSchema = z.object({
-  caId: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.caId),
+  caId: z.string().guid().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.caId),
   certificate: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.certificate),
   certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.certificateChain),
   issuer: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.issuer),
@@ -309,7 +309,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of past and current CA certificates for a CA",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.caId)
       }),
       response: {
         200: z.array(
@@ -344,7 +344,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get current CA cert and cert chain of a CA",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId)
       }),
       response: {
         200: z.object({
@@ -381,8 +381,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get a specific CA certificate by ID",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
-        certId: z.string().trim().uuid().describe("Certificate ID to retrieve")
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
+        certId: z.string().trim().guid().describe("Certificate ID to retrieve")
       }),
       response: {
         200: z.object({
@@ -393,7 +393,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           notBefore: z.string().optional(),
           notAfter: z.string().optional(),
           maxPathLength: z.number().optional(),
-          parentCaId: z.string().uuid().optional()
+          parentCaId: z.string().guid().optional()
         })
       }
     },
@@ -554,7 +554,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       description:
         "Import or replace the cross-signed certificate of an internal CA. Certificates the CA and its internal sub-CAs issue afterwards carry it in their chain. An intermediate CA signed through sign-intermediate gets the CA's own chain without it. Certificates already issued keep their chain.",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.caId)
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.caId)
       }),
       body: z.object({
         certificate: z
@@ -621,7 +621,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       description:
         "Get the cross-signed certificate of an internal CA. `crossSignedCertificate` is null when the CA has none.",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CROSS_SIGNED_CERT.caId)
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.GET_CROSS_SIGNED_CERT.caId)
       }),
       response: {
         200: z.object({
@@ -658,7 +658,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       description:
         "Remove the cross-signed certificate of an internal CA. Certificates issued afterwards no longer carry it. Certificates already issued keep their chain.",
       params: z.object({
-        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.DELETE_CROSS_SIGNED_CERT.caId)
+        caId: z.string().trim().guid().describe(CERTIFICATE_AUTHORITIES.DELETE_CROSS_SIGNED_CERT.caId)
       }),
       response: {
         200: z.object({
@@ -954,24 +954,24 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       body: z.discriminatedUnion("type", [
         z.object({
           type: z.literal(CaSigningConfigType.Internal),
-          parentCaId: z.string().uuid().optional()
+          parentCaId: z.string().guid().optional()
         }),
         z.object({
           type: z.literal(CaSigningConfigType.Manual)
         }),
         z.object({
           type: z.literal(CaSigningConfigType.Venafi),
-          appConnectionId: z.string().uuid(),
+          appConnectionId: z.string().guid(),
           destinationConfig: VenafiDestinationConfigSchema
         }),
         z.object({
           type: z.literal(CaSigningConfigType.AzureAdCs),
-          appConnectionId: z.string().uuid(),
+          appConnectionId: z.string().guid(),
           destinationConfig: AzureAdCsDestinationConfigSchema
         }),
         z.object({
           type: z.literal(CaSigningConfigType.Adcs),
-          appConnectionId: z.string().uuid(),
+          appConnectionId: z.string().guid(),
           destinationConfig: AdcsDestinationConfigSchema
         })
       ]),
@@ -1067,8 +1067,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.UPDATE_SIGNING_CONFIG.caId)
       }),
       body: z.object({
-        parentCaId: z.string().uuid().optional(),
-        appConnectionId: z.string().uuid().optional(),
+        parentCaId: z.string().guid().optional(),
+        appConnectionId: z.string().guid().optional(),
         destinationConfig: DestinationConfigSchema.optional()
       }),
       response: {

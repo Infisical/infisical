@@ -10,11 +10,11 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const GithubOrgSyncConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   githubOrgName: z.string(),
-  isActive: z.boolean().default(false).nullable().optional(),
+  isActive: z.boolean().nullable().optional(),
   encryptedGithubOrgAccessToken: zodBuffer.nullable().optional(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityAccessTokenRevocationsSchema = z.object({
-  id: z.string().uuid(),
-  identityId: z.string().uuid(),
+  id: z.string().guid(),
+  identityId: z.string().guid(),
   expiresAt: z.date(),
   revokedAt: z.date().nullable().optional(),
   createdAt: z.date(),

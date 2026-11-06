@@ -38,7 +38,7 @@ export const registerHpIloRotationRouter = async (server: FastifyZodProvider) =>
       description:
         "Reconcile HP iLO Local Account rotation credentials. This operation uses the SSH app connection credentials to reset the password when credentials are out of sync.",
       params: z.object({
-        rotationId: z.string().uuid().describe(SecretRotations.RECONCILE.rotationId)
+        rotationId: z.string().guid().describe(SecretRotations.RECONCILE.rotationId)
       }),
       response: {
         200: z.object({

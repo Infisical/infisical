@@ -137,7 +137,7 @@ describe("target config validation", () => {
   test("Linux Server jobs check their own fields", () => {
     expect(issues({ connectionIds: [connectionId], searchFolderPaths: ["/etc"] })).toEqual([]);
     expect(issues({ connectionIds: [connectionId], searchFolderPaths: ["/etc"], domains: ["example.com"] })).toEqual([
-      ": Unrecognized key(s) in object: 'domains'"
+      ': Unrecognized key: "domains"'
     ]);
     expect(issues({ connectionIds: [connectionId, connectionId], searchFolderPaths: ["/etc"] })).toEqual([
       "connectionIds: Each SSH connection can be listed once"

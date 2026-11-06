@@ -79,7 +79,7 @@ type TPamAccessRequestTarget = {
 };
 
 const assertValidFolderId = (folderId: string) => {
-  if (!z.string().uuid().safeParse(folderId).success) {
+  if (!z.string().guid().safeParse(folderId).success) {
     throw new BadRequestError({ message: `Invalid folder ID '${folderId}': must be a UUID` });
   }
 };

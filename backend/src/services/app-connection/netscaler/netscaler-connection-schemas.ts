@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -24,11 +25,7 @@ export const NetScalerConnectionBasicAuthCredentialsSchema = z.object({
   username: z.string().trim().min(1, "Username is required").max(256, "Username cannot exceed 256 characters"),
   password: z.string().trim().min(1, "Password is required").max(512, "Password cannot exceed 512 characters"),
   sslRejectUnauthorized: z.boolean().optional(),
-  sslCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
-    .optional()
+  sslCertificate: bidirectionalTransform(z.string().trim().optional(), (value) => value || undefined).optional()
 });
 
 const BaseNetScalerConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.NetScaler) });

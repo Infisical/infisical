@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
@@ -19,11 +20,7 @@ export const BaseMongoDBUsernameAndPasswordConnectionSchema = z.object({
 
   tlsRejectUnauthorized: z.boolean(),
   tlsEnabled: z.boolean(),
-  tlsCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
-    .optional()
+  tlsCertificate: bidirectionalTransform(z.string().trim().optional(), (value) => value || undefined).optional()
 });
 
 export const MongoDBConnectionAccessTokenCredentialsSchema = BaseMongoDBUsernameAndPasswordConnectionSchema;

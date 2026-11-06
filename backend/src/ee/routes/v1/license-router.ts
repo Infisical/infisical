@@ -27,7 +27,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
           .transform((value) => value === "true")
       }),
       response: {
-        200: z.object({ plan: z.any() })
+        200: z.object({ plan: z.any().optional() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),

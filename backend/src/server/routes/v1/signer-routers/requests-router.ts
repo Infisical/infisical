@@ -116,8 +116,8 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       description: "Pre-approve signing for a member (admin only)",
       params: SignerIdParamsSchema,
       body: z.object({
-        granteeUserId: z.string().uuid().optional(),
-        granteeIdentityId: z.string().uuid().optional(),
+        granteeUserId: z.string().guid().optional(),
+        granteeIdentityId: z.string().guid().optional(),
         justification: auditSafeText(z.string().trim().min(1).max(2048), { allowMultiline: true }),
         requestedSignings: z.number().int().min(1).optional(),
         requestedWindowDuration: SigningWindowDurationSchema.optional().describe(

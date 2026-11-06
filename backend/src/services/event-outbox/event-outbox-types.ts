@@ -50,9 +50,9 @@ const keySchema = z
 
 // `id` is set when the event is built, so every consumer's row for it shares the same one.
 export const EventInputSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   type: keySchema,
-  data: z.record(z.unknown()),
+  data: z.record(z.string(), z.unknown()),
   time: z.date().optional()
 });
 

@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultDelegationSubjectsSchema = z.object({
-  id: z.string().uuid(),
-  delegationId: z.string().uuid(),
-  membershipId: z.string().uuid(),
+  id: z.string().guid(),
+  delegationId: z.string().guid(),
+  membershipId: z.string().guid(),
   createdAt: z.date()
 });
 

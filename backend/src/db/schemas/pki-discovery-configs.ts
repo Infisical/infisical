@@ -8,15 +8,15 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiDiscoveryConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
   discoveryType: z.string().default("network"),
-  targetConfig: z.unknown(),
+  targetConfig: z.unknown().optional(),
   isAutoScanEnabled: z.boolean().default(false),
   scanIntervalDays: z.number().nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
   isActive: z.boolean().default(true),
   lastScanStatus: z.string().nullable().optional(),
   lastScanJobId: z.string().nullable().optional(),
@@ -24,7 +24,7 @@ export const PkiDiscoveryConfigsSchema = z.object({
   lastScannedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  gatewayPoolId: z.string().uuid().nullable().optional()
+  gatewayPoolId: z.string().guid().nullable().optional()
 });
 
 export type TPkiDiscoveryConfigs = z.infer<typeof PkiDiscoveryConfigsSchema>;

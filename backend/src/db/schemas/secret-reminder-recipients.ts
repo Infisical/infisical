@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretReminderRecipientsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  secretId: z.string().uuid(),
-  userId: z.string().uuid(),
+  secretId: z.string().guid(),
+  userId: z.string().guid(),
   projectId: z.string()
 });
 

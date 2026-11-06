@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SamlConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   authProvider: z.string(),
   isActive: z.boolean(),
   encryptedEntryPoint: z.string().nullable().optional(),
@@ -24,7 +24,7 @@ export const SamlConfigsSchema = z.object({
   certTag: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   lastUsed: z.date().nullable().optional(),
   encryptedSamlEntryPoint: zodBuffer,
   encryptedSamlIssuer: zodBuffer,

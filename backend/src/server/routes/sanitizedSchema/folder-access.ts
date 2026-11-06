@@ -3,9 +3,9 @@ import { z } from "zod";
 import { SecretFolderRole } from "@app/db/schemas";
 
 export const SanitizedFolderAccessSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  folderId: z.string().uuid(),
+  folderId: z.string().guid(),
   permission: z.nativeEnum(SecretFolderRole),
   environment: z.string(),
   secretPath: z.string(),
@@ -19,19 +19,19 @@ export const SanitizedFolderAccessSchema = z.object({
 });
 
 export const SanitizedFolderAccessRoleSchema = z.object({
-  id: z.string().uuid().nullable(),
+  id: z.string().guid().nullable(),
   slug: z.string(),
   name: z.string()
 });
 
 export const SanitizedFolderAccessMembershipSchema = z.object({
-  id: z.string().uuid().nullable(),
+  id: z.string().guid().nullable(),
   isProjectAdmin: z.boolean(),
   roles: SanitizedFolderAccessRoleSchema.array()
 });
 
 export const SanitizedFolderAccessUserSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.string().guid(),
   username: z.string(),
   email: z.string().nullable(),
   firstName: z.string().nullable(),
@@ -41,7 +41,7 @@ export const SanitizedFolderAccessUserSchema = z.object({
 });
 
 export const SanitizedFolderAccessIdentitySchema = z.object({
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   name: z.string(),
   membership: SanitizedFolderAccessMembershipSchema,
   folderRBACAccess: SanitizedFolderAccessSchema.nullable()

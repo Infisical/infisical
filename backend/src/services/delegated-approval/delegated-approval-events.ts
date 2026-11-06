@@ -6,7 +6,7 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 export const DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT = "delegated-approval.request.dispatch-requested";
 
 export const DelegatedApprovalDispatchRequestedPayloadSchema = z.object({
-  delegatedRequestId: z.string().uuid()
+  delegatedRequestId: z.string().guid()
 });
 
 export type TDelegatedApprovalDispatchRequestedPayload = z.infer<

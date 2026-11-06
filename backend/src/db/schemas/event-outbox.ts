@@ -11,18 +11,18 @@ export const EventOutboxSchema = z.object({
   id: z.coerce.number(),
   consumer: z.string(),
   eventType: z.string(),
-  payload: z.unknown(),
+  payload: z.unknown().optional(),
   idempotencyKey: z.string().nullable().optional(),
   occurredAt: z.date(),
   status: z.string().default("pending"),
   attempts: z.number().default(0),
   nextRetryAt: z.date(),
   lockedAt: z.date().nullable().optional(),
-  lockToken: z.string().uuid().nullable().optional(),
+  lockToken: z.string().guid().nullable().optional(),
   lastError: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  eventId: z.string().uuid().nullable().optional()
+  eventId: z.string().guid().nullable().optional()
 });
 
 export type TEventOutbox = z.infer<typeof EventOutboxSchema>;

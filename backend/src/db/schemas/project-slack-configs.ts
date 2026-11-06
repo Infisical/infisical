@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectSlackConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  slackIntegrationId: z.string().uuid(),
+  slackIntegrationId: z.string().guid(),
   isAccessRequestNotificationEnabled: z.boolean().default(false),
   accessRequestChannels: z.string().default(""),
   isSecretRequestNotificationEnabled: z.boolean().default(false),

@@ -61,6 +61,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
 
       const formattedUser = {
         ...user,
+        mfaMethods: null,
         _id: user.id,
         __v: 0
       } as const;

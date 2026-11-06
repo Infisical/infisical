@@ -17,7 +17,7 @@ import { actorContext } from "./agent-vault-router-fns";
 import { AgentVaultServerUrlSchema } from "./agent-vault-schemas";
 
 const AuthorizationViewSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
+  id: z.string().guid().describe(AGENT_VAULT.OAUTH.authorizationId),
   status: z.nativeEnum(AgentVaultOauthAuthorizationStatus).describe(AGENT_VAULT.OAUTH.status),
   error: z.string().nullable().describe(AGENT_VAULT.OAUTH.error),
   scopes: z.string().array().describe(AGENT_VAULT.OAUTH.scopes)
@@ -44,9 +44,9 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
         "Start an OAuth authorization for an MCP service: discovers the server's authorization server, registers a client, and returns the URL to sign in at.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       body: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.OAUTH.accessBundleId),
+        accessBundleId: z.string().guid().describe(AGENT_VAULT.OAUTH.accessBundleId),
         serverUrl: AgentVaultServerUrlSchema.describe(AGENT_VAULT.OAUTH.serverUrl),
-        serviceId: z.string().uuid().optional().describe(AGENT_VAULT.OAUTH.serviceId),
+        serviceId: z.string().guid().optional().describe(AGENT_VAULT.OAUTH.serviceId),
         clientId: z
           .string()
           .trim()
@@ -71,7 +71,7 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
           redirectUri: z.string().describe(AGENT_VAULT.OAUTH.redirectUri),
           authorization: z
             .object({
-              id: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
+              id: z.string().guid().describe(AGENT_VAULT.OAUTH.authorizationId),
               authorizeUrl: z.string().describe(AGENT_VAULT.OAUTH.authorizeUrl)
             })
             .nullable()
@@ -105,7 +105,7 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       description:
         "Finish an OAuth authorization with what the authorization server's redirect carried. An exchange failure returns 200 with status `failed`, so the callback page can show why.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
-      params: z.object({ authorizationId: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId) }),
+      params: z.object({ authorizationId: z.string().guid().describe(AGENT_VAULT.OAUTH.authorizationId) }),
       body: z.object({
         state: z.string().min(1).max(256).describe(AGENT_VAULT.OAUTH.state),
         code: z.string().min(1).max(4096).optional().describe(AGENT_VAULT.OAUTH.code),
@@ -141,7 +141,7 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       operationId: "getAgentVaultOauthAuthorization",
       description: "Get an OAuth authorization's status. Tokens are never returned.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
-      params: z.object({ authorizationId: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId) }),
+      params: z.object({ authorizationId: z.string().guid().describe(AGENT_VAULT.OAUTH.authorizationId) }),
       response: { 200: z.object({ authorization: AuthorizationViewSchema.describe(AGENT_VAULT.OAUTH.authorization) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT]),

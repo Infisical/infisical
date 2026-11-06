@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiDiscoveryScanHistorySchema = z.object({
-  id: z.string().uuid(),
-  discoveryConfigId: z.string().uuid(),
+  id: z.string().guid(),
+  discoveryConfigId: z.string().guid(),
   startedAt: z.date(),
   completedAt: z.date().nullable().optional(),
   status: z.string(),

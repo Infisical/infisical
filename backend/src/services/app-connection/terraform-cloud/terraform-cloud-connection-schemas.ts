@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -27,7 +28,7 @@ export const TerraformCloudConnectionSchema = BaseTerraformCloudConnectionSchema
 export const SanitizedTerraformCloudConnectionSchema = z.discriminatedUnion("method", [
   BaseTerraformCloudConnectionSchema.extend({
     method: z.literal(TerraformCloudConnectionMethod.ApiToken),
-    credentials: TerraformCloudConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.TerraformCloud]} (API Token)` }))
 ]);
 

@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -54,11 +55,10 @@ export const JiraConnectionPersonalAccessTokenCredentialsSchema = z.object({
     .max(1024, "Personal access token cannot exceed 1024 characters")
     .describe(AppConnections.CREDENTIALS.JIRA.personalAccessToken),
   sslRejectUnauthorized: z.boolean().optional().describe(AppConnections.CREDENTIALS.JIRA.sslRejectUnauthorized),
-  sslCertificate: z
-    .string()
-    .trim()
-    .max(16384, "SSL certificate cannot exceed 16384 characters")
-    .transform((value) => value || undefined)
+  sslCertificate: bidirectionalTransform(
+    z.string().trim().max(16384, "SSL certificate cannot exceed 16384 characters").optional(),
+    (value) => value || undefined
+  )
     .optional()
     .describe(AppConnections.CREDENTIALS.JIRA.sslCertificate)
 });

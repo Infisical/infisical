@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -32,10 +33,7 @@ export const AzureADCSUsernamePasswordCredentialsSchema = z.object({
     .max(255)
     .describe(AppConnections.CREDENTIALS.AZURE_ADCS.password),
   sslRejectUnauthorized: z.boolean().optional().describe(AppConnections.CREDENTIALS.AZURE_ADCS.sslRejectUnauthorized),
-  sslCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
+  sslCertificate: bidirectionalTransform(z.string().trim().optional(), (value) => value || undefined)
     .optional()
     .describe(AppConnections.CREDENTIALS.AZURE_ADCS.sslCertificate)
 });

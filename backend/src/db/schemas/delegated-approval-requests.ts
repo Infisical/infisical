@@ -10,16 +10,16 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const DelegatedApprovalRequestsSchema = z.object({
-  id: z.string().uuid(),
-  requestId: z.string().uuid(),
+  id: z.string().guid(),
+  requestId: z.string().guid(),
   providerType: z.string(),
   status: z.string(),
   encryptedCallbackToken: zodBuffer.nullable().optional(),
-  details: z.unknown(),
+  details: z.unknown().optional(),
   providerRequestId: z.string().nullable().optional(),
   callbackAttempts: z.number().default(0),
   decisionReadRequestedAt: z.date().nullable().optional(),
-  dispatchEventId: z.string().uuid(),
+  dispatchEventId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

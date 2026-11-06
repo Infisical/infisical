@@ -450,11 +450,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           )
           .optional()
           .describe(GROUPS.LIST_MEMBERS.search),
-        orderBy: z
-          .nativeEnum(GroupMembersOrderBy)
-          .default(GroupMembersOrderBy.Name)
-          .optional()
-          .describe(GROUPS.LIST_MEMBERS.orderBy),
+        orderBy: z.nativeEnum(GroupMembersOrderBy).optional().describe(GROUPS.LIST_MEMBERS.orderBy),
         orderDirection: z.nativeEnum(OrderByDirection).optional().describe(GROUPS.LIST_MEMBERS.orderDirection),
         memberTypeFilter: z
           .union([z.nativeEnum(FilterMemberType), z.array(z.nativeEnum(FilterMemberType))])

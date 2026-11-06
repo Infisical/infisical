@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ApprovalPolicyAutoApprovalConditionsSchema = z.object({
-  id: z.string().uuid(),
-  ruleId: z.string().uuid(),
+  id: z.string().guid(),
+  ruleId: z.string().guid(),
   position: z.number(),
-  inputId: z.string().uuid().nullable().optional(),
-  connectionId: z.string().uuid().nullable().optional(),
+  inputId: z.string().guid().nullable().optional(),
+  connectionId: z.string().guid().nullable().optional(),
   constraint: z.string(),
-  values: z.unknown(),
+  values: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

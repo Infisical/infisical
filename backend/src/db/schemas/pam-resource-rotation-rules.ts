@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamResourceRotationRulesSchema = z.object({
-  id: z.string().uuid(),
-  resourceId: z.string().uuid(),
+  id: z.string().guid(),
+  resourceId: z.string().guid(),
   name: z.string().nullable().optional(),
   namePattern: z.string(),
   enabled: z.boolean().default(true),

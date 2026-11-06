@@ -10,13 +10,13 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const DynamicSecretLeasesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   version: z.number(),
   externalEntityId: z.string(),
   expireAt: z.date(),
   status: z.string().nullable().optional(),
   statusDetails: z.string().nullable().optional(),
-  dynamicSecretId: z.string().uuid(),
+  dynamicSecretId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   config: z.unknown().nullable().optional(),

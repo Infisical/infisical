@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamResourceFavoritesSchema = z.object({
-  id: z.string().uuid(),
-  userId: z.string().uuid(),
-  pamResourceId: z.string().uuid(),
+  id: z.string().guid(),
+  userId: z.string().guid(),
+  pamResourceId: z.string().guid(),
   projectId: z.string(),
   createdAt: z.date().nullable().optional()
 });

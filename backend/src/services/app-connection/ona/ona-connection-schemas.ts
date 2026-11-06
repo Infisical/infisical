@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -31,7 +32,7 @@ export const OnaConnectionSchema = BaseOnaConnectionSchema.extend({
 export const SanitizedOnaConnectionSchema = z.discriminatedUnion("method", [
   BaseOnaConnectionSchema.extend({
     method: z.literal(OnaConnectionMethod.PersonalAccessToken),
-    credentials: OnaConnectionPersonalAccessTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Ona]} (Personal Access Token)` }))
 ]);
 

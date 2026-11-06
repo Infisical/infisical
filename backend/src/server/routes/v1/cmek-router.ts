@@ -211,7 +211,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsKeys],
       description: "Update KMS key",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.UPDATE_KEY.keyId)
+        keyId: z.string().guid().describe(KMS.UPDATE_KEY.keyId)
       }),
       body: z.object({
         name: keyNameSchema.optional().describe(KMS.UPDATE_KEY.name),
@@ -265,7 +265,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       description:
         "Rotate KMS key. Generates new key material for the key and increments its version. Previous key material is retained so existing ciphertexts remain decryptable; new encrypt operations use the new material. Only supported for encrypt-decrypt keys.",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.ROTATE_KEY.keyId)
+        keyId: z.string().guid().describe(KMS.ROTATE_KEY.keyId)
       }),
       response: {
         200: z.object({
@@ -311,7 +311,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsKeys],
       description: "Delete KMS key",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.DELETE_KEY.keyId)
+        keyId: z.string().guid().describe(KMS.DELETE_KEY.keyId)
       }),
       response: {
         200: z.object({
@@ -410,7 +410,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsKeys],
       description: "Get KMS key by ID",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.GET_KEY_BY_ID.keyId)
+        keyId: z.string().guid().describe(KMS.GET_KEY_BY_ID.keyId)
       }),
       response: {
         200: z.object({
@@ -504,7 +504,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsEncryption],
       description: "Encrypt data with KMS key",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.ENCRYPT.keyId)
+        keyId: z.string().guid().describe(KMS.ENCRYPT.keyId)
       }),
       body: z.object({
         plaintext: base64Schema.describe(KMS.ENCRYPT.plaintext)
@@ -562,7 +562,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       description:
         "Get the public key for a KMS key that is used for signing and verifying data. This endpoint is only available for asymmetric keys.",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.GET_PUBLIC_KEY.keyId)
+        keyId: z.string().guid().describe(KMS.GET_PUBLIC_KEY.keyId)
       }),
       response: {
         200: z.object({
@@ -608,7 +608,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       description:
         "Export the private key (or key material) for a KMS key. For asymmetric keys (sign/verify), the private key is returned. For symmetric keys (encrypt/decrypt), the key material is returned.",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.GET_PRIVATE_KEY.keyId)
+        keyId: z.string().guid().describe(KMS.GET_PRIVATE_KEY.keyId)
       }),
       response: {
         200: z.object({
@@ -651,7 +651,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsKeys],
       description: "Bulk import KMS keys with provided key material into a project.",
       body: z.object({
-        projectId: z.string().uuid(),
+        projectId: z.string().guid(),
         keys: z
           .array(
             z
@@ -773,7 +773,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       description:
         "Bulk export multiple KMS keys. For asymmetric keys (sign/verify), both private and public keys are returned. For symmetric keys (encrypt/decrypt), the key material is returned.",
       body: z.object({
-        keyIds: z.array(z.string().uuid().describe(KMS.BULK_EXPORT_PRIVATE_KEYS.keyIds)).min(1).max(100)
+        keyIds: z.array(z.string().guid().describe(KMS.BULK_EXPORT_PRIVATE_KEYS.keyIds)).min(1).max(100)
       }),
       response: {
         200: z.object({
@@ -826,7 +826,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsSigning],
       description: "List all available signing algorithms for a KMS key",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.LIST_SIGNING_ALGORITHMS.keyId)
+        keyId: z.string().guid().describe(KMS.LIST_SIGNING_ALGORITHMS.keyId)
       }),
       response: {
         200: z.object({
@@ -871,7 +871,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsSigning],
       description: "Sign data with a KMS key.",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.SIGN.keyId)
+        keyId: z.string().guid().describe(KMS.SIGN.keyId)
       }),
       body: z.object({
         signingAlgorithm: z.nativeEnum(SigningAlgorithm),
@@ -881,7 +881,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           signature: z.string(),
-          keyId: z.string().uuid(),
+          keyId: z.string().guid(),
           signingAlgorithm: z.nativeEnum(SigningAlgorithm)
         })
       }
@@ -928,7 +928,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsSigning],
       description: "Verify data signatures with a KMS key.",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.VERIFY.keyId)
+        keyId: z.string().guid().describe(KMS.VERIFY.keyId)
       }),
       body: z.object({
         isDigest: z.boolean().optional().default(false).describe(KMS.VERIFY.isDigest),
@@ -939,7 +939,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           signatureValid: z.boolean(),
-          keyId: z.string().uuid(),
+          keyId: z.string().guid(),
           signingAlgorithm: z.nativeEnum(SigningAlgorithm)
         })
       }
@@ -988,7 +988,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsSigning],
       description: "Generate an HMAC (MAC) for data with a KMS key.",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.GENERATE_MAC.keyId)
+        keyId: z.string().guid().describe(KMS.GENERATE_MAC.keyId)
       }),
       body: z.object({
         data: base64Schema.describe(KMS.GENERATE_MAC.data)
@@ -996,7 +996,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           mac: z.string(),
-          keyId: z.string().uuid(),
+          keyId: z.string().guid(),
           macAlgorithm: z.nativeEnum(HmacAlgorithm)
         })
       }
@@ -1041,7 +1041,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsSigning],
       description: "Verify an HMAC (MAC) for data with a KMS key.",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.VERIFY_MAC.keyId)
+        keyId: z.string().guid().describe(KMS.VERIFY_MAC.keyId)
       }),
       body: z.object({
         data: base64Schema.describe(KMS.VERIFY_MAC.data),
@@ -1050,7 +1050,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           macValid: z.boolean(),
-          keyId: z.string().uuid(),
+          keyId: z.string().guid(),
           macAlgorithm: z.nativeEnum(HmacAlgorithm)
         })
       }
@@ -1096,7 +1096,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmsEncryption],
       description: "Decrypt data with KMS key",
       params: z.object({
-        keyId: z.string().uuid().describe(KMS.DECRYPT.keyId)
+        keyId: z.string().guid().describe(KMS.DECRYPT.keyId)
       }),
       body: z.object({
         ciphertext: ciphertextBase64Schema.describe(KMS.DECRYPT.ciphertext)

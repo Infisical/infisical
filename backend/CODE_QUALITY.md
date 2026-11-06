@@ -78,7 +78,7 @@ name: z.string(),
 // Good: reuse the shared helpers in src/server/lib/schemas.ts
 name: GenericResourceNameSchema,
 slug: slugSchema({ max: 32, field: "Environment slug" }),
-orgId: z.string().uuid(),
+orgId: z.string().guid(),
 projectId: z.string().trim().min(1).max(36),
 description: z.string().trim().max(500).optional(),
 port: z.number().int().min(1).max(65535),
@@ -89,16 +89,54 @@ port: z.number().int().min(1).max(65535),
   name that another rejects.
 - **Bound every string with `.max()`**, matched to the real column width.
 - **`.trim()` anything used as an identifier**, so `"prod "` and `"prod"` are not two rows.
-- **IDs are `.uuid()`; enums are `z.nativeEnum(...)` or `z.enum([...])`**, so the accepted
-  values appear in the generated docs.
+- **IDs are `.guid()`; enums are `z.nativeEnum(...)` or `z.enum([...])`**, so the accepted
+  values appear in the generated docs. (Zod 4's `.uuid()` also enforces the RFC version and
+  variant bits, which rejects IDs the API has always accepted.)
 - **Except `projectId`.** `projects.id` is `varchar(36)`, not `uuid`, and projects carried
   over from MongoDB kept their 24-character ObjectId as their ID. Customers hardcode that ID
-  in `.infisical.json`, CI, and operator manifests, so it cannot be rewritten. `.uuid()`
+  in `.infisical.json`, CI, and operator manifests, so it cannot be rewritten. `.guid()`
   rejects those projects, and no project created since the Postgres move will show it. Check the column in `src/db/schemas/`
-  before adding `.uuid()` to any other ID declared as `t.string("id", 36)`.
+  before adding `.guid()` to any other ID declared as `t.string("id", 36)`.
 - **`z.coerce.number().int()`** for querystring numbers, since everything arrives as a string.
-- **Never `.default(x).optional()`.** The `.optional()` wraps the default, so `undefined`
-  stays `undefined` and the default never applies.
+- **Defaults inside `.optional()` or `.partial()` still apply.** Zod 4 fills them in when the
+  key is missing, so a `PATCH` body built with `.partial()` silently resets every defaulted
+  field the caller left out. Use `partialWithoutDefaults` from `@app/lib/zod` for update
+  bodies, `withoutDefault(schema).optional()` when a shared defaulted schema is made optional,
+  and `.prefault(x)` (not `.default(x)`) when the default must go through a transform. Export
+  any schema a service builds and parses with, even if only that file uses it: the guard test
+  only sees schemas that are exported or used by a route.
+- **Response schemas never contain a plain `.transform()` or `z.preprocess`.** Responses are
+  serialized with `z.encode`, which throws on one-way transforms. Use `bidirectionalTransform`
+  from `@app/lib/zod`.
+- **A response carries every field its schema requires, defaulted ones included.** `z.encode`
+  never fills a `.default()`, so a query that skips a column fails to serialize. Outside tests,
+  production falls back to a Zod 3 style parse and logs `served by the Zod 3 parse fallback`;
+  treat that warning (and `infisical.http.response_serialization.fallback.count`) as a bug in
+  the query or handler, not as handled.
+- **A record keyed by an enum is `z.partialRecord`**, unless every key is genuinely required.
+  Zod 4's `z.record(z.enum([...]), ...)` rejects any object missing a key.
+- **A field that may be left out says `.optional()`, even when its schema accepts `undefined`.**
+  Zod 4 decides whether a key may be missing from the schema's optionality, so `z.unknown()`,
+  `z.any()`, `z.custom()`, `z.coerce.boolean()` and unions with `z.undefined()` reject a missing
+  key ("expected nonoptional"). In a response that is a 500 the production fallback cannot
+  rescue. Generated row schemas emit `z.unknown().optional()` for NOT NULL JSON columns for the
+  same reason.
+- **A `.refine()` on an `.optional()` field does not run when the key is missing.** Zod 3 ran it
+  with `undefined`. Put a check that must see the omission on the parent object.
+- **A refine that re-parses a format needs the format check to abort**, for example
+  `.url({ abort: true }).refine((value) => new URL(value) ...)`. Otherwise the refine runs on the
+  invalid value and throws, which answers with a 500.
+- **Intersections (`.and()`) never contain a `.strict()` object or the same key on both sides.**
+  Zod 4 stops rejecting extra keys there, and throws "Unmergable intersection" when the two sides
+  produce different values. Build one object with `.extend()`.
+- `zod-schema-guards.test.ts` fails the build on each of these Zod 4 traps (and on a
+  `.default()` whose value the field's transform would have changed; use `.prefault()`) in every
+  route schema and every exported schema under `src`, including ones nested in exported config
+  maps. It also fails when any request body or querystring fills in an `.optional()` field the
+  caller left out, whether through a default, a prefault or anything else, when a schema treats
+  a missing key differently from Zod 3, and when a request or exported schema throws from
+  `safeParse` on input it should reject. It also builds the OpenAPI spec for every route. The
+  failure message names the field and the fix.
 
 Zod only validates shape and bounds. Rules that need to read other rows (does this `caId`
 exist, is it in this project, is this state transition legal) belong in the service, and

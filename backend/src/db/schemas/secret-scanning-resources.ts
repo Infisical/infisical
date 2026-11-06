@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningResourcesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   externalId: z.string(),
   name: z.string(),
-  dataSourceId: z.string().uuid(),
+  dataSourceId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -246,27 +246,19 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
         projectId: z.string().trim().describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.projectId)
       }),
       querystring: z.object({
-        offset: z.coerce
-          .number()
-          .min(0)
-          .default(0)
-          .describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.offset)
-          .optional(),
+        offset: z.coerce.number().min(0).describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.offset).optional(),
         limit: z.coerce
           .number()
           .min(1)
-          .max(20000) // TODO: temp limit until combobox added to add identity to project modal, reduce once added
-          .default(100)
+          .max(20000)
           .describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),
         orderBy: z
           .nativeEnum(ProjectIdentityOrderBy)
-          .default(ProjectIdentityOrderBy.Name)
           .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.orderBy)
           .optional(),
         orderDirection: z
           .nativeEnum(OrderByDirection)
-          .default(OrderByDirection.ASC)
           .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.orderDirection)
           .optional(),
         search: z.string().trim().describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.search).optional()

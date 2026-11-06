@@ -8,10 +8,10 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretChangeRequestsSchema = z.object({
-  id: z.string().uuid(),
-  approvalRequestId: z.string().uuid(),
-  folderId: z.string().uuid(),
-  statusChangedByUserId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  approvalRequestId: z.string().guid(),
+  folderId: z.string().guid(),
+  statusChangedByUserId: z.string().guid().nullable().optional(),
   slug: z.string(),
   hasMerged: z.boolean().default(false),
   conflicts: z.unknown().nullable().optional(),

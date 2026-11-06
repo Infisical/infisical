@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const UserGroupMembershipSchema = z.object({
-  id: z.string().uuid(),
-  userId: z.string().uuid(),
-  groupId: z.string().uuid(),
+  id: z.string().guid(),
+  userId: z.string().guid(),
+  groupId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   isPending: z.boolean().default(false)

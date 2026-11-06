@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const OrgGatewayConfigV2Schema = z.object({
-  id: z.string().uuid(),
-  orgId: z.string().uuid(),
+  id: z.string().guid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   encryptedRootGatewayCaPrivateKey: zodBuffer,

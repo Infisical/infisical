@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityOrgMembershipsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   role: z.string(),
-  roleId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid(),
+  roleId: z.string().guid().nullable().optional(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   lastLoginAuthMethod: z.string().nullable().optional(),
   lastLoginTime: z.date().nullable().optional()
 });

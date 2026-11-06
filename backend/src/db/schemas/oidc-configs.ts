@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const OidcConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   discoveryURL: z.string().nullable().optional(),
   issuer: z.string().nullable().optional(),
   authorizationEndpoint: z.string().nullable().optional(),
@@ -28,7 +28,7 @@ export const OidcConfigsSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   lastUsed: z.date().nullable().optional(),
   manageGroupMemberships: z.boolean().default(false),
   encryptedOidcClientId: zodBuffer,

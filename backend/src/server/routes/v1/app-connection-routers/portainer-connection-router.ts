@@ -31,7 +31,7 @@ export const registerPortainerConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listPortainerEnvironments",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -63,7 +63,7 @@ export const registerPortainerConnectionRouter = async (server: FastifyZodProvid
     schema: {
       operationId: "listPortainerStacks",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

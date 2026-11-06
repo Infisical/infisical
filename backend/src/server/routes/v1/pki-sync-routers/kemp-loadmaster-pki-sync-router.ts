@@ -42,7 +42,7 @@ export const registerKempLoadMasterPkiSyncRouter = async (
       ...(enableOperationId ? { operationId: "listKempLoadMasterVirtualServices" } : {}),
       description: "List the Virtual Services available on the Kemp LoadMaster for the specified connection.",
       querystring: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

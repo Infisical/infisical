@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateTemplatesSchema = z.object({
-  id: z.string().uuid(),
-  caId: z.string().uuid(),
-  pkiCollectionId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  caId: z.string().guid(),
+  pkiCollectionId: z.string().guid().nullable().optional(),
   name: z.string(),
   commonName: z.string(),
   subjectAlternativeName: z.string(),

@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretVersionV2TagJunctionSchema = z.object({
-  id: z.string().uuid(),
-  secret_versions_v2Id: z.string().uuid(),
-  secret_tagsId: z.string().uuid()
+  id: z.string().guid(),
+  secret_versions_v2Id: z.string().guid(),
+  secret_tagsId: z.string().guid()
 });
 
 export type TSecretVersionV2TagJunction = z.infer<typeof SecretVersionV2TagJunctionSchema>;

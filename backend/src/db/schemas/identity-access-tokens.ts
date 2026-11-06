@@ -17,13 +17,13 @@ export const IdentityAccessTokensSchema = z.object({
   accessTokenLastRenewedAt: z.date().nullable().optional(),
   isAccessTokenRevoked: z.boolean().default(false),
   identityUAClientSecretId: z.string().nullable().optional(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   name: z.string().nullable().optional(),
   authMethod: z.string(),
   accessTokenPeriod: z.coerce.number().default(0),
-  subOrganizationId: z.string().uuid().nullable().optional()
+  subOrganizationId: z.string().guid().nullable().optional()
 });
 
 export type TIdentityAccessTokens = z.infer<typeof IdentityAccessTokensSchema>;

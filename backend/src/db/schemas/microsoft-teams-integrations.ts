@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const MicrosoftTeamsIntegrationsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   internalTeamsAppId: z.string().nullable().optional(),
   tenantId: z.string(),
   encryptedAccessToken: zodBuffer.nullable().optional(),

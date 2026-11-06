@@ -28,8 +28,8 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       description: "List PKI certificate installations",
       querystring: z.object({
         projectId: z.string().optional().describe(openApiHidden()),
-        discoveryId: z.string().uuid().optional().describe("Filter by discovery configuration ID"),
-        certificateId: z.string().uuid().optional().describe("Filter by certificate ID"),
+        discoveryId: z.string().guid().optional().describe("Filter by discovery configuration ID"),
+        certificateId: z.string().guid().optional().describe("Filter by certificate ID"),
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),
         limit: z.coerce.number().min(1).max(100).optional().default(25).describe("Pagination limit"),
         search: z.string().optional().describe("Search filter for name, hostname, or IP address")
@@ -90,16 +90,16 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       operationId: "getPkiInstallation",
       description: "Get a PKI certificate installation by ID with linked certificates",
       params: z.object({
-        installationId: z.string().uuid().describe("The ID of the installation")
+        installationId: z.string().guid().describe("The ID of the installation")
       }),
       response: {
         200: SanitizedPkiInstallationSchema.extend({
           discoveryName: z.string().nullable().optional(),
-          connection: z.object({ id: z.string().uuid(), name: z.string() }).nullable().optional(),
+          connection: z.object({ id: z.string().guid(), name: z.string() }).nullable().optional(),
           certificates: z
             .array(
               z.object({
-                certificateId: z.string().uuid(),
+                certificateId: z.string().guid(),
                 firstSeenAt: z.date(),
                 lastSeenAt: z.date(),
                 commonName: z.string().nullable().optional(),
@@ -159,7 +159,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       operationId: "updatePkiInstallation",
       description: "Update a PKI certificate installation",
       params: z.object({
-        installationId: z.string().uuid().describe("The ID of the installation")
+        installationId: z.string().guid().describe("The ID of the installation")
       }),
       body: z.object({
         name: z.string().max(255).optional().describe("Name of the installation"),
@@ -221,7 +221,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       operationId: "deletePkiInstallation",
       description: "Delete a PKI certificate installation",
       params: z.object({
-        installationId: z.string().uuid().describe("The ID of the installation")
+        installationId: z.string().guid().describe("The ID of the installation")
       }),
       response: {
         200: SanitizedPkiInstallationSchema

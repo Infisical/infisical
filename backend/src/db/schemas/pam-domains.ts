@@ -10,16 +10,16 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamDomainsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
   domainType: z.string(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  gatewayId: z.string().guid().nullable().optional(),
   encryptedConnectionDetails: zodBuffer,
   discoveryFingerprint: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  gatewayPoolId: z.string().uuid().nullable().optional()
+  gatewayPoolId: z.string().guid().nullable().optional()
 });
 
 export type TPamDomains = z.infer<typeof PamDomainsSchema>;

@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretRotationsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   provider: z.string(),
   secretPath: z.string(),
   interval: z.number(),
@@ -22,7 +22,7 @@ export const SecretRotationsSchema = z.object({
   encryptedDataTag: z.string().nullable().optional(),
   algorithm: z.string().nullable().optional(),
   keyEncoding: z.string().nullable().optional(),
-  envId: z.string().uuid(),
+  envId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   encryptedRotationData: zodBuffer

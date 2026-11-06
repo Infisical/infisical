@@ -10,8 +10,8 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentitySpiffeAuthsSchema = z.object({
-  id: z.string().uuid(),
-  identityId: z.string().uuid(),
+  id: z.string().guid(),
+  identityId: z.string().guid(),
   trustDomain: z.string(),
   allowedSpiffeIds: z.string(),
   allowedAudiences: z.string(),
@@ -25,7 +25,7 @@ export const IdentitySpiffeAuthsSchema = z.object({
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
   accessTokenNumUsesLimit: z.coerce.number().default(0),
-  accessTokenTrustedIps: z.unknown(),
+  accessTokenTrustedIps: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

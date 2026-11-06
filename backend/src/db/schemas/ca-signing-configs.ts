@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const CaSigningConfigsSchema = z.object({
-  id: z.string().uuid(),
-  caId: z.string().uuid(),
+  id: z.string().guid(),
+  caId: z.string().guid(),
   type: z.string(),
-  parentCaId: z.string().uuid().nullable().optional(),
-  appConnectionId: z.string().uuid().nullable().optional(),
+  parentCaId: z.string().guid().nullable().optional(),
+  appConnectionId: z.string().guid().nullable().optional(),
   destinationConfig: z.unknown().nullable().optional(),
   lastExternalCertificateId: z.string().nullable().optional(),
   createdAt: z.date(),

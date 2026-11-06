@@ -152,7 +152,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       tags: [ApiDocsTags.LdapAuth],
       description: "Login with LDAP Auth for machine identity",
       body: z.object({
-        identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.LOGIN.identityId),
+        identityId: z.string().trim().guid("Identity ID must be a valid UUID").describe(LDAP_AUTH.LOGIN.identityId),
         username: z
           .string()
           .trim()

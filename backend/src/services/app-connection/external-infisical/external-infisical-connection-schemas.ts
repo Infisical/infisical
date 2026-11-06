@@ -21,7 +21,7 @@ export const ExternalInfisicalConnectionMachineIdentityCredentialsSchema = z.obj
   machineIdentityClientId: z
     .string()
     .trim()
-    .uuid("Machine Identity Client ID must be a valid UUID")
+    .guid("Machine Identity Client ID must be a valid UUID")
     .min(1, "Machine Identity Client ID is required"),
   machineIdentityClientSecret: z
     .string()

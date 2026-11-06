@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PamAccountPoliciesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
-  rules: z.unknown(),
+  rules: z.unknown().optional(),
   isActive: z.boolean().default(true),
   createdAt: z.date(),
   updatedAt: z.date()

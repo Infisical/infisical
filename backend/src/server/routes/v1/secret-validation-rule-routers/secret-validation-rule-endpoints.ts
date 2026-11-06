@@ -32,8 +32,8 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
   type: SecretValidationRuleType;
   // The input side is left open: each rule type's schema accepts its own config fields and applies
   // its own defaults, while the parsed body always lands on the shape the service takes.
-  createSchema: z.ZodType<Omit<TCreateSecretValidationRuleDTO, "type">, z.ZodTypeDef, unknown>;
-  updateSchema: z.ZodType<Omit<TUpdateSecretValidationRuleDTO, "type" | "ruleId">, z.ZodTypeDef, unknown>;
+  createSchema: z.ZodType<Omit<TCreateSecretValidationRuleDTO, "type">, unknown>;
+  updateSchema: z.ZodType<Omit<TUpdateSecretValidationRuleDTO, "type" | "ruleId">, unknown>;
   responseSchema: z.ZodTypeAny;
 }) => {
   const typeName = SECRET_VALIDATION_RULE_NAME_MAP[type];
@@ -74,7 +74,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
       tags: [ApiDocsTags.SecretValidationRules],
       description: `Get the specified ${typeName} Validation Rule by ID.`,
       params: z.object({
-        ruleId: z.string().uuid().describe(SecretValidationRules.GET_BY_ID(type).ruleId)
+        ruleId: z.string().guid().describe(SecretValidationRules.GET_BY_ID(type).ruleId)
       }),
       response: { 200: z.object({ secretValidationRule: responseSchema }) }
     },
@@ -147,7 +147,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
       tags: [ApiDocsTags.SecretValidationRules],
       description: `Update the specified ${typeName} Validation Rule.`,
       params: z.object({
-        ruleId: z.string().uuid().describe(SecretValidationRules.UPDATE(type).ruleId)
+        ruleId: z.string().guid().describe(SecretValidationRules.UPDATE(type).ruleId)
       }),
       body: updateSchema,
       response: { 200: z.object({ secretValidationRule: responseSchema }) }
@@ -198,7 +198,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
       tags: [ApiDocsTags.SecretValidationRules],
       description: `Delete the specified ${typeName} Validation Rule.`,
       params: z.object({
-        ruleId: z.string().uuid().describe(SecretValidationRules.DELETE(type).ruleId)
+        ruleId: z.string().guid().describe(SecretValidationRules.DELETE(type).ruleId)
       }),
       response: { 200: z.object({ secretValidationRule: responseSchema }) }
     },

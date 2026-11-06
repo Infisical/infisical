@@ -7,7 +7,7 @@ import { AlertPrincipalType, MAX_RECIPIENTS_PER_CHANNEL } from "@app/services/al
 // from reaching it.
 const MAX_CHANNEL_CONFIG_LENGTH = 8192;
 const ChannelConfigSchema = z
-  .record(z.unknown())
+  .record(z.string(), z.unknown())
   .refine((config) => JSON.stringify(config).length <= MAX_CHANNEL_CONFIG_LENGTH, "Channel config is too large");
 
 export const ChannelRecipientSchema = z.object({
@@ -25,7 +25,7 @@ export const CreateChannelInputSchema = z.object({
 });
 
 export const UpdateChannelInputSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().guid().optional(),
   name: z.string().min(1).max(255),
   channelType: z.nativeEnum(AlertChannelType),
   config: ChannelConfigSchema.optional(),

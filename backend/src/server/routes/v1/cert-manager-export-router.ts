@@ -47,7 +47,7 @@ export const registerCertManagerExportRouter = async (server: FastifyZodProvider
       description:
         "Duplicate internal certificate authorities, certificate policies, and certificate profiles from the source project into the organization's active Certificate Manager instance. External CAs, certificates, and enrollment configs are not exported.",
       body: z.object({
-        sourceProjectId: z.string().trim().uuid()
+        sourceProjectId: z.string().trim().guid()
       }),
       response: {
         200: ExportResultSchema

@@ -58,7 +58,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       params: SignerIdParamsSchema,
       body: z
         .object({
-          userIds: z.string().uuid().array().default([]),
+          userIds: z.string().guid().array().default([]),
           emails: z
             .string()
             .email()
@@ -133,7 +133,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       operationId: "updateSignerUserRole",
       tags: [ApiDocsTags.PkiSigners],
       description: "Update a user member's role on a signer",
-      params: z.object({ signerId: z.string().uuid(), userId: z.string().uuid() }),
+      params: z.object({ signerId: z.string().guid(), userId: z.string().guid() }),
       body: RoleBodySchema,
       response: { 200: z.object({ membership: SignerMemberSchema }) }
     },
@@ -191,7 +191,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       operationId: "removeSignerUserMember",
       tags: [ApiDocsTags.PkiSigners],
       description: "Remove a user from a signer",
-      params: z.object({ signerId: z.string().uuid(), userId: z.string().uuid() }),
+      params: z.object({ signerId: z.string().guid(), userId: z.string().guid() }),
       response: { 200: RemoveSignerMemberResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

@@ -32,7 +32,7 @@ export const registerGitHubRadarConnectionRouter = async (server: FastifyZodProv
     schema: {
       operationId: "listGitHubRadarRepositories",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

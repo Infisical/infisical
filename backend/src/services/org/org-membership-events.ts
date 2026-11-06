@@ -41,25 +41,25 @@ const MEMBERS_PER_EVENT = 100;
 
 const ActorSchema = z.object({
   actorType: z.enum([ActorType.USER, ActorType.IDENTITY]),
-  actorId: z.string().uuid()
+  actorId: z.string().guid()
 });
 export type TOrgMembershipActor = z.infer<typeof ActorSchema>;
 
 // Group events snapshot orgs and members at removal time, since a later removal or the delete cascade can
 // wipe those rows before the consumer runs. orgIds includes the group's own org.
 const GroupScopePayloadSchema = z.object({
-  groupId: z.string().uuid(),
-  orgIds: z.array(z.string().uuid()).max(ORGS_PER_EVENT),
+  groupId: z.string().guid(),
+  orgIds: z.array(z.string().guid()).max(ORGS_PER_EVENT),
   members: z.array(ActorSchema).max(MEMBERS_PER_EVENT)
 });
 export const GroupMembershipRemovedPayloadSchema = GroupScopePayloadSchema;
 export const GroupRemovedPayloadSchema = GroupScopePayloadSchema;
 export const GroupLinkRemovedPayloadSchema = z.object({
-  orgId: z.string().uuid(),
-  groupId: z.string().uuid(),
+  orgId: z.string().guid(),
+  groupId: z.string().guid(),
   members: z.array(ActorSchema).max(MEMBERS_PER_EVENT)
 });
-export const OrgMembershipRemovedPayloadSchema = ActorSchema.extend({ orgId: z.string().uuid() });
+export const OrgMembershipRemovedPayloadSchema = ActorSchema.extend({ orgId: z.string().guid() });
 
 export const OrgMembershipEventPayloadSchema = z.union([
   GroupScopePayloadSchema,

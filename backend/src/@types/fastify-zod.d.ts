@@ -1,10 +1,10 @@
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { FastifyInstance, RawReplyDefaultExpression, RawRequestDefaultExpression, RawServerDefault } from "fastify";
 import type { Cluster, Redis } from "ioredis";
 import type { Knex } from "knex";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { CustomLogger } from "@app/lib/logger/logger";
-import { ZodTypeProvider } from "@app/server/plugins/fastify-zod";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 

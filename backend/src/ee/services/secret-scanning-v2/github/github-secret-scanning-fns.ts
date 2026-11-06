@@ -1014,7 +1014,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     externalId: string | null;
     logDetails: string;
   }) => {
-    const scanId = z.string().uuid().safeParse(externalId);
+    const scanId = z.string().guid().safeParse(externalId);
 
     if (!scanId.success) {
       logger.warn(`secretScanningV2CheckRunEvent: GitHub - check run has no scan ID ${logDetails}`);
@@ -1110,7 +1110,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     // Primary throughout: a click right after the check completes can reach a replica that still has the scan's queued
     // metadata, with no finding IDs, or no scan at all.
     const primary = secretScanningV2DAL.primaryNode();
-    const scanId = z.string().uuid().safeParse(externalId);
+    const scanId = z.string().guid().safeParse(externalId);
     const previousScan = scanId.success ? await secretScanningV2DAL.scans.findById(scanId.data, primary) : undefined;
     const metadata = GitHubPullRequestScanMetadataSchema.safeParse(previousScan?.metadata);
 

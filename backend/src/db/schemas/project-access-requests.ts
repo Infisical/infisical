@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectAccessRequestsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   projectId: z.string(),
-  requesterUserId: z.string().uuid(),
+  requesterUserId: z.string().guid(),
   status: z.string().default("pending"),
   comment: z.string().nullable().optional(),
   createdAt: z.date(),

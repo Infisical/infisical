@@ -221,8 +221,8 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           .optional()
           .describe(SecretScanningFindings.LIST.projectId),
         status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.LIST.status),
-        dataSourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.dataSourceId),
-        resourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.resourceId),
+        dataSourceId: z.string().trim().guid().optional().describe(SecretScanningFindings.LIST.dataSourceId),
+        resourceId: z.string().trim().guid().optional().describe(SecretScanningFindings.LIST.resourceId),
         orderBy: z
           .nativeEnum(SecretScanningFindingOrderBy)
           .default(SecretScanningFindingOrderBy.CreatedAt)

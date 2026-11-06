@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -28,7 +29,7 @@ export const GoDaddyConnectionSchema = BaseGoDaddyConnectionSchema.extend({
 export const SanitizedGoDaddyConnectionSchema = z.discriminatedUnion("method", [
   BaseGoDaddyConnectionSchema.extend({
     method: z.literal(GoDaddyConnectionMethod.ApiKey),
-    credentials: z.object({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GoDaddy]} (API Key)` }))
 ]);
 

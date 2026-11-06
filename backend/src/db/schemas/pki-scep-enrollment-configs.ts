@@ -10,7 +10,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiScepEnrollmentConfigsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   encryptedRaPrivateKey: zodBuffer,
   raCertificate: z.string(),
   raCertExpiresAt: z.date(),
@@ -22,8 +22,8 @@ export const PkiScepEnrollmentConfigsSchema = z.object({
   challengeType: z.string().default("static"),
   dynamicChallengeExpiryMinutes: z.number().nullable().optional(),
   dynamicChallengeMaxPending: z.number().nullable().optional(),
-  applicationProfileId: z.string().uuid().nullable().optional(),
-  validationConnectionId: z.string().uuid().nullable().optional(),
+  applicationProfileId: z.string().guid().nullable().optional(),
+  validationConnectionId: z.string().guid().nullable().optional(),
   signRaWithCa: z.boolean().default(false)
 });
 

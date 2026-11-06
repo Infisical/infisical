@@ -1,13 +1,14 @@
 import RE2 from "re2";
-import { AnyZodObject, z } from "zod";
+import { z } from "zod";
 
 import { SecretSyncsSchema } from "@app/db/schemas/secret-syncs";
 import { SecretSyncs } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { slugSchema } from "@app/server/lib/schemas";
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
-import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
+import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-options-config";
 
 // We don't allow initial sync import combined with including subfolders, because it can change the
 // shape of how secrets are organized in Infisical, which would then influence future syncs.
@@ -53,7 +54,7 @@ export const KeySchemaSchema = z
     }
   );
 
-const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
+const BaseSyncOptionsSchema = <T extends z.ZodObject = z.ZodObject<Record<never, never>>>({
   destination,
   syncOptionsConfig: { canImportSecrets, supportsKeySchema = true, supportsDisableSecretDeletion = true },
   merge,
@@ -66,48 +67,36 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
 }) => {
   const syncName = SECRET_SYNC_NAME_MAP[destination];
 
+  const keySchema: z.ZodOptional<z.ZodType<string | undefined, string | undefined>> = supportsKeySchema
+    ? KeySchemaSchema.describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema)
+    : bidirectionalTransform(z.string().optional(), () => undefined)
+        .optional()
+        .describe(`Not supported for ${syncName} syncs.`);
+
   const baseSchema = z.object({
     initialSyncBehavior: (canImportSecrets
       ? z.nativeEnum(SecretSyncInitialSyncBehavior)
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
     ).describe(SecretSyncs.SYNC_OPTIONS(destination).initialSyncBehavior),
-    keySchema: supportsKeySchema
-      ? KeySchemaSchema.describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema)
-      : z
-          .string()
-          .optional()
-          .transform(() => undefined)
-          .describe(`Not supported for ${syncName} syncs.`),
+    keySchema,
     disableSecretDeletion: supportsDisableSecretDeletion
       ? z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
-      : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`),
+      : z.literal(false).or(z.undefined()).optional().describe(`Not supported for ${syncName} syncs.`),
     includeAllSubFolders: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).includeAllSubFolders)
   });
 
-  // What refinedSchema actually is: baseSchema, merged with the destination's own extra
-  // sync-option fields when `merge` supplies them, wrapped in a Zod effect that enforces
-  // isSubFolderCombinationAllowed across the result.
-  type TRefinedSchema = z.ZodEffects<
-    T extends AnyZodObject
-      ? z.ZodObject<z.objectUtil.MergeShapes<typeof baseSchema.shape, T["shape"]>>
-      : typeof baseSchema
-  >;
+  type TSyncOptionsSchema = z.ZodObject<z.core.util.Extend<typeof baseSchema.shape, T["shape"]>>;
 
-  // The cast below is needed because TypeScript can't verify it on its own: every caller passes
-  // `merge` and a real T together or neither, so the runtime ternary and the type-level ternary
-  // above always agree, but the compiler has no way to prove that from a runtime value.
-  const refinedSchema = (
-    merge
-      ? baseSchema.merge(merge).refine(isSubFolderCombinationAllowed, SUBFOLDER_SYNC_REFINEMENT)
-      : baseSchema.refine(isSubFolderCombinationAllowed, SUBFOLDER_SYNC_REFINEMENT)
-  ) as TRefinedSchema;
+  const mergedSchema: z.ZodObject = merge ? baseSchema.extend(merge.shape) : baseSchema;
 
-  return refinedSchema.describe(
-    isUpdateSchema ? SecretSyncs.UPDATE(destination).syncOptions : SecretSyncs.CREATE(destination).syncOptions
-  );
+  return mergedSchema
+    .refine(isSubFolderCombinationAllowed, SUBFOLDER_SYNC_REFINEMENT)
+    .describe(
+      isUpdateSchema ? SecretSyncs.UPDATE(destination).syncOptions : SecretSyncs.CREATE(destination).syncOptions
+    ) as unknown as TSyncOptionsSchema;
 };
 
-export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefined>(
+export const BaseSecretSyncSchema = <T extends z.ZodObject = z.ZodObject<Record<never, never>>>(
   destination: SecretSync,
   syncOptionsConfig: TSyncOptionsConfig,
   merge?: T
@@ -124,13 +113,13 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
     connection: z.object({
       app: z.literal(SECRET_SYNC_CONNECTION_MAP[destination]),
       name: z.string(),
-      id: z.string().uuid()
+      id: z.string().guid()
     }),
-    environment: z.object({ slug: z.string(), name: z.string(), id: z.string().uuid() }).nullable(),
+    environment: z.object({ slug: z.string(), name: z.string(), id: z.string().guid() }).nullable(),
     folder: z.object({ id: z.string(), path: z.string() }).nullable()
   });
 
-export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | undefined = undefined>(
+export const GenericCreateSecretSyncFieldsSchema = <T extends z.ZodObject = z.ZodObject<Record<never, never>>>(
   destination: SecretSync,
   syncOptionsConfig: TSyncOptionsConfig,
   merge?: T
@@ -144,7 +133,7 @@ export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .max(256, "Description cannot exceed 256 characters")
       .nullish()
       .describe(SecretSyncs.CREATE(destination).description),
-    connectionId: z.string().uuid().describe(SecretSyncs.CREATE(destination).connectionId),
+    connectionId: z.string().guid().describe(SecretSyncs.CREATE(destination).connectionId),
     environment: slugSchema({ field: "environment", max: 64 }).describe(SecretSyncs.CREATE(destination).environment),
     secretPath: z
       .string()
@@ -156,14 +145,14 @@ export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | und
     syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge })
   });
 
-export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | undefined = undefined>(
+export const GenericUpdateSecretSyncFieldsSchema = <T extends z.ZodObject = z.ZodObject<Record<never, never>>>(
   destination: SecretSync,
   syncOptionsConfig: TSyncOptionsConfig,
   merge?: T
 ) =>
   z.object({
     name: slugSchema({ field: "name", max: 256 }).describe(SecretSyncs.UPDATE(destination).name).optional(),
-    connectionId: z.string().uuid().describe(SecretSyncs.UPDATE(destination).connectionId).optional(),
+    connectionId: z.string().guid().describe(SecretSyncs.UPDATE(destination).connectionId).optional(),
     description: z
       .string()
       .trim()

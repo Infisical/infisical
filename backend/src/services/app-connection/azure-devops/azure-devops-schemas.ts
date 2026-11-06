@@ -42,7 +42,7 @@ export const AzureDevOpsConnectionAccessTokenOutputCredentialsSchema = z.object(
 export const AzureDevOpsConnectionClientSecretInputCredentialsSchema = z.object({
   clientId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .min(1, "Client ID required")
     .max(50, "Client ID must be at most 50 characters long")
@@ -55,7 +55,7 @@ export const AzureDevOpsConnectionClientSecretInputCredentialsSchema = z.object(
     .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.clientSecret),
   tenantId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .min(1, "Tenant ID required")
     .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.tenantId),
@@ -66,7 +66,7 @@ export const AzureDevOpsConnectionClientSecretInputCredentialsSchema = z.object(
     .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.orgName),
   clientSecretKeyId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .optional()
     .describe(

@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -27,7 +28,7 @@ export const VercelConnectionSchema = BaseVercelConnectionSchema.extend({
 export const SanitizedVercelConnectionSchema = z.discriminatedUnion("method", [
   BaseVercelConnectionSchema.extend({
     method: z.literal(VercelConnectionMethod.ApiToken),
-    credentials: VercelConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Vercel]} (API Token)` }))
 ]);
 

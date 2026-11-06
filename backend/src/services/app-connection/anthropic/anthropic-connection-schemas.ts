@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -25,7 +26,7 @@ export const AnthropicConnectionSchema = BaseAnthropicConnectionSchema.extend({
 export const SanitizedAnthropicConnectionSchema = z.discriminatedUnion("method", [
   BaseAnthropicConnectionSchema.extend({
     method: z.literal(AnthropicConnectionMethod.ApiKey),
-    credentials: z.object({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Anthropic]} (API Key)` }))
 ]);
 

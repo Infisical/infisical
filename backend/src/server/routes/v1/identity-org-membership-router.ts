@@ -9,9 +9,9 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const sanitizedOrgIdentityMembershipSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   orgId: z.string(),
-  identityId: z.string().uuid(),
+  identityId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
@@ -272,17 +272,11 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
         }
       ],
       querystring: z.object({
-        offset: z.coerce
-          .number()
-          .min(0)
-          .default(0)
-          .describe(ORG_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.offset)
-          .optional(),
+        offset: z.coerce.number().min(0).describe(ORG_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.offset).optional(),
         limit: z.coerce
           .number()
           .min(1)
           .max(100)
-          .default(20)
           .describe(ORG_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),
         identityName: z
@@ -432,17 +426,11 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
         }
       ],
       querystring: z.object({
-        offset: z.coerce
-          .number()
-          .min(0)
-          .default(0)
-          .describe(ORG_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.offset)
-          .optional(),
+        offset: z.coerce.number().min(0).describe(ORG_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.offset).optional(),
         limit: z.coerce
           .number()
           .min(1)
           .max(100)
-          .default(20)
           .describe(ORG_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.limit)
           .optional(),
         identityName: z.string().describe(ORG_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.identityName).optional()

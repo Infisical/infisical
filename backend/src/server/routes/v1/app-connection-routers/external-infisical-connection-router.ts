@@ -47,7 +47,7 @@ export const registerExternalInfisicalConnectionRouter = async (server: FastifyZ
     schema: {
       operationId: "listExternalInfisicalProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -72,7 +72,7 @@ export const registerExternalInfisicalConnectionRouter = async (server: FastifyZ
     schema: {
       operationId: "getExternalInfisicalEnvironmentFolderTree",
       params: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         projectId: z.string()
       }),
       response: {

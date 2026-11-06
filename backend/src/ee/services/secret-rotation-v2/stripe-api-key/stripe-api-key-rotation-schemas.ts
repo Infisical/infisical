@@ -7,6 +7,7 @@ import {
   BaseUpdateSecretRotationSchema
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-schemas";
 import { SecretRotations } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -23,11 +24,13 @@ export const StripeApiKeyRotationGeneratedCredentialsSchema = z
   .min(1)
   .max(2);
 
-const StripeApiKeyPermissionListSchema = z
-  .array(StripeApiKeyPermissionSchema)
-  .min(1, "At least one permission is required")
-  .max(STRIPE_API_KEY_PERMISSIONS.length)
-  .transform((permissions) => [...new Set(permissions)]);
+const StripeApiKeyPermissionListSchema = bidirectionalTransform(
+  z
+    .array(StripeApiKeyPermissionSchema)
+    .min(1, "At least one permission is required")
+    .max(STRIPE_API_KEY_PERMISSIONS.length),
+  (permissions) => [...new Set(permissions)]
+);
 
 const StripeApiKeyRotationParametersSchema = z.object({
   keyName: z

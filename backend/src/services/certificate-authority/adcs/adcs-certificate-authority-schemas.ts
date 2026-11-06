@@ -8,7 +8,7 @@ import {
 } from "../certificate-authority-schemas";
 
 export const ADCSCertificateAuthorityConfigurationSchema = z.object({
-  appConnectionId: z.string().uuid().trim().describe("The ADCS App Connection ID."),
+  appConnectionId: z.string().guid().trim().describe("The ADCS App Connection ID."),
   caName: z
     .string()
     .trim()

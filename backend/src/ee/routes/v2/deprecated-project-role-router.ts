@@ -135,7 +135,9 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         permissions: ProjectPermissionV2Schema.array()
           .describe(PROJECT_ROLE.UPDATE.permissions)
           .optional()
-          .superRefine(checkForInvalidPermissionCombination)
+          .superRefine((permissions) => {
+            checkForInvalidPermissionCombination(permissions);
+          })
       }),
       response: {
         200: z.object({

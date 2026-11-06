@@ -32,7 +32,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       operationId: "pamSessionChunkPresignedPut",
       description: "Request a presigned URL for uploading a session recording chunk",
       tags: [ApiDocsTags.PamSessions],
-      params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
+      params: z.object({ sessionId: z.string().guid().describe("The ID of the session") }),
       body: z.object({
         chunkIndex: z.number().int().nonnegative().max(999999).describe("Sequential chunk index"),
         ciphertextBytes: z.number().int().positive().describe("Size of the encrypted chunk in bytes"),
@@ -102,7 +102,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       operationId: "pamSessionRecordChunk",
       description: "Record a session recording chunk",
       tags: [ApiDocsTags.PamSessions],
-      params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
+      params: z.object({ sessionId: z.string().guid().describe("The ID of the session") }),
       body: z.object({
         chunkIndex: z.number().int().nonnegative().max(999999).describe("Sequential chunk index"),
         startElapsedMs: z.number().describe("Start time offset in milliseconds"),
@@ -210,7 +210,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       operationId: "pamSessionPlayback",
       description: "Get playback data for a session recording",
       tags: [ApiDocsTags.PamSessions],
-      params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
+      params: z.object({ sessionId: z.string().guid().describe("The ID of the session") }),
       response: {
         200: z.object({
           sessionComplete: z.boolean(),
@@ -243,7 +243,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       description: "Get the ciphertext for a specific recording chunk",
       tags: [ApiDocsTags.PamSessions],
       params: z.object({
-        sessionId: z.string().uuid().describe("The ID of the session"),
+        sessionId: z.string().guid().describe("The ID of the session"),
         chunkIndex: z.coerce.number().int().nonnegative().max(999999).describe("The chunk index to retrieve")
       })
     },

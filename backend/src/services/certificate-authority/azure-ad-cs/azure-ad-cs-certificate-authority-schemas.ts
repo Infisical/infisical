@@ -8,7 +8,7 @@ import {
 } from "../certificate-authority-schemas";
 
 export const AzureAdCsCertificateAuthorityConfigurationSchema = z.object({
-  azureAdcsConnectionId: z.string().uuid().trim().describe("Azure ADCS Connection ID")
+  azureAdcsConnectionId: z.string().guid().trim().describe("Azure ADCS Connection ID")
 });
 
 export const AzureAdCsCertificateAuthorityCredentialsSchema = z.object({

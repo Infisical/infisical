@@ -10,10 +10,10 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const InternalKmsKeyVersionSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   encryptedKey: zodBuffer,
   version: z.number(),
-  internalKmsId: z.string().uuid()
+  internalKmsId: z.string().guid()
 });
 
 export type TInternalKmsKeyVersion = z.infer<typeof InternalKmsKeyVersionSchema>;

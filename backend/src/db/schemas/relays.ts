@@ -8,11 +8,11 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const RelaysSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  orgId: z.string().uuid().nullable().optional(),
-  identityId: z.string().uuid().nullable().optional(),
+  orgId: z.string().guid().nullable().optional(),
+  identityId: z.string().guid().nullable().optional(),
   name: z.string(),
   host: z.string(),
   heartbeat: z.date().nullable().optional(),

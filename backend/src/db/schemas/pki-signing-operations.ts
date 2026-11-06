@@ -8,16 +8,16 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiSigningOperationsSchema = z.object({
-  id: z.string().uuid(),
-  signerId: z.string().uuid(),
+  id: z.string().guid(),
+  signerId: z.string().guid(),
   projectId: z.string(),
   status: z.string(),
   signingAlgorithm: z.string(),
   dataHash: z.string(),
   actorType: z.string(),
-  actorId: z.string().uuid(),
+  actorId: z.string().guid(),
   actorName: z.string().nullable().optional(),
-  approvalGrantId: z.string().uuid().nullable().optional(),
+  approvalGrantId: z.string().guid().nullable().optional(),
   clientMetadata: z.unknown().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
   createdAt: z.date()

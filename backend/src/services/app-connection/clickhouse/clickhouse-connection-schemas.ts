@@ -3,6 +3,7 @@ import { isIPv6 } from "node:net";
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
@@ -46,11 +47,10 @@ export const ClickHouseConnectionUsernameAndPasswordCredentialsSchema = z.object
     .describe(AppConnections.CREDENTIALS.SQL_CONNECTION.password),
   sslEnabled: z.boolean().describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslEnabled),
   sslRejectUnauthorized: z.boolean().describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslRejectUnauthorized),
-  sslCertificate: z
-    .string()
-    .trim()
-    .max(10240, "SSL certificate cannot exceed 10240 characters")
-    .transform((value) => value || undefined)
+  sslCertificate: bidirectionalTransform(
+    z.string().trim().max(10240, "SSL certificate cannot exceed 10240 characters").optional(),
+    (value) => value || undefined
+  )
     .optional()
     .describe(AppConnections.CREDENTIALS.SQL_CONNECTION.sslCertificate)
 });

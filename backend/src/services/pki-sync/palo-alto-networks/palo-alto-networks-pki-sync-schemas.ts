@@ -63,13 +63,13 @@ const PaloAltoNetworksMultiCertificatePkiSyncOptionsSchema = PaloAltoNetworksPki
 
 const buildPaloAltoNetworksPkiSyncSchemas = <
   TDestination extends PkiSync,
-  TConfig extends z.AnyZodObject,
+  TConfig extends z.ZodObject,
   TInputOptions extends z.ZodTypeAny
 >(
   destination: TDestination,
   destinationConfig: TConfig,
   inputSyncOptions: TInputOptions,
-  removalOptionsSchema?: z.AnyZodObject
+  removalOptionsSchema?: z.ZodObject
 ) => ({
   removalOptionsSchema,
   responseSchema: PkiSyncSchema.extend({
@@ -83,11 +83,11 @@ const buildPaloAltoNetworksPkiSyncSchemas = <
     isAutoSyncEnabled: z.boolean().default(true),
     destinationConfig: destinationConfig.strict(),
     syncOptions: inputSyncOptions,
-    subscriberId: z.string().uuid().nullish(),
-    connectionId: z.string().uuid(),
-    projectId: z.string().trim().uuid().optional().describe(openApiHidden()),
-    applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional(),
+    subscriberId: z.string().guid().nullish(),
+    connectionId: z.string().guid(),
+    projectId: z.string().trim().guid().optional().describe(openApiHidden()),
+    applicationId: z.string().guid().optional(),
+    certificateIds: z.array(z.string().guid()).optional(),
     filters: PkiSyncFiltersField
   }),
   updateSchema: z.object({
@@ -96,8 +96,8 @@ const buildPaloAltoNetworksPkiSyncSchemas = <
     isAutoSyncEnabled: z.boolean().optional(),
     destinationConfig: destinationConfig.strict().optional(),
     syncOptions: inputSyncOptions.optional(),
-    subscriberId: z.string().uuid().nullish(),
-    connectionId: z.string().uuid().optional(),
+    subscriberId: z.string().guid().nullish(),
+    connectionId: z.string().guid().optional(),
     filters: UpdatePkiSyncFiltersField,
     removalOptions: (removalOptionsSchema ?? z.object({}).strict()).optional()
   })

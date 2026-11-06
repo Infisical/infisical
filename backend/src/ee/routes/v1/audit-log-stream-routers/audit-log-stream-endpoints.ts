@@ -47,7 +47,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     schema: {
       operationId: `get${providerNameForOpId}AuditLogStream`,
       params: z.object({
-        logStreamId: z.string().uuid()
+        logStreamId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -115,7 +115,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     schema: {
       operationId: `update${providerNameForOpId}AuditLogStream`,
       params: z.object({
-        logStreamId: z.string().uuid()
+        logStreamId: z.string().guid()
       }),
       body: updateSchema.and(FiltersBodySchema),
       response: {
@@ -162,7 +162,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     schema: {
       operationId: `delete${providerNameForOpId}AuditLogStream`,
       params: z.object({
-        logStreamId: z.string().uuid()
+        logStreamId: z.string().guid()
       }),
       response: {
         200: z.object({

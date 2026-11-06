@@ -87,7 +87,7 @@ export const ExternalKmsGcpCredentialSchema = z.object({
   // the client resolves its own universe from the default anyway, so anything else here only ever produced
   // a mismatch error from google-gax.
   universe_domain: z.literal("googleapis.com", {
-    errorMap: () => ({ message: "universe_domain must be 'googleapis.com'" })
+    error: () => ({ message: "universe_domain must be 'googleapis.com'" })
   })
 });
 

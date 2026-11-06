@@ -31,7 +31,7 @@ export const registerKeeperConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listKeeperSharedFolders",
       params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.KEEPER.LIST_SHARED_FOLDERS.connectionId)
+        connectionId: z.string().guid().describe(AppConnections.KEEPER.LIST_SHARED_FOLDERS.connectionId)
       }),
       response: {
         200: z.object({

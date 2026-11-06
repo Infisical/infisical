@@ -32,7 +32,7 @@ export const registerAuth0ConnectionRouter = async (server: FastifyZodProvider) 
     schema: {
       operationId: "listAuth0Clients",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

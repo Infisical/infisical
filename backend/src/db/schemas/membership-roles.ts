@@ -8,15 +8,15 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const MembershipRolesSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   role: z.string(),
   isTemporary: z.boolean().default(false),
   temporaryMode: z.string().nullable().optional(),
   temporaryRange: z.string().nullable().optional(),
   temporaryAccessStartTime: z.date().nullable().optional(),
   temporaryAccessEndTime: z.date().nullable().optional(),
-  customRoleId: z.string().uuid().nullable().optional(),
-  membershipId: z.string().uuid(),
+  customRoleId: z.string().guid().nullable().optional(),
+  membershipId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

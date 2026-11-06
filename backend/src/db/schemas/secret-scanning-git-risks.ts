@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningGitRisksSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   description: z.string().nullable().optional(),
   startLine: z.string().nullable().optional(),
   endLine: z.string().nullable().optional(),
@@ -26,8 +26,8 @@ export const SecretScanningGitRisksSchema = z.object({
   ruleID: z.string().nullable().optional(),
   fingerprint: z.string().nullable().optional(),
   fingerPrintWithoutCommitId: z.string().nullable().optional(),
-  isFalsePositive: z.boolean().default(false).nullable().optional(),
-  isResolved: z.boolean().default(false).nullable().optional(),
+  isFalsePositive: z.boolean().nullable().optional(),
+  isResolved: z.boolean().nullable().optional(),
   riskOwner: z.string().nullable().optional(),
   installationId: z.string(),
   repositoryId: z.string().nullable().optional(),
@@ -36,7 +36,7 @@ export const SecretScanningGitRisksSchema = z.object({
   pusherName: z.string().nullable().optional(),
   pusherEmail: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
-  orgId: z.string().uuid(),
+  orgId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

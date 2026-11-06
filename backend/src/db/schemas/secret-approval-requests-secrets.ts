@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalRequestsSecretsSchema = z.object({
-  id: z.string().uuid(),
-  version: z.number().default(1).nullable().optional(),
+  id: z.string().guid(),
+  version: z.number().nullable().optional(),
   secretBlindIndex: z.string().nullable().optional(),
   secretKeyCiphertext: z.string(),
   secretKeyIV: z.string(),
@@ -22,16 +22,16 @@ export const SecretApprovalRequestsSecretsSchema = z.object({
   secretCommentTag: z.string().nullable().optional(),
   secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
-  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  skipMultilineEncoding: z.boolean().nullable().optional(),
   algorithm: z.string().default("aes-256-gcm"),
   keyEncoding: z.string().default("utf8"),
   metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  requestId: z.string().uuid(),
+  requestId: z.string().guid(),
   op: z.string(),
-  secretId: z.string().uuid().nullable().optional(),
-  secretVersion: z.string().uuid().nullable().optional()
+  secretId: z.string().guid().nullable().optional(),
+  secretVersion: z.string().guid().nullable().optional()
 });
 
 export type TSecretApprovalRequestsSecrets = z.infer<typeof SecretApprovalRequestsSecretsSchema>;

@@ -32,7 +32,7 @@ export const registerOpenRouterConnectionRouter = async (server: FastifyZodProvi
     schema: {
       operationId: "listOpenRouterConnectionWorkspaces",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: z.object({

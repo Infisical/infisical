@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -51,11 +52,11 @@ export const HerokuConnectionSchema = z.intersection(
 export const SanitizedHerokuConnectionSchema = z.discriminatedUnion("method", [
   BaseHerokuConnectionSchema.extend({
     method: z.literal(HerokuConnectionMethod.AuthToken),
-    credentials: HerokuConnectionAuthTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Heroku]} (Auth Token)` })),
   BaseHerokuConnectionSchema.extend({
     method: z.literal(HerokuConnectionMethod.OAuth),
-    credentials: HerokuConnectionOAuthOutputCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Heroku]} (OAuth)` }))
 ]);
 

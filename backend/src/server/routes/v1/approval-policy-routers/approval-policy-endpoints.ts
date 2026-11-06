@@ -155,7 +155,7 @@ export const registerApprovalPolicyEndpoints = ({
       description: "List approval policies",
       querystring: z.object({
         scope: z.nativeEnum(ApprovalPolicyScope),
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -199,7 +199,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "getApprovalPolicy",
       description: "Get approval policy",
       params: z.object({
-        policyId: z.string().uuid()
+        policyId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -239,7 +239,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "updateApprovalPolicy",
       description: "Update approval policy",
       params: z.object({
-        policyId: z.string().uuid()
+        policyId: z.string().guid()
       }),
       body: updatePolicySchema,
       response: {
@@ -298,11 +298,11 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "deleteApprovalPolicy",
       description: "Delete approval policy",
       params: z.object({
-        policyId: z.string().uuid()
+        policyId: z.string().guid()
       }),
       response: {
         200: z.object({
-          policyId: z.string().uuid()
+          policyId: z.string().guid()
         })
       }
     },
@@ -357,7 +357,7 @@ export const registerApprovalPolicyEndpoints = ({
           "List the App Connections auto-approval rules can use for a policy's scope, with what each one can check",
         querystring: z.object({
           scope: z.nativeEnum(ApprovalPolicyScope).describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScope),
-          id: z.string().uuid().describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScopeId)
+          id: z.string().guid().describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScopeId)
         }),
         response: {
           200: AutoApprovalCatalogSchema
@@ -387,8 +387,8 @@ export const registerApprovalPolicyEndpoints = ({
         description: "List the values a condition can check, read from the connected service",
         querystring: z.object({
           scope: z.nativeEnum(ApprovalPolicyScope).describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScope),
-          id: z.string().uuid().describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScopeId),
-          connectionId: z.string().uuid().describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsConnectionId),
+          id: z.string().guid().describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScopeId),
+          connectionId: z.string().guid().describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsConnectionId),
           subject: z.string().trim().min(1).max(64).describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsSubject),
           constraint: z.string().trim().min(1).max(64).describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsConstraint),
           search: z.string().trim().max(255).optional().describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsSearch),
@@ -424,7 +424,7 @@ export const registerApprovalPolicyEndpoints = ({
       description: "List approval requests",
       querystring: z.object({
         scope: z.nativeEnum(ApprovalPolicyScope),
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -584,7 +584,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "getApprovalRequest",
       description: "Get approval request",
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -627,7 +627,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "approveApprovalRequest",
       description: "Approve approval request",
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       body: z.object({
         comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
@@ -691,7 +691,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "breakGlassApprovalRequest",
       description: "Self-approve an approval request, bypassing its policy",
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       body: z.object({
         bypassReason: auditSafeText(z.string().min(10).max(500), { allowMultiline: true })
@@ -756,7 +756,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "rejectApprovalRequest",
       description: "Reject approval request",
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       body: z.object({
         comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
@@ -820,7 +820,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "cancelApprovalRequest",
       description: "Cancel approval request",
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -864,7 +864,7 @@ export const registerApprovalPolicyEndpoints = ({
       description: "List approval grants",
       querystring: z.object({
         scope: z.nativeEnum(ApprovalPolicyScope),
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -908,7 +908,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "getApprovalGrant",
       description: "Get approval grant",
       params: z.object({
-        grantId: z.string().uuid()
+        grantId: z.string().guid()
       }),
       response: {
         200: z.object({
@@ -948,7 +948,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "revokeApprovalGrant",
       description: "Revoke approval grant",
       params: z.object({
-        grantId: z.string().uuid()
+        grantId: z.string().guid()
       }),
       body: z.object({
         revocationReason: z.string().optional()
@@ -1011,7 +1011,7 @@ export const registerApprovalPolicyEndpoints = ({
       operationId: "checkApprovalPolicyMatch",
       description: "Check if a resource path matches any approval policy and if the user has an active grant",
       body: z.object({
-        projectId: z.string().uuid(),
+        projectId: z.string().guid(),
         inputs: inputsSchema
       }),
       response: {

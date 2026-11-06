@@ -8,12 +8,12 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretTagsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   slug: z.string(),
   color: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  createdBy: z.string().uuid().nullable().optional(),
+  createdBy: z.string().guid().nullable().optional(),
   projectId: z.string(),
   createdByActorType: z.string().default("user")
 });

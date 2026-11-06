@@ -14,7 +14,7 @@ export const AutoApprovalConfigSchema = z
   .object({
     inputs: z
       .object({
-        connectionId: z.string().uuid().describe(DOCS.inputConnectionId),
+        connectionId: z.string().guid().describe(DOCS.inputConnectionId),
         subject: IdentifierSchema.describe(DOCS.inputSubject)
       })
       .array()
@@ -25,7 +25,7 @@ export const AutoApprovalConfigSchema = z
         name: z.string().trim().min(1, "Rule name is required").max(128).describe(DOCS.ruleName),
         conditions: z
           .object({
-            connectionId: z.string().uuid().describe(DOCS.conditionConnectionId),
+            connectionId: z.string().guid().describe(DOCS.conditionConnectionId),
             subject: IdentifierSchema.describe(DOCS.conditionSubject),
             constraint: IdentifierSchema.describe(DOCS.constraint),
             values: ConditionValueSchema.array().max(50).describe(DOCS.values)
@@ -44,19 +44,19 @@ export const AutoApprovalConfigSchema = z
 export const AutoApprovalConfigResponseSchema = z.object({
   inputs: z
     .object({
-      id: z.string().uuid(),
-      connectionId: z.string().uuid(),
+      id: z.string().guid(),
+      connectionId: z.string().guid(),
       subject: z.string()
     })
     .array(),
   rules: z
     .object({
-      id: z.string().uuid(),
+      id: z.string().guid(),
       name: z.string(),
       conditions: z
         .object({
-          id: z.string().uuid(),
-          connectionId: z.string().uuid(),
+          id: z.string().guid(),
+          connectionId: z.string().guid(),
           subject: z.string(),
           constraint: z.string(),
           values: z.string().array()
@@ -68,7 +68,7 @@ export const AutoApprovalConfigResponseSchema = z.object({
 
 export const AutoApprovalInputValuesSchema = z
   .object({
-    connectionId: z.string().uuid().describe(DOCS.inputConnectionId),
+    connectionId: z.string().guid().describe(DOCS.inputConnectionId),
     subject: IdentifierSchema.describe(DOCS.inputSubject),
     value: z.string().trim().max(2048).describe(DOCS.requestInputValue)
   })
@@ -101,7 +101,7 @@ export const AutoApprovalOutcomeSchema = z
   .describe(DOCS.outcome);
 
 export const AutoApprovalInputDetailsSchema = z.object({
-  connectionId: z.string().uuid(),
+  connectionId: z.string().guid(),
   connectionName: z.string(),
   subject: z.string(),
   label: z.string(),
@@ -112,7 +112,7 @@ export const AutoApprovalCatalogSchema = z.object({
   apps: z.nativeEnum(AppConnection).array(),
   connections: z
     .object({
-      id: z.string().uuid(),
+      id: z.string().guid(),
       name: z.string(),
       app: z.string(),
       subjects: z

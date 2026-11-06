@@ -17,7 +17,7 @@ import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fn
 import { AgentVaultDescriptionSchema, agentVaultListQuery, AgentVaultProjectIdSchema } from "./agent-vault-schemas";
 
 const ProxyMemberViewSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
+  id: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId),
   name: z.string().describe(AGENT_VAULT.PROXY.name),
   description: z.string().nullable().describe(AGENT_VAULT.PROXY.description),
   heartbeat: z.date().nullable().describe(AGENT_VAULT.PROXY.heartbeat),
@@ -96,7 +96,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         "Get the certificate authority an Agent Vault proxy serves. Returns 409 when the proxy serves its own certificate authority, which Infisical does not hold.",
       tags: [ApiDocsTags.AgentVaultProxies],
       params: z.object({
-        proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId)
+        proxyId: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId)
       }),
       response: {
         200: z.object({
@@ -192,7 +192,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       operationId: "updateAgentVaultProxy",
       description: "Update an Agent Vault proxy's name, description, or settings",
       tags: [ApiDocsTags.AgentVaultProxies],
-      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      params: z.object({ proxyId: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId) }),
       body: z
         .object({
           name: slugSchema({ max: 64, field: "Name" }).optional().describe(AGENT_VAULT.PROXY.name),
@@ -266,8 +266,8 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       operationId: "deleteAgentVaultProxy",
       description: "Delete an Agent Vault proxy",
       tags: [ApiDocsTags.AgentVaultProxies],
-      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
-      response: { 200: z.object({ proxy: z.object({ id: z.string().uuid(), name: z.string() }) }) }
+      params: z.object({ proxyId: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      response: { 200: z.object({ proxy: z.object({ id: z.string().guid(), name: z.string() }) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -307,7 +307,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       description:
         "Issue a new proxy token. The proxy's earlier tokens stop working and it gets a new certificate authority.",
       tags: [ApiDocsTags.AgentVaultProxies],
-      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      params: z.object({ proxyId: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId) }),
       response: { 200: ProxyWithTokenSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -356,7 +356,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       operationId: "revokeAgentVaultProxyAccess",
       description: "Revoke an Agent Vault proxy's token. Rotate its token to bring it back.",
       tags: [ApiDocsTags.AgentVaultProxies],
-      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      params: z.object({ proxyId: z.string().guid().describe(AGENT_VAULT.PROXY.proxyId) }),
       response: { 200: z.object({ proxy: ProxyAdminViewSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

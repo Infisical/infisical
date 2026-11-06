@@ -4,6 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { withoutDefault } from "@app/lib/zod";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -73,7 +74,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       description: "This endpoint will be removed in a future version.",
       body: z
         .object({
-          profileId: z.string().uuid(),
+          profileId: z.string().guid(),
           commonName: validateTemplateRegexField.optional(),
           ttl: z
             .string()
@@ -94,7 +95,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             .optional(),
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
-          removeRootsFromChain: booleanSchema.default(false).optional()
+          removeRootsFromChain: withoutDefault(booleanSchema).optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -219,7 +220,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       description: "This endpoint will be removed in a future version.",
       body: z
         .object({
-          profileId: z.string().uuid(),
+          profileId: z.string().guid(),
           csr: csrSchema,
           ttl: z
             .string()
@@ -228,7 +229,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
-          removeRootsFromChain: booleanSchema.default(false).optional()
+          removeRootsFromChain: withoutDefault(booleanSchema).optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -344,7 +345,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       description: "This endpoint will be removed in a future version.",
       body: z
         .object({
-          profileId: z.string().uuid(),
+          profileId: z.string().guid(),
           subjectAlternativeNames: z.array(
             z.object({
               type: z.nativeEnum(CertSubjectAlternativeNameType),
@@ -367,7 +368,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           commonName: validateTemplateRegexField.optional(),
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
-          removeRootsFromChain: booleanSchema.default(false).optional()
+          removeRootsFromChain: withoutDefault(booleanSchema).optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -463,11 +464,11 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
-        certificateId: z.string().uuid()
+        certificateId: z.string().guid()
       }),
       body: z
         .object({
-          removeRootsFromChain: booleanSchema.default(false).optional()
+          removeRootsFromChain: withoutDefault(booleanSchema).optional()
         })
         .optional(),
       response: {
@@ -547,7 +548,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
-        certificateId: z.string().uuid()
+        certificateId: z.string().guid()
       }),
       body: z
         .object({

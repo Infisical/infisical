@@ -10,23 +10,23 @@ import { zodBuffer } from "@app/lib/zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ResourceMetadataSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   key: z.string(),
   value: z.string().nullable().optional(),
-  orgId: z.string().uuid(),
-  userId: z.string().uuid().nullable().optional(),
-  identityId: z.string().uuid().nullable().optional(),
-  secretId: z.string().uuid().nullable().optional(),
+  orgId: z.string().guid(),
+  userId: z.string().guid().nullable().optional(),
+  identityId: z.string().guid().nullable().optional(),
+  secretId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  dynamicSecretId: z.string().uuid().nullable().optional(),
+  dynamicSecretId: z.string().guid().nullable().optional(),
   encryptedValue: zodBuffer.nullable().optional(),
-  certificateId: z.string().uuid().nullable().optional(),
-  certificateRequestId: z.string().uuid().nullable().optional(),
+  certificateId: z.string().guid().nullable().optional(),
+  certificateRequestId: z.string().guid().nullable().optional(),
   certificateRequestCreatedAt: z.date().nullable().optional(),
-  pamResourceId: z.string().uuid().nullable().optional(),
-  pamAccountId: z.string().uuid().nullable().optional(),
-  pamDomainId: z.string().uuid().nullable().optional()
+  pamResourceId: z.string().guid().nullable().optional(),
+  pamAccountId: z.string().guid().nullable().optional(),
+  pamDomainId: z.string().guid().nullable().optional()
 });
 
 export type TResourceMetadata = z.infer<typeof ResourceMetadataSchema>;

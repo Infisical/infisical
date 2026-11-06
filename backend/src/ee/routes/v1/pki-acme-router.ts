@@ -22,7 +22,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
 const SharedParamsSchema = z.object({
-  profileId: z.string().uuid()
+  profileId: z.string().guid()
 });
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
@@ -86,7 +86,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Directory - provides URLs for the client to make API calls to",
       params: z.object({
-        profileId: z.string().uuid()
+        profileId: z.string().guid()
       }),
       response: {
         200: GetAcmeDirectoryResponseSchema
@@ -109,7 +109,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Nonce - generate a new nonce and return in Replay-Nonce header",
       params: z.object({
-        profileId: z.string().uuid()
+        profileId: z.string().guid()
       }),
       response: {
         200: z.string().length(0)
@@ -134,7 +134,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Nonce (GET) - generate a new nonce and return in Replay-Nonce header with 204 No Content",
       params: z.object({
-        profileId: z.string().uuid()
+        profileId: z.string().guid()
       }),
       response: {
         204: z.string().length(0)
@@ -272,7 +272,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Get Order - return status and details of the order",
       params: SharedParamsSchema.extend({
-        orderId: z.string().uuid()
+        orderId: z.string().guid()
       }),
       body: RawJwsPayloadSchema,
       response: {
@@ -308,7 +308,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Finalize Order - finalize cert order by providing CSR",
       params: SharedParamsSchema.extend({
-        orderId: z.string().uuid()
+        orderId: z.string().guid()
       }),
       body: RawJwsPayloadSchema,
       response: {
@@ -382,7 +382,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Download Certificate - download certificate when ready",
       params: SharedParamsSchema.extend({
-        orderId: z.string().uuid()
+        orderId: z.string().guid()
       }),
       body: RawJwsPayloadSchema,
       response: {
@@ -420,7 +420,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Identifier Authorization - get authorization info (challenges)",
       params: SharedParamsSchema.extend({
-        authzId: z.string().uuid()
+        authzId: z.string().guid()
       }),
       body: RawJwsPayloadSchema,
       response: {
@@ -454,8 +454,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Respond to Challenge - let ACME server know challenge is ready",
       params: SharedParamsSchema.extend({
-        authzId: z.string().uuid(),
-        challengeId: z.string().uuid()
+        authzId: z.string().guid(),
+        challengeId: z.string().guid()
       }),
       response: {
         200: RespondToAcmeChallengeResponseSchema
@@ -481,8 +481,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
   });
 
   const AppScopedParams = z.object({
-    applicationId: z.string().uuid(),
-    profileId: z.string().uuid()
+    applicationId: z.string().guid(),
+    profileId: z.string().guid()
   });
 
   server.route({

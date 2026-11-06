@@ -74,11 +74,11 @@ const subjectAlternativeNameSchema = z.object({
   value: z.string().max(500)
 });
 
-const certificateRequestDataSchema = z
+export const certificateRequestDataSchema = z
   .object({
-    profileId: z.string().uuid().optional(),
-    applicationId: z.string().uuid().optional(),
-    caId: z.string().uuid().optional(),
+    profileId: z.string().guid().optional(),
+    applicationId: z.string().guid().optional(),
+    caId: z.string().guid().optional(),
     csr: z.string().min(1).optional(),
     commonName: z.string().max(255).optional(),
     altNames: z.array(subjectAlternativeNameSchema).max(100).optional(),
@@ -146,7 +146,7 @@ const validateCertificateRequestData = (data: unknown) => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new BadRequestError({
-        message: `Invalid certificate request data: ${error.errors.map((e) => e.message).join(", ")}`
+        message: `Invalid certificate request data: ${error.issues.map((e) => e.message).join(", ")}`
       });
     }
     throw error;

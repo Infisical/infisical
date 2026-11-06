@@ -8,13 +8,13 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const PkiApplicationProfilesSchema = z.object({
-  id: z.string().uuid(),
-  applicationId: z.string().uuid(),
-  profileId: z.string().uuid(),
-  estConfigId: z.string().uuid().nullable().optional(),
-  apiConfigId: z.string().uuid().nullable().optional(),
-  acmeConfigId: z.string().uuid().nullable().optional(),
-  scepConfigId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  applicationId: z.string().guid(),
+  profileId: z.string().guid(),
+  estConfigId: z.string().guid().nullable().optional(),
+  apiConfigId: z.string().guid().nullable().optional(),
+  acmeConfigId: z.string().guid().nullable().optional(),
+  scepConfigId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

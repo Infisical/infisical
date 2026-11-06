@@ -51,7 +51,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       body: z.object({
-        profileIds: z.array(z.string().uuid()).min(1)
+        profileIds: z.array(z.string().guid()).min(1)
       }),
       response: {
         200: z.object({ profiles: z.array(ApplicationProfileSchema) })
@@ -107,13 +107,13 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
       description: "Detach a profile from an application.",
       tags: [ApiDocsTags.PkiApplications],
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       response: {
         200: z.object({
-          applicationId: z.string().uuid(),
-          profileId: z.string().uuid()
+          applicationId: z.string().guid(),
+          profileId: z.string().guid()
         })
       }
     },

@@ -8,8 +8,8 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProxiedServiceCredentialsSchema = z.object({
-  id: z.string().uuid(),
-  serviceId: z.string().uuid(),
+  id: z.string().guid(),
+  serviceId: z.string().guid(),
   secretKey: z.string().nullable().optional(),
   role: z.string(),
   headerName: z.string().nullable().optional(),

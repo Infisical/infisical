@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { bidirectionalTransform } from "@app/lib/zod";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
@@ -17,8 +18,8 @@ import { F5_BIG_IP_NAMING, F5BigIpProfileType } from "./f5-big-ip-pki-sync-const
 const hasProfileBinding = (profileType: F5BigIpProfileType | undefined) =>
   profileType !== undefined && profileType !== F5BigIpProfileType.None;
 
-export const F5BigIpPkiSyncConfigSchema = z
-  .object({
+export const F5BigIpPkiSyncConfigSchema = bidirectionalTransform(
+  z.object({
     partition: z
       .string()
       .trim()
@@ -47,17 +48,17 @@ export const F5BigIpPkiSyncConfigSchema = z
       .min(1, "Parent profile cannot be empty")
       .max(511, "Parent profile cannot exceed 511 characters")
       .optional()
-  })
-  .transform((value) =>
-    hasProfileBinding(value.profileType)
+  }),
+  (value) => {
+    const bound = hasProfileBinding(value.profileType)
       ? value
-      : { ...value, profileName: undefined, createProfileIfMissing: false, parentProfile: undefined }
-  )
-  .transform((value) => (value.createProfileIfMissing ? value : { ...value, parentProfile: undefined }))
-  .refine((value) => !hasProfileBinding(value.profileType) || Boolean(value.profileName), {
-    message: "Profile name is required when a profile type is selected",
-    path: ["profileName"]
-  });
+      : { ...value, profileName: undefined, createProfileIfMissing: false, parentProfile: undefined };
+    return bound.createProfileIfMissing ? bound : { ...bound, parentProfile: undefined };
+  }
+).refine((value) => !hasProfileBinding(value.profileType) || Boolean(value.profileName), {
+  message: "Profile name is required when a profile type is selected",
+  path: ["profileName"]
+});
 
 export const F5BigIpPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
   certificateNameSchema: buildDestinationCertificateNameSchema({
@@ -82,8 +83,8 @@ export const CreateF5BigIpPkiSyncSchema = z.object({
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
-  applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional(),
+  applicationId: z.string().guid().optional(),
+  certificateIds: z.array(z.string().guid()).optional(),
   filters: PkiSyncFiltersField
 });
 

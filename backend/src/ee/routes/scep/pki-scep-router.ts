@@ -38,7 +38,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        profileId: z.string().uuid()
+        profileId: z.string().guid()
       }),
       querystring: z.object({
         operation: z.string(),
@@ -93,7 +93,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        profileId: z.string().uuid()
+        profileId: z.string().guid()
       }),
       querystring: z.object({
         operation: z.string().optional()
@@ -127,7 +127,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        profileId: z.string().uuid()
+        profileId: z.string().guid()
       })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -168,8 +168,8 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -211,8 +211,8 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       querystring: z.object({
         operation: z.string(),
@@ -261,8 +261,8 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       querystring: z.object({ operation: z.string().optional() })
     },

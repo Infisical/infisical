@@ -30,7 +30,7 @@ export const registerUltraDNSConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listUltraDnsZones",
       params: z.object({
-        connectionId: z.string().uuid().describe("The ID of the UltraDNS Connection to list zones from.")
+        connectionId: z.string().guid().describe("The ID of the UltraDNS Connection to list zones from.")
       }),
       response: {
         200: z

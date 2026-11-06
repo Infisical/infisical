@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultSessionAccessBundlesSchema = z.object({
-  id: z.string().uuid(),
-  sessionId: z.string().uuid(),
-  accessBundleId: z.string().uuid().nullable().optional(),
+  id: z.string().guid(),
+  sessionId: z.string().guid(),
+  accessBundleId: z.string().guid().nullable().optional(),
   accessBundleName: z.string(),
   position: z.number(),
   createdAt: z.date()

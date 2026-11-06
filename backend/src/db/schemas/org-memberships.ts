@@ -8,15 +8,15 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const OrgMembershipsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   role: z.string(),
   status: z.string().default("invited"),
   inviteEmail: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  userId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid(),
-  roleId: z.string().uuid().nullable().optional(),
+  userId: z.string().guid().nullable().optional(),
+  orgId: z.string().guid(),
+  roleId: z.string().guid().nullable().optional(),
   projectFavorites: z.string().array().nullable().optional(),
   isActive: z.boolean().default(true),
   lastInvitedAt: z.date().nullable().optional(),

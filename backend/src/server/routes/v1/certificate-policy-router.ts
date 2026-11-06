@@ -260,7 +260,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z.string().optional(),
-        projectId: z.string().uuid().optional().describe(openApiHidden())
+        projectId: z.string().guid().optional().describe(openApiHidden())
       }),
       response: {
         200: z.object({
@@ -307,10 +307,10 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       operationId: "getCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       querystring: z.object({
-        applicationId: z.string().uuid().optional()
+        applicationId: z.string().guid().optional()
       }),
       response: {
         200: z.object({
@@ -356,7 +356,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       operationId: "updateCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       body: updateCertificatePolicySchema,
       response: {
@@ -416,7 +416,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       operationId: "deleteCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().guid()
       }),
       response: {
         200: z.object({

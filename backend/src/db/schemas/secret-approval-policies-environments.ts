@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const SecretApprovalPoliciesEnvironmentsSchema = z.object({
-  id: z.string().uuid(),
-  policyId: z.string().uuid(),
-  envId: z.string().uuid(),
+  id: z.string().guid(),
+  policyId: z.string().guid(),
+  envId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

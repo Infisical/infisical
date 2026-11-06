@@ -8,7 +8,7 @@ import {
 } from "../certificate-authority-schemas";
 
 export const VenafiTppCertificateAuthorityConfigurationSchema = z.object({
-  appConnectionId: z.string().uuid().trim().describe("The Venafi TPP App Connection ID."),
+  appConnectionId: z.string().guid().trim().describe("The Venafi TPP App Connection ID."),
   policyDN: z
     .string()
     .trim()

@@ -13,12 +13,12 @@ import {
 export const AwsAcmPublicCaCertificateAuthorityConfigurationSchema = z.object({
   appConnectionId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .describe(CertificateAuthorities.CONFIGURATIONS.AWS_ACM_PUBLIC_CA.appConnectionId),
   dnsAppConnectionId: z
     .string()
-    .uuid()
+    .guid()
     .trim()
     .describe(CertificateAuthorities.CONFIGURATIONS.AWS_ACM_PUBLIC_CA.dnsAppConnectionId),
   hostedZoneId: z

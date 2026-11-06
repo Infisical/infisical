@@ -10,6 +10,7 @@ import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/reso
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { withoutDefault } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -179,7 +180,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getKmipServer",
       tags: [ApiDocsTags.KmipServers],
-      params: z.object({ kmipServerId: z.string().uuid() }),
+      params: z.object({ kmipServerId: z.string().guid() }),
       response: {
         200: KmipServerWithAuthMethodSchema
       }
@@ -228,9 +229,9 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "updateKmipServer",
       tags: [ApiDocsTags.KmipServers],
-      params: z.object({ kmipServerId: z.string().uuid() }),
+      params: z.object({ kmipServerId: z.string().guid() }),
       body: z.object({
-        hostnamesOrIps: hostnamesOrIpsField.optional(),
+        hostnamesOrIps: withoutDefault(hostnamesOrIpsField).optional(),
         ttl: ttlField
           .nullable()
           .optional()
@@ -324,7 +325,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "generateKmipServerEnrollmentToken",
       tags: [ApiDocsTags.KmipServers],
-      params: z.object({ kmipServerId: z.string().uuid() }),
+      params: z.object({ kmipServerId: z.string().guid() }),
       response: {
         200: z.object({ token: z.string(), expiresAt: z.date() })
       }
@@ -357,7 +358,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "revokeKmipServerAccess",
       tags: [ApiDocsTags.KmipServers],
-      params: z.object({ kmipServerId: z.string().uuid() }),
+      params: z.object({ kmipServerId: z.string().guid() }),
       response: {
         200: z.object({ method: z.string() })
       }
@@ -395,7 +396,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteKmipServer",
       tags: [ApiDocsTags.KmipServers],
-      params: z.object({ kmipServerId: z.string().uuid() }),
+      params: z.object({ kmipServerId: z.string().guid() }),
       response: {
         200: SanitizedKmipServerSchema.omit({ canRevoke: true })
       }
@@ -431,7 +432,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
-          kmipServerId: z.string().uuid(),
+          kmipServerId: z.string().guid(),
           iamHttpRequestMethod: z.string().default("POST"),
           iamRequestBody: z.string(),
           iamRequestHeaders: z.string()

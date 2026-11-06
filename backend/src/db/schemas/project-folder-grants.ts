@@ -8,9 +8,9 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ProjectFolderGrantsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   sourceProjectId: z.string(),
-  sourceFolderId: z.string().uuid(),
+  sourceFolderId: z.string().guid(),
   targetProjectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

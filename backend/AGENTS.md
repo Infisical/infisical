@@ -1629,13 +1629,12 @@ the transition out of pending, or call `recordIssuanceFailure` if you write the 
 
 Key plugins in `src/server/plugins/`:
 - `error-handler.ts` — global error handling with OpenTelemetry metrics
-- `fastify-zod.ts` — in-house Zod-to-OpenAPI transformation
 - `audit-log.ts` — request audit logging to queue
 - `api-metrics.ts` — OpenTelemetry metrics collection
 - `inject-rate-limits.ts` — per-route rate limiting
 - `secret-scanner.ts` / `secret-scanner-v2.ts` — secret scanning webhooks
 - `serve-ui.ts` — frontend asset serving
-- `swagger.ts` — Swagger/OpenAPI UI
+- `swagger.ts`: Swagger/OpenAPI UI, plus our OpenAPI customizations on top of `@fastify/type-provider-zod` (routes hidden unless `hide: false`, `x-hidden` fields, JSON in `.describe()`, cert-manager `projectId` stripping)
 - `maintenanceMode.ts` — maintenance mode middleware
 - `ip.ts` — IP extraction and validation
 

@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { partialWithoutDefaults } from "@app/lib/zod";
+
 import { DEFAULT_TLS_PORTS } from "./pki-discovery-fns";
 import { WindowsCertificateStore } from "./pki-discovery-types";
 
@@ -41,7 +43,7 @@ export const NetworkTargetConfigSchema = z
 export const LinuxServerTargetConfigSchema = z
   .object({
     connectionIds: z
-      .array(z.string().uuid())
+      .array(z.string().guid())
       .min(1, "Select at least one SSH connection")
       .max(LINUX_SERVER_MAX_CONNECTIONS)
       .refine((ids) => new Set(ids).size === ids.length, "Each SSH connection can be listed once")
@@ -80,7 +82,7 @@ export const LinuxServerTargetConfigSchema = z
 export const WindowsServerTargetConfigSchema = z
   .object({
     connectionIds: z
-      .array(z.string().uuid())
+      .array(z.string().guid())
       .min(1, "Select at least one Windows (WinRM) connection")
       .max(WINDOWS_SERVER_MAX_CONNECTIONS)
       .refine((ids) => new Set(ids).size === ids.length, "Each Windows (WinRM) connection can be listed once")
@@ -113,12 +115,12 @@ export const selectsCaStoresWithoutImport = (config: {
   config.certificateStores.some((store) => CA_ONLY_WINDOWS_STORES.includes(store));
 
 // The type-specific schema re-validates on the service; this only keeps the router's shared fields neutral.
-export const DiscoveryTargetConfigInputSchema = NetworkTargetConfigSchema.partial()
-  .merge(LinuxServerTargetConfigSchema.partial())
-  .merge(WindowsServerTargetConfigSchema.partial())
+export const DiscoveryTargetConfigInputSchema = partialWithoutDefaults(NetworkTargetConfigSchema)
+  .merge(partialWithoutDefaults(LinuxServerTargetConfigSchema))
+  .merge(partialWithoutDefaults(WindowsServerTargetConfigSchema))
   .extend({
     connectionIds: z
-      .array(z.string().uuid())
+      .array(z.string().guid())
       .min(1, "Select at least one connection")
       .max(Math.max(LINUX_SERVER_MAX_CONNECTIONS, WINDOWS_SERVER_MAX_CONNECTIONS))
       .optional()

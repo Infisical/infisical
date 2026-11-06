@@ -33,7 +33,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listGitLabProjects",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         search: z.string().trim().max(255).optional(),
@@ -73,7 +73,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listGitLabGroups",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       querystring: z.object({
         search: z.string().trim().max(255).optional(),

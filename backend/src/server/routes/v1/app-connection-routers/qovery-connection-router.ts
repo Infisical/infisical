@@ -33,7 +33,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listQoveryOrganizations",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().guid()
       }),
       response: {
         200: qoveryResourceListSchema
@@ -56,8 +56,8 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listQoveryProjects",
       params: z.object({
-        connectionId: z.string().uuid(),
-        organizationId: z.string().uuid()
+        connectionId: z.string().guid(),
+        organizationId: z.string().guid()
       }),
       response: {
         200: qoveryResourceListSchema
@@ -80,7 +80,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listQoveryEnvironments",
       params: z.object({
-        connectionId: z.string().uuid(),
+        connectionId: z.string().guid(),
         projectId: z.string()
       }),
       response: {

@@ -30,7 +30,7 @@ export const registerPowerDnsConnectionRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "listPowerDnsZones",
       params: z.object({
-        connectionId: z.string().uuid().describe("The ID of the PowerDNS Connection to list zones from.")
+        connectionId: z.string().guid().describe("The ID of the PowerDNS Connection to list zones from.")
       }),
       response: {
         200: z

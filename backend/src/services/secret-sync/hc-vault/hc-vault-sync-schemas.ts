@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { SecretSyncs } from "@app/lib/api-docs";
+import { bidirectionalTransform } from "@app/lib/zod";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -20,12 +21,9 @@ const HCVaultSyncDestinationConfigSchema = z.object({
     .min(1, "Secrets Engine Mount required")
     .max(128)
     .describe(SecretSyncs.DESTINATION_CONFIG.HC_VAULT.mount),
-  path: z
-    .string()
-    .trim()
-    .min(1, "Path required")
-    .max(128)
-    .transform((val) => new RE2("^/+|/+$", "g").replace(val, "")) // removes leading/trailing slashes
+  path: bidirectionalTransform(z.string().trim().min(1, "Path required").max(128), (val) =>
+    new RE2("^/+|/+$", "g").replace(val, "")
+  )
     .refine((val) => new RE2("^([a-zA-Z0-9._-]+/)*[a-zA-Z0-9._-]+$").test(val), {
       message:
         "Invalid Vault path format. Use alphanumerics, dots, dashes, underscores, and single slashes between segments."

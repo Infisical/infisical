@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { bidirectionalTransform } from "@app/lib/zod";
+
 import { LogProvider, REDACTED_CREDENTIAL_VALUE } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
@@ -17,7 +19,7 @@ export const SumoLogicProviderSchema = BaseSumoLogicProviderSchema.extend({
 export const SanitizedSumoLogicProviderSchema = BaseSumoLogicProviderSchema.extend({
   credentials: z.object({
     url: SumoLogicProviderCredentialsSchema.shape.url,
-    token: SumoLogicProviderCredentialsSchema.shape.token.transform(() => REDACTED_CREDENTIAL_VALUE)
+    token: bidirectionalTransform(SumoLogicProviderCredentialsSchema.shape.token, () => REDACTED_CREDENTIAL_VALUE)
   })
 });
 

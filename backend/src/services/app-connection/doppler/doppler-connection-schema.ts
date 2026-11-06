@@ -5,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
-  GenericUpdateAppConnectionFieldsSchema
+  GenericUpdateAppConnectionFieldsSchema,
+  RedactedCredentialsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
@@ -25,7 +26,7 @@ export const DopplerConnectionSchema = BaseDopplerConnectionSchema.extend({
 export const SanitizedDopplerConnectionSchema = z.discriminatedUnion("method", [
   BaseDopplerConnectionSchema.extend({
     method: z.literal(DopplerConnectionMethod.ApiToken),
-    credentials: DopplerConnectionApiTokenCredentialsSchema.pick({})
+    credentials: RedactedCredentialsSchema
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Doppler]} (API Token)` }))
 ]);
 

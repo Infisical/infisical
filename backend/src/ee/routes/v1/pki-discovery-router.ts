@@ -22,7 +22,7 @@ import { pkiDescriptionSchema } from "@app/services/certificate-common/certifica
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const DiscoveryConnectionsSchema = z
-  .array(z.object({ id: z.string().uuid(), name: z.string(), app: z.nativeEnum(AppConnection) }))
+  .array(z.object({ id: z.string().guid(), name: z.string(), app: z.nativeEnum(AppConnection) }))
   .optional();
 
 export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => {
@@ -84,8 +84,8 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
           targetConfig: DiscoveryTargetConfigInputSchema,
           isAutoScanEnabled: z.boolean().optional().default(false).describe("Enable automatic scheduled scans"),
           scanIntervalDays: z.number().min(1).max(365).optional().describe("Interval in days between automatic scans"),
-          gatewayId: z.string().uuid().optional().describe("Gateway ID for scanning private networks"),
-          gatewayPoolId: z.string().uuid().optional().describe("Gateway pool ID for scanning private networks")
+          gatewayId: z.string().guid().optional().describe("Gateway ID for scanning private networks"),
+          gatewayPoolId: z.string().guid().optional().describe("Gateway pool ID for scanning private networks")
         })
         .superRefine((data, ctx) => {
           if (data.gatewayId && data.gatewayPoolId) {
@@ -218,7 +218,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "getPkiDiscovery",
       description: "Get a PKI discovery configuration by ID",
       params: z.object({
-        discoveryId: z.string().uuid().describe("The ID of the discovery configuration")
+        discoveryId: z.string().guid().describe("The ID of the discovery configuration")
       }),
       response: {
         200: PkiDiscoveryConfigsSchema.extend({
@@ -267,7 +267,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "updatePkiDiscovery",
       description: "Update a PKI discovery configuration",
       params: z.object({
-        discoveryId: z.string().uuid().describe("The ID of the discovery configuration")
+        discoveryId: z.string().guid().describe("The ID of the discovery configuration")
       }),
       body: z
         .object({
@@ -285,10 +285,10 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
             .optional()
             .nullable()
             .describe("Interval in days between automatic scans"),
-          gatewayId: z.string().uuid().optional().nullable().describe("Gateway ID for scanning private networks"),
+          gatewayId: z.string().guid().optional().nullable().describe("Gateway ID for scanning private networks"),
           gatewayPoolId: z
             .string()
-            .uuid()
+            .guid()
             .optional()
             .nullable()
             .describe("Gateway pool ID for scanning private networks"),
@@ -364,7 +364,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "deletePkiDiscovery",
       description: "Delete a PKI discovery configuration",
       params: z.object({
-        discoveryId: z.string().uuid().describe("The ID of the discovery configuration")
+        discoveryId: z.string().guid().describe("The ID of the discovery configuration")
       }),
       response: {
         200: PkiDiscoveryConfigsSchema
@@ -418,7 +418,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "triggerPkiDiscoveryScan",
       description: "Trigger a manual PKI discovery scan",
       params: z.object({
-        discoveryId: z.string().uuid().describe("The ID of the discovery configuration")
+        discoveryId: z.string().guid().describe("The ID of the discovery configuration")
       }),
       response: {
         200: z.object({
@@ -474,7 +474,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "getPkiDiscoveryLatestScan",
       description: "Get the latest scan for a PKI discovery configuration",
       params: z.object({
-        discoveryId: z.string().uuid().describe("The ID of the discovery configuration")
+        discoveryId: z.string().guid().describe("The ID of the discovery configuration")
       }),
       response: {
         200: PkiDiscoveryScanHistorySchema.nullable()
@@ -505,7 +505,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       operationId: "listPkiDiscoveryScans",
       description: "Get scan history for a PKI discovery configuration",
       params: z.object({
-        discoveryId: z.string().uuid().describe("The ID of the discovery configuration")
+        discoveryId: z.string().guid().describe("The ID of the discovery configuration")
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),

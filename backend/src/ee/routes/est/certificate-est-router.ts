@@ -284,8 +284,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     schema: {
       body: z.string().min(1),
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       response: { 200: z.string() }
     },
@@ -310,8 +310,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     schema: {
       body: z.string().min(1),
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       response: { 200: z.string() }
     },
@@ -335,8 +335,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     config: { rateLimit: readLimit },
     schema: {
       params: z.object({
-        applicationId: z.string().uuid(),
-        profileId: z.string().uuid()
+        applicationId: z.string().guid(),
+        profileId: z.string().guid()
       }),
       response: { 200: z.string() }
     },
