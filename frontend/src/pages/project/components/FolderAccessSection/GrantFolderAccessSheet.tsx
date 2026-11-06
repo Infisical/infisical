@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
+import { InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -97,8 +98,6 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     if (!environmentSlug) return "Select an environment.";
     if (isCheckingFolder) return null;
     if (!folderExists) return `No folder at ${normalizedPath} in this environment.`;
-    if (isDuplicate)
-      return `This ${actorNoun} already has access to ${normalizedPath}. Edit the existing access from the table instead.`;
     // the backend authorizes a grant against the target folder's own path, not its parent
     if (
       !permission.can(
@@ -113,8 +112,18 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     return null;
   })();
 
+  // an existing grant is not an input mistake, so it blocks submission without flagging the path
+  const duplicateNote =
+    !targetError && !isCheckingFolder && isDuplicate
+      ? `This ${actorNoun} already has access to ${normalizedPath}. Edit the existing access from the table instead.`
+      : null;
+
   const isSubmitDisabled =
-    isCheckingFolder || Boolean(targetError) || isFullAccessTemporary || !isRangeValid;
+    isCheckingFolder ||
+    Boolean(targetError) ||
+    Boolean(duplicateNote) ||
+    isFullAccessTemporary ||
+    !isRangeValid;
 
   const handleSubmit = async () => {
     const type = isTemporary
@@ -188,6 +197,12 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
             />
           </div>
           {targetError && <p className="text-xs text-danger">{targetError}</p>}
+          {duplicateNote && (
+            <p className="flex items-start gap-1.5 text-xs text-muted">
+              <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+              {duplicateNote}
+            </p>
+          )}
         </div>
 
         <ApplyToSubfoldersToggle
