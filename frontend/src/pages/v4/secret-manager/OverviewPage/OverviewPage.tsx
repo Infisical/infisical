@@ -1535,7 +1535,7 @@ export const OverviewPage = () => {
                         </colgroup>
                         <TableHeader>
                           <TableRow>
-                            <TableHead selection>
+                            <TableHead selection divider={false}>
                               <span className={styles.iconSlot}>
                                 <Checkbox
                                   aria-label="Select all resources on this page"
@@ -1608,7 +1608,7 @@ export const OverviewPage = () => {
                           {loading &&
                             Array.from({ length: 8 }, (_, index) => (
                               <TableRow key={`skeleton-${index + 1}`}>
-                                <TableCell selection>
+                                <TableCell selection divider={false}>
                                   <Skeleton
                                     width="var(--v4-size-icon)"
                                     height="var(--v4-size-icon)"

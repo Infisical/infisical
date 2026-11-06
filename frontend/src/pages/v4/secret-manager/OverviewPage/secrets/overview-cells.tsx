@@ -206,7 +206,7 @@ export function SelectCell({
 }) {
   const isSelected = ctx.selected.includes(rowKey);
   return (
-    <TableCell selection>
+    <TableCell selection divider={false}>
       <span className={styles.iconSlot} data-selected={isSelected || pinned || undefined}>
         <span className={styles.kindGlyph}>
           <KindIcon kind={kind} overlay={overlay} />

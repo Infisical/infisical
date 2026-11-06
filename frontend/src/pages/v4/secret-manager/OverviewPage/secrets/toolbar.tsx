@@ -377,7 +377,7 @@ export function QuickAddRow({
         save(true);
       }}
     >
-      <TableCell selection>
+      <TableCell selection divider={false}>
         <span className={styles.iconSlot}>
           <Tooltip content={NEXT_PHASE}>
             <span className={styles.actionSlot}>
