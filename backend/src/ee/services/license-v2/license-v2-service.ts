@@ -25,6 +25,7 @@ import {
   BillingV2BreakdownDimension,
   BillingV2BreakdownProject,
   BillingV2BreakdownScope,
+  BillingV2Bands,
   BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2CompareRow,
@@ -115,6 +116,38 @@ const centsToDollars = (cents: number | null | undefined): number => {
     return 0;
   }
   return cents / 100;
+};
+
+type TCatalogPrice = TCatalogProduct["plans"][number]["prices"][number];
+
+// The License Server classifies a price by its dimension's billing type and does not send a kind, so a
+// metered dimension's price would otherwise default to per_unit and be offered as a buyer-set quantity.
+const effectivePriceKind = (product: TCatalogProduct, price: TCatalogPrice): string => {
+  if (price.kind && price.kind !== PER_UNIT_KIND) {
+    return price.kind;
+  }
+  const dimension = product.dimensions.find((candidate) => candidate.key === price.dimensionKey);
+  return dimension?.billingType === METERED_KIND ? METERED_KIND : PER_UNIT_KIND;
+};
+
+type TPriceTier = { upTo: number | null; unitAmountDecimal: string; flatAmountCents?: number };
+
+// Bands arrive in cents (unitAmountDecimal keeps sub-cent rates); the client works in dollars.
+const toBands = (
+  mode: string | null | undefined,
+  tiers: TPriceTier[] | null | undefined
+): BillingV2Bands | undefined => {
+  if (!tiers || tiers.length === 0) {
+    return undefined;
+  }
+  return {
+    mode: mode === "volume" ? "volume" : "graduated",
+    tiers: tiers.map((tier) => ({
+      upTo: tier.upTo,
+      unitPrice: Number(tier.unitAmountDecimal) / 100,
+      flatFee: centsToDollars(tier.flatAmountCents)
+    }))
+  };
 };
 
 const formatDate = (unixSeconds: number | null | undefined): string | null => {
@@ -277,7 +310,8 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     { monthly: number; annual: number; included: number; meteredMonthly: boolean; meteredAnnual: boolean }
   >();
   plan.prices.forEach((price) => {
-    if (!isKnownPriceKind(price.kind)) {
+    const kind = effectivePriceKind(product, price);
+    if (!isKnownPriceKind(kind)) {
       return;
     }
     const entry = priceByDim.get(price.dimensionKey) ?? {
@@ -289,15 +323,22 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     };
     if (price.cadence === "annual") {
       entry.annual = centsToDollars(price.unitAmountCents);
-      entry.meteredAnnual = price.kind === METERED_KIND;
+      entry.meteredAnnual = kind === METERED_KIND;
     } else {
       entry.monthly = centsToDollars(price.unitAmountCents);
-      entry.meteredMonthly = price.kind === METERED_KIND;
+      entry.meteredMonthly = kind === METERED_KIND;
     }
     if (price.includedQuantity !== null && price.includedQuantity !== undefined) {
       entry.included = price.includedQuantity;
     }
     priceByDim.set(price.dimensionKey, entry);
+  });
+  const bandsByDim = new Map<string, BillingV2Bands>();
+  plan.prices.forEach((price) => {
+    const bands = toBands(price.tiersMode, price.tiers);
+    if (bands && price.cadence === "monthly") {
+      bandsByDim.set(price.dimensionKey, bands);
+    }
   });
 
   const dims: BillingV2Dim[] = [];
@@ -314,7 +355,9 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
       annual: priced.annual,
       included: priced.included,
       meteredMonthly: priced.meteredMonthly,
-      meteredAnnual: priced.meteredAnnual
+      meteredAnnual: priced.meteredAnnual,
+      ...(dimension.aggregation ? { aggregation: dimension.aggregation } : {}),
+      ...(bandsByDim.has(dimension.key) ? { bands: bandsByDim.get(dimension.key) } : {})
     });
   });
 
@@ -427,7 +470,9 @@ export const licenseV2ServiceFactory = ({
       return null;
     }
 
-    const perUnitPrices = plan.prices.filter((price) => price.cadence === cadence && price.kind === PER_UNIT_KIND);
+    const perUnitPrices = plan.prices.filter(
+      (price) => price.cadence === cadence && effectivePriceKind(product, price) === PER_UNIT_KIND
+    );
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
@@ -573,6 +618,35 @@ export const licenseV2ServiceFactory = ({
             ...(onDemandRate !== undefined ? { onDemandRate } : {}),
             ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {}),
             ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {}),
+            ...(metered && dimension.usage
+              ? {
+                  usage: {
+                    periodStart: formatDate(dimension.usage.periodStart),
+                    periodEnd: formatDate(dimension.usage.periodEnd - 1),
+                    asOf: dimension.usage.asOf ? new Date(dimension.usage.asOf * 1000).toISOString() : null,
+                    estimatedAmount:
+                      dimension.usage.estimatedAmountCents === null ||
+                      dimension.usage.estimatedAmountCents === undefined
+                        ? null
+                        : centsToDollars(dimension.usage.estimatedAmountCents),
+                    currentTier: dimension.usage.currentTier,
+                    nextTierAt: dimension.usage.nextTierAt ?? null,
+                    earlierInPeriod: dimension.usage.earlierInPeriod.map((segment) => ({
+                      periodStart: formatDate(segment.periodStart),
+                      periodEnd: formatDate(segment.periodEnd - 1),
+                      used: segment.used,
+                      estimatedAmount:
+                        segment.estimatedAmountCents === null || segment.estimatedAmountCents === undefined
+                          ? null
+                          : centsToDollars(segment.estimatedAmountCents)
+                    })),
+                    trial: dimension.usage.trial
+                  }
+                }
+              : {}),
+            ...(metered && dimension.pricing
+              ? { bands: toBands(dimension.pricing.tiersMode, dimension.pricing.tiers) }
+              : {}),
             // Commitment-decrease window: the UI locks the stepper's floor to the current committed
             // quantity unless canDecreaseNow, and shows when a decrease opens (decreaseAllowedFrom).
             ...(dimension.canDecreaseNow !== null && dimension.canDecreaseNow !== undefined
@@ -837,11 +911,22 @@ export const licenseV2ServiceFactory = ({
     // Header billing summary. Monthly-recurring and annual-committed are two independent clocks and are
     // never summed. The next charge is the soonest line to close: derive its amount/product(s)/cadence
     // from the lines whose currentPeriodEnd matches nextChargeAt (usage-based lines make the total an
-    // estimate, so flag hasUsage). activeProductCount is the number of entitled products.
+    // estimate, so flag hasUsage; the usage estimate is also only theirs). activeProductCount is the number of
+    // entitled products.
     const subBilling = subscription?.billing;
     const closingLines = subBilling?.nextChargeAt
       ? (subBilling.lines ?? []).filter((line) => line.currentPeriodEnd === subBilling.nextChargeAt)
       : [];
+    // A trialing product's usage is rated but never billed, so it adds nothing to the next charge.
+    const trialingProductKeys = new Set(
+      (subscription?.items ?? []).filter((item) => item.isTrialing).map((item) => item.productId)
+    );
+    const billedClosingLines = closingLines.filter((line) => !trialingProductKeys.has(line.productKey));
+    const closingEstimates = billedClosingLines.flatMap((line) =>
+      line.estimatedAmountCents === null || line.estimatedAmountCents === undefined ? [] : [line.estimatedAmountCents]
+    );
+    const closingUsageCents =
+      closingEstimates.length > 0 ? closingEstimates.reduce((sum, cents) => sum + cents, 0) : null;
     const closingCadences = new Set(closingLines.map((line) => normalizeCadence(line.cadence ?? undefined)));
     const nextCharge =
       subBilling?.nextChargeAt && closingLines.length > 0
@@ -850,7 +935,8 @@ export const licenseV2ServiceFactory = ({
             at: formatShortDate(subBilling.nextChargeAt) ?? "",
             productKeys: [...new Set(closingLines.map((line) => line.productKey))],
             cadence: closingCadences.size === 1 ? [...closingCadences][0] : null,
-            hasUsage: closingLines.some((line) => line.usageBased)
+            hasUsage: billedClosingLines.some((line) => line.usageBased),
+            estimatedUsage: closingUsageCents === null ? null : centsToDollars(closingUsageCents)
           }
         : null;
     const activeProductCount = Object.values(entitlements).filter(

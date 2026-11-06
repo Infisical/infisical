@@ -300,7 +300,7 @@ export const injectIdentity = fp(
       }
 
       // Authenticated on the route by an Agent Vault session token, which is not a JWT.
-      if (pathname === "/api/v1/agent-vault/session/skills") {
+      if (pathname === "/api/v1/agent-vault/session/skills" || pathname === "/api/v1/agent-vault/session/revoke") {
         return;
       }
 

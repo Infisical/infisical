@@ -175,6 +175,7 @@ export const agentVaultSessionServiceFactory = ({
       const notGrantedToIdentity = firstUnreachable(identityReach);
       if (notGrantedToIdentity) {
         throw new BadRequestError({
+          name: "AccessBundleNotGranted",
           message: `No access bundle named '${notGrantedToIdentity}' is granted to this machine identity. A session on behalf of a user can use only bundles granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the bundle to the machine identity.`
         });
       }
@@ -190,6 +191,7 @@ export const agentVaultSessionServiceFactory = ({
       const notGrantedToUser = firstUnreachable(onBehalfOfUser.accessBundleIds);
       if (notGrantedToUser) {
         throw new BadRequestError({
+          name: "AccessBundleNotGranted",
           message: `No access bundle named '${notGrantedToUser}' is granted to '${onBehalfOfUser.identifier}'. Check the name, or ask an Agent Vault admin to grant it to them.`
         });
       }
@@ -201,6 +203,7 @@ export const agentVaultSessionServiceFactory = ({
       const notGranted = firstUnreachable(accessBundleIds);
       if (notGranted) {
         throw new BadRequestError({
+          name: "AccessBundleNotGranted",
           message: `No access bundle named '${notGranted}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
         });
       }

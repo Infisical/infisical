@@ -52,6 +52,59 @@ export const clearPersonalValuesAfterRevoke = async (
   );
 };
 
+export type TClearPersonalValuesInProjectsDeps = Omit<TClearPersonalValuesDeps, "agentVaultPersonalValueDAL"> & {
+  agentVaultPersonalValueDAL: Pick<
+    TAgentVaultPersonalValueDALFactory,
+    "deleteForActorsWithoutGrant" | "findProjectIdsWithValues" | "findProjectIdsWithAnyValues"
+  >;
+};
+
+/**
+ * `clearPersonalValuesAfterRevoke` over every bundle, run only in the projects among `projectIds` where these actors
+ * (or the members of these groups) saved a value. The projects come back sorted, so concurrent cleanups across
+ * several projects take the per-project advisory locks in one order. A group's members are read only when one of
+ * its projects holds a value, so a group exit in an org without Agent Vault values costs one query.
+ */
+export const clearPersonalValuesInProjects = async (
+  deps: TClearPersonalValuesInProjectsDeps,
+  {
+    projectIds,
+    userIds = [],
+    identityIds = [],
+    groupIds = []
+  }: { projectIds: string[]; userIds?: string[]; identityIds?: string[]; groupIds?: string[] },
+  tx: Knex
+) => {
+  if (!projectIds.length || (!userIds.length && !identityIds.length && !groupIds.length)) return;
+
+  const candidateProjectIds = groupIds.length
+    ? await deps.agentVaultPersonalValueDAL.findProjectIdsWithAnyValues(projectIds, tx)
+    : projectIds;
+  if (!candidateProjectIds.length) return;
+
+  const [groupUsers, groupIdentities] = groupIds.length
+    ? await Promise.all([
+        deps.userGroupMembershipDAL.find({ $in: { groupId: groupIds } }, { tx }),
+        deps.identityGroupMembershipDAL.find({ $in: { groupId: groupIds } }, { tx })
+      ])
+    : [[], []];
+  const actorUserIds = [...new Set([...userIds, ...groupUsers.map((row) => row.userId)])];
+  const actorIdentityIds = [...new Set([...identityIds, ...groupIdentities.map((row) => row.identityId)])];
+
+  const valueProjectIds = await deps.agentVaultPersonalValueDAL.findProjectIdsWithValues(
+    { projectIds: candidateProjectIds, userIds: actorUserIds, identityIds: actorIdentityIds },
+    tx
+  );
+  for (const projectId of valueProjectIds) {
+    // eslint-disable-next-line no-await-in-loop
+    await clearPersonalValuesAfterRevoke(
+      deps,
+      { projectId, userIds: actorUserIds, identityIds: actorIdentityIds, groupIds: [] },
+      tx
+    );
+  }
+};
+
 // Member-provided field lists are sets: the same fields in another order are the same setting.
 export const sameMemberProvidedFields = (
   a: readonly string[] | null | undefined,

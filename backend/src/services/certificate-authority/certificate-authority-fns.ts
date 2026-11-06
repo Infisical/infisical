@@ -11,6 +11,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
+import { parsePemCertificateChain } from "../certificate/certificate-fns";
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { isExternalCaKeySource } from "./ca-key-source/ca-key-source-fns";
 import type { TCaKeySourceServiceFactory } from "./ca-key-source/ca-key-source-service";
@@ -19,6 +20,7 @@ import { buildLocalCaSigner, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
+  TBuildIssuedCertificateChainDTO,
   TDNParts,
   TGetCaCertChainDTO,
   TGetCaCertChainsDTO,
@@ -37,6 +39,24 @@ export const createSerialNumber = () => {
 // on anything short-lived these belong together: backdating the start without pushing out the
 // expiry leaves the certificate rejected as expired by a host whose clock runs ahead of ours
 export const getNotBeforeWithClockSkew = (issuedAt: Date) => new Date(issuedAt.getTime() - CERT_CLOCK_SKEW_MS);
+
+export const assertPathLengthMatchesCa = ({
+  storedPathLength,
+  requestedPathLength,
+  allowNoLimitDefault
+}: {
+  storedPathLength?: number | null;
+  requestedPathLength?: number;
+  // The signing-config install endpoints default to -1, meaning "keep the stored value".
+  allowNoLimitDefault: boolean;
+}) => {
+  const stored = storedPathLength ?? -1;
+  if (stored < 0 || requestedPathLength === undefined || requestedPathLength === stored) return;
+  if (allowNoLimitDefault && requestedPathLength === -1) return;
+  throw new BadRequestError({
+    message: `Path length ${requestedPathLength} doesn't match this CA's current certificate (${stored}). Use ${stored} or leave it out.`
+  });
+};
 
 export const getNotAfterWithClockSkew = (expiresAt: Date) => new Date(expiresAt.getTime() + CERT_CLOCK_SKEW_MS);
 
@@ -185,6 +205,15 @@ export const validateImportedCertificate = (
     });
   }
 };
+
+export const getPublicKeyFingerprint = (cert: x509.X509Certificate) =>
+  crypto.nativeCrypto.createHash("sha256").update(Buffer.from(cert.publicKey.rawData)).digest("hex");
+
+export const hasSamePublicKey = (a: x509.X509Certificate, b: x509.X509Certificate) =>
+  Buffer.from(a.publicKey.rawData).equals(Buffer.from(b.publicKey.rawData));
+
+export const isSameCertificateIdentity = (a: x509.X509Certificate, b: x509.X509Certificate) =>
+  a.subject === b.subject && hasSamePublicKey(a, b);
 
 export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   switch (keyAlgorithm) {
@@ -557,10 +586,93 @@ export const getCaCertChain = async ({
   });
 
   return {
+    caId: caCert.caId,
     caCert: caCertObj.toString("pem"),
     caCertChain: decryptedChain.toString("utf-8"),
     serialNumber: caCertObj.serialNumber
   };
+};
+
+export const buildIssuedCertificateChain = async ({
+  caId,
+  caCert,
+  caCertChain,
+  projectId,
+  certificateAuthorityCrossSignedCertDAL,
+  projectDAL,
+  kmsService
+}: TBuildIssuedCertificateChainDTO) => {
+  const defaultChain = `${caCert}\n${caCertChain}`.trim();
+
+  const chainCertObjs = parsePemCertificateChain(defaultChain) ?? [];
+
+  const crossSignedCerts = await certificateAuthorityCrossSignedCertDAL.findValidInCaHierarchy(
+    caId,
+    chainCertObjs.map(getPublicKeyFingerprint)
+  );
+  if (!crossSignedCerts.length) return defaultChain;
+
+  const keyId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+
+  const crossSignedCertObjs = await Promise.all(
+    crossSignedCerts.map(async (crossSignedCert) => ({
+      crossSignedCert,
+      certObj: new x509.X509Certificate(await kmsDecryptor({ cipherTextBlob: crossSignedCert.encryptedCertificate }))
+    }))
+  );
+
+  let matchedChainIndex = -1;
+  let match: (typeof crossSignedCertObjs)[number] | undefined;
+  for (let index = 0; index < chainCertObjs.length && !match; index += 1) {
+    match = crossSignedCertObjs.find(({ certObj }) => isSameCertificateIdentity(certObj, chainCertObjs[index]));
+    if (match) matchedChainIndex = index;
+  }
+
+  if (!match) return defaultChain;
+
+  const legacyChain = (
+    await kmsDecryptor({ cipherTextBlob: match.crossSignedCert.encryptedCertificateChain })
+  ).toString("utf-8");
+
+  return [
+    ...chainCertObjs.slice(0, matchedChainIndex).map((chainCertObj) => chainCertObj.toString("pem")),
+    match.certObj.toString("pem"),
+    legacyChain
+  ]
+    .map((pem) => pem.trim())
+    .filter(Boolean)
+    .join("\n");
+};
+
+export const getIssuedCaCertChain = async ({
+  caCertId,
+  projectId,
+  certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
+  projectDAL,
+  kmsService
+}: TGetCaCertChainDTO & Omit<TBuildIssuedCertificateChainDTO, "caId" | "caCert" | "caCertChain">) => {
+  const { caId, caCert, caCertChain } = await getCaCertChain({
+    caCertId,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    projectDAL,
+    kmsService
+  });
+
+  const certificateChainPem = await buildIssuedCertificateChain({
+    caId,
+    caCert,
+    caCertChain,
+    projectId,
+    certificateAuthorityCrossSignedCertDAL,
+    projectDAL,
+    kmsService
+  });
+
+  return { caCert, caCertChain, certificateChainPem };
 };
 
 /**

@@ -17,8 +17,8 @@ This is useful if your code starts your agents or creates sessions for agents on
 ## Prerequisites
 
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent calls
-- A running [proxy](/documentation/platform/agent-vault/proxies) that the agent's machine can reach
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), or an Agent Vault admin who can complete [Step 1](#step-1-set-up-a-machine-identity) for you
+- A running [proxy](/documentation/platform/agent-vault/proxies) in the same project as the access bundle, which the agent's machine can reach
+- The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership), or a project admin who can complete [Step 1](#step-1-set-up-a-machine-identity) for you
 
 ## Step 1: Set up a machine identity
 
@@ -46,15 +46,16 @@ The response includes an `accessToken`, which you send with each request in the 
 
 ## Step 3: Create a session
 
-Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the name of the access bundle, how long the session should last, and optionally a label that says what the session is for:
+Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the ID of your Agent Vault project, the name of the access bundle, how long the session should last, and optionally a label that says what the session is for. To get the ID, see [Find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id).
 
 ```bash
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   -H "Authorization: Bearer <access-token>" \
   -H "Content-Type: application/json" \
-  -d '{"accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
+  -d '{"projectId": "<project-id>", "accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
 ```
 
+- `projectId` is the ID of the Agent Vault project that the access bundle is in
 - `accessBundle` is the name of the access bundle the session carries (an admin can leave it out and send [inline services](/documentation/platform/agent-vault/inline-services) instead)
 - `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
 - `label` is optional and describes what the session is for, in up to 128 characters (see [Label a session](/documentation/platform/agent-vault/sessions#label-a-session))
@@ -63,12 +64,13 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   If your code runs agents for other people, as a chat bot does, the machine identity can create each session [on behalf of the person who asked](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so the session uses that person's personal values and gets no more access than that person.
 </Tip>
 
-The response includes the session's ID, its label, the session token, and when the session expires:
+The response includes the session's ID, the project's ID, its label, the session token, and when the session expires:
 
 ```json
 {
   "session": {
     "id": "6f1c2a9e-3b7d-4e8a-9c41-2d5f7b8e0a13",
+    "projectId": "<project-id>",
     "label": "nightly deploy",
     "token": "<session-token>",
     "expiresAt": "2026-10-07T19:00:00.000Z"
@@ -131,7 +133,7 @@ Revoke the session even if the agent fails, for example in a `finally` block or 
 
 ## Step 6: Verify it works
 
-In Agent Vault, go to **Sessions** and select **All Sessions**. Find the session you created by its label in the **Label** column, or search for the label. The session's **Status** is **Active** while the agent runs, and **Revoked** after [Step 5](#step-5-revoke-the-session).
+In your Agent Vault project, go to **Sessions** and select **All Sessions**. Find the session you created by its label in the **Label** column, or search for the label. The session's **Status** is **Active** while the agent runs, and **Revoked** after [Step 5](#step-5-revoke-the-session).
 
 [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made during the session.
 
@@ -143,7 +145,7 @@ In Agent Vault, go to **Sessions** and select **All Sessions**. Find the session
 
 <AccordionGroup>
   <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to you&quot;">
-    The machine identity doesn't have a grant on the access bundle, or the name in `accessBundle` is wrong. Check the name on the **Access Bundles** page, and [grant the bundle](#step-1-set-up-a-machine-identity) to the machine identity.
+    The machine identity doesn't have a grant on the access bundle, the name in `accessBundle` is wrong, or `projectId` names a different project than the one the access bundle is in. Check the name on the project's **Access Bundles** page, and [grant the bundle](#step-1-set-up-a-machine-identity) to the machine identity.
   </Accordion>
   <Accordion title="Creating or revoking a session fails with 401 after your code has run for a while">
     The machine identity's access token expired. [Log in again](#step-2-log-in-as-the-machine-identity) to get a new access token. Sessions you already created keep working, because a session doesn't depend on the access token that created it.

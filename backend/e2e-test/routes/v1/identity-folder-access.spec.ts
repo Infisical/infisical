@@ -8,6 +8,7 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeIdentitiesFromGroup } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -225,6 +226,8 @@ describe("Identity folder access CRUD", () => {
         membershipDAL: membershipDALFactory(testDb),
         groupDAL: groupDALFactory(testDb),
         identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+        userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+        agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
         eventEmitter: { emit: async () => {} },
         membershipRoleDAL: membershipRoleDALFactory(testDb),

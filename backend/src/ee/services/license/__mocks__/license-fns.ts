@@ -71,6 +71,7 @@ export const getDefaultOnPremFeatures = () => {
     caCrl: true,
     pkiEnterpriseCaIntegrations: false,
     pkiExternalIntermediateCa: false,
+    pkiCrossSignedCa: false,
     pkiDiscovery: false,
     pkiEnterpriseAlerting: false,
     pkiApprovals: false,

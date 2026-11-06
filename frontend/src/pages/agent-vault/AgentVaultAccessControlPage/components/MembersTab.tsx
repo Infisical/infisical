@@ -39,7 +39,8 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useUser
+  useUser,
+  useProject
 } from "@app/context";
 import {
   getUserTablePreference,
@@ -57,6 +58,7 @@ import { ProductRoleDialog } from "./ProductRoleDialog";
 type TUserMember = TAgentVaultProductMemberOf<AgentVaultMemberType.User>;
 
 export const MembersTab = () => {
+  const { projectId } = useProject();
   const { user } = useUser();
 
   const [search, setSearch] = useState("");
@@ -66,13 +68,13 @@ export const MembersTab = () => {
     getUserTablePreference("agentVaultAccessControlTable", PreferenceKey.PerPage, 20)
   );
 
-  const { data, isPending } = useListAgentVaultMembers({
+  const { data, isPending } = useListAgentVaultMembers(projectId, {
     actorType: AgentVaultMemberType.User,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const revokeMembers = useRevokeAgentVaultMembers();
+  const revokeMembers = useRevokeAgentVaultMembers(projectId);
 
   const filtered = data?.members ?? [];
   const totalCount = data?.totalCount ?? 0;
