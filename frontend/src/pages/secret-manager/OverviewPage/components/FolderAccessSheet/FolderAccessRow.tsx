@@ -259,6 +259,7 @@ export const FolderAccessRow = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
+                  tabIndex={0}
                   aria-label="Via project role"
                   className="flex cursor-default items-center gap-1 text-xs text-muted"
                 >
