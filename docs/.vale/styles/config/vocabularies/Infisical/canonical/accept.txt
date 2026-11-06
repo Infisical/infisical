@@ -349,6 +349,7 @@ Sentinel
 Elasticsearch
 Cassandra
 Couchbase
+CockroachDB
 RabbitMQ
 Vertica
 Milvus

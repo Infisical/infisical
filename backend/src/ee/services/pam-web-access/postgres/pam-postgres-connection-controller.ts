@@ -1,4 +1,3 @@
-import { parse as parseSql } from "libpg-query";
 import pg from "pg";
 import Cursor from "pg-cursor";
 
@@ -11,6 +10,7 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
+import { sendCancelRequest, splitPostgresStatements } from "./pam-postgres-data-explorer-fns";
 import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
 
 const pgTypes = {
@@ -24,7 +24,10 @@ const pgTypes = {
   }
 };
 
-export const createPostgresConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
+export const createPostgresConnectionController = async (
+  params: ControllerParams,
+  { lexicalFallback = false } = {}
+): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
 
   const pgClient = new pg.Client({
@@ -41,8 +44,8 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
   await pgClient.connect();
 
-  const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
-  const nativeConnectionId = pidRows[0]?.pid ?? null;
+  // From the server's BackendKeyData, which @types/pg doesn't declare
+  const { processID, secretKey } = pgClient as unknown as { processID: number | null; secretKey: number | null };
 
   let isInTransaction = false;
   let disposing = false;
@@ -70,26 +73,11 @@ export const createPostgresConnectionController = async (params: ControllerParam
   };
 
   const cancelRunningQuery = async () => {
-    if (!nativeConnectionId) return;
-    const cancelClient = new pg.Client({
-      host: "localhost",
-      port: relayPort,
-      user: username,
-      database,
-      password: "",
-      ssl: false,
-      connectionTimeoutMillis: 5_000
-    });
-    cancelClient.on("error", (err) => {
-      logger.debug(err, `Cancel client error [sessionId=${sessionId}] [connectionId=${connectionId}]`);
-    });
+    if (processID === null || secretKey === null) return;
     try {
-      await cancelClient.connect();
-      await cancelClient.query("SELECT pg_cancel_backend($1)", [nativeConnectionId]);
+      await sendCancelRequest(relayPort, processID, secretKey);
     } catch (err) {
       logger.debug(err, `Failed to cancel backend query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
-    } finally {
-      await cancelClient.end().catch(() => {});
     }
   };
 
@@ -159,15 +147,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
               const startTime = performance.now();
               const MAX_ROWS = 1000;
 
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-              const parsed = await parseSql(message.sql);
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              const stmtTexts = (parsed.stmts as Array<{ stmt_location?: number; stmt_len?: number }>).map((s) => {
-                const location = s.stmt_location ?? 0;
-                return s.stmt_len !== undefined
-                  ? message.sql.slice(location, location + s.stmt_len)
-                  : message.sql.slice(location).trim();
-              });
+              const stmtTexts = await splitPostgresStatements(message.sql, { lexicalFallback });
 
               let lastRows: Record<string, unknown>[] = [];
               let lastFields: { name: string }[] = [];
@@ -248,7 +228,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
   return {
     connectionId,
-    nativeConnectionId,
+    nativeConnectionId: processID,
     handleMessage,
     dispose,
     isDisposing: () => disposing

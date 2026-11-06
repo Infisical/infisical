@@ -813,6 +813,7 @@ export const pamSessionServiceFactory = ({
       metadata.username = rawCredentials.username as string;
       if (
         (account.accountType === PamAccountType.Postgres ||
+          account.accountType === PamAccountType.CockroachDB ||
           account.accountType === PamAccountType.MySQL ||
           account.accountType === PamAccountType.MongoDB ||
           account.accountType === PamAccountType.MsSQL ||
