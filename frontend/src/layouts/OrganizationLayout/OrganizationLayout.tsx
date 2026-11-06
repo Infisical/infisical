@@ -64,12 +64,7 @@ export const OrganizationLayout = () => {
     if (!trialIntent?.orgId) return;
     clearSignupTrialIntent();
     if (trialIntent.orgId !== billingOrgId) return;
-    const search = new URLSearchParams(
-      getSignupTrialBillingSearch(
-        trialIntent,
-        `${window.location.pathname}${window.location.search}${window.location.hash}`
-      )
-    );
+    const search = new URLSearchParams(getSignupTrialBillingSearch(trialIntent));
     window.location.assign(`/organizations/${billingOrgId}/billing?${search.toString()}`);
   }, [billingOrgId]);
 

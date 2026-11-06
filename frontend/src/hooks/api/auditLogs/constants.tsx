@@ -77,6 +77,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CA_CERT]: "Get CA certificate",
   [EventType.SIGN_INTERMEDIATE]: "Sign intermediate",
   [EventType.IMPORT_CA_CERT]: "Import CA certificate",
+  [EventType.IMPORT_CA_CROSS_SIGNED_CERT]: "Import CA cross-signed certificate",
+  [EventType.DELETE_CA_CROSS_SIGNED_CERT]: "Remove CA cross-signed certificate",
   [EventType.GET_CA_CRL]: "Get CA CRL",
   [EventType.ISSUE_CERT]: "Request certificate",
   [EventType.IMPORT_CERT]: "Import certificate",

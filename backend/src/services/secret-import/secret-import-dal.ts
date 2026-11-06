@@ -120,6 +120,30 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Holds the import, its folder and the folder's environment against deletion until tx ends, and
+  // returns undefined if any of them is already gone. Deleting an environment or a folder locks its row
+  // and then cascades down to the imports, so the locks here go environment, folder, import: taking the
+  // import first would let a concurrent delete of its folder deadlock with tx. The environment and folder
+  // take KEY SHARE, which conflicts only with deletes and key updates. The import takes NO KEY UPDATE so
+  // that two transactions holding the same import also wait for each other: the replication lock in redis
+  // can expire mid-job, and secret_folders has no unique (parentId, name), so nothing else stops two
+  // workers from both creating the import's reserved folder.
+  const lockWithFolderAgainstDelete = async (
+    { importId, folderId, envId }: { importId: string; folderId: string; envId: string },
+    tx: Knex
+  ) => {
+    try {
+      const env = await tx(TableName.Environment).where({ id: envId }).forKeyShare().first("id");
+      if (!env) return undefined;
+      const folder = await tx(TableName.SecretFolder).where({ id: folderId }).forKeyShare().first("id");
+      if (!folder) return undefined;
+      const doc = await tx(TableName.SecretImport).where({ id: importId, folderId }).forNoKeyUpdate().first();
+      return doc as TSecretImports | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock with folder against delete" });
+    }
+  };
+
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.SecretImport)
@@ -590,6 +614,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     ...secretImportOrm,
     find,
     findById,
+    lockWithFolderAgainstDelete,
     findByIds,
     findIncludingExpired,
     findByFolderIds,

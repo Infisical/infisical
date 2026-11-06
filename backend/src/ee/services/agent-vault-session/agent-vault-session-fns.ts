@@ -82,13 +82,13 @@ export const deriveSessionStatus = (
 export const describeSessionForAudit = (session: {
   actor: TAgentVaultSessionActor;
   onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
-  accessBundles: { name: string }[];
+  accessBundle: { name: string } | null;
 }) => ({
   sessionOwner:
     session.actor.type === AgentVaultMemberType.MachineIdentity
       ? session.actor.name
       : (session.actor.email ?? session.actor.username),
-  accessBundleName: session.accessBundles[0]?.name ?? null,
+  accessBundleName: session.accessBundle?.name ?? null,
   ...(session.onBehalfOf && {
     ...(session.onBehalfOf.id && { onBehalfOfUserId: session.onBehalfOf.id }),
     onBehalfOfUserName: session.onBehalfOf.username,

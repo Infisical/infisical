@@ -34,6 +34,7 @@ import {
   dimOnDemandQuantity,
   fmtMoney,
   fmtMoneyCents,
+  meteredRateInCaption,
   unitForCount
 } from "../billing-v2-format";
 
@@ -218,7 +219,9 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
         {dim.limit !== null
           ? ` / ${dim.limit.toLocaleString()}`
           : ` ${unitForCount(dim.noun, dim.used)}`}
-        {monthlyRate > 0 && <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>}
+        {!meteredRateInCaption(dim) && monthlyRate > 0 && (
+          <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>
+        )}
       </>
     );
   }

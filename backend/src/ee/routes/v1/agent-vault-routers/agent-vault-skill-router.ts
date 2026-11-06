@@ -14,9 +14,10 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext } from "./agent-vault-router-fns";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
 import {
   agentVaultListQuery,
+  AgentVaultProjectIdSchema,
   AgentVaultSkillDetailSchema,
   AgentVaultSkillFilesResponseSchema,
   AgentVaultSkillSchema,
@@ -43,15 +44,16 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "createAgentVaultSkill",
       description:
-        "Add a skill to Agent Vault from its folder of files. The name comes from the `name` in SKILL.md, and the files become version 1.",
+        "Add a skill to an Agent Vault project from its folder of files. The name comes from the `name` in SKILL.md, and the files become version 1.",
       tags: [ApiDocsTags.AgentVaultSkills],
-      body: AgentVaultSkillUploadSchema,
+      body: AgentVaultSkillUploadSchema.extend({ projectId: AgentVaultProjectIdSchema }),
       response: { 200: z.object({ skill: AgentVaultSkillSchema, version: AgentVaultSkillVersionSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await resolveRequestedProjectId(req, req.body.projectId, "body");
       const { skill, version } = await server.services.agentVaultSkill.createSkill({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         files: req.body.files
       });
@@ -59,7 +61,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_CREATE,
           metadata: { skillId: skill.id, skillName: skill.name, version: version.version, sha256: version.sha256 }
@@ -87,9 +89,10 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "listAgentVaultSkills",
       description:
-        "List the skills in Agent Vault and the access bundles each is in, ordered by name. A member sees only the skills on access bundles they have been granted.",
+        "List the skills in an Agent Vault project and the access bundles each is in, ordered by name. A member sees only the skills on access bundles they have been granted.",
       tags: [ApiDocsTags.AgentVaultSkills],
       querystring: z.object({
+        projectId: AgentVaultProjectIdSchema,
         name: z
           .string()
           .trim()
@@ -107,12 +110,15 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultSkill.listSkills({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const { projectId: requestedProjectId, ...query } = req.query;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
+      return server.services.agentVaultSkill.listSkills({
+        projectId,
         ctx: actorContext(req),
-        ...req.query
-      })
+        ...query
+      });
+    }
   });
 
   server.route({
@@ -123,7 +129,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "getAgentVaultSkill",
       description:
-        "Get a skill in Agent Vault, the access bundles it is in, and the files of its latest version. A member can get only a skill on an access bundle they have been granted.",
+        "Get a skill in an Agent Vault project, the access bundles it is in, and the files of its latest version. A member can get only a skill on an access bundle they have been granted.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
       response: {
@@ -136,8 +142,12 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
+        actorContext(req),
+        req.params.skillId
+      );
       const { skill, version } = await server.services.agentVaultSkill.getSkill({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         skillId: req.params.skillId
       });
@@ -145,7 +155,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_VERSION_VIEW,
           metadata: { skillId: skill.id, skillName: skill.name, version }
@@ -179,8 +189,12 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
+        actorContext(req),
+        req.params.skillId
+      );
       const { skill, version, unchanged, previousName } = await server.services.agentVaultSkill.updateSkill({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         skillId: req.params.skillId,
         files: req.body.files,
@@ -191,7 +205,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           event: {
             type: EventType.AGENT_VAULT_SKILL_VERSION_CREATE,
             metadata: { skillId: skill.id, skillName: skill.name, version: version.version, sha256: version.sha256 }
@@ -202,7 +216,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             orgId: req.permission.orgId,
-            projectId: req.internalAgentVaultProjectId,
+            projectId,
             event: {
               type: EventType.AGENT_VAULT_SKILL_RENAME,
               metadata: { skillId: skill.id, oldName: previousName, newName: skill.name }
@@ -233,15 +247,19 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       operationId: "deleteAgentVaultSkill",
-      description: "Delete a skill from Agent Vault. It is removed from every access bundle.",
+      description: "Delete a skill from its Agent Vault project. It is removed from every access bundle.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
       response: { 200: z.object({ skill: AgentVaultSkillSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
+        actorContext(req),
+        req.params.skillId
+      );
       const { skill, removedFromBundles } = await server.services.agentVaultSkill.deleteSkill({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         skillId: req.params.skillId
       });
@@ -249,7 +267,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_DELETE,
           metadata: {
@@ -282,12 +300,17 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       response: { 200: z.object({ versions: AgentVaultSkillVersionSchema.array() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultSkill.listVersions({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
+        actorContext(req),
+        req.params.skillId
+      );
+      return server.services.agentVaultSkill.listVersions({
+        projectId,
         ctx: actorContext(req),
         skillId: req.params.skillId
-      })
+      });
+    }
   });
 
   server.route({
@@ -305,8 +328,12 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
+        actorContext(req),
+        req.params.skillId
+      );
       const { skill, version } = await server.services.agentVaultSkill.getVersionFiles({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         skillId: req.params.skillId,
         version: req.params.version
@@ -315,7 +342,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_VERSION_VIEW,
           metadata: { skillId: skill.id, skillName: skill.name, version: version.version }
@@ -347,8 +374,12 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
+        actorContext(req),
+        req.params.skillId
+      );
       const { skill, version, fromVersion, unchanged } = await server.services.agentVaultSkill.restoreVersion({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         skillId: req.params.skillId,
         version: req.params.version
@@ -359,7 +390,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_VERSION_RESTORE,
           metadata: {

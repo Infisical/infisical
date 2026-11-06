@@ -61,8 +61,6 @@ export const ProjectIdentityDetailsSection = ({
     productLabel = getProjectLabel(currentProject?.type);
   } else if (isPam) {
     productLabel = "PAM";
-  } else if (isAgentVault) {
-    productLabel = "Agent Vault";
   }
 
   let joinedLabel = "Joined project";
@@ -70,8 +68,6 @@ export const ProjectIdentityDetailsSection = ({
     joinedLabel = `Joined ${getProjectLabel(currentProject?.type).toLowerCase()}`;
   } else if (isPam) {
     joinedLabel = "Joined PAM";
-  } else if (isAgentVault) {
-    joinedLabel = "Joined Agent Vault";
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

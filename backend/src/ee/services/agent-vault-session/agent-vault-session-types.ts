@@ -68,7 +68,8 @@ export type TAgentVaultInlineServiceSummary = {
 export type TMintSessionDTO = {
   projectId: string;
   ctx: TGenericPermission;
-  accessBundles: string[];
+  // Leave it out for a session with services of its own only.
+  accessBundle?: string;
   // Inline services, which the API calls the session's services.
   services?: TAgentVaultInlineServiceInput[];
   /** The caller's name and email, snapshotted from the request. */

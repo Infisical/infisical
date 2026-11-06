@@ -338,12 +338,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     if (!groupId && (await isInProjectThroughGroup({ projectId, userId, identityId }))) {
       throw new BadRequestError({
-        message: `The ${actor} is in Agent Vault through a group. Grant the access bundle to the group, or add them directly under Access Control first.`
+        message: `The ${actor} is in this Agent Vault project through a group. Grant the access bundle to the group, or add them directly under Access Control first.`
       });
     }
 
     throw new BadRequestError({
-      message: `The ${actor} is not a member of Agent Vault. Add them under Access Control first.`
+      message: `The ${actor} is not a member of this Agent Vault project. Add them under Access Control first.`
     });
   };
 

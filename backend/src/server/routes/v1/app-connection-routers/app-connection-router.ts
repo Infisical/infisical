@@ -70,6 +70,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
+  ClickHouseConnectionListItemSchema,
+  SanitizedClickHouseConnectionSchema
+} from "@app/services/app-connection/clickhouse";
+import {
   Cloud66ConnectionListItemSchema,
   SanitizedCloud66ConnectionSchema
 } from "@app/services/app-connection/cloud-66";
@@ -393,7 +397,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedHpeIloConnectionSchema.options,
   ...SanitizedServiceNowConnectionSchema.options,
   ...SanitizedS3CompatibleConnectionSchema.options,
-  ...SanitizedJiraConnectionSchema.options
+  ...SanitizedJiraConnectionSchema.options,
+  ...SanitizedClickHouseConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -491,7 +496,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   HpeIloConnectionListItemSchema,
   ServiceNowConnectionListItemSchema,
   S3CompatibleConnectionListItemSchema,
-  JiraConnectionListItemSchema
+  JiraConnectionListItemSchema,
+  ClickHouseConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

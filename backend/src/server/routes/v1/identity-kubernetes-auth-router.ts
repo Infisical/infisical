@@ -37,13 +37,11 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   gatewayPoolId: true,
   verifyTlsCertificate: true,
   templateId: true,
-  // template-sourced JWTs read back as "" (write-only), so this flag is the only way a
-  // client can tell "no stored JWT" from "hidden JWT that must be kept, replaced, or
-  // explicitly cleared with tokenReviewerJwt: null"
   isTokenReviewerJwtTemplateSourced: true
 }).extend({
   caCert: z.string(),
-  tokenReviewerJwt: z.string().optional().nullable(),
+  tokenReviewerJwt: z.string().optional().nullable().describe(KUBERNETES_AUTH.RESPONSE.tokenReviewerJwt),
+  hasTokenReviewerJwt: z.boolean().optional().describe(KUBERNETES_AUTH.RESPONSE.hasTokenReviewerJwt),
   // declared rather than picked: the row's own gatewayId is the retired v1 column, and the
   // service fills this field from gatewayV2Id so the API name stays unchanged
   gatewayId: z.string().uuid().optional().nullable()
