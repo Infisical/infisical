@@ -8,10 +8,17 @@ import {
   useState
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { BellIcon, CodeXmlIcon, MessageSquareIcon, PencilLineIcon, TagsIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  IconButton,
   InfisicalSecretInput,
   Input,
   SecretInputActions,
@@ -22,7 +29,12 @@ import {
   TooltipTrigger,
   useSecretInputActionShortcuts
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   secretKeyExistsQueryOptions,
@@ -30,6 +42,7 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 
 import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
+import type { EnvironmentSecretAction } from "../SecretTableRow/SecretEditTableRow";
 import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 
@@ -83,6 +96,7 @@ type Props = {
   secretPath: string;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  onAnnotate?: (key: string, action: EnvironmentSecretAction) => void;
 };
 
 export const QuickAddSecretRow = ({
@@ -96,10 +110,12 @@ export const QuickAddSecretRow = ({
   saveLabel,
   secretPath,
   activityId,
-  onActivityChange
+  onActivityChange,
+  onAnnotate
 }: Props) => {
   const telemetry = useOverviewTelemetry();
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const rowRef = useRef<HTMLTableRowElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +126,10 @@ export const QuickAddSecretRow = ({
   const [error, setError] = useState<string>();
   const [isActive, setIsActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnnotateOpen, setIsAnnotateOpen] = useState(false);
+  const annotateOpenRef = useRef(false);
+  const resumeInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const pendingAnnotationRef = useRef<EnvironmentSecretAction | null>(null);
   const [valueEditorStyle, setValueEditorStyle] = useState<CSSProperties>();
   const isMultiEnvironmentView = environments.length > 1;
   const queryClient = useQueryClient();
@@ -180,8 +200,9 @@ export const QuickAddSecretRow = ({
 
   const submitDraft = async ({
     refocus = true,
-    isDirectSave = true
-  }: { refocus?: boolean; isDirectSave?: boolean } = {}) => {
+    isDirectSave = true,
+    annotation
+  }: { refocus?: boolean; isDirectSave?: boolean; annotation?: EnvironmentSecretAction } = {}) => {
     const normalizedKey = key.trim();
 
     if (!normalizedKey) {
@@ -221,6 +242,7 @@ export const QuickAddSecretRow = ({
           onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)
         )
       );
+      if (annotation) onAnnotate?.(normalizedKey, annotation);
       if (!isDirectSave && !isKeyConfirmedFree) {
         const queuedDraft = { key: normalizedKey, value, comment };
         queryClient
@@ -329,6 +351,7 @@ export const QuickAddSecretRow = ({
           event.preventDefault();
       }}
       onBlurCapture={(event) => {
+        if (annotateOpenRef.current) return;
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           setIsActive(false);
         }
@@ -395,6 +418,98 @@ export const QuickAddSecretRow = ({
                 }
               }}
             />
+            {onAnnotate && trimmedKey && (
+              <DropdownMenu
+                open={isAnnotateOpen}
+                onOpenChange={(open) => {
+                  if (open) {
+                    annotateOpenRef.current = true;
+                    resumeInputRef.current =
+                      document.activeElement === valueInputRef.current
+                        ? valueInputRef.current
+                        : keyInputRef.current;
+                  }
+                  setIsAnnotateOpen(open);
+                }}
+              >
+                <Tooltip open={isAnnotateOpen ? false : undefined}>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        aria-label="Annotate secret"
+                        tabIndex={-1}
+                        variant="ghost-muted"
+                        size="2xs"
+                        isDisabled={isSubmitting}
+                      >
+                        <PencilLineIcon />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Annotate</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent
+                  align="start"
+                  className="min-w-[185px] [&_[data-variant=default]]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
+                  onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    const annotation = pendingAnnotationRef.current;
+                    pendingAnnotationRef.current = null;
+                    if (annotation) {
+                      submitDraft({ isDirectSave: false, annotation })
+                        .catch(() => keyInputRef.current?.focus())
+                        .finally(() => {
+                          annotateOpenRef.current = false;
+                        });
+                    } else {
+                      resumeInputRef.current?.focus();
+                      annotateOpenRef.current = false;
+                    }
+                  }}
+                >
+                  <DropdownMenuLabel>Annotate</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    className="px-2.5 py-1.5"
+                    onClick={() => {
+                      pendingAnnotationRef.current = "comment";
+                    }}
+                  >
+                    <MessageSquareIcon />
+                    {comment ? "Edit Comment" : "Add Comment"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="px-2.5 py-1.5"
+                    isDisabled={
+                      !permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags)
+                    }
+                    onClick={() => {
+                      pendingAnnotationRef.current = "tags";
+                    }}
+                  >
+                    <TagsIcon />
+                    Add Tags
+                  </DropdownMenuItem>
+                  <Tooltip>
+                    <TooltipTrigger className="block w-full">
+                      <DropdownMenuItem className="px-2.5 py-1.5" isDisabled>
+                        <BellIcon />
+                        Add Reminder
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Create Secret to Add Reminder</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuItem
+                    className="px-2.5 py-1.5"
+                    onClick={() => {
+                      pendingAnnotationRef.current = "metadata";
+                    }}
+                  >
+                    <CodeXmlIcon />
+                    Add Metadata
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           {displayedError && (
             <span

@@ -1401,6 +1401,7 @@ export const SecretEditTableRow = ({
           <DropdownMenuTrigger asChild>
             <IconButton
               aria-label="Annotate secret"
+              tabIndex={-1}
               variant={isSingleEnvView ? "ghost-muted" : "ghost"}
               size={isSingleEnvView ? "2xs" : "xs"}
               className={

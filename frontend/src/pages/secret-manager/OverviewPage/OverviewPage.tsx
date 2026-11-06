@@ -296,6 +296,7 @@ import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
 import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
+import type { EnvironmentSecretAction } from "./components/SecretTableRow/SecretEditTableRow";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
@@ -1481,6 +1482,11 @@ const OverviewPageContent = () => {
     isSingleEnvView && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
   const [recentQuickAddKeys, setRecentQuickAddKeys] = useState<string[]>([]);
+  const [quickAddAnnotation, setQuickAddAnnotation] = useState<{
+    key: string;
+    action: EnvironmentSecretAction;
+  } | null>(null);
+  const clearQuickAddAnnotation = useCallback(() => setQuickAddAnnotation(null), []);
   const pendingSecretRowKeys = useRef(new Map<string, string>());
   const hadPendingBatchChangesRef = useRef(hasPendingBatchChanges);
   const isRecentQuickAddClearPendingRef = useRef(false);
@@ -3709,6 +3715,8 @@ const OverviewPageContent = () => {
 
   const renderSecretRow = (key: string, rowKey: string) => (
     <SecretTableRow
+      initialAction={quickAddAnnotation?.key === key ? quickAddAnnotation.action : undefined}
+      onInitialActionHandled={clearQuickAddAnnotation}
       isSelected={!hasPendingBatchChanges && Boolean(selectedEntries.secret[key])}
       onToggleSecretSelect={(_, isShiftKey) => {
         if (!hasPendingBatchChanges) toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
@@ -4606,6 +4614,11 @@ const OverviewPageContent = () => {
                           page === 1 &&
                           !isTableEmpty && (
                             <QuickAddSecretRow
+                              onAnnotate={
+                                isSingleEnvView
+                                  ? (key, action) => setQuickAddAnnotation({ key, action })
+                                  : undefined
+                              }
                               autoQueueOnBlur={isSingleEnvView}
                               activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}

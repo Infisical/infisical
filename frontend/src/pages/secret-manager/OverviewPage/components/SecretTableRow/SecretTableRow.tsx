@@ -130,6 +130,8 @@ type Props = {
   timestampSortField?: "createdAt" | "updatedAt";
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  initialAction?: EnvironmentSecretAction;
+  onInitialActionHandled?: () => void;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -164,7 +166,9 @@ export const SecretTableRow = ({
   onAccessInsightsUpgrade,
   timestampSortField,
   activityId,
-  onActivityChange
+  onActivityChange,
+  initialAction,
+  onInitialActionHandled
 }: Props) => {
   const telemetry = useOverviewTelemetry();
   const totalCols = environments.length + 2; // secret key row + icon
@@ -527,6 +531,8 @@ export const SecretTableRow = ({
           <SecretEditTableRow
             isSingleEnvView
             isBatchMode
+            initialAction={initialAction}
+            onInitialActionHandled={onInitialActionHandled}
             onBatchRevert={onBatchRevert}
             onPendingSave={onPendingSave}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
