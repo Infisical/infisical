@@ -87,56 +87,137 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
-    id: "ui-generate",
-    title: "ui:generate rewrite",
+    id: "approve-accent",
+    title: "Accent Approve",
     description:
-      "Parses with oxc-parser, checks declared axes from syntax and splices examples from source.",
-    date: "2026-11-03",
-    commit: "1274011a3f"
+      "Approve is the accent Button in every ApprovalQueue variant, and resolved rows in divided lists get their own visible fill.",
+    date: "2026-11-06",
+    commit: "578b7519dd",
+    page: "approval-queue"
   },
   {
-    id: "inf-19",
-    title: "INF-19: App shell",
+    id: "list-variants",
+    title: "List variants",
     description:
-      "A top band outside the content card, a sidebar corner with help and the rail, and reworked organization and user menus.",
-    date: "2026-11-03",
-    commit: "2025c748b6",
-    page: "top-bar"
+      "List owns the framed, plain, bare, segmented and divided variants with header, section and footer parts, and ApprovalQueue inherits them.",
+    date: "2026-11-06",
+    commit: "cdb1507383",
+    page: "list"
   },
   {
-    id: "inf-18",
-    title: "INF-18: Breadcrumbs",
+    id: "list-meta",
+    title: "List row timestamps",
     description:
-      "A vertical divider between crumbs; a crumb's name navigates and its chevron opens the switcher.",
-    date: "2026-11-03",
-    commit: "63b48cc758",
+      "A list row's title ellipsizes on one line, so its timestamp stays pinned beside it.",
+    date: "2026-11-06",
+    commit: "7ba6dacc87",
+    page: "list"
+  },
+  {
+    id: "crumb-cursor",
+    title: "Crumbs and cursors",
+    description:
+      "Combined crumbs are one button with no dead pixels, and only links take the pointer cursor.",
+    date: "2026-11-06",
+    commit: "02076b65ee",
     page: "breadcrumb"
   },
   {
-    id: "inf-15",
-    title: "INF-15: Color",
+    id: "draggable-popover",
+    title: "Draggable Popover",
     description:
-      "Accent create actions, a new default yellow, a theme-invariant danger fill and a neutral dark selected state.",
-    date: "2026-11-02",
-    commit: "c187956b5e",
-    page: "colors"
+      "A Popover can opt in to a Move handle, with keyboard steps, a viewport clamp and a reset when it reopens.",
+    date: "2026-11-06",
+    commit: "82721e1d76",
+    page: "popover"
   },
   {
-    id: "row-actions",
-    title: "Row actions",
+    id: "selection-column",
+    title: "Selection column",
     description:
-      "Persistent row actions in a centered, content-sized sticky column; the selection column gets a divider.",
-    date: "2026-11-02",
-    commit: "11a679dc21",
-    page: "data-table"
+      "Native tables and DataTable share one selection hook, and icon columns that double as selection can drop the divider.",
+    date: "2026-11-06",
+    commit: "75c373c9f0",
+    page: "table"
   },
   {
-    id: "sheet-skeleton",
-    title: "Sheet skeleton",
+    id: "combobox-creation",
+    title: "Create from a picker",
     description:
-      "Sheet and Dialog pin the header and footer with full-bleed rules, so only the body scrolls.",
-    date: "2026-11-02",
-    commit: "ae33ae8198",
-    page: "sheet"
+      "A Combobox can create the entity it picks in a dialog, starting with app connections, so nobody leaves the flow.",
+    date: "2026-11-06",
+    commit: "d1c73789d8",
+    page: "combobox"
+  },
+  {
+    id: "actions-tail",
+    title: "Actions tail",
+    description:
+      "Striped rows paint across pinned cells, the actions tail end-aligns at row-target height and destructive actions go last in More.",
+    date: "2026-11-06",
+    commit: "d05df39e77",
+    page: "table"
+  },
+  {
+    id: "toast-disabled",
+    title: "Toasts and disabled reasons",
+    description:
+      "The shell hosts toasts, and a disabled Button explains why in a tooltip through disabledReason.",
+    date: "2026-11-05",
+    commit: "32e2402f30",
+    page: "toast"
+  },
+  {
+    id: "grouped-rows",
+    title: "Grouped rows",
+    description: "DataTable groups rows under header rows and nests one level of child rows.",
+    date: "2026-11-05",
+    commit: "94a2ac115f",
+    page: "table"
+  },
+  {
+    id: "nested-overlays",
+    title: "Nested menus",
+    description:
+      "Submenus portal into the v4 layer, so they paint above and beside their parent menu.",
+    date: "2026-11-05",
+    commit: "3a41c65e00",
+    page: "dropdown-menu"
+  },
+  {
+    id: "badge-field-mapping",
+    title: "Badges and FieldMapping",
+    description:
+      "Badges that share a row with controls take control height, and FieldMapping pairs source and destination fields.",
+    date: "2026-11-04",
+    commit: "35dce26df3",
+    page: "field-mapping"
+  },
+  {
+    id: "focus-clearance",
+    title: "Focus rings",
+    description:
+      "Focus rings clear overlay, table cell and scroll edges through a shared clearance.",
+    date: "2026-11-04",
+    commit: "d83fdd0dfc",
+    page: "rules"
+  },
+  {
+    id: "band-org-zone",
+    title: "Band org zone",
+    description:
+      "The band's org zone matches the sidebar, and the collapsed org trigger hugs its content and eases with the sidebar.",
+    date: "2026-11-04",
+    commit: "cf39aaea7d",
+    page: "top-bar"
+  },
+  {
+    id: "routed-workbench",
+    title: "Routed workbench",
+    description:
+      "The workbench runs on real routes with a nested, route-aware Sidebar, and old hash links redirect.",
+    date: "2026-11-04",
+    commit: "8c3ea0c678",
+    page: "sidebar"
   }
 ];
