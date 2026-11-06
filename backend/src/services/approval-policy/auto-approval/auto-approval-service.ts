@@ -355,7 +355,13 @@ export const autoApprovalServiceFactory = ({
   }): Promise<TAutoApprovalEvidence> => {
     const targets = new Map<
       string,
-      { connectionId: string; subject: string; inputId: string | null; constraintIds: Set<string> }
+      {
+        connectionId: string;
+        subject: string;
+        inputId: string | null;
+        constraintIds: Set<string>;
+        valuesByConstraint: Record<string, string[]>;
+      }
     >();
     stored.rules.forEach((rule) =>
       rule.conditions.forEach((condition) => {
@@ -364,9 +370,13 @@ export const autoApprovalServiceFactory = ({
           connectionId: condition.connectionId,
           subject: condition.subject,
           inputId: condition.inputId,
-          constraintIds: new Set<string>()
+          constraintIds: new Set<string>(),
+          valuesByConstraint: {}
         };
         target.constraintIds.add(condition.constraint);
+        target.valuesByConstraint[condition.constraint] = [
+          ...new Set([...(target.valuesByConstraint[condition.constraint] ?? []), ...condition.values])
+        ];
         targets.set(key, target);
       })
     );
@@ -426,10 +436,14 @@ export const autoApprovalServiceFactory = ({
           try {
             facts = await withTimeout(
               (signal) =>
-                definition.resolve(connection, parsedInput?.id ?? null, ctx, [...target.constraintIds], {
-                  ...providerDeps,
-                  signal
-                }),
+                definition.resolve(
+                  connection,
+                  parsedInput?.id ?? null,
+                  ctx,
+                  [...target.constraintIds],
+                  { ...providerDeps, signal },
+                  target.valuesByConstraint
+                ),
               RESOLVE_TIMEOUT_MS,
               `${getAppName(connection.app)} didn't respond in time`
             );

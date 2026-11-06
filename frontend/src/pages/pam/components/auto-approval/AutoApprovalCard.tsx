@@ -35,6 +35,7 @@ import {
   AUTO_APPROVAL_LIMITS,
   findSubject,
   getDefaultRuleConditions,
+  isRequesterSubject,
   newKey,
   TAutoApprovalDraft
 } from "./autoApprovalDraft";
@@ -75,6 +76,9 @@ export const AutoApprovalCard = ({
     OrgPermissionSubjects.AppConnections
   );
   const [isCreatingConnection, setIsCreatingConnection] = useState(false);
+  const hasRequesterChecks = catalog.some((connection) =>
+    connection.subjects.some((subject) => isRequesterSubject(subject.id))
+  );
 
   const availableInputs = catalog.flatMap((connection) =>
     connection.subjects
@@ -230,7 +234,8 @@ export const AutoApprovalCard = ({
 
                 {draft.inputs.length === 0 ? (
                   <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
-                    No request form fields added. Rules have nothing to check until you add one.
+                    No request form fields added.
+                    {!hasRequesterChecks && " Rules have nothing to check until you add one."}
                   </div>
                 ) : (
                   <div className="flex flex-col divide-y divide-border rounded-md border border-border">

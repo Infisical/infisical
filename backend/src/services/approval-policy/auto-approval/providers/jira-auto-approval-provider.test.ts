@@ -145,7 +145,8 @@ describe("resolving a Jira ticket", () => {
       "PAY-123",
       ctx,
       constraintIds,
-      {} as Parameters<typeof resolve>[4]
+      {} as Parameters<typeof resolve>[4],
+      {}
     ) as Promise<TJiraTicketFacts>;
 
   beforeEach(() => {
