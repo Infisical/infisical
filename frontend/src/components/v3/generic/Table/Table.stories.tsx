@@ -100,6 +100,10 @@ const identities: Identity[] = [
  *   error messages) onto more lines within a bounded column width
  *   (`max-w-md`, overridable through `className`). Set it on every cell of
  *   the column.
+ * - **`isTopAligned`** on `TableCell` aligns content to the top of the row
+ *   instead of the middle, for rows whose cells can grow to different heights
+ *   (editable multi-line values, inline validation errors). Set it on every
+ *   cell of the row so their first lines stay level.
  *
  * While rows load, render `TableSkeletonRows` inside `TableBody` with the
  * table's column count (and an optional `rows` count, default 3) instead of

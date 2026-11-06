@@ -50,7 +50,8 @@ not already canonical lowercase, and placeholders without a membership in the lo
 `syncSsoUserProfile` copies the asserted email and name onto the account. All three login services call it
 after `ensureSsoAccountVerified`, outside the caller's transaction.
 
-- **Gate: `organization.authEnforced` and a verified alias.** An unverified alias with a new email is what
+- **Gate: `isIdpAuthoritative` (`isIdpAuthoritativeForDomain`: the org enforces SSO and owns the asserted
+  domain) and a verified alias.** An unverified alias with a new email is what
   `isStaleSsoAlias` catches; treating it as a rename would let a stale alias rewrite someone else's account.
 - **It never fails a login.** A throw locks the person out of an org that has no other way in; stale data
   is what we already had. Every failure returns the unchanged user.

@@ -89,10 +89,25 @@ On the **Discovery Sources** table, select the options menu on the source's row,
     On the **Staged Accounts** tab, select the accounts you want, then select **Import Accounts**.
   </Step>
   <Step>
-    Select a **Destination Folder**, then a template for each account type in your selection (**Windows AD Template**, **Windows Template**, or both), and select **Import**.
+    Select a **Destination Folder**, then a template for each account type in your selection (**Windows AD Template**, **Windows Template**, or both).
   </Step>
   <Step>
-    Go to **Privileged Access Management** > **Accounts**. For each imported account, open the options menu on its row, select **Configure**, and enter its password on the **Configuration** tab. The scan doesn't read passwords, so you can't connect to an imported account until you enter its password.
+    To have Infisical set a new password on each account during the import, turn on **Rotate account passwords on import**. Then, for each account type in your selection, pick the [rotation account](/documentation/platform/pam/credential-rotation/overview#rotation-accounts) that Infisical signs in as to change the passwords:
+
+    - **Windows AD Rotation Account:** an account in the same domain (by default, the source's credential account)
+    - **Windows Rotation Account:** a local account, which can only rotate the local accounts on its own server
+
+    If you leave a field empty, Infisical imports accounts of that type without a password.
+
+    <Warning>
+      Rotation changes each account's password in Active Directory or on its server, so anything that signs in with the old password stops working. If the scan found the account's [dependencies](/documentation/platform/pam/credential-rotation/windows#dependencies), Infisical updates them with the new password.
+    </Warning>
+  </Step>
+  <Step>
+    Select **Import**.
+  </Step>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**. The scan doesn't read passwords, so each imported account that Infisical didn't rotate shows **Unavailable** until you set its password. For each of those accounts, open the options menu on its row, select **Configure**, and enter its password on the **Configuration** tab.
   </Step>
 </Steps>
 

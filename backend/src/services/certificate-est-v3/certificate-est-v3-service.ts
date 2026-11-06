@@ -349,7 +349,9 @@ export const certificateEstV3ServiceFactory = ({
     const verifiedChains = await Promise.all(
       caCertChains.map((chain) => {
         const caCert = new x509.X509Certificate(chain.certificate);
-        const caChain = extractX509CertFromChain(chain.certificateChain)?.map((c) => new x509.X509Certificate(c)) || [];
+        const caChain = chain.certificateChain
+          ? extractX509CertFromChain(chain.certificateChain).map((c) => new x509.X509Certificate(c))
+          : [];
 
         return isCertChainValid([cert, caCert, ...caChain]);
       })
@@ -368,6 +370,12 @@ export const certificateEstV3ServiceFactory = ({
 
     if (storedCert?.status === CertStatus.REVOKED) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
+    }
+
+    if (storedCert?.deletedAt) {
+      throw new UnauthorizedError({
+        message: `Client certificate with serial number '${cert.serialNumber}' was deleted and can no longer be re-enrolled. Enroll a new certificate instead.`
+      });
     }
 
     const $rejectReenrollCsr = async (message: string) => {

@@ -12,6 +12,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
+import { csrSchema } from "@app/services/certificate-common/certificate-constants";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -298,7 +299,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
               return false;
             }
           }, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)"),
-          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096).optional()
+          csr: csrSchema.optional()
         })
         .refine((data) => data.csr || data.keyAlgorithm, {
           message: "Either csr or keyAlgorithm must be provided"

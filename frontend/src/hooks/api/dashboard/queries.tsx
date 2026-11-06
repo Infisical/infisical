@@ -1,5 +1,11 @@
 import { useCallback } from "react";
-import { useQueries, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  UseQueryOptions
+} from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -16,11 +22,11 @@ import {
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
   TFolderMoveDestinationCheck,
-  TGetAccessibleSecretsDTO,
   TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretKeyExistsDTO,
   TGetSecretMetadataDTO,
   TGetSecretValueDTO,
   TSearchSecretsByMetadataDTO,
@@ -74,16 +80,16 @@ export const dashboardKeys = {
     ] as const,
   searchSecretsByMetadata: ({ projectId, ...params }: TSearchSecretsByMetadataDTO) =>
     [...dashboardKeys.all(), "secrets-by-metadata", projectId, params] as const,
-  getAccessibleSecrets: ({
+  getSecretKeyExists: ({
     projectId,
     secretPath,
-    environment,
-    filterByAction
-  }: TGetAccessibleSecretsDTO) =>
+    environments,
+    secretKey
+  }: TGetSecretKeyExistsDTO) =>
     [
-      ...dashboardKeys.all(),
-      "accessible-secrets",
-      { projectId, secretPath, environment, filterByAction }
+      ...dashboardKeys.getDashboardSecrets({ projectId, secretPath }),
+      "secret-key-exists",
+      { environments, secretKey }
     ] as const,
   getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
   getSecretValue: ({
@@ -124,6 +130,30 @@ export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?
   );
   return data;
 };
+
+export const secretKeyExistsQueryOptions = (params: TGetSecretKeyExistsDTO) =>
+  queryOptions({
+    queryKey: dashboardKeys.getSecretKeyExists(params),
+    queryFn: async () => {
+      const { environments, ...rest } = params;
+      const { data } = await apiRequest.get<{ existingEnvironments: string[] }>(
+        "/api/v1/dashboard/secrets/key-exists",
+        { params: { ...rest, environments: encodeURIComponent(environments.join(",")) } }
+      );
+      return data.existingEnvironments;
+    },
+    staleTime: 60 * 1000,
+    retry: false
+  });
+
+export const useGetSecretKeyExistingEnvironments = (
+  params: TGetSecretKeyExistsDTO,
+  { enabled = true }: { enabled?: boolean } = {}
+) =>
+  useQuery({
+    ...secretKeyExistsQueryOptions(params),
+    enabled: enabled && Boolean(params.secretKey) && params.environments.length > 0
+  });
 
 export const fetchProjectSecretsOverview = async ({
   environments,
@@ -484,23 +514,6 @@ export const fetchProjectSecretsQuickSearch = async ({
   return data;
 };
 
-const fetchAccessibleSecrets = async ({
-  projectId,
-  secretPath,
-  environment,
-  filterByAction,
-  recursive = false
-}: TGetAccessibleSecretsDTO) => {
-  const { data } = await apiRequest.get<{ secrets: SecretV3Raw[] }>(
-    "/api/v1/dashboard/accessible-secrets",
-    {
-      params: { projectId, secretPath, environment, filterByAction, recursive }
-    }
-  );
-
-  return data.secrets;
-};
-
 export const useGetProjectSecretsQuickSearch = (
   {
     projectId,
@@ -643,38 +656,6 @@ export const useSearchSecretsByMetadata = (
         secretPath
       }),
     placeholderData: (previousData) => previousData
-  });
-};
-
-export const useGetAccessibleSecrets = ({
-  projectId,
-  secretPath,
-  environment,
-  filterByAction,
-  options,
-  recursive = false
-}: TGetAccessibleSecretsDTO & {
-  options?: Omit<
-    UseQueryOptions<
-      SecretV3Raw[],
-      unknown,
-      SecretV3Raw[],
-      ReturnType<typeof dashboardKeys.getAccessibleSecrets>
-    >,
-    "queryKey" | "queryFn"
-  >;
-}) => {
-  return useQuery({
-    ...options,
-    queryKey: dashboardKeys.getAccessibleSecrets({
-      projectId,
-      secretPath,
-      environment,
-      filterByAction,
-      recursive
-    }),
-    queryFn: () =>
-      fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction, recursive })
   });
 };
 

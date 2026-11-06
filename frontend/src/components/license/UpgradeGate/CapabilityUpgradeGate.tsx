@@ -15,8 +15,7 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
-import { getOrgScopedProductFromPath } from "@app/helpers/project";
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { isAgentVaultProjectPath } from "@app/helpers/project";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import {
@@ -59,8 +58,7 @@ const CapabilityUpgradeDialog = ({
   const { pathname } = useLocation();
   const isAgentVault =
     intent.productName === "Agent Vault" ||
-    (intent.featureKey.startsWith("audit_log") &&
-      getOrgScopedProductFromPath(pathname) === ProjectType.AgentVault);
+    (intent.featureKey.startsWith("audit_log") && isAgentVaultProjectPath(pathname));
   const eventPropertiesRef = useRef<{
     paywallKey: string;
     paywallText: string;

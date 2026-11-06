@@ -28,6 +28,11 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import {
+  findCallerDelegation,
+  resolveOnBehalfOfUser,
+  TOnBehalfOfDeps
+} from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
 import {
   checkOauthClaimUnderLock,
@@ -35,7 +40,12 @@ import {
   OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE,
   TAgentVaultOauthServiceFactory
 } from "../agent-vault-oauth/agent-vault-oauth-service";
-import { AGENT_VAULT_OAUTH_HEADER_NAME, TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
+import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import {
+  AGENT_VAULT_OAUTH_HEADER_NAME,
+  AGENT_VAULT_OAUTH_HEADER_PREFIX,
+  TAgentVaultOauthConfig
+} from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import {
   clearPersonalValuesAfterRevoke,
@@ -56,6 +66,7 @@ import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
+  AgentVaultOauthStatus,
   AgentVaultResourceRole,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
@@ -63,7 +74,11 @@ import {
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import { ownerOrNullOf } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultGrantedReachability, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import {
+  getAgentVaultGrantedReachability,
+  getAgentVaultReachability,
+  intersectAccessBundleIds
+} from "../agent-vault/agent-vault-permission";
 import {
   assertCredentialTypeSupported,
   assertServiceFieldsSupported,
@@ -75,6 +90,7 @@ import {
   TAgentVaultServiceConfig
 } from "../agent-vault/agent-vault-service-type-fns";
 import {
+  expandStoredVariableReferences,
   findStoredVariableIds,
   findVariableKeys,
   toStoredVariableReferences,
@@ -91,6 +107,7 @@ import {
   TAgentVaultBearerMemberField,
   TAgentVaultCredentialSummary,
   TAgentVaultCredentialUpdate,
+  TAgentVaultCustomHeaderUpdate,
   TAgentVaultVariableReferenceSummary,
   TCreateAccessBundleDTO,
   TCreateServiceDTO,
@@ -98,6 +115,7 @@ import {
   TDeleteServiceDTO,
   TGetAccessBundleDTO,
   TListAccessBundlesDTO,
+  TListMcpToolsDTO,
   TListMembersDTO,
   TRevokeMembersDTO,
   TUpdateAccessBundleDTO,
@@ -111,6 +129,7 @@ import {
   splitCredential,
   TCredentialWrite
 } from "./agent-vault-credential-write-fns";
+import { listMcpServerTools, McpListError } from "./agent-vault-mcp-tool-list-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "./agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceDALFactory } from "./agent-vault-service-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "./agent-vault-service-substitution-dal";
@@ -118,14 +137,19 @@ import {
   TAgentVaultServiceVariableReferenceDALFactory,
   TAgentVaultVariableReferenceWithKey
 } from "./agent-vault-service-variable-reference-dal";
-import { planTransformationDiff, TTransformationWrite } from "./agent-vault-transformation-fns";
+import {
+  assertCustomHeadersDoNotShadowCredential,
+  matchTransformationRows,
+  planTransformationDiff,
+  TTransformationWrite
+} from "./agent-vault-transformation-fns";
 
 type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultAccessBundleDAL: TAgentVaultAccessBundleDALFactory;
   agentVaultServiceDAL: TAgentVaultServiceDALFactory;
   agentVaultServiceCustomHeaderDAL: TAgentVaultServiceCustomHeaderDALFactory;
   agentVaultServiceSubstitutionDAL: TAgentVaultServiceSubstitutionDALFactory;
-  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeys" | "lockForReference">;
+  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeys" | "lockForReference" | "findValuesForResolve">;
   agentVaultServiceVariableReferenceDAL: TAgentVaultServiceVariableReferenceDALFactory;
   agentVaultPersonalValueDAL: Pick<
     TAgentVaultPersonalValueDALFactory,
@@ -142,9 +166,12 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultDelegationDAL: TOnBehalfOfDeps["agentVaultDelegationDAL"];
+  orgDAL: TOnBehalfOfDeps["orgDAL"];
+  userDAL: TOnBehalfOfDeps["userDAL"];
   agentVaultOauthService: Pick<
     TAgentVaultOauthServiceFactory,
-    "claimAuthorization" | "buildCredentialFromAuthorization"
+    "claimAuthorization" | "buildCredentialFromAuthorization" | "readAuthorizationAccessToken" | "refreshServiceToken"
   >;
 } & TAgentVaultActorNameDALs;
 
@@ -179,7 +206,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     agentVaultOauthService,
     userDAL,
     groupDAL,
-    identityDAL
+    identityDAL,
+    agentVaultDelegationDAL,
+    orgDAL
   } = deps;
 
   const bundleScope = (projectId: string, accessBundleId: string) => ({
@@ -309,12 +338,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     if (!groupId && (await isInProjectThroughGroup({ projectId, userId, identityId }))) {
       throw new BadRequestError({
-        message: `The ${actor} is in Agent Vault through a group. Grant the access bundle to the group, or add them directly under Access Control first.`
+        message: `The ${actor} is in this Agent Vault project through a group. Grant the access bundle to the group, or add them directly under Access Control first.`
       });
     }
 
     throw new BadRequestError({
-      message: `The ${actor} is not a member of Agent Vault. Add them under Access Control first.`
+      message: `The ${actor} is not a member of this Agent Vault project. Add them under Access Control first.`
     });
   };
 
@@ -427,6 +456,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       hostPattern: service.hostPattern,
       allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
       allowedPathPrefixes: service.allowedPathPrefixes ?? null,
+      allowedTools: service.allowedTools ?? null,
       credential: summarizeCredential(service),
       customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
       substitutions: substitutions.map((substitution) => ({
@@ -588,38 +618,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE =
     "This service's credential was changed by another save while this one was in progress. Reload the service and save again.";
 
-  // Basic and OAuth have no header name in their config, but the proxy always writes Authorization for both.
-  const credentialHeaderName = (credentialType: AgentVaultCredentialType, headerName?: string): string | null => {
-    switch (credentialType) {
-      case AgentVaultCredentialType.Bearer:
-        return headerName || "Authorization";
-      case AgentVaultCredentialType.OAuth:
-        return AGENT_VAULT_OAUTH_HEADER_NAME;
-      case AgentVaultCredentialType.Basic:
-        return "Authorization";
-      default:
-        return null;
-    }
-  };
-
-  // The proxy writes the credential last, so a collision costs the header rather than the token; refusing it
-  // on write is what tells the author. Either half of a PATCH can introduce one, which is why both are read.
-  const assertCustomHeadersDoNotShadowCredential = (
-    config: { type: AgentVaultCredentialType; headerName?: string },
-    customHeaders: { name: string }[] | undefined
-  ) => {
-    if (!customHeaders?.length) return;
-    const credentialHeader = credentialHeaderName(config.type, config.headerName);
-    if (!credentialHeader) return;
-
-    const clash = customHeaders.find((header) => header.name.toLowerCase() === credentialHeader.toLowerCase());
-    if (clash) {
-      throw new BadRequestError({
-        message: `The ${credentialHeader} header is already set by the credential. Rename the custom header or change the credential.`
-      });
-    }
-  };
-
   // An authorization only comes from a browser sign-in in the UI, so a machine identity could never hold one.
   const assertOauthConnectedByUser = (ctx: TGetAccessBundleDTO["ctx"], credential?: TAgentVaultCredentialUpdate) => {
     if (credential?.type === AgentVaultCredentialType.OAuth && ctx.actor !== ActorType.USER) {
@@ -679,9 +677,46 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return { bundle, ...reachability };
   };
 
+  // What a session on the user's behalf could use: the bundles both the user and the caller reach, counted against
+  // the user's personal values. Like minting that session, it checks the delegation and then the caller's own bundles
+  // before it looks the user up, so a caller granted no bundle learns nothing about who is in the org.
+  const $onBehalfOfListScope = async ({
+    projectId,
+    ctx,
+    onBehalfOf,
+    callerAccessBundleIds
+  }: {
+    projectId: string;
+    ctx: TListAccessBundlesDTO["ctx"];
+    onBehalfOf: NonNullable<TListAccessBundlesDTO["onBehalfOf"]>;
+    callerAccessBundleIds: string[] | null;
+  }) => {
+    const delegation = await findCallerDelegation({ agentVaultDelegationDAL }, { projectId, ctx });
+    if (callerAccessBundleIds?.length === 0) {
+      return { scopeIds: [] as string[], excludeIds: [] as string[], owner: null };
+    }
+
+    const { user, accessBundleIds: userAccessBundleIds } = await resolveOnBehalfOfUser(
+      { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
+      { projectId, ctx, onBehalfOf, delegation }
+    );
+    return {
+      scopeIds: intersectAccessBundleIds(userAccessBundleIds, callerAccessBundleIds),
+      excludeIds: [] as string[],
+      owner: { userId: user.id }
+    };
+  };
+
   // Setup is counted over every bundle the caller reaches, since an admin can start a session on one they were never
   // granted.
-  const listAccessBundles = async ({ projectId, ctx, requiresSetup, granted, ...page }: TListAccessBundlesDTO) => {
+  const listAccessBundles = async ({
+    projectId,
+    ctx,
+    requiresSetup,
+    granted,
+    onBehalfOf,
+    ...page
+  }: TListAccessBundlesDTO) => {
     const { permission, accessBundleIds, grantedAccessBundleIds } = await getAgentVaultGrantedReachability(
       { permissionService, membershipDAL },
       { projectId, ctx }
@@ -691,12 +726,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    // null is every bundle in the project, which only an admin reaches.
-    const scopeIds = granted ? grantedAccessBundleIds : accessBundleIds;
-    const excludeIds = granted === false ? grantedAccessBundleIds : [];
+    const { scopeIds, excludeIds, owner } = onBehalfOf
+      ? await $onBehalfOfListScope({ projectId, ctx, onBehalfOf, callerAccessBundleIds: accessBundleIds })
+      : {
+          // null is every bundle in the project, which only an admin reaches.
+          scopeIds: granted ? grantedAccessBundleIds : accessBundleIds,
+          excludeIds: granted === false ? grantedAccessBundleIds : [],
+          owner: ownerOrNullOf(ctx)
+        };
     const excluded = new Set(excludeIds);
-
-    const owner = ownerOrNullOf(ctx);
     const pendingByBundleOf = async (bundleIds: string[] | null) => {
       const byBundle = new Map<string, { id: string; name: string }[]>();
       if (!owner || bundleIds?.length === 0) return byBundle;
@@ -933,6 +971,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     transport,
     allowedMethods,
     allowedPathPrefixes,
+    allowedTools,
     credential,
     customHeaders,
     substitutions,
@@ -950,6 +989,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       hostPattern: requestedHostPattern,
       allowedMethods,
       allowedPathPrefixes,
+      allowedTools,
       customHeaders,
       substitutions,
       serverUrl,
@@ -1039,6 +1079,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             hostPattern,
             allowedMethods: allowedMethods ?? null,
             allowedPathPrefixes: allowedPathPrefixes ?? null,
+            allowedTools: allowedTools ?? null,
             credentialType: credential.type,
             credentialConfig,
             encryptedCredential,
@@ -1130,6 +1171,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     transport: sentTransport,
     allowedMethods: sentAllowedMethods,
     allowedPathPrefixes: sentAllowedPathPrefixes,
+    allowedTools: sentAllowedTools,
     substitutions: sentSubstitutions,
     ...rest
   }: TUpdateServiceDTO) => {
@@ -1157,6 +1199,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         transport: sentTransport,
         allowedMethods: sentAllowedMethods,
         allowedPathPrefixes: sentAllowedPathPrefixes,
+        allowedTools: sentAllowedTools,
         substitutions: sentSubstitutions
       },
       service.hostPattern
@@ -1166,13 +1209,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if ([name, credential, customHeaders, ...Object.values(sentFields)].every((value) => value === undefined)) {
       throw new BadRequestError({ message: "Provide at least one field besides 'type' to update" });
     }
-    const { hostPattern: requestedHostPattern, allowedMethods, allowedPathPrefixes, substitutions } = sentFields;
+    const {
+      hostPattern: requestedHostPattern,
+      allowedMethods,
+      allowedPathPrefixes,
+      allowedTools,
+      substitutions
+    } = sentFields;
     const serverUrl = sentFields.serverUrl ?? undefined;
     const transport = sentFields.transport ?? undefined;
     assertServiceFieldsSupported(serviceType, {
       hostPattern: requestedHostPattern,
       allowedMethods,
       allowedPathPrefixes,
+      allowedTools,
       customHeaders,
       substitutions,
       serverUrl,
@@ -1451,6 +1501,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           reconciled.serviceConfig !== undefined ||
           allowedMethods !== undefined ||
           allowedPathPrefixes !== undefined ||
+          allowedTools !== undefined ||
           Object.keys(reconciled.credentialUpdate).length > 0;
 
         const updatedService = hasColumnUpdate
@@ -1463,6 +1514,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
                 // `null` clears the restriction, `undefined` leaves the column alone.
                 ...(allowedMethods === undefined ? {} : { allowedMethods }),
                 ...(allowedPathPrefixes === undefined ? {} : { allowedPathPrefixes }),
+                ...(allowedTools === undefined ? {} : { allowedTools }),
                 ...reconciled.credentialUpdate
               },
               tx
@@ -1636,10 +1688,203 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         transport,
         allowedMethods,
         allowedPathPrefixes,
+        allowedTools,
         substitutions
       },
       credentialReplaced
     };
+  };
+
+  // Unaudited: it changes nothing, and the save that follows is audited.
+  const listMcpTools = async ({
+    accessBundleId,
+    serviceId,
+    serverUrl,
+    transport,
+    credential,
+    customHeaders,
+    ...rest
+  }: TListMcpToolsDTO) => {
+    const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      ProjectPermissionSub.AgentVaultAccessBundles
+    );
+    assertOauthConnectedByUser(rest.ctx, credential);
+    if (credential) assertCredentialTypeSupported(getAgentVaultServiceType(AgentVaultServiceType.Mcp), credential.type);
+
+    const service = serviceId
+      ? await agentVaultServiceDAL.findByIdInAccessBundle({ id: serviceId, accessBundleId: bundle.id })
+      : undefined;
+    if (serviceId && !service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+    if (service && service.type !== AgentVaultServiceType.Mcp) {
+      throw new BadRequestError({ message: `The service '${service.name}' isn't an MCP service, so it has no tools.` });
+    }
+
+    const { decryptor } = await getProjectCipher(rest.projectId);
+    const openValue = (sealed: Buffer) =>
+      (JSON.parse(decryptor({ cipherTextBlob: sealed }).toString("utf-8")) as { value: string }).value;
+    const withPrefix = (prefix: string | undefined, value: string) => (prefix ? `${prefix} ${value}` : value);
+    const noAdminTokenError = () =>
+      new BadRequestError({
+        message: "Each member sets this service's token, so Infisical has no token to load its tools with."
+      });
+
+    // Typed values name variables by key and stored ones by id, so typed ones are stored first and every value is
+    // filled in the way resolve fills it in.
+    const { idOfKey } = await loadProjectVariables(rest.projectId, [
+      ...(credential ? credentialReferenceTexts(credential) : []),
+      ...(customHeaders ?? []).flatMap((header) =>
+        header.value === undefined ? [] : [{ label: `The custom header '${header.name}'`, text: header.value }]
+      )
+    ]);
+    const store = (text: string) => toStoredVariableReferences(text, idOfKey);
+
+    // An OAuth token is issued by the provider, never typed, so like resolve this never expands one.
+    let credentialHeader: { name: string; prefix?: string; value: string; isTyped: boolean };
+    // Set when the token is the service's saved OAuth token, which can be refreshed if the server refuses it.
+    let refreshSavedToken: ((rejectedTokenHash: string) => Promise<string>) | undefined;
+    const credentialType = credential?.type ?? (service?.credentialType as AgentVaultCredentialType | undefined);
+    if (credentialType === AgentVaultCredentialType.OAuth) {
+      let accessToken: string;
+      if (credential?.type === AgentVaultCredentialType.OAuth) {
+        accessToken = await agentVaultOauthService.readAuthorizationAccessToken({
+          authorizationId: credential.authorizationId,
+          projectId: rest.projectId,
+          accessBundleId: bundle.id,
+          serviceId: service?.id,
+          ctx: rest.ctx,
+          serverUrl
+        });
+      } else {
+        const storedServerUrl = getServiceServerUrl(service!.config);
+        // The stored tokens only ever go to the server they were authorized for.
+        if (serverUrl !== storedServerUrl)
+          throw new BadRequestError({ message: OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE });
+        const savedService = service!;
+        const refreshToken = async (rejectedTokenHash?: string) => {
+          const refreshed = await agentVaultOauthService.refreshServiceToken({
+            serviceId: savedService.id,
+            projectId: rest.projectId,
+            expiresWithinSeconds: 60,
+            rejectedTokenHash,
+            destination: { hostPattern: savedService.hostPattern, serverUrl: storedServerUrl }
+          });
+          if (refreshed.status === AgentVaultOauthStatus.NeedsReauthorization) {
+            throw new BadRequestError({
+              message:
+                "This service's sign-in is no longer accepted. Reauthorize the service, then load the tools again."
+            });
+          }
+          return refreshed.credential.value;
+        };
+        accessToken = await refreshToken();
+        refreshSavedToken = refreshToken;
+      }
+      credentialHeader = {
+        name: AGENT_VAULT_OAUTH_HEADER_NAME,
+        prefix: AGENT_VAULT_OAUTH_HEADER_PREFIX,
+        value: accessToken,
+        isTyped: false
+      };
+    } else if (credentialType === AgentVaultCredentialType.Bearer) {
+      const stored = service?.credentialType === AgentVaultCredentialType.Bearer ? service : undefined;
+      let write: TCredentialWrite;
+      if (!credential)
+        write = {
+          config: stored!.credentialConfig as TAgentVaultCredentialConfig,
+          secret: undefined,
+          memberProvidedFields: stored!.memberProvidedFields as TAgentVaultMemberProvidedField[] | null
+        };
+      else if (service) write = mergeCredential(storeCredentialReferences(credential, store), service, null);
+      else write = splitCredential(storeCredentialReferences(credential, store));
+      if (write.memberProvidedFields?.length) throw noAdminTokenError();
+
+      const config = write.config as Extract<TAgentVaultCredentialConfig, { type: AgentVaultCredentialType.Bearer }>;
+      const value =
+        write.secret?.value ?? (stored?.encryptedCredential ? openValue(stored.encryptedCredential) : undefined);
+      if (value === undefined) throw noAdminTokenError();
+      credentialHeader = { name: config.headerName, prefix: config.headerPrefix, value, isTyped: true };
+    } else {
+      throw new BadRequestError({ message: "Add the service's credential, then load the tools." });
+    }
+
+    const storedCustomHeaders = service ? await agentVaultServiceCustomHeaderDAL.findByServiceIds([service.id]) : [];
+    // Matched the way a save matches them, so the tools load with exactly the headers that save would store.
+    const matchedHeaders = customHeaders
+      ? matchTransformationRows({
+          existing: storedCustomHeaders,
+          incoming: customHeaders.map((header) => ({ id: header.id, naturalKey: header.name.toLowerCase() })),
+          naturalKeyOfRow: (row) => row.name.toLowerCase(),
+          subject: "custom header"
+        })
+      : storedCustomHeaders;
+    const headerSource: (TAgentVaultCustomHeaderUpdate | TAgentVaultServiceCustomHeaders)[] =
+      customHeaders ?? storedCustomHeaders;
+    const headerTexts = headerSource.map((header, index) => {
+      if ("value" in header && header.value !== undefined)
+        return { name: header.name, prefix: header.prefix, text: store(header.value) };
+      const match = matchedHeaders[index];
+      if (!match) {
+        throw new BadRequestError({
+          message: `Enter a value for the custom header '${header.name}', then load the tools.`
+        });
+      }
+      return { name: header.name, prefix: header.prefix, text: openValue(match.encryptedValue) };
+    });
+    assertCustomHeadersDoNotShadowCredential({ type: credentialType, headerName: credentialHeader.name }, headerTexts);
+    // A rejection only blames the saved token when nothing else in the request differs from what is saved: a wrong
+    // typed header must not refresh the token, or mark the saved service as needing reauthorization.
+    const isSavedConnection =
+      service !== undefined &&
+      transport === (service.config as TAgentVaultServiceConfig | null)?.transport &&
+      (!customHeaders ||
+        (customHeaders.length === storedCustomHeaders.length &&
+          customHeaders.every((header, index) => {
+            const match = matchedHeaders[index];
+            return (
+              header.value === undefined &&
+              match !== undefined &&
+              header.name.toLowerCase() === match.name.toLowerCase() &&
+              (header.prefix ?? "") === match.prefix
+            );
+          })));
+
+    const texts = [
+      ...(credentialHeader.isTyped ? [credentialHeader.value] : []),
+      ...headerTexts.map((header) => header.text)
+    ];
+    const variableIds = [...new Set(texts.flatMap(findStoredVariableIds))];
+    const variableValues = new Map(
+      (await agentVaultVariableDAL.findValuesForResolve({ variableIds, projectId: rest.projectId, owner: null })).map(
+        (row) => [row.id, openValue(row.encryptedValue)]
+      )
+    );
+    const expand = (text: string) => expandStoredVariableReferences(text, (id) => variableValues.get(id));
+
+    const headerValues = headerTexts.map((header) => ({ ...header, value: expand(header.text) }));
+    const credentialValue = credentialHeader.isTyped ? expand(credentialHeader.value) : credentialHeader.value;
+    const listWith = (token: string) =>
+      listMcpServerTools({
+        serverUrl,
+        transport,
+        headers: {
+          ...Object.fromEntries(headerValues.map((header) => [header.name, withPrefix(header.prefix, header.value)])),
+          [credentialHeader.name]: withPrefix(credentialHeader.prefix, token)
+        },
+        secrets: [token, ...headerValues.map((header) => header.value)]
+      });
+    try {
+      return { tools: await listWith(credentialValue) };
+    } catch (err) {
+      // A saved token can be refused before it expires (revoked, or no expiry from the provider), so it is refreshed
+      // once, as the proxy does, before the admin is asked to reauthorize.
+      if (!(err instanceof McpListError && err.isCredentialRejected) || !refreshSavedToken || !isSavedConnection)
+        throw err;
+      const refreshedToken = await refreshSavedToken(hashAccessToken(credentialValue));
+      if (refreshedToken === credentialValue) throw err;
+      return { tools: await listWith(refreshedToken) };
+    }
   };
 
   const deleteService = async ({ accessBundleId, serviceId, ...rest }: TDeleteServiceDTO) => {
@@ -1661,7 +1906,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
-  const listMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
+  const listMembers = async ({ accessBundleId, actorType, search, limit, offset, ...rest }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
@@ -1669,7 +1914,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
     return agentVaultAccessBundleDAL.findMembers({
       projectId: rest.projectId,
+      orgId: rest.ctx.actorOrgId,
       accessBundleId: bundle.id,
+      actorType,
       search,
       limit,
       offset
@@ -1679,7 +1926,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   // The candidates for a grant are the product's own members, since addMembers refuses anyone else, minus
   // whoever already holds this bundle. A member reaching it only through a granted group stays a
   // candidate: an individual grant is a different thing, and it outlives the group membership.
-  const listAvailableMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
+  const listAvailableMembers = async ({
+    accessBundleId,
+    actorType,
+    search,
+    limit,
+    offset,
+    ...rest
+  }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
@@ -1688,7 +1942,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return agentVaultMemberDAL.findProductMembers({
       projectId: rest.projectId,
       orgId: rest.ctx.actorOrgId,
-      actorTypes: ALL_GRANTEE_ACTOR_TYPES,
+      actorTypes: actorType ? [actorType] : ALL_GRANTEE_ACTOR_TYPES,
       search,
       limit,
       offset,
@@ -1853,6 +2107,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     deleteAccessBundle,
     createService,
     updateService,
+    listMcpTools,
     deleteService,
     listMembers,
     listAvailableMembers,

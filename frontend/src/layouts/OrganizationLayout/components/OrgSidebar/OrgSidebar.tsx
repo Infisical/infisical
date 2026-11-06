@@ -5,6 +5,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/com
 import { useOrganization } from "@app/context";
 import {
   hasIntermediateProjectsView,
+  isAgentVaultProjectPath,
   parseProjectSlugFromPath,
   urlSlugToProjectType
 } from "@app/helpers/project";
@@ -40,7 +41,7 @@ export const OrgSidebar = () => {
 
   let scope: "project" | "sub-org" | "org" | "pam" | "agent-vault" | "secret-scanning" = "org";
   if (orgScopedProduct === ProjectType.PAM) scope = "pam";
-  else if (orgScopedProduct === ProjectType.AgentVault) scope = "agent-vault";
+  else if (isAgentVaultProjectPath(pathname)) scope = "agent-vault";
   else if (orgScopedProduct === ProjectType.SecretScanning) scope = "secret-scanning";
   else if (isInsideProject || isOnProjectTypeListing) scope = "project";
   else if (isSubOrganization) scope = "sub-org";

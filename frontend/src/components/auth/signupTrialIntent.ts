@@ -104,11 +104,9 @@ export const getSignupTrialProjectType = (intent: SignupTrialIntent | null): Sig
   intent ? [TRIAL_PRODUCTS[intent.product].projectType] : [];
 
 export const getSignupTrialBillingSearch = (
-  intent: Pick<SignupTrialIntent, "product" | "plan" | "cycle">,
-  returnPath: string
+  intent: Pick<SignupTrialIntent, "product" | "plan" | "cycle">
 ) => ({
   upgradeProduct: TRIAL_PRODUCTS[intent.product].billingProduct,
   upgradePlan: intent.plan,
-  ...(intent.cycle && { upgradeCycle: intent.cycle }),
-  upgradeReturnPath: returnPath
+  ...(intent.cycle && { upgradeCycle: intent.cycle })
 });

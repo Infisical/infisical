@@ -7,6 +7,7 @@ import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-app
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { TAgentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
 import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { TAgentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { TAgentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
@@ -22,6 +23,7 @@ import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audi
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
+import { TCertificateAuthorityCrossSignedCertServiceFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-service";
 import { TCertificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
@@ -222,6 +224,7 @@ declare module "@fastify/request-context" {
     userAuthInfo?: {
       userId: string;
       email: string;
+      issuingRootOrgId?: string;
     };
     projectDetails?: {
       id: string;
@@ -300,7 +303,6 @@ declare module "fastify" {
     internalCertManagerProjectId: string;
     internalPamProjectId: string;
     internalSecretScanningProjectId: string;
-    internalAgentVaultProjectId: string;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
       allowedFields?: TAllowedFields[];
@@ -410,6 +412,7 @@ declare module "fastify" {
     agentVaultSkill: TAgentVaultSkillServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
     agentVaultMembership: TAgentVaultMembershipServiceFactory;
+    agentVaultDelegation: TAgentVaultDelegationServiceFactory;
     certManagerInstance: TCertManagerInstanceServiceFactory;
     certManagerExport: TCertManagerExportServiceFactory;
     certificateAuthority: TCertificateAuthorityServiceFactory;
@@ -477,6 +480,7 @@ declare module "fastify" {
     pit: TPitServiceFactory;
     secretScanningV2: TSecretScanningV2ServiceFactory;
     internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
+    certificateAuthorityCrossSignedCert: TCertificateAuthorityCrossSignedCertServiceFactory;
     pkiTemplate: TPkiTemplatesServiceFactory;
     reminder: TReminderServiceFactory;
     eventBus: TInternalEventBusService;

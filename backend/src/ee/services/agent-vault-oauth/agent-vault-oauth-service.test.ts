@@ -1437,11 +1437,13 @@ describe("refreshing a service's token", () => {
         rejectedTokenHash: hashAccessToken("old-access"),
         requiredScopes: Array.from({ length: 50 }, (_, index) => `${prefix}:${index}`)
       });
-    await report("a");
-    await report("b");
-    await report("c");
+    const reports = MAX_OAUTH_SCOPES / 50 + 1;
+    for (let i = 0; i < reports; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await report(`r${i}`);
+    }
     expect(config().requiredScopes).toHaveLength(MAX_OAUTH_SCOPES);
-    expect(config().requiredScopes).not.toContain("c:0");
+    expect(config().requiredScopes).not.toContain(`r${reports - 1}:0`);
   });
 
   test("a scope report for a service that moved is a 409 and changes nothing", async () => {

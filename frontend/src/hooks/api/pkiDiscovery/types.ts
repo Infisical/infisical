@@ -162,6 +162,7 @@ export type TPkiInstallationCert = {
   notBefore?: string | null;
   notAfter?: string | null;
   status?: string | null;
+  deletedAt?: string | null;
   friendlyName?: string | null;
   fingerprintSha256?: string | null;
 };

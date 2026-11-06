@@ -15,7 +15,7 @@ To add an HTTP service to an access bundle:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
+    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
   </Step>
   <Step>
     On the **Choose a template** panel, pick the template for the API you want to reach, or select **Custom HTTP API** to configure the host and header yourself.
@@ -66,7 +66,7 @@ For **Bearer** and **Basic** services, if the agent's request already carries a 
 
 ## Member-provided values
 
-By default, you set the whole credential and every session uses it. If each member should call the API with their own token or login, such as a personal API key, you can make that part of the credential member provided. Each member then [sets a personal value](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), and a session uses the personal value of the member who created the session.
+By default, you set the whole credential and every session uses it. If each member should call the API with their own token or login, such as a personal API key, you can make that part of the credential member provided. Each member then [sets a personal value](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), and a session uses the personal value of the member who created it. If a machine identity creates the session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), the session uses that user's personal value instead.
 
 You can make these credential fields member provided:
 
@@ -77,7 +77,7 @@ To make a field member provided:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Access Bundles** and select the access bundle. Open the service's actions menu and select **Edit**, then go to the **Credential** step.
+    In your Agent Vault project, go to **Access Bundles** and select the access bundle. Open the service's actions menu and select **Edit**, then go to the **Credential** step.
   </Step>
   <Step>
     Next to the field, turn on **Member provided**.

@@ -9,7 +9,11 @@ import {
   ResourceType,
   TableName
 } from "@app/db/schemas";
-import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_ACTOR_COLUMN,
+  AgentVaultMemberType,
+  TAgentVaultActorColumn
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 
@@ -39,12 +43,6 @@ export type TAgentVaultProductMember = TAgentVaultProductActor & {
   role: string;
   isActive: boolean;
   addedAt: Date;
-};
-
-const ACTOR_COLUMN: Record<AgentVaultMemberType, "actorUserId" | "actorIdentityId" | "actorGroupId"> = {
-  [AgentVaultMemberType.User]: "actorUserId",
-  [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
-  [AgentVaultMemberType.Group]: "actorGroupId"
 };
 
 type TActorRow = {
@@ -95,13 +93,24 @@ type TFindProductMembersDTO = {
   offset: number;
   // Set to list the members who could still be granted that bundle.
   excludeAccessBundleId?: string;
+  // Set to list the members who could still be added to that delegation.
+  excludeDelegationId?: string;
 };
 
-type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeAccessBundleId">;
+type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeAccessBundleId" | "excludeDelegationId">;
 
 export const agentVaultMemberDALFactory = (db: TDbClient) => {
   const findProductMembers = async (
-    { projectId, orgId, actorTypes, search, limit, offset, excludeAccessBundleId }: TFindProductMembersDTO,
+    {
+      projectId,
+      orgId,
+      actorTypes,
+      search,
+      limit,
+      offset,
+      excludeAccessBundleId,
+      excludeDelegationId
+    }: TFindProductMembersDTO,
     tx?: Knex
   ): Promise<{ members: TAgentVaultProductMember[]; totalCount: number }> => {
     if (!actorTypes.length) return { members: [], totalCount: 0 };
@@ -109,7 +118,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      const alreadyGranted = (column: (typeof ACTOR_COLUMN)[AgentVaultMemberType]) =>
+      const alreadyGranted = (column: TAgentVaultActorColumn) =>
         conn(TableName.Membership)
           .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -130,7 +139,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
         void query.where((qb) => {
           actorTypes.forEach((type) => {
-            const column = ACTOR_COLUMN[type];
+            const column = AGENT_VAULT_ACTOR_COLUMN[type];
             void qb.orWhere((typeQb) => {
               void typeQb.whereNotNull(`${TableName.Membership}.${column}`);
               // Inside the block, where the column is known non-null: a bare whereNotIn would read
@@ -141,6 +150,21 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
             });
           });
         });
+
+        // A delegation names a member by its membership row, so this needs no per-type column.
+        if (excludeDelegationId) {
+          void query.whereNotExists(
+            conn(TableName.AgentVaultDelegationSubject)
+              .where(`${TableName.AgentVaultDelegationSubject}.delegationId`, excludeDelegationId)
+              .whereRaw(`??.?? = ??.??`, [
+                TableName.AgentVaultDelegationSubject,
+                "membershipId",
+                TableName.Membership,
+                "id"
+              ])
+              .select(conn.raw("1"))
+          );
+        }
 
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
@@ -242,7 +266,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      const alreadyMembers = (column: (typeof ACTOR_COLUMN)[AgentVaultMemberType]) =>
+      const alreadyMembers = (column: TAgentVaultActorColumn) =>
         conn(TableName.Membership)
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -319,7 +343,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         void query.where((qb) => {
           actorTypes.forEach((type) => {
             void qb.orWhere((typeQb) => {
-              const column = ACTOR_COLUMN[type];
+              const column = AGENT_VAULT_ACTOR_COLUMN[type];
               void typeQb
                 .whereNotNull(`${TableName.Membership}.${column}`)
                 .whereNotIn(`${TableName.Membership}.${column}`, alreadyMembers(column));

@@ -71,7 +71,7 @@ const SecretSyncDestinationSourceCell = ({
     <TableCell className="max-w-0 min-w-32!">
       <Tooltip>
         <TooltipTrigger asChild>
-          <div>
+          <div className="w-fit max-w-full">
             <p className="truncate text-sm">{displayPath}</p>
             <p className="truncate text-xs leading-4 text-accent">{environmentName}</p>
           </div>

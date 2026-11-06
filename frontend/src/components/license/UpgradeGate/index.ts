@@ -48,6 +48,7 @@ export {
   EnterprisePamAccountsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
   EnvironmentLimitUpgradeIntent,
+  CrossSignedCertificatesUpgradeIntent,
   ExternalCertificateAuthoritiesUpgradeIntent,
   FolderAccessControlsUpgradeIntent,
   getSafeUpgradeReturnPath,
@@ -62,7 +63,6 @@ export {
   SecretApprovalPoliciesUpgradeIntent,
   SecretImportReplicationUpgradeIntent,
   SecretRotationsUpgradeIntent,
-  SecretsBrokeringUpgradeIntent,
   SecretScanningUpgradeIntent,
   SecretsManagementUpgradeIntent,
   UpgradeFeature

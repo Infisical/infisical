@@ -14,7 +14,6 @@ import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkill
 import { DeleteSkillDialog } from "@app/components/agent-vault/skills/DeleteSkillDialog";
 import { downloadSkillVersion } from "@app/components/agent-vault/skills/downloadSkillVersion";
 import { SkillBundleBadges } from "@app/components/agent-vault/skills/SkillBundleBadges";
-import { SkillDescription } from "@app/components/agent-vault/skills/SkillDescription";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -56,7 +55,8 @@ import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
-  useProjectPermission
+  useProjectPermission,
+  useProject
 } from "@app/context";
 import {
   getUserTablePreference,
@@ -75,6 +75,7 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 export const SkillsCard = () => {
+  const { projectId } = useProject();
   const { openSheet } = useAgentVaultSheetState("skillId");
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
@@ -109,7 +110,7 @@ export const SkillsCard = () => {
     setPagedSearchTerm(searchTerm);
     setPage(1);
   }
-  const { data, isPending } = useListAgentVaultSkills({
+  const { data, isPending } = useListAgentVaultSkills(projectId, {
     search: searchTerm || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
@@ -124,7 +125,12 @@ export const SkillsCard = () => {
   const downloadSkill = async (skill: TAgentVaultSkill) => {
     try {
       const version = await queryClient.fetchQuery({
-        queryKey: agentVaultKeys.skillVersion(currentOrg.id, skill.id, skill.latestVersion),
+        queryKey: agentVaultKeys.skillVersion(
+          currentOrg.id,
+          projectId,
+          skill.id,
+          skill.latestVersion
+        ),
         queryFn: () => fetchAgentVaultSkillVersion(skill.id, skill.latestVersion),
         staleTime: Infinity
       });
@@ -217,17 +223,15 @@ export const SkillsCard = () => {
                 <TableRow key={skill.id} linked>
                   <TableCell isTruncatable>
                     <RowLink
-                      to="/organizations/$orgId/agent-vault/skills"
-                      params={{ orgId: currentOrg.id }}
+                      to="/organizations/$orgId/projects/agent-vault/$projectId/skills"
+                      params={{ orgId: currentOrg.id, projectId }}
                       search={{ skillId: skill.id }}
-                      title={skill.name}
+                      title={skill.description}
                     >
                       {skill.name}
                     </RowLink>
                   </TableCell>
-                  <TableCell isTruncatable>
-                    <SkillDescription description={skill.description} />
-                  </TableCell>
+                  <TableCell isTruncatable>{skill.description}</TableCell>
                   <TableCell>
                     <SkillBundleBadges accessBundles={skill.accessBundles} />
                   </TableCell>

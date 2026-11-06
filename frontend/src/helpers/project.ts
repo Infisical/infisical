@@ -119,7 +119,8 @@ export const parseProjectSlugFromPath = (pathname: string): string | undefined =
 
 const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
   ProjectType.SecretManager,
-  ProjectType.KMS
+  ProjectType.KMS,
+  ProjectType.AgentVault
 ]);
 
 export const hasIntermediateProjectsView = (type: ProjectType) =>
@@ -138,8 +139,7 @@ export const hasProjectTemplates = (type: ProjectType) =>
 const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([
   ProjectType.CertificateManager,
   ProjectType.SecretScanning,
-  ProjectType.PAM,
-  ProjectType.AgentVault
+  ProjectType.PAM
 ]);
 
 export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
@@ -163,12 +163,19 @@ export const supportsAssumePrivileges = (type: ProjectType) =>
   !PRODUCTS_WITHOUT_ASSUME_PRIVILEGES.has(type);
 
 const ORG_SCOPED_PRODUCT_PATH_RE =
-  /^\/organizations\/[^/]+\/(cert-manager|secret-scanning|pam|agent-vault)(?:\/|$)/;
+  /^\/organizations\/[^/]+\/(cert-manager|secret-scanning|pam)(?:\/|$)/;
 
 export const getOrgScopedProductFromPath = (pathname: string): ProjectType | null => {
   const slug = pathname.match(ORG_SCOPED_PRODUCT_PATH_RE)?.[1];
   return slug ? urlSlugToProjectType(slug) : null;
 };
+
+const AGENT_VAULT_PROJECT_PATH_RE = /^\/organizations\/[^/]+\/projects\/agent-vault(?:\/|$)/;
+
+// Agent Vault keeps its own product colour on its project list and inside a project, so cosmetic chrome reads it
+// off the path.
+export const isAgentVaultProjectPath = (pathname: string) =>
+  AGENT_VAULT_PROJECT_PATH_RE.test(pathname);
 
 // Certificate Manager and Secret Scanning URLs name no project, so a link into one specific project
 // (an earlier one, in legacy orgs that have several) pins it for their layout to open.
@@ -207,8 +214,6 @@ export const getProjectBaseURL = (type: ProjectType) => {
       return "/organizations/$orgId/secret-scanning" as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam" as const;
-    case ProjectType.AgentVault:
-      return "/organizations/$orgId/agent-vault" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
@@ -227,7 +232,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.PAM:
       return "/organizations/$orgId/pam/access" as const;
     case ProjectType.AgentVault:
-      return "/organizations/$orgId/agent-vault" as const;
+      return "/organizations/$orgId/projects/agent-vault/$projectId" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }

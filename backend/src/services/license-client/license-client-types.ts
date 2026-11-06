@@ -46,7 +46,29 @@ const catalogDimensionSchema = z
   .object({
     key: z.string(),
     label: z.string(),
-    noun: z.string()
+    noun: z.string(),
+    // "per_resource" | "metered"; aggregation ("sum" | "count" | "last") is how a metered period total is rated.
+    billingType: z.string().nullish(),
+    aggregation: z.string().nullish()
+  })
+  .passthrough();
+
+// One band of a metered price. upTo is inclusive and null on the last band; unitAmountDecimal is cents per
+// unit as a decimal string (sub-cent rates are exact). Stripe-style bands leave the unused amount null.
+const priceTierSchema = z
+  .object({
+    upTo: z
+      .number()
+      .nullish()
+      .transform((value) => value ?? null),
+    unitAmountDecimal: z
+      .string()
+      .nullish()
+      .transform((value) => value ?? "0"),
+    flatAmountCents: z
+      .number()
+      .nullish()
+      .transform((value) => value ?? 0)
   })
   .passthrough();
 
@@ -58,7 +80,9 @@ const catalogPlanPriceSchema = z
     // Permissive (like model/tier/cadence) so a new License Server kind can't break parsing; normalized in code.
     kind: z.string().default("per_unit"),
     unitAmountCents: z.number(),
-    includedQuantity: z.number().nullish()
+    includedQuantity: z.number().nullish(),
+    tiersMode: z.string().nullish(),
+    tiers: z.array(priceTierSchema).nullish()
   })
   .passthrough();
 
@@ -161,7 +185,48 @@ const subscriptionItemDimensionSchema = z
     commitAvailable: z.boolean().default(false),
     renewalDate: z.number().nullish(),
     canDecreaseNow: z.boolean().nullish(),
-    decreaseAllowedFrom: z.number().nullish()
+    decreaseAllowedFrom: z.number().nullish(),
+    // Metered only: the current billing window the License Server rated (and, for self-serve, reported to
+    // Stripe), priced through the org's pinned bands. earlierInPeriod is the part before a mid-period plan change.
+    usage: z
+      .object({
+        periodStart: z.number(),
+        periodEnd: z.number(),
+        asOf: z.number().nullish(),
+        estimatedAmountCents: z.number().nullish(),
+        currentTier: z
+          .number()
+          .nullish()
+          .transform((value) => value ?? 0),
+        nextTierAt: z.number().nullish(),
+        byTier: z.array(z.object({ quantity: z.number(), amountCents: z.number() }).passthrough()).default([]),
+        earlierInPeriod: z
+          .array(
+            z
+              .object({
+                periodStart: z.number(),
+                periodEnd: z.number(),
+                used: z.number(),
+                estimatedAmountCents: z.number().nullish()
+              })
+              .passthrough()
+          )
+          .default([]),
+        // The period rates a free trial: its usage is shown but never billed.
+        trial: z.boolean().default(false)
+      })
+      .passthrough()
+      .nullish()
+      // A malformed usage or pricing block must not fail the whole subscription parse (the org would read as Free).
+      .catch(undefined),
+    pricing: z
+      .object({
+        tiersMode: z.string(),
+        tiers: z.array(priceTierSchema).default([])
+      })
+      .passthrough()
+      .nullish()
+      .catch(undefined)
   })
   .passthrough();
 
@@ -205,7 +270,10 @@ const subscriptionLineSchema = z
     amountCents: z.number().nullish(),
     usageBased: z.boolean().default(false),
     currentPeriodStart: z.number().nullish(),
-    currentPeriodEnd: z.number().nullish()
+    currentPeriodEnd: z.number().nullish(),
+    // A metered line's rated usage this period and what it prices to.
+    usageQuantity: z.number().nullish(),
+    estimatedAmountCents: z.number().nullish()
   })
   .passthrough();
 
@@ -217,7 +285,9 @@ const subscriptionBillingSchema = z
     monthlyRecurringCents: z.number().default(0),
     annualRecurringCents: z.number().default(0),
     nextChargeAt: z.number().nullish(),
-    lines: z.array(subscriptionLineSchema).default([])
+    lines: z.array(subscriptionLineSchema).default([]),
+    // What this period's metered usage prices to across every line, in cents.
+    estimatedUsageCents: z.number().nullish()
   })
   .passthrough();
 
