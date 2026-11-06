@@ -281,7 +281,7 @@ export const projectEnvServiceFactory = ({
         const approvalPolicy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvId(id, tx);
         if (approvalPolicy) {
           throw new BadRequestError({
-            message: `Environment is in use by ${approvalPolicy.policyType === ApprovalPolicyType.SecretAccess ? "an secret access approval policy" : "an approval policy"}`,
+            message: `Environment is in use by ${approvalPolicy.policyType === ApprovalPolicyType.SecretAccess ? "a secret access approval policy" : "an approval policy"}`,
             name: "DeleteEnvironment"
           });
         }
