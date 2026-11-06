@@ -820,9 +820,10 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   ending "Tell the user." made them ask before acting on unrelated tasks, and one pointing at `SSL_CERT_FILE` sent them
   to print their environment, proxy URL and session token included. Rerun the eval after any change to it.
 - **Reserved-name requests go in the session log**, host `agent-vault.invalid` and no service: the services list
-  with decision `discovery` (**Listed Services**), the other forwarded requests with `infisical` (**Sent to
-  Infisical**), and a refused path with `blocked`. The frontend never offers Add Service for that host; an older
-  frontend shows a raw value with its fallback badge.
+  with decision `discovery` (**Listed Services**), the skills with `skills` (**Fetched Skills**), and a refused path
+  with `blocked`. Each forwarded endpoint gets its own decision, so a new one on the allowlist needs a value, a label,
+  and a docs row. The frontend never offers Add Service for that host; an older frontend shows a raw value with its
+  fallback badge.
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
   pin checked before anything is written. Re-enrolling a proxy replaces its CA, so pins, mounted copies,
   keychain entries and any agent already running through it break until updated or restarted.

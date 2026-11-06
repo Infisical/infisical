@@ -111,6 +111,6 @@ Every response that goes through the proxy has an `X-Agent-Vault-Decision` heade
 | `blocked` | Refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests) |
 | `error` | Couldn't complete the request, such as when it can't reach the host |
 | `discovery` | Got the [list of services](#how-an-agent-gets-the-list) from Infisical for the session |
-| `infisical` | Sent another request to Infisical for the session, such as the CLI's request for the session's skills |
+| `skills` | Got the session's [skills](/documentation/platform/agent-vault/skills) from Infisical, such as when `infisical agent-vault run` installs them |
 
 If a service matched the request, the `X-Agent-Vault-Service` header names the service. If the proxy refuses a request, the response body is JSON with an error code, a message, and a hint that tells the agent what to do next.

@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowRightIcon,
+  BookOpenTextIcon,
   CircleHelpIcon,
   CircleXIcon,
   KeyIcon,
   ListIcon,
   type LucideIcon,
   PlusIcon,
-  SendIcon,
   ServerIcon,
   ShieldBanIcon
 } from "lucide-react";
@@ -79,10 +79,10 @@ export const DECISION_PRESENTATION: Record<
     icon: ListIcon,
     iconClassName: "text-neutral"
   },
-  [AgentVaultSessionLogDecision.Infisical]: {
-    label: "Sent to Infisical",
+  [AgentVaultSessionLogDecision.Skills]: {
+    label: "Fetched Skills",
     variant: "neutral",
-    icon: SendIcon,
+    icon: BookOpenTextIcon,
     iconClassName: "text-neutral"
   }
 };
@@ -100,13 +100,13 @@ const statusTone = (status: number) => {
   return "text-foreground";
 };
 
-// Agent Vault answers Blocked and Error requests itself, and sends Discovery and Infisical requests to Infisical for the
+// Agent Vault answers Blocked and Error requests itself, and sends Discovery and Skills requests to Infisical for the
 // session, so none of their statuses come from the host the request named.
 const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Blocked ||
   decision === AgentVaultSessionLogDecision.Error ||
   decision === AgentVaultSessionLogDecision.Discovery ||
-  decision === AgentVaultSessionLogDecision.Infisical;
+  decision === AgentVaultSessionLogDecision.Skills;
 
 const proxyAnswerDescription = (record: TAgentVaultSessionLogRecord) => {
   if (record.decision === AgentVaultSessionLogDecision.Discovery) {
@@ -114,8 +114,10 @@ const proxyAnswerDescription = (record: TAgentVaultSessionLogRecord) => {
       ? "The agent asked Agent Vault which services this session can use, and Agent Vault listed them"
       : `The agent asked Agent Vault which services this session can use, and Agent Vault returned ${httpStatusLabel(record.status)}`;
   }
-  if (record.decision === AgentVaultSessionLogDecision.Infisical) {
-    return `Agent Vault sent this request to Infisical for the session, and Infisical returned ${httpStatusLabel(record.status)}`;
+  if (record.decision === AgentVaultSessionLogDecision.Skills) {
+    return record.status === 200
+      ? "Agent Vault got this session's skills from Infisical"
+      : `Agent Vault asked Infisical for this session's skills, and Infisical returned ${httpStatusLabel(record.status)}`;
   }
   const answer = `Agent Vault returned ${httpStatusLabel(record.status)}`;
   return record.decision === AgentVaultSessionLogDecision.Blocked

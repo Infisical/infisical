@@ -90,8 +90,8 @@ export enum AgentVaultSessionLogDecision {
   Error = "error",
   // The agent asked for the services its session can use, which the proxy gets from Infisical for the session.
   Discovery = "discovery",
-  // Another request the proxy sent to Infisical for the session, such as the CLI getting the session's skills.
-  Infisical = "infisical"
+  // The session's skills, which the proxy gets from Infisical for the session.
+  Skills = "skills"
 }
 
 // The name an agent reaches its session's services and skills at, through its proxy. No service can cover it.

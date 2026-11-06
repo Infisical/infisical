@@ -42,7 +42,7 @@ You can view a session's logs if you created the session or you're an admin of i
       Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey`, base64 decoded. The first 12 bytes of the chunk are the IV, and the last 16 bytes are the authentication tag. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`.
     </Step>
     <Step>
-      Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase (`discovery` for **Listed Services**, and `infisical` for **Sent to Infisical**):
+      Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase (`discovery` for **Listed Services**, and `skills` for **Fetched Skills**):
 
       ```json
       {
@@ -127,7 +127,7 @@ Each request produces one record with:
 | --- | --- |
 | **Time** | When the request was made |
 | **Method**, **Host**, **Path** | Where the request went, for example `POST api.github.com/repos/acme/web/issues` |
-| **Upstream status** | The HTTP status code the API returned, such as `201`. For **Blocked** and **Error** requests, it's the status code the proxy returned, such as `403` or `502`. For **Listed Services** and **Sent to Infisical** requests, it's the status code Infisical returned |
+| **Upstream status** | The HTTP status code the API returned, such as `201`. For **Blocked** and **Error** requests, it's the status code the proxy returned, such as `403` or `502`. For **Listed Services** and **Fetched Skills** requests, it's the status code Infisical returned |
 | **Outcome** | What the proxy did with the request |
 | **Service** | The service that matched the request, if any |
 
@@ -140,7 +140,7 @@ The outcome is one of six:
 | **Blocked** | The proxy refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests) |
 | **Error** | The proxy couldn't reach the destination host |
 | **Listed Services** | The agent asked the proxy for the [services the session can use](/documentation/platform/agent-vault/service-discovery), and the proxy got the list from Infisical |
-| **Sent to Infisical** | The proxy sent a request to Infisical for the session, such as when `infisical agent-vault run` gets the session's [skills](/documentation/platform/agent-vault/skills) |
+| **Fetched Skills** | The proxy got the session's [skills](/documentation/platform/agent-vault/skills) from Infisical, such as when `infisical agent-vault run` installs them |
 
 Request and response bodies, headers, and query strings aren't recorded. For a request to an MCP server, the proxy reads only the method and tool name of each call from the request body.
 
