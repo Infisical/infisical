@@ -13,6 +13,7 @@ import type {
 import type { V4Mutation, V4QueryResult } from "../contract";
 
 export type SecretsAccessAdapter = {
+  useHasFolderAccessPlan: (orgId: string) => V4QueryResult<boolean>;
   useFolderAccessUsers: (
     dto: TListFolderAccessActorsDTO
   ) => V4QueryResult<TListFolderAccessUsersResponse>;

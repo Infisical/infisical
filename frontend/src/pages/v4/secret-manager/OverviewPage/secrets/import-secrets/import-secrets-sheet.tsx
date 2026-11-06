@@ -12,6 +12,16 @@ import {
 
 import { parsePastedSecrets } from "@app/components/utilities/parseSecrets";
 import { Alert } from "@app/components/v4/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Combobox } from "@app/components/v4/ui/combobox";
@@ -193,6 +203,7 @@ function ImportSecretsContent({
   const [matrixMap, setMatrixMap] = useState<SecretMatrixMap | null>(null);
   const [visibleSecretKeys, setVisibleSecretKeys] = useState<Set<string>>(new Set());
   const [shouldOverwrite, setShouldOverwrite] = useState(false);
+  const [conflictsOpen, setConflictsOpen] = useState(false);
   const [keyOverrides, setKeyOverrides] = useState<Record<string, string>>({});
   const [nestedJson, setNestedJson] = useState<Record<string, unknown> | null>(null);
   const [shouldImportNested, setShouldImportNested] = useState(false);
@@ -398,15 +409,43 @@ function ImportSecretsContent({
     setKeyOverrides({});
   };
 
-  const handleImport = () => {
+  const writes = (() => {
+    if (!activeSecrets) return [];
+    if (nestedImport)
+      return Object.entries(nestedImport.secretsByPath).map(([path, secrets]) => ({
+        rowPrefix: `${path}:`,
+        path: joinSecretPath(scope.path, path),
+        secrets
+      }));
+    return [{ rowPrefix: "", path: scope.path, secrets: activeSecrets }];
+  })();
+  const conflicts = selectedEnvs.flatMap((environment) =>
+    writes.flatMap(({ rowPrefix, path, secrets }) => {
+      const existing = new Set(
+        secretsAt(resources, scope.project, environment, path).map((secret) => secret.name)
+      );
+      return Object.entries(secrets).flatMap(([key, data]) => {
+        const name = (data.isFileSecret ? (keyOverrides[key] ?? key) : key).trim();
+        return existing.has(name)
+          ? [
+              {
+                id: `${environment}:${rowPrefix}${key}`,
+                rowId: `${rowPrefix}${key}`,
+                name,
+                environment: environmentLabel(environment),
+                location: `${environmentLabel(environment)}: ${path}`
+              }
+            ]
+          : [];
+      });
+    })
+  );
+  const conflictEnvironments = (rowId: string) =>
+    conflicts.filter((conflict) => conflict.rowId === rowId).map((entry) => entry.environment);
+
+  const handleImport = (overwrite: boolean) => {
     if (!activeSecrets || !selectedEnvs.length) return;
     const timestamp = new Date().toISOString();
-    const writes = nestedImport
-      ? Object.entries(nestedImport.secretsByPath).map(([path, secrets]) => ({
-          path: joinSecretPath(scope.path, path),
-          secrets
-        }))
-      : [{ path: scope.path, secrets: activeSecrets }];
     const folderPaths = [
       ...(scope.path === "/" ? [] : [scope.path]),
       ...(nestedImport?.folderPaths.map((path) => joinSecretPath(scope.path, path)) ?? [])
@@ -465,7 +504,7 @@ function ImportSecretsContent({
               counts.created += 1;
               return;
             }
-            if (!shouldOverwrite) {
+            if (!overwrite) {
               counts.skipped += 1;
               return;
             }
@@ -501,7 +540,8 @@ function ImportSecretsContent({
     if (counts.created || counts.updated || (nestedImport && folderCount)) {
       onApply((current) => plan(current).next, {
         title: `Uploaded ${plural(secretCount, "secret")}${folderSummary} into ${environmentNames}`,
-        description: `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}.`
+        description: `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}.`,
+        share: true
       });
     } else {
       onToast("neutral", {
@@ -511,6 +551,14 @@ function ImportSecretsContent({
     }
     onClose();
     onComplete?.(selectedEnvs);
+  };
+
+  const handleUpload = () => {
+    if (conflicts.length && !shouldOverwrite) {
+      setConflictsOpen(true);
+      return;
+    }
+    handleImport(shouldOverwrite);
   };
 
   if (csvData && matrixMap) {
@@ -859,6 +907,19 @@ function ImportSecretsContent({
                           ) : (
                             <span className={`${styles.truncate} ${styles.mono}`}>{key}</span>
                           )}
+                          {conflictEnvironments(id).length > 0 && (
+                            <Tooltip
+                              content={
+                                shouldOverwrite
+                                  ? `This key already exists in ${conflictEnvironments(id).join(", ")} and will be overwritten.`
+                                  : `This key already exists in ${conflictEnvironments(id).join(", ")}. Choose whether to overwrite or skip it when you upload.`
+                              }
+                            >
+                              <Badge tone="warn">
+                                {shouldOverwrite ? "Overwrite" : "Conflict"}
+                              </Badge>
+                            </Tooltip>
+                          )}
                           {secretData.comments.some(Boolean) && (
                             <Tooltip
                               content={
@@ -958,7 +1019,7 @@ function ImportSecretsContent({
           </div>
           <span className={flowStyles.labelRow}>
             <FieldLabel htmlFor="import-overwrite-existing">Overwrite existing secrets</FieldLabel>
-            <Tooltip content="When enabled, secrets that already exist in the target environment will be updated with the imported values. When disabled, existing secrets will be skipped and only new secrets will be created.">
+            <Tooltip content="When enabled, secrets that already exist in the target environment will be updated with the imported values. When disabled, you choose whether to overwrite or skip them when you upload.">
               <span className={flowStyles.hint}>
                 <Icon name="info" size={14} label="About overwriting existing secrets" />
               </span>
@@ -1009,13 +1070,53 @@ function ImportSecretsContent({
                 hasNestedErrors ||
                 Boolean(uploadBlock)
               }
-              onClick={handleImport}
+              onClick={handleUpload}
             >
               {`Upload ${plural(secretCount, "secret")}`}
             </Button>
           </Gate>
         </Inline>
       </SheetFooter>
+      <AlertDialog open={conflictsOpen} onOpenChange={setConflictsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resolve secret conflicts</AlertDialogTitle>
+            <AlertDialogDescription>
+              These secrets already exist in the target environments. Overwrite them or upload only
+              secrets without conflicts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className={styles.conflictList}>
+            {conflicts.map(({ id, name, location }) => (
+              <li key={id} className={styles.conflictItem}>
+                <span className={styles.mono}>{name}</span>
+                <span className={styles.conflictLocation}>{location}</span>
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="outline"
+              onClick={() => {
+                setConflictsOpen(false);
+                handleImport(false);
+              }}
+            >
+              Skip conflicts
+            </AlertDialogAction>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setConflictsOpen(false);
+                handleImport(true);
+              }}
+            >
+              Overwrite conflicts
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SheetContent>
   );
 }

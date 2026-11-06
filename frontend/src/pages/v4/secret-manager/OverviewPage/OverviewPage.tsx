@@ -59,6 +59,11 @@ import {
 } from "@app/components/v4/ui/table";
 import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSecretFolderActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import type { TCreateDynamicSecretDTO } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -72,7 +77,9 @@ import type {
 } from "@app/hooks/api/secretRotationsV2/types";
 import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
+import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { withoutDefaults } from "../search-defaults";
@@ -104,6 +111,7 @@ import { BulkTagDialog } from "./secrets/bulk/bulk-tag-dialog";
 import { type CopySecretsInvocation, CopySecretsSheet } from "./secrets/bulk/copy-secrets-sheet";
 import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
 import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
+import { createdSecretsShare } from "./secrets/created-share";
 import { EnvironmentPicker } from "./secrets/environment-picker";
 import { addFlows, type FlowFeedback, FlowToasts, type NewResource } from "./secrets/flows";
 import { childPath } from "./secrets/flows/shared";
@@ -119,9 +127,10 @@ import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
 import { FolderActions } from "./secrets/row-actions/folder-actions";
 import { HoneyTokenActions } from "./secrets/row-actions/honey-token-actions";
 import { ImportActions } from "./secrets/row-actions/import-actions";
-import { useManagedBlock } from "./secrets/row-actions/permissions";
+import { useFolderAccessPlanBlock, useManagedBlock } from "./secrets/row-actions/permissions";
 import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-actions";
 import { RotationActions } from "./secrets/row-actions/rotation-actions";
+import { ShareSecretSheet } from "./secrets/row-actions/share-secret-sheet";
 import type { RowAction } from "./secrets/row-actions/types";
 import { type ReferenceSource, ReferenceSourceProvider } from "./secrets/secret-references";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
@@ -189,6 +198,8 @@ export const OverviewPage = () => {
   const session = useV4Session();
   const projectQuery = adapter.useProject(projectId);
   const blockFor = useManagedBlock(projectId);
+  const { permission } = useProjectPermission(projectId);
+  const folderAccessPlanBlock = useFolderAccessPlanBlock();
   const tagList = adapter.useTags(projectId).data ?? [];
   const folderTree = adapter.useProjectFolders(projectId).data;
   const createCommit = adapter.useCreateCommit();
@@ -222,6 +233,8 @@ export const OverviewPage = () => {
   const [flowOpen, setFlowOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
+  const [quickAddedState, setQuickAddedState] = useState({ scope: "", keys: [] as string[] });
+  const [sharing, setSharing] = useState<string>();
   const [rowAction, setRowAction] = useState<RowAction>();
   const [importRequest, setImportRequest] = useState<ImportSecretsRequest>();
   const [copyInvocation, setCopyInvocation] = useState<CopySecretsInvocation>();
@@ -449,6 +462,43 @@ export const OverviewPage = () => {
   });
   const pushToast = (item: Omit<ToastItem, "id">) =>
     setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);
+  const pushCreatedToast = (feedback: FlowFeedback, created: Secret[]) => {
+    const share = projectQuery.data?.secretSharing
+      ? createdSecretsShare(created, (secret) =>
+          hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: secret.environment,
+              secretPath: secret.path,
+              secretName: secret.name,
+              secretTags: secret.tags
+            }
+          )
+        )
+      : undefined;
+    if (!share) {
+      pushToast({ tone: "ok", title: feedback.title, description: feedback.description });
+      return;
+    }
+    const id = crypto.randomUUID();
+    setToasts((current) => [
+      ...current,
+      {
+        id,
+        tone: "ok",
+        title: feedback.title,
+        description: feedback.description,
+        action: {
+          label: share.count === 1 ? "Share secret" : `Share ${share.count} secrets`,
+          onClick: () => {
+            setSharing(share.value);
+            setToasts((items) => items.filter((item) => item.id !== id));
+          }
+        }
+      }
+    ]);
+  };
   const setResources = (
     update: (current: Resource[]) => Resource[],
     feedback?: FlowFeedback,
@@ -458,7 +508,19 @@ export const OverviewPage = () => {
     const after = update([...before]);
     runApply(before, after, options).then(
       () => {
-        if (feedback) pushToast({ tone: "ok", ...feedback });
+        if (!feedback) return;
+        if (!feedback.share) {
+          pushToast({ tone: "ok", title: feedback.title, description: feedback.description });
+          return;
+        }
+        const existing = new Set(before.map((resource) => resource.id));
+        pushCreatedToast(
+          feedback,
+          after.filter(
+            (resource): resource is Secret =>
+              resource.kind === "secret" && !existing.has(resource.id)
+          )
+        );
       },
       (error: unknown) =>
         pushToast({
@@ -553,12 +615,14 @@ export const OverviewPage = () => {
     setNotice("");
     setRecent([]);
   };
-  const navigate = (nextPath: string) => {
+  const [shownPath, setShownPath] = useState(path);
+  if (shownPath !== path) {
+    setShownPath(path);
     setQuery("");
     setDebounced("");
     resetView();
-    updateSearch({ secretPath: nextPath, search: "" });
-  };
+  }
+  const navigate = (nextPath: string) => updateSearch({ secretPath: nextPath, search: "" });
   const pendingHere = single
     ? pendingIn(pending, { project, environment: activeEnvironment, path })
     : [];
@@ -602,7 +666,7 @@ export const OverviewPage = () => {
     const environment = sort.environment ?? activeEnvironment;
     return entries.find((entry) => entry.environment === environment)?.[sort.field] ?? "";
   };
-  const ordered = overviewOrder.flatMap((kind) =>
+  const sorted = overviewOrder.flatMap((kind) =>
     matches
       .filter(([, entries]) => entries[0].kind === kind)
       .sort(
@@ -610,6 +674,19 @@ export const OverviewPage = () => {
           sortValue(a).localeCompare(sortValue(b)) * (sort.direction === "desc" ? -1 : 1)
       )
   );
+  const quickAddScope = single ? JSON.stringify([path, activeEnvironment]) : "";
+  const quickAdded = quickAddedState.scope === quickAddScope ? quickAddedState.keys : [];
+  const pinQuickAdded = (name: string) => {
+    if (!quickAddScope) return;
+    const key = `secret:${name}`;
+    setQuickAddedState({
+      scope: quickAddScope,
+      keys: [key, ...quickAdded.filter((entry) => entry !== key)]
+    });
+  };
+  const pinned =
+    page === 1 ? quickAdded.flatMap((key) => sorted.filter(([entry]) => entry === key)) : [];
+  const ordered = [...pinned, ...sorted.filter((row) => !pinned.includes(row))];
   const unmatchedImports = query.trim()
     ? [...groups.values()].filter((entries) => entries[0].kind === "import").length -
       matches.filter(([, entries]) => entries[0].kind === "import").length
@@ -627,6 +704,11 @@ export const OverviewPage = () => {
   const pageCount = Math.max(1, Math.ceil(totalCount / perPage));
   const currentPage = Math.min(page, pageCount);
   const windowRows = ordered;
+  const hadPending = useRef(false);
+  useEffect(() => {
+    if (hadPending.current && !pendingHere.length) setQuickAddedState({ scope: "", keys: [] });
+    hadPending.current = pendingHere.length > 0;
+  }, [pendingHere.length]);
   useEffect(() => {
     const signature = recent.join("|");
     if (!signature || revealed.current === signature) return;
@@ -796,7 +878,7 @@ export const OverviewPage = () => {
         tags: [],
         metadata: []
       })),
-      { title: `Created ${name}` }
+      { title: `Created ${name}`, share: true }
     );
   const folderTargets = (folder: Of<"folder">) =>
     resources.filter(
@@ -1468,7 +1550,38 @@ export const OverviewPage = () => {
                   <div className={styles.tableFrame}>
                     <FolderBreadcrumbBar
                       path={path}
-                      single={single}
+                      accessBlock={
+                        blockFor(
+                          ProjectPermissionSub.SecretFolders,
+                          ProjectPermissionSecretFolderActions.ManageAccess,
+                          { environment: activeEnvironment, secretPath: path },
+                          "manage access to this folder"
+                        ) ?? folderAccessPlanBlock
+                      }
+                      onManageAccess={
+                        single
+                          ? () => {
+                              const segments = path.split("/").filter(Boolean);
+                              const folder: Of<"folder"> = {
+                                kind: "folder",
+                                id: `folder:${path}`,
+                                project,
+                                environment: activeEnvironment,
+                                path: `/${segments.slice(0, -1).join("/")}`,
+                                name: segments.at(-1) ?? "",
+                                description: "",
+                                createdAt: "",
+                                updatedAt: ""
+                              };
+                              setRowAction({
+                                kind: "folder",
+                                action: "access",
+                                entry: folder,
+                                entries: [folder]
+                              });
+                            }
+                          : undefined
+                      }
                       actions={
                         !single &&
                         !unavailableState && (
@@ -1640,16 +1753,18 @@ export const OverviewPage = () => {
                               existing={ordered
                                 .filter(([, entries]) => entries[0].kind === "secret")
                                 .map(([, entries]) => entries[0].name)}
-                              onCreate={(key, value) =>
+                              onCreate={(key, value) => {
+                                pinQuickAdded(key);
                                 create(
                                   key,
                                   value,
                                   visibleEnvironments.map((environment) => environment.value)
-                                )
-                              }
+                                );
+                              }}
                               onQueue={
                                 single
                                   ? (key, value) => {
+                                      pinQuickAdded(key);
                                       const timestamp = new Date().toISOString();
                                       setPending((current) => [
                                         ...current,
@@ -1703,9 +1818,7 @@ export const OverviewPage = () => {
                                     rowKey={key}
                                     entries={entries as Of<"folder">[]}
                                     ctx={ctx}
-                                    onOpen={() =>
-                                      navigate(`${path === "/" ? "" : path}/${first.name}`)
-                                    }
+                                    secretPath={childPath(path, first.name)}
                                     onEdit={setEditingFolder}
                                     onDelete={setDeletingFolder}
                                   />
@@ -2084,6 +2197,13 @@ export const OverviewPage = () => {
                 )
               );
             })()}
+          <ShareSecretSheet
+            open={sharing !== undefined}
+            value={sharing ?? ""}
+            onOpenChange={(open) => {
+              if (!open) setSharing(undefined);
+            }}
+          />
           <FlowToasts
             items={toasts}
             onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))}

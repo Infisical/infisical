@@ -579,6 +579,7 @@ function SecretActions({
           </TableRowActions>
         </PopoverAnchor>
         <PopoverContent
+          draggable
           align="end"
           className={popover === "metadata" ? styles.metadataPopover : styles.annotationPopover}
           onCloseAutoFocus={(event) => event.preventDefault()}
