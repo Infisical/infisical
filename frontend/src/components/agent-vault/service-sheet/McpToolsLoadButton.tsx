@@ -127,7 +127,6 @@ export const McpToolsLoadButton = ({
   };
 
   const changeOpen = (nextOpen: boolean) => {
-    if (!nextOpen && isLoading) return;
     if (!nextOpen) cancel();
     setIsOpen(nextOpen);
     setToken("");
@@ -140,14 +139,14 @@ export const McpToolsLoadButton = ({
   if (isLoading) {
     signInAction = (
       <Button type="button" variant="outline" size="sm" isDisabled>
-        <Spinner size="xs" className="m-0 shrink-0 fill-product-av" />
+        <Spinner size="xs" variant="av" />
         Loading tools...
       </Button>
     );
   } else if (isWaiting) {
     signInAction = (
       <Button type="button" variant="outline" size="sm" className="shrink-0" isDisabled>
-        <Spinner size="xs" className="m-0 shrink-0 fill-product-av" />
+        <Spinner size="xs" variant="av" />
         Waiting for sign-in...
       </Button>
     );
@@ -176,7 +175,7 @@ export const McpToolsLoadButton = ({
       </Button>
 
       <Dialog open={isOpen} onOpenChange={changeOpen}>
-        <DialogContent>
+        <DialogContent isPending={isLoading}>
           <DialogHeader>
             <DialogTitle>Load Tools From {host}</DialogTitle>
             <DialogDescription>
@@ -256,7 +255,6 @@ export const McpToolsLoadButton = ({
                     maxLength={8192}
                     autoComplete="new-password"
                     spellCheck={false}
-                    autoFocus
                   />
                   <FieldDescription>{NOT_SAVED}</FieldDescription>
                   <FieldError>{loadError}</FieldError>

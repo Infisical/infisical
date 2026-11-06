@@ -58,7 +58,7 @@ export const PersonalOAuthConnection = ({ service, connection, isSaving, onAutho
   if (isSaving) {
     action = (
       <Button type="button" variant="outline" size="sm" isDisabled>
-        <Spinner size="xs" className="m-0 shrink-0 fill-product-av" />
+        <Spinner size="xs" variant="av" />
         Saving...
       </Button>
     );
@@ -66,7 +66,7 @@ export const PersonalOAuthConnection = ({ service, connection, isSaving, onAutho
     action = (
       <div className="flex items-center gap-2">
         <Button type="button" variant="outline" size="sm" isDisabled>
-          <Spinner size="xs" className="m-0 shrink-0 fill-product-av" />
+          <Spinner size="xs" variant="av" />
           Waiting for sign-in...
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={cancel}>

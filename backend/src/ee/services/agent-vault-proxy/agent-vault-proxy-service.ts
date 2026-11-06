@@ -721,14 +721,17 @@ export const agentVaultProxyServiceFactory = ({
       if (!memberFields.length) return service;
 
       // A login that died reads as not set up: the proxy refuses the service rather than sending a token the
-      // provider has already refused.
-      if (isMemberProvidedOauth(rowById.get(service.id)!)) {
+      // provider has already refused. The service row and the connection are read separately, possibly from
+      // replicas at different points, so a token authorized for another server is refused the same way.
+      const row = rowById.get(service.id)!;
+      if (isMemberProvidedOauth(row)) {
         const connection = oauthByService.get(service.id);
         const config = connection?.oauthConfig as TAgentVaultOauthConfig | undefined;
         const refreshed = refreshedOauth.get(service.id);
         if (
           !connection ||
           !config ||
+          config.serverUrl !== getServiceServerUrl(row.config) ||
           (refreshed?.status ?? config.status) === AgentVaultOauthStatus.NeedsReauthorization
         ) {
           return missing(service);
@@ -751,7 +754,6 @@ export const agentVaultProxyServiceFactory = ({
       const personalValue = (field: TAgentVaultMemberProvidedField) =>
         expandStoredVariableReferences(fields.get(field) ?? "", valueOf);
 
-      const row = rowById.get(service.id)!;
       const config = (row.credentialConfig ?? {}) as Record<string, string>;
       if (row.credentialType === AgentVaultCredentialType.Bearer) {
         return {

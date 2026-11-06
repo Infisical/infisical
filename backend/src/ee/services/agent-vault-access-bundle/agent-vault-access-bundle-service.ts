@@ -1571,6 +1571,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ) {
         throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
       }
+      // A service switched to member sign-in has no stored member config to compare, but its sign-in was still
+      // prepared for the first read's server.
+      if (memberOauth && memberOauth.config.serverUrl !== getServiceServerUrl(lockedServiceConfig ?? locked.config)) {
+        throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+      }
       if (memberOauth) lockedCredentialConfig = effectiveCredentialConfig;
 
       if (credential) {

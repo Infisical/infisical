@@ -598,7 +598,7 @@ describe("resolve for a service whose members sign in", () => {
     serviceId: SERVICE_ID,
     field: "credential-value",
     encryptedValue: Buffer.from(JSON.stringify({ accessToken: "member-access" })),
-    oauthConfig
+    oauthConfig: { serverUrl: SERVER_URL, ...oauthConfig }
   });
 
   test("sends the session owner's own token, marked as member provided", async () => {
@@ -639,6 +639,20 @@ describe("resolve for a service whose members sign in", () => {
         credential: { type: "passthrough" }
       });
     }
+  });
+
+  test("a token authorized for another server is refused, not sent to this one", async () => {
+    const { service } = setup(async () => refreshed, [memberRow], [], {
+      personalRows: [
+        connection({
+          serverUrl: "https://old.example.com/mcp",
+          status: AgentVaultOauthStatus.Connected,
+          expiresAt: null
+        })
+      ]
+    });
+    const { services } = await resolve(service);
+    expect(services[0]).toMatchObject({ personalValuesMissing: true, credential: { type: "passthrough" } });
   });
 
   test("a refresh after a rejection names the session's owner", async () => {
