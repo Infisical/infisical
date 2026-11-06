@@ -311,6 +311,8 @@ export const FolderAccessSheet = ({
     createIdentityAccess.isPending ||
     isUsersFetching ||
     isIdentitiesFetching;
+  const isAccessLocked =
+    isGrantLocked || updateUserAccess.isPending || updateIdentityAccess.isPending;
   // the endpoints page the project roster and only then split each page into the actors that do and
   // do not have access here, so this count pages members and not the rows below it
   const rosterCount = Math.max(users?.totalCount ?? 0, identities?.totalCount ?? 0);
@@ -555,6 +557,7 @@ export const FolderAccessSheet = ({
                     <FolderAccessRow
                       key={`${actor.type}-${actor.id}`}
                       actor={actor}
+                      isPending={isAccessLocked}
                       canApplyToSubfolders={isRoot}
                       onSetTier={(tier, isRecursive) => setTier(actor, tier, isRecursive)}
                       onSetRecursive={(isRecursive) => setRecursive(actor, isRecursive)}
@@ -639,6 +642,7 @@ export const FolderAccessSheet = ({
                                       key={`${actor.type}-${actor.id}`}
                                       actor={actor}
                                       isDisabled={isGrantLocked}
+                                      isPending={isGrantLocked}
                                       canApplyToSubfolders={isRoot}
                                       onSetTier={(tier, isRecursive) =>
                                         setTier(actor, tier, isRecursive)
@@ -661,6 +665,7 @@ export const FolderAccessSheet = ({
                                       key={`${actor.type}-${actor.id}`}
                                       actor={actor}
                                       isDisabled={isGrantLocked}
+                                      isPending={isGrantLocked}
                                       canApplyToSubfolders={isRoot}
                                       footerNote={`Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`}
                                       onSetTier={(tier, isRecursive) =>

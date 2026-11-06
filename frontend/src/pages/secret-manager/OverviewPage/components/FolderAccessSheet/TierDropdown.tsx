@@ -45,13 +45,27 @@ type Props = {
   onRemove?: () => void;
   removeLabel?: string;
   removeVariant?: "default" | "danger" | "warning";
+  // a change is still saving, so picking again would send a second, conflicting request
+  isPending?: boolean;
 };
 
 // option rows follow the Combobox rich option shape: label over a muted text-xs description, with the
-// check mark on the right edge
-const TierOptions = ({ activeTier, onSelectTier }: Pick<Props, "activeTier" | "onSelectTier">) =>
+// check mark on the right edge; picking one keeps the menu open so recursion and expiry can be set
+// in the same pass
+const TierOptions = ({
+  activeTier,
+  onSelectTier,
+  isPending
+}: Pick<Props, "activeTier" | "onSelectTier" | "isPending">) =>
   FOLDER_ROLE_TIERS.map((tier) => (
-    <DropdownMenuItem key={tier.value} onClick={() => onSelectTier(tier.value)}>
+    <DropdownMenuItem
+      key={tier.value}
+      isDisabled={isPending}
+      onClick={(e) => {
+        e.preventDefault();
+        onSelectTier(tier.value);
+      }}
+    >
       <div className="min-w-0 flex-1">
         <p className="truncate">{tier.label}</p>
         <p className="text-xs leading-4 break-words whitespace-normal text-muted">
@@ -64,9 +78,14 @@ const TierOptions = ({ activeTier, onSelectTier }: Pick<Props, "activeTier" | "o
 
 // the menu stays open on toggle so a tier can still be picked afterwards, which means the check
 // state is flipped by hand instead of through the item's own select handling
-const RecursiveItem = ({ checked, onCheckedChange }: TRecursiveControl) => (
+const RecursiveItem = ({
+  checked,
+  onCheckedChange,
+  isPending
+}: TRecursiveControl & { isPending?: boolean }) => (
   <DropdownMenuCheckboxItem
     checked={checked}
+    disabled={isPending}
     onClick={(e) => {
       e.preventDefault();
       onCheckedChange(!checked);
@@ -95,7 +114,8 @@ export const TierDropdown = ({
   onEditTemporaryAccess,
   onRemove,
   removeLabel = "Remove access",
-  removeVariant = "danger"
+  removeVariant = "danger",
+  isPending
 }: Props) => {
   // an inherited grant is edited where it was made, so this menu only explains it and offers an
   // exact grant on top
@@ -127,7 +147,7 @@ export const TierDropdown = ({
         )}
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Add a Role on This Folder</DropdownMenuLabel>
-        <TierOptions onSelectTier={onSelectTier} />
+        <TierOptions onSelectTier={onSelectTier} isPending={isPending} />
       </DropdownMenuContent>
     );
   }
@@ -136,11 +156,11 @@ export const TierDropdown = ({
   if (!activeTier) {
     return (
       <DropdownMenuContent align="end" className="w-80">
-        <TierOptions onSelectTier={onSelectTier} />
+        <TierOptions onSelectTier={onSelectTier} isPending={isPending} />
         {recursive && (
           <>
             <DropdownMenuSeparator />
-            <RecursiveItem {...recursive} />
+            <RecursiveItem {...recursive} isPending={isPending} />
           </>
         )}
         <FooterNote note={footerNote} />
@@ -157,7 +177,11 @@ export const TierDropdown = ({
         </DropdownMenuSubTrigger>
         <DropdownMenuPortal>
           <DropdownMenuSubContent className="w-80">
-            <TierOptions activeTier={activeTier} onSelectTier={onSelectTier} />
+            <TierOptions
+              activeTier={activeTier}
+              onSelectTier={onSelectTier}
+              isPending={isPending}
+            />
           </DropdownMenuSubContent>
         </DropdownMenuPortal>
       </DropdownMenuSub>
@@ -167,7 +191,7 @@ export const TierDropdown = ({
           {temporaryLabel}
         </DropdownMenuItem>
       )}
-      {recursive && <RecursiveItem {...recursive} />}
+      {recursive && <RecursiveItem {...recursive} isPending={isPending} />}
       {onRemove && (
         <DropdownMenuItem variant={removeVariant} onClick={onRemove}>
           <Trash2Icon />
