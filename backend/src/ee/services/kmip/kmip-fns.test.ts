@@ -22,6 +22,11 @@ describe("kmipServerHostnamesOrIpsField", () => {
     );
   });
 
+  test("rejects a list longer than the 4096-character columns it is stored in", () => {
+    const longList = Array.from({ length: 300 }, (_, i) => `kmip-${i}.example.com`).join(",");
+    expect(kmipServerHostnamesOrIpsField.safeParse(longList).success).toBe(false);
+  });
+
   test("rejects an entry a certificate cannot carry", () => {
     expect(kmipServerHostnamesOrIpsField.safeParse("kmip.example.com, admin@example.com").success).toBe(false);
   });

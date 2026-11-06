@@ -46,13 +46,6 @@ const ttlField = z
   .string()
   .refine(isTtlAtLeastFloor, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)");
 
-// hostnamesOrIps is stored in a varchar(4096) column (matching the issued cert's altNames), so cap
-// the resolved SAN list there to surface a clean 400 instead of a DB "value too long" error.
-const hostnamesOrIpsField = kmipServerHostnamesOrIpsField.refine(
-  (val) => val.length <= 4096,
-  "Hostnames or IPs must be at most 4096 characters"
-);
-
 const KmipServerWithAuthMethodSchema = SanitizedKmipServerSchema.extend({
   authMethod: AuthMethodViewSchema
 });
@@ -102,7 +95,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       description: "Create a new KMIP server with an initial auth method.",
       body: z.object({
         name: slugSchema({ min: 1, max: 32, field: "name" }),
-        hostnamesOrIps: hostnamesOrIpsField,
+        hostnamesOrIps: kmipServerHostnamesOrIpsField,
         ttl: ttlField.optional().default("1y"),
         keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional().default(CertKeyAlgorithm.RSA_2048),
         authMethod: SettableAuthMethodInputSchema
@@ -230,7 +223,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmipServers],
       params: z.object({ kmipServerId: z.string().uuid() }),
       body: z.object({
-        hostnamesOrIps: hostnamesOrIpsField.optional(),
+        hostnamesOrIps: kmipServerHostnamesOrIpsField.optional(),
         ttl: ttlField
           .nullable()
           .optional()

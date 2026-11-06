@@ -27,4 +27,6 @@ export const kmipServerHostnamesOrIpsField = z
   .refine(
     (data) => data === "" || data.split(", ").every((name) => getKmipServerAltNameType(name) !== null),
     KMIP_SERVER_HOSTNAMES_OR_IPS_MESSAGE
-  );
+  )
+  // The list is stored, as resolved, in varchar(4096) columns on the server and its certificates.
+  .refine((data) => data.length <= 4096, "Hostnames or IPs must be at most 4096 characters");
