@@ -39,6 +39,7 @@ export const createKmsKey = (dto: {
   name: string;
   keyUsage: string;
   algorithm: string;
+  isPublicKeyPublished?: boolean;
   authToken: string;
 }) =>
   request(
@@ -46,7 +47,13 @@ export const createKmsKey = (dto: {
       method: "POST",
       url: "/api/v1/kms/keys",
       headers: { authorization: `Bearer ${dto.authToken}` },
-      body: { projectId: dto.projectId, name: dto.name, keyUsage: dto.keyUsage, algorithm: dto.algorithm }
+      body: {
+        projectId: dto.projectId,
+        name: dto.name,
+        keyUsage: dto.keyUsage,
+        algorithm: dto.algorithm,
+        isPublicKeyPublished: dto.isPublicKeyPublished
+      }
     },
     parseKey
   );

@@ -20,6 +20,11 @@ const JWS_ALGORITHM_BY_KEY_ALGORITHM: Partial<Record<AsymmetricKeyAlgorithm, str
   [AsymmetricKeyAlgorithm.ED25519]: "EdDSA"
 };
 
+export type TPublicJwkParams =
+  | { kty: "RSA"; n: string; e: string }
+  | { kty: "EC"; crv: string; x: string; y: string }
+  | { kty: "OKP"; crv: string; x: string };
+
 export type TPublicJwk = {
   kty: string;
   use: "sig";
@@ -34,6 +39,26 @@ export type TPublicJwk = {
 
 export const isJwkKeyAlgorithm = (keyAlgorithm: string) => JWK_KEY_ALGORITHMS.has(keyAlgorithm);
 
+// Only the public parameters, so each caller adds the kid and alg its verifiers expect
+export const getPublicJwkParams = (publicKey: Buffer): TPublicJwkParams => {
+  const jwk = crypto.nativeCrypto
+    .createPublicKey({ key: publicKey, format: "der", type: "spki" })
+    .export({ format: "jwk" });
+
+  switch (jwk.kty) {
+    case "RSA":
+      return { kty: "RSA", n: jwk.n as string, e: jwk.e as string };
+    case "EC":
+      return { kty: "EC", crv: jwk.crv as string, x: jwk.x as string, y: jwk.y as string };
+    case "OKP":
+      return { kty: "OKP", crv: jwk.crv as string, x: jwk.x as string };
+    default:
+      throw new BadRequestError({
+        message: `Keys of type '${jwk.kty ?? "unknown"}' can't be represented as a JWK. Use an RSA, ECC or ED25519 key.`
+      });
+  }
+};
+
 export const publicKeyToJwk = ({
   publicKey,
   keyAlgorithm,
@@ -43,21 +68,8 @@ export const publicKeyToJwk = ({
   keyAlgorithm: AsymmetricKeyAlgorithm;
   kid: string;
 }): TPublicJwk => {
-  const jwk = crypto.nativeCrypto
-    .createPublicKey({ key: publicKey, format: "der", type: "spki" })
-    .export({ format: "jwk" });
+  const { kty, ...params } = getPublicJwkParams(publicKey);
   const alg = JWS_ALGORITHM_BY_KEY_ALGORITHM[keyAlgorithm];
 
-  switch (jwk.kty) {
-    case "RSA":
-      return { kty: jwk.kty, use: "sig", kid, n: jwk.n, e: jwk.e };
-    case "EC":
-      return { kty: jwk.kty, use: "sig", kid, alg, crv: jwk.crv, x: jwk.x, y: jwk.y };
-    case "OKP":
-      return { kty: jwk.kty, use: "sig", kid, alg, crv: jwk.crv, x: jwk.x };
-    default:
-      throw new BadRequestError({
-        message: `Keys using ${keyAlgorithm} can't be represented as a JWK. Use an RSA, ECC or ED25519 key.`
-      });
-  }
+  return { kty, use: "sig", kid, ...(alg ? { alg } : {}), ...params };
 };

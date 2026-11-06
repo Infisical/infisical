@@ -165,6 +165,7 @@ export const kmsServiceFactory = ({
     isReserved = true,
     isExportable = true,
     hasDeleteProtection = false,
+    isPublicKeyPublished = false,
     tx,
     name,
     projectId,
@@ -210,6 +211,7 @@ export const kmsServiceFactory = ({
           isReserved,
           isExportable,
           hasDeleteProtection,
+          isPublicKeyPublished,
           projectId,
           description
         },

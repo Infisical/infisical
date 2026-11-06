@@ -54,6 +54,46 @@ describe("KMS public key publishing", () => {
     await expectNotFound(key.id);
   });
 
+  test("publishes a key at creation only for callers who may publish", async () => {
+    const key = await createKmsKey({
+      projectId,
+      name: "created-public",
+      keyUsage: "sign-verify",
+      algorithm: "ECC_NIST_P256",
+      isPublicKeyPublished: true,
+      authToken: org.authToken
+    });
+    expect(key.isPublicKeyPublished).toBe(true);
+    const jwks = await getKmsKeyPublicJwks({ keyId: key.id });
+    expect(jwks.keys[0]).toMatchObject({ kty: "EC", crv: "P-256", alg: "ES256", kid: `${key.id}:v1` });
+
+    const member = await createIdentityActor({ orgId: org.orgId, authToken: org.authToken });
+    await addIdentityToProject({
+      projectId,
+      identityId: member.identityId,
+      role: ProjectMembershipRole.Member,
+      authToken: org.authToken
+    });
+
+    await createKmsKey({
+      projectId,
+      name: "member-public",
+      keyUsage: "sign-verify",
+      algorithm: "RSA_4096",
+      isPublicKeyPublished: true,
+      authToken: member.authToken
+    }).expect((res) => expect(res.statusCode).toBe(403));
+
+    const memberKey = await createKmsKey({
+      projectId,
+      name: "member-private",
+      keyUsage: "sign-verify",
+      algorithm: "RSA_4096",
+      authToken: member.authToken
+    });
+    expect(memberKey.isPublicKeyPublished).toBe(false);
+  });
+
   test("serves a JWKS that verifies tokens signed through the sign API", async () => {
     const key = await createSigningKey("jwt-key");
     const published = await setPublished(key.id, true);
@@ -131,6 +171,15 @@ describe("KMS public key publishing", () => {
     await updateKmsKey({
       keyId: encryptionKey.id,
       body: { isPublicKeyPublished: true },
+      authToken: org.authToken
+    }).expect((res) => expect(res.statusCode).toBe(400));
+
+    await createKmsKey({
+      projectId,
+      name: "aes-public",
+      keyUsage: "encrypt-decrypt",
+      algorithm: "aes-256-gcm",
+      isPublicKeyPublished: true,
       authToken: org.authToken
     }).expect((res) => expect(res.statusCode).toBe(400));
   });

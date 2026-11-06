@@ -119,9 +119,6 @@ const getStatusBadgeProps = (
   return { variant: "success", label: "Active" };
 };
 
-const getJwksUrl = ({ id, jwksUrl }: TCmek) =>
-  jwksUrl ?? `${window.location.origin}/api/v1/kms/keys/${id}/jwks.json`;
-
 const copyToClipboard = async (value: string, label: string) => {
   try {
     await navigator.clipboard.writeText(value);
@@ -545,8 +542,11 @@ export const CmekTable = () => {
                       hasDeleteProtection,
                       keyUsage,
                       isPublicKeyPublished,
-                      kid
+                      kid,
+                      jwksUrl
                     } = cmek;
+                    // A disabled key's URL returns 404, so it isn't shown as public
+                    const isPublicKeyServed = isPublicKeyPublished && !isDisabled;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
                     const isSelected = selectedKeyIds.includes(id);
 
@@ -671,13 +671,15 @@ export const CmekTable = () => {
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Badge variant={variant}>{label}</Badge>
-                            {isPublicKeyPublished && (
+                            {isPublicKeyServed && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Badge variant="info">Public</Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  Public key published at {getJwksUrl(cmek)}
+                                  {jwksUrl
+                                    ? `Public key published at ${jwksUrl}`
+                                    : "Public key published"}
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -762,21 +764,19 @@ export const CmekTable = () => {
                                         {isPublicKeyPublished ? "Unpublish" : "Publish"} Public Key
                                       </KeyAction>
                                     )}
-                                    {kid && isPublicKeyPublished && (
-                                      <>
-                                        <KeyAction
-                                          onClick={() =>
-                                            copyToClipboard(getJwksUrl(cmek), "JWKS URL")
-                                          }
-                                        >
-                                          <LinkIcon className="mr-2 size-4" />
-                                          Copy JWKS URL
-                                        </KeyAction>
-                                        <KeyAction onClick={() => copyToClipboard(kid, "kid")}>
-                                          <CopyIcon className="mr-2 size-4" />
-                                          Copy kid
-                                        </KeyAction>
-                                      </>
+                                    {isPublicKeyServed && jwksUrl && (
+                                      <KeyAction
+                                        onClick={() => copyToClipboard(jwksUrl, "JWKS URL")}
+                                      >
+                                        <LinkIcon className="mr-2 size-4" />
+                                        Copy JWKS URL
+                                      </KeyAction>
+                                    )}
+                                    {isPublicKeyServed && kid && (
+                                      <KeyAction onClick={() => copyToClipboard(kid, "kid")}>
+                                        <CopyIcon className="mr-2 size-4" />
+                                        Copy kid
+                                      </KeyAction>
                                     )}
                                   </>
                                 )}

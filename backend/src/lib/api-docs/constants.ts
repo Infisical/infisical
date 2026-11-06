@@ -2802,7 +2802,9 @@ export const KMS = {
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
       "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation.",
-    hasDeleteProtection: "Prevents deletion of the key when enabled."
+    hasDeleteProtection: "Prevents deletion of the key when enabled.",
+    isPublicKeyPublished:
+      "Publish the key's public key as a JWKS at an unauthenticated URL, so third parties can verify its signatures. Only sign-verify keys using RSA, ECC or ED25519 can be published. Requires the publish-public-key permission."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",

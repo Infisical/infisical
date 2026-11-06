@@ -4412,6 +4412,7 @@ interface CreateCmekEvent {
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
     hasDeleteProtection?: boolean;
+    isPublicKeyPublished?: boolean;
   };
 }
 

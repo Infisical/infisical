@@ -9,7 +9,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
-import { kmsJwksLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { publicJwksLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -117,7 +117,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           // Deprecated alias for `algorithm`, retained for backwards compatibility.
           encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(openApiHidden()),
           isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable),
-          hasDeleteProtection: z.boolean().optional().default(false).describe(KMS.CREATE_KEY.hasDeleteProtection)
+          hasDeleteProtection: z.boolean().optional().default(false).describe(KMS.CREATE_KEY.hasDeleteProtection),
+          isPublicKeyPublished: z.boolean().optional().default(false).describe(KMS.CREATE_KEY.isPublicKeyPublished)
         })
         .superRefine((data, ctx) => {
           const algorithm = data.algorithm ?? data.encryptionAlgorithm ?? SymmetricKeyAlgorithm.AES_GCM_256;
@@ -164,7 +165,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
-        body: { projectId, name, description, keyUsage, isExportable, hasDeleteProtection },
+        body: { projectId, name, description, keyUsage, isExportable, hasDeleteProtection, isPublicKeyPublished },
         permission
       } = req;
 
@@ -181,7 +182,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           encryptionAlgorithm: algorithm,
           keyUsage,
           isExportable,
-          hasDeleteProtection
+          hasDeleteProtection,
+          isPublicKeyPublished
         },
         permission
       );
@@ -197,7 +199,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             description,
             encryptionAlgorithm: algorithm,
             isExportable,
-            hasDeleteProtection
+            hasDeleteProtection,
+            isPublicKeyPublished
           }
         }
       });
@@ -623,7 +626,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/keys/:keyId/jwks.json",
     config: {
-      rateLimit: kmsJwksLimit
+      rateLimit: publicJwksLimit
     },
     schema: {
       hide: false,
