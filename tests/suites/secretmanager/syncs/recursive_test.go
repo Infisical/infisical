@@ -70,7 +70,8 @@ func TestSecretSync_RecursivePermissions(t *testing.T) {
 
 		// Action
 		res := s.update(t, actor.API, map[string]any{
-			"syncOptions": map[string]any{"initialSyncBehavior": "overwrite-destination", "includeAllSubFolders": true},
+			"includeAllSubFolders": true,
+			"syncOptions":          map[string]any{"initialSyncBehavior": "overwrite-destination"},
 		})
 
 		// Assert
@@ -146,7 +147,8 @@ func TestSecretSync_RecursiveConflicts(t *testing.T) {
 
 		// Action
 		res := s.update(t, proj.Tenant().Admin.API, map[string]any{
-			"syncOptions": map[string]any{"initialSyncBehavior": "overwrite-destination", "includeAllSubFolders": true},
+			"includeAllSubFolders": true,
+			"syncOptions":          map[string]any{"initialSyncBehavior": "overwrite-destination"},
 		})
 
 		// Assert
@@ -273,6 +275,6 @@ func recursiveSyncWithLateDuplicate(tt *testing.T, p *fixture.Project, conn *fix
 
 func includesSubFolders(tt *testing.T, s *sync) bool {
 	tt.Helper()
-	v := s.get(tt).JSON200.SecretSync.SyncOptions.IncludeAllSubFolders
+	v := s.get(tt).JSON200.SecretSync.IncludeAllSubFolders
 	return v != nil && *v
 }

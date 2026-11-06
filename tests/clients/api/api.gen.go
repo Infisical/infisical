@@ -24777,6 +24777,36 @@ func (e DeepSearchSecrets200JSONResponseBodySecretRotations29Type) Valid() bool 
 	}
 }
 
+// Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionAppClickhouse DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations30Type.
+const (
+	DeepSearchSecrets200JSONResponseBodySecretRotations30TypeClickhouseCredentials DeepSearchSecrets200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations30Type enum.
+func (e DeepSearchSecrets200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case DeepSearchSecrets200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeepSearchSecrets400JSONResponseBodyStatusCode.
 const (
 	DeepSearchSecrets400JSONResponseBodyStatusCodeN400 DeepSearchSecrets400JSONResponseBodyStatusCode = 400
@@ -24894,6 +24924,24 @@ func (e ListProjectSecretsDetailsParamsOrderDirection) Valid() bool {
 	case ListProjectSecretsDetailsParamsOrderDirectionAsc:
 		return true
 	case ListProjectSecretsDetailsParamsOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy.
+const (
+	ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByInstance     ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy = "instance"
+	ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByOrganization ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy enum.
+func (e ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByInstance:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -26706,6 +26754,36 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type) Valid
 	}
 }
 
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionAppClickhouse ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations30TypeClickhouseCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProjectSecretsDetails400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails400JSONResponseBodyStatusCodeN400 ListProjectSecretsDetails400JSONResponseBodyStatusCode = 400
@@ -26829,6 +26907,24 @@ func (e ListProjectSecretsOverviewParamsOrderDirection) Valid() bool {
 	case ListProjectSecretsOverviewParamsOrderDirectionAsc:
 		return true
 	case ListProjectSecretsOverviewParamsOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy.
+const (
+	ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByInstance     ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy = "instance"
+	ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByOrganization ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy enum.
+func (e ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByInstance:
+		return true
+	case ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -28641,6 +28737,36 @@ func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type) Vali
 	}
 }
 
+// Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionAppClickhouse ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type.
+const (
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations30TypeClickhouseCredentials ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type enum.
+func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProjectSecretsOverview400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsOverview400JSONResponseBodyStatusCodeN400 ListProjectSecretsOverview400JSONResponseBodyStatusCode = 400
@@ -28988,13 +29114,13 @@ func (e CreateDynamicSecretJSONBodyProvider0Type) Valid() bool {
 
 // Defines values for CreateDynamicSecretJSONBodyProvider1Type.
 const (
-	Clickhouse CreateDynamicSecretJSONBodyProvider1Type = "clickhouse"
+	CreateDynamicSecretJSONBodyProvider1TypeClickhouse CreateDynamicSecretJSONBodyProvider1Type = "clickhouse"
 )
 
 // Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider1Type enum.
 func (e CreateDynamicSecretJSONBodyProvider1Type) Valid() bool {
 	switch e {
-	case Clickhouse:
+	case CreateDynamicSecretJSONBodyProvider1TypeClickhouse:
 		return true
 	default:
 		return false
@@ -34923,6 +35049,24 @@ func (e AddUserToGroup500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateHoneyTokenJSONBodyConfigManagedBy.
+const (
+	CreateHoneyTokenJSONBodyConfigManagedByInstance     CreateHoneyTokenJSONBodyConfigManagedBy = "instance"
+	CreateHoneyTokenJSONBodyConfigManagedByOrganization CreateHoneyTokenJSONBodyConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateHoneyTokenJSONBodyConfigManagedBy enum.
+func (e CreateHoneyTokenJSONBodyConfigManagedBy) Valid() bool {
+	switch e {
+	case CreateHoneyTokenJSONBodyConfigManagedByInstance:
+		return true
+	case CreateHoneyTokenJSONBodyConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateHoneyTokenJSONBodyType.
 const (
 	CreateHoneyTokenJSONBodyTypeAws CreateHoneyTokenJSONBodyType = "aws"
@@ -34932,6 +35076,24 @@ const (
 func (e CreateHoneyTokenJSONBodyType) Valid() bool {
 	switch e {
 	case CreateHoneyTokenJSONBodyTypeAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -35478,6 +35640,24 @@ func (e GetHoneyTokenLimits500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetHoneyToken400JSONResponseBodyStatusCode.
 const (
 	GetHoneyToken400JSONResponseBodyStatusCodeN400 GetHoneyToken400JSONResponseBodyStatusCode = 400
@@ -35562,6 +35742,24 @@ const (
 func (e GetHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetHoneyToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -47646,6 +47844,24 @@ const (
 func (e GetProjectBySlug500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetProjectBySlug500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteProjectParamsHardDelete.
+const (
+	DeleteProjectParamsHardDeleteFalse DeleteProjectParamsHardDelete = "false"
+	DeleteProjectParamsHardDeleteTrue  DeleteProjectParamsHardDelete = "true"
+)
+
+// Valid indicates whether the value is a known member of the DeleteProjectParamsHardDelete enum.
+func (e DeleteProjectParamsHardDelete) Valid() bool {
+	switch e {
+	case DeleteProjectParamsHardDeleteFalse:
+		return true
+	case DeleteProjectParamsHardDeleteTrue:
 		return true
 	default:
 		return false
@@ -97690,7 +97906,7 @@ type UpdateKubernetesAuthJSONBody struct {
 	// TokenReviewMode The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.
 	TokenReviewMode *UpdateKubernetesAuthJSONBodyTokenReviewMode `json:"tokenReviewMode,omitempty"`
 
-	// TokenReviewerJwt Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.
+	// TokenReviewerJwt Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token replaces the stored one and is used to validate service account tokens during authentication. Omit it, or send an empty string, to keep the stored JWT. Set it to null to remove the stored JWT; the client's own JWT is then used instead, which requires the client to have the system:auth-delegator ClusterRole binding. A stored JWT cannot be read back, so it must be supplied again when changing the host, gateway, gateway pool, CA certificate, or TLS verification.
 	TokenReviewerJwt *string `json:"tokenReviewerJwt,omitempty"`
 
 	// VerifyTlsCertificate Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and the resulting effective CA must be empty. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.
@@ -101928,6 +102144,67 @@ type DeepSearchSecrets200JSONResponseBodySecretRotations29ConnectionApp string
 // DeepSearchSecrets200JSONResponseBodySecretRotations29Type defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets200JSONResponseBodySecretRotations29Type string
 
+// DeepSearchSecrets200JSONResponseBodySecretRotations30 defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                 `json:"id"`
+		Name string                                                             `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      DeepSearchSecrets200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                 `json:"updatedAt"`
+}
+
+// DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp string
+
+// DeepSearchSecrets200JSONResponseBodySecretRotations30Type defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30Type string
+
 // DeepSearchSecrets200JSONResponseBody_SecretRotations_Item defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets200JSONResponseBody_SecretRotations_Item struct {
 	union json.RawMessage
@@ -102007,6 +102284,9 @@ type ListProjectSecretsDetailsParamsOrderBy string
 
 // ListProjectSecretsDetailsParamsOrderDirection defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetailsParamsOrderDirection string
+
+// ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy string
 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations0 struct {
@@ -104100,6 +104380,67 @@ type ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type string
 
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type string
+
 // ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item struct {
 	Secrets []*struct {
@@ -104231,6 +104572,9 @@ type ListProjectSecretsOverviewParamsOrderBy string
 
 // ListProjectSecretsOverviewParamsOrderDirection defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverviewParamsOrderDirection string
+
+// ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy string
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations0 struct {
@@ -106323,6 +106667,67 @@ type ListProjectSecretsOverview200JSONResponseBodySecretRotations29ConnectionApp
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type string
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30 defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                          `json:"id"`
+		Name string                                                                      `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                          `json:"updatedAt"`
+}
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp string
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type string
 
 // ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item struct {
@@ -109397,6 +109802,11 @@ type AddUserToGroup500JSONResponseBodyStatusCode float32
 
 // CreateHoneyTokenJSONBody defines parameters for CreateHoneyToken.
 type CreateHoneyTokenJSONBody struct {
+	// Config Settings that depend on the honey token's type.
+	Config *struct {
+		// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+		ManagedBy *CreateHoneyTokenJSONBodyConfigManagedBy `json:"managedBy,omitempty"`
+	} `json:"config,omitempty"`
 	Description    *string                      `json:"description,omitempty"`
 	Environment    string                       `json:"environment"`
 	Name           string                       `json:"name"`
@@ -109406,8 +109816,14 @@ type CreateHoneyTokenJSONBody struct {
 	Type           CreateHoneyTokenJSONBodyType `json:"type"`
 }
 
+// CreateHoneyTokenJSONBodyConfigManagedBy defines parameters for CreateHoneyToken.
+type CreateHoneyTokenJSONBodyConfigManagedBy string
+
 // CreateHoneyTokenJSONBodyType defines parameters for CreateHoneyToken.
 type CreateHoneyTokenJSONBodyType string
+
+// CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for CreateHoneyToken.
+type CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // CreateHoneyToken400JSONResponseBodyStatusCode defines parameters for CreateHoneyToken.
 type CreateHoneyToken400JSONResponseBodyStatusCode float32
@@ -109532,6 +109948,9 @@ type GetHoneyTokenLimits422JSONResponseBodyStatusCode float32
 // GetHoneyTokenLimits500JSONResponseBodyStatusCode defines parameters for GetHoneyTokenLimits.
 type GetHoneyTokenLimits500JSONResponseBodyStatusCode float32
 
+// GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for GetHoneyToken.
+type GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
+
 // GetHoneyToken400JSONResponseBodyStatusCode defines parameters for GetHoneyToken.
 type GetHoneyToken400JSONResponseBodyStatusCode float32
 
@@ -109556,6 +109975,9 @@ type UpdateHoneyTokenJSONBody struct {
 	Name           *string            `json:"name,omitempty"`
 	SecretsMapping *map[string]string `json:"secretsMapping,omitempty"`
 }
+
+// UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for UpdateHoneyToken.
+type UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // UpdateHoneyToken400JSONResponseBodyStatusCode defines parameters for UpdateHoneyToken.
 type UpdateHoneyToken400JSONResponseBodyStatusCode float32
@@ -110878,12 +111300,11 @@ type GetInsightsSummary500JSONResponseBodyStatusCode float32
 
 // InviteUsersToOrganizationJSONBody defines parameters for InviteUsersToOrganization.
 type InviteUsersToOrganizationJSONBody struct {
-	GrantAgentVaultAccess *bool                 `json:"grantAgentVaultAccess,omitempty"`
-	GrantPamAccess        *bool                 `json:"grantPamAccess,omitempty"`
-	InviteeEmails         []openapi_types.Email `json:"inviteeEmails"`
-	OrganizationId        string                `json:"organizationId"`
-	OrganizationRoleSlug  *string               `json:"organizationRoleSlug,omitempty"`
-	ProjectIds            *[]string             `json:"projectIds,omitempty"`
+	GrantPamAccess       *bool                 `json:"grantPamAccess,omitempty"`
+	InviteeEmails        []openapi_types.Email `json:"inviteeEmails"`
+	OrganizationId       string                `json:"organizationId"`
+	OrganizationRoleSlug *string               `json:"organizationRoleSlug,omitempty"`
+	ProjectIds           *[]string             `json:"projectIds,omitempty"`
 }
 
 // InviteUsersToOrganization400JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
@@ -114090,6 +114511,15 @@ type GetProjectBySlug422JSONResponseBodyStatusCode float32
 
 // GetProjectBySlug500JSONResponseBodyStatusCode defines parameters for GetProjectBySlug.
 type GetProjectBySlug500JSONResponseBodyStatusCode float32
+
+// DeleteProjectParams defines parameters for DeleteProject.
+type DeleteProjectParams struct {
+	// HardDelete When true, the project is permanently deleted shortly after the request. When false or omitted, a secret manager project is soft-deleted (preserved and scheduled for permanent deletion after a grace period) and hidden from subsequent reads.
+	HardDelete *DeleteProjectParamsHardDelete `form:"hardDelete,omitempty" json:"hardDelete,omitempty"`
+}
+
+// DeleteProjectParamsHardDelete defines parameters for DeleteProject.
+type DeleteProjectParamsHardDelete string
 
 // DeleteProject400JSONResponseBodyStatusCode defines parameters for DeleteProject.
 type DeleteProject400JSONResponseBodyStatusCode float32
@@ -117370,6 +117800,9 @@ type CreateAwsParameterStoreSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -117387,7 +117820,7 @@ type CreateAwsParameterStoreSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -117624,6 +118057,9 @@ type UpdateAwsParameterStoreSecretSyncJSONBody struct {
 	// Environment The updated slug of the project environment to sync secrets from.
 	Environment *string `json:"environment,omitempty"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Leave it out to keep the current setting.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -117638,7 +118074,7 @@ type UpdateAwsParameterStoreSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -117872,6 +118308,9 @@ type CreateAwsSecretsManagerSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -117889,7 +118328,7 @@ type CreateAwsSecretsManagerSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -118260,6 +118699,9 @@ type UpdateAwsSecretsManagerSecretSyncJSONBody struct {
 	// Environment The updated slug of the project environment to sync secrets from.
 	Environment *string `json:"environment,omitempty"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Leave it out to keep the current setting.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -118274,7 +118716,7 @@ type UpdateAwsSecretsManagerSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -118593,6 +119035,9 @@ type CreateChefSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -118610,7 +119055,7 @@ type CreateChefSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Chef destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Chef destination.
@@ -118769,6 +119214,9 @@ type CreateGitHubSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -118786,7 +119234,7 @@ type CreateGitHubSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -119355,6 +119803,9 @@ type UpdateGitHubSecretSyncJSONBody struct {
 	// Environment The updated slug of the project environment to sync secrets from.
 	Environment *string `json:"environment,omitempty"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Leave it out to keep the current setting.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -119369,7 +119820,7 @@ type UpdateGitHubSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -119886,6 +120337,9 @@ type CreateOciVaultSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -119903,7 +120357,7 @@ type CreateOciVaultSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the OCI Vault destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the OCI Vault destination.
@@ -119956,6 +120410,9 @@ type CreateVercelSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -119973,7 +120430,7 @@ type CreateVercelSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -137313,6 +137770,32 @@ func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MergeDeepSea
 	return err
 }
 
+// AsDeepSearchSecrets200JSONResponseBodySecretRotations30 returns the union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item as a DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) AsDeepSearchSecrets200JSONResponseBodySecretRotations30() (DeepSearchSecrets200JSONResponseBodySecretRotations30, error) {
+	var body DeepSearchSecrets200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeepSearchSecrets200JSONResponseBodySecretRotations30 overwrites any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item as the provided DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) FromDeepSearchSecrets200JSONResponseBodySecretRotations30(v DeepSearchSecrets200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeepSearchSecrets200JSONResponseBodySecretRotations30 performs a merge with any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item, using the provided DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MergeDeepSearchSecrets200JSONResponseBodySecretRotations30(v DeepSearchSecrets200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -138155,6 +138638,32 @@ func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) From
 
 // MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations29
 func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29(v ListProjectSecretsDetails200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations30 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations30() (ListProjectSecretsDetails200JSONResponseBodySecretRotations30, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations30 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations30(v ListProjectSecretsDetails200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations30 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations30(v ListProjectSecretsDetails200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -139041,6 +139550,32 @@ func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) Fro
 
 // MergeListProjectSecretsOverview200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations29
 func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsOverview200JSONResponseBodySecretRotations29(v ListProjectSecretsOverview200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsOverview200JSONResponseBodySecretRotations30 returns the union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsOverview200JSONResponseBodySecretRotations30() (ListProjectSecretsOverview200JSONResponseBodySecretRotations30, error) {
+	var body ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsOverview200JSONResponseBodySecretRotations30 overwrites any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsOverview200JSONResponseBodySecretRotations30(v ListProjectSecretsOverview200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsOverview200JSONResponseBodySecretRotations30 performs a merge with any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsOverview200JSONResponseBodySecretRotations30(v ListProjectSecretsOverview200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -157738,7 +158273,7 @@ type ClientInterface interface {
 	// DeleteProject performs a DELETE /api/v1/projects/{projectId} (the `DeleteProject` operationId) request.
 	//
 	// Delete project.
-	DeleteProject(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteProject(ctx context.Context, projectId string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectById performs a GET /api/v1/projects/{projectId} (the `GetProjectById` operationId) request.
 	//
@@ -167391,8 +167926,8 @@ func (c *Client) GetProjectBySlug(ctx context.Context, slug string, reqEditors .
 // DeleteProject performs a DELETE /api/v1/projects/{projectId} (the `DeleteProject` operationId) request.
 //
 // Delete project.
-func (c *Client) DeleteProject(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteProjectRequest(c.Server, projectId)
+func (c *Client) DeleteProject(ctx context.Context, projectId string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteProjectRequest(c.Server, projectId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -191051,7 +191586,7 @@ func NewGetProjectBySlugRequest(server string, slug string) (*http.Request, erro
 }
 
 // NewDeleteProjectRequest constructs an http.Request for the DeleteProject method
-func NewDeleteProjectRequest(server string, projectId string) (*http.Request, error) {
+func NewDeleteProjectRequest(server string, projectId string, params *DeleteProjectParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -191074,6 +191609,33 @@ func NewDeleteProjectRequest(server string, projectId string) (*http.Request, er
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.HardDelete != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "hardDelete", *params.HardDelete, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
@@ -210674,7 +211236,7 @@ type ClientWithResponsesInterface interface {
 	// Delete project.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteProjectWithResponse(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
+	DeleteProjectWithResponse(ctx context.Context, projectId string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
 
 	// GetProjectByIdWithResponse performs a GET /api/v1/projects/{projectId} (the `GetProjectById` operationId) request.
 	//
@@ -233868,16 +234430,19 @@ type DeleteKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -233937,16 +234502,19 @@ type DeleteKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -234057,26 +234625,31 @@ type GetKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -234128,26 +234701,31 @@ type GetKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -234250,26 +234828,31 @@ type UpdateKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -234321,26 +234904,31 @@ type UpdateKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -234443,26 +235031,31 @@ type AttachKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -234514,26 +235107,31 @@ type AttachKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r AttachKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -245530,6 +246128,10 @@ type ListProjectSecretsDetailsResponse struct {
 			Version            *float32            `json:"version,omitempty"`
 		} `json:"folders,omitempty"`
 		HoneyTokens *[]struct {
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment struct {
@@ -245774,6 +246376,10 @@ func (r ListProjectSecretsDetailsResponse) GetJSON200() *struct {
 		Version            *float32            `json:"version,omitempty"`
 	} `json:"folders,omitempty"`
 	HoneyTokens *[]struct {
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment struct {
@@ -246071,6 +246677,10 @@ type ListProjectSecretsOverviewResponse struct {
 			Version            *float32            `json:"version,omitempty"`
 		} `json:"folders,omitempty"`
 		HoneyTokens *[]struct {
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment struct {
@@ -246322,6 +246932,10 @@ func (r ListProjectSecretsOverviewResponse) GetJSON200() *struct {
 		Version            *float32            `json:"version,omitempty"`
 	} `json:"folders,omitempty"`
 	HoneyTokens *[]struct {
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment struct {
@@ -255403,6 +256017,11 @@ type CreateHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt      time.Time          `json:"createdAt"`
 			Description    *string            `json:"description,omitempty"`
 			Id             openapi_types.UUID `json:"id"`
@@ -255467,6 +256086,11 @@ type CreateHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt      time.Time          `json:"createdAt"`
 		Description    *string            `json:"description,omitempty"`
 		Id             openapi_types.UUID `json:"id"`
@@ -256385,6 +257009,11 @@ type GetHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment *struct {
@@ -256455,6 +257084,11 @@ type GetHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment *struct {
@@ -256576,6 +257210,11 @@ type UpdateHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt      time.Time          `json:"createdAt"`
 			Description    *string            `json:"description,omitempty"`
 			Id             openapi_types.UUID `json:"id"`
@@ -256636,6 +257275,11 @@ type UpdateHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt      time.Time          `json:"createdAt"`
 		Description    *string            `json:"description,omitempty"`
 		Id             openapi_types.UUID `json:"id"`
@@ -261567,9 +262211,8 @@ type InviteUsersToOrganizationResponse struct {
 			Link  string `json:"link"`
 		} `json:"completeInviteLinks,omitempty"`
 		GrantFailures *struct {
-			AgentVaultAccess bool     `json:"agentVaultAccess"`
-			PamAccess        bool     `json:"pamAccess"`
-			ProjectIds       []string `json:"projectIds"`
+			PamAccess  bool     `json:"pamAccess"`
+			ProjectIds []string `json:"projectIds"`
 		} `json:"grantFailures,omitempty"`
 		Message string `json:"message"`
 	}
@@ -261626,9 +262269,8 @@ func (r InviteUsersToOrganizationResponse) GetJSON200() *struct {
 		Link  string `json:"link"`
 	} `json:"completeInviteLinks,omitempty"`
 	GrantFailures *struct {
-		AgentVaultAccess bool     `json:"agentVaultAccess"`
-		PamAccess        bool     `json:"pamAccess"`
-		ProjectIds       []string `json:"projectIds"`
+		PamAccess  bool     `json:"pamAccess"`
+		ProjectIds []string `json:"projectIds"`
 	} `json:"grantFailures,omitempty"`
 	Message string `json:"message"`
 } {
@@ -269732,7 +270374,6 @@ type GetOrganizationByIdResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Organization struct {
-			AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -269818,7 +270459,6 @@ type GetOrganizationByIdResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetOrganizationByIdResponse) GetJSON200() *struct {
 	Organization struct {
-		AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -297075,30 +297715,31 @@ type ListAwsParameterStoreSecretSyncsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -297198,30 +297839,31 @@ func (r ListAwsParameterStoreSecretSyncsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -297372,30 +298014,31 @@ type CreateAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -297495,30 +298138,31 @@ func (r CreateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -297979,30 +298623,31 @@ type GetAwsParameterStoreSecretSyncByNameResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -298102,30 +298747,31 @@ func (r GetAwsParameterStoreSecretSyncByNameResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -298276,30 +298922,31 @@ type DeleteAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -298399,30 +299046,31 @@ func (r DeleteAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -298573,30 +299221,31 @@ type GetAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -298696,30 +299345,31 @@ func (r GetAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -298870,30 +299520,31 @@ type UpdateAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -298993,30 +299644,31 @@ func (r UpdateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -299167,30 +299819,31 @@ type ImportAwsParameterStoreSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -299290,30 +299943,31 @@ func (r ImportAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -299464,30 +300118,31 @@ type RemoveAwsParameterStoreSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -299587,30 +300242,31 @@ func (r RemoveAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -299761,30 +300417,31 @@ type SyncAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -299884,30 +300541,31 @@ func (r SyncAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -300052,30 +300710,31 @@ type ListAwsSecretsManagerSecretSyncsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -300169,30 +300828,31 @@ func (r ListAwsSecretsManagerSecretSyncsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -300337,30 +300997,31 @@ type CreateAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -300454,30 +301115,31 @@ func (r CreateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -300932,30 +301594,31 @@ type GetAwsSecretsManagerSecretSyncByNameResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -301049,30 +301712,31 @@ func (r GetAwsSecretsManagerSecretSyncByNameResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -301217,30 +301881,31 @@ type DeleteAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -301334,30 +301999,31 @@ func (r DeleteAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -301502,30 +302168,31 @@ type GetAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -301619,30 +302286,31 @@ func (r GetAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -301787,30 +302455,31 @@ type UpdateAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -301904,30 +302573,31 @@ func (r UpdateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -302072,30 +302742,31 @@ type ImportAwsSecretsManagerSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -302189,30 +302860,31 @@ func (r ImportAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -302357,30 +303029,31 @@ type RemoveAwsSecretsManagerSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -302474,30 +303147,31 @@ func (r RemoveAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -302642,30 +303316,31 @@ type SyncAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -302759,30 +303434,31 @@ func (r SyncAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -302936,30 +303612,31 @@ type CreateChefSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Chef destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Chef destination.
@@ -303050,30 +303727,31 @@ func (r CreateChefSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Chef destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Chef destination.
@@ -303206,30 +303884,31 @@ type ListGitHubSecretSyncsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -303311,30 +303990,31 @@ func (r ListGitHubSecretSyncsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -303467,30 +304147,31 @@ type CreateGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -303572,30 +304253,31 @@ func (r CreateGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -304038,30 +304720,31 @@ type GetGitHubSecretSyncByNameResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -304143,30 +304826,31 @@ func (r GetGitHubSecretSyncByNameResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -304299,30 +304983,31 @@ type DeleteGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -304404,30 +305089,31 @@ func (r DeleteGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -304560,30 +305246,31 @@ type GetGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -304665,30 +305352,31 @@ func (r GetGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -304821,30 +305509,31 @@ type UpdateGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -304926,30 +305615,31 @@ func (r UpdateGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -305082,30 +305772,31 @@ type ImportGitHubSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -305187,30 +305878,31 @@ func (r ImportGitHubSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -305343,30 +306035,31 @@ type RemoveGitHubSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -305448,30 +306141,31 @@ func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -305604,30 +306298,31 @@ type SyncGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -305709,30 +306404,31 @@ func (r SyncGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -305874,30 +306570,31 @@ type CreateOciVaultSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the OCI Vault destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the OCI Vault destination.
@@ -305988,30 +306685,31 @@ func (r CreateOciVaultSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the OCI Vault destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the OCI Vault destination.
@@ -306144,30 +306842,31 @@ type CreateVercelSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -306249,30 +306948,31 @@ func (r CreateVercelSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -306405,30 +307105,31 @@ type GetVercelSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -306510,30 +307211,31 @@ func (r GetVercelSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -306666,30 +307368,31 @@ type SyncVercelSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -306771,30 +307474,31 @@ func (r SyncVercelSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -348726,8 +349430,8 @@ func (c *ClientWithResponses) GetProjectBySlugWithResponse(ctx context.Context, 
 // Delete project.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
-	rsp, err := c.DeleteProject(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, projectId string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
+	rsp, err := c.DeleteProject(ctx, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -367887,16 +368591,19 @@ func ParseDeleteKubernetesAuthResponse(rsp *http.Response) (*DeleteKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -368008,26 +368715,31 @@ func ParseGetKubernetesAuthResponse(rsp *http.Response) (*GetKubernetesAuthRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -368131,26 +368843,31 @@ func ParseUpdateKubernetesAuthResponse(rsp *http.Response) (*UpdateKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -368254,26 +368971,31 @@ func ParseAttachKubernetesAuthResponse(rsp *http.Response) (*AttachKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -375458,6 +376180,10 @@ func ParseListProjectSecretsDetailsResponse(rsp *http.Response) (*ListProjectSec
 				Version            *float32            `json:"version,omitempty"`
 			} `json:"folders,omitempty"`
 			HoneyTokens *[]struct {
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment struct {
@@ -375756,6 +376482,10 @@ func ParseListProjectSecretsOverviewResponse(rsp *http.Response) (*ListProjectSe
 				Version            *float32            `json:"version,omitempty"`
 			} `json:"folders,omitempty"`
 			HoneyTokens *[]struct {
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment struct {
@@ -381754,6 +382484,11 @@ func ParseCreateHoneyTokenResponse(rsp *http.Response) (*CreateHoneyTokenRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt      time.Time          `json:"createdAt"`
 				Description    *string            `json:"description,omitempty"`
 				Id             openapi_types.UUID `json:"id"`
@@ -382404,6 +383139,11 @@ func ParseGetHoneyTokenResponse(rsp *http.Response) (*GetHoneyTokenResponse, err
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment *struct {
@@ -382526,6 +383266,11 @@ func ParseUpdateHoneyTokenResponse(rsp *http.Response) (*UpdateHoneyTokenRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt      time.Time          `json:"createdAt"`
 				Description    *string            `json:"description,omitempty"`
 				Id             openapi_types.UUID `json:"id"`
@@ -385792,9 +386537,8 @@ func ParseInviteUsersToOrganizationResponse(rsp *http.Response) (*InviteUsersToO
 				Link  string `json:"link"`
 			} `json:"completeInviteLinks,omitempty"`
 			GrantFailures *struct {
-				AgentVaultAccess bool     `json:"agentVaultAccess"`
-				PamAccess        bool     `json:"pamAccess"`
-				ProjectIds       []string `json:"projectIds"`
+				PamAccess  bool     `json:"pamAccess"`
+				ProjectIds []string `json:"projectIds"`
 			} `json:"grantFailures,omitempty"`
 			Message string `json:"message"`
 		}
@@ -391116,7 +391860,6 @@ func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdR
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Organization struct {
-				AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -408682,30 +409425,31 @@ func ParseListAwsParameterStoreSecretSyncsResponse(rsp *http.Response) (*ListAws
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -408857,30 +409601,31 @@ func ParseCreateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Create
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -409240,30 +409985,31 @@ func ParseGetAwsParameterStoreSecretSyncByNameResponse(rsp *http.Response) (*Get
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -409415,30 +410161,31 @@ func ParseDeleteAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Delete
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -409590,30 +410337,31 @@ func ParseGetAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*GetAwsPar
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -409765,30 +410513,31 @@ func ParseUpdateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Update
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -409940,30 +410689,31 @@ func ParseImportAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -410115,30 +410865,31 @@ func ParseRemoveAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -410290,30 +411041,31 @@ func ParseSyncAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*SyncAwsP
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -410459,30 +411211,31 @@ func ParseListAwsSecretsManagerSecretSyncsResponse(rsp *http.Response) (*ListAws
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -410628,30 +411381,31 @@ func ParseCreateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Create
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -411005,30 +411759,31 @@ func ParseGetAwsSecretsManagerSecretSyncByNameResponse(rsp *http.Response) (*Get
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -411174,30 +411929,31 @@ func ParseDeleteAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Delete
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -411343,30 +412099,31 @@ func ParseGetAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*GetAwsSec
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -411512,30 +412269,31 @@ func ParseUpdateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Update
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -411681,30 +412439,31 @@ func ParseImportAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -411850,30 +412609,31 @@ func ParseRemoveAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -412019,30 +412779,31 @@ func ParseSyncAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*SyncAwsS
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -412197,30 +412958,31 @@ func ParseCreateChefSecretSyncResponse(rsp *http.Response) (*CreateChefSecretSyn
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Chef destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Chef destination.
@@ -412354,30 +413116,31 @@ func ParseListGitHubSecretSyncsResponse(rsp *http.Response) (*ListGitHubSecretSy
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -412511,30 +413274,31 @@ func ParseCreateGitHubSecretSyncResponse(rsp *http.Response) (*CreateGitHubSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -412876,30 +413640,31 @@ func ParseGetGitHubSecretSyncByNameResponse(rsp *http.Response) (*GetGitHubSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -413033,30 +413798,31 @@ func ParseDeleteGitHubSecretSyncResponse(rsp *http.Response) (*DeleteGitHubSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -413190,30 +413956,31 @@ func ParseGetGitHubSecretSyncResponse(rsp *http.Response) (*GetGitHubSecretSyncR
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -413347,30 +414114,31 @@ func ParseUpdateGitHubSecretSyncResponse(rsp *http.Response) (*UpdateGitHubSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -413504,30 +414272,31 @@ func ParseImportGitHubSecretSyncSecretsResponse(rsp *http.Response) (*ImportGitH
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -413661,30 +414430,31 @@ func ParseRemoveGitHubSecretSyncSecretsResponse(rsp *http.Response) (*RemoveGitH
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -413818,30 +414588,31 @@ func ParseSyncGitHubSecretSyncResponse(rsp *http.Response) (*SyncGitHubSecretSyn
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -413984,30 +414755,31 @@ func ParseCreateOciVaultSecretSyncResponse(rsp *http.Response) (*CreateOciVaultS
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the OCI Vault destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the OCI Vault destination.
@@ -414141,30 +414913,31 @@ func ParseCreateVercelSecretSyncResponse(rsp *http.Response) (*CreateVercelSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -414298,30 +415071,31 @@ func ParseGetVercelSecretSyncResponse(rsp *http.Response) (*GetVercelSecretSyncR
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -414455,30 +415229,31 @@ func ParseSyncVercelSecretSyncResponse(rsp *http.Response) (*SyncVercelSecretSyn
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
