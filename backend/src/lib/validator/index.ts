@@ -30,6 +30,7 @@ export {
 } from "./validate-smb";
 export {
   blockLocalAndPrivateIpAddresses,
+  isValidAzureAppConfigurationUrl,
   isValidAzureKeyVaultUrl,
   ssrfSafeGet,
   ssrfSafePost,
