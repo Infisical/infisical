@@ -152,6 +152,7 @@ export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .min(1, "Secret path required")
       .transform(removeTrailingSlash)
       .describe(SecretSyncs.CREATE(destination).secretPath),
+    includeAllSubFolders: z.boolean().optional().describe(SecretSyncs.CREATE(destination).includeAllSubFolders),
     isAutoSyncEnabled: z.boolean().default(true).describe(SecretSyncs.CREATE(destination).isAutoSyncEnabled),
     syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge })
   });
@@ -180,6 +181,7 @@ export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .transform(removeTrailingSlash)
       .optional()
       .describe(SecretSyncs.UPDATE(destination).secretPath),
+    includeAllSubFolders: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).includeAllSubFolders),
     isAutoSyncEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isAutoSyncEnabled),
     syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge, isUpdateSchema: true }).optional()
   });

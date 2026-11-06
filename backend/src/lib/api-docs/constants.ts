@@ -3436,6 +3436,7 @@ export const SecretSyncs = {
       projectId: "The ID of the project to create the sync in.",
       environment: `The slug of the project environment to sync secrets from.`,
       secretPath: `The folder path to sync secrets from.`,
+      includeAllSubFolders: `Whether to sync secrets from folders beneath the source path as well. Defaults to false.`,
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
       } Connection to use for syncing.`,
@@ -3453,6 +3454,7 @@ export const SecretSyncs = {
       name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
       environment: `The updated slug of the project environment to sync secrets from.`,
       secretPath: `The updated folder path to sync secrets from.`,
+      includeAllSubFolders: `Whether to sync secrets from folders beneath the source path as well. Leave it out to keep the current setting.`,
       description: `The updated description of the ${destinationName} Sync.`,
       isAutoSyncEnabled: `Whether secrets should be automatically synced when changes occur at the source location or not.`,
       syncOptions: "Optional parameters to modify how secrets are synced."
@@ -3478,7 +3480,7 @@ export const SecretSyncs = {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
       keySchema: `Specify the format to use for structuring secret keys in the ${destinationName} destination.`,
       disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`,
-      includeAllSubFolders: `Whether to sync secrets from folders beneath the source path as well.`
+      includeAllSubFolders: `Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.`
     };
   },
   ADDITIONAL_SYNC_OPTIONS: {

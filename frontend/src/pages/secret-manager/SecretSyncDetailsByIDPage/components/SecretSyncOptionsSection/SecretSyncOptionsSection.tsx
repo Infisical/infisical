@@ -32,7 +32,8 @@ type Props = {
 export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
   const {
     destination,
-    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema, includeAllSubFolders }
+    includeAllSubFolders,
+    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema }
   } = secretSync;
 
   let AdditionalSyncOptionsComponent: ReactNode;
