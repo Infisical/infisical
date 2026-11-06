@@ -120,7 +120,7 @@ export const PersonalOAuthConnection = ({
     connection?.requiredScopes.filter((scope) => !connection.grantedScopes.includes(scope)) ?? [];
 
   return (
-    <Item className="flex-nowrap px-0">
+    <Item variant="outline">
       <ItemContent className="min-w-0">
         <span className="flex min-w-0 items-center gap-2 text-sm text-foreground">
           <span className="truncate" title={host}>

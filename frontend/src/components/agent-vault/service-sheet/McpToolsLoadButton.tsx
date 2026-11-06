@@ -194,7 +194,7 @@ export const McpToolsLoadButton = ({
 
           {isOAuth ? (
             <div className="flex flex-col gap-3">
-              <Item className="flex-nowrap px-0">
+              <Item variant="outline">
                 <ItemContent className="min-w-0">
                   <span className="truncate text-sm text-foreground" title={host}>
                     {host}
