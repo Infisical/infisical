@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/access-bundles",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:35:35Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "release-notes"
+      }
+    },
+    {
+      "shot": "agent-vault/access-bundles-list.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Create Access Bundle"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "on-call-infrastructure"
+      },
+      "value": "deploy-checks"
+    },
+    {
+      "fill": {
+        "placeholder": "Paging, metrics, issue tracking"
+      },
+      "value": "Checks deploy status and posts to Slack"
+    },
+    {
+      "shot": "agent-vault/access-bundle-create.png"
+    }
+  ]
+}

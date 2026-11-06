@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/sessions",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:36:30Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Nightly deploy"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Create Session"
+      }
+    },
+    {
+      "click": {
+        "placeholder": "Pick an access bundle"
+      }
+    },
+    {
+      "click": {
+        "role": "option",
+        "name": "on-call"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "Nightly deploy"
+      },
+      "value": "Incident bot"
+    },
+    {
+      "shot": "agent-vault/session-create.png"
+    },
+    {
+      "click": {
+        "selector": "internal:role=dialog >> internal:role=button[name=\"Create Session\"i]"
+      }
+    },
+    {
+      "waitFor": {
+        "role": "heading",
+        "name": "Session Created"
+      }
+    },
+    {
+      "shot": "agent-vault/session-created.png"
+    }
+  ]
+}

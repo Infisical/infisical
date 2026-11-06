@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/sessions",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:36:20Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Deploy preview"
+      }
+    },
+    {
+      "shot": "agent-vault/sessions-list.png"
+    },
+    {
+      "click": {
+        "selector": "internal:role=row[name=/Nightly deploy/] >> internal:role=button[name=\"Open session actions\"i]"
+      }
+    },
+    {
+      "waitFor": {
+        "role": "menuitem",
+        "name": "Revoke Session"
+      }
+    },
+    {
+      "shot": "agent-vault/session-actions.png"
+    },
+    {
+      "press": "Escape"
+    },
+    {
+      "shot": "agent-vault/session-inline-services.png",
+      "hover": {
+        "x": 883,
+        "y": 444
+      }
+    },
+    {
+      "click": {
+        "selector": "internal:role=row[name=/Review PR #1486/] >> internal:role=button[name=\"View session logs\"i]"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "/repos/acme/web/pulls/1486/files"
+      }
+    },
+    {
+      "shot": "agent-vault/session-logs-view.png"
+    }
+  ]
+}

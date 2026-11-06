@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/proxies",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:36:36Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "laptop-dev"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Service hosts only"
+      }
+    },
+    {
+      "shot": "agent-vault/proxies-list.png"
+    },
+    {
+      "click": {
+        "selector": "internal:role=row[name=/prod-proxy/] >> internal:role=button[name=\"Open proxy actions\"i]"
+      }
+    },
+    {
+      "shot": "agent-vault/proxy-actions.png"
+    }
+  ]
+}

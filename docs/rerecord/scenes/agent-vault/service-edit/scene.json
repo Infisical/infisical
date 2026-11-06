@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/access-bundles/c39f72d0-4340-4d29-8ec9-b4bd764747ac",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:35:51Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "api.github.com"
+      }
+    },
+    {
+      "click": {
+        "selector": "internal:role=row[name=/github/i] >> internal:role=button[name=\"Open service actions\"i]"
+      }
+    },
+    {
+      "click": {
+        "role": "menuitem",
+        "name": "Edit"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Name, hosts and rules"
+      }
+    },
+    {
+      "shot": "agent-vault/service-details.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Continue"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Credential Type"
+      }
+    },
+    {
+      "shot": "agent-vault/service-credential.png"
+    }
+  ]
+}

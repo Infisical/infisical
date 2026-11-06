@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/239ab0db-59b8-44b4-ad01-26eb9d2933bd/access-bundles/d5aba5e2-0ebe-4fb1-807f-9bb1404fa8d8",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:41:20Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "mcp.linear.app"
+      }
+    },
+    {
+      "shot": "agent-vault/access-bundle-mcp-services.png"
+    },
+    {
+      "click": {
+        "selector": "internal:role=row[name=/notion/i] >> internal:role=button[name=\"Open service actions\"i]"
+      }
+    },
+    {
+      "click": {
+        "role": "menuitem",
+        "name": "Edit"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Name, transport and server"
+      }
+    },
+    {
+      "shot": "agent-vault/mcp-service-details.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Continue"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Credential Type"
+      }
+    },
+    {
+      "shot": "agent-vault/mcp-service-credential.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Continue"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "All Tools",
+        "exact": true
+      }
+    },
+    {
+      "shot": "agent-vault/mcp-service-tools.png"
+    }
+  ]
+}

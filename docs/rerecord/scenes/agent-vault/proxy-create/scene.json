@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/proxies",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:36:40Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "prod-proxy"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Create Proxy"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "egress-1"
+      },
+      "value": "egress-1"
+    },
+    {
+      "fill": {
+        "placeholder": "Egress for the staging cluster"
+      },
+      "value": "Egress for the staging cluster"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Advanced Options"
+      }
+    },
+    {
+      "shot": "agent-vault/proxy-create.png"
+    },
+    {
+      "click": {
+        "selector": "internal:role=dialog >> internal:role=button[name=\"Create\"s]"
+      }
+    },
+    {
+      "waitFor": {
+        "role": "heading",
+        "name": "Proxy Token"
+      }
+    },
+    {
+      "shot": "agent-vault/proxy-token.png"
+    }
+  ]
+}

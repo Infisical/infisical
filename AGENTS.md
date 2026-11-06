@@ -25,6 +25,7 @@ infisical/
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/AGENTS.md)
 ├── tests/                 # Go blackbox suite — real containers, HTTP only (see tests/AGENTS.md)
 ├── docs/                  # Documentation site (Mintlify-based)
+│   └── rerecord/          # Scenes that draw the Agent Vault docs screenshots (see docs/rerecord/AGENTS.md)
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
@@ -100,6 +101,8 @@ The v3 visual system (colors, typography, components, layout) and product voice/
 If the user wrote or edited the docs prose themselves, don't just accept it. Tell them the `docs-style` skill can run the review pass over their changes, and offer to run it.
 
 The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
+
+The Agent Vault screenshots in `docs/images/platform/agent-vault/` are drawn by [rerecord](https://www.npmjs.com/package/rerecord) from the scenes in `docs/rerecord/scenes/` (each a `scene.json` of UI steps and a `network.har` of API answers). Change a scene, not the PNG; the `Rerecord docs screenshots` workflow redraws the images on every pull request that touches `frontend/src` or a scene, and commits the ones that changed. Before changing a scene or adding a screenshot, read [`docs/rerecord/AGENTS.md`](docs/rerecord/AGENTS.md); when a UI change breaks a scene, fix or re-record it as it describes. Images of other vendors' consoles have no scene and are committed directly.
 
 The CLI reference exists twice: `docs/cli/reference.mdx` renders the page, and `docs/cli/reference-agents.mdx` is a plain Markdown copy that agents read. The reference page's Markdown version holds only a pointer to it. When you change a command in one, make the same change in the other (see [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD#editing-the-cli-reference)).
 

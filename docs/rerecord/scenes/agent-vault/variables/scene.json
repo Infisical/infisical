@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/variables",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:36:10Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "STATUSPAGE_API_KEY"
+      }
+    },
+    {
+      "shot": "agent-vault/variables-global.png"
+    },
+    {
+      "shot": "agent-vault/variables.png",
+      "hover": {
+        "x": 1325,
+        "y": 496
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Add Global Variable"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "GITHUB_TOKEN"
+      },
+      "value": "OPENAI_API_KEY"
+    },
+    {
+      "fill": {
+        "placeholder": "Enter the value"
+      },
+      "value": "sk-proj-Xb7Rk2Lm9Np4Qs8Tv3Wy6Za1"
+    },
+    {
+      "shot": "agent-vault/variable-create.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Cancel"
+      }
+    },
+    {
+      "click": {
+        "selector": "internal:role=row[name=/GITHUB_TOKEN/] >> internal:role=button[name=\"Open variable actions\"i]"
+      }
+    },
+    {
+      "click": {
+        "role": "menuitem",
+        "name": "Delete"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Remove the reference from them"
+      }
+    },
+    {
+      "shot": "agent-vault/variable-delete-blocked.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Cancel"
+      }
+    },
+    {
+      "click": {
+        "role": "tab",
+        "name": "Personal Variables"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "SLACK_USER_TOKEN"
+      }
+    },
+    {
+      "shot": "agent-vault/variables-personal.png"
+    }
+  ]
+}

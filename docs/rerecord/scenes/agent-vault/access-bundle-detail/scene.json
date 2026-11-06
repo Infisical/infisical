@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/access-bundles/c39f72d0-4340-4d29-8ec9-b4bd764747ac",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:35:39Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "mcp.linear.app/mcp"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "pr-summary"
+      }
+    },
+    {
+      "shot": "agent-vault/access-bundle-services.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Options"
+      }
+    },
+    {
+      "click": {
+        "role": "menuitem",
+        "name": "Manage Access"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Platform Team"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "No Access"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Priya Patel"
+      }
+    },
+    {
+      "shot": "agent-vault/access-bundle-manage-access.png"
+    }
+  ]
+}

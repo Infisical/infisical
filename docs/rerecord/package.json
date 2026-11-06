@@ -1,0 +1,12 @@
+{
+  "name": "infisical-docs-rerecord",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "record": "rerecord record",
+    "rerecord": "rerecord rerecord"
+  },
+  "devDependencies": {
+    "rerecord": "0.8.0"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:33:52Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Organization Overview"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "access bundles"
+      }
+    },
+    {
+      "shot": "agent-vault/org-overview.png"
+    },
+    {
+      "click": {
+        "role": "link",
+        "name": "Agent Vault"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Customer Support"
+      }
+    },
+    {
+      "shot": "agent-vault/projects-list.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "New Project"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "Type your project name"
+      },
+      "value": "Data Pipelines"
+    },
+    {
+      "fill": {
+        "placeholder": "Project description"
+      },
+      "value": "Agents that check and backfill the nightly data jobs"
+    },
+    {
+      "shot": "agent-vault/project-create.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Cancel"
+      }
+    },
+    {
+      "click": {
+        "role": "tab",
+        "name": "All Projects"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Growth Experiments"
+      }
+    },
+    {
+      "shot": "agent-vault/projects-all.png"
+    }
+  ]
+}

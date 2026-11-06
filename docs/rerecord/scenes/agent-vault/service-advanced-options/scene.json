@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/access-bundles/c39f72d0-4340-4d29-8ec9-b4bd764747ac",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:35:58Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "api.github.com"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Add Service"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "Search templates (e.g., OpenAI, Anthropic, Linear MCP, GitHub...)"
+      },
+      "value": "GitHub"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "GitHub logo Developer Tools"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Name, hosts and rules"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Continue"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Credential Type"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Add Custom Header"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "X-Org-Id"
+      },
+      "value": "X-GitHub-Api-Version"
+    },
+    {
+      "fill": {
+        "role": "combobox",
+        "name": "Header value"
+      },
+      "value": "2022-11-28"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Show header value"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Add Substitution"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "__API_TOKEN__"
+      },
+      "value": "__GITHUB_TOKEN__"
+    },
+    {
+      "fill": {
+        "role": "combobox",
+        "name": "Substitution value"
+      },
+      "value": "{{GITHUB_TOKEN}}"
+    },
+    {
+      "click": {
+        "text": "Substitutions",
+        "exact": true
+      }
+    },
+    {
+      "shot": "agent-vault/service-advanced-options.png"
+    }
+  ]
+}

@@ -8,6 +8,10 @@ An Agent Vault project holds the credentials and settings that one agentic syste
 
 To open a project, select **Agent Vault** on your organization's overview, then select the project.
 
+<Frame>
+  <img src="/images/platform/agent-vault/projects-list.png" alt="The Agent Vault page listing two projects you're a member of, Customer Support and Engineering Agents, with their descriptions, the My Projects and All Projects tabs, and a New Project button" />
+</Frame>
+
 ## Project and organization scope
 
 Some things in Agent Vault belong to a single project, and others belong to your whole organization:
@@ -35,9 +39,17 @@ Organization admins and members can create projects by default.
 <Steps>
   <Step>
     On your organization's overview, select **Agent Vault**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/org-overview.png" alt="The Organization Overview page, with the Agent Vault card showing the organization's access bundle, service, and project counts" />
+    </Frame>
   </Step>
   <Step>
     Select **New Project**, enter a **Project Name**, then select **Create Project**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-create.png" alt="The Create a New Agent Vault Project dialog, with Data Pipelines as the project name, a description, and a Create Project button" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -73,6 +85,10 @@ Organization admins aren't automatically members of every Agent Vault project. T
   </Step>
   <Step>
     On the project's row, select **Join as Admin**. If you're already a member through a group, the button is **Become Admin**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/projects-all.png" alt="The All Projects tab, listing Customer Support and Engineering Agents as Joined, and Growth Experiments with a Join as Admin button" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -81,6 +97,10 @@ Infisical adds you to the project with the **Admin** role, records the change in
 ## Find the project ID
 
 The [API](/api-reference/overview/introduction) and the [Infisical CLI](/cli/overview) need the ID of the Agent Vault project to work in. To find it, open the project, go to **Administration** > **Settings**, and copy the **Project ID**. The ID is also in the project's address in your browser, after `/projects/agent-vault/`.
+
+<Frame>
+  <img src="/images/platform/agent-vault/project-settings-general.png" alt="The General settings of the Engineering Agents project, with the Project Overview card showing the project's name, slug, ID, and description, and the Delete Protection card below" />
+</Frame>
 
 ## Delete a project
 
@@ -95,6 +115,10 @@ Only an admin of the project can delete it. You can't undo deleting a project.
   </Step>
   <Step>
     Select **Delete** followed by the project's name, type `confirm`, then select **Delete Project**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-delete.png" alt="The dialog that confirms deleting the Engineering Agents project, warning that running agents and proxies stop working, with a field to type confirm and a Delete Project button" />
+    </Frame>
   </Step>
 </Steps>
 

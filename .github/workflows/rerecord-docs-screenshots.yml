@@ -1,0 +1,72 @@
+name: Rerecord docs screenshots
+
+# Redraws the docs screenshots that have a rerecord scene (docs/rerecord/scenes) from the current
+# frontend, and commits any image that changed back to the pull request. No backend runs: each scene
+# replays the API answers saved in its network.har.
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "frontend/src/**"
+      - "frontend/public/**"
+      - "frontend/package-lock.json"
+      - "docs/rerecord/**"
+      - ".github/workflows/rerecord-docs-screenshots.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: rerecord-docs-screenshots-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rerecord:
+    name: Rerecord
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    # The committed images were rendered in this image; any other OS or browser build draws fonts
+    # differently and would change every image. Keep the tag in step with the playwright version
+    # rerecord pins in docs/rerecord/package-lock.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+        working-directory: frontend
+
+      - name: Install rerecord
+        run: npm ci --no-audit --no-fund
+        working-directory: docs/rerecord
+
+      - name: Rerecord screenshots
+        run: npx rerecord rerecord
+        working-directory: docs/rerecord
+
+      - name: Commit changed screenshots
+        env:
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          if [ -z "$(git status --porcelain -- docs/images)" ]; then
+            echo "Screenshots are up to date."
+            exit 0
+          fi
+          git status --short -- docs/images
+          if [ "$IS_FORK" = "true" ]; then
+            echo "::error::Screenshots changed. Run 'npx rerecord rerecord' in docs/rerecord (see docs/rerecord/README.md) and commit the images."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- docs/images
+          git commit -m "docs: rerecord screenshots"
+          git push

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/access-bundles/7627fb9f-8880-4e24-a1a2-02957f39f712",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:34:56Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "api.pagerduty.com"
+      }
+    },
+    {
+      "shot": "agent-vault/access-bundle-requires-setup.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Requires Setup"
+      }
+    },
+    {
+      "fill": {
+        "role": "combobox",
+        "name": "Enter a value or choose a variable"
+      },
+      "value": "{{SLACK"
+    },
+    {
+      "waitFor": {
+        "role": "option",
+        "name": "SLACK_USER_TOKEN"
+      }
+    },
+    {
+      "shot": "agent-vault/personal-values.png"
+    }
+  ]
+}

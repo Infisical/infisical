@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/settings?selectedTab=tab-session-logs",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:37:56Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "acme-session-logs"
+      }
+    },
+    {
+      "shot": "agent-vault/settings-session-logs-enabled.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Configure"
+      }
+    },
+    {
+      "waitFor": {
+        "selector": "internal:role=dialog >> internal:text=\"acme-session-logs\"i"
+      }
+    },
+    {
+      "shot": "agent-vault/session-logs-setup.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Cancel"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Connection options"
+      }
+    },
+    {
+      "click": {
+        "role": "menuitem",
+        "name": "Manage Connections"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "acme-audit-archive"
+      }
+    },
+    {
+      "shot": "agent-vault/session-logs-connections.png"
+    }
+  ]
+}

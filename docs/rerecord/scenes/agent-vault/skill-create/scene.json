@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/skills",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:36:53Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "incident-triage"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Create Skill"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "code-review"
+      },
+      "value": "deploy-checklist"
+    },
+    {
+      "fill": {
+        "placeholder": "Reviews a pull request against the team's checklist. Use when asked to review code."
+      },
+      "value": "Checks a deploy is safe to ship. Use before promoting a release to production."
+    },
+    {
+      "shot": "agent-vault/skill-create.png"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/identities/72ce41d4-df77-4685-91b6-f81716307338",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:37:47Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Jordan Lee"
+      }
+    },
+    {
+      "shot": "agent-vault/machine-identity-delegation.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Manage Delegation"
+      }
+    },
+    {
+      "waitFor": {
+        "role": "dialog"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Not in Delegation"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Not in Delegation"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Marcus Chen"
+      }
+    },
+    {
+      "shot": "agent-vault/manage-delegation.png"
+    }
+  ]
+}

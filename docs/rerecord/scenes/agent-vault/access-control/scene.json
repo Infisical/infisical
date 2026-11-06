@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "startUrl": "/organizations/180870b7-f464-4740-8ffe-9d11c9245ea7/projects/agent-vault/9b7e4c49-1ab5-4a74-a354-7f6d653ea639/access-management?selectedTab=members",
+  "viewport": {
+    "width": 1728,
+    "height": 991
+  },
+  "frozenTime": "2026-11-06T23:38:30Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "Introducing Agent Vault"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Close"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "taylor@example.com"
+      }
+    },
+    {
+      "shot": "agent-vault/access-control-users.png"
+    },
+    {
+      "click": {
+        "role": "tab",
+        "name": "Groups"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "Platform Team"
+      }
+    },
+    {
+      "click": {
+        "role": "tab",
+        "name": "Machine Identities"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "release-bot"
+      }
+    },
+    {
+      "shot": "agent-vault/access-control-identities.png"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Add Machine Identity"
+      }
+    },
+    {
+      "click": {
+        "role": "tab",
+        "name": "Create New"
+      }
+    },
+    {
+      "fill": {
+        "placeholder": "Machine 1"
+      },
+      "value": "ci-runner"
+    },
+    {
+      "shot": "agent-vault/machine-identity-create.png"
+    }
+  ]
+}
