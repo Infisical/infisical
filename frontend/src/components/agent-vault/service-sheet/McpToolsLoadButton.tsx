@@ -37,7 +37,7 @@ type Props = {
   isLoading: boolean;
   // Resolves to why the load failed, or null once the list is loaded.
   onLoad: (own: TMcpToolsOwnCredential) => Promise<string | null>;
-  onGoToOwnApp: () => void;
+  onGoToOwnApp: (message?: string) => void;
   onSignInChange?: (isSigningIn: boolean) => void;
 };
 
@@ -198,6 +198,26 @@ export const McpToolsLoadButton = ({
                 </div>
                 {signInAction}
               </div>
+              {isSecretNeededAgain && !isClientRequired && !isWaiting && (
+                <div className="flex flex-col items-start gap-2 text-xs text-muted">
+                  The server URL changed, so the saved client secret won&apos;t be sent to it. If
+                  your OAuth app has a client secret, enter it again on the Credential step, then
+                  load the tools again.
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => {
+                      changeOpen(false);
+                      onGoToOwnApp(
+                        "The server URL changed, so the saved client secret won't be sent to it. If your OAuth app has a client secret, enter it again. Then go back to the Tools step and load the tools again."
+                      );
+                    }}
+                  >
+                    Go to Credential Step
+                  </Button>
+                </div>
+              )}
               {isClientRequired && !isWaiting && (
                 <div className="flex flex-col items-start gap-2 text-xs text-muted">
                   {host} doesn&apos;t let Infisical register a client for the sign-in. Enter your

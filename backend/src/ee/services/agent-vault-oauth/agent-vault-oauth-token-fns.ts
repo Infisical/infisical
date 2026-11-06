@@ -538,7 +538,7 @@ export const decideRefresh = ({
     if (!hasRefreshToken) {
       return {
         action: "needs-reauthorization",
-        reason: "The MCP server rejected the access token and issued no refresh token. Reauthorize this service."
+        reason: "The MCP server rejected the access token and issued no refresh token."
       };
     }
     return { action: "refresh" };
@@ -552,7 +552,7 @@ export const decideRefresh = ({
     return expiresAtMs <= now.getTime()
       ? {
           action: "needs-reauthorization",
-          reason: "The access token expired and the MCP server issued no refresh token. Reauthorize this service."
+          reason: "The access token expired and the MCP server issued no refresh token."
         }
       : { action: "return-current" };
   }

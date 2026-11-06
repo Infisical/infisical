@@ -314,13 +314,14 @@ const rejectedAuthorizationMessage = (error: unknown) => {
 
 // Discovery runs on save when each member signs in, so a server it can't use is refused then, naming the server.
 const memberOAuthSetupMessage = (error: unknown) => {
-  if (!axios.isAxiosError(error) || error.response?.status !== 400) return null;
-  const message = serverMessage(error);
-  if (!message) return null;
-  return message.startsWith("Couldn't set up OAuth for") ||
-    message.startsWith("A client secret needs the client ID")
-    ? message
-    : null;
+  if (
+    !axios.isAxiosError<{ details?: { oauthSetup?: unknown } }>(error) ||
+    error.response?.status !== 400 ||
+    error.response.data?.details?.oauthSetup !== true
+  ) {
+    return null;
+  }
+  return serverMessage(error) ?? null;
 };
 
 const isRegistrationRequired = (error: unknown) =>
@@ -624,9 +625,7 @@ export const ServiceSheet = ({
     isMembersNoticeConfirmed.current = false;
     try {
       if (service) {
-        await updateService.mutateAsync(
-          buildUpdateServiceRequest(accessBundleId, service.id, data, service)
-        );
+        await updateService.mutateAsync(buildUpdateServiceRequest(accessBundleId, service, data));
       } else {
         await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
       }

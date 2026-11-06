@@ -152,7 +152,7 @@ const buildMcpCredential = (data: TServiceForm) => {
 // alone is applied from the stored client.
 const buildMcpCredentialPatch = (
   data: TServiceForm,
-  service?: TAgentVaultService | null
+  service: TAgentVaultService | null
 ): TAgentVaultCredentialUpdate | undefined => {
   if (data.credentialType !== AgentVaultCredentialType.OAuth) return buildHttpCredentialPatch(data);
   const wasMemberProvided = isMemberProvidedOAuthService(service);
@@ -232,21 +232,20 @@ export const buildCreateServiceRequest = (
 
 export const buildUpdateServiceRequest = (
   accessBundleId: string,
-  serviceId: string,
-  data: TServiceForm,
-  service?: TAgentVaultService | null
+  service: TAgentVaultService,
+  data: TServiceForm
 ): TUpdateAgentVaultServiceDTO =>
   data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
-        serviceId,
+        serviceId: service.id,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
         ...withCredential(buildMcpCredentialPatch(data, service))
       }
     : {
         accessBundleId,
-        serviceId,
+        serviceId: service.id,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
         credential: buildHttpCredentialPatch(data)
@@ -263,9 +262,8 @@ const ownToolsCredential = (
   "authorizationId" in own
     ? { type: AgentVaultCredentialType.OAuth, authorizationId: own.authorizationId }
     : {
-        type: AgentVaultCredentialType.Bearer,
+        ...bearerCredential(data),
         headerName: data.headerName || "Authorization",
-        headerPrefix: data.headerPrefix ?? "",
         value: own.token,
         memberProvidedFields: []
       };
@@ -281,7 +279,7 @@ export const buildListMcpToolsRequest = (
   accessBundleId,
   ...(serviceId ? { serviceId } : {}),
   ...buildMcpConnection(data),
-  ...withCredential(own ? ownToolsCredential(data, own) : buildMcpCredentialPatch(data))
+  ...withCredential(own ? ownToolsCredential(data, own) : buildMcpCredentialPatch(data, null))
 });
 
 const typedValuesNoun = (

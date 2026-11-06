@@ -137,6 +137,8 @@ type TOauthTokenHolder = {
   lockKey: string;
   logLabel: string;
   deadLoginMessage: (reason: string) => string;
+  // Appended to a reason that names no recovery step, since the step differs for the service and for a member.
+  reauthorizeStep: string;
   load: () => Promise<Omit<TLoadedOauthService, "secret"> | undefined>;
   swap: (args: {
     from: TOauthTokenSnapshot;
@@ -805,6 +807,7 @@ export const agentVaultOauthServiceFactory = ({
     lockKey: KeyStorePrefixes.AgentVaultOauthRefreshLock(serviceId),
     logLabel: `serviceId=${serviceId}`,
     deadLoginMessage: (reason) => `This service's login is no longer accepted (${reason}). Reauthorize this service.`,
+    reauthorizeStep: "Reauthorize this service.",
     load: async () => {
       const service = await agentVaultServiceDAL.findByIdPrimary(serviceId);
       if (
@@ -858,6 +861,7 @@ export const agentVaultOauthServiceFactory = ({
       logLabel: `serviceId=${serviceId}] [ownerId=${ownerId}`,
       deadLoginMessage: (reason) =>
         `Your login to this service is no longer accepted (${reason}). Connect your account again.`,
+      reauthorizeStep: "Connect your account again.",
       load: async () => {
         const row = await agentVaultPersonalValueDAL.findOauthForOwner({ serviceId, owner });
         if (!row) return undefined;
@@ -1013,7 +1017,7 @@ export const agentVaultOauthServiceFactory = ({
     const first = decide();
     if (first.action === "return-current") return answer();
     if (first.action === "needs-reauthorization") {
-      await markNeedsReauthorization(first.reason);
+      await markNeedsReauthorization(`${first.reason} ${holder.reauthorizeStep}`);
       return answer();
     }
 
@@ -1035,7 +1039,7 @@ export const agentVaultOauthServiceFactory = ({
       const second = decide();
       if (second.action === "return-current") return answer();
       if (second.action === "needs-reauthorization") {
-        await markNeedsReauthorization(second.reason);
+        await markNeedsReauthorization(`${second.reason} ${holder.reauthorizeStep}`);
         return answer();
       }
 
@@ -1154,7 +1158,7 @@ export const agentVaultOauthServiceFactory = ({
     clientSecret?: string;
   }): Promise<{ config: TAgentVaultOauthMemberConfig; clientSecret?: string }> => {
     if (clientSecret && !clientId) {
-      throw new BadRequestError({ message: OAUTH_CLIENT_SECRET_NEEDS_ID_MESSAGE });
+      throw new BadRequestError({ message: OAUTH_CLIENT_SECRET_NEEDS_ID_MESSAGE, details: { oauthSetup: true } });
     }
     const discovery = await discoverOauthServer(http, serverUrl);
     if (!clientId) {

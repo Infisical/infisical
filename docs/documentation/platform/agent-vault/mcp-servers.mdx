@@ -87,7 +87,19 @@ By default, every session calls the server's tools as the same account. If each 
 
 A session uses the credential of the member who created it. If a machine identity creates the session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), the session uses that user's credential. Until a member sets up the service, the proxy refuses their sessions' requests to it. A machine identity can't connect an OAuth account, so its own sessions can't use an OAuth service that each member signs in to.
 
-When you save an OAuth service with **Member provided** on, Infisical checks that the server supports OAuth. If the server doesn't let Infisical register as an OAuth client, the save fails with a message that says so, and the **Credential** step shows the fields for an OAuth app of your own. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows. Then enter the app's **Client ID** and **Client Secret**, and save again. Every member signs in with this app.
+When you save an OAuth service with **Member provided** on, Infisical checks that the server supports OAuth. If the server doesn't let Infisical register as an OAuth client, the save fails with a message that says so, and the **Credential** step shows the fields for an OAuth app of your own. Every member then signs in with that app. To set it up:
+
+<Steps>
+  <Step>
+    Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows.
+  </Step>
+  <Step>
+    Enter the app's **Client ID** and **Client Secret** on the **Credential** step.
+  </Step>
+  <Step>
+    Continue to the **Review** step, then select **Add Service** again, or **Save** if you're editing the service.
+  </Step>
+</Steps>
 
 <Warning>
   Some edits remove the credentials members already set up, and Infisical asks you to confirm before it saves them:
@@ -209,7 +221,7 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
     - **The service needs to be reauthorized:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**.
     - **Try again in a moment:** The proxy couldn't get a valid token from Infisical this time. Try the tool call again.
     - **The service's credential was rejected:** The server rejected the service's Bearer token. Edit the service and paste a new token.
-    - **Update your personal value or reconnect your account:** The service is [member provided](#leave-the-credential-to-each-member), and the server rejected the token you set or no longer accepts your login. [Update your personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service, or select **Reconnect** in the same dialog.
+    - **Update your personal value or reconnect your account:** The service is [member provided](#leave-the-credential-to-each-member), and the server rejected the token you set, no longer accepts your login, or asked for scopes your connection doesn't grant. [Update your personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service, or select **Reconnect** in the same dialog.
   </Accordion>
   <Accordion title="Authorize fails on a self-hosted instance">
     The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:

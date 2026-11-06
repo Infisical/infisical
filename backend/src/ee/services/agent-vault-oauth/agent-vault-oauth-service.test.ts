@@ -1904,6 +1904,33 @@ describe("a member's own sign-in", () => {
     expect(theirs).toEqual(theirsBefore);
   });
 
+  test("a member's rejected token with no refresh token asks the member, not the admin, to reconnect", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, memberService());
+    const mine: TPersonalRow = {
+      id: crypto.randomUUID(),
+      serviceId: SERVICE_ID,
+      userId: USER_ID,
+      encryptedValue: sealBytes({ accessToken: "mine-access" }),
+      oauthConfig: oauthConfig({ accessTokenHash: hashAccessToken("mine-access") })
+    };
+    env.personalRows.set(mine.id, mine);
+
+    const result = await env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      owner: { userId: USER_ID },
+      rejectedTokenHash: hashAccessToken("mine-access"),
+      destination: DESTINATION
+    });
+
+    expect(result.status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
+    expect((mine.oauthConfig as TAgentVaultOauthConfig).lastError).toBe(
+      "The MCP server rejected the access token and issued no refresh token. Connect your account again."
+    );
+    expect(env.tokenRequests).toHaveLength(0);
+  });
+
   test("a member with no connection gets a 404 rather than the service's or anyone else's token", async () => {
     const env = setup();
     env.rows.set(SERVICE_ID, memberService());

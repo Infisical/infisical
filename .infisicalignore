@@ -93,8 +93,3 @@ backend/src/ee/services/dynamic-secret/providers/sap-ase.test.ts:generic-passwor
 backend/src/services/app-connection/servicenow/servicenow-connection-fns.test.ts:generic-password:29
 tests/fakes/oauth/google_signon.go:private-key:18
 backend/src/ee/services/dynamic-secret/providers/sql-database.test.ts:generic-password:44
-backend/src/services/app-connection/clickhouse/clickhouse-connection-fns.test.ts:generic-password:35
-backend/src/lib/api-docs/constants.ts:generic-password:4127
-backend/src/ee/services/secret-rotation-v2/clickhouse-credentials/clickhouse-credentials-rotation-fns.test.ts:generic-password:49
-backend/src/ee/services/secret-rotation-v2/clickhouse-credentials/clickhouse-credentials-rotation-fns.test.ts:generic-password:53
-backend/src/services/app-connection/clickhouse/clickhouse-connection-schemas.test.ts:generic-password:10

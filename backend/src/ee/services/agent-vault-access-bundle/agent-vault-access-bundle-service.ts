@@ -1,5 +1,3 @@
-import { isDeepStrictEqual } from "node:util";
-
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
@@ -45,6 +43,7 @@ import {
 import {
   hashAccessToken,
   isMemberProvidedOauth,
+  memberOauthSetupOf,
   oauthConnectionStatusOf
 } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
@@ -395,7 +394,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const config = service.credentialConfig as Record<string, string>;
     const memberProvidedFields = service.memberProvidedFields ?? [];
     switch (service.credentialType as AgentVaultCredentialType) {
-      // Nothing secret and nothing that identifies the token: no client, no token hash.
+      // Nothing secret and nothing that identifies the token. The member-provided summary includes the client ID, so the
+      // UI can show which admin-entered client is kept.
       case AgentVaultCredentialType.OAuth: {
         if (isMemberProvidedOauth(service)) {
           const memberOauth = service.credentialConfig as TAgentVaultOauthMemberConfig;
@@ -1332,10 +1332,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const memberFieldsChanged =
       credentialTypeChanged ||
       (credential !== undefined && !sameMemberProvidedFields(nextMemberFields, previousMemberFields));
-    // Adding a member-provided field keeps what members saved, so only a field taken back or retyped clears values.
-    const memberFieldsRemoved =
-      credential !== undefined &&
-      previousMemberFields.some((field) => credentialTypeChanged || !nextMemberFields?.includes(field));
     const needsStoredSecret = credential !== undefined && needsStoredSecretFor(credential, service);
     const storedSecretCipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
     const storedSecret = storedSecretCipher
@@ -1421,7 +1417,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         service.encryptedCredential
       ) {
         throw new BadRequestError({
-          message: `The server now signs in through '${memberOauth.config.issuer}', not '${storedMemberOauth.issuer}', so the stored client secret won't be sent to it. Enter the client secret again, or the client ID and secret of an OAuth app registered with the new issuer.`
+          message:
+            "The server now signs in through a different OAuth issuer, so the stored client secret won't be sent to it. Enter the client secret again, or the client ID and secret of an OAuth app registered with the new issuer."
         });
       }
       oauthMembersRebound =
@@ -1564,10 +1561,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (
         memberOauth &&
         storedMemberOauth &&
-        (!isMemberProvidedOauth(locked) ||
-          !isDeepStrictEqual(locked.credentialConfig, service.credentialConfig) ||
-          !isDeepStrictEqual(locked.config, service.config) ||
-          !(locked.encryptedCredential ?? Buffer.alloc(0)).equals(service.encryptedCredential ?? Buffer.alloc(0)))
+        (!isMemberProvidedOauth(locked) || memberOauthSetupOf(locked) !== memberOauthSetupOf(service))
       ) {
         throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
       }
@@ -1681,14 +1675,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         // A saved value goes only when it no longer applies: a new credential type drops every one, and a field the
         // admin takes back drops that field's. A field members still provide keeps what they saved. The update above
         // wrote the service row, which is what a personal values save waits on.
+        let personalValuesCleared = false;
         if (memberFieldsChanged || oauthMembersRebound) {
           if (credentialTypeChanged || !nextMemberFields?.length || oauthMembersRebound) {
-            await agentVaultPersonalValueDAL.delete({ serviceId: service.id }, tx);
+            const deleted = await agentVaultPersonalValueDAL.delete({ serviceId: service.id }, tx);
+            personalValuesCleared = deleted.length > 0;
           } else {
-            await agentVaultPersonalValueDAL.deleteForServiceExceptFields(
+            const deletedCount = await agentVaultPersonalValueDAL.deleteForServiceExceptFields(
               { serviceId: service.id, keepFields: nextMemberFields },
               tx
             );
+            personalValuesCleared = deletedCount > 0;
           }
         }
 
@@ -1805,7 +1802,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         await insertReferenceRows(rest.projectId, referenceRows, tx);
         const variableReferences = await agentVaultServiceVariableReferenceDAL.findByServiceIds([service.id], tx);
 
-        return { updatedService, updatedCustomHeaders, updatedSubstitutions, variableReferences };
+        return {
+          updatedService,
+          updatedCustomHeaders,
+          updatedSubstitutions,
+          variableReferences,
+          personalValuesCleared
+        };
       });
 
     let result;
@@ -1849,7 +1852,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         substitutions
       },
       credentialReplaced,
-      personalValuesCleared: memberFieldsRemoved || oauthMembersRebound
+      personalValuesCleared: result.personalValuesCleared
     };
   };
 

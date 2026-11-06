@@ -195,12 +195,64 @@ describe("buildCreateServiceRequest", () => {
   });
 });
 
+const MEMBER = [AgentVaultVariableReferenceField.CredentialValue as const];
+
+const storedMcp = (credential: TAgentVaultCredentialSummary): TAgentVaultService => ({
+  id: "service-1",
+  accessBundleId: "bundle-1",
+  name: "linear-mcp",
+  hostPattern: "mcp.linear.app",
+  type: AgentVaultServiceType.Mcp,
+  serverUrl: SERVER_URL,
+  transport: AgentVaultMcpTransport.StreamableHttp,
+  allowedMethods: null,
+  allowedPathPrefixes: null,
+  allowedTools: null,
+  credential,
+  customHeaders: [],
+  substitutions: [],
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z"
+});
+
+const memberOAuth = (clientId: string | null = null) =>
+  storedMcp({
+    type: AgentVaultCredentialType.OAuth,
+    memberProvidedFields: MEMBER,
+    issuer: "https://mcp.linear.app",
+    grantedScopes: [],
+    requiredScopes: [],
+    registration: clientId ? "manual" : "dynamic",
+    clientId
+  });
+
+const sharedOAuth = storedMcp({
+  type: AgentVaultCredentialType.OAuth,
+  memberProvidedFields: [],
+  status: AgentVaultOauthStatus.Connected,
+  issuer: "https://mcp.linear.app",
+  grantedScopes: [],
+  requiredScopes: []
+});
+
+const storedHttp = {
+  ...storedMcp({
+    type: AgentVaultCredentialType.Bearer,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
+    memberProvidedFields: []
+  }),
+  type: AgentVaultServiceType.Http,
+  serverUrl: null,
+  transport: null
+} satisfies TAgentVaultService;
+
 describe("buildUpdateServiceRequest", () => {
   it("omits untouched secrets and keeps row ids", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        storedHttp,
         form({
           secret: UNCHANGED_SECRET,
           customHeaders: [{ id: "h-1", name: "X-Org", prefix: "", value: UNCHANGED_SECRET }],
@@ -238,7 +290,7 @@ describe("buildUpdateServiceRequest", () => {
 
   it("omits an empty bearer token but sends an emptied basic half", () => {
     expect(
-      buildUpdateServiceRequest("bundle-1", "service-1", form({ secret: "", headerName: "" }))
+      buildUpdateServiceRequest("bundle-1", storedHttp, form({ secret: "", headerName: "" }))
         .credential
     ).toEqual({
       type: AgentVaultCredentialType.Bearer,
@@ -250,7 +302,7 @@ describe("buildUpdateServiceRequest", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        storedHttp,
         form({
           credentialType: AgentVaultCredentialType.Basic,
           username: UNCHANGED_SECRET,
@@ -266,7 +318,7 @@ describe("buildUpdateServiceRequest", () => {
   });
 
   it("leaves the OAuth credential out unless a new authorization matches the URL", () => {
-    expect(buildUpdateServiceRequest("bundle-1", "service-1", mcpForm())).toEqual({
+    expect(buildUpdateServiceRequest("bundle-1", sharedOAuth, mcpForm())).toEqual({
       accessBundleId: "bundle-1",
       serviceId: "service-1",
       type: AgentVaultServiceType.Mcp,
@@ -279,14 +331,14 @@ describe("buildUpdateServiceRequest", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({ oauthAuthorizationId: "auth-2", oauthAuthorizedUrl: "https://other.example/mcp" })
       )
     ).not.toHaveProperty("credential");
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({ oauthAuthorizationId: "auth-2", oauthAuthorizedUrl: SERVER_URL })
       ).credential
     ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-2" });
@@ -296,17 +348,17 @@ describe("buildUpdateServiceRequest", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
       )
     ).toMatchObject({ allowedTools: ["read_file"] });
-    expect(buildUpdateServiceRequest("bundle-1", "service-1", mcpForm())).toMatchObject({
+    expect(buildUpdateServiceRequest("bundle-1", sharedOAuth, mcpForm())).toMatchObject({
       allowedTools: null
     });
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        storedHttp,
         form({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
       )
     ).not.toHaveProperty("allowedTools");
@@ -316,7 +368,7 @@ describe("buildUpdateServiceRequest", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({
           headerName: "X-Api-Key",
           headerPrefix: "Token",
@@ -431,46 +483,6 @@ describe("buildListMcpToolsRequest", () => {
   });
 });
 
-const MEMBER = [AgentVaultVariableReferenceField.CredentialValue as const];
-
-const storedMcp = (credential: TAgentVaultCredentialSummary): TAgentVaultService => ({
-  id: "service-1",
-  accessBundleId: "bundle-1",
-  name: "linear-mcp",
-  hostPattern: "mcp.linear.app",
-  type: AgentVaultServiceType.Mcp,
-  serverUrl: SERVER_URL,
-  transport: AgentVaultMcpTransport.StreamableHttp,
-  allowedMethods: null,
-  allowedPathPrefixes: null,
-  allowedTools: null,
-  credential,
-  customHeaders: [],
-  substitutions: [],
-  createdAt: "2026-10-15T00:00:00.000Z",
-  updatedAt: "2026-10-15T00:00:00.000Z"
-});
-
-const memberOAuth = (clientId: string | null = null) =>
-  storedMcp({
-    type: AgentVaultCredentialType.OAuth,
-    memberProvidedFields: MEMBER,
-    issuer: "https://mcp.linear.app",
-    grantedScopes: [],
-    requiredScopes: [],
-    registration: clientId ? "manual" : "dynamic",
-    clientId
-  });
-
-const sharedOAuth = storedMcp({
-  type: AgentVaultCredentialType.OAuth,
-  memberProvidedFields: [],
-  status: AgentVaultOauthStatus.Connected,
-  issuer: "https://mcp.linear.app",
-  grantedScopes: [],
-  requiredScopes: []
-});
-
 describe("member-provided MCP credentials", () => {
   it("creates a member-provided OAuth service without an authorization, with an optional client", () => {
     expect(
@@ -507,9 +519,8 @@ describe("member-provided MCP credentials", () => {
     const update = (overrides: Partial<TServiceForm>) =>
       buildUpdateServiceRequest(
         "bundle-1",
-        service.id,
-        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: "app", ...overrides }),
-        service
+        service,
+        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: "app", ...overrides })
       ).credential;
     expect(update({})).toBeUndefined();
     expect(update({ oauthClientSecret: "new" })).toEqual({
@@ -529,9 +540,8 @@ describe("member-provided MCP credentials", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
-        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL }),
-        memberOAuth()
+        memberOAuth(),
+        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL })
       ).credential
     ).toEqual({
       type: AgentVaultCredentialType.OAuth,

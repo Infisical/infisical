@@ -1,5 +1,3 @@
-import { isDeepStrictEqual } from "node:util";
-
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
@@ -256,7 +254,7 @@ export const agentVaultPersonalValueServiceFactory = ({
     if (dto.ctx.actor !== ActorType.USER) {
       throw new BadRequestError({
         message:
-          "Only a user can connect an OAuth account, since it needs a browser sign-in. Connect it from the access bundle page in Infisical."
+          "Only a user can connect an OAuth account, because it needs a browser sign-in. To use this service from a machine identity, start the session on behalf of a user who has connected their account."
       });
     }
 
@@ -276,12 +274,7 @@ export const agentVaultPersonalValueServiceFactory = ({
         if (!current) throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
         // The tokens were issued for the server and client the first read named. An admin pointing the service
         // elsewhere since deleted every member's connection, and this one must not come back after it.
-        if (
-          !isMemberProvidedOauth(current) ||
-          !isDeepStrictEqual(current.config, service.config) ||
-          !isDeepStrictEqual(current.credentialConfig, service.credentialConfig) ||
-          !(current.encryptedCredential ?? Buffer.alloc(0)).equals(service.encryptedCredential ?? Buffer.alloc(0))
-        ) {
+        if (!isMemberProvidedOauth(current) || memberOauthSetupOf(current) !== memberOauthSetupOf(service)) {
           throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
         }
         // The same goes for a change made while the member was still signing in, before this save's first read.
@@ -349,14 +342,9 @@ export const agentVaultPersonalValueServiceFactory = ({
     }
   };
 
-  const setPersonalValues = async ({
-    values: sentValues,
-    oauthAuthorizationId,
-    credentialType,
-    ...dto
-  }: TSetPersonalValuesDTO) => {
-    if (oauthAuthorizationId) return connectOauth({ ...dto, oauthAuthorizationId, credentialType });
-    const values = sentValues ?? [];
+  const setPersonalValues = async (input: TSetPersonalValuesDTO) => {
+    if (input.oauthAuthorizationId !== undefined) return connectOauth(input);
+    const { values, credentialType, ...dto } = input;
 
     const { owner, service, isAdmin } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
@@ -364,7 +352,7 @@ export const agentVaultPersonalValueServiceFactory = ({
     }
     if (isMemberProvidedOauth(service)) {
       throw new BadRequestError({
-        message: `The service '${service.name}' takes your own OAuth sign-in, not a typed value. Connect your account instead.`
+        message: `The service '${service.name}' takes each member's own OAuth sign-in, not a typed value. A user connects their account from the access bundle page in Infisical. A machine identity can't connect one, so start the session on behalf of a user who has.`
       });
     }
 

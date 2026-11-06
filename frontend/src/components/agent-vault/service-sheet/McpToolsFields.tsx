@@ -145,11 +145,13 @@ export const McpToolsFields = ({
   };
 
   // Opens the client fields on the Credential step, as a save the server refuses for the same reason does.
-  const goToOwnApp = () => {
+  const goToOwnApp = (message?: string) => {
     const host = hostOf(getValues("serverUrl").trim());
     setError("oauthAuthorizationId", {
       type: OAUTH_OWN_APP_REQUIRED_ERROR,
-      message: `${host} doesn't let Infisical register as an OAuth client. Enter the client ID (and secret, if it has one) of your own OAuth app, which every member then signs in with. Then go back to the Tools step and load the tools again.`
+      message:
+        message ??
+        `${host} doesn't let Infisical register as an OAuth client. Enter the client ID (and secret, if it has one) of your own OAuth app, which every member then signs in with. Then go back to the Tools step and load the tools again.`
     });
     onGoToCredential();
   };

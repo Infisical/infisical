@@ -657,9 +657,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             .optional()
             .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
         })
-        .refine((body) => (body.values === undefined) !== (body.oauthAuthorizationId === undefined), {
-          message: "Send either values or an oauthAuthorizationId, not both.",
+        .refine((body) => body.values !== undefined || body.oauthAuthorizationId !== undefined, {
+          message: "Send the values to set in values.",
           path: ["values"]
+        })
+        .refine((body) => body.values === undefined || body.oauthAuthorizationId === undefined, {
+          message: "Send either values or oauthAuthorizationId, not both.",
+          path: ["oauthAuthorizationId"]
         }),
       response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
     },
@@ -674,9 +678,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         serviceId: req.params.serviceId,
-        values: req.body.values,
-        oauthAuthorizationId: req.body.oauthAuthorizationId,
-        credentialType: req.body.credentialType
+        credentialType: req.body.credentialType,
+        ...(req.body.oauthAuthorizationId === undefined
+          ? { values: req.body.values! }
+          : { oauthAuthorizationId: req.body.oauthAuthorizationId })
       });
       const oauthConnection = personalValues.fields.find((field) => field.oauth)?.oauth;
 
