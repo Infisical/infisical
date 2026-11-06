@@ -664,9 +664,11 @@
 .titleLine {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: var(--v4-space-8);
   min-width: 0;
+}
+.titleLine > .rowTitle {
+  flex: 0 1 auto;
 }
 .rowTitle {
   color: inherit;
@@ -705,13 +707,14 @@ button.rowTitle::after {
   outline-offset: calc(-1 * var(--v4-size-focus-ring));
 }
 .rowMeta {
+  flex: none;
+  align-self: flex-start;
   margin-left: auto;
-  min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
   color: var(--v4-muted);
   font-family: var(--v4-type-mono-sm-font-family);
   font-size: var(--v4-type-mono-sm-font-size);
-  line-height: var(--v4-type-mono-sm-line-height);
+  line-height: var(--v4-type-row-title-line-height);
   font-weight: var(--v4-type-mono-sm-font-weight);
   letter-spacing: var(--v4-type-mono-sm-letter-spacing);
 }

@@ -13,6 +13,7 @@ export const listDefinition = {
     "Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface), bare, segmented (no container, each row a borderless tint card with a gap between) or divided (no container, rows split by line-soft rules); md/sm, static/link/button rows and actions below.",
     "Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.",
     "Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.",
+    "The title line never wraps: the title shrinks and ends in an ellipsis, and the meta keeps its width at the top right of the title's first line.",
     "Selection skips disabled and locked rows. Current details and bulk selection remain independent.",
     "Loading appends placeholders below retained rows; sections, empty and footer compose.",
     "DataList terms wrap only between words and never break inside one; a term keeps at least its longest word even past its 45% share, and values wrap instead.",
