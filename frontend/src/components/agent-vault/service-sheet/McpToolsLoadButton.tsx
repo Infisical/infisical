@@ -265,7 +265,7 @@ export const McpToolsLoadButton = ({
                         onGoToOwnApp(
                           isOAuthAdvertised
                             ? undefined
-                            : `${host} doesn't look like it uses OAuth. If the server does use OAuth, enter your OAuth app's client ID and secret below, then load the tools again.`
+                            : `${host} doesn't look like it uses OAuth. If the server does use OAuth, enter your OAuth app's client ID and secret above, then go back to the Tools step and load the tools again.`
                         );
                       }}
                     >

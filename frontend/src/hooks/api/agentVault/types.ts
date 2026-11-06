@@ -744,11 +744,16 @@ export type TSetAgentVaultPersonalValuesDTO = {
   serviceId: string;
   /** The type the dialog shows. If an admin changed it since, the save fails with a 409 instead of mislabeling a value. */
   credentialType: AgentVaultCredentialType;
-} & (
-  | { values: { field: TAgentVaultMemberProvidedField; value: string }[] }
-  // A completed sign-in, which connects the caller's account and replaces any connection they had.
-  | { oauthAuthorizationId: string }
-);
+  values: { field: TAgentVaultMemberProvidedField; value: string }[];
+};
+
+/** A completed sign-in, which connects the caller's account and replaces any connection they had. */
+export type TConnectAgentVaultPersonalOauthDTO = {
+  accessBundleId: string;
+  serviceId: string;
+  credentialType: AgentVaultCredentialType;
+  authorizationId: string;
+};
 
 export type TDeleteAgentVaultPersonalValuesDTO = { accessBundleId: string; serviceId: string };
 

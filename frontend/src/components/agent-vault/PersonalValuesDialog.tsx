@@ -42,6 +42,7 @@ import {
   AgentVaultVariableReferenceField,
   AgentVaultVariableScope,
   TAgentVaultMemberProvidedField,
+  useConnectAgentVaultPersonalOauth,
   useDeleteAgentVaultPersonalValues,
   useGetAgentVaultAccessBundle,
   useListAgentVaultVariables,
@@ -148,6 +149,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     target?.service;
   const personalValues = service?.personalValues;
   const setValues = useSetAgentVaultPersonalValues(projectId);
+  const connectOauth = useConnectAgentVaultPersonalOauth(projectId);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const deleteValues = useDeleteAgentVaultPersonalValues(projectId);
   // A member keeps at most MAX_PERSONAL_VARIABLES, so one page holds every one of them.
@@ -278,13 +280,13 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     }
   };
 
-  const saveConnection = async (oauthAuthorizationId: string) => {
+  const saveConnection = async (authorizationId: string) => {
     if (!service) return;
-    await setValues.mutateAsync({
+    await connectOauth.mutateAsync({
       accessBundleId: service.accessBundleId,
       serviceId: service.id,
       credentialType: AgentVaultCredentialType.OAuth,
-      oauthAuthorizationId
+      authorizationId
     });
     createNotification({
       text: `Connected your ${host} account for ${service.name}`,
@@ -330,7 +332,9 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent isPending={isSubmitting || setValues.isPending || isSigningIn}>
+      <DialogContent
+        isPending={isSubmitting || setValues.isPending || connectOauth.isPending || isSigningIn}
+      >
         <DialogHeader>
           <DialogTitle>
             {personalValues?.isConfigured ? "Update" : "Set Up"} Personal Values for {service?.name}
@@ -343,7 +347,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
             <PersonalOAuthConnection
               service={service}
               connection={oauthConnection}
-              isSaving={setValues.isPending}
+              isSaving={connectOauth.isPending}
               onAuthorized={saveConnection}
               onWaitingChange={setIsSigningIn}
             />

@@ -32,6 +32,7 @@ import { MemberProvidedToggle } from "./CredentialFields";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
   hostOf,
+  isMemberProvidedOAuthService,
   newOAuthAuthorizationId,
   OAUTH_OWN_APP_REQUIRED_ERROR,
   OAUTH_STATUS_LABELS,
@@ -231,7 +232,7 @@ export const OAuthAuthorizeCard = ({
         setValue("oauthClientId", savedMemberClientId);
         switchToOwnApp();
       }
-    } else {
+    } else if (isMemberProvidedOAuthService(service)) {
       // The members' client secret is never shown, so its client ID alone would fail at the provider.
       switchToAutomaticSetup();
     }
