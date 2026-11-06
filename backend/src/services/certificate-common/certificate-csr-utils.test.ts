@@ -2,8 +2,10 @@ import { CertificationRequest } from "@peculiar/asn1-csr";
 import { AsnConvert } from "@peculiar/asn1-schema";
 import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
+import { getPqcCrypto, initializePqcSupport } from "@app/lib/crypto/pqc";
+import { verifyPqcOpenSSLAvailability } from "@app/lib/crypto/pqc/pqc-openssl";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
@@ -14,7 +16,7 @@ import {
   verifyCsrSignature
 } from "./certificate-csr-utils";
 
-vi.mock("@app/lib/logger", () => ({ logger: { warn: vi.fn() } }));
+vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 // the extraction every CSR-based enrollment shares; fixtures produced with openssl
 const WINDOWS_ORDER_CSR = `-----BEGIN CERTIFICATE REQUEST-----
@@ -259,5 +261,45 @@ describe("verifyCsrSignature", () => {
       // eslint-disable-next-line no-await-in-loop
       expect(await getCsrSignatureError(csr)).toBeNull();
     }
+  });
+});
+
+describe("verifyCsrSignature with post-quantum keys", () => {
+  let pqcAvailable = false;
+
+  beforeAll(async () => {
+    pqcAvailable = await verifyPqcOpenSSLAvailability();
+    if (pqcAvailable) {
+      await initializePqcSupport();
+    }
+  });
+
+  const buildPqcCsr = async (algName: string) => {
+    const pqcCrypto = getPqcCrypto();
+    const keys = (await pqcCrypto.subtle.generateKey({ name: algName }, true, ["sign", "verify"])) as CryptoKeyPair;
+    return x509.Pkcs10CertificateRequestGenerator.create({
+      name: "CN=pqc.example.com",
+      keys,
+      signingAlgorithm: { name: algName }
+    });
+  };
+
+  describe.each(["ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "SLH-DSA-SHA2-128f", "SLH-DSA-SHAKE-128f"])("%s", (algName) => {
+    it("accepts a genuine CSR and rejects one whose public key was swapped", async ({ skip }) => {
+      if (!pqcAvailable) skip();
+      const csr = await buildPqcCsr(algName);
+      const other = await buildPqcCsr(algName);
+
+      expect(await getCsrSignatureError(csr.toString("pem"))).toBeNull();
+
+      const parsed = AsnConvert.parse(csr.rawData, CertificationRequest);
+      parsed.certificationRequestInfo.subjectPKInfo = AsnConvert.parse(
+        other.rawData,
+        CertificationRequest
+      ).certificationRequestInfo.subjectPKInfo;
+      const forged = new x509.Pkcs10CertificateRequest(AsnConvert.serialize(parsed)).toString("pem");
+
+      expect(await getCsrSignatureError(forged)).toBe(INVALID_CSR_SIGNATURE_MESSAGE);
+    }, 60000);
   });
 });
