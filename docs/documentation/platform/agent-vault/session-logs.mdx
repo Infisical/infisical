@@ -21,7 +21,7 @@ You can view a session's logs if you created the session or you're an admin of i
   Go to **Sessions** and select **View Session Logs** on the session's row. You can filter the requests by outcome and search them by host, path, method, tool, or service. While the session is active, new requests appear as the proxy uploads them.
 
   <Frame>
-    <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
+    <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for the Review PR #1486 session, listing each request's time, method, host, path, upstream status, and outcome: brokered requests to GitHub, Anthropic, and Slack, a DELETE blocked by the service's method rules, and requests to registry.npmjs.org and pastebin.com blocked by the proxy's traffic policy" />
   </Frame>
 </Tab>
 <Tab title="Through the API" id="reading-session-logs-through-the-api">
@@ -178,6 +178,10 @@ You'll switch between Infisical and AWS during setup: Infisical generates the AW
 <Steps>
   <Step>
     In your Agent Vault project, go to **Administration** > **Settings** > **Session Logs** and select **Configure** or **Set Up Session Logs**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/settings-session-logs.png" alt="The Session Logs settings page of the project, showing session logs enabled in default storage, and its Configure button" />
+    </Frame>
   </Step>
   <Step>
     Turn on **Enable**, then under **Storage**, select **External storage**.
@@ -187,9 +191,17 @@ You'll switch between Infisical and AWS during setup: Infisical generates the AW
   </Step>
   <Step>
     Optionally, enter a **Key Prefix** to store session logs under one path in a bucket you also use for other data.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-logs-start.png" alt="The Session Logs dialog with Enable turned on, External storage selected, no AWS connection yet, and a region, bucket, and key prefix filled in" />
+    </Frame>
   </Step>
   <Step>
     Select **View AWS Setup**. Infisical shows an **IAM policy** with your bucket and key prefix already filled in, so you can paste it into AWS as it is.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-logs-aws-setup.png" alt="The AWS Setup dialog on the IAM Policy tab, showing a policy that allows s3:PutObject and s3:GetObject under the agent-vault prefix and s3:ListBucket on the bucket" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -258,7 +270,7 @@ Go back to the **Session Logs** dialog.
 </Steps>
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-logs-setup.png" alt="The Session Logs dialog with Enable turned on and an AWS connection, region, bucket, and key prefix filled in" />
+  <img src="/images/platform/agent-vault/session-logs-setup.png" alt="The Session Logs dialog with Enable turned on, External storage selected, and the acme-session-logs AWS connection, us-east-1 region, acme-agent-vault bucket, and agent-vault key prefix filled in" />
 </Frame>
 
 When you save, Infisical checks that the bucket exists and that the IAM user or role can write to it. If either check fails, Infisical shows the error and doesn't save the settings. If your browser can't read from the bucket, the **Session Logs** card shows a warning after you save.
@@ -268,6 +280,12 @@ When you save, Infisical checks that the bucket exists and that the IAM user or 
 </Check>
 
 ## Managing session logs
+
+The **Session Logs** card on the **Settings** page shows the current settings:
+
+<Frame>
+  <img src="/images/platform/agent-vault/settings-session-logs-enabled.png" alt="The Session Logs settings page showing session logs enabled in external storage, with the acme-session-logs connection, us-east-1 region, acme-agent-vault bucket, and agent-vault key prefix" />
+</Frame>
 
 ### Turning session logs off
 
@@ -287,7 +305,7 @@ To update the connection's AWS credentials, open the menu next to **Configure** 
 To add or delete the project's AWS connections, select **Manage Connections** from the same menu:
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-logs-connections.png" alt="The Manage Connections sheet listing the project's AWS connections, with the one session logs use marked In Use" />
+  <img src="/images/platform/agent-vault/session-logs-connections.png" alt="The Manage Connections sheet listing the project's two Assume Role AWS connections, with acme-session-logs marked In Use" />
 </Frame>
 
 You can't delete a connection while session logs use it. To delete the connection, first turn session logs off, select a different connection, or switch to default storage in the **Session Logs** dialog.

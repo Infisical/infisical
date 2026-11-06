@@ -20,7 +20,7 @@ To add a variable:
     In your Agent Vault project, go to **Variables** and select the **Global Variables** tab.
 
     <Frame>
-      <img src="/images/platform/agent-vault/variables-empty.png" alt="The Variables page with no variables and an Add Variable button" />
+      <img src="/images/platform/agent-vault/variables-global.png" alt="The Global Variables tab of the Variables page, listing seven variables with hidden values and the access bundles that use each one (STATUSPAGE_API_KEY is unused), and an Add Global Variable button" />
     </Frame>
 
   </Step>
@@ -28,7 +28,7 @@ To add a variable:
     Select **Add Global Variable**.
 
     <Frame>
-      <img src="/images/platform/agent-vault/variable-create.png" alt="The Add Variable dialog with GITHUB_TOKEN as the key and a hidden value" />
+      <img src="/images/platform/agent-vault/variable-create.png" alt="The Add Global Variable dialog with OPENAI_API_KEY as the key and a hidden value" />
     </Frame>
 
   </Step>
@@ -42,10 +42,6 @@ To add a variable:
   </Step>
   <Step>
     Select **Add Global Variable**. The variable appears in the list on the **Global Variables** tab.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/variables.png" alt="The Variables page listing seven variables with hidden values. The Used By column shows access bundle badges, such as code-review, on-call, and release-notes for GITHUB_TOKEN, with a tooltip listing the github service in code-review. SLACK_BOT_TOKEN shows three badges and +1 for one more access bundle. SENTRY_AUTH_TOKEN shows Unused." />
-    </Frame>
 
   </Step>
 </Steps>
@@ -73,7 +69,7 @@ To use a variable:
     In a field that accepts variables, type `{{`. A list of your variables appears.
 
     <Frame>
-      <img src="/images/platform/agent-vault/service-variable-picker.png" alt="The Credential step of a GitHub service, with a partly typed reference in the Token field and a list showing GITHUB_TOKEN and Create GITHUB_" />
+      <img src="/images/platform/agent-vault/service-variable-picker.png" alt="The Credential step of a GitHub service, with {{GITH typed in the Password field and a list showing GITHUB_TOKEN and Create GITH" />
     </Frame>
 
   </Step>
@@ -85,7 +81,7 @@ To use a variable:
     </Tip>
 
     <Frame>
-      <img src="/images/platform/agent-vault/service-variable-reference.png" alt="The Credential step of a GitHub service with a GITHUB_TOKEN reference as the Token, and the Sends preview showing the reference after Authorization: Bearer" />
+      <img src="/images/platform/agent-vault/service-variable-reference.png" alt="The Credential step of a GitHub service with a GITHUB_TOKEN reference as the Password, and the Sends preview showing the reference in the Authorization: Basic header" />
     </Frame>
 
     A reference can fill a whole field or part of one. For example, if a custom header's **Value** is `org-{{ORG_ID}}`, the proxy sends `org-` followed by the value of `ORG_ID`.
@@ -102,6 +98,10 @@ To check which services are using a variable:
   </Step>
   <Step>
     In the variable's **Used By** column, hover over an access bundle to see which of the access bundle's services use the variable.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/variables.png" alt="The Variables page with the pointer over the code-review badge of GITHUB_TOKEN, and a tooltip listing the github service in code-review" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -148,11 +148,19 @@ To delete a variable:
 If any service still uses the variable, the dialog lists those services, and you can't delete the variable until you [remove the reference](#use-a-variable-in-a-service) from each one.
 </Note>
 
+<Frame>
+  <img src="/images/platform/agent-vault/variable-delete-blocked.png" alt="The Delete GITHUB_TOKEN dialog, listing the github services in code-review and release-notes that use the variable, with Delete Variable disabled" />
+</Frame>
+
 ## Personal variables
 
 A personal variable works like a global variable, with two differences: only your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) can use it, and only you can read it. Use one when several services ask you for the same value, such as a personal GitHub token that services in two access bundles require.
 
 To see your personal variables, go to **Variables** in your Agent Vault project. If you're an admin, select the **Personal Variables** tab.
+
+<Frame>
+  <img src="/images/platform/agent-vault/variables-personal.png" alt="The Personal Variables tab, listing the personal variables GITHUB_PAT and SLACK_USER_TOKEN" />
+</Frame>
 
 You add, update, and delete personal variables the same way as [global variables](#add-a-variable), with these limits:
 
