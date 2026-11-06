@@ -810,6 +810,7 @@ export const certificateAuthorityServiceFactory = ({
             crlDistributionPointUrls?: string[];
             disableManagedCrlDistributionPointUrl?: boolean;
             isOcspEnabled?: boolean;
+            crlValidityDays?: number;
           }
         | undefined;
 
@@ -820,7 +821,8 @@ export const certificateAuthorityServiceFactory = ({
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
         disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
-        isOcspEnabled: internalConfig?.isOcspEnabled
+        isOcspEnabled: internalConfig?.isOcspEnabled,
+        crlValidityDays: internalConfig?.crlValidityDays
       });
 
       if (!updatedCa.internalCa) {

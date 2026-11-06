@@ -50,8 +50,11 @@ import {
 } from "@app/context";
 import {
   CaType,
+  DEFAULT_CRL_VALIDITY_DAYS,
+  MAX_CRL_VALIDITY_DAYS,
   MAX_DISTRIBUTION_POINT_URL_LENGTH,
   MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
+  MIN_CRL_VALIDITY_DAYS,
   useGetCa,
   useUpdateCa
 } from "@app/hooks/api";
@@ -93,7 +96,12 @@ const editSchema = z.object({
         }
         seen.add(normalized);
       });
-    })
+    }),
+  crlValidityDays: z.coerce
+    .number()
+    .int("Must be a whole number of days")
+    .min(MIN_CRL_VALIDITY_DAYS, `Must be at least ${MIN_CRL_VALIDITY_DAYS} day`)
+    .max(MAX_CRL_VALIDITY_DAYS, `Must be ${MAX_CRL_VALIDITY_DAYS} days or less`)
 });
 
 type EditFormData = z.infer<typeof editSchema>;
@@ -121,7 +129,8 @@ export const CaRevocationSection = ({ caId }: Props) => {
         ca?.configuration.disableManagedCrlDistributionPointUrl ?? false,
       crlDistributionPointUrls: (ca?.configuration.crlDistributionPointUrls ?? []).map((value) => ({
         value
-      }))
+      })),
+      crlValidityDays: ca?.configuration.crlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS
     }
   });
 
@@ -133,6 +142,10 @@ export const CaRevocationSection = ({ caId }: Props) => {
   const isOcspEnabled = ca.configuration.isOcspEnabled ?? false;
   const ocspResponderUrl = `${window.origin}/api/v1/cert-manager/ocsp/${ca.id}`;
   const mirrorUrls = ca.configuration.crlDistributionPointUrls ?? [];
+  const crlValidityDays = ca.configuration.crlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS;
+  const isCaExpired = Boolean(
+    ca.configuration.notAfter && new Date(ca.configuration.notAfter) <= new Date()
+  );
 
   const handleAddCrlUrl = () => {
     if (!subscription.caCrl) {
@@ -157,7 +170,8 @@ export const CaRevocationSection = ({ caId }: Props) => {
         (ca.configuration.disableManagedCrlDistributionPointUrl ?? false) && {
         disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl
       }),
-      ...(isMirrorUrlListChanged && { crlDistributionPointUrls: submittedMirrorUrls })
+      ...(isMirrorUrlListChanged && { crlDistributionPointUrls: submittedMirrorUrls }),
+      ...(values.crlValidityDays !== crlValidityDays && { crlValidityDays: values.crlValidityDays })
     };
 
     if (Object.keys(changedConfiguration).length === 0) {
@@ -243,6 +257,12 @@ export const CaRevocationSection = ({ caId }: Props) => {
                 )}
               </DetailValue>
             </Detail>
+            <Detail>
+              <DetailLabel>CRL Validity</DetailLabel>
+              <DetailValue>
+                {crlValidityDays} {crlValidityDays === 1 ? "day" : "days"}
+              </DetailValue>
+            </Detail>
           </DetailGroup>
         </CardContent>
       </Card>
@@ -258,7 +278,7 @@ export const CaRevocationSection = ({ caId }: Props) => {
           <DialogHeader>
             <DialogTitle>Edit Revocation</DialogTitle>
             <DialogDescription>
-              Changes apply to certificates issued after you save.
+              OCSP and CRL URL changes apply to certificates issued after you save.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onEditSubmit)} className="flex flex-col gap-4">
@@ -362,6 +382,46 @@ export const CaRevocationSection = ({ caId }: Props) => {
                   </FieldDescription>
                 </FieldContent>
               </Field>
+
+              <Controller
+                control={control}
+                name="crlValidityDays"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="crl-validity-days">
+                      CRL Validity (Days)
+                      {!subscription.caCrl && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="info">Enterprise</Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            Custom CRL validity is available on Infisical&apos;s Enterprise plan.
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        id="crl-validity-days"
+                        type="number"
+                        disabled={
+                          isCaExpired ||
+                          (!subscription.caCrl && crlValidityDays === DEFAULT_CRL_VALIDITY_DAYS)
+                        }
+                        isError={Boolean(error)}
+                      />
+                      <FieldDescription>
+                        {isCaExpired
+                          ? "This CA has expired. Renew it to change the CRL validity."
+                          : `How long each CRL is valid, from ${MIN_CRL_VALIDITY_DAYS} to ${MAX_CRL_VALIDITY_DAYS} days, and never past the CA certificate's expiry. Saving a new value regenerates the CRL.`}
+                      </FieldDescription>
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
             </FieldGroup>
 
             <DialogFooter>

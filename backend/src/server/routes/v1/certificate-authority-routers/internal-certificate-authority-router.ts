@@ -714,7 +714,10 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         200: z.array(
           z.object({
             id: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),
-            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl)
+            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl),
+            thisUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.thisUpdate),
+            nextUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.nextUpdate),
+            crlNumber: z.number().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crlNumber)
           })
         )
       }
@@ -741,6 +744,60 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       });
 
       return crls;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:caId/crls/rebuild",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "rebuildCaCrl",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description:
+        "Regenerate the CRL of an internal CA. The new CRL replaces the current one at the same URL with the next CRL number and a next update time from the CA's CRL validity. Requires the Enterprise plan. Fails for a CA that has no certificate yet or has expired.",
+      params: z.object({
+        caId: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.REBUILD_CRL.caId)
+      }),
+      response: {
+        200: z.object({
+          crl: z.object({
+            id: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),
+            thisUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.thisUpdate),
+            nextUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.nextUpdate),
+            crlNumber: z.number().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crlNumber)
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const { ca, crl } = await server.services.certificateAuthorityCrl.rebuildCrl({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.REBUILD_CA_CRL,
+          metadata: {
+            caId: ca.id,
+            name: ca.name,
+            crlNumber: crl.crlNumber,
+            nextUpdate: crl.nextUpdate.toISOString()
+          }
+        }
+      });
+
+      return { crl };
     }
   });
 

@@ -21,6 +21,7 @@ import {
   TImportCaCrossSignedCertificateDTO,
   TOrderCertificateDTO,
   TOrderCertificateResponse,
+  TRebuildCaCrlResponse,
   TRenewCaDTO,
   TRenewCaResponse,
   TSignIntermediateDTO,
@@ -46,6 +47,9 @@ export const useUpdateCa = () => {
       });
       queryClient.invalidateQueries({
         queryKey: caKeys.getCaById(id)
+      });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.getCaCrls(id)
       });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByProjectId()
@@ -138,6 +142,7 @@ export const useImportCaCertificate = () => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCrls(caId) });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
       });
@@ -267,6 +272,22 @@ export const useRenewCa = () => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCsr(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCrl(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCrls(caId) });
+    }
+  });
+};
+
+export const useRebuildCaCrl = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TRebuildCaCrlResponse, object, { caId: string }>({
+    mutationFn: async ({ caId }) => {
+      const { data } = await apiRequest.post<TRebuildCaCrlResponse>(
+        `/api/v1/cert-manager/ca/internal/${caId}/crls/rebuild`
+      );
+      return data;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCrls(caId) });
     }
   });
 };
@@ -280,6 +301,7 @@ const invalidateCaInstallQueries = (
   queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
   queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
   queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
+  queryClient.invalidateQueries({ queryKey: caKeys.getCaCrls(caId) });
   queryClient.invalidateQueries({ queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL) });
   queryClient.invalidateQueries({ queryKey: caKeys.listCasByProjectId() });
   queryClient.invalidateQueries({ predicate: (query) => query.queryKey.includes("project-cas") });
@@ -419,6 +441,7 @@ export const useGenerateCaCertificate = () => {
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCsr(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCrl(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCrls(caId) });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
       });

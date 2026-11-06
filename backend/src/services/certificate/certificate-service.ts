@@ -81,7 +81,8 @@ import {
   expandInternalCa,
   getCaCertChain,
   getCaCertChains,
-  rebuildCaCrl
+  getInternalCaExpiredAt,
+  rebuildCaCrlAfterChange
 } from "../certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
@@ -156,7 +157,7 @@ type TCertificateServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create" | "delete">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById" | "find">;
-  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne" | "update" | "primaryNode">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create" | "delete">;
@@ -180,7 +181,7 @@ type TCertificateServiceFactoryDep = {
     TUsageCounterDALFactory,
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
   >;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "acquireLock">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
@@ -810,18 +811,18 @@ export const certificateServiceFactory = ({
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
     }
 
-    // rebuild CRL (TODO: move to interval-based cron job)
-    // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
-    if (!ca.externalCa?.id) {
-      await rebuildCaCrl({
+    if (!ca.externalCa?.id && !getInternalCaExpiredAt(ca.internalCa?.notAfter)) {
+      await rebuildCaCrlAfterChange({
         caId: ca.id,
         certificateAuthorityDAL,
         certificateAuthorityCrlDAL,
+        certificateAuthorityCertDAL,
         certificateAuthoritySecretDAL,
         projectDAL,
         certificateDAL,
         kmsService,
-        caKeySourceService
+        caKeySourceService,
+        keyStore
       });
     }
 

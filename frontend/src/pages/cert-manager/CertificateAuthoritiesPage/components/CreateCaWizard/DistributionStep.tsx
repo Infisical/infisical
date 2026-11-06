@@ -18,7 +18,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import { MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS } from "@app/hooks/api/ca";
+import {
+  MAX_CRL_VALIDITY_DAYS,
+  MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
+  MIN_CRL_VALIDITY_DAYS
+} from "@app/hooks/api/ca";
 
 import { CaWizardForm } from "./schemas";
 
@@ -137,6 +141,42 @@ export const DistributionStep = ({ form }: Props) => {
           </FieldDescription>
         </FieldContent>
       </Field>
+
+      <Controller
+        name="crlValidityDays"
+        control={form.control}
+        render={({ field, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel htmlFor="crl-validity-days">
+              CRL Validity (Days)
+              {!subscription.caCrl && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="info">Enterprise</Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    Custom CRL validity is available on Infisical&apos;s Enterprise plan.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                {...field}
+                id="crl-validity-days"
+                type="number"
+                disabled={!subscription.caCrl}
+                isError={Boolean(error)}
+              />
+              <FieldDescription>
+                How long each CRL is valid, from {MIN_CRL_VALIDITY_DAYS} to {MAX_CRL_VALIDITY_DAYS}{" "}
+                days, and never past the CA certificate&apos;s expiry.
+              </FieldDescription>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
+      />
     </FieldGroup>
   );
 };

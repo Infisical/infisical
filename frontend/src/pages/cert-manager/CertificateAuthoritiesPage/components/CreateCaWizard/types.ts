@@ -83,7 +83,7 @@ export const STEPS: WizardStep[] = [
     subtitle: "Configure how clients check whether certificates from this CA are revoked.",
     rightLabel: "DISTRIBUTION",
     rightDescription:
-      "Certificates issued by this CA carry revocation endpoints so clients can check their status. OCSP answers for one certificate at a time, while a CRL lists every certificate this CA has revoked. The Infisical-managed CRL endpoint is included by default; add backup URLs or disable the managed one as needed.",
+      "Certificates issued by this CA carry revocation endpoints so clients can check their status. OCSP answers for one certificate at a time, while a CRL lists every certificate this CA has revoked. The Infisical-managed CRL endpoint is included by default; add backup URLs or disable the managed one as needed. CRL validity sets how long each CRL stays current before clients fetch a new one, 7 days by default and never past the CA certificate's expiry.",
     docsUrl: PkiDocsUrls.ca.internal
   }
 ];
