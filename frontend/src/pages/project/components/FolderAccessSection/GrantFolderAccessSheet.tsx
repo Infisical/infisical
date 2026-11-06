@@ -26,22 +26,17 @@ import {
   useProjectPermission
 } from "@app/context";
 import {
-  SecretFolderRole,
   TFolderAccess,
   useCreateIdentityFolderAccess,
-  useCreateUserFolderAccess
+  useCreateUserFolderAccess,
+  useUpdateIdentityFolderAccess,
+  useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
-import { ApplyToSubfoldersToggle } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/ApplyToSubfoldersToggle";
-import { DEFAULT_TEMPORARY_RANGE } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
-import {
-  isValidTemporaryRange,
-  normalizeFolderPath
-} from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
-import { FolderTierRadioGroup } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderTierRadioGroup";
-import { TemporaryAccessPopover } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/TemporaryAccessPopover";
+import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { ActorSummary } from "./ActorSummary";
+import { FolderGrantFields, useFolderGrantDraft } from "./FolderGrantFields";
 import { TFolderAccessSectionActor } from "./types";
 
 type Props = {
@@ -65,13 +60,11 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
 
   const [environmentSlug, setEnvironmentSlug] = useState(environments[0]?.slug ?? "");
   const [secretPath, setSecretPath] = useState("/");
-  const [tier, setTier] = useState(SecretFolderRole.Read);
-  const [isTemporary, setIsTemporary] = useState(false);
-  const [range, setRange] = useState(DEFAULT_TEMPORARY_RANGE);
-  const [isRecursive, setIsRecursive] = useState(false);
 
   const createUserAccess = useCreateUserFolderAccess();
   const createIdentityAccess = useCreateIdentityFolderAccess();
+  const updateUserAccess = useUpdateUserFolderAccess();
+  const updateIdentityAccess = useUpdateIdentityFolderAccess();
 
   const normalizedPath = normalizeFolderPath(secretPath);
   const isRoot = normalizedPath === "/";
@@ -87,12 +80,14 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
 
   const actorNoun = actor.type === "user" ? "user" : "machine identity";
   const folderExists = isRoot || siblingFolders.some((folder) => folder.name === folderName);
-  const isDuplicate = existingAccess.some(
-    (row) =>
-      row.environment === environmentSlug && normalizeFolderPath(row.secretPath) === normalizedPath
-  );
-  const isFullAccessTemporary = tier === SecretFolderRole.FullAccess && isTemporary;
-  const isRangeValid = !isTemporary || isValidTemporaryRange(range);
+  // picking a folder this actor already has a grant on edits that grant instead of creating one
+  const existingGrant =
+    existingAccess.find(
+      (row) =>
+        row.environment === environmentSlug &&
+        normalizeFolderPath(row.secretPath) === normalizedPath
+    ) ?? null;
+  const grant = useFolderGrantDraft(existingGrant, isRoot);
 
   const targetError = (() => {
     if (!environmentSlug) return "Select an environment.";
@@ -112,38 +107,33 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     return null;
   })();
 
-  // an existing grant is not an input mistake, so it blocks submission without flagging the path
-  const duplicateNote =
-    !targetError && !isCheckingFolder && isDuplicate
-      ? `This ${actorNoun} already has access to ${normalizedPath}. Edit the existing access from the table instead.`
+  const editNote =
+    existingGrant && !targetError && !isCheckingFolder
+      ? `This ${actorNoun} already has access to ${normalizedPath}. Saving updates that access.`
       : null;
 
   const isSubmitDisabled =
     isCheckingFolder ||
     Boolean(targetError) ||
-    Boolean(duplicateNote) ||
-    isFullAccessTemporary ||
-    !isRangeValid;
+    grant.isInvalid ||
+    (Boolean(existingGrant) && !grant.hasChanges);
 
   const handleSubmit = async () => {
-    const type = isTemporary
-      ? ({
-          isTemporary: true,
-          temporaryMode: "relative",
-          temporaryRange: range,
-          temporaryAccessStartTime: new Date().toISOString()
-        } as const)
-      : undefined;
+    const target = { projectId, environmentSlug, secretPath: normalizedPath };
 
-    const payload = {
-      projectId,
-      environmentSlug,
-      secretPath: normalizedPath,
-      permission: tier,
-      type,
-      isPermissionRecursive: isRoot && isRecursive ? true : undefined
-    };
+    if (existingGrant) {
+      const payload = { ...target, ...grant.updateFields() };
+      if (actor.type === "user") {
+        await updateUserAccess.mutateAsync({ ...payload, userId: actor.id });
+      } else {
+        await updateIdentityAccess.mutateAsync({ ...payload, identityId: actor.id });
+      }
+      createNotification({ type: "success", text: "Folder access updated" });
+      onClose();
+      return;
+    }
 
+    const payload = { ...target, ...grant.createFields() };
     if (actor.type === "user") {
       await createUserAccess.mutateAsync({ ...payload, userId: actor.id });
     } else {
@@ -197,44 +187,15 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
             />
           </div>
           {targetError && <p className="text-xs text-danger">{targetError}</p>}
-          {duplicateNote && (
+          {editNote && (
             <p className="flex items-start gap-1.5 text-xs text-muted">
               <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
-              {duplicateNote}
+              {editNote}
             </p>
           )}
         </div>
 
-        <ApplyToSubfoldersToggle
-          checked={isRoot && isRecursive}
-          onCheckedChange={setIsRecursive}
-          isDisabled={!isRoot}
-        />
-
-        <div className="space-y-2">
-          <Label>Permission</Label>
-          <FolderTierRadioGroup value={tier} onValueChange={setTier} />
-          {isFullAccessTemporary && (
-            <p className="text-xs text-danger">
-              Full Access cannot be temporary. Remove the expiration or choose a lower tier.
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Temporary Access</Label>
-          <TemporaryAccessPopover
-            isTemporary={isTemporary}
-            range={range}
-            label={isTemporary ? `Expires in ${range}` : "No expiration"}
-            description="Access is revoked automatically once the duration elapses."
-            onApply={(nextRange) => {
-              setRange(nextRange);
-              setIsTemporary(true);
-            }}
-            onRemove={() => setIsTemporary(false)}
-          />
-        </div>
+        <FolderGrantFields grant={grant} />
       </div>
 
       <SheetFooter className="border-t">
@@ -242,10 +203,15 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
           variant="project"
           isFullWidth
           isDisabled={isSubmitDisabled}
-          isPending={createUserAccess.isPending || createIdentityAccess.isPending}
+          isPending={
+            createUserAccess.isPending ||
+            createIdentityAccess.isPending ||
+            updateUserAccess.isPending ||
+            updateIdentityAccess.isPending
+          }
           onClick={() => handleSubmit().catch(() => undefined)}
         >
-          Grant Access
+          {existingGrant ? "Save Changes" : "Grant Access"}
         </Button>
       </SheetFooter>
     </>
