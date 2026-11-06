@@ -46,16 +46,16 @@ To allow a user, group, or machine identity to create sessions for a given acces
     Make sure the user, group, or machine identity is a member of the Agent Vault project. If not, [add them under Access Control](/documentation/platform/agent-vault/access-control#adding-members).
   </Step>
   <Step>
-    Open the access bundle from **Access Bundles** and select **Options** > **Manage Access**. Then, select **Grant Access**.
+    Open the access bundle from **Access Bundles** and select **Options** > **Manage Access**.
   </Step>
   <Step>
-    Select the user, group, or machine identity you want to grant access to. Then, select **Grant Access**.
+    Under **No Access**, find the user, group, or machine identity with the search box or the type filter. Then, select **Grant Access** on their row. The change saves immediately.
   </Step>
 </Steps>
 
 ### Revoke access
 
-To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Find them with the search box, open their actions menu, and select **Revoke Access**. If any of their agents are running, those agents lose the bundle's credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Find them with the search box, select **Has Access** on their row, and select **Revoke Access**. Then, confirm with **Revoke Access**. If any of their agents are running, those agents lose the bundle's credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
 ## Set up your personal values
 
