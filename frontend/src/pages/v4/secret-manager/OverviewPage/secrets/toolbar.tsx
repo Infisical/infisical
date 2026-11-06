@@ -258,11 +258,13 @@ export function AddNewMenu({
 export function FolderBreadcrumbBar({
   path,
   single,
+  actions,
   onNavigate,
   report
 }: {
   path: string;
   single: boolean;
+  actions?: ReactNode;
   onNavigate: (path: string) => void;
   report: (message: string) => void;
 }) {
@@ -288,6 +290,7 @@ export function FolderBreadcrumbBar({
         />
       </span>
       <span className={styles.pathActions}>
+        {actions}
         <Tooltip content="Copy path">
           <span className={styles.actionSlot}>
             <Button
@@ -374,7 +377,7 @@ export function QuickAddRow({
         save(true);
       }}
     >
-      <TableCell selection>
+      <TableCell selection divider={false}>
         <span className={styles.iconSlot}>
           <Tooltip content={NEXT_PHASE}>
             <span className={styles.actionSlot}>
@@ -389,7 +392,7 @@ export function QuickAddRow({
         <Input
           className={styles.inlineInput}
           aria-label="New secret name"
-          placeholder="Add a secret name"
+          placeholder="Add a secret name or paste a .env"
           autoComplete="off"
           spellCheck={false}
           value={key}

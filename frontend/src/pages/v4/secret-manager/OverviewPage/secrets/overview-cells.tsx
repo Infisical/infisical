@@ -39,6 +39,8 @@ export type RowContext = {
   blockFor?: ReturnType<typeof useManagedBlock>;
   selected: string[];
   recent: string[];
+  expanded: string[];
+  onExpand: (key: string, open: boolean) => void;
   onToggleSelect: (key: string) => void;
   report: (message: string) => void;
   onAction: (action: RowAction) => void;
@@ -81,27 +83,32 @@ const statusMeta: Record<EnvironmentStatus, Glyph & { label: string }> = {
 };
 export function StatusCell({
   status,
-  hasOverride
+  hasOverride,
+  annotations
 }: {
   status: EnvironmentStatus;
   hasOverride?: boolean;
+  annotations?: ReactNode;
 }) {
   const meta = statusMeta[status];
   return (
     <TableCell className={styles.statusCell} data-status={status}>
-      <span className={styles.statusGroup}>
-        <Tooltip content={meta.label}>
-          <span className={styles.statusMark}>
-            <Icon name={meta.name} icon={meta.icon} label={meta.label} />
-          </span>
-        </Tooltip>
-        {hasOverride && (
-          <Tooltip content="Has personal override">
-            <span className={styles.overrideMark}>
-              <Icon icon={GitBranchIcon} label="Has personal override" />
+      <span className={styles.statusLine}>
+        <span className={styles.statusGroup}>
+          <Tooltip content={meta.label}>
+            <span className={styles.statusMark}>
+              <Icon name={meta.name} icon={meta.icon} label={meta.label} />
             </span>
           </Tooltip>
-        )}
+          {hasOverride && (
+            <Tooltip content="Has personal override">
+              <span className={styles.overrideMark}>
+                <Icon icon={GitBranchIcon} label="Has personal override" />
+              </span>
+            </Tooltip>
+          )}
+        </span>
+        {annotations}
       </span>
     </TableCell>
   );
@@ -199,7 +206,7 @@ export function SelectCell({
 }) {
   const isSelected = ctx.selected.includes(rowKey);
   return (
-    <TableCell selection>
+    <TableCell selection divider={false}>
       <span className={styles.iconSlot} data-selected={isSelected || pinned || undefined}>
         <span className={styles.kindGlyph}>
           <KindIcon kind={kind} overlay={overlay} />
