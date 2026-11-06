@@ -257,7 +257,32 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
         message: "Unable to validate connection: Invalid API token provided."
       });
     }
+
+    return config.credentials;
   } catch (error: unknown) {
+    // Account-owned tokens scoped to individual Workers can be authorized for the Workers API
+    // without being authorized for the account details endpoint. Keep the existing check for
+    // other Cloudflare connections, and use the Workers endpoint only for permission denials.
+    if (error instanceof AxiosError && error.response?.status === 403) {
+      try {
+        const workersResponse = await safeRequest.get(
+          `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/workers/scripts`,
+          {
+            headers: getCloudflareAuthHeaders(apiToken),
+            params: { per_page: 1 }
+          }
+        );
+
+        if (workersResponse.data !== null) return config.credentials;
+      } catch (fallbackError: unknown) {
+        throw new BadRequestError({
+          message: `Failed to validate credentials: ${getCloudflareErrorMessage(fallbackError)}`
+        });
+      }
+
+      throw new BadRequestError({ message: "Unable to validate connection: verify credentials" });
+    }
+
     if (error instanceof AxiosError) {
       throw new BadRequestError({
         message: `Failed to validate credentials: ${getCloudflareErrorMessage(error)}`
@@ -267,6 +292,4 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
       message: "Unable to validate connection: verify credentials"
     });
   }
-
-  return config.credentials;
 };
