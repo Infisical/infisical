@@ -1691,21 +1691,13 @@ export const SecretEditTableRow = ({
                 isImport={isImportedSecret}
                 canEditButNotView={secretValueHidden && !isManagedSecret}
                 onFocus={() => setIsFieldFocused.on()}
-                renderReferenceTooltip={
-                  isCreatable
-                    ? undefined
-                    : (reference) =>
-                        isDirtyState || hasPendingValueChange ? (
-                          "Save pending changes to view resolved value"
-                        ) : (
-                          <ResolvedReferenceTooltipContent
-                            environment={environment}
-                            secretPath={secretPath}
-                            secretKey={secretName}
-                            reference={reference}
-                          />
-                        )
-                }
+                renderReferenceTooltip={(reference) => (
+                  <ResolvedReferenceTooltipContent
+                    environment={environment}
+                    secretPath={secretPath}
+                    reference={reference}
+                  />
+                )}
                 onBlur={() => {
                   field.onBlur();
                   setIsFieldFocused.off();

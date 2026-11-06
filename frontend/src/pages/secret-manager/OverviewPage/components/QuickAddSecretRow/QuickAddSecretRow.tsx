@@ -10,6 +10,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
+import { ResolvedReferenceTooltipContent } from "@app/components/secrets/SecretReferenceDetails";
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import {
   InfisicalSecretInput,
@@ -440,6 +441,17 @@ export const QuickAddSecretRow = ({
               variant="plain"
               onChange={setValue}
               onKeyDown={handleActionShortcut}
+              renderReferenceTooltip={
+                isMultiEnvironmentView
+                  ? undefined
+                  : (reference) => (
+                      <ResolvedReferenceTooltipContent
+                        environment={environments[0]}
+                        secretPath={secretPath}
+                        reference={reference}
+                      />
+                    )
+              }
             />
           </div>
           {isDraftActive && (

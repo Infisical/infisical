@@ -307,6 +307,13 @@ export type TDuplicateSecretResponse = {
   results: TDuplicateSecretResult[];
 };
 
+export type TGetExpandedSecretValueDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
 export type TGetSecretReferenceTreeDTO = {
   secretKey: string;
   secretPath: string;
@@ -319,8 +326,6 @@ export type TSecretReferenceTraceNode = {
   value?: string;
   environment: string;
   secretPath: string;
-  projectSlug?: string;
-  exists?: boolean;
   children: TSecretReferenceTraceNode[];
 };
 
