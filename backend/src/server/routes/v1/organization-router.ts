@@ -328,11 +328,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                 event: z.object({
                   type: z.string(),
                   class: z.nativeEnum(AuditLogEventClass),
-                  metadata: z.any()
+                  metadata: z.any().optional()
                 }),
                 actor: z.object({
                   type: z.string(),
-                  metadata: z.any()
+                  metadata: z.any().optional()
                 })
               })
             )

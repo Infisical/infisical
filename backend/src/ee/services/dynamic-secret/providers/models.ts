@@ -630,7 +630,7 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
     configType: z.literal(TotpConfigType.URL),
     url: z
       .string()
-      .url()
+      .url({ abort: true })
       .trim()
       .min(1)
       .refine((val) => {

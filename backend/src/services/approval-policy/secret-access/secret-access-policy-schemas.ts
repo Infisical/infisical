@@ -11,7 +11,7 @@ export const SecretAccessPolicyConstraintsSchema = z.object({
 });
 
 export const SecretAccessPolicyRequestDataSchema = z.object({
-  permissions: z.unknown(),
+  permissions: z.unknown().optional(),
   isTemporary: z.boolean(),
   temporaryRange: z.string().nullable()
 });
@@ -19,7 +19,7 @@ export const SecretAccessPolicyRequestDataSchema = z.object({
 export const SecretAccessPolicyInputsSchema = z.object({
   envId: z.string().guid(),
   secretPath: z.string(),
-  permissions: z.unknown(),
+  permissions: z.unknown().optional(),
   isTemporary: z.boolean()
 });
 

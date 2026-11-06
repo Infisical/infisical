@@ -12,7 +12,7 @@ export const PamAccountPoliciesSchema = z.object({
   projectId: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
-  rules: z.unknown(),
+  rules: z.unknown().optional(),
   isActive: z.boolean().default(true),
   createdAt: z.date(),
   updatedAt: z.date()

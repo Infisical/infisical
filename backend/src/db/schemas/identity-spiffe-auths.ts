@@ -25,7 +25,7 @@ export const IdentitySpiffeAuthsSchema = z.object({
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
   accessTokenNumUsesLimit: z.coerce.number().default(0),
-  accessTokenTrustedIps: z.unknown(),
+  accessTokenTrustedIps: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -141,7 +141,7 @@ export function validateSecretMovePermissions(
 
 export const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
 export function checkForInvalidPermissionCombination(permissions: z.infer<typeof OptionalArrayPermissionSchema>) {
-  if (!permissions) return;
+  if (!permissions) return true;
 
   for (const permission of permissions) {
     if (permission.subject === ProjectPermissionSub.Secrets) {

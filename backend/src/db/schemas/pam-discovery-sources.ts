@@ -15,7 +15,7 @@ export const PamDiscoverySourcesSchema = z.object({
   gatewayId: z.string().guid().nullable().optional(),
   gatewayPoolId: z.string().guid().nullable().optional(),
   credentialAccountId: z.string().guid(),
-  discoveryConfiguration: z.unknown(),
+  discoveryConfiguration: z.unknown().optional(),
   schedule: z.string().default("manual"),
   lastRunAt: z.date().nullable().optional(),
   createdAt: z.date(),

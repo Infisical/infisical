@@ -15,7 +15,7 @@ export const AgentVaultServicesSchema = z.object({
   name: z.string(),
   hostPattern: z.string(),
   credentialType: z.string(),
-  credentialConfig: z.unknown(),
+  credentialConfig: z.unknown().optional(),
   encryptedCredential: zodBuffer.nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

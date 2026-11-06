@@ -16,7 +16,7 @@ export const ApprovalRequestGrantsSchema = z.object({
   revocationReason: z.string().nullable().optional(),
   status: z.string(),
   type: z.string(),
-  attributes: z.unknown(),
+  attributes: z.unknown().optional(),
   createdAt: z.date().nullable().optional(),
   expiresAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),

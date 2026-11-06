@@ -13,7 +13,7 @@ export const AccessApprovalRequestsSchema = z.object({
   privilegeId: z.string().guid().nullable().optional(),
   isTemporary: z.boolean(),
   temporaryRange: z.string().nullable().optional(),
-  permissions: z.unknown(),
+  permissions: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   requestedByUserId: z.string().guid(),

@@ -16,7 +16,7 @@ export const ProjectUserAdditionalPrivilegeSchema = z.object({
   temporaryRange: z.string().nullable().optional(),
   temporaryAccessStartTime: z.date().nullable().optional(),
   temporaryAccessEndTime: z.date().nullable().optional(),
-  permissions: z.unknown(),
+  permissions: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   userId: z.string().guid(),

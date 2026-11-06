@@ -18,7 +18,7 @@ export const PamAccountDependenciesSchema = z.object({
   type: z.string(),
   name: z.string(),
   machine: z.string(),
-  data: z.unknown(),
+  data: z.unknown().optional(),
   rotationStatus: z.string().nullable().optional(),
   lastRotatedAt: z.date().nullable().optional(),
   encryptedLastRotationMessage: zodBuffer.nullable().optional(),

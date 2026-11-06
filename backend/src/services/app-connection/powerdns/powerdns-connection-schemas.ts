@@ -20,7 +20,7 @@ export const PowerDnsConnectionApiKeyCredentialsSchema = z.object({
   apiUrl: z
     .string()
     .trim()
-    .url("API URL must be a valid URL")
+    .url({ message: "API URL must be a valid URL", abort: true })
     .max(512, "API URL cannot exceed 512 characters")
     .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
       message: "API URL must use http or https"

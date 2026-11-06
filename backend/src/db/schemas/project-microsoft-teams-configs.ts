@@ -13,8 +13,8 @@ export const ProjectMicrosoftTeamsConfigsSchema = z.object({
   microsoftTeamsIntegrationId: z.string().guid(),
   isAccessRequestNotificationEnabled: z.boolean().default(false),
   isSecretRequestNotificationEnabled: z.boolean().default(false),
-  accessRequestChannels: z.unknown(),
-  secretRequestChannels: z.unknown(),
+  accessRequestChannels: z.unknown().optional(),
+  secretRequestChannels: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const AuditLogsSchema = z.object({
   id: z.string().guid(),
   actor: z.string(),
-  actorMetadata: z.unknown(),
+  actorMetadata: z.unknown().optional(),
   ipAddress: z.string().nullable().optional(),
   eventType: z.string(),
   eventMetadata: z.unknown().nullable().optional(),

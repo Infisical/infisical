@@ -11,7 +11,7 @@ export const CertificateInventoryViewsSchema = z.object({
   id: z.string().guid(),
   projectId: z.string(),
   name: z.string(),
-  filters: z.unknown(),
+  filters: z.unknown().optional(),
   columns: z.unknown().nullable().optional(),
   createdByUserId: z.string().guid().nullable().optional(),
   createdAt: z.date(),

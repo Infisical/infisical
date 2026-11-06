@@ -62,7 +62,7 @@ export const PkiSyncSchema = z.object({
     id: z.string(),
     name: z.string(),
     app: z.string(),
-    encryptedCredentials: z.unknown().nullable(),
+    encryptedCredentials: z.unknown().nullish(),
     orgId: z.string().guid(),
     projectId: z.string().guid().nullable().optional(),
     method: z.string(),

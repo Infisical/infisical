@@ -14,7 +14,7 @@ export const SecretScanningFindingsSchema = z.object({
   status: z.string().default("unresolved"),
   triageComment: z.string().nullable().optional(),
   fingerprint: z.string(),
-  details: z.unknown(),
+  details: z.unknown().optional(),
   scanId: z.string().guid(),
   createdAt: z.date(),
   updatedAt: z.date(),

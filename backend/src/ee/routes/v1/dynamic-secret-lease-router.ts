@@ -45,7 +45,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         200: z.object({
           lease: SanitizedDynamicSecretLeaseSchema,
           dynamicSecret: SanitizedDynamicSecretSchema,
-          data: z.unknown()
+          data: z.unknown().optional()
         })
       }
     },

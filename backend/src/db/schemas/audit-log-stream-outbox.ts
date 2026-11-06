@@ -12,7 +12,7 @@ export const AuditLogStreamOutboxSchema = z.object({
   streamId: z.string().guid(),
   orgId: z.string().guid(),
   auditLogId: z.string().guid(),
-  payload: z.unknown(),
+  payload: z.unknown().optional(),
   status: z.string().default("pending"),
   attempts: z.number().default(0),
   nextRetryAt: z.date(),

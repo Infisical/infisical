@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const ServiceTokensSchema = z.object({
   id: z.string(),
   name: z.string(),
-  scopes: z.unknown(),
+  scopes: z.unknown().optional(),
   permissions: z.string().array(),
   lastUsed: z.date().nullable().optional(),
   expiresAt: z.date().nullable().optional(),

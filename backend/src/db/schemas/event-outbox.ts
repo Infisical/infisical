@@ -11,7 +11,7 @@ export const EventOutboxSchema = z.object({
   id: z.coerce.number(),
   consumer: z.string(),
   eventType: z.string(),
-  payload: z.unknown(),
+  payload: z.unknown().optional(),
   idempotencyKey: z.string().nullable().optional(),
   occurredAt: z.date(),
   status: z.string().default("pending"),

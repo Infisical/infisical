@@ -20,9 +20,9 @@ export const AgentVaultSessionInlineServicesSchema = z.object({
   allowedMethods: z.string().array().nullable().optional(),
   allowedPathPrefixes: z.string().array().nullable().optional(),
   credentialType: z.string(),
-  credentialConfig: z.unknown(),
-  customHeaders: z.unknown(),
-  substitutions: z.unknown(),
+  credentialConfig: z.unknown().optional(),
+  customHeaders: z.unknown().optional(),
+  substitutions: z.unknown().optional(),
   encryptedSecrets: zodBuffer.nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

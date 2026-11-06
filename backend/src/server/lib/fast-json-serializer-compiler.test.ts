@@ -75,6 +75,29 @@ describe("fastJsonSerializerCompiler", () => {
     expect(firstSecret.createdAt).toBe("2026-10-30T13:00:00.000Z");
   });
 
+  // fast-json-stringify works from the JSON schema, so it writes a .default() the handler left out (as Zod 3's
+  // parse did, where z.encode fails) and does not run .trim() or other overwrites. These pin that difference.
+  test("fills a defaulted field the handler left out and leaves string overwrites unapplied", async () => {
+    const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
+    app.setValidatorCompiler(validatorCompiler);
+    app.setSerializerCompiler(createSerializerCompiler({ legacyParseFallback: false }));
+    const schema = z.object({
+      metadata: z.object({ key: z.string().trim(), isEncrypted: z.boolean().default(false) }).array()
+    });
+    const data = { metadata: [{ key: " k " }] };
+    app.get("/zod", { schema: { response: { 200: schema } } }, async () => data as never);
+    app.get(
+      "/fast",
+      { serializerCompiler: fastJsonSerializerCompiler, schema: { response: { 200: schema } } },
+      async () => data as never
+    );
+
+    const [zodRes, fastRes] = await Promise.all([app.inject("/zod"), app.inject("/fast")]);
+    expect(zodRes.statusCode).toBe(500);
+    expect(fastRes.statusCode).toBe(200);
+    expect(fastRes.json()).toEqual({ metadata: [{ key: " k ", isEncrypted: false }] });
+  });
+
   test("leaves non-2xx responses on the zod serializer", async () => {
     const app = buildServer();
     const res = await app.inject("/fast-not-found");

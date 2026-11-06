@@ -137,6 +137,10 @@ const main = async () => {
       }
       if (colInfo.nullable) {
         ztype = ztype.concat(".nullable().optional()");
+      } else if (ztype === "z.unknown()") {
+        // Zod 4 rejects a missing z.unknown() key, which Zod 3 accepted; rows selected without the column and
+        // JSON round trips leave it out.
+        ztype = ztype.concat(".optional()");
       }
       schema = schema.concat(
         `${!schema ? "\n" : ""}  ${columnName}: ${ztype}${colNum === columnNames.length - 1 ? "" : ","}\n`

@@ -12,7 +12,7 @@ export const OrgRolesSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   slug: z.string(),
-  permissions: z.unknown(),
+  permissions: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   orgId: z.string().guid()

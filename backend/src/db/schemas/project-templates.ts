@@ -11,7 +11,7 @@ export const ProjectTemplatesSchema = z.object({
   id: z.string().guid(),
   name: z.string(),
   description: z.string().nullable().optional(),
-  roles: z.unknown(),
+  roles: z.unknown().optional(),
   environments: z.unknown().nullable().optional(),
   orgId: z.string().guid(),
   createdAt: z.date(),

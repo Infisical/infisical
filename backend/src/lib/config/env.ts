@@ -207,7 +207,7 @@ const databaseReadReplicaSchema = z
   .array()
   .optional();
 
-const envSchema = z
+export const envSchema = z
   .object({
     INFISICAL_PLATFORM_VERSION: zpStr(z.string().optional()),
     KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN: zodStrBool.prefault("false"),
@@ -361,13 +361,13 @@ const envSchema = z
     KMS_ROOT_KEY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     INFISICAL_RUN_MODES: runModesSchema,
     HTTPS_ENABLED: zodStrBool,
-    ROTATION_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
-    DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
-    BDD_NOCK_API_ENABLED: zodStrBool.prefault("false").optional(),
+    ROTATION_DEVELOPMENT_MODE: zodStrBool.prefault("false"),
+    DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.prefault("false"),
+    BDD_NOCK_API_ENABLED: zodStrBool.prefault("false"),
 
-    OPENAPI_FULL_SPEC: zodStrBool.prefault("false").optional(),
-    ACME_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
-    ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.prefault("false").optional(),
+    OPENAPI_FULL_SPEC: zodStrBool.prefault("false"),
+    ACME_DEVELOPMENT_MODE: zodStrBool.prefault("false"),
+    ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.prefault("false"),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
       z
         .string()
@@ -387,8 +387,8 @@ const envSchema = z
           return val.split(",");
         })
     ),
-    ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.prefault("false").optional(),
-    DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.prefault("false").optional(),
+    ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.prefault("false"),
+    DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.prefault("false"),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.prefault("false"),

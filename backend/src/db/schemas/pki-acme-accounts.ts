@@ -11,7 +11,7 @@ export const PkiAcmeAccountsSchema = z.object({
   id: z.string().guid(),
   profileId: z.string().guid(),
   emails: z.string().array(),
-  publicKey: z.unknown(),
+  publicKey: z.unknown().optional(),
   publicKeyThumbprint: z.string(),
   alg: z.string(),
   createdAt: z.date(),

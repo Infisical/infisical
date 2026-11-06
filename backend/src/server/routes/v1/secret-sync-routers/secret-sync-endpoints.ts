@@ -512,7 +512,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       operationId: `check${destinationNameForOpId}SecretSyncDestination`,
       tags: [ApiDocsTags.SecretSyncs],
       body: z.object({
-        destinationConfig: z.unknown(),
+        destinationConfig: z.unknown().optional(),
         connectionId: z.string().guid().optional(),
         syncOptions: z.record(z.string(), z.unknown()).optional(),
         excludeSyncId: z.string().guid().optional(),

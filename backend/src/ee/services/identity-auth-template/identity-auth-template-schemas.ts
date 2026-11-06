@@ -68,7 +68,7 @@ export const oidcTemplateFieldsSchema = z.object({
   oidcDiscoveryUrl: z
     .string()
     .trim()
-    .url()
+    .url({ abort: true })
     .min(1, TEMPLATE_VALIDATION_MESSAGES.OIDC.DISCOVERY_URL_REQUIRED)
     .max(2048)
     // the login flow builds the document URL by string concatenation, so anything that

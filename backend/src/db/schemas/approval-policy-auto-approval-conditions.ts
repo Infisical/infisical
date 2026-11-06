@@ -14,7 +14,7 @@ export const ApprovalPolicyAutoApprovalConditionsSchema = z.object({
   inputId: z.string().guid().nullable().optional(),
   connectionId: z.string().guid().nullable().optional(),
   constraint: z.string(),
-  values: z.unknown(),
+  values: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

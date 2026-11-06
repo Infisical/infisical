@@ -14,7 +14,7 @@ export const IdentityLdapAuthsSchema = z.object({
   accessTokenTTL: z.coerce.number().default(7200),
   accessTokenMaxTTL: z.coerce.number().default(7200),
   accessTokenNumUsesLimit: z.coerce.number().default(0),
-  accessTokenTrustedIps: z.unknown(),
+  accessTokenTrustedIps: z.unknown().optional(),
   identityId: z.string().guid(),
   encryptedBindDN: zodBuffer,
   encryptedBindPass: zodBuffer,

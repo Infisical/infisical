@@ -19,7 +19,7 @@ export const ApprovalRequestsSchema = z.object({
   status: z.string(),
   justification: z.string().nullable().optional(),
   currentStep: z.number(),
-  requestData: z.unknown(),
+  requestData: z.unknown().optional(),
   expiresAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

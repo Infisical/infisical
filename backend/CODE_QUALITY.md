@@ -115,12 +115,28 @@ port: z.number().int().min(1).max(65535),
   the query or handler, not as handled.
 - **A record keyed by an enum is `z.partialRecord`**, unless every key is genuinely required.
   Zod 4's `z.record(z.enum([...]), ...)` rejects any object missing a key.
+- **A field that may be left out says `.optional()`, even when its schema accepts `undefined`.**
+  Zod 4 decides whether a key may be missing from the schema's optionality, so `z.unknown()`,
+  `z.any()`, `z.custom()`, `z.coerce.boolean()` and unions with `z.undefined()` reject a missing
+  key ("expected nonoptional"). In a response that is a 500 the production fallback cannot
+  rescue. Generated row schemas emit `z.unknown().optional()` for NOT NULL JSON columns for the
+  same reason.
+- **A `.refine()` on an `.optional()` field does not run when the key is missing.** Zod 3 ran it
+  with `undefined`. Put a check that must see the omission on the parent object.
+- **A refine that re-parses a format needs the format check to abort**, for example
+  `.url({ abort: true }).refine((value) => new URL(value) ...)`. Otherwise the refine runs on the
+  invalid value and throws, which answers with a 500.
+- **Intersections (`.and()`) never contain a `.strict()` object or the same key on both sides.**
+  Zod 4 stops rejecting extra keys there, and throws "Unmergable intersection" when the two sides
+  produce different values. Build one object with `.extend()`.
 - `zod-schema-guards.test.ts` fails the build on each of these Zod 4 traps (and on a
   `.default()` whose value the field's transform would have changed; use `.prefault()`) in every
   route schema and every exported schema under `src`, including ones nested in exported config
   maps. It also fails when any request body or querystring fills in an `.optional()` field the
-  caller left out, whether through a default, a prefault or anything else. The failure message
-  names the field and the fix.
+  caller left out, whether through a default, a prefault or anything else, when a schema treats
+  a missing key differently from Zod 3, and when a request or exported schema throws from
+  `safeParse` on input it should reject. It also builds the OpenAPI spec for every route. The
+  failure message names the field and the fix.
 
 Zod only validates shape and bounds. Rules that need to read other rows (does this `caId`
 exist, is it in this project, is this state transition legal) belong in the service, and

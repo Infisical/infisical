@@ -73,7 +73,7 @@ export const DefaultResponseErrorsSchema = {
   422: z.object({
     reqId: z.string(),
     statusCode: z.literal(422),
-    message: z.any(),
+    message: z.any().optional(),
     error: z.string()
   }),
   500: z.object({

@@ -13,7 +13,7 @@ export const PkiDiscoveryConfigsSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   discoveryType: z.string().default("network"),
-  targetConfig: z.unknown(),
+  targetConfig: z.unknown().optional(),
   isAutoScanEnabled: z.boolean().default(false),
   scanIntervalDays: z.number().nullable().optional(),
   gatewayId: z.string().guid().nullable().optional(),

@@ -11,8 +11,8 @@ export const PamFolderNotificationConfigsSchema = z.object({
   id: z.string().guid(),
   folderId: z.string().guid(),
   workflowIntegrationId: z.string().guid(),
-  channels: z.unknown(),
-  events: z.unknown(),
+  channels: z.unknown().optional(),
+  events: z.unknown().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

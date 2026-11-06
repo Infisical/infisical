@@ -170,7 +170,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
                 temporaryRange: z.string().nullish(),
                 temporaryAccessStartTime: z.date().nullish(),
                 temporaryAccessEndTime: z.date().nullish(),
-                permissions: z.unknown()
+                permissions: z.unknown().optional()
               })
               .nullable(),
             policy: z.object({

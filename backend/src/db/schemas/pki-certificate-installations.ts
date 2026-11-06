@@ -13,7 +13,7 @@ export const PkiCertificateInstallationsSchema = z.object({
   id: z.string().guid(),
   projectId: z.string(),
   locationType: z.string(),
-  locationDetails: z.unknown(),
+  locationDetails: z.unknown().optional(),
   locationFingerprint: z.string(),
   name: z.string().nullable().optional(),
   type: z.string().default("unknown"),

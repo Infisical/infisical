@@ -12,7 +12,7 @@ export const AuditReportsSchema = z.object({
   projectId: z.string().nullable().optional(),
   requestedByUserId: z.string().guid().nullable().optional(),
   status: z.string().default("pending"),
-  reportConfigs: z.unknown(),
+  reportConfigs: z.unknown().optional(),
   emailRecipients: z.string().array(),
   resultSummary: z.unknown().nullable().optional(),
   errorMessage: z.string().nullable().optional(),

@@ -15,7 +15,14 @@ import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
 import { registerV3EERoutes } from "@app/ee/routes/v3";
 import { initEnvConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
+import { initLogger } from "@app/lib/logger";
 import { bidirectionalTransform, partialWithoutDefaults } from "@app/lib/zod";
+import {
+  fullJsonSchemaTransform,
+  jsonSchemaTransform,
+  jsonSchemaTransformObject
+} from "@app/server/plugins/openapi-schema-transform";
 import { registerV1Routes } from "@app/server/routes/v1";
 import { registerV2Routes } from "@app/server/routes/v2";
 import { registerV3Routes } from "@app/server/routes/v3";
@@ -81,6 +88,11 @@ type TGuardRule = {
 const REQUEST_PARTS: TSchemaPart[] = ["body", "querystring", "params", "headers"];
 const ALL_PARTS: TSchemaPart[] = [...REQUEST_PARTS, "response"];
 
+const isStrictObject = (side: any) =>
+  side?._zod?.def?.type === "object" && side._zod.def.catchall?._zod?.def?.type === "never";
+const objectShape = (side: any) =>
+  side?._zod?.def?.type === "object" ? (side._zod.def.shape as Record<string, unknown>) : undefined;
+
 const RULES: TGuardRule[] = [
   {
     name: "responses never reach a one-way transform",
@@ -142,6 +154,32 @@ const RULES: TGuardRule[] = [
       const { defaultValue } = def;
       const result = def.innerType.safeParse(structuredClone(defaultValue));
       return !result.success || !isDeepStrictEqual(result.data, defaultValue);
+    }
+  },
+  {
+    name: "intersections never contain a .strict() object",
+    parts: ALL_PARTS,
+    explanation: [
+      "Zod 4 reports an unknown key in an intersection only when no side declares it, and a non-strict side",
+      "strips it, so .strict() stops rejecting extra keys. Zod 3 rejected them. Build one object with .extend()",
+      "and call .strict() on that."
+    ].join("\n"),
+    isOffender: (node) =>
+      node._zod.def.type === "intersection" && [node._zod.def.left, node._zod.def.right].some(isStrictObject)
+  },
+  {
+    name: "intersections never declare a key on both sides",
+    parts: ALL_PARTS,
+    explanation: [
+      "When both sides of a Zod 4 intersection produce different values for one key (a .trim(), transform or",
+      'default on one side), safeParse throws "Unmergable intersection" and the route answers with a 500. Zod 3',
+      "returned a validation error. Declare the key once, with .extend()."
+    ].join("\n"),
+    isOffender: (node) => {
+      if (node._zod.def.type !== "intersection") return false;
+      const left = objectShape(node._zod.def.left);
+      const right = objectShape(node._zod.def.right);
+      return Boolean(left && right && Object.keys(left).some((key) => key in right && left[key] !== right[key]));
     }
   }
 ];
@@ -206,6 +244,126 @@ const OMITTED_FIELD_EXPLANATION = [
   "the .optional() if the field should always get the value."
 ].join("\n");
 
+const FAILED = Symbol("failed");
+
+const outcome = (parse: () => { success: boolean; data?: unknown }, pick: (data: any) => unknown) => {
+  try {
+    const result = parse();
+    return result.success ? pick(result.data) : FAILED;
+  } catch {
+    // An async check, or a transform that throws on undefined, which it did under Zod 3 as well.
+    return undefined;
+  }
+};
+
+// Every key, at any depth, whose omission Zod 4 handles differently from Zod 3. Zod 3 ran a missing key's
+// schema on undefined and kept the result. Zod 4 first asks the schema whether the key may be absent (its
+// optin), so z.unknown(), z.any(), z.custom(), z.coerce.boolean() or a union with z.undefined() reject the
+// missing key, and an .optional() field skips its own .refine() when the key is missing.
+const findAbsentKeyChanges = (root: unknown) => {
+  const paths = new Set<string>();
+  walkSchema(root, (node, context) => {
+    if (node._zod.def.type !== "object") return;
+    Object.entries(node._zod.def.shape ?? {}).forEach(([key, field]: [string, any]) => {
+      const zod3 = outcome(
+        () => field.safeParse(undefined),
+        (data) => data
+      );
+      const zod4 = outcome(
+        () => z.object({ [key]: field }).safeParse({}),
+        (data) => data[key]
+      );
+      if (zod3 === undefined && zod4 === undefined) return;
+      if (!isDeepStrictEqual(zod3, zod4)) paths.add(context.path ? `${context.path}.${key}` : key);
+    });
+  });
+  return [...paths];
+};
+
+const ABSENT_KEY_EXPLANATION = [
+  "Zod 4 treats a missing key differently from Zod 3 for these fields. A z.unknown(), z.any(), z.custom() or",
+  'z.coerce.boolean() field, or a union with z.undefined(), now rejects the missing key with "expected',
+  'nonoptional": a 422 on a request, and a 500 on a response that the production parse fallback cannot rescue.',
+  "Add .optional() (on the input side of a pipe or codec). A .refine() on an .optional() field no longer runs",
+  "when the key is missing, so a check that rejected undefined now lets the omission through: move the check",
+  "to the parent object, or make the refine accept undefined explicitly."
+].join("\n");
+
+// Inputs of the right shape whose values fail most checks, so a transform is skipped while an outer refine
+// still runs. A refine that relies on a failed child having been transformed, or a refine that re-parses a
+// format whose check failed (new URL on a bad URL), throws instead of reporting an issue.
+const junkInputs = (node: any, filler: { str: string; num: number }, depth = 0): unknown[] => {
+  if (!node?._zod || depth > 12) return [undefined];
+  const { def } = node._zod;
+  const first = (child: any) => junkInputs(child, filler, depth + 1)[0];
+  switch (def.type) {
+    case "string":
+      return [filler.str];
+    case "number":
+      return [filler.num];
+    case "boolean":
+      return [false];
+    case "literal":
+      return [def.values[0]];
+    case "enum":
+      return [Object.values(def.entries)[0]];
+    case "array":
+      return [[first(def.element)], []];
+    case "tuple":
+      return [def.items.map(first)];
+    case "object":
+      return [Object.fromEntries(Object.entries(def.shape).map(([key, field]) => [key, first(field)]))];
+    case "record":
+      return [{}];
+    case "union":
+      return def.options.flatMap((option: any) => junkInputs(option, filler, depth + 1)).slice(0, 8);
+    case "intersection":
+      return [{ ...(first(def.left) as object), ...(first(def.right) as object) }];
+    case "optional":
+    case "nullable":
+    case "default":
+    case "prefault":
+    case "catch":
+    case "readonly":
+    case "nonoptional":
+      return junkInputs(def.innerType, filler, depth + 1);
+    case "pipe":
+      return junkInputs(def.in, filler, depth + 1);
+    case "lazy":
+      return junkInputs(def.getter(), filler, depth + 1);
+    default:
+      return [""];
+  }
+};
+
+// Routes throw BadRequestError from a transform on purpose; that answers 400, not 500.
+const throwOnJunk = (schema: any) => {
+  const inputs = [
+    ...junkInputs(schema, { str: "", num: -1 }),
+    ...junkInputs(schema, { str: "xxx", num: 1.5 }),
+    {},
+    null,
+    [],
+    "x"
+  ];
+  for (const input of inputs) {
+    try {
+      const result = schema.safeParse(input);
+      if (typeof result?.then === "function") return undefined;
+    } catch (error) {
+      if (!(error instanceof BadRequestError)) return (error as Error).message;
+    }
+  }
+  return undefined;
+};
+
+const THROWS_ON_INPUT_EXPLANATION = [
+  "These schemas throw from safeParse instead of returning issues, so the route answers with a 500 rather than",
+  "a 422. Usually a .refine() re-parses a format whose own check failed (pass { abort: true } to that check),",
+  "or an object refine reads a child whose transform was skipped because the child failed (Zod 4 still runs",
+  "the refine; Zod 3 did not)."
+].join("\n");
+
 const SRC_ROOT = join(__dirname, "../..");
 
 // Tests, type declarations, and modules that run work as soon as they are imported (scripts, seeds,
@@ -227,6 +385,7 @@ beforeAll(async () => {
     if (!process.env[name]) vi.stubEnv(name, value);
   });
   await initEnvConfig({} as never, {} as never);
+  initLogger();
 
   const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
@@ -344,6 +503,68 @@ describe("exported schemas avoid Zod 4 behavior changes", () => {
     );
     expect(offenders, `${OMITTED_FIELD_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
   });
+
+  test("no exported schema throws on input it rejects", () => {
+    const offenders = [...exportedSchemas].flatMap(([schema, label]) => {
+      const message = throwOnJunk(schema);
+      return message ? [`${label}: ${message}`] : [];
+    });
+    expect(offenders, `${THROWS_ON_INPUT_EXPLANATION}\n\nOffending schemas:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  test("no exported schema treats a missing key differently from Zod 3", () => {
+    const offenders = [...exportedSchemas].flatMap(([schema, label]) =>
+      findAbsentKeyChanges(schema).map((fieldPath) => `${label}: ${fieldPath}`)
+    );
+    expect(offenders, `${ABSENT_KEY_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("schemas report bad input instead of throwing", () => {
+  test("no route request schema throws on input it rejects", () => {
+    const offenders = routes.flatMap((route) =>
+      REQUEST_PARTS.flatMap((part) =>
+        schemasOf(route, part).flatMap(([label, root]) => {
+          const message = root ? throwOnJunk(root) : undefined;
+          return message ? [`${String(route.method)} ${route.url} ${label}: ${message}`] : [];
+        })
+      )
+    );
+    expect(offenders, `${THROWS_ON_INPUT_EXPLANATION}\n\nOffending schemas:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("route schemas treat a missing key the way Zod 3 did", () => {
+  test("no route schema treats a missing key differently from Zod 3", () => {
+    const offenders = routes.flatMap((route) =>
+      ALL_PARTS.flatMap((part) =>
+        schemasOf(route, part).flatMap(([label, root]) =>
+          findAbsentKeyChanges(root).map((fieldPath) => `${String(route.method)} ${route.url} ${label}: ${fieldPath}`)
+        )
+      )
+    );
+    expect(offenders, `${ABSENT_KEY_EXPLANATION}\n\nOffending fields:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("the OpenAPI spec builds for every route", () => {
+  test.each([
+    { mode: "published", transform: jsonSchemaTransform },
+    { mode: "full", transform: fullJsonSchemaTransform }
+  ])("$mode", ({ transform }) => {
+    const openapiObject = { openapi: "3.0.3" };
+    const failures: string[] = [];
+    routes.forEach((route) => {
+      try {
+        // The transform sets schema.hide on the route schema it is given.
+        transform({ schema: { ...(route.schema ?? {}) }, url: route.url, route, openapiObject } as never);
+      } catch (error) {
+        failures.push(`${String(route.method)} ${route.url}: ${(error as Error).message}`);
+      }
+    });
+    expect(failures).toEqual([]);
+    expect(() => jsonSchemaTransformObject({ openapiObject } as never)).not.toThrow();
+  });
 });
 
 describe("requests leave omitted optional fields alone", () => {
@@ -429,6 +650,95 @@ describe("each guard flags the shape it exists for", () => {
     const body = z.object({ allowedSelfApprovals: z.boolean().default(true), level: z.string().prefault("low") });
     expect(findFilledOmissions(body)).toEqual([]);
     expect(findFilledOmissions(partialWithoutDefaults(body))).toEqual([]);
+  });
+
+  test.each([
+    {
+      rule: "intersections never contain a .strict() object",
+      offending: z.object({
+        cfg: z
+          .object({ a: z.string() })
+          .strict()
+          .and(z.object({ b: z.number() }))
+      }),
+      fixed: z.object({ cfg: z.object({ a: z.string() }).extend({ b: z.number() }).strict() })
+    },
+    {
+      rule: "intersections never declare a key on both sides",
+      offending: z.object({ cfg: z.object({ n: z.string().trim() }).and(z.object({ n: z.string() })) }),
+      fixed: z.object({ cfg: z.object({ n: z.string().trim() }).and(z.object({ m: z.string() })) })
+    }
+  ])("$rule", ({ rule, offending, fixed }) => {
+    expect(offendingPaths(ruleNamed(rule), offending)).toEqual(["cfg"]);
+    expect(offendingPaths(ruleNamed(rule), fixed)).toEqual([]);
+  });
+
+  test("the absent-key check flags each field whose omission Zod 4 handles differently", () => {
+    const body = z.object({
+      meta: z.unknown(),
+      raw: z.any().optional(),
+      blob: z.custom<Buffer>(),
+      flag: z.coerce.boolean(),
+      label: z.union([z.string(), z.undefined()]),
+      note: z
+        .string()
+        .optional()
+        .refine((value) => value !== undefined, "required"),
+      settings: z.object({ data: z.unknown().nullable(), ok: z.unknown().optional() }).optional(),
+      port: bidirectionalTransform(z.unknown(), (value): unknown => value)
+        .pipe(z.number().optional())
+        .optional(),
+      name: z.string(),
+      level: z.string().default("low"),
+      ttl: z.number().optional()
+    });
+    expect(findAbsentKeyChanges(body).sort()).toEqual(["blob", "flag", "label", "meta", "note", "settings.data"]);
+    expect(z.safeEncode(z.object({ value: z.unknown() }), {} as never).success).toBe(false);
+  });
+
+  test("the throw check flags a refine that re-parses a failed format, and an object refine over a failed transform", () => {
+    expect(
+      throwOnJunk(
+        z.object({
+          url: z
+            .string()
+            .url()
+            .refine((value) => Boolean(new URL(value)))
+        })
+      )
+    ).toBeDefined();
+    expect(
+      throwOnJunk(
+        z.object({
+          url: z
+            .string()
+            .url({ abort: true })
+            .refine((value) => Boolean(new URL(value)))
+        })
+      )
+    ).toBeUndefined();
+    expect(
+      throwOnJunk(
+        z
+          .object({
+            tags: z
+              .string()
+              .min(1)
+              .transform((value) => value.split(","))
+          })
+          .refine((value) => value.tags.every(Boolean))
+      )
+    ).toBeDefined();
+    expect(
+      throwOnJunk(
+        z.object({
+          name: z.string().transform((value) => {
+            if (!value) throw new BadRequestError({ message: "Name is required" });
+            return value;
+          })
+        })
+      )
+    ).toBeUndefined();
   });
 
   test("a default whose value the transform leaves alone is not flagged", () => {
