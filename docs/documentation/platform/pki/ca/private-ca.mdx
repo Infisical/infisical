@@ -83,6 +83,8 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
           <Tab title="Manual">
             Select **Manual** and press **Continue**. This option allows you to sign the intermediate CA certificate using an external root CA that you manage outside of Infisical.
 
+            Choose a **Path Length** to generate the CSR. It sets the maximum number of intermediate CAs that can be chained below this CA, where `-1` means no limit. If the CA's current certificate has a path length limit, the CSR keeps that limit and it can't be changed.
+
             Use the provided CSR to generate a certificate from your external root CA. Paste the PEM-encoded certificate into **Certificate Body** and the root CA certificate into **Certificate Chain**.
 
             Press **Install** to import the certificate.
@@ -220,9 +222,11 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
         **Get the CSR:**
 
         ```bash Request
-        curl --location --request GET ‘https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/csr’ \
+        curl --location --request GET ‘https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/csr?maxPathLength=0’ \
           --header ‘Authorization: Bearer <access-token>’
         ```
+
+        The optional `maxPathLength` query parameter sets the path length requested in the CSR, where `-1` means no limit. If the CA's current certificate has a path length limit, the CSR always uses it and a different value is rejected.
 
         Use this CSR with your external root CA to generate a signed certificate. Then import the certificate and chain back:
 
@@ -397,5 +401,8 @@ Deleting the CA schedules its key for deletion in AWS KMS with a 30-day waiting 
 <CardGroup cols={2}>
   <Card title="HSM Connectors" icon="shield-half" href="/documentation/platform/pki/settings/hsm-connectors">
     Keep the CA signing key inside your own Hardware Security Module.
+  </Card>
+  <Card title="Cross-signing" icon="link-2" href="/documentation/platform/pki/ca/cross-signed-certificates">
+    Move issuance from your old CA to Infisical before every client trusts your Infisical root.
   </Card>
 </CardGroup>

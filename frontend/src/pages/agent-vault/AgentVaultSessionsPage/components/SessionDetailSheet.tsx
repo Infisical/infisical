@@ -25,7 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -51,6 +51,7 @@ export const SessionDetailSheet = ({
   onRevoke,
   onEditLabel
 }: Props) => {
+  const { projectId } = useProject();
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
 
@@ -75,7 +76,7 @@ export const SessionDetailSheet = ({
         {!session && isPending && (
           <Empty className="m-4 border">
             <EmptyHeader>
-              <Spinner size="sm" />
+              <Spinner size="sm" variant="av" />
             </EmptyHeader>
           </Empty>
         )}
@@ -147,34 +148,32 @@ export const SessionDetailSheet = ({
                         </DetailValue>
                       </Detail>
                     )}
-                    {session.accessBundles.length > 0 && (
+                    {session.accessBundle && (
                       <Detail className="min-w-0">
-                        <DetailLabel>
-                          {session.accessBundles.length === 1 ? "Access Bundle" : "Access Bundles"}
-                        </DetailLabel>
-                        <DetailValue className="flex flex-wrap gap-x-4 gap-y-1">
-                          {session.accessBundles.map((bundle) =>
-                            bundle.id ? (
-                              <Link
-                                key={bundle.id}
-                                to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                                params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
-                                className="group flex min-w-0 items-center gap-2"
-                              >
-                                <PackageIcon className="size-4 shrink-0 text-muted" />
-                                <span className="truncate group-hover:underline group-hover:underline-offset-2">
-                                  {bundle.name}
-                                </span>
-                              </Link>
-                            ) : (
-                              <span
-                                key={bundle.name}
-                                className="flex min-w-0 items-center gap-2 text-muted"
-                              >
-                                <PackageIcon className="size-4 shrink-0" />
-                                <span className="truncate">{bundle.name} (deleted)</span>
+                        <DetailLabel>Access Bundle</DetailLabel>
+                        <DetailValue className="flex min-w-0">
+                          {session.accessBundle.id ? (
+                            <Link
+                              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                              params={{
+                                orgId: currentOrg.id,
+                                projectId,
+                                accessBundleId: session.accessBundle.id
+                              }}
+                              className="group flex min-w-0 items-center gap-2"
+                            >
+                              <PackageIcon className="size-4 shrink-0 text-muted" />
+                              <span className="truncate group-hover:underline group-hover:underline-offset-2">
+                                {session.accessBundle.name}
                               </span>
-                            )
+                            </Link>
+                          ) : (
+                            <span className="flex min-w-0 items-center gap-2 text-muted">
+                              <PackageIcon className="size-4 shrink-0" />
+                              <span className="truncate">
+                                {session.accessBundle.name} (deleted)
+                              </span>
+                            </span>
                           )}
                         </DetailValue>
                       </Detail>

@@ -16,6 +16,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { assertPathLengthMatchesCa } from "../certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../internal/internal-certificate-authority-dal";
 import { TCaSigningConfigDALFactory } from "./ca-signing-config-dal";
 import { CaSigningConfigType } from "./ca-signing-config-enums";
@@ -551,6 +552,12 @@ export const caSigningConfigServiceFactory = ({
       throw new BadRequestError({ message: "Venafi signing config has invalid or missing destination configuration" });
     }
 
+    assertPathLengthMatchesCa({
+      storedPathLength: internalCa.maxPathLength,
+      requestedPathLength: maxPathLength,
+      allowNoLimitDefault: true
+    });
+
     await caAutoRenewalQueue.queueVenafiInstall(caId, maxPathLength);
 
     return { ca: { id: ca.id, dn: ca.internalCa?.dn ?? "", projectId: ca.projectId } };
@@ -608,6 +615,12 @@ export const caSigningConfigServiceFactory = ({
       });
     }
 
+    assertPathLengthMatchesCa({
+      storedPathLength: internalCa.maxPathLength,
+      requestedPathLength: maxPathLength,
+      allowNoLimitDefault: true
+    });
+
     await caAutoRenewalQueue.queueAdcsInstall(caId, maxPathLength);
 
     return { ca: { id: ca.id, dn: ca.internalCa?.dn ?? "", projectId: ca.projectId } };
@@ -664,6 +677,12 @@ export const caSigningConfigServiceFactory = ({
         message: "ADCS signing config has invalid or missing destination configuration"
       });
     }
+
+    assertPathLengthMatchesCa({
+      storedPathLength: internalCa.maxPathLength,
+      requestedPathLength: maxPathLength,
+      allowNoLimitDefault: true
+    });
 
     await caAutoRenewalQueue.queueNativeAdcsInstall(caId, maxPathLength);
 

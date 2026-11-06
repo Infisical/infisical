@@ -125,6 +125,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiAwsKmsSigning: false,
   pkiEnterpriseCaIntegrations: false,
   pkiExternalIntermediateCa: false,
+  pkiCrossSignedCa: false,
   pkiDiscovery: false,
   pkiEnterpriseAlerting: false,
   pkiApprovals: false,

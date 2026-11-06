@@ -38,6 +38,18 @@ const ReturnPathSchema = z
   })
   .optional();
 
+// A metered price's bands in dollars: upTo is inclusive (null on the last band), unitPrice is per unit.
+const BillingV2BandsSchema = z.object({
+  mode: z.enum(["graduated", "volume"]),
+  tiers: z
+    .object({
+      upTo: z.number().nullable(),
+      unitPrice: z.number(),
+      flatFee: z.number()
+    })
+    .array()
+});
+
 const BillingV2DimSchema = z.object({
   key: z.string(),
   label: z.string(),
@@ -46,7 +58,27 @@ const BillingV2DimSchema = z.object({
   annual: z.number(),
   included: z.number(),
   meteredMonthly: z.boolean().optional(),
-  meteredAnnual: z.boolean().optional()
+  meteredAnnual: z.boolean().optional(),
+  aggregation: z.string().optional(),
+  bands: BillingV2BandsSchema.optional()
+});
+
+const BillingV2MeteredUsageSchema = z.object({
+  periodStart: z.string().nullable(),
+  periodEnd: z.string().nullable(),
+  asOf: z.string().nullable(),
+  estimatedAmount: z.number().nullable(),
+  currentTier: z.number(),
+  nextTierAt: z.number().nullable(),
+  earlierInPeriod: z
+    .object({
+      periodStart: z.string().nullable(),
+      periodEnd: z.string().nullable(),
+      used: z.number(),
+      estimatedAmount: z.number().nullable()
+    })
+    .array(),
+  trial: z.boolean()
 });
 
 const BillingV2CompareRowSchema = z.object({
@@ -121,6 +153,9 @@ const BillingV2EntitlementDimSchema = z.object({
   onDemandRate: z.number().optional(),
   rate: z.number().optional(),
   freeBand: z.number().optional(),
+  // Metered dims: this period's rated usage and the pinned bands it is priced with.
+  usage: BillingV2MeteredUsageSchema.optional(),
+  bands: BillingV2BandsSchema.optional(),
   onDemandAmount: z.number(),
   canDecreaseNow: z.boolean().optional(),
   renewalDate: z.string().nullable().optional(),
@@ -180,7 +215,8 @@ const BillingV2OverviewSchema = z.object({
         at: z.string(),
         productKeys: z.string().array(),
         cadence: z.enum(["monthly", "annual"]).nullable(),
-        hasUsage: z.boolean()
+        hasUsage: z.boolean(),
+        estimatedUsage: z.number().nullable()
       })
       .nullable()
   }),

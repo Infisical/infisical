@@ -1,14 +1,14 @@
 ---
 title: "Variables"
-description: "Values you store once and use in any service in Agent Vault."
+description: "Values you store once and use in any service in an Agent Vault project."
 ---
 
-A global variable is a value that you can use in any [service](/documentation/platform/agent-vault/services) in Agent Vault, whichever [access bundle](/documentation/platform/agent-vault/access-bundles) the service is in. You define the variable once and give it a key, such as `GITHUB_TOKEN`. Then, any service can use the variable by referencing the key within double braces: `{{GITHUB_TOKEN}}`.
+A global variable is a value that you can use in any [service](/documentation/platform/agent-vault/services) in an [Agent Vault project](/documentation/platform/agent-vault/projects), whichever [access bundle](/documentation/platform/agent-vault/access-bundles) the service is in. You define the variable once and give it a key, such as `GITHUB_TOKEN`. Then, any service can use the variable by referencing the key within double braces: `{{GITHUB_TOKEN}}`.
 
 When an agent sends a request, the [proxy](/documentation/platform/agent-vault/proxies) replaces each reference with the variable's value.
 
 <Info>
-  Only [Agent Vault admins](/documentation/platform/agent-vault/access-control#product-membership) can view and update global variables.
+  Only [admins of the project](/documentation/platform/agent-vault/access-control#product-membership) can view and update global variables.
 </Info>
 
 ## Add a variable
@@ -17,7 +17,7 @@ To add a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables** and select the **Global Variables** tab.
+    In your Agent Vault project, go to **Variables** and select the **Global Variables** tab.
 
     <Frame>
       <img src="/images/platform/agent-vault/variables-empty.png" alt="The Variables page with no variables and an Add Variable button" />
@@ -51,7 +51,7 @@ To add a variable:
 </Steps>
 
 <Note>
-Agent Vault can hold up to 500 global variables.
+Each Agent Vault project can hold up to 500 global variables.
 </Note>
 
 ## Use a variable in a service
@@ -98,7 +98,7 @@ To check which services are using a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables**.
+    In your Agent Vault project, go to **Variables**.
   </Step>
   <Step>
     In the variable's **Used By** column, hover over an access bundle to see which of the access bundle's services use the variable.
@@ -111,7 +111,7 @@ To update a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables**.
+    In your Agent Vault project, go to **Variables**.
   </Step>
   <Step>
     Open the variable's actions menu and select **Edit**.
@@ -134,7 +134,7 @@ To delete a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables**.
+    In your Agent Vault project, go to **Variables**.
   </Step>
   <Step>
     Open the variable's actions menu and select **Delete**.
@@ -152,10 +152,10 @@ If any service still uses the variable, the dialog lists those services, and you
 
 A personal variable works like a global variable, with two differences: only your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) can use it, and only you can read it. Use one when several services ask you for the same value, such as a personal GitHub token that services in two access bundles require.
 
-To see your personal variables, go to **Variables** in Agent Vault. If you're an admin, select the **Personal Variables** tab.
+To see your personal variables, go to **Variables** in your Agent Vault project. If you're an admin, select the **Personal Variables** tab.
 
 You add, update, and delete personal variables the same way as [global variables](#add-a-variable), with these limits:
 
-- You can keep up to 100 personal variables
+- You can keep up to 100 personal variables in each project, and your personal variables in one project aren't available in another
 - A personal variable's key only has to be unique among your own personal variables (it can match a global variable's key, or another member's)
 - If your personal values for a service use a variable, you can't delete the variable until you remove it from the service

@@ -9,6 +9,10 @@ import {
   TGroups,
   TRoles
 } from "@app/db/schemas";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -127,6 +131,7 @@ type TGroupServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -155,7 +160,8 @@ export const groupServiceFactory = ({
   membershipGroupService,
   pamAccountDAL,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  agentVaultPersonalValueDAL
 }: TGroupServiceFactoryDep) => {
   const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
 
@@ -423,6 +429,9 @@ export const groupServiceFactory = ({
         tx
       );
       const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
+      const groupProjectIds = (
+        await membershipGroupDAL.find({ scope: AccessScope.Project, actorGroupId: groupId }, { tx })
+      ).map((membership) => membership.scopeProjectId as string);
       await emitGroupRemoved(
         eventEmitter,
         { groupId, orgIds, members: toOrgMembershipActors({ userIds, identityIds }) },
@@ -438,6 +447,14 @@ export const groupServiceFactory = ({
       );
 
       await finalizeAlertRecipients();
+
+      // After the delete has cascaded to the group's grants and member rows, so the clear keeps only the values of
+      // members who still hold the bundle another way.
+      await clearPersonalValuesInProjects(
+        { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+        { projectIds: [...new Set(groupProjectIds)], userIds, identityIds },
+        tx
+      );
 
       sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
         userIds,
@@ -1061,6 +1078,8 @@ export const groupServiceFactory = ({
       userIds: [user.id],
       actorId,
       userGroupMembershipDAL,
+      identityGroupMembershipDAL,
+      agentVaultPersonalValueDAL,
       membershipGroupDAL,
       groupDAL,
       projectKeyDAL,
@@ -1151,6 +1170,8 @@ export const groupServiceFactory = ({
       identityDAL,
       groupDAL,
       identityGroupMembershipDAL,
+      userGroupMembershipDAL,
+      agentVaultPersonalValueDAL,
       additionalPrivilegeDAL,
       eventEmitter,
       ...pamSessionDeps

@@ -242,7 +242,6 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
               project ? [project.id] : []
             )}
             grantPamAccess={selectedProducts.includes(ProjectType.PAM)}
-            grantAgentVaultAccess={selectedProducts.includes(ProjectType.AgentVault)}
             onComplete={handleInviteComplete}
           />
         );
