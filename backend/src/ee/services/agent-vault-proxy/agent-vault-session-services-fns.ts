@@ -1,5 +1,6 @@
 import {
   AgentVaultCredentialType,
+  AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultTrafficPolicy
@@ -21,7 +22,6 @@ export type TSessionServiceCredential =
 export type TSessionServiceFacts = {
   name: string;
   description: string | null;
-  accessBundleName: string | null;
   type: AgentVaultServiceType;
   hostPattern: string;
   serverUrl: string | null;
@@ -135,8 +135,13 @@ const howToUse = (service: TSessionServiceFacts, description: Omit<TSessionServi
   const parts: string[] = [];
   const target = description.url ?? "these hosts";
   if (service.type === AgentVaultServiceType.Mcp) {
+    const transport = description.transport ?? AgentVaultMcpTransport.StreamableHttp;
+    const connect = `Remote MCP server (${transport} transport). Connect to ${target} with no credential and no OAuth sign-in: the proxy adds the credential. A client that only loads MCP servers at startup will not see a server added now, so in this session`;
+    // An SSE server answers on the stream it opened, at a message URL it announces, not in the reply to a POST.
     parts.push(
-      `Remote MCP server (${description.transport ?? "streamable-http"} transport). Connect to ${target} with no credential and no OAuth sign-in: the proxy adds the credential. A client that only loads MCP servers at startup will not see a server added now, so in this session call it with JSON-RPC over HTTPS POST to ${target} (send Content-Type: application/json and Accept: application/json, text/event-stream; call initialize, then tools/list and tools/call, and send back any Mcp-Session-Id header it returns).`
+      transport === AgentVaultMcpTransport.Sse
+        ? `${connect} open a GET request to ${target} with Accept: text/event-stream and keep reading it. Its first event, named endpoint, gives the URL to POST JSON-RPC messages to, and every response arrives on that stream rather than in the reply to the POST (call initialize, send the notifications/initialized notification, then call tools/list and tools/call).`
+        : `${connect} call it with JSON-RPC over HTTPS POST to ${target} (send Content-Type: application/json and Accept: application/json, text/event-stream; call initialize, send the notifications/initialized notification, then call tools/list and tools/call, and send back any Mcp-Session-Id header it returns).`
     );
   } else if (description.credential.type === "bearer" || description.credential.type === "oauth") {
     parts.push(
@@ -231,7 +236,7 @@ export const buildSessionServicesDocument = ({
   services
 }: {
   proxy: TSessionServicesProxy | null;
-  session: { label: string | null; expiresAt: Date | null };
+  session: { label: string | null; expiresAt: Date | null; accessBundle: string | null };
   services: TSessionServiceFacts[];
 }): TSessionServicesDocument => {
   let trafficPolicy: TSessionServicesDocument["agentVault"]["trafficPolicy"] = null;
@@ -239,11 +244,7 @@ export const buildSessionServicesDocument = ({
   const expiresAt = session.expiresAt ? toRfc3339(session.expiresAt) : null;
   return {
     agentVault: { proxy: proxy?.name ?? null, version: proxy?.version ?? null, trafficPolicy },
-    session: {
-      label: session.label || null,
-      expiresAt,
-      accessBundle: services.find((service) => service.accessBundleName)?.accessBundleName ?? null
-    },
+    session: { label: session.label || null, expiresAt, accessBundle: session.accessBundle },
     services: services.map(describeSessionService),
     notes: sessionNotes(trafficPolicy, expiresAt)
   };
@@ -280,7 +281,6 @@ export const toBundleServiceFacts = (
   return {
     name: row.name,
     description: row.description,
-    accessBundleName: row.accessBundleName,
     type: row.type as AgentVaultServiceType,
     hostPattern: row.hostPattern,
     serverUrl: getServiceServerUrl(row.config),

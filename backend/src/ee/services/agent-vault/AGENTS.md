@@ -172,7 +172,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   and anything else (no id, a malformed one, another project's) only leaves the policy out. Not audited, like resolve.
 - **A session token the replica doesn't have yet is looked up again on the primary** (`$findSessionByToken`, used by
   resolve, skills and services), so a session minted a moment ago isn't refused while the replica catches up. A proxy
-  remembers a refusal for 5 seconds, so a refused first request would also refuse the agent's first requests.
+  remembers a refusal for 5 seconds, so a refused first request would also refuse the agent's first requests. The rows
+  minted with the session are just as new, so a session found that way (`onPrimary`) also reads its bundle links and
+  inline services on the primary; otherwise it would resolve with no services at all.
 
 ## Sessions on behalf of users
 

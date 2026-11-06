@@ -70,6 +70,7 @@ const setup = (
     inlineRows = [],
     isOwnerAdmin = true,
     label = null,
+    onlyOnPrimary = false,
     proxy = {
       projectId: PROJECT_ID,
       orgId: "org-1",
@@ -81,12 +82,24 @@ const setup = (
     inlineRows?: TAgentVaultSessionInlineServices[];
     isOwnerAdmin?: boolean;
     label?: string | null;
+    // The session was minted a moment ago and hasn't reached the replica.
+    onlyOnPrimary?: boolean;
     proxy?: { projectId: string; orgId: string; pollInterval: number; name: string; trafficPolicy: string };
   } = {}
 ) => {
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
   const findInlineServices = vi.fn(async () => inlineRows);
+  const findResolvableServices = vi.fn(async () => rows);
+  const findReachableBundles = vi.fn(async () => [{ id: "bundle-1", name: "bundle" }]);
+  const sessionRow = {
+    id: "session-1",
+    projectId: PROJECT_ID,
+    userId: "user-1",
+    revokedAt: null,
+    expiresAt: null,
+    label
+  };
   const createCipherPairWithDataKey = vi.fn(
     async () => ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
   );
@@ -94,14 +107,14 @@ const setup = (
     agentVaultProxyDAL: {
       findByIdWithOrg: async () => proxy
     } as never,
-    agentVaultResolveDAL: { findResolvableServices: async () => rows, findSessionSkills: async () => [] },
+    agentVaultResolveDAL: { findResolvableServices, findSessionSkills: async () => [], findReachableBundles },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
     agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
     agentVaultVariableDAL: { findValuesForResolve: async () => variables },
     agentVaultPersonalValueDAL: { findForResolve: async () => [] },
     agentVaultSessionDAL: {
-      findByTokenHash: async () =>
-        ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null, label }) as never
+      findByTokenHash: async () => (onlyOnPrimary ? undefined : sessionRow) as never,
+      findByTokenHashOnPrimary: async () => sessionRow as never
     } as never,
     agentVaultSessionInlineServiceDAL: {
       findBySessionId: findInlineServices,
@@ -137,7 +150,15 @@ const setup = (
       reportMissingScopes: reportMissingScopes as never
     }
   });
-  return { service, refreshServiceToken, reportMissingScopes, findInlineServices, createCipherPairWithDataKey };
+  return {
+    service,
+    refreshServiceToken,
+    reportMissingScopes,
+    findInlineServices,
+    findResolvableServices,
+    findReachableBundles,
+    createCipherPairWithDataKey
+  };
 };
 
 const refreshed = {
@@ -380,6 +401,38 @@ describe("the services list a session's agent reads", () => {
     await owner.service.getSessionServices({ sessionToken: "token" });
     expect(owner.findInlineServices).not.toHaveBeenCalled();
   });
+
+  test("names the session's bundle even when the bundle holds no services", async () => {
+    const listed = await setup(noRefresh, []).service.getSessionServices({ sessionToken: "token" });
+    expect(listed.session.accessBundle).toBe("bundle");
+    expect(listed.services).toEqual([]);
+  });
+
+  test("reads everything for a session only the primary has from the primary", async () => {
+    const fresh = setup(noRefresh, [serviceRow()], [], { onlyOnPrimary: true });
+    const listed = await fresh.service.getSessionServices({ sessionToken: "token" });
+    expect(listed.services).toHaveLength(1);
+    expect(fresh.findResolvableServices).toHaveBeenCalledWith(expect.objectContaining({ onPrimary: true }));
+    expect(fresh.findReachableBundles).toHaveBeenCalledWith(expect.objectContaining({ onPrimary: true }));
+    expect(fresh.findInlineServices).toHaveBeenCalledWith("session-1", { onPrimary: true });
+
+    const settled = setup(noRefresh, [serviceRow()]);
+    await settled.service.getSessionServices({ sessionToken: "token" });
+    expect(settled.findResolvableServices).toHaveBeenCalledWith(expect.objectContaining({ onPrimary: false }));
+    expect(settled.findInlineServices).toHaveBeenCalledWith("session-1", { onPrimary: false });
+  });
+
+  test("resolve also reads a session only the primary has from the primary", async () => {
+    const fresh = setup(noRefresh, [serviceRow()], [], { onlyOnPrimary: true });
+    await fresh.service.resolveSession({
+      proxyId: "proxy-1",
+      orgId: "org-1",
+      sessionToken: "token",
+      hasSessionLogKey: false
+    });
+    expect(fresh.findResolvableServices).toHaveBeenCalledWith(expect.objectContaining({ onPrimary: true }));
+    expect(fresh.findInlineServices).toHaveBeenCalledWith("session-1", { onPrimary: true });
+  });
 });
 
 describe("resolve for a session on a user's behalf", () => {
@@ -414,7 +467,11 @@ describe("resolve for a session on a user's behalf", () => {
       agentVaultProxyDAL: {
         findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
       } as never,
-      agentVaultResolveDAL: { findResolvableServices, findSessionSkills: async () => [] },
+      agentVaultResolveDAL: {
+        findResolvableServices,
+        findSessionSkills: async () => [],
+        findReachableBundles: async () => []
+      },
       agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
       agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
       agentVaultVariableDAL: { findValuesForResolve: async () => [] },

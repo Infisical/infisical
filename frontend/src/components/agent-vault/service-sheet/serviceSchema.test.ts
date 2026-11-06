@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "@app/helpers/agentVaultControlChars";
+import { AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE } from "@app/helpers/agentVaultDescription";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
@@ -403,5 +404,16 @@ describe("buildServiceSchema with a description", () => {
       "A description can be at most 256 characters"
     ]);
     expect(descriptionIssues("line\nbreak")).toEqual([AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE]);
+    expect(descriptionIssues("Issues\u200Bfor the platform team")).toEqual([
+      AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE
+    ]);
+    expect(descriptionIssues("Deploys \u202Eto production")).toEqual([
+      AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE
+    ]);
+    expect(descriptionIssues("Tags \u{E0041}hidden")).toEqual([
+      AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE
+    ]);
+    // Joiners are real text, in emoji sequences and several scripts.
+    expect(descriptionIssues("Family \u{1F468}\u200D\u{1F469}\u200D\u{1F467} tickets")).toEqual([]);
   });
 });

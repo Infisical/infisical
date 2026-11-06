@@ -17,7 +17,6 @@ import {
 const facts = (overrides: Partial<TSessionServiceFacts> = {}): TSessionServiceFacts => ({
   name: "github",
   description: "GitHub REST API for the acme-corp organization.",
-  accessBundleName: "engineering",
   type: AgentVaultServiceType.Http,
   hostPattern: "api.github.com",
   serverUrl: null,
@@ -122,7 +121,23 @@ describe("describing one service", () => {
       allowedTools: ["list_issues", "update_issue"]
     });
     expect(described.howToUse).toBe(
-      "Remote MCP server (sse transport). Connect to https://mcp.linear.app/sse with no credential and no OAuth sign-in: the proxy adds the credential. A client that only loads MCP servers at startup will not see a server added now, so in this session call it with JSON-RPC over HTTPS POST to https://mcp.linear.app/sse (send Content-Type: application/json and Accept: application/json, text/event-stream; call initialize, then tools/list and tools/call, and send back any Mcp-Session-Id header it returns). Only these tools can be called: list_issues, update_issue."
+      "Remote MCP server (sse transport). Connect to https://mcp.linear.app/sse with no credential and no OAuth sign-in: the proxy adds the credential. A client that only loads MCP servers at startup will not see a server added now, so in this session open a GET request to https://mcp.linear.app/sse with Accept: text/event-stream and keep reading it. Its first event, named endpoint, gives the URL to POST JSON-RPC messages to, and every response arrives on that stream rather than in the reply to the POST (call initialize, send the notifications/initialized notification, then call tools/list and tools/call). Only these tools can be called: list_issues, update_issue."
+    );
+  });
+
+  test("a streamable HTTP MCP server is called with POSTs, initialized before its tools are listed", () => {
+    const described = describeSessionService(
+      facts({
+        name: "linear",
+        type: AgentVaultServiceType.Mcp,
+        hostPattern: "mcp.linear.app",
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: null,
+        credential: { type: "oauth" }
+      })
+    );
+    expect(described.howToUse).toBe(
+      "Remote MCP server (streamable-http transport). Connect to https://mcp.linear.app/mcp with no credential and no OAuth sign-in: the proxy adds the credential. A client that only loads MCP servers at startup will not see a server added now, so in this session call it with JSON-RPC over HTTPS POST to https://mcp.linear.app/mcp (send Content-Type: application/json and Accept: application/json, text/event-stream; call initialize, send the notifications/initialized notification, then call tools/list and tools/call, and send back any Mcp-Session-Id header it returns)."
     );
   });
 
@@ -160,7 +175,7 @@ describe("the whole list", () => {
   test("describes the proxy it came through and that proxy's traffic policy", () => {
     const document = buildSessionServicesDocument({
       proxy: { name: "prod-proxy", version: "0.44.0", trafficPolicy: AgentVaultTrafficPolicy.BundleHosts },
-      session: { label: "nightly triage", expiresAt },
+      session: { label: "nightly triage", expiresAt, accessBundle: "engineering" },
       services: [facts()]
     });
     expect(document.agentVault).toEqual({ proxy: "prod-proxy", version: "0.44.0", trafficPolicy: "service-hosts" });
@@ -178,10 +193,12 @@ describe("the whole list", () => {
   test("under any-host, says hosts no service covers are reachable", () => {
     const document = buildSessionServicesDocument({
       proxy: { name: "dev-proxy", version: null, trafficPolicy: AgentVaultTrafficPolicy.AnyHost },
-      session: { label: null, expiresAt: null },
+      session: { label: null, expiresAt: null, accessBundle: "skills-only" },
       services: []
     });
     expect(document.agentVault.trafficPolicy).toBe("any-host");
+    // A bundle with no services, only skills, is still the session's bundle.
+    expect(document.session.accessBundle).toBe("skills-only");
     expect(document.notes).toContain(
       "Hosts no service covers are reachable, but the proxy adds nothing to those requests."
     );
@@ -191,8 +208,8 @@ describe("the whole list", () => {
   test("without a proxy, leaves the traffic policy out instead of guessing it", () => {
     const document = buildSessionServicesDocument({
       proxy: null,
-      session: { label: "", expiresAt: null },
-      services: [facts({ accessBundleName: null })]
+      session: { label: "", expiresAt: null, accessBundle: null },
+      services: [facts()]
     });
     expect(document.agentVault).toEqual({ proxy: null, version: null, trafficPolicy: null });
     expect(document.session).toEqual({ label: null, expiresAt: null, accessBundle: null });

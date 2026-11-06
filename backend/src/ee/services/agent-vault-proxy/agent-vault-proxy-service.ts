@@ -891,17 +891,18 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   // A session minted a moment ago may not be on the replica yet. Reading the primary on a miss keeps a proxy from
-  // refusing the new session, and remembering the refusal, while the replica catches up.
+  // refusing the new session, and remembering the refusal, while the replica catches up. The rows minted with the
+  // session are just as new, so onPrimary sends the reads for them to the primary too.
   const $findSessionByToken = async (sessionToken: string) => {
     const tokenHash = hashSessionToken(sessionToken);
-    return (
-      (await agentVaultSessionDAL.findByTokenHash(tokenHash)) ??
-      agentVaultSessionDAL.findByTokenHashOnPrimary(tokenHash)
-    );
+    const fromReplica = await agentVaultSessionDAL.findByTokenHash(tokenHash);
+    if (fromReplica) return { session: fromReplica, onPrimary: false };
+    const fromPrimary = await agentVaultSessionDAL.findByTokenHashOnPrimary(tokenHash);
+    return { session: fromPrimary, onPrimary: Boolean(fromPrimary) };
   };
 
   const $authorizeSession = async ({ proxyId, orgId, sessionToken }: TAuthorizeSessionDTO) => {
-    const session = await $findSessionByToken(sessionToken);
+    const { session, onPrimary } = await $findSessionByToken(sessionToken);
     if (!session) throw new NotFoundError({ message: "Session not found" });
 
     // A mismatch is 404, not 403, so a proxy cannot probe another tenant for session ids.
@@ -911,22 +912,29 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     const { accessBundleIds, isOwnerAdmin } = await $authorizeSessionOwner(session, orgId);
-    return { session, proxy, accessBundleIds, isOwnerAdmin };
+    return { session, onPrimary, proxy, accessBundleIds, isOwnerAdmin };
   };
 
   /** Resolve services and decrypt their credentials. The proxy's JWT authorizes; the session token is a selector. */
   const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
-    const { session, proxy, accessBundleIds, isOwnerAdmin } = await $authorizeSession({ proxyId, orgId, sessionToken });
+    const { session, onPrimary, proxy, accessBundleIds, isOwnerAdmin } = await $authorizeSession({
+      proxyId,
+      orgId,
+      sessionToken
+    });
 
     const rows = await agentVaultResolveDAL.findResolvableServices({
       sessionId: session.id,
       projectId: session.projectId,
-      accessBundleIds
+      accessBundleIds,
+      onPrimary
     });
     // Starting a session with inline services is an admin's call, and like a grant it is re-checked on every resolve: an
     // owner who is no longer an admin keeps the session's bundle, if it has one, and loses its inline services until
     // they are an admin again.
-    const inlineServiceRows = isOwnerAdmin ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id) : [];
+    const inlineServiceRows = isOwnerAdmin
+      ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
+      : [];
 
     // A token that expires before the proxy's next poll is refreshed now, which also keeps proxies that can't
     // refresh on their own working. The proxy gives up on resolve after 15 seconds, and one refresh can wait on
@@ -1129,12 +1137,13 @@ export const agentVaultProxyServiceFactory = ({
     serviceId,
     hostPattern
   }: Pick<TRefreshCredentialDTO, "proxyId" | "orgId" | "sessionToken" | "serviceId" | "hostPattern">) => {
-    const { session, accessBundleIds } = await $authorizeSession({ proxyId, orgId, sessionToken });
+    const { session, onPrimary, accessBundleIds } = await $authorizeSession({ proxyId, orgId, sessionToken });
     const [row] = await agentVaultResolveDAL.findResolvableServices({
       sessionId: session.id,
       projectId: session.projectId,
       accessBundleIds,
-      serviceId
+      serviceId,
+      onPrimary
     });
     if (!row) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found in this session` });
     if (row.credentialType !== AgentVaultCredentialType.OAuth) {
@@ -1181,7 +1190,7 @@ export const agentVaultProxyServiceFactory = ({
   // Called by the CLI once when an agent starts: the latest files of every skill on the session's reachable bundles.
   // The session token is the only credential, so an unknown one gets the same 401 as any other refusal.
   const getSessionSkills = async ({ sessionToken }: TGetSessionSkillsDTO) => {
-    const session = await $findSessionByToken(sessionToken);
+    const { session } = await $findSessionByToken(sessionToken);
     const project = session ? await projectDAL.findById(session.projectId) : undefined;
     if (!session || !project) {
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
@@ -1244,7 +1253,7 @@ export const agentVaultProxyServiceFactory = ({
   // orchestrator. Built without decrypting anything, so it can never carry a credential or a value the proxy fills in.
   // Never audited, like resolve: an agent asks when it starts a task and again after any access error.
   const getSessionServices = async ({ sessionToken, proxyId, proxyVersion }: TGetSessionServicesDTO) => {
-    const session = await $findSessionByToken(sessionToken);
+    const { session, onPrimary } = await $findSessionByToken(sessionToken);
     const project = session ? await projectDAL.findById(session.projectId) : undefined;
     if (!session || !project) {
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
@@ -1252,11 +1261,11 @@ export const agentVaultProxyServiceFactory = ({
 
     const { accessBundleIds, isOwnerAdmin } = await $authorizeSessionOwner(session, project.orgId);
 
-    const rows = await agentVaultResolveDAL.findResolvableServices({
-      sessionId: session.id,
-      projectId: session.projectId,
-      accessBundleIds
-    });
+    const scope = { sessionId: session.id, projectId: session.projectId, accessBundleIds, onPrimary };
+    const [rows, bundles] = await Promise.all([
+      agentVaultResolveDAL.findResolvableServices(scope),
+      agentVaultResolveDAL.findReachableBundles(scope)
+    ]);
     const serviceIds = rows.map((row) => row.id);
     const [customHeaderRows, substitutionRows, personalValueRows, inlineRows, proxy] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
@@ -1265,7 +1274,7 @@ export const agentVaultProxyServiceFactory = ({
         serviceIds: rows.filter((row) => row.memberProvidedFields?.length).map((row) => row.id),
         owner: personalValuesOwner(session)
       }),
-      isOwnerAdmin ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id) : [],
+      isOwnerAdmin ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : [],
       proxyId ? agentVaultProxyDAL.findByIdWithOrg(proxyId) : undefined
     ]);
 
@@ -1299,7 +1308,12 @@ export const agentVaultProxyServiceFactory = ({
         isSessionProxy && proxy
           ? { name: proxy.name, version: proxyVersion ?? null, trafficPolicy: proxy.trafficPolicy }
           : null,
-      session: { label: session.label ?? null, expiresAt: session.expiresAt ?? null },
+      // A session carries one access bundle today.
+      session: {
+        label: session.label ?? null,
+        expiresAt: session.expiresAt ?? null,
+        accessBundle: bundles[0]?.name ?? null
+      },
       services
     });
   };

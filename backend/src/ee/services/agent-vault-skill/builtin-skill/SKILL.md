@@ -42,10 +42,12 @@ curl -s -D /tmp/mcp-headers https://SERVER/mcp -H 'Content-Type: application/jso
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"agent","version":"1.0"}}}'
 grep -i '^mcp-session-id' /tmp/mcp-headers
 curl -s https://SERVER/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -H 'Mcp-Session-Id: SESSION_ID_FROM_ABOVE' -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+curl -s https://SERVER/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
   -H 'Mcp-Session-Id: SESSION_ID_FROM_ABOVE' -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 ```
 
-Then call a tool the same way with `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"TOOL","arguments":{}}}`. Leave out the `Mcp-Session-Id` header if the server sent none. To keep a server for later sessions, add it to your MCP client by URL with no credentials (for Claude Code: `claude mcp add --transport http NAME URL`).
+Then call a tool the same way with `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"TOOL","arguments":{}}}`. Leave out the `Mcp-Session-Id` header if the server sent none. For a service whose `transport` is `sse`, follow its `howToUse` instead. To keep a server for later sessions, add it to your MCP client by URL with no credentials (for Claude Code: `claude mcp add --transport http NAME URL`).
 
 ## Read the response
 

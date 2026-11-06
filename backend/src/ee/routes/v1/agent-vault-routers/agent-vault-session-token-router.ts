@@ -40,28 +40,31 @@ const SessionSkillSchema = z.object({
 });
 
 const SessionServiceSchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
-  type: z.nativeEnum(AgentVaultServiceType),
+  name: z.string().describe(AGENT_VAULT.SESSION_SERVICES.serviceName),
+  description: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.serviceDescription),
+  type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SESSION_SERVICES.serviceType),
   hosts: z.string().array().describe(AGENT_VAULT.SESSION_SERVICES.hosts),
   url: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.url),
-  transport: z.string().optional(),
+  transport: z.string().optional().describe(AGENT_VAULT.SESSION_SERVICES.transport),
   status: z.enum(["ready", "needs-personal-values"]).describe(AGENT_VAULT.SESSION_SERVICES.status),
   credential: z
     .object({
-      type: z.enum(["bearer", "oauth", "basic", "none"]),
-      header: z.string().optional(),
-      addedByProxy: z.boolean()
+      type: z.enum(["bearer", "oauth", "basic", "none"]).describe(AGENT_VAULT.SESSION_SERVICES.credentialType),
+      header: z.string().optional().describe(AGENT_VAULT.SESSION_SERVICES.credentialHeader),
+      addedByProxy: z.boolean().describe(AGENT_VAULT.SESSION_SERVICES.credentialAddedByProxy)
     })
     .describe(AGENT_VAULT.SESSION_SERVICES.credential),
   customHeaders: z.string().array().describe(AGENT_VAULT.SESSION_SERVICES.customHeaders),
   placeholders: z
-    .object({ placeholder: z.string(), surfaces: z.string().array() })
+    .object({
+      placeholder: z.string().describe(AGENT_VAULT.SESSION_SERVICES.placeholder),
+      surfaces: z.string().array().describe(AGENT_VAULT.SESSION_SERVICES.placeholderSurfaces)
+    })
     .array()
     .describe(AGENT_VAULT.SESSION_SERVICES.placeholders),
-  allowedMethods: z.string().array().nullable(),
-  allowedPathPrefixes: z.string().array().nullable(),
-  allowedTools: z.string().array().nullable(),
+  allowedMethods: z.string().array().nullable().describe(AGENT_VAULT.SESSION_SERVICES.allowedMethods),
+  allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SESSION_SERVICES.allowedPathPrefixes),
+  allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SESSION_SERVICES.allowedTools),
   howToUse: z.string().describe(AGENT_VAULT.SESSION_SERVICES.howToUse)
 });
 
@@ -210,8 +213,8 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
         200: z.object({
           agentVault: z
             .object({
-              proxy: z.string().nullable(),
-              version: z.string().nullable(),
+              proxy: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.proxyName),
+              version: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.proxyVersion),
               trafficPolicy: z
                 .enum(["any-host", "service-hosts"])
                 .nullable()
@@ -220,9 +223,9 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
             .describe(AGENT_VAULT.SESSION_SERVICES.agentVault),
           session: z
             .object({
-              label: z.string().nullable(),
-              expiresAt: z.string().nullable(),
-              accessBundle: z.string().nullable()
+              label: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.sessionLabel),
+              expiresAt: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.sessionExpiresAt),
+              accessBundle: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.sessionAccessBundle)
             })
             .describe(AGENT_VAULT.SESSION_SERVICES.session),
           services: SessionServiceSchema.array().describe(AGENT_VAULT.SESSION_SERVICES.services),

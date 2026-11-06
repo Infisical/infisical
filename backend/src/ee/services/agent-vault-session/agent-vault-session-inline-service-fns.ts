@@ -302,7 +302,6 @@ export const toInlineServiceFacts = (row: TAgentVaultSessionInlineServices): TSe
   return {
     name: inlineServiceDisplayName(row),
     description: row.description ?? null,
-    accessBundleName: null,
     type: row.type as AgentVaultServiceType,
     hostPattern: row.hostPattern,
     serverUrl: getServiceServerUrl(row.config),

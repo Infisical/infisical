@@ -4,7 +4,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/helpers/agentVaultControlChars";
-import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
+import { agentVaultServiceDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { variableReferenceError } from "@app/helpers/agentVaultVariables";
@@ -314,7 +314,7 @@ export const buildServiceSchema = (
     .object({
       serviceType: z.nativeEnum(AgentVaultServiceType),
       name: slugSchema({ max: 64, field: "Name" }),
-      description: agentVaultDescriptionSchema,
+      description: agentVaultServiceDescriptionSchema,
       serverUrl: z.string(),
       transport: z.nativeEnum(AgentVaultMcpTransport),
       hosts: z.array(z.string()),
