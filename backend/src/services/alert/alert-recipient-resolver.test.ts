@@ -19,6 +19,7 @@ const buildResolver = (opts: {
   projectGroupMemberUserIds?: string[]; // users a project group member listing returns
   projectMemberRoles?: Record<string, TMemberRole[]>; // userId -> roles on either listing (defaults to member)
   userGroupIds?: Record<string, string[]>; // userId -> groups the user belongs to
+  pendingGroupUserIds?: string[]; // users whose group rows still carry isPending from before they signed up
   orgLinkedGroupIds?: string[]; // groups with a membership in the org, eg a root group linked into a sub-org
   verifiedDomains?: string[];
 }) => {
@@ -42,7 +43,11 @@ const buildResolver = (opts: {
               (opts.groupMembers?.[groupId] ?? []).map((userId) => ({ groupId, userId, isPending: false }))
             )
           : ($in.userId ?? []).flatMap((userId) =>
-              (opts.userGroupIds?.[userId] ?? []).map((groupId) => ({ groupId, userId, isPending: false }))
+              (opts.userGroupIds?.[userId] ?? []).map((groupId) => ({
+                groupId,
+                userId,
+                isPending: (opts.pendingGroupUserIds ?? []).includes(userId)
+              }))
             )
     } as never,
     orgDAL: {
@@ -492,6 +497,29 @@ describe("alert recipient resolver — project-wide recipients without a direct 
 
     expect(result.get("members")).toEqual([]);
     expect(result.get("admins")).toEqual([]);
+  });
+
+  test("include a sub-org member whose group row still carries isPending from before they signed up", async () => {
+    const resolver = buildResolver({
+      users: [user("u1")],
+      orgUserIds: [],
+      projectMemberUserIds: ["u1"],
+      projectMemberRoles: { u1: [{ role: "admin" }] },
+      userGroupIds: { u1: ["root-group"] },
+      pendingGroupUserIds: ["u1"],
+      orgLinkedGroupIds: ["root-group"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([
+        ["members", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]],
+        ["admins", [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "proj-1" }]]
+      ]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    expect(result.get("members")?.map((r) => r.email)).toEqual(["u1@example.com"]);
+    expect(result.get("admins")?.map((r) => r.email)).toEqual(["u1@example.com"]);
   });
 
   test("drop a member who was invited to the org and never accepted", async () => {

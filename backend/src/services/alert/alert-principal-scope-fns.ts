@@ -52,9 +52,8 @@ export const findUsersWithOrgAccess = async (
   const throughGroupOnly = userIds.filter((userId) => !withOwnMembership.has(userId));
   if (throughGroupOnly.length === 0) return withAccess;
 
-  const groupMemberships = (await userGroupMembershipDAL.find({ $in: { userId: throughGroupOnly } }, { tx })).filter(
-    (membership) => !membership.isPending
-  );
+  // isPending is ignored like findEffectiveOrgMembership does: nothing clears it once the user finishes signup.
+  const groupMemberships = await userGroupMembershipDAL.find({ $in: { userId: throughGroupOnly } }, { tx });
   const linkedGroupIds = new Set(
     await orgDAL.findOrgLinkedGroupIds(
       orgId,
