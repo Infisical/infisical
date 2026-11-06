@@ -240,6 +240,10 @@ site that receives a plain `Buffer`.
 
 ## Architecture
 
+### Domain Modules (new structure)
+
+New backend code is moving to domain modules under `src/domains/`: one folder per business capability, with `ce/` and `ee/` editions, each split into `model/`, `data-access/`, `service/`, `router/` and `testing/` behind a class-based `module.ts`. Read [`src/domains/AGENTS.md`](src/domains/AGENTS.md) before adding a domain or code inside one. The sections below describe the existing `src/services/` layout, which stays until each service moves over.
+
 ### Service Factory + Manual DI
 
 No IoC container. Every service is a factory function that receives explicit dependencies as a typed object and returns an object of methods. Dependencies are narrowed with TypeScript `Pick` to define minimal interface contracts.
@@ -1170,7 +1174,7 @@ Migrations in `src/db/migrations/`. Auto-generated Zod schemas in `src/db/schema
 
 ## Wiring a New Feature (Checklist)
 
-1. Create service module in `src/services/<name>/` (or `src/ee/services/<name>/` for EE) with DAL, service, and types files
+1. Create service module in `src/services/<name>/` (or `src/ee/services/<name>/` for EE) with DAL, service, and types files. New capabilities can instead be a domain in `src/domains/`, see [`src/domains/AGENTS.md`](src/domains/AGENTS.md)
 2. If adding DB tables: create migration via `npm run migration:new`, run it, then `npm run generate:schema`
 3. Wire in `src/server/routes/index.ts`: instantiate DAL → instantiate service → add to `server.decorate("services", {...})`
 4. Create router in `src/server/routes/v<N>/` (or `src/ee/routes/v<N>/` for EE) and register it
