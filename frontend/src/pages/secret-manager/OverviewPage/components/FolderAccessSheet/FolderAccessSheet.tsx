@@ -593,12 +593,11 @@ export const FolderAccessSheet = ({
               <Accordion
                 type="single"
                 collapsible
-                variant="ghost"
                 value={noAccessSection}
                 onValueChange={setNoAccessSection}
               >
-                <AccordionItem value={NO_ACCESS_SECTION} className="border-b-0">
-                  <AccordionTrigger className="rounded-md border border-border bg-container px-3 hover:bg-container-hover">
+                <AccordionItem value={NO_ACCESS_SECTION}>
+                  <AccordionTrigger>
                     <span className="flex-1">No Access</span>
                     <span className="flex items-center gap-3 text-xs font-normal text-muted tabular-nums">
                       <span className="flex items-center gap-1" title="Users">
@@ -611,7 +610,7 @@ export const FolderAccessSheet = ({
                       </span>
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="border-t border-border p-4">
                     <Tabs
                       value={noAccessTab}
                       onValueChange={(value) => setNoAccessTab(value as TFolderAccessActor["type"])}
