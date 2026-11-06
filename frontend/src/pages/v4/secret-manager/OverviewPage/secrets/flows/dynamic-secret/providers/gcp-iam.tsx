@@ -1,4 +1,5 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { useParams } from "@tanstack/react-router";
 
 import {
   gcpIamCreateFormSchema,
@@ -18,10 +19,9 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { fieldError, ProviderGroup } from "../fields";
 import { defineFlowProvider } from "../types";
 
-const LOCAL_ORG_ID = "6f1c2a9e-4b7d-4e21-9a3c-8d5f0b2e7c14";
-
 function GcpIamFields() {
-  const suffix = LOCAL_ORG_ID.split("-").slice(0, 2).join("-");
+  const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
+  const suffix = orgId.split("-").slice(0, 2).join("-");
   const { control } = useFormContext<TGcpIamFormValues>();
   const scopes = useFieldArray({ control, name: "inputs.tokenScopes" });
 

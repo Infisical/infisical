@@ -3,6 +3,7 @@ import { useWatch } from "react-hook-form";
 import { Stack } from "@app/components/v4/ui/layout";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 
+import { useV4Adapter } from "../../../../../../data/adapters";
 import {
   notListedHint,
   PasswordRequirementsFields,
@@ -12,6 +13,7 @@ import {
   type RotationViews,
   SecretsMappingFields,
   TextField,
+  useConnectionOptions,
   useIsUpdate,
   useRotationForm
 } from "../fields";
@@ -24,47 +26,6 @@ import {
 
 const DATADOG_API_KEY_NAME_MAX_LENGTH = 255;
 
-const AUTH0_CLIENTS = [
-  { id: "demo-auth0-client-checkout", name: "checkout-web (demo)" },
-  { id: "demo-auth0-client-billing", name: "billing-worker (demo)" }
-];
-const AZURE_APPS = [
-  {
-    id: "00000000-demo-4000-8000-0000000000a1",
-    name: "payments-api (demo)",
-    appId: "demo-app-id-a1"
-  },
-  {
-    id: "00000000-demo-4000-8000-0000000000a2",
-    name: "ledger-sync (demo)",
-    appId: "demo-app-id-a2"
-  }
-];
-const AWS_IAM_USERS = ["demo-payments-deployer", "demo-ledger-reader"];
-const OKTA_APPS = [
-  { id: "demo0oa1checkout", label: "Checkout portal (demo)" },
-  { id: "demo0oa2billing", label: "Billing console (demo)" }
-];
-const DATABRICKS_SERVICE_PRINCIPALS = [
-  { id: "demo-sp-1001", name: "etl-runner (demo)", clientId: "demo-client-1001" },
-  { id: "demo-sp-1002", name: "reporting-bot (demo)", clientId: "demo-client-1002" }
-];
-const SALESFORCE_APPS = [
-  { identifier: "demo-0Hx001", developerName: "Payments_Integration_Demo" },
-  { identifier: "demo-0Hx002", developerName: "Ledger_Export_Demo" }
-];
-const OPENAI_PROJECTS = [
-  { id: "proj_demo_payments", name: "payments (demo)" },
-  { id: "proj_demo_support", name: "support-assistant (demo)" }
-];
-const DATADOG_SERVICE_ACCOUNTS = [
-  { id: "demo-sa-7f1c", name: "ci-monitoring (demo)" },
-  { id: "demo-sa-9b2e", name: "payments-dashboards (demo)" }
-];
-const FIREWORKS_SERVICE_ACCOUNTS = [
-  { name: "accounts/demo/users/inference-bot", displayName: "Inference bot (demo)" },
-  { name: "accounts/demo/users/eval-runner", displayName: "Eval runner (demo)" }
-];
 const getUserId = (name: string) => name.split("/").pop() ?? name;
 
 const useValues = () => {
@@ -102,12 +63,13 @@ const clientRows: [string, string][] = [
 ];
 
 function Auth0Parameters() {
+  const clients = useConnectionOptions(useV4Adapter("secrets").useAuth0Clients);
   return (
     <ResourceComboboxField
       name="parameters.clientId"
       label="Application"
       placeholder="Select an application..."
-      options={AUTH0_CLIENTS.map((client) => ({ value: client.id, label: client.name }))}
+      options={clients.map((client) => ({ value: client.id, label: client.name }))}
       description={notListedHint(
         "Don't see the application you're looking for?",
         "Ensure that your connection has the read_clients permission and the application exists in the connection's audience."
@@ -127,15 +89,16 @@ function Auth0Review() {
 }
 
 function AzureParameters() {
+  const apps = useConnectionOptions(useV4Adapter("secrets").useAzureClients);
   const { setValue } = useRotationForm();
   return (
     <ResourceComboboxField
       name="parameters.objectId"
       label="Application"
       placeholder="Select an application..."
-      options={AZURE_APPS.map((app) => ({ value: app.id, label: app.name }))}
+      options={apps.map((app) => ({ value: app.id, label: app.name }))}
       onSelect={(id) => {
-        const app = AZURE_APPS.find((entry) => entry.id === id);
+        const app = apps.find((entry) => entry.id === id);
         setValue("parameters.appName", app?.name);
         setValue("parameters.clientId", app?.appId);
       }}
@@ -164,13 +127,14 @@ function AzureReview() {
 }
 
 function AwsParameters() {
+  const users = useConnectionOptions(useV4Adapter("secrets").useAwsIamUsers);
   return (
     <>
       <ResourceComboboxField
         name="parameters.userName"
         label="IAM User"
         placeholder="Select an IAM user..."
-        options={AWS_IAM_USERS.map((user) => ({ value: user, label: user }))}
+        options={users.map((user) => ({ value: user.UserName, label: user.UserName }))}
         description={notListedHint(
           "Don't see the IAM user you're looking for?",
           "Ensure that your connection has the correct permissions."
@@ -214,12 +178,13 @@ function AwsReview() {
 }
 
 function OktaParameters() {
+  const apps = useConnectionOptions(useV4Adapter("secrets").useOktaApps);
   return (
     <ResourceComboboxField
       name="parameters.clientId"
       label="OpenID Connect Application"
       placeholder="Select an application..."
-      options={OKTA_APPS.map((app) => ({ value: app.id, label: app.label }))}
+      options={apps.map((app) => ({ value: app.id, label: app.label }))}
     />
   );
 }
@@ -235,15 +200,16 @@ function OktaReview() {
 }
 
 function DatabricksParameters() {
+  const principals = useConnectionOptions(useV4Adapter("secrets").useDatabricksServicePrincipals);
   const { setValue } = useRotationForm();
   return (
     <ResourceComboboxField
       name="parameters.servicePrincipalId"
       label="Service Principal"
       placeholder="Select a service principal..."
-      options={DATABRICKS_SERVICE_PRINCIPALS.map((sp) => ({ value: sp.id, label: sp.name }))}
+      options={principals.map((sp) => ({ value: sp.id, label: sp.name }))}
       onSelect={(id) => {
-        const sp = DATABRICKS_SERVICE_PRINCIPALS.find((entry) => entry.id === id);
+        const sp = principals.find((entry) => entry.id === id);
         setValue("parameters.servicePrincipalName", sp?.name);
         setValue("parameters.clientId", sp?.clientId);
       }}
@@ -272,17 +238,18 @@ function DatabricksReview() {
 }
 
 function SalesforceParameters() {
+  const apps = useConnectionOptions(useV4Adapter("secrets").useSalesforceOauthApps);
   const { setValue } = useRotationForm();
   return (
     <ResourceComboboxField
       name="parameters.appId"
       label="External Client App"
       placeholder="Select an external client app..."
-      options={SALESFORCE_APPS.map((app) => ({ value: app.identifier, label: app.developerName }))}
+      options={apps.map((app) => ({ value: app.identifier, label: app.developerName }))}
       onSelect={(identifier) =>
         setValue(
           "parameters.appName",
-          SALESFORCE_APPS.find((app) => app.identifier === identifier)?.developerName,
+          apps.find((app) => app.identifier === identifier)?.developerName,
           { shouldDirty: true, shouldValidate: true }
         )
       }
@@ -338,6 +305,7 @@ function GcpReview() {
 }
 
 function OpenAIParameters() {
+  const projects = useConnectionOptions(useV4Adapter("secrets").useOpenAIProjects);
   return (
     <>
       <ResourceComboboxField
@@ -345,7 +313,7 @@ function OpenAIParameters() {
         label="Project"
         tooltip="The OpenAI project to create service accounts in. This cannot be changed after the rotation is created."
         placeholder="Select a project..."
-        options={OPENAI_PROJECTS.map((project) => ({ value: project.id, label: project.name }))}
+        options={projects.map((project) => ({ value: project.id, label: project.name }))}
       />
       <TextField
         name="parameters.name"
@@ -402,12 +370,13 @@ function DatadogApiReview() {
 }
 
 function DatadogApplicationParameters() {
+  const accounts = useConnectionOptions(useV4Adapter("secrets").useDatadogServiceAccounts);
   return (
     <ResourceComboboxField
       name="parameters.serviceAccountId"
       label="Service Account"
       placeholder="Select a service account..."
-      options={DATADOG_SERVICE_ACCOUNTS.map((account) => ({
+      options={accounts.map((account) => ({
         value: account.id,
         label: account.name
       }))}
@@ -454,13 +423,14 @@ function ConvexReview() {
 }
 
 function FireworksParameters() {
+  const accounts = useConnectionOptions(useV4Adapter("secrets").useFireworksServiceAccounts);
   return (
     <ResourceComboboxField
       name="parameters.serviceAccountUserId"
       label="Service Account"
       tooltip="The Fireworks service account to create the API key for"
       placeholder="Select a service account..."
-      options={FIREWORKS_SERVICE_ACCOUNTS.map((account) => ({
+      options={accounts.map((account) => ({
         value: getUserId(account.name),
         label: `${account.displayName} (${getUserId(account.name)})`
       }))}

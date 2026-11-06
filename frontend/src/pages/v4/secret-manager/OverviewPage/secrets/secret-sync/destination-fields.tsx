@@ -34,30 +34,25 @@ import {
 } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
+import { useV4Adapter } from "../../../../data/adapters";
 import {
   RotationField as SyncField,
   SwitchField,
   TextField,
+  useConnectionOptions,
   useRotationForm as useSyncForm
 } from "../flows/secret-rotation/fields";
-import {
-  LOCAL_GCP,
-  LOCAL_GITHUB,
-  LOCAL_KMS_KEYS,
-  LOCAL_VERCEL,
-  type LocalSyncConnection
-} from "./sync-model";
+import { type LocalSyncConnection } from "./sync-model";
 
 import styles from "./secret-sync.module.css";
 
 export type SyncConnectionsContext = {
   connections: LocalSyncConnection[];
-  addConnection: (connection: LocalSyncConnection) => void;
+  addConnection?: (connection: LocalSyncConnection) => void;
 };
 
 export const SyncConnections = createContext<SyncConnectionsContext>({
-  connections: [],
-  addConnection: () => undefined
+  connections: []
 });
 
 export const appNameOf = (destination: SecretSync) =>
@@ -89,17 +84,20 @@ function ConnectionField({ onChange }: { onChange?: () => void }) {
             }}
             options={available.map((connection) => ({
               value: connection.id,
-              label: connection.name,
-              meta: "Local demo"
+              label: connection.name
             }))}
             placeholder="Select connection..."
+            emptyText={`No ${appNameOf(destination)} connections yet. Create one in App Connections.`}
             invalid={Boolean(error)}
-            onCreate={(name) => {
-              const connection = { id: crypto.randomUUID(), name, app };
-              addConnection(connection);
-              setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
-              onChange?.();
-            }}
+            onCreate={
+              addConnection &&
+              ((name) => {
+                const connection = { id: crypto.randomUUID(), name, app };
+                addConnection(connection);
+                setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
+                onChange?.();
+              })
+            }
           />
         </SyncField>
       )}
@@ -227,17 +225,29 @@ const GITHUB_VISIBILITY = [
 
 function GitHubDestination() {
   const { control, setValue } = useSyncForm();
-  const [connectionId, scope, visibility, org, repo] = useWatch({
+  const [connectionId, scope, visibility, org, repo, owner] = useWatch({
     control,
     name: [
       "connection.id",
       "destinationConfig.scope",
       "destinationConfig.visibility",
       "destinationConfig.org",
-      "destinationConfig.repo"
+      "destinationConfig.repo",
+      "destinationConfig.owner"
     ]
-  }) as [string | undefined, string, string, string, string];
-  const repositories = connectionId ? LOCAL_GITHUB.repositories : [];
+  }) as [string | undefined, string, string, string, string, string];
+  const adapter = useV4Adapter("secrets");
+  const organizations = useConnectionOptions(adapter.useGitHubOrganizations);
+  const repositories = useConnectionOptions(adapter.useGitHubRepositories).map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    owner: entry.owner.login
+  }));
+  const environments =
+    adapter.useGitHubEnvironments(
+      { connectionId: connectionId ?? "", owner: owner ?? "", repo: repo ?? "" },
+      { enabled: Boolean(connectionId && owner && repo) }
+    ).data ?? [];
   return (
     <Stack gap={16}>
       <ConnectionField
@@ -278,7 +288,7 @@ function GitHubDestination() {
                     field.onChange(value);
                     setValue("destinationConfig.selectedRepositoryIds", []);
                   }}
-                  options={(connectionId ? LOCAL_GITHUB.organizations : []).map((login) => ({
+                  options={organizations.map(({ login }) => ({
                     value: login,
                     label: login
                   }))}
@@ -372,7 +382,7 @@ function GitHubDestination() {
                 label="Environment"
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
-                options={(connectionId && repo ? LOCAL_GITHUB.environments : []).map((env) => ({
+                options={(repo ? environments : []).map((env) => ({
                   value: env.name,
                   label: env.name
                 }))}
@@ -388,12 +398,6 @@ function GitHubDestination() {
   );
 }
 
-const gcpLocationOptions = () =>
-  LOCAL_GCP.locations.map((location) => ({
-    value: location.locationId,
-    label: `${location.displayName} (${location.locationId})`
-  }));
-
 function GcpDestination() {
   const { control, setValue } = useSyncForm();
   const [connectionId, projectId, scope, replicas] = useWatch({
@@ -406,6 +410,17 @@ function GcpDestination() {
     ]
   }) as [string | undefined, string, string, string[] | undefined];
   const [openItem, setOpenItem] = useState(replicas?.length ? "advanced" : "");
+  const adapter = useV4Adapter("secrets");
+  const projects = useConnectionOptions(adapter.useGcpProjects);
+  const locationOptions = (
+    adapter.useGcpLocations(
+      { connectionId: connectionId ?? "", projectId: projectId ?? "" },
+      { enabled: Boolean(connectionId && projectId) }
+    ).data ?? []
+  ).map((location) => ({
+    value: location.locationId,
+    label: `${location.displayName} (${location.locationId})`
+  }));
   const resetLocations = () => {
     setValue("destinationConfig.locationId", "");
     setValue("destinationConfig.userReplicaLocationIds", []);
@@ -434,7 +449,7 @@ function GcpDestination() {
                 resetLocations();
                 field.onChange(value);
               }}
-              options={(connectionId ? LOCAL_GCP.projects : []).map((project) => ({
+              options={projects.map((project) => ({
                 value: project.id,
                 label: project.name,
                 meta: project.id
@@ -494,7 +509,7 @@ function GcpDestination() {
                 label="Region"
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
-                options={projectId ? gcpLocationOptions() : []}
+                options={projectId ? locationOptions : []}
                 placeholder="Select a region..."
                 disabled={!projectId}
                 invalid={Boolean(error)}
@@ -523,7 +538,7 @@ function GcpDestination() {
                         multiple
                         value={(field.value as string[] | undefined) ?? []}
                         onValueChange={field.onChange}
-                        options={projectId ? gcpLocationOptions() : []}
+                        options={projectId ? locationOptions : []}
                         placeholder="Automatic replication"
                         disabled={!projectId}
                         invalid={Boolean(error)}
@@ -585,7 +600,7 @@ function VercelDestination() {
       "destinationConfig.targetEnvironments"
     ]
   }) as [string | undefined, string, string, string, string, string[] | undefined];
-  const teams = connectionId ? LOCAL_VERCEL.teams : [];
+  const teams = useConnectionOptions(useV4Adapter("secrets").useVercelOrganizations);
   const allApps = teams.flatMap((team) =>
     team.apps.map((entry) => ({ ...entry, teamId: team.id, teamName: team.name }))
   );
@@ -594,7 +609,7 @@ function VercelDestination() {
   const selectedProject = allApps.find((entry) => entry.id === app);
   const environmentOptions = [
     ...VERCEL_ENVIRONMENTS,
-    ...(selectedProject?.envs.map((entry) => ({ value: entry.id, label: entry.slug })) ?? [])
+    ...(selectedProject?.envs?.map((entry) => ({ value: entry.id, label: entry.slug })) ?? [])
   ];
   const isProjectDevTargeted = !isTeamScope && env === "development";
   const isTeamDevTargeted = isTeamScope && Boolean(targetEnvironments?.includes("development"));
@@ -943,7 +958,16 @@ function AwsAdvancedOptions({ destination }: { destination: SecretSync }) {
       .filter(Boolean)
       .join(", ") || "All defaults";
   const defaultAlias = isSecretsManager ? "alias/aws/secretsmanager" : "alias/aws/ssm";
-  const keys = connectionId && region ? (LOCAL_KMS_KEYS[destination] ?? []) : [];
+  const keys = (
+    useV4Adapter("secrets").useAwsKmsKeys(
+      {
+        connectionId: connectionId ?? "",
+        region,
+        destination: destination as SecretSync.AWSParameterStore | SecretSync.AWSSecretsManager
+      },
+      { enabled: Boolean(connectionId && region) }
+    ).data ?? []
+  ).map((key) => key.alias);
   const noun = isSecretsManager ? "secrets" : "parameters";
   const kmsPermissions = (
     <>
@@ -1116,13 +1140,19 @@ const gcpReview = (config: FieldValues): ReviewItems => [
     : [])
 ];
 
+function VercelProjectNames({ teamId, ids }: { teamId: string; ids: string[] }) {
+  const team = useConnectionOptions(useV4Adapter("secrets").useVercelOrganizations).find(
+    (entry) => entry.id === teamId
+  );
+  return ids.map((id) => team?.apps.find((entry) => entry.id === id)?.name ?? id).join(", ");
+}
+
 const vercelReview = (config: FieldValues): ReviewItems => {
   const yesNo = (value: unknown) => (value ? "Yes" : "No");
   if (config.scope === "team") {
-    const team = LOCAL_VERCEL.teams.find((entry) => entry.id === config.teamId);
     return [
       ["Scope", "Team"],
-      ["Vercel team", team?.name],
+      ["Vercel team", config.teamName],
       [
         "Target environments",
         (config.targetEnvironments as string[] | undefined)
@@ -1132,9 +1162,10 @@ const vercelReview = (config: FieldValues): ReviewItems => {
       ["All custom environments", yesNo(config.applyToAllCustomEnvironments)],
       [
         "Target projects",
-        (config.targetProjects as string[] | undefined)
-          ?.map((id) => team?.apps.find((entry) => entry.id === id)?.name)
-          .join(", ")
+        <VercelProjectNames
+          teamId={config.teamId}
+          ids={(config.targetProjects as string[] | undefined) ?? []}
+        />
       ],
       ["Sensitive", yesNo(config.sensitive)]
     ];

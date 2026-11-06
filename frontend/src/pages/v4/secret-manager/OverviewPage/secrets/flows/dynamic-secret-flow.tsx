@@ -48,9 +48,14 @@ import {
   SheetTitle
 } from "@app/components/v4/ui/sheet";
 import { Heading, Meta, SmallText } from "@app/components/v4/ui/text";
+import {
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import type { Resource } from "../../secrets-model";
+import { useCreateBlock, useManagedBlock } from "../row-actions/permissions";
 import { ProviderFormItems } from "./dynamic-secret/fields";
 import { dynamicSecretDocsSlug, dynamicSecretFlowProviders } from "./dynamic-secret/registry";
 import type {
@@ -58,6 +63,7 @@ import type {
   DynamicSecretFlowContext,
   DynamicSecretFlowProvider
 } from "./dynamic-secret/types";
+import { Gate } from "./shared";
 
 export type DynamicSecretResource = Extract<Resource, { kind: "dynamic" }>;
 
@@ -285,6 +291,14 @@ export function DynamicSecretFlow({
     shouldFocusError: true
   });
   const { isDirty } = form.formState;
+  const createBlock = useCreateBlock(
+    project,
+    ProjectPermissionSub.DynamicSecrets,
+    ProjectPermissionDynamicSecretActions.CreateRootCredential,
+    context.environments.map((item) => item.slug),
+    secretPath,
+    "create dynamic secrets here"
+  );
 
   const providers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -461,14 +475,16 @@ export function DynamicSecretFlow({
                 <Button type="button" variant="ghost" onClick={requestClose} disabled={isPending}>
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  form={FORM_ID}
-                  loading={isPending}
-                  disabled={submitState.isDisabled || isPending}
-                >
-                  {definition.submitLabel}
-                </Button>
+                <Gate reason={createBlock}>
+                  <Button
+                    type="submit"
+                    form={FORM_ID}
+                    loading={isPending}
+                    disabled={submitState.isDisabled || isPending || Boolean(createBlock)}
+                  >
+                    {definition.submitLabel}
+                  </Button>
+                </Gate>
               </Inline>
             </SheetFooter>
           )}
@@ -617,6 +633,15 @@ export function DynamicSecretEditSheet({
     resolver: providerResolver(() => definitionRef.current),
     shouldFocusError: true
   });
+  const blockFor = useManagedBlock(entry?.project ?? "");
+  const editBlock =
+    entry &&
+    blockFor(
+      ProjectPermissionSub.DynamicSecrets,
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
+      { environment: entry.environment, secretPath: entry.path },
+      "edit this dynamic secret"
+    );
 
   useEffect(() => {
     if (!definition || !editContext) return undefined;
@@ -695,14 +720,16 @@ export function DynamicSecretEditSheet({
               <Button type="button" variant="ghost" onClick={requestClose} disabled={isPending}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                form={EDIT_FORM_ID}
-                loading={isPending}
-                disabled={submitState.isDisabled || isPending}
-              >
-                {definition?.edit.submitLabel ?? "Save"}
-              </Button>
+              <Gate reason={editBlock}>
+                <Button
+                  type="submit"
+                  form={EDIT_FORM_ID}
+                  loading={isPending}
+                  disabled={submitState.isDisabled || isPending || Boolean(editBlock)}
+                >
+                  {definition?.edit.submitLabel ?? "Save"}
+                </Button>
+              </Gate>
             </Inline>
           </SheetFooter>
         </SheetContent>

@@ -1,6 +1,10 @@
 import { useState } from "react";
 import type { AxiosError } from "axios";
 
+import {
+  ProjectPermissionSecretFolderActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import type {
   TFolderAccess,
   TFolderAccessIdentity,
@@ -19,6 +23,7 @@ import {
   grantKey,
   memberKey
 } from "./folder-access-sheet";
+import { useManagedBlock } from "./permissions";
 import type { RowActionHostProps } from "./types";
 
 const toGrant = (access: TFolderAccess | null): FolderGrant | undefined =>
@@ -56,12 +61,19 @@ export function FolderActions({
     setLast(action);
     setSession(session + 1);
   }
+  const blockFor = useManagedBlock(scope.project);
   const environment = scope.visibleEnvironments[0];
   const folderPath = last ? childPath(last.entry.path, last.entry.name) : "";
+  const manageBlock = blockFor(
+    ProjectPermissionSub.SecretFolders,
+    ProjectPermissionSecretFolderActions.ManageAccess,
+    { environment: environment?.value ?? "", secretPath: folderPath },
+    "manage access to this folder"
+  );
   const target = {
     projectId: scope.project,
     environmentSlug: environment?.value ?? "",
-    secretPath: last?.action === "access" ? folderPath : ""
+    secretPath: last?.action === "access" && !manageBlock ? folderPath : ""
   };
   const users = adapter.useFolderAccessUsers(target).data;
   const identities = adapter.useFolderAccessIdentities(target).data;
@@ -189,6 +201,7 @@ export function FolderActions({
       }}
       onChange={applyAccess}
       onSuccess={(title) => onToast("ok", { title })}
+      manageBlock={manageBlock}
     />
   );
 }

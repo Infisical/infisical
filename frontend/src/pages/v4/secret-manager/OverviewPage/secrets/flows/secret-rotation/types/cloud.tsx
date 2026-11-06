@@ -15,7 +15,9 @@ import { Switch } from "@app/components/v4/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v4/ui/tabs";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Textarea } from "@app/components/v4/ui/textarea";
+import type { TCloudflarePermissionGroup } from "@app/hooks/api/appConnections/cloudflare/types";
 
+import { useV4Adapter } from "../../../../../../data/adapters";
 import {
   InfoTip,
   ReviewSection,
@@ -25,6 +27,7 @@ import {
   SelectField,
   TextField,
   useConnectionId,
+  useConnectionOptions,
   useRotationForm
 } from "../fields";
 import { ROTATION_TEMPLATES } from "../model";
@@ -38,7 +41,6 @@ import {
   CloudflareApiTokenPolicyEffect,
   CloudflareApiTokenPolicyScope,
   CloudflareR2AccessLevel,
-  CloudflareR2Jurisdiction,
   getR2BucketLabel,
   OpenRouterLimitReset,
   r2BucketKey,
@@ -50,50 +52,6 @@ import { StripePermissionSelector } from "./cloud-stripe";
 
 const toOptions = (map: Record<string, string>) =>
   Object.entries(map).map(([value, label]) => ({ value, label }));
-
-const CLOUDFLARE_ZONES = [
-  { id: "zone-fake-0001", name: "example-storefront.test" },
-  { id: "zone-fake-0002", name: "example-docs.test" },
-  { id: "zone-fake-0003", name: "example-status.test" }
-];
-
-const CLOUDFLARE_PERMISSION_GROUPS = [
-  { id: "pg-fake-0001", name: "Account Settings Read", scopes: ["com.cloudflare.api.account"] },
-  { id: "pg-fake-0002", name: "Workers Scripts Write", scopes: ["com.cloudflare.api.account"] },
-  { id: "pg-fake-0003", name: "DNS Read", scopes: ["com.cloudflare.api.account.zone"] },
-  { id: "pg-fake-0004", name: "DNS Write", scopes: ["com.cloudflare.api.account.zone"] },
-  { id: "pg-fake-0005", name: "Cache Purge", scopes: ["com.cloudflare.api.account.zone"] },
-  { id: "pg-fake-0006", name: "Zone Read", scopes: [] }
-];
-
-const CLOUDFLARE_R2_BUCKETS: TCloudflareR2BucketSelection[] = [
-  { name: "example-assets", jurisdiction: CloudflareR2Jurisdiction.Default },
-  { name: "example-backups", jurisdiction: CloudflareR2Jurisdiction.Default },
-  { name: "example-eu-logs", jurisdiction: CloudflareR2Jurisdiction.Eu },
-  { name: "example-gov-archive", jurisdiction: CloudflareR2Jurisdiction.FedRamp }
-];
-
-const LITELLM_USERS = [
-  { id: "user-fake-0001", name: "ada@example.test" },
-  { id: "user-fake-0002", name: "grace@example.test" },
-  { id: "user-fake-0003", name: "linus@example.test" }
-];
-
-const LITELLM_TEAMS = [
-  { id: "team-fake-0001", name: "example-platform" },
-  { id: "team-fake-0002", name: "example-research" }
-];
-
-const LITELLM_MODELS = [
-  { id: "example-chat-large", name: "example-chat-large" },
-  { id: "example-chat-small", name: "example-chat-small" },
-  { id: "example-embed-v1", name: "example-embed-v1" }
-];
-
-const OPEN_ROUTER_WORKSPACES = [
-  { id: "ws-fake-0001", name: "Example Production" },
-  { id: "ws-fake-0002", name: "Example Staging" }
-];
 
 const asOptions = (items: { id: string; name: string }[]): ComboboxOption[] =>
   items.map(({ id, name }) => ({ value: id, label: name }));
@@ -213,9 +171,12 @@ const DEFAULT_POLICY: TCloudflareApiTokenPolicyRow = {
   permissionGroupId: ""
 };
 
-const permissionGroupOptionsFor = (scope: CloudflareApiTokenPolicyScope) =>
+const permissionGroupOptionsFor = (
+  groups: TCloudflarePermissionGroup[],
+  scope: CloudflareApiTokenPolicyScope
+) =>
   asOptions(
-    CLOUDFLARE_PERMISSION_GROUPS.filter(
+    groups.filter(
       (group) =>
         !group.scopes.length || group.scopes.includes(CLOUDFLARE_POLICY_SCOPE_RESOURCE_MAP[scope])
     )
@@ -223,6 +184,9 @@ const permissionGroupOptionsFor = (scope: CloudflareApiTokenPolicyScope) =>
 
 function CloudflareApiTokenParameters() {
   const { control, getValues, setValue } = useRotationForm();
+  const adapter = useV4Adapter("secrets");
+  const zones = useConnectionOptions(adapter.useCloudflareAccountZones);
+  const permissionGroups = useConnectionOptions(adapter.useCloudflarePermissionGroups);
   const policies = useWatch({ control, name: "parameters.policies" }) as
     | TCloudflareApiTokenPolicyRow[]
     | undefined;
@@ -313,7 +277,7 @@ function CloudflareApiTokenParameters() {
                           name={`parameters.policies.${i}.zoneIds`}
                           label="Zones"
                           placeholder="Select zones..."
-                          options={asOptions(CLOUDFLARE_ZONES)}
+                          options={asOptions(zones)}
                         />
                       )}
                       <div className={showZones ? undefined : "col-span-2"}>
@@ -321,7 +285,7 @@ function CloudflareApiTokenParameters() {
                           name={`parameters.policies.${i}.permissionGroupId`}
                           label="Permission group"
                           placeholder="Select a permission group..."
-                          options={permissionGroupOptionsFor(scope)}
+                          options={permissionGroupOptionsFor(permissionGroups, scope)}
                         />
                       </div>
                     </Grid>
@@ -364,12 +328,13 @@ function CloudflareApiTokenParameters() {
 function CloudflareR2AccessKeyParameters() {
   const { control } = useRotationForm();
   const connectionId = useConnectionId();
+  const fetchedBuckets = useConnectionOptions(useV4Adapter("secrets").useCloudflareR2Buckets);
   const selectedBuckets = useWatch({ control, name: "parameters.buckets" }) as
     | TCloudflareR2BucketSelection[]
     | undefined;
-  const fetchedKeys = new Set(CLOUDFLARE_R2_BUCKETS.map(r2BucketKey));
+  const fetchedKeys = new Set(fetchedBuckets.map(r2BucketKey));
   const buckets = [
-    ...CLOUDFLARE_R2_BUCKETS,
+    ...fetchedBuckets,
     ...(selectedBuckets ?? []).filter((bucket) => !fetchedKeys.has(r2BucketKey(bucket)))
   ];
   return (
@@ -481,6 +446,10 @@ const DEFAULT_LITELLM_OPTIONS = `{
 }`;
 
 function LiteLLMApiKeyParameters() {
+  const adapter = useV4Adapter("secrets");
+  const users = useConnectionOptions(adapter.useLiteLLMUsers);
+  const teams = useConnectionOptions(adapter.useLiteLLMTeams);
+  const models = useConnectionOptions(adapter.useLiteLLMModels);
   return (
     <Tabs defaultValue="general">
       <TabsList>
@@ -502,7 +471,7 @@ function LiteLLMApiKeyParameters() {
             optional
             tooltip="Associate the generated key with a LiteLLM user. Search by email."
             placeholder="Search for a user..."
-            options={asOptions(LITELLM_USERS)}
+            options={asOptions(users)}
           />
           <PickerField
             name="parameters.teamId"
@@ -510,7 +479,7 @@ function LiteLLMApiKeyParameters() {
             optional
             tooltip="Associate the generated key with a LiteLLM team. Search by team alias."
             placeholder="Search for a team..."
-            options={asOptions(LITELLM_TEAMS)}
+            options={asOptions(teams)}
           />
           <PickerField
             multiple
@@ -519,7 +488,7 @@ function LiteLLMApiKeyParameters() {
             optional
             tooltip="Restrict the generated key to specific models. Leave empty to allow all models."
             placeholder="Select models..."
-            options={asOptions(LITELLM_MODELS)}
+            options={asOptions(models)}
           />
         </Stack>
       </TabsContent>
@@ -553,6 +522,7 @@ const LIMIT_RESET_OPTIONS = [
 
 function OpenRouterApiKeyParameters() {
   const { control } = useRotationForm();
+  const workspaces = useConnectionOptions(useV4Adapter("secrets").useOpenRouterWorkspaces);
   const [limit, id] = useWatch({ control, name: ["parameters.limit", "id"] });
   const isUpdate = Boolean(id);
   return (
@@ -564,7 +534,7 @@ function OpenRouterApiKeyParameters() {
         tooltip="The OpenRouter workspace to create API keys in. Leave blank to use your OpenRouter Default workspace. This cannot be changed after the rotation is created."
         description={isUpdate ? "Cannot be updated." : undefined}
         placeholder="Select a workspace..."
-        options={asOptions(OPEN_ROUTER_WORKSPACES)}
+        options={asOptions(workspaces)}
         disabled={isUpdate}
       />
       <TextField
@@ -705,12 +675,15 @@ const ipListItems = (parameters: Record<string, unknown>) => {
 
 function CloudflareApiTokenReview() {
   const { parameters, mapping } = useReviewValues();
+  const adapter = useV4Adapter("secrets");
+  const zones = useConnectionOptions(adapter.useCloudflareAccountZones);
+  const permissionGroups = useConnectionOptions(adapter.useCloudflarePermissionGroups);
   const policies = (parameters.policies ?? []) as TCloudflareApiTokenPolicyRow[];
   const scopeLabel = ({ scope, zoneIds }: TCloudflareApiTokenPolicyRow) =>
     scope !== CloudflareApiTokenPolicyScope.Zones
       ? CLOUDFLARE_POLICY_SCOPE_MAP[scope]
       : (zoneIds ?? [])
-          .map((zoneId) => CLOUDFLARE_ZONES.find((zone) => zone.id === zoneId)?.name ?? zoneId)
+          .map((zoneId) => zones.find((zone) => zone.id === zoneId)?.name ?? zoneId)
           .join(", ");
   return (
     <>
@@ -726,9 +699,8 @@ function CloudflareApiTokenReview() {
                   <span>{CLOUDFLARE_POLICY_EFFECT_MAP[policy.effect]}</span>
                   <Badge tone="soft">{scopeLabel(policy)}</Badge>
                   <SmallText muted>
-                    {CLOUDFLARE_PERMISSION_GROUPS.find(
-                      (group) => group.id === policy.permissionGroupId
-                    )?.name ?? policy.permissionGroupId}
+                    {permissionGroups.find((group) => group.id === policy.permissionGroupId)
+                      ?.name ?? policy.permissionGroupId}
                   </SmallText>
                 </Inline>
               ] as const

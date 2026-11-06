@@ -25,8 +25,9 @@ import type {
 import type { TCreateSecretSyncDTO, TSecretSync } from "@app/hooks/api/secretSyncs/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
+import type { SecretsOptionsAdapter } from "./contract-options";
 
-export type SecretsManagedAdapter = {
+export type SecretsManagedAdapter = SecretsOptionsAdapter & {
   useSecretRotationCredentials: (
     dto: { rotationId: string; type: SecretRotation },
     options?: { enabled?: boolean }

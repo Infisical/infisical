@@ -24,8 +24,10 @@ import { useCreateSecretSync } from "@app/hooks/api/secretSyncs/mutations";
 import { useListSecretSyncs } from "@app/hooks/api/secretSyncs/queries";
 
 import type { SecretsManagedAdapter } from "./contract-managed";
+import { secretsOptionsLive } from "./live-options";
 
 export const secretsManagedLive: SecretsManagedAdapter = {
+  ...secretsOptionsLive,
   useSecretRotationCredentials: (dto, options) =>
     useViewSecretRotationV2GeneratedCredentials(dto, { enabled: options?.enabled }),
   useCreateSecretRotation: useCreateSecretRotationV2,

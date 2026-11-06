@@ -39,6 +39,10 @@ import {
 } from "@app/components/v4/ui/table";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
@@ -51,11 +55,14 @@ import {
   HoneyTokenMappingFields,
   honeyTokenSchema
 } from "../flows/create-honey-token-flow";
-import { environmentLabel } from "../flows/shared";
+import { environmentLabel, Gate } from "../flows/shared";
 import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
+import { useManagedBlock } from "./permissions";
 import type { RowActionHostProps } from "./types";
 
 import styles from "./honey-token-actions.module.css";
+
+type HoneyBlocks = { credentials?: string; edit?: string; reset?: string; revoke?: string };
 
 type HoneyToken = Extract<Resource, { kind: "honey" }>;
 
@@ -83,12 +90,14 @@ function EditHoneyTokenSheet({
   token,
   open,
   onOpenChange,
-  onSave
+  onSave,
+  block
 }: {
   token: HoneyToken;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (value: { name: string; description: string; mappedKeys: string[] }) => void;
+  block?: string;
 }) {
   const [draft, setDraft] = useState({
     name: token.name,
@@ -169,9 +178,16 @@ function EditHoneyTokenSheet({
             <Button type="button" variant="outline" onClick={back}>
               Back
             </Button>
-            <Button type="button" variant={last ? "primary" : "outline"} onClick={next}>
-              {last ? "Update honey token" : "Next"}
-            </Button>
+            <Gate reason={last ? block : undefined}>
+              <Button
+                type="button"
+                variant={last ? "primary" : "outline"}
+                disabled={last && Boolean(block)}
+                onClick={next}
+              >
+                {last ? "Update honey token" : "Next"}
+              </Button>
+            </Gate>
           </Inline>
         </Inline>
       }
@@ -214,12 +230,14 @@ function RevokeHoneyTokenDialog({
   token,
   open,
   onOpenChange,
-  onRevoke
+  onRevoke,
+  block
 }: {
   token: HoneyToken;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRevoke: () => void;
+  block?: string;
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -238,9 +256,11 @@ function RevokeHoneyTokenDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onRevoke}>
-            Revoke
-          </AlertDialogAction>
+          <Gate reason={block}>
+            <AlertDialogAction variant="destructive" disabled={Boolean(block)} onClick={onRevoke}>
+              Revoke
+            </AlertDialogAction>
+          </Gate>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -319,7 +339,8 @@ function HoneyTokenDetailsSheet({
   open,
   onOpenChange,
   onReset,
-  onRevoke
+  onRevoke,
+  blocks
 }: {
   token: HoneyToken;
   credentials: Record<string, string | undefined>;
@@ -327,6 +348,7 @@ function HoneyTokenDetailsSheet({
   onOpenChange: (open: boolean) => void;
   onReset: () => void;
   onRevoke: () => void;
+  blocks: HoneyBlocks;
 }) {
   const [confirm, setConfirm] = useState<"reset" | "revoke">();
   const isTriggered = token.status === "triggered";
@@ -411,7 +433,7 @@ function HoneyTokenDetailsSheet({
                     })}
                   </div>
                 ) : (
-                  <SmallText muted>No credentials available.</SmallText>
+                  <SmallText muted>{blocks.credentials ?? "No credentials available."}</SmallText>
                 ))}
               <HoneyTokenEvents token={token} />
             </div>
@@ -421,16 +443,28 @@ function HoneyTokenDetailsSheet({
               <Inline justify="between">
                 <span>
                   {isTriggered && (
-                    <Button variant="outline" onClick={() => setConfirm("reset")}>
-                      <Icon icon={RotateCcwIcon} />
-                      Reset
-                    </Button>
+                    <Gate reason={blocks.reset}>
+                      <Button
+                        variant="outline"
+                        disabled={Boolean(blocks.reset)}
+                        onClick={() => setConfirm("reset")}
+                      >
+                        <Icon icon={RotateCcwIcon} />
+                        Reset
+                      </Button>
+                    </Gate>
                   )}
                 </span>
-                <Button variant="destructive" onClick={() => setConfirm("revoke")}>
-                  <Icon icon={BanIcon} />
-                  Revoke
-                </Button>
+                <Gate reason={blocks.revoke}>
+                  <Button
+                    variant="destructive"
+                    disabled={Boolean(blocks.revoke)}
+                    onClick={() => setConfirm("revoke")}
+                  >
+                    <Icon icon={BanIcon} />
+                    Revoke
+                  </Button>
+                </Gate>
               </Inline>
             </SheetFooter>
           )}
@@ -456,7 +490,11 @@ function HoneyTokenDetailsSheet({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onReset}>Reset</AlertDialogAction>
+            <Gate reason={blocks.reset}>
+              <AlertDialogAction disabled={Boolean(blocks.reset)} onClick={onReset}>
+                Reset
+              </AlertDialogAction>
+            </Gate>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -470,6 +508,7 @@ function HoneyTokenDetailsSheet({
           setConfirm(undefined);
           onRevoke();
         }}
+        block={blocks.revoke}
       />
     </>
   );
@@ -488,10 +527,29 @@ export function HoneyTokenActions({
     setShown(action);
     setSession(session + 1);
   }
+  const blockFor = useManagedBlock(scope.project);
+  const honeyBlock = (honeyAction: ProjectPermissionHoneyTokenActions, verb: string) =>
+    shown
+      ? blockFor(
+          ProjectPermissionSub.HoneyTokens,
+          honeyAction,
+          { environment: shown.entry.environment, secretPath: shown.entry.path },
+          verb
+        )
+      : undefined;
+  const blocks: HoneyBlocks = {
+    credentials: honeyBlock(
+      ProjectPermissionHoneyTokenActions.ReadCredentials,
+      "view this honey token's credentials"
+    ),
+    edit: honeyBlock(ProjectPermissionHoneyTokenActions.Edit, "edit this honey token"),
+    reset: honeyBlock(ProjectPermissionHoneyTokenActions.Reset, "reset this honey token"),
+    revoke: honeyBlock(ProjectPermissionHoneyTokenActions.Revoke, "revoke this honey token")
+  };
   const { data: loadedCredentials } = useV4Adapter("secrets").useHoneyTokenCredentials({
     honeyTokenId: shown?.entry.id ?? "",
     projectId: scope.project,
-    enabled: action?.action === "details"
+    enabled: action?.action === "details" && !blocks.credentials
   });
   if (!shown) return null;
   const open = Boolean(action);
@@ -525,6 +583,7 @@ export function HoneyTokenActions({
         token={token}
         open={open}
         onOpenChange={onOpenChange}
+        block={blocks.edit}
         onSave={(value) => {
           const renamed = new Map(
             token.mappedKeys.map((key, index) => [key, value.mappedKeys[index] ?? key])
@@ -551,6 +610,7 @@ export function HoneyTokenActions({
         token={token}
         open={open}
         onOpenChange={onOpenChange}
+        block={blocks.revoke}
         onRevoke={() => {
           revoke();
           onClose();
@@ -569,6 +629,7 @@ export function HoneyTokenActions({
       open={open}
       onOpenChange={onOpenChange}
       onRevoke={revoke}
+      blocks={blocks}
       onReset={() =>
         onApply(
           (current) =>

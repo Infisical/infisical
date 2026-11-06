@@ -12,6 +12,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
+import {
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
 
@@ -21,10 +25,11 @@ import {
   DynamicSecretEditSheet,
   type DynamicSecretResource
 } from "../flows/dynamic-secret-flow";
-import { environmentLabel } from "../flows/shared";
+import { environmentLabel, Gate } from "../flows/shared";
 import type { LeaseRequest } from "./dynamic-secret-lease-provision";
 import type { DynamicSecretLease } from "./dynamic-secret-leases";
 import { DynamicSecretLeasesSheet } from "./dynamic-secret-leases-sheet";
+import { useManagedBlock } from "./permissions";
 import type { RowActionHostProps } from "./types";
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : undefined);
@@ -82,11 +87,30 @@ export function DynamicSecretActions({
   if (entry && (kind === "delete" || kind === "force-delete"))
     lastDeleted.current = { entry, isForced: kind === "force-delete" };
 
+  const blockFor = useManagedBlock(scope.project);
+  const dynamicBlock = (
+    item: DynamicSecretResource | undefined,
+    permissionAction: string,
+    verb: string
+  ) =>
+    item
+      ? blockFor(
+          ProjectPermissionSub.DynamicSecrets,
+          permissionAction,
+          { environment: item.environment, secretPath: item.path },
+          verb
+        )
+      : undefined;
+  const leaseBlock = dynamicBlock(
+    kind === "leases" ? entry : undefined,
+    ProjectPermissionDynamicSecretActions.Lease,
+    "lease this dynamic secret"
+  );
   const { name: dynamicSecretName, ...leaseScope } = target(entry);
   const leaseQuery = adapter.useDynamicSecretLeases({
     ...leaseScope,
     dynamicSecretName,
-    enabled: kind === "leases"
+    enabled: kind === "leases" && !leaseBlock
   });
   const leases: DynamicSecretLease[] = (leaseQuery.data ?? []).map((lease) => ({
     id: lease.id,
@@ -138,6 +162,11 @@ export function DynamicSecretActions({
   };
 
   const deleted = lastDeleted.current;
+  const deleteBlock = dynamicBlock(
+    deleted?.entry,
+    ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+    "delete this dynamic secret"
+  );
 
   return (
     <>
@@ -159,6 +188,7 @@ export function DynamicSecretActions({
               failed("Failed to renew lease")
             );
         }}
+        leaseBlock={leaseBlock}
         onRevoke={(leaseId, isForced) => {
           if (!entry) return;
           const { name, ...rest } = target(entry);
@@ -217,20 +247,23 @@ export function DynamicSecretActions({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (!deleted) return;
-                deleteDynamicSecret
-                  .mutateAsync({ ...target(deleted.entry), isForced: deleted.isForced })
-                  .then(
-                    () => onToast("ok", { title: "Dynamic secret deleted" }),
-                    failed("Failed to delete dynamic secret")
-                  );
-              }}
-            >
-              {deleted?.isForced ? "Force delete" : "Delete"}
-            </AlertDialogAction>
+            <Gate reason={deleteBlock}>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={Boolean(deleteBlock)}
+                onClick={() => {
+                  if (!deleted) return;
+                  deleteDynamicSecret
+                    .mutateAsync({ ...target(deleted.entry), isForced: deleted.isForced })
+                    .then(
+                      () => onToast("ok", { title: "Dynamic secret deleted" }),
+                      failed("Failed to delete dynamic secret")
+                    );
+                }}
+              >
+                {deleted?.isForced ? "Force delete" : "Delete"}
+              </AlertDialogAction>
+            </Gate>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

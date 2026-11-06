@@ -24,6 +24,10 @@ import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Switch } from "@app/components/v4/ui/switch";
 import { Text } from "@app/components/v4/ui/text";
+import {
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import type { SecretRotation as ApiSecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import type { TReconcileLocalAccountRotationDTO } from "@app/hooks/api/secretRotationsV2/types";
 
@@ -38,6 +42,8 @@ import {
   UnixLinuxLocalAccountRotationMethod,
   WindowsLocalAccountRotationMethod
 } from "../flows/secret-rotation/schemas";
+import { Gate } from "../flows/shared";
+import { useManagedBlock } from "./permissions";
 import { RotationCredentialsDialog } from "./rotation-credentials-dialog";
 import type { RowAction, RowActionHostProps } from "./types";
 
@@ -67,12 +73,14 @@ function RotateDialog({
   open,
   rotationType,
   onOpenChange,
-  onRotate
+  onRotate,
+  block
 }: {
   open: boolean;
   rotationType: string;
   onOpenChange: (open: boolean) => void;
   onRotate: () => void;
+  block?: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -88,7 +96,11 @@ function RotateDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={onRotate}>Rotate secrets</Button>
+          <Gate reason={block}>
+            <Button disabled={Boolean(block)} onClick={onRotate}>
+              Rotate secrets
+            </Button>
+          </Gate>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -99,12 +111,14 @@ function ReconcileDialog({
   open,
   typeName,
   onOpenChange,
-  onReconcile
+  onReconcile,
+  block
 }: {
   open: boolean;
   typeName: string;
   onOpenChange: (open: boolean) => void;
   onReconcile: () => void;
+  block?: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -129,7 +143,11 @@ function ReconcileDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={onReconcile}>Reconcile</Button>
+          <Gate reason={block}>
+            <Button disabled={Boolean(block)} onClick={onReconcile}>
+              Reconcile
+            </Button>
+          </Gate>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -140,12 +158,14 @@ function DeleteDialog({
   open,
   name,
   onOpenChange,
-  onDelete
+  onDelete,
+  block
 }: {
   open: boolean;
   name: string;
   onOpenChange: (open: boolean) => void;
   onDelete: (options: { revokeGeneratedCredentials: boolean; deleteSecrets: boolean }) => void;
+  block?: string;
 }) {
   const [typed, setTyped] = useState("");
   const [revokeGeneratedCredentials, setRevokeGeneratedCredentials] = useState(false);
@@ -183,13 +203,15 @@ function DeleteDialog({
         />
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            disabled={typed !== name}
-            onClick={() => onDelete({ revokeGeneratedCredentials, deleteSecrets })}
-          >
-            Delete
-          </AlertDialogAction>
+          <Gate reason={block}>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={typed !== name || Boolean(block)}
+              onClick={() => onDelete({ revokeGeneratedCredentials, deleteSecrets })}
+            >
+              Delete
+            </AlertDialogAction>
+          </Gate>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -209,6 +231,18 @@ export function RotationActions({
   const deleteRotation = adapter.useDeleteSecretRotation();
   const reconcileRotation = adapter.useReconcileSecretRotation();
   const checkCredentials = adapter.useCheckSecretRotationCredentials();
+  const blockFor = useManagedBlock(scope.project);
+  const rotationBlock = (rotation: RotationResource, permissionAction: string, verb: string) =>
+    blockFor(
+      ProjectPermissionSub.SecretRotation,
+      permissionAction,
+      {
+        environment: rotation.environment,
+        secretPath: rotation.path,
+        ...(rotation.connectionId ? { connectionId: rotation.connectionId } : {})
+      },
+      verb
+    );
   const [last, setLast] = useState<Action | undefined>(action);
   const [session, setSession] = useState(0);
   if (action && action !== last) {
@@ -233,6 +267,16 @@ export function RotationActions({
   useEffect(() => {
     if (!validating) return;
     const rotationType = SECRET_ROTATION_MAP[rotationTypeOf(validating)].name;
+    const block = rotationBlock(
+      validating,
+      ProjectPermissionSecretRotationActions.Read,
+      "validate this rotation's credentials"
+    );
+    if (block) {
+      onToast("bad", { title: "Credentials check failed", description: block });
+      onClose();
+      return;
+    }
     checkCredentials.mutateAsync(target(validating)).then(
       () =>
         onToast("ok", {
@@ -313,6 +357,11 @@ export function RotationActions({
           open={isOpen("credentials")}
           rotation={rotation}
           onOpenChange={onOpenChange}
+          block={rotationBlock(
+            rotation,
+            ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+            "view this rotation's generated credentials"
+          )}
         />
       )}
       {last.action === "rotate" && (
@@ -321,6 +370,11 @@ export function RotationActions({
           rotationType={rotationType}
           onOpenChange={onOpenChange}
           onRotate={rotate}
+          block={rotationBlock(
+            rotation,
+            ProjectPermissionSecretRotationActions.RotateSecrets,
+            "rotate this rotation's secrets"
+          )}
         />
       )}
       {last.action === "reconcile" && (
@@ -329,6 +383,11 @@ export function RotationActions({
           typeName={reconcileTypeName(type)}
           onOpenChange={onOpenChange}
           onReconcile={reconcile}
+          block={rotationBlock(
+            rotation,
+            ProjectPermissionSecretRotationActions.Edit,
+            "reconcile this rotation"
+          )}
         />
       )}
       {last.action === "edit" && (
@@ -352,6 +411,11 @@ export function RotationActions({
           name={rotation.name}
           onOpenChange={onOpenChange}
           onDelete={remove}
+          block={rotationBlock(
+            rotation,
+            ProjectPermissionSecretRotationActions.Delete,
+            "delete this rotation"
+          )}
         />
       )}
     </>

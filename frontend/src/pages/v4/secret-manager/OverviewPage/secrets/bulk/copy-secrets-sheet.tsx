@@ -28,6 +28,10 @@ import {
 import { Switch } from "@app/components/v4/ui/switch";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import type {
   CopySecretsAttributes,
   CopySecretsFolder,
@@ -52,6 +56,7 @@ import {
 
 import { readableValue, type Resource, type Secret } from "../../secrets-model";
 import { childPath, folderExists, Gate } from "../flows/shared";
+import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
 import { CopySecretsProperties } from "./copy-secrets-properties";
 import { CopySecretsTree, type PreviewFilter } from "./copy-secrets-tree";
@@ -212,6 +217,7 @@ function CopySecretsSession({
   onCompleted
 }: Props & { invocation: CopySecretsInvocation }) {
   const { project } = scope;
+  const blockFor = useManagedBlock(project);
   const environments = scope.environments.map(({ value, label }) => ({
     id: value,
     name: label,
@@ -394,7 +400,12 @@ function CopySecretsSession({
     )
       return "Choose a different destination path";
     if (!selectedItemCount) return "Select at least one secret or folder";
-    return undefined;
+    return blockFor(
+      ProjectPermissionSub.Secrets,
+      ProjectPermissionSecretActions.Create,
+      { environment: destinationEnvironmentSlug, secretPath: normalizedDestinationPath },
+      "create secrets in this destination"
+    );
   })();
 
   const copySecrets = ({

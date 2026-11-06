@@ -64,6 +64,8 @@ import {
   isValidTemporaryRange
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
+import { Gate } from "../flows/shared";
+
 import styles from "./folder-actions.module.css";
 
 export type FolderGrant = {
@@ -255,24 +257,28 @@ function ActorIdentity({ actor }: { actor: Actor }) {
 function GrantRow({
   actor,
   footerNote,
-  onSetTier
+  onSetTier,
+  block
 }: {
   actor: Actor;
   footerNote?: string;
   onSetTier: (tier: SecretFolderRole) => void;
+  block?: string;
 }) {
   return (
     <div className={styles.actorRow}>
       <ActorIdentity actor={actor} />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="accent" size="sm">
-            Grant access
-            <Icon name="chev-down" />
-          </Button>
-        </DropdownMenuTrigger>
-        <TierDropdown footerNote={footerNote} onSelectTier={onSetTier} />
-      </DropdownMenu>
+      <Gate reason={block}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="accent" size="sm" disabled={Boolean(block)}>
+              Grant access
+              <Icon name="chev-down" />
+            </Button>
+          </DropdownMenuTrigger>
+          <TierDropdown footerNote={footerNote} onSelectTier={onSetTier} />
+        </DropdownMenu>
+      </Gate>
     </div>
   );
 }
@@ -282,13 +288,15 @@ function AccessRow({
   onSetTier,
   onSetTemporaryRange,
   onMakePermanent,
-  onRemove
+  onRemove,
+  block
 }: {
   actor: Actor;
   onSetTier: (tier: SecretFolderRole) => void;
   onSetTemporaryRange: (range: string) => void;
   onMakePermanent: () => void;
   onRemove: () => void;
+  block?: string;
 }) {
   const [isTemporaryOpen, setIsTemporaryOpen] = useState(false);
   const [range, setRange] = useState(actor.access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
@@ -320,73 +328,75 @@ function AccessRow({
   return (
     <div className={styles.actorRow}>
       <ActorIdentity actor={actor} />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          {access ? (
-            <Button variant="ghost" size="sm">
-              {tierLabel(access.permission)}
-              {isOverride && <Badge tone="warn">Override</Badge>}
-              {remainingTime && (
-                <Tooltip
-                  content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
-                >
-                  <span className={styles.badgeSlot}>
-                    <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
-                      <Icon name="clock" size={12} />
-                      {remainingTime.isExpired ? "Expired" : remainingTime.value}
-                    </Badge>
-                  </span>
-                </Tooltip>
-              )}
-              <Icon name="chev-down" />
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" title={roleNames || undefined}>
-              <span className={styles.roleNames}>{roleNames || "Role"}</span>
-              <Badge tone="soft">Project</Badge>
-              <Icon name="chev-down" />
-            </Button>
-          )}
-        </DropdownMenuTrigger>
-        <TierDropdown
-          activeTier={access?.permission ?? null}
-          footerNote={
-            access
-              ? undefined
-              : `Choosing a tier overrides ${firstName}'s project role in this folder.`
-          }
-          temporaryLabel={
-            remainingTime ? (
-              <span className={styles.menuSplit}>
-                Edit temporary access
-                <span className={styles.menuMeta}>
-                  {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
-                </span>
-              </span>
+      <Gate reason={block}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild disabled={Boolean(block)}>
+            {access ? (
+              <Button variant="ghost" size="sm">
+                {tierLabel(access.permission)}
+                {isOverride && <Badge tone="warn">Override</Badge>}
+                {remainingTime && (
+                  <Tooltip
+                    content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
+                  >
+                    <span className={styles.badgeSlot}>
+                      <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
+                        <Icon name="clock" size={12} />
+                        {remainingTime.isExpired ? "Expired" : remainingTime.value}
+                      </Badge>
+                    </span>
+                  </Tooltip>
+                )}
+                <Icon name="chev-down" />
+              </Button>
             ) : (
-              "Add temporary access"
-            )
-          }
-          onSelectTier={onSetTier}
-          onEditTemporaryAccess={
-            access
-              ? () => {
-                  setRange(access.temporaryRange || DEFAULT_TEMPORARY_RANGE);
-                  setIsTemporaryOpen(true);
-                }
-              : undefined
-          }
-          onRemove={access ? onRemove : undefined}
-          removeLabel={
-            {
-              expired: "Clear expired access",
-              temporary: isOverride ? "End temporary override" : "End temporary access",
-              permanent: isOverride ? "Remove access override" : "Remove folder access"
-            }[grantState]
-          }
-          removeVariant={grantState === "expired" || isOverride ? "default" : "destructive"}
-        />
-      </DropdownMenu>
+              <Button variant="ghost" size="sm" title={roleNames || undefined}>
+                <span className={styles.roleNames}>{roleNames || "Role"}</span>
+                <Badge tone="soft">Project</Badge>
+                <Icon name="chev-down" />
+              </Button>
+            )}
+          </DropdownMenuTrigger>
+          <TierDropdown
+            activeTier={access?.permission ?? null}
+            footerNote={
+              access
+                ? undefined
+                : `Choosing a tier overrides ${firstName}'s project role in this folder.`
+            }
+            temporaryLabel={
+              remainingTime ? (
+                <span className={styles.menuSplit}>
+                  Edit temporary access
+                  <span className={styles.menuMeta}>
+                    {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
+                  </span>
+                </span>
+              ) : (
+                "Add temporary access"
+              )
+            }
+            onSelectTier={onSetTier}
+            onEditTemporaryAccess={
+              access
+                ? () => {
+                    setRange(access.temporaryRange || DEFAULT_TEMPORARY_RANGE);
+                    setIsTemporaryOpen(true);
+                  }
+                : undefined
+            }
+            onRemove={access ? onRemove : undefined}
+            removeLabel={
+              {
+                expired: "Clear expired access",
+                temporary: isOverride ? "End temporary override" : "End temporary access",
+                permanent: isOverride ? "Remove access override" : "Remove folder access"
+              }[grantState]
+            }
+            removeVariant={grantState === "expired" || isOverride ? "default" : "destructive"}
+          />
+        </DropdownMenu>
+      </Gate>
       <Dialog open={isTemporaryOpen} onOpenChange={setIsTemporaryOpen}>
         <DialogContent>
           <DialogHeader>
@@ -549,7 +559,8 @@ export function FolderAccessSheet({
   folderPath,
   onOpenChange,
   onChange,
-  onSuccess
+  onSuccess,
+  manageBlock
 }: {
   open: boolean;
   state: AccessState;
@@ -559,6 +570,7 @@ export function FolderAccessSheet({
   onOpenChange: (open: boolean) => void;
   onChange: (update: (current: AccessState) => AccessState) => void;
   onSuccess: (title: string) => void;
+  manageBlock?: string;
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>(EMPTY_FILTER);
@@ -617,6 +629,7 @@ export function FolderAccessSheet({
       description:
         "No one on this page matches these filters. Clear a filter, or check another page."
     };
+  if (manageBlock) emptyState = { title: "Access restricted", description: `${manageBlock}.` };
 
   const writeGrant = (actor: Actor, grant: FolderGrant | null, member?: Partial<AccessMember>) =>
     onChange((current) => {
@@ -786,6 +799,7 @@ export function FolderAccessSheet({
                       onSetTemporaryRange={(range) => setTemporaryRange(actor, range)}
                       onMakePermanent={() => makePermanent(actor)}
                       onRemove={() => setRemovalActor(actor)}
+                      block={manageBlock}
                     />
                   ))}
                 </section>
@@ -815,6 +829,7 @@ export function FolderAccessSheet({
                                 key={memberKey(actor)}
                                 actor={actor}
                                 onSetTier={(tier) => setTier(actor, tier)}
+                                block={manageBlock}
                               />
                             ))}
                           </section>
@@ -833,6 +848,7 @@ export function FolderAccessSheet({
                                 onSetTier={(tier) =>
                                   setTier(actor, tier, { inProject: true, roles: ["No Access"] })
                                 }
+                                block={manageBlock}
                               />
                             ))}
                           </section>
