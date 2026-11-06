@@ -1,15 +1,71 @@
 import { Knex } from "knex";
 
-import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalRequestGrantStatus, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+
+type TApprovalPolicyMembershipVerifierFactoryDep = {
+  projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
+};
+
+// Shared between access-approval-policy and secret-approval-policy services to verify that the users/groups
+// referenced by a policy (approvers, bypassers) are actually members of the project the policy belongs to.
+export const approvalPolicyMembershipVerifierFactory = ({
+  projectDAL
+}: TApprovalPolicyMembershipVerifierFactoryDep) => {
+  const verifyProjectSubjectsMembership = async ({
+    userIds,
+    groupIds,
+    orgId,
+    projectId,
+    tx
+  }: {
+    userIds: string[];
+    groupIds: string[];
+    orgId: string;
+    projectId: string;
+    tx?: Knex;
+  }) => {
+    const uniqueUserIds = [...new Set(userIds)];
+    const uniqueGroupIds = [...new Set(groupIds)];
+    if (uniqueUserIds.length === 0 && uniqueGroupIds.length === 0) {
+      throw new BadRequestError({
+        message: "At least one user or group must be provided for approval policy"
+      });
+    }
+    const { effectiveUserIds, effectiveGroupIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
+      orgId,
+      projectId,
+      userIds: uniqueUserIds,
+      groupIds: uniqueGroupIds,
+      ...(tx ? { tx } : {})
+    });
+    const projectMemberUserIds = new Set(effectiveUserIds);
+    const userIdsWithoutAccess = uniqueUserIds.filter((id) => !projectMemberUserIds.has(id));
+    const projectGroupIds = new Set(effectiveGroupIds);
+    const groupIdsNotInProject = uniqueGroupIds.filter((id) => !projectGroupIds.has(id));
+
+    if (userIdsWithoutAccess.length) {
+      throw new BadRequestError({
+        message: `Some users are not members of the project: ${userIdsWithoutAccess.join(", ")}`
+      });
+    }
+
+    if (groupIdsNotInProject.length) {
+      throw new BadRequestError({
+        message: `Some groups are not members of the project: ${groupIdsNotInProject.join(", ")}`
+      });
+    }
+  };
+
+  return { verifyProjectSubjectsMembership };
+};
 
 type TSecretAccessApprovalGlobalPolicyExistsDep = {
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
     "findPolicyByEnvIdsAndSecretPath"
@@ -18,15 +74,9 @@ type TSecretAccessApprovalGlobalPolicyExistsDep = {
 
 export const secretAccessApprovalGlobalPolicyExists = async (
   { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
-  { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalGlobalPolicyExistsDep,
+  { approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalGlobalPolicyExistsDep,
   tx?: Knex
 ) => {
-  const legacyPolicy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath(
-    { envIds, secretPath, excludePolicyId },
-    tx
-  );
-  if (legacyPolicy) return legacyPolicy.environments[0]?.id ?? envIds[0];
-
   const policy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdsAndSecretPath(
     {
       envIds,

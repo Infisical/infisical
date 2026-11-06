@@ -6,11 +6,9 @@ import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols } from "@app/lib/knex";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
-export type TSecretAccessApprovalGlobalRequestBridgeDALFactory = ReturnType<
-  typeof secretAccessApprovalGlobalRequestBridgeDALFactory
->;
+export type TSecretAccessApprovalRequestDALFactory = ReturnType<typeof secretAccessApprovalRequestDALFactory>;
 
-export const secretAccessApprovalGlobalRequestBridgeDALFactory = (db: TDbClient) => {
+export const secretAccessApprovalRequestDALFactory = (db: TDbClient) => {
   const findSecretAccessRequestById = async (requestId: string, tx?: Knex) => {
     try {
       const request = await (tx || db.replicaNode())(TableName.ApprovalRequests)

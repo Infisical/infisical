@@ -3,12 +3,13 @@ import { z } from "zod";
 
 import { TDbClient } from "@app/db";
 import { TableName, TUsers } from "@app/db/schemas";
-import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { SecretAccessPolicyConstraintsSchema } from "@app/services/approval-policy/secret-access/secret-access-policy-schemas";
 import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
+
+import { ApproverType, BypasserType } from "./access-approval-policy-types";
 
 const StoredConstraintsSchema = z.object({ version: z.literal(1), constraints: SecretAccessPolicyConstraintsSchema });
 
@@ -18,11 +19,9 @@ const parseConstraints = (constraints: unknown) => {
   return { allowedSelfApprovals: true, requestExpirationTime: null, maxTimePeriod: null };
 };
 
-export type TSecretAccessApprovalGlobalPolicyBridgeDALFactory = ReturnType<
-  typeof secretAccessApprovalGlobalPolicyBridgeDALFactory
->;
+export type TSecretAccessApprovalPolicyDALFactory = ReturnType<typeof secretAccessApprovalPolicyDALFactory>;
 
-export const secretAccessApprovalGlobalPolicyBridgeDALFactory = (db: TDbClient) => {
+export const secretAccessApprovalPolicyDALFactory = (db: TDbClient) => {
   const findSecretAccessPolicies = async (
     {
       policyId,
