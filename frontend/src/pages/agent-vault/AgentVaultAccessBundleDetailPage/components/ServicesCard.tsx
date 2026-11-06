@@ -215,8 +215,8 @@ export const ServicesCard = ({
           <DocumentationLinkBadge href={AgentVaultDocsUrls.services} />
         </CardTitle>
         <CardDescription>
-          A service defines one HTTP API or MCP server the agent can reach, and the credential the
-          proxy attaches to its requests.
+          A service defines one API, MCP server, database or SSH server the agent can reach, and the
+          credential the proxy uses for it.
         </CardDescription>
         {canManage && (
           <CardAction>

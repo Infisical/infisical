@@ -39,7 +39,7 @@ const iconOf = ({
 }): TServiceIcon => {
   if (isNativeServiceType(serviceType)) {
     const meta = NATIVE_SERVICE_META[serviceType];
-    return { label: meta.label, icon: meta.icon };
+    return { label: meta.label, image: meta.image, icon: meta.icon };
   }
   if (hostPattern) return iconFromHostPattern(hostPattern);
   return { label: "Service", icon: ServerIcon };

@@ -4,20 +4,24 @@ import { AgentVaultServiceType, TAgentVaultNativeServiceType } from "@app/hooks/
 
 export const NATIVE_SERVICE_META: Record<
   TAgentVaultNativeServiceType,
-  { label: string; icon: LucideIcon; description: string }
+  // `image` is the brand logo PAM also shows for these types; `icon` is the fallback if it fails to load.
+  { label: string; image: string; icon: LucideIcon; description: string }
 > = {
   [AgentVaultServiceType.Postgres]: {
     label: "PostgreSQL",
+    image: "Postgres.png",
     icon: DatabaseIcon,
     description: "Run SQL against a PostgreSQL database."
   },
   [AgentVaultServiceType.Mysql]: {
     label: "MySQL",
+    image: "MySql.png",
     icon: DatabaseIcon,
     description: "Run SQL against a MySQL database."
   },
   [AgentVaultServiceType.Ssh]: {
     label: "SSH",
+    image: "SSH.png",
     icon: SquareTerminalIcon,
     description: "Run commands on a server over SSH."
   }

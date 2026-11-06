@@ -141,10 +141,22 @@ const NativeCard = ({
   serviceType: TAgentVaultNativeServiceType;
   onSelect: () => void;
 }) => {
-  const { label, icon: Icon, description } = NATIVE_SERVICE_META[serviceType];
+  const { label, image, icon: Icon, description } = NATIVE_SERVICE_META[serviceType];
+  const [hasImageError, setHasImageError] = useState(false);
   return (
     <SelectableCard
-      media={<Icon className="h-5 w-5 text-label-secondary" />}
+      media={
+        hasImageError ? (
+          <Icon className="h-5 w-5 text-label-secondary" />
+        ) : (
+          <ProviderIcon
+            icon={image}
+            alt={`${label} logo`}
+            className="h-6 w-6 object-contain"
+            onError={() => setHasImageError(true)}
+          />
+        )
+      }
       name={label}
       description={description}
       onSelect={onSelect}

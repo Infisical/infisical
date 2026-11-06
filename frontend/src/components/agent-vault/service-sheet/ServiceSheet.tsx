@@ -805,7 +805,7 @@ export const ServiceSheet = ({
   let customName = "Custom HTTP API";
   if (nativeType) customName = NATIVE_SERVICE_META[nativeType].label;
   else if (isMcp) customName = "Custom MCP Server";
-  const NativeIcon = nativeType ? NATIVE_SERVICE_META[nativeType].icon : null;
+  const nativeImage = nativeType ? NATIVE_SERVICE_META[nativeType].image : null;
 
   const stepDescription = (meta: (typeof SERVICE_STEPS)[number]) => {
     if (meta.step === ServiceStep.Template) return template?.name ?? customName;
@@ -890,7 +890,9 @@ export const ServiceSheet = ({
                 {template && (
                   <ProviderIcon icon={template.image} alt="" className="size-6 object-contain" />
                 )}
-                {NativeIcon && <NativeIcon className="size-5 text-label-secondary" />}
+                {nativeImage && (
+                  <ProviderIcon icon={nativeImage} alt="" className="size-6 object-contain" />
+                )}
                 {template?.name ?? (isUpdate ? service?.name : customName)}
                 <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
               </SheetTitle>
