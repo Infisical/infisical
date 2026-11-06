@@ -40,6 +40,7 @@ import {
 import { FolderTierRadioGroup } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderTierRadioGroup";
 import { TemporaryAccessPopover } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/TemporaryAccessPopover";
 
+import { ActorSummary } from "./ActorSummary";
 import { TFolderAccessSectionActor } from "./types";
 
 type Props = {
@@ -53,12 +54,6 @@ type FormProps = {
   actor: TFolderAccessSectionActor;
   existingAccess: TFolderAccess[];
   onClose: () => void;
-};
-
-const actorNameOf = (actor: TFolderAccessSectionActor) => {
-  if (actor.type === "identity") return actor.name;
-  const fullName = [actor.firstName, actor.lastName].filter(Boolean).join(" ").trim();
-  return fullName || actor.username;
 };
 
 const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) => {
@@ -156,9 +151,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
           Grant Folder Access
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
         </SheetTitle>
-        <div className="mt-2 flex min-w-0 items-center gap-2 text-xs">
-          <span className="truncate text-accent">{actorNameOf(actor)}</span>
-        </div>
+        <ActorSummary actor={actor} />
       </SheetHeader>
 
       <div className="thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4">
@@ -197,6 +190,12 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
           {targetError && <p className="text-xs text-danger">{targetError}</p>}
         </div>
 
+        <ApplyToSubfoldersToggle
+          checked={isRoot && isRecursive}
+          onCheckedChange={setIsRecursive}
+          isDisabled={!isRoot}
+        />
+
         <div className="space-y-2">
           <Label>Permission</Label>
           <FolderTierRadioGroup value={tier} onValueChange={setTier} />
@@ -208,7 +207,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
         </div>
 
         <div className="space-y-2">
-          <Label>Temporary access</Label>
+          <Label>Temporary Access</Label>
           <TemporaryAccessPopover
             isTemporary={isTemporary}
             range={range}
@@ -221,10 +220,6 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
             onRemove={() => setIsTemporary(false)}
           />
         </div>
-
-        {isRoot && (
-          <ApplyToSubfoldersToggle checked={isRecursive} onCheckedChange={setIsRecursive} />
-        )}
       </div>
 
       <SheetFooter className="border-t">

@@ -92,7 +92,7 @@ const roleBadgeLabelOf = (actor: TFolderAccessActor) => {
   return rest.length ? `${first.name} +${rest.length}` : first.name;
 };
 
-const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => {
+export const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => {
   const roleBadgeLabel = roleBadgeLabelOf(actor);
   return (
     <>

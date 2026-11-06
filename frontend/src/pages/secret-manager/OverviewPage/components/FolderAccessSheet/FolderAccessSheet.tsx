@@ -1,15 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  BotIcon,
-  ChevronRightIcon,
-  FolderIcon,
-  LayersIcon,
-  SearchIcon,
-  UserIcon,
-  UsersIcon,
-  XIcon
-} from "lucide-react";
+import { BotIcon, SearchIcon, UserIcon, UsersIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -88,6 +79,7 @@ import {
   TFolderAccessFilter
 } from "./FolderAccessFilter";
 import { FolderAccessGrantRow, FolderAccessRow } from "./FolderAccessRow";
+import { FolderPathBreadcrumb } from "./FolderPathBreadcrumb";
 import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints that share this page
@@ -483,13 +475,7 @@ export const FolderAccessSheet = ({
               Manage Permissions
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
             </SheetTitle>
-            <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-neutral/5 px-3 py-2 text-xs">
-              <LayersIcon className="size-3.5 shrink-0 text-muted" />
-              <span className="shrink-0 text-foreground">{environmentName}</span>
-              <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
-              <FolderIcon className="size-3.5 shrink-0 text-folder" />
-              <span className="truncate font-mono text-foreground">{folderPath}</span>
-            </div>
+            <FolderPathBreadcrumb environmentName={environmentName} folderPath={folderPath} />
           </SheetHeader>
 
           <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">

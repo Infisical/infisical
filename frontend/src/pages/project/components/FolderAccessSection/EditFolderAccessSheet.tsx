@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { FolderIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   DocumentationLinkBadge,
   Label,
@@ -27,9 +25,11 @@ import {
   formatExpiryFull,
   isValidTemporaryRange
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
+import { FolderPathBreadcrumb } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderPathBreadcrumb";
 import { FolderTierRadioGroup } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderTierRadioGroup";
 import { TemporaryAccessPopover } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/TemporaryAccessPopover";
 
+import { ActorSummary } from "./ActorSummary";
 import { TFolderAccessSectionActor } from "./types";
 
 type Props = {
@@ -114,16 +114,17 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
           Edit Folder Access
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
         </SheetTitle>
-        <div className="mt-2 flex min-w-0 items-center gap-2 text-xs">
-          <FolderIcon className="size-3.5 shrink-0 text-folder" />
-          <span className="truncate font-mono text-accent">{access.secretPath}</span>
-          <Badge variant="project" className="shrink-0">
-            {environmentName}
-          </Badge>
-        </div>
+        <ActorSummary actor={actor} />
+        <FolderPathBreadcrumb environmentName={environmentName} folderPath={access.secretPath} />
       </SheetHeader>
 
       <div className="thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4">
+        <ApplyToSubfoldersToggle
+          checked={isRoot && isRecursive}
+          onCheckedChange={setIsRecursive}
+          isDisabled={!isRoot}
+        />
+
         <div className="space-y-2">
           <Label>Permission</Label>
           <FolderTierRadioGroup value={tier} onValueChange={setTier} />
@@ -135,7 +136,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
         </div>
 
         <div className="space-y-2">
-          <Label>Temporary access</Label>
+          <Label>Temporary Access</Label>
           <TemporaryAccessPopover
             isTemporary={isTemporary}
             range={range}
@@ -151,10 +152,6 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
             onRemove={() => setIsTemporary(false)}
           />
         </div>
-
-        {isRoot && (
-          <ApplyToSubfoldersToggle checked={isRecursive} onCheckedChange={setIsRecursive} />
-        )}
       </div>
 
       <SheetFooter className="justify-end border-t">
