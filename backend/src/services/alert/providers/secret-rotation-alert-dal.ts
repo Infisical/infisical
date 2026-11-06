@@ -45,14 +45,15 @@ export const secretRotationAlertDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Reads the primary: the create form adds a rotation's alert right after creating the rotation, and a
+  // lagging replica would leave that alert's audit log without the rotation's name.
   const findRotationNamesByIds = async (
     rotationIds: string[],
     orgId: string
   ): Promise<{ id: string; name: string }[]> => {
     if (rotationIds.length === 0) return [];
     try {
-      return (await db
-        .replicaNode()(TableName.SecretRotationV2)
+      return (await db(TableName.SecretRotationV2)
         .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
