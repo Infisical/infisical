@@ -1737,6 +1737,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     await rebuildCaCrl({
       caId: ca.id,
+      activeCaCert: certObj,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrlDAL,

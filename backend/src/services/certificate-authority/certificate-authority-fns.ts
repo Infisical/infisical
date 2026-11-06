@@ -700,6 +700,7 @@ export const getCaCrlIssuer = async ({
  */
 export const rebuildCaCrl = async ({
   caId,
+  activeCaCert,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateAuthorityCrlDAL,
@@ -736,12 +737,14 @@ export const rebuildCaCrl = async ({
   const nextUpdate = new Date(thisUpdate);
   nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
 
-  const issuer = await getCaCrlIssuer({
-    internalCa: ca.internalCa,
-    kmsId: keyId,
-    certificateAuthorityCertDAL,
-    kmsService
-  });
+  const issuer =
+    activeCaCert?.subjectName ??
+    (await getCaCrlIssuer({
+      internalCa: ca.internalCa,
+      kmsId: keyId,
+      certificateAuthorityCertDAL,
+      kmsService
+    }));
 
   const crl = await signer.createCrl({
     issuer,

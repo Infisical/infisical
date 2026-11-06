@@ -1,3 +1,4 @@
+import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -396,6 +397,7 @@ export type TBuildIssuedCertificateChainDTO = {
 
 export type TRebuildCaCrlDTO = {
   caId: string;
+  activeCaCert?: x509.X509Certificate;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;

@@ -3,7 +3,9 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
+import { buildLocalCaSigner } from "./ca-signer";
 import {
   buildAuthorityInfoAccessExtension,
   buildCrlDistributionPointUrls,
@@ -12,6 +14,7 @@ import {
   createDistinguishedName,
   extractDnParts,
   getCaCrlIssuer,
+  rebuildCaCrl,
   signatureAlgorithmToAlgCfg
 } from "./certificate-authority-fns";
 
@@ -636,5 +639,52 @@ describe("getCaCrlIssuer", () => {
 
   it("throws when the active CA certificate record is missing", async () => {
     await expect(resolveIssuer("missing-cert")).rejects.toThrow("not found");
+  });
+
+  it("signs the rebuilt CRL with the passed certificate while the CA read still lags", async () => {
+    const certificateAuthorityCertDAL = { findById: vi.fn() };
+    const certificateAuthorityCrlDAL = {
+      update: vi.fn<(filter: unknown, data: { encryptedCrl: Buffer }) => Promise<unknown>>()
+    };
+
+    await rebuildCaCrl({
+      caId: "ca-1",
+      activeCaCert: caCert,
+      certificateAuthorityDAL: {
+        findByIdWithAssociatedCa: vi.fn().mockResolvedValue({
+          id: "ca-1",
+          projectId: "project-1",
+          internalCa: { id: "internal-ca-1", dn: STORED_DN, activeCaCertId: null, keyAlgorithm: "EC_prime256v1" }
+        })
+      } as never,
+      certificateAuthorityCertDAL,
+      certificateAuthorityCrlDAL: certificateAuthorityCrlDAL as never,
+      certificateAuthoritySecretDAL: {
+        findOne: vi.fn().mockResolvedValue({ id: "secret-1", keySource: CertKeySource.Hsm })
+      } as never,
+      projectDAL: {
+        transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(undefined)),
+        findOne: vi.fn().mockResolvedValue({ id: "project-1", kmsCertificateKeyId: "kms-key-1" })
+      } as never,
+      certificateDAL: { find: vi.fn().mockResolvedValue([]) },
+      kmsService: {
+        encryptWithKmsKey: vi
+          .fn()
+          .mockResolvedValue(async ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }))
+      } as never,
+      caKeySourceService: {
+        buildSigner: vi.fn().mockResolvedValue(
+          buildLocalCaSigner({
+            privateKey: caKeys.privateKey,
+            publicKey: caKeys.publicKey,
+            signingAlgorithm: SIGNING_ALGORITHM
+          })
+        )
+      }
+    });
+
+    const crl = new x509.X509Crl(new Uint8Array(certificateAuthorityCrlDAL.update.mock.calls[0][1].encryptedCrl));
+    expect(Buffer.from(crl.issuerName.toArrayBuffer())).toEqual(Buffer.from(caCert.subjectName.toArrayBuffer()));
+    expect(certificateAuthorityCertDAL.findById).not.toHaveBeenCalled();
   });
 });
