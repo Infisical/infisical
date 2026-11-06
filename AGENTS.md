@@ -28,7 +28,6 @@ infisical/
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
-├── docker-compose.bdd.yml        # BDD testing environment
 ├── docker-compose.e2e-dbs.yml    # E2E test databases (Oracle, SAP, Snowflake, etc.)
 ├── Dockerfile.standalone-infisical       # Standalone image (frontend + backend)
 ├── Dockerfile.fips.standalone-infisical  # FIPS-compliant standalone image

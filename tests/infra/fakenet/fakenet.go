@@ -116,13 +116,10 @@ func (s *Server) Hosts() []string {
 	return out
 }
 
-// ServeHTTP is the fake-serving handler, reached over TLS on 443.
+// ServeHTTP is the fake-serving handler, reached over TLS on 443 and over plain HTTP
+// on 80.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	host := hostOf(r)
-
-	s.mu.Lock()
-	svc, known := s.services[host]
-	s.mu.Unlock()
+	host, svc, known := s.service(hostOf(r))
 
 	// Every hostname resolves here, so an unfaked one arrives as a normal request
 	// rather than failing to connect. Answering it with a 501 naming the URL makes a
@@ -159,7 +156,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// anyway, and this is the first thing worth reading when a sync did not do what
 	// a test expected: it says whether the call happened at all, and under which
 	// credential.
-	log.Printf("%-6s %s%s -> %d  scope=%s", r.Method, host, r.URL.Path, rec.status, short(key))
+	log.Printf("%-6s %s%s -> %d  scope=%s", r.Method, hostOf(r), r.URL.Path, rec.status, short(key))
 }
 
 func short(key string) string {
@@ -201,7 +198,7 @@ func (s *Server) Lookup(host, key string) (Fake, bool) {
 // Emitter publishes under host and key for a fake that is not an HTTP Service and so
 // is never handed one per scope.
 func (s *Server) Emitter(host, key string) Emitter {
-	return Emitter{log: s.events, host: host, key: key}
+	return Emitter{log: s.events, txt: s.txt, host: host, key: key}
 }
 
 func (s *Server) takeRule(sc *scope, r *http.Request) *Rule {
@@ -234,6 +231,25 @@ func matches(rule *Rule, r *http.Request) bool {
 	default:
 		return rule.Path == r.URL.Path
 	}
+}
+
+// service finds the fake for a request's host. A service registered as "*.<domain>"
+// answers for every name under that domain, for a party whose hostnames the test
+// makes up, such as the web server behind an ACME HTTP-01 identifier. Its scopes and
+// events are filed under the registered name, which is the one a test opens. An exact
+// registration wins over a wildcard.
+func (s *Server) service(host string) (string, Service, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if svc, ok := s.services[host]; ok {
+		return host, svc, true
+	}
+	for name, svc := range s.services {
+		if suffix, ok := strings.CutPrefix(name, "*"); ok && strings.HasSuffix(host, suffix) {
+			return name, svc, true
+		}
+	}
+	return host, nil, false
 }
 
 // hostOf strips the port, which is present on a proxied request and absent on a

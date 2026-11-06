@@ -7866,6 +7866,372 @@ func (e UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode) Valid() b
 	}
 }
 
+// Defines values for CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnectionJSONBody0Method.
+const (
+	CreateCloudflareAppConnectionJSONBody0MethodApiToken CreateCloudflareAppConnectionJSONBody0Method = "api-token"
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnectionJSONBody0Method enum.
+func (e CreateCloudflareAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnectionJSONBody0MethodApiToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateCloudflareAppConnection200JSONResponseBodyAppConnection0AppCloudflare CreateCloudflareAppConnection200JSONResponseBodyAppConnection0App = "cloudflare"
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateCloudflareAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection200JSONResponseBodyAppConnection0AppCloudflare:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateCloudflareAppConnection200JSONResponseBodyAppConnection0MethodApiToken CreateCloudflareAppConnection200JSONResponseBodyAppConnection0Method = "api-token"
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateCloudflareAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection200JSONResponseBodyAppConnection0MethodApiToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateCloudflareAppConnection400JSONResponseBodyStatusCodeN400 CreateCloudflareAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateCloudflareAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateCloudflareAppConnection401JSONResponseBodyStatusCodeN401 CreateCloudflareAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateCloudflareAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateCloudflareAppConnection403JSONResponseBodyStatusCodeN403 CreateCloudflareAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateCloudflareAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateCloudflareAppConnection404JSONResponseBodyStatusCodeN404 CreateCloudflareAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateCloudflareAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateCloudflareAppConnection422JSONResponseBodyStatusCodeN422 CreateCloudflareAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateCloudflareAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCloudflareAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateCloudflareAppConnection500JSONResponseBodyStatusCodeN500 CreateCloudflareAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateCloudflareAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateCloudflareAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCloudflareAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnectionJSONBody0Method.
+const (
+	CreateDnsMadeEasyAppConnectionJSONBody0MethodApiKeySecret CreateDnsMadeEasyAppConnectionJSONBody0Method = "api-key-secret"
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnectionJSONBody0Method enum.
+func (e CreateDnsMadeEasyAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnectionJSONBody0MethodApiKeySecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0AppDnsMadeEasy CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0App = "dns-made-easy"
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0AppDnsMadeEasy:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0MethodApiKeySecret CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0Method = "api-key-secret"
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0MethodApiKeySecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCodeN400 CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCodeN401 CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCodeN403 CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCodeN404 CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCodeN422 CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCodeN500 CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListGitHubAppConnections200JSONResponseBodyAppConnections0App.
 const (
 	ListGitHubAppConnections200JSONResponseBodyAppConnections0AppGithub ListGitHubAppConnections200JSONResponseBodyAppConnections0App = "github"
@@ -22170,6 +22536,2946 @@ func (e LoginWithUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetAcmeAuthorization200JSONResponseBodyChallengesType.
+const (
+	GetAcmeAuthorization200JSONResponseBodyChallengesTypeDns01     GetAcmeAuthorization200JSONResponseBodyChallengesType = "dns-01"
+	GetAcmeAuthorization200JSONResponseBodyChallengesTypeHttp01    GetAcmeAuthorization200JSONResponseBodyChallengesType = "http-01"
+	GetAcmeAuthorization200JSONResponseBodyChallengesTypeTlsAlpn01 GetAcmeAuthorization200JSONResponseBodyChallengesType = "tls-alpn-01"
+)
+
+// Valid indicates whether the value is a known member of the GetAcmeAuthorization200JSONResponseBodyChallengesType enum.
+func (e GetAcmeAuthorization200JSONResponseBodyChallengesType) Valid() bool {
+	switch e {
+	case GetAcmeAuthorization200JSONResponseBodyChallengesTypeDns01:
+		return true
+	case GetAcmeAuthorization200JSONResponseBodyChallengesTypeHttp01:
+		return true
+	case GetAcmeAuthorization200JSONResponseBodyChallengesTypeTlsAlpn01:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAcmeAuthorization200JSONResponseBodyStatus.
+const (
+	GetAcmeAuthorization200JSONResponseBodyStatusDeactivated GetAcmeAuthorization200JSONResponseBodyStatus = "deactivated"
+	GetAcmeAuthorization200JSONResponseBodyStatusExpired     GetAcmeAuthorization200JSONResponseBodyStatus = "expired"
+	GetAcmeAuthorization200JSONResponseBodyStatusInvalid     GetAcmeAuthorization200JSONResponseBodyStatus = "invalid"
+	GetAcmeAuthorization200JSONResponseBodyStatusPending     GetAcmeAuthorization200JSONResponseBodyStatus = "pending"
+	GetAcmeAuthorization200JSONResponseBodyStatusRevoked     GetAcmeAuthorization200JSONResponseBodyStatus = "revoked"
+	GetAcmeAuthorization200JSONResponseBodyStatusValid       GetAcmeAuthorization200JSONResponseBodyStatus = "valid"
+)
+
+// Valid indicates whether the value is a known member of the GetAcmeAuthorization200JSONResponseBodyStatus enum.
+func (e GetAcmeAuthorization200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case GetAcmeAuthorization200JSONResponseBodyStatusDeactivated:
+		return true
+	case GetAcmeAuthorization200JSONResponseBodyStatusExpired:
+		return true
+	case GetAcmeAuthorization200JSONResponseBodyStatusInvalid:
+		return true
+	case GetAcmeAuthorization200JSONResponseBodyStatusPending:
+		return true
+	case GetAcmeAuthorization200JSONResponseBodyStatusRevoked:
+		return true
+	case GetAcmeAuthorization200JSONResponseBodyStatusValid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RespondToAcmeChallenge200JSONResponseBodyType.
+const (
+	RespondToAcmeChallenge200JSONResponseBodyTypeDns01     RespondToAcmeChallenge200JSONResponseBodyType = "dns-01"
+	RespondToAcmeChallenge200JSONResponseBodyTypeHttp01    RespondToAcmeChallenge200JSONResponseBodyType = "http-01"
+	RespondToAcmeChallenge200JSONResponseBodyTypeTlsAlpn01 RespondToAcmeChallenge200JSONResponseBodyType = "tls-alpn-01"
+)
+
+// Valid indicates whether the value is a known member of the RespondToAcmeChallenge200JSONResponseBodyType enum.
+func (e RespondToAcmeChallenge200JSONResponseBodyType) Valid() bool {
+	switch e {
+	case RespondToAcmeChallenge200JSONResponseBodyTypeDns01:
+		return true
+	case RespondToAcmeChallenge200JSONResponseBodyTypeHttp01:
+		return true
+	case RespondToAcmeChallenge200JSONResponseBodyTypeTlsAlpn01:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeOrder201JSONResponseBodyStatus.
+const (
+	CreateAcmeOrder201JSONResponseBodyStatusInvalid    CreateAcmeOrder201JSONResponseBodyStatus = "invalid"
+	CreateAcmeOrder201JSONResponseBodyStatusPending    CreateAcmeOrder201JSONResponseBodyStatus = "pending"
+	CreateAcmeOrder201JSONResponseBodyStatusProcessing CreateAcmeOrder201JSONResponseBodyStatus = "processing"
+	CreateAcmeOrder201JSONResponseBodyStatusReady      CreateAcmeOrder201JSONResponseBodyStatus = "ready"
+	CreateAcmeOrder201JSONResponseBodyStatusValid      CreateAcmeOrder201JSONResponseBodyStatus = "valid"
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeOrder201JSONResponseBodyStatus enum.
+func (e CreateAcmeOrder201JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case CreateAcmeOrder201JSONResponseBodyStatusInvalid:
+		return true
+	case CreateAcmeOrder201JSONResponseBodyStatusPending:
+		return true
+	case CreateAcmeOrder201JSONResponseBodyStatusProcessing:
+		return true
+	case CreateAcmeOrder201JSONResponseBodyStatusReady:
+		return true
+	case CreateAcmeOrder201JSONResponseBodyStatusValid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAcmeOrder200JSONResponseBodyStatus.
+const (
+	GetAcmeOrder200JSONResponseBodyStatusInvalid    GetAcmeOrder200JSONResponseBodyStatus = "invalid"
+	GetAcmeOrder200JSONResponseBodyStatusPending    GetAcmeOrder200JSONResponseBodyStatus = "pending"
+	GetAcmeOrder200JSONResponseBodyStatusProcessing GetAcmeOrder200JSONResponseBodyStatus = "processing"
+	GetAcmeOrder200JSONResponseBodyStatusReady      GetAcmeOrder200JSONResponseBodyStatus = "ready"
+	GetAcmeOrder200JSONResponseBodyStatusValid      GetAcmeOrder200JSONResponseBodyStatus = "valid"
+)
+
+// Valid indicates whether the value is a known member of the GetAcmeOrder200JSONResponseBodyStatus enum.
+func (e GetAcmeOrder200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case GetAcmeOrder200JSONResponseBodyStatusInvalid:
+		return true
+	case GetAcmeOrder200JSONResponseBodyStatusPending:
+		return true
+	case GetAcmeOrder200JSONResponseBodyStatusProcessing:
+		return true
+	case GetAcmeOrder200JSONResponseBodyStatusReady:
+		return true
+	case GetAcmeOrder200JSONResponseBodyStatusValid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FinalizeAcmeOrder200JSONResponseBodyStatus.
+const (
+	FinalizeAcmeOrder200JSONResponseBodyStatusInvalid    FinalizeAcmeOrder200JSONResponseBodyStatus = "invalid"
+	FinalizeAcmeOrder200JSONResponseBodyStatusPending    FinalizeAcmeOrder200JSONResponseBodyStatus = "pending"
+	FinalizeAcmeOrder200JSONResponseBodyStatusProcessing FinalizeAcmeOrder200JSONResponseBodyStatus = "processing"
+	FinalizeAcmeOrder200JSONResponseBodyStatusReady      FinalizeAcmeOrder200JSONResponseBodyStatus = "ready"
+	FinalizeAcmeOrder200JSONResponseBodyStatusValid      FinalizeAcmeOrder200JSONResponseBodyStatus = "valid"
+)
+
+// Valid indicates whether the value is a known member of the FinalizeAcmeOrder200JSONResponseBodyStatus enum.
+func (e FinalizeAcmeOrder200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case FinalizeAcmeOrder200JSONResponseBodyStatusInvalid:
+		return true
+	case FinalizeAcmeOrder200JSONResponseBodyStatusPending:
+		return true
+	case FinalizeAcmeOrder200JSONResponseBodyStatusProcessing:
+		return true
+	case FinalizeAcmeOrder200JSONResponseBodyStatusReady:
+		return true
+	case FinalizeAcmeOrder200JSONResponseBodyStatusValid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePkiApplication400JSONResponseBodyStatusCode.
+const (
+	CreatePkiApplication400JSONResponseBodyStatusCodeN400 CreatePkiApplication400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreatePkiApplication400JSONResponseBodyStatusCode enum.
+func (e CreatePkiApplication400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePkiApplication400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePkiApplication401JSONResponseBodyStatusCode.
+const (
+	CreatePkiApplication401JSONResponseBodyStatusCodeN401 CreatePkiApplication401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreatePkiApplication401JSONResponseBodyStatusCode enum.
+func (e CreatePkiApplication401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePkiApplication401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePkiApplication403JSONResponseBodyStatusCode.
+const (
+	CreatePkiApplication403JSONResponseBodyStatusCodeN403 CreatePkiApplication403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreatePkiApplication403JSONResponseBodyStatusCode enum.
+func (e CreatePkiApplication403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePkiApplication403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePkiApplication404JSONResponseBodyStatusCode.
+const (
+	CreatePkiApplication404JSONResponseBodyStatusCodeN404 CreatePkiApplication404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreatePkiApplication404JSONResponseBodyStatusCode enum.
+func (e CreatePkiApplication404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePkiApplication404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePkiApplication422JSONResponseBodyStatusCode.
+const (
+	CreatePkiApplication422JSONResponseBodyStatusCodeN422 CreatePkiApplication422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreatePkiApplication422JSONResponseBodyStatusCode enum.
+func (e CreatePkiApplication422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePkiApplication422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePkiApplication500JSONResponseBodyStatusCode.
+const (
+	CreatePkiApplication500JSONResponseBodyStatusCodeN500 CreatePkiApplication500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreatePkiApplication500JSONResponseBodyStatusCode enum.
+func (e CreatePkiApplication500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePkiApplication500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachPkiApplicationProfiles400JSONResponseBodyStatusCode.
+const (
+	AttachPkiApplicationProfiles400JSONResponseBodyStatusCodeN400 AttachPkiApplicationProfiles400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the AttachPkiApplicationProfiles400JSONResponseBodyStatusCode enum.
+func (e AttachPkiApplicationProfiles400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachPkiApplicationProfiles400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachPkiApplicationProfiles401JSONResponseBodyStatusCode.
+const (
+	AttachPkiApplicationProfiles401JSONResponseBodyStatusCodeN401 AttachPkiApplicationProfiles401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the AttachPkiApplicationProfiles401JSONResponseBodyStatusCode enum.
+func (e AttachPkiApplicationProfiles401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachPkiApplicationProfiles401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachPkiApplicationProfiles403JSONResponseBodyStatusCode.
+const (
+	AttachPkiApplicationProfiles403JSONResponseBodyStatusCodeN403 AttachPkiApplicationProfiles403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the AttachPkiApplicationProfiles403JSONResponseBodyStatusCode enum.
+func (e AttachPkiApplicationProfiles403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachPkiApplicationProfiles403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachPkiApplicationProfiles404JSONResponseBodyStatusCode.
+const (
+	AttachPkiApplicationProfiles404JSONResponseBodyStatusCodeN404 AttachPkiApplicationProfiles404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the AttachPkiApplicationProfiles404JSONResponseBodyStatusCode enum.
+func (e AttachPkiApplicationProfiles404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachPkiApplicationProfiles404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachPkiApplicationProfiles422JSONResponseBodyStatusCode.
+const (
+	AttachPkiApplicationProfiles422JSONResponseBodyStatusCodeN422 AttachPkiApplicationProfiles422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the AttachPkiApplicationProfiles422JSONResponseBodyStatusCode enum.
+func (e AttachPkiApplicationProfiles422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachPkiApplicationProfiles422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachPkiApplicationProfiles500JSONResponseBodyStatusCode.
+const (
+	AttachPkiApplicationProfiles500JSONResponseBodyStatusCodeN500 AttachPkiApplicationProfiles500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the AttachPkiApplicationProfiles500JSONResponseBodyStatusCode enum.
+func (e AttachPkiApplicationProfiles500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachPkiApplicationProfiles500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCodeN400 SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCodeN401 SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCodeN403 SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCodeN404 SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCodeN422 SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCodeN500 SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode.
+const (
+	RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCodeN400 RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode enum.
+func (e RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode.
+const (
+	RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCodeN401 RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode enum.
+func (e RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode.
+const (
+	RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCodeN403 RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode enum.
+func (e RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode.
+const (
+	RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCodeN404 RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode enum.
+func (e RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode.
+const (
+	RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCodeN422 RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode enum.
+func (e RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode.
+const (
+	RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCodeN500 RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode enum.
+func (e RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationScepEnrollmentJSONBodyChallengeType.
+const (
+	SetPkiApplicationScepEnrollmentJSONBodyChallengeTypeDynamic         SetPkiApplicationScepEnrollmentJSONBodyChallengeType = "dynamic"
+	SetPkiApplicationScepEnrollmentJSONBodyChallengeTypeMicrosoftIntune SetPkiApplicationScepEnrollmentJSONBodyChallengeType = "microsoft-intune"
+	SetPkiApplicationScepEnrollmentJSONBodyChallengeTypeStatic          SetPkiApplicationScepEnrollmentJSONBodyChallengeType = "static"
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationScepEnrollmentJSONBodyChallengeType enum.
+func (e SetPkiApplicationScepEnrollmentJSONBodyChallengeType) Valid() bool {
+	switch e {
+	case SetPkiApplicationScepEnrollmentJSONBodyChallengeTypeDynamic:
+		return true
+	case SetPkiApplicationScepEnrollmentJSONBodyChallengeTypeMicrosoftIntune:
+		return true
+	case SetPkiApplicationScepEnrollmentJSONBodyChallengeTypeStatic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType.
+const (
+	SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeTypeDynamic         SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType = "dynamic"
+	SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeTypeMicrosoftIntune SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType = "microsoft-intune"
+	SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeTypeStatic          SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType = "static"
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType enum.
+func (e SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType) Valid() bool {
+	switch e {
+	case SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeTypeDynamic:
+		return true
+	case SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeTypeMicrosoftIntune:
+		return true
+	case SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeTypeStatic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCodeN400 SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCodeN401 SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCodeN403 SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCodeN404 SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCodeN422 SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode.
+const (
+	SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCodeN500 SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode enum.
+func (e SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider.
+const (
+	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderAzureDns    CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "azure-dns"
+	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderCloudflare  CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "cloudflare"
+	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderDnsMadeEasy CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "dns-made-easy"
+	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderGcpCloudDns CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "gcp-cloud-dns"
+	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderPowerdns    CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "powerdns"
+	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderRoute53     CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "route53"
+	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderUltradns    CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "ultradns"
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider enum.
+func (e CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderAzureDns:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderCloudflare:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderDnsMadeEasy:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderGcpCloudDns:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderPowerdns:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderRoute53:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderUltradns:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1JSONBodyStatus.
+const (
+	CreateAcmeCertificateAuthorityV1JSONBodyStatusActive             CreateAcmeCertificateAuthorityV1JSONBodyStatus = "active"
+	CreateAcmeCertificateAuthorityV1JSONBodyStatusDisabled           CreateAcmeCertificateAuthorityV1JSONBodyStatus = "disabled"
+	CreateAcmeCertificateAuthorityV1JSONBodyStatusPendingCertificate CreateAcmeCertificateAuthorityV1JSONBodyStatus = "pending-certificate"
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1JSONBodyStatus enum.
+func (e CreateAcmeCertificateAuthorityV1JSONBodyStatus) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1JSONBodyStatusActive:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyStatusDisabled:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyStatusPendingCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider.
+const (
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderAzureDns    CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "azure-dns"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderCloudflare  CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "cloudflare"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderDnsMadeEasy CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "dns-made-easy"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderGcpCloudDns CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "gcp-cloud-dns"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderPowerdns    CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "powerdns"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderRoute53     CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "route53"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderUltradns    CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "ultradns"
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider enum.
+func (e CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderAzureDns:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderCloudflare:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderDnsMadeEasy:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderGcpCloudDns:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderPowerdns:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderRoute53:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderUltradns:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus.
+const (
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatusActive             CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus = "active"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatusDisabled           CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus = "disabled"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatusPendingCertificate CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus = "pending-certificate"
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus enum.
+func (e CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatusActive:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatusDisabled:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatusPendingCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1200JSONResponseBodyType.
+const (
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyTypeAcme CreateAcmeCertificateAuthorityV1200JSONResponseBodyType = "acme"
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1200JSONResponseBodyType enum.
+func (e CreateAcmeCertificateAuthorityV1200JSONResponseBodyType) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyTypeAcme:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode.
+const (
+	CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCodeN400 CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode enum.
+func (e CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode.
+const (
+	CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCodeN401 CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode enum.
+func (e CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode.
+const (
+	CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCodeN403 CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode enum.
+func (e CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode.
+const (
+	CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCodeN404 CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode enum.
+func (e CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode.
+const (
+	CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCodeN422 CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode enum.
+func (e CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode.
+const (
+	CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCodeN500 CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode enum.
+func (e CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECPrime256v1    CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "EC_prime256v1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECSecp384r1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "EC_secp384r1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECSecp521r1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "EC_secp521r1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA44         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "ML-DSA-44"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA65         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "ML-DSA-65"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA87         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "ML-DSA-87"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "RSA_2048"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA3072         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "RSA_3072"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA4096         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "RSA_4096"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2128f  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-128f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2128s  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-128s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2192f  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-192f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2192s  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-192s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2256f  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-256f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2256s  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-256s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE128f CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-128f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE128s CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-128s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE192f CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-192f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE192s CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-192s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE256f CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-256f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE256s CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECPrime256v1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECSecp384r1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECSecp521r1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA44:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA65:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA87:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA3072:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA4096:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2128f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2128s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2192f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2192s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2256f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2256s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE128f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE128s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE192f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE192s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE256f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceAwsKms    CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource = "aws-kms"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceHsm       CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource = "hsm"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceInfisical CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource = "infisical"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceAwsKms:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceHsm:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceInfisical:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionAfSouth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "af-south-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApEast1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-east-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast1 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-northeast-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast2 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-northeast-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast3 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-northeast-3"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSouth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-south-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSouth2     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-south-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast1 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-southeast-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast2 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-southeast-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast3 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-southeast-3"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast4 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-southeast-4"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionCaCentral1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ca-central-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuCentral1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-central-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuCentral2   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-central-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuNorth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-north-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuSouth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-south-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuSouth2     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-south-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-west-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest2      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-west-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest3      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-west-3"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionMeCentral1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "me-central-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionMeSouth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "me-south-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionSaEast1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "sa-east-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsEast1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-east-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsEast2      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-east-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsGovEast1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-gov-east-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsGovWest1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-gov-west-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsWest1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-west-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsWest2      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-west-2"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionAfSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast3:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSouth2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast3:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast4:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionCaCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuCentral2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuNorth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuSouth2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest3:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionMeCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionMeSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionSaEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsEast2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsGovEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsGovWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsWest2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyConfigurationType.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeIntermediate CreateInternalCertificateAuthorityV1JSONBodyConfigurationType = "intermediate"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot         CreateInternalCertificateAuthorityV1JSONBodyConfigurationType = "root"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyConfigurationType enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyConfigurationType) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeIntermediate:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyStatus.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyStatusActive             CreateInternalCertificateAuthorityV1JSONBodyStatus = "active"
+	CreateInternalCertificateAuthorityV1JSONBodyStatusDisabled           CreateInternalCertificateAuthorityV1JSONBodyStatus = "disabled"
+	CreateInternalCertificateAuthorityV1JSONBodyStatusPendingCertificate CreateInternalCertificateAuthorityV1JSONBodyStatus = "pending-certificate"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyStatus enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyStatus) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyStatusActive:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyStatusDisabled:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyStatusPendingCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECPrime256v1    CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "EC_prime256v1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECSecp384r1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "EC_secp384r1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECSecp521r1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "EC_secp521r1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA44         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "ML-DSA-44"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA65         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "ML-DSA-65"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA87         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "ML-DSA-87"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA2048         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "RSA_2048"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA3072         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "RSA_3072"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA4096         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "RSA_4096"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2128f  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-128f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2128s  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-128s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2192f  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-192f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2192s  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-192s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2256f  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-256f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2256s  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-256s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE128f CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-128f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE128s CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-128s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE192f CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-192f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE192s CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-192s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE256f CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-256f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE256s CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECPrime256v1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECSecp384r1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECSecp521r1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA44:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA65:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA87:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA2048:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA3072:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA4096:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2128f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2128s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2192f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2192s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2256f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2256s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE128f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE128s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE192f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE192s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE256f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceAwsKms    CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource = "aws-kms"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceHsm       CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource = "hsm"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceInfisical CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource = "infisical"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceAwsKms:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceHsm:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceInfisical:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionAfSouth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "af-south-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApEast1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-east-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast1 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-northeast-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast2 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-northeast-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast3 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-northeast-3"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSouth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-south-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSouth2     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-south-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast1 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-southeast-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast2 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-southeast-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast3 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-southeast-3"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast4 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-southeast-4"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionCaCentral1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ca-central-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuCentral1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-central-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuCentral2   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-central-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuNorth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-north-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuSouth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-south-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuSouth2     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-south-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-west-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest2      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-west-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest3      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-west-3"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionMeCentral1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "me-central-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionMeSouth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "me-south-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionSaEast1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "sa-east-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsEast1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-east-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsEast2      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-east-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsGovEast1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-gov-east-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsGovWest1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-gov-west-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsWest1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-west-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsWest2      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-west-2"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionAfSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast3:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSouth2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast3:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast4:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionCaCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuCentral2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuNorth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuSouth2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest3:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionMeCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionMeSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionSaEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsEast2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsGovEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsGovWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsWest2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationTypeIntermediate CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType = "intermediate"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationTypeRoot         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType = "root"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationTypeIntermediate:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationTypeRoot:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusActive             CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus = "active"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusDisabled           CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus = "disabled"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusPendingCertificate CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus = "pending-certificate"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusActive:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusDisabled:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusPendingCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyType.
+const (
+	Internal CreateInternalCertificateAuthorityV1200JSONResponseBodyType = "internal"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyType enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyType) Valid() bool {
+	switch e {
+	case Internal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCodeN400 CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCodeN401 CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCodeN403 CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCodeN404 CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCodeN422 CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCodeN500 CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodyBasicConstraintsIsCA.
+const (
+	CreateCertificatePolicyJSONBodyBasicConstraintsIsCAAllowed  CreateCertificatePolicyJSONBodyBasicConstraintsIsCA = "allowed"
+	CreateCertificatePolicyJSONBodyBasicConstraintsIsCADenied   CreateCertificatePolicyJSONBodyBasicConstraintsIsCA = "denied"
+	CreateCertificatePolicyJSONBodyBasicConstraintsIsCARequired CreateCertificatePolicyJSONBodyBasicConstraintsIsCA = "required"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodyBasicConstraintsIsCA enum.
+func (e CreateCertificatePolicyJSONBodyBasicConstraintsIsCA) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodyBasicConstraintsIsCAAllowed:
+		return true
+	case CreateCertificatePolicyJSONBodyBasicConstraintsIsCADenied:
+		return true
+	case CreateCertificatePolicyJSONBodyBasicConstraintsIsCARequired:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodyCustomExtensionsCritical.
+const (
+	CreateCertificatePolicyJSONBodyCustomExtensionsCriticalCritical    CreateCertificatePolicyJSONBodyCustomExtensionsCritical = "critical"
+	CreateCertificatePolicyJSONBodyCustomExtensionsCriticalNotCritical CreateCertificatePolicyJSONBodyCustomExtensionsCritical = "not_critical"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodyCustomExtensionsCritical enum.
+func (e CreateCertificatePolicyJSONBodyCustomExtensionsCritical) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodyCustomExtensionsCriticalCritical:
+		return true
+	case CreateCertificatePolicyJSONBodyCustomExtensionsCriticalNotCritical:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed.
+const (
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedAnyPurpose      CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed = "any_purpose"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedClientAuth      CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed = "client_auth"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedCodeSigning     CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed = "code_signing"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedEmailProtection CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed = "email_protection"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedOcspSigning     CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed = "ocsp_signing"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedServerAuth      CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed = "server_auth"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedSmartCardLogon  CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed = "smart_card_logon"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedTimeStamping    CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed enum.
+func (e CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedAnyPurpose:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedClientAuth:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedCodeSigning:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedEmailProtection:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedOcspSigning:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedServerAuth:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedSmartCardLogon:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied.
+const (
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedAnyPurpose      CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied = "any_purpose"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedClientAuth      CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied = "client_auth"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedCodeSigning     CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied = "code_signing"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedEmailProtection CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied = "email_protection"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedOcspSigning     CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied = "ocsp_signing"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedServerAuth      CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied = "server_auth"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedSmartCardLogon  CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied = "smart_card_logon"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedTimeStamping    CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied enum.
+func (e CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedAnyPurpose:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedClientAuth:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedCodeSigning:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedEmailProtection:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedOcspSigning:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedServerAuth:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedSmartCardLogon:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesDeniedTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired.
+const (
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredAnyPurpose      CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired = "any_purpose"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredClientAuth      CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired = "client_auth"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredCodeSigning     CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired = "code_signing"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredEmailProtection CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired = "email_protection"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredOcspSigning     CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired = "ocsp_signing"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredServerAuth      CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired = "server_auth"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredSmartCardLogon  CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired = "smart_card_logon"
+	CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredTimeStamping    CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired enum.
+func (e CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredAnyPurpose:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredClientAuth:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredCodeSigning:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredEmailProtection:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredOcspSigning:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredServerAuth:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredSmartCardLogon:
+		return true
+	case CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequiredTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodyKeyUsagesAllowed.
+const (
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedCrlSign          CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "crl_sign"
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedDataEncipherment CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "data_encipherment"
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedDecipherOnly     CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "decipher_only"
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedDigitalSignature CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "digital_signature"
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedEncipherOnly     CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "encipher_only"
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyAgreement     CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "key_agreement"
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyCertSign      CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "key_cert_sign"
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyEncipherment  CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "key_encipherment"
+	CreateCertificatePolicyJSONBodyKeyUsagesAllowedNonRepudiation   CreateCertificatePolicyJSONBodyKeyUsagesAllowed = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodyKeyUsagesAllowed enum.
+func (e CreateCertificatePolicyJSONBodyKeyUsagesAllowed) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedCrlSign:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedDataEncipherment:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedDecipherOnly:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedDigitalSignature:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedEncipherOnly:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyAgreement:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyCertSign:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyEncipherment:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesAllowedNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodyKeyUsagesDenied.
+const (
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedCrlSign          CreateCertificatePolicyJSONBodyKeyUsagesDenied = "crl_sign"
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedDataEncipherment CreateCertificatePolicyJSONBodyKeyUsagesDenied = "data_encipherment"
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedDecipherOnly     CreateCertificatePolicyJSONBodyKeyUsagesDenied = "decipher_only"
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedDigitalSignature CreateCertificatePolicyJSONBodyKeyUsagesDenied = "digital_signature"
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedEncipherOnly     CreateCertificatePolicyJSONBodyKeyUsagesDenied = "encipher_only"
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedKeyAgreement     CreateCertificatePolicyJSONBodyKeyUsagesDenied = "key_agreement"
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedKeyCertSign      CreateCertificatePolicyJSONBodyKeyUsagesDenied = "key_cert_sign"
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedKeyEncipherment  CreateCertificatePolicyJSONBodyKeyUsagesDenied = "key_encipherment"
+	CreateCertificatePolicyJSONBodyKeyUsagesDeniedNonRepudiation   CreateCertificatePolicyJSONBodyKeyUsagesDenied = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodyKeyUsagesDenied enum.
+func (e CreateCertificatePolicyJSONBodyKeyUsagesDenied) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedCrlSign:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedDataEncipherment:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedDecipherOnly:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedDigitalSignature:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedEncipherOnly:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedKeyAgreement:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedKeyCertSign:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedKeyEncipherment:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesDeniedNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodyKeyUsagesRequired.
+const (
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredCrlSign          CreateCertificatePolicyJSONBodyKeyUsagesRequired = "crl_sign"
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredDataEncipherment CreateCertificatePolicyJSONBodyKeyUsagesRequired = "data_encipherment"
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredDecipherOnly     CreateCertificatePolicyJSONBodyKeyUsagesRequired = "decipher_only"
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredDigitalSignature CreateCertificatePolicyJSONBodyKeyUsagesRequired = "digital_signature"
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredEncipherOnly     CreateCertificatePolicyJSONBodyKeyUsagesRequired = "encipher_only"
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredKeyAgreement     CreateCertificatePolicyJSONBodyKeyUsagesRequired = "key_agreement"
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredKeyCertSign      CreateCertificatePolicyJSONBodyKeyUsagesRequired = "key_cert_sign"
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredKeyEncipherment  CreateCertificatePolicyJSONBodyKeyUsagesRequired = "key_encipherment"
+	CreateCertificatePolicyJSONBodyKeyUsagesRequiredNonRepudiation   CreateCertificatePolicyJSONBodyKeyUsagesRequired = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodyKeyUsagesRequired enum.
+func (e CreateCertificatePolicyJSONBodyKeyUsagesRequired) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredCrlSign:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredDataEncipherment:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredDecipherOnly:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredDigitalSignature:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredEncipherOnly:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredKeyAgreement:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredKeyCertSign:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredKeyEncipherment:
+		return true
+	case CreateCertificatePolicyJSONBodyKeyUsagesRequiredNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodySansType.
+const (
+	CreateCertificatePolicyJSONBodySansTypeDnsName   CreateCertificatePolicyJSONBodySansType = "dns_name"
+	CreateCertificatePolicyJSONBodySansTypeEmail     CreateCertificatePolicyJSONBodySansType = "email"
+	CreateCertificatePolicyJSONBodySansTypeIpAddress CreateCertificatePolicyJSONBodySansType = "ip_address"
+	CreateCertificatePolicyJSONBodySansTypeUpn       CreateCertificatePolicyJSONBodySansType = "upn"
+	CreateCertificatePolicyJSONBodySansTypeUri       CreateCertificatePolicyJSONBodySansType = "uri"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodySansType enum.
+func (e CreateCertificatePolicyJSONBodySansType) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodySansTypeDnsName:
+		return true
+	case CreateCertificatePolicyJSONBodySansTypeEmail:
+		return true
+	case CreateCertificatePolicyJSONBodySansTypeIpAddress:
+		return true
+	case CreateCertificatePolicyJSONBodySansTypeUpn:
+		return true
+	case CreateCertificatePolicyJSONBodySansTypeUri:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodySubject0Type.
+const (
+	CreateCertificatePolicyJSONBodySubject0TypeCommonName         CreateCertificatePolicyJSONBodySubject0Type = "common_name"
+	CreateCertificatePolicyJSONBodySubject0TypeCountry            CreateCertificatePolicyJSONBodySubject0Type = "country"
+	CreateCertificatePolicyJSONBodySubject0TypeLocality           CreateCertificatePolicyJSONBodySubject0Type = "locality"
+	CreateCertificatePolicyJSONBodySubject0TypeOrganization       CreateCertificatePolicyJSONBodySubject0Type = "organization"
+	CreateCertificatePolicyJSONBodySubject0TypeOrganizationalUnit CreateCertificatePolicyJSONBodySubject0Type = "organizational_unit"
+	CreateCertificatePolicyJSONBodySubject0TypeState              CreateCertificatePolicyJSONBodySubject0Type = "state"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodySubject0Type enum.
+func (e CreateCertificatePolicyJSONBodySubject0Type) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodySubject0TypeCommonName:
+		return true
+	case CreateCertificatePolicyJSONBodySubject0TypeCountry:
+		return true
+	case CreateCertificatePolicyJSONBodySubject0TypeLocality:
+		return true
+	case CreateCertificatePolicyJSONBodySubject0TypeOrganization:
+		return true
+	case CreateCertificatePolicyJSONBodySubject0TypeOrganizationalUnit:
+		return true
+	case CreateCertificatePolicyJSONBodySubject0TypeState:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicyJSONBodySubject1Type.
+const (
+	CreateCertificatePolicyJSONBodySubject1TypeDomainComponent CreateCertificatePolicyJSONBodySubject1Type = "domain_component"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicyJSONBodySubject1Type enum.
+func (e CreateCertificatePolicyJSONBodySubject1Type) Valid() bool {
+	switch e {
+	case CreateCertificatePolicyJSONBodySubject1TypeDomainComponent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCAAllowed  CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA = "allowed"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCADenied   CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA = "denied"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCARequired CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA = "required"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCAAllowed:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCADenied:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCARequired:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCriticalCritical    CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical = "critical"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCriticalNotCritical CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical = "not_critical"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCriticalCritical:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCriticalNotCritical:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedAnyPurpose      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed = "any_purpose"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedClientAuth      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed = "client_auth"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedCodeSigning     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed = "code_signing"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedEmailProtection CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed = "email_protection"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedOcspSigning     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed = "ocsp_signing"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedServerAuth      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed = "server_auth"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedSmartCardLogon  CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed = "smart_card_logon"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedTimeStamping    CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedAnyPurpose:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedClientAuth:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedCodeSigning:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedEmailProtection:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedOcspSigning:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedServerAuth:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedSmartCardLogon:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowedTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedAnyPurpose      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied = "any_purpose"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedClientAuth      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied = "client_auth"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedCodeSigning     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied = "code_signing"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedEmailProtection CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied = "email_protection"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedOcspSigning     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied = "ocsp_signing"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedServerAuth      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied = "server_auth"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedSmartCardLogon  CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied = "smart_card_logon"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedTimeStamping    CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedAnyPurpose:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedClientAuth:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedCodeSigning:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedEmailProtection:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedOcspSigning:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedServerAuth:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedSmartCardLogon:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDeniedTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredAnyPurpose      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired = "any_purpose"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredClientAuth      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired = "client_auth"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredCodeSigning     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired = "code_signing"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredEmailProtection CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired = "email_protection"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredOcspSigning     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired = "ocsp_signing"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredServerAuth      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired = "server_auth"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredSmartCardLogon  CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired = "smart_card_logon"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredTimeStamping    CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredAnyPurpose:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredClientAuth:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredCodeSigning:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredEmailProtection:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredOcspSigning:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredServerAuth:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredSmartCardLogon:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequiredTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedCrlSign          CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "crl_sign"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedDataEncipherment CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "data_encipherment"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedDecipherOnly     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "decipher_only"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedDigitalSignature CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "digital_signature"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedEncipherOnly     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "encipher_only"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedKeyAgreement     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "key_agreement"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedKeyCertSign      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "key_cert_sign"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedKeyEncipherment  CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "key_encipherment"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedNonRepudiation   CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedCrlSign:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedDataEncipherment:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedDecipherOnly:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedDigitalSignature:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedEncipherOnly:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedKeyAgreement:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedKeyCertSign:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedKeyEncipherment:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowedNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedCrlSign          CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "crl_sign"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedDataEncipherment CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "data_encipherment"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedDecipherOnly     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "decipher_only"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedDigitalSignature CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "digital_signature"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedEncipherOnly     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "encipher_only"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedKeyAgreement     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "key_agreement"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedKeyCertSign      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "key_cert_sign"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedKeyEncipherment  CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "key_encipherment"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedNonRepudiation   CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedCrlSign:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedDataEncipherment:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedDecipherOnly:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedDigitalSignature:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedEncipherOnly:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedKeyAgreement:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedKeyCertSign:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedKeyEncipherment:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDeniedNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredCrlSign          CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "crl_sign"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredDataEncipherment CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "data_encipherment"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredDecipherOnly     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "decipher_only"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredDigitalSignature CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "digital_signature"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredEncipherOnly     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "encipher_only"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredKeyAgreement     CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "key_agreement"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredKeyCertSign      CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "key_cert_sign"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredKeyEncipherment  CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "key_encipherment"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredNonRepudiation   CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredCrlSign:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredDataEncipherment:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredDecipherOnly:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredDigitalSignature:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredEncipherOnly:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredKeyAgreement:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredKeyCertSign:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredKeyEncipherment:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequiredNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeDnsName   CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType = "dns_name"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeEmail     CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType = "email"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeIpAddress CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType = "ip_address"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeUpn       CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType = "upn"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeUri       CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType = "uri"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeDnsName:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeEmail:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeIpAddress:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeUpn:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansTypeUri:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeCommonName         CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type = "common_name"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeCountry            CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type = "country"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeLocality           CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type = "locality"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeOrganization       CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type = "organization"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeOrganizationalUnit CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type = "organizational_unit"
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeState              CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type = "state"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeCommonName:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeCountry:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeLocality:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeOrganization:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeOrganizationalUnit:
+		return true
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0TypeState:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1Type.
+const (
+	CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1TypeDomainComponent CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1Type = "domain_component"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1Type enum.
+func (e CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1Type) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1TypeDomainComponent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy400JSONResponseBodyStatusCode.
+const (
+	CreateCertificatePolicy400JSONResponseBodyStatusCodeN400 CreateCertificatePolicy400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy400JSONResponseBodyStatusCode enum.
+func (e CreateCertificatePolicy400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy401JSONResponseBodyStatusCode.
+const (
+	CreateCertificatePolicy401JSONResponseBodyStatusCodeN401 CreateCertificatePolicy401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy401JSONResponseBodyStatusCode enum.
+func (e CreateCertificatePolicy401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy403JSONResponseBodyStatusCode.
+const (
+	CreateCertificatePolicy403JSONResponseBodyStatusCodeN403 CreateCertificatePolicy403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy403JSONResponseBodyStatusCode enum.
+func (e CreateCertificatePolicy403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy404JSONResponseBodyStatusCode.
+const (
+	CreateCertificatePolicy404JSONResponseBodyStatusCodeN404 CreateCertificatePolicy404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy404JSONResponseBodyStatusCode enum.
+func (e CreateCertificatePolicy404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy422JSONResponseBodyStatusCode.
+const (
+	CreateCertificatePolicy422JSONResponseBodyStatusCodeN422 CreateCertificatePolicy422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy422JSONResponseBodyStatusCode enum.
+func (e CreateCertificatePolicy422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificatePolicy500JSONResponseBodyStatusCode.
+const (
+	CreateCertificatePolicy500JSONResponseBodyStatusCodeN500 CreateCertificatePolicy500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificatePolicy500JSONResponseBodyStatusCode enum.
+func (e CreateCertificatePolicy500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificatePolicy500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages.
+const (
+	CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesAnyPurpose      CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages = "any_purpose"
+	CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesClientAuth      CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages = "client_auth"
+	CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesCodeSigning     CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages = "code_signing"
+	CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesEmailProtection CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages = "email_protection"
+	CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesOcspSigning     CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages = "ocsp_signing"
+	CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesServerAuth      CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages = "server_auth"
+	CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesSmartCardLogon  CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages = "smart_card_logon"
+	CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesTimeStamping    CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages enum.
+func (e CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages) Valid() bool {
+	switch e {
+	case CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesAnyPurpose:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesClientAuth:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesCodeSigning:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesEmailProtection:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesOcspSigning:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesServerAuth:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesSmartCardLogon:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsagesTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm.
+const (
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmECPrime256v1    CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "EC_prime256v1"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmECSecp384r1     CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "EC_secp384r1"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmECSecp521r1     CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "EC_secp521r1"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmMLDSA44         CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "ML-DSA-44"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmMLDSA65         CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "ML-DSA-65"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmMLDSA87         CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "ML-DSA-87"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmRSA2048         CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "RSA_2048"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmRSA3072         CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "RSA_3072"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmRSA4096         CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "RSA_4096"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2128f  CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHA2-128f"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2128s  CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHA2-128s"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2192f  CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHA2-192f"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2192s  CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHA2-192s"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2256f  CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHA2-256f"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2256s  CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHA2-256s"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE128f CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-128f"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE128s CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-128s"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE192f CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-192f"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE192s CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-192s"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE256f CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-256f"
+	CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE256s CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm enum.
+func (e CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm) Valid() bool {
+	switch e {
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmECPrime256v1:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmECSecp384r1:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmECSecp521r1:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmMLDSA44:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmMLDSA65:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmMLDSA87:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmRSA2048:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmRSA3072:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmRSA4096:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2128f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2128s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2192f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2192s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2256f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHA2256s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE128f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE128s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE192f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE192s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE256f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfileJSONBodyDefaultsKeyUsages.
+const (
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesCrlSign          CreateCertificateProfileJSONBodyDefaultsKeyUsages = "crl_sign"
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesDataEncipherment CreateCertificateProfileJSONBodyDefaultsKeyUsages = "data_encipherment"
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesDecipherOnly     CreateCertificateProfileJSONBodyDefaultsKeyUsages = "decipher_only"
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesDigitalSignature CreateCertificateProfileJSONBodyDefaultsKeyUsages = "digital_signature"
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesEncipherOnly     CreateCertificateProfileJSONBodyDefaultsKeyUsages = "encipher_only"
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesKeyAgreement     CreateCertificateProfileJSONBodyDefaultsKeyUsages = "key_agreement"
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesKeyCertSign      CreateCertificateProfileJSONBodyDefaultsKeyUsages = "key_cert_sign"
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesKeyEncipherment  CreateCertificateProfileJSONBodyDefaultsKeyUsages = "key_encipherment"
+	CreateCertificateProfileJSONBodyDefaultsKeyUsagesNonRepudiation   CreateCertificateProfileJSONBodyDefaultsKeyUsages = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfileJSONBodyDefaultsKeyUsages enum.
+func (e CreateCertificateProfileJSONBodyDefaultsKeyUsages) Valid() bool {
+	switch e {
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesCrlSign:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesDataEncipherment:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesDecipherOnly:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesDigitalSignature:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesEncipherOnly:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesKeyAgreement:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesKeyCertSign:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesKeyEncipherment:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsKeyUsagesNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm.
+const (
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmECDSASHA256     CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "ECDSA-SHA256"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmECDSASHA384     CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "ECDSA-SHA384"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmECDSASHA512     CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "ECDSA-SHA512"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmMLDSA44         CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "ML-DSA-44"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmMLDSA65         CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "ML-DSA-65"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmMLDSA87         CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "ML-DSA-87"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmRSASHA256       CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "RSA-SHA256"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmRSASHA384       CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "RSA-SHA384"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmRSASHA512       CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "RSA-SHA512"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2128f  CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-128f"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2128s  CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-128s"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2192f  CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-192f"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2192s  CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-192s"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2256f  CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-256f"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2256s  CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-256s"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE128f CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-128f"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE128s CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-128s"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE192f CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-192f"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE192s CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-192s"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE256f CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-256f"
+	CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE256s CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm enum.
+func (e CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm) Valid() bool {
+	switch e {
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmECDSASHA256:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmECDSASHA384:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmECDSASHA512:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmMLDSA44:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmMLDSA65:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmMLDSA87:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmRSASHA256:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmRSASHA384:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmRSASHA512:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2128f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2128s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2192f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2192s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2256f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHA2256s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE128f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE128s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE192f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE192s:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE256f:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType.
+const (
+	CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeDnsName   CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType = "dns_name"
+	CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeEmail     CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType = "email"
+	CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeIpAddress CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType = "ip_address"
+	CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeUpn       CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType = "upn"
+	CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeUri       CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType = "uri"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType enum.
+func (e CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType) Valid() bool {
+	switch e {
+	case CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeDnsName:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeEmail:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeIpAddress:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeUpn:
+		return true
+	case CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesTypeUri:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfileJSONBodyEnrollmentType.
+const (
+	CreateCertificateProfileJSONBodyEnrollmentTypeAcme CreateCertificateProfileJSONBodyEnrollmentType = "acme"
+	CreateCertificateProfileJSONBodyEnrollmentTypeApi  CreateCertificateProfileJSONBodyEnrollmentType = "api"
+	CreateCertificateProfileJSONBodyEnrollmentTypeEst  CreateCertificateProfileJSONBodyEnrollmentType = "est"
+	CreateCertificateProfileJSONBodyEnrollmentTypeScep CreateCertificateProfileJSONBodyEnrollmentType = "scep"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfileJSONBodyEnrollmentType enum.
+func (e CreateCertificateProfileJSONBodyEnrollmentType) Valid() bool {
+	switch e {
+	case CreateCertificateProfileJSONBodyEnrollmentTypeAcme:
+		return true
+	case CreateCertificateProfileJSONBodyEnrollmentTypeApi:
+		return true
+	case CreateCertificateProfileJSONBodyEnrollmentTypeEst:
+		return true
+	case CreateCertificateProfileJSONBodyEnrollmentTypeScep:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfileJSONBodyIssuerType.
+const (
+	Ca         CreateCertificateProfileJSONBodyIssuerType = "ca"
+	SelfSigned CreateCertificateProfileJSONBodyIssuerType = "self-signed"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfileJSONBodyIssuerType enum.
+func (e CreateCertificateProfileJSONBodyIssuerType) Valid() bool {
+	switch e {
+	case Ca:
+		return true
+	case SelfSigned:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfileJSONBodyScepConfigChallengeType.
+const (
+	CreateCertificateProfileJSONBodyScepConfigChallengeTypeDynamic         CreateCertificateProfileJSONBodyScepConfigChallengeType = "dynamic"
+	CreateCertificateProfileJSONBodyScepConfigChallengeTypeMicrosoftIntune CreateCertificateProfileJSONBodyScepConfigChallengeType = "microsoft-intune"
+	CreateCertificateProfileJSONBodyScepConfigChallengeTypeStatic          CreateCertificateProfileJSONBodyScepConfigChallengeType = "static"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfileJSONBodyScepConfigChallengeType enum.
+func (e CreateCertificateProfileJSONBodyScepConfigChallengeType) Valid() bool {
+	switch e {
+	case CreateCertificateProfileJSONBodyScepConfigChallengeTypeDynamic:
+		return true
+	case CreateCertificateProfileJSONBodyScepConfigChallengeTypeMicrosoftIntune:
+		return true
+	case CreateCertificateProfileJSONBodyScepConfigChallengeTypeStatic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages.
+const (
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesAnyPurpose      CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages = "any_purpose"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesClientAuth      CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages = "client_auth"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesCodeSigning     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages = "code_signing"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesEmailProtection CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages = "email_protection"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesOcspSigning     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages = "ocsp_signing"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesServerAuth      CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages = "server_auth"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesSmartCardLogon  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages = "smart_card_logon"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesTimeStamping    CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages enum.
+func (e CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages) Valid() bool {
+	switch e {
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesAnyPurpose:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesClientAuth:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesCodeSigning:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesEmailProtection:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesOcspSigning:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesServerAuth:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesSmartCardLogon:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsagesTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm.
+const (
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmECPrime256v1    CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "EC_prime256v1"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmECSecp384r1     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "EC_secp384r1"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmECSecp521r1     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "EC_secp521r1"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmMLDSA44         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "ML-DSA-44"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmMLDSA65         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "ML-DSA-65"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmMLDSA87         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "ML-DSA-87"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmRSA2048         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "RSA_2048"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmRSA3072         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "RSA_3072"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmRSA4096         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "RSA_4096"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2128f  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHA2-128f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2128s  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHA2-128s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2192f  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHA2-192f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2192s  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHA2-192s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2256f  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHA2-256f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2256s  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHA2-256s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE128f CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-128f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE128s CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-128s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE192f CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-192f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE192s CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-192s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE256f CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-256f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE256s CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm enum.
+func (e CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm) Valid() bool {
+	switch e {
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmECPrime256v1:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmECSecp384r1:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmECSecp521r1:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmMLDSA44:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmMLDSA65:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmMLDSA87:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmRSA2048:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmRSA3072:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmRSA4096:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2128f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2128s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2192f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2192s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2256f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHA2256s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE128f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE128s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE192f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE192s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE256f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages.
+const (
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesCrlSign          CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "crl_sign"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesDataEncipherment CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "data_encipherment"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesDecipherOnly     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "decipher_only"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesDigitalSignature CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "digital_signature"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesEncipherOnly     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "encipher_only"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesKeyAgreement     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "key_agreement"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesKeyCertSign      CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "key_cert_sign"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesKeyEncipherment  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "key_encipherment"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesNonRepudiation   CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages enum.
+func (e CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages) Valid() bool {
+	switch e {
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesCrlSign:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesDataEncipherment:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesDecipherOnly:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesDigitalSignature:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesEncipherOnly:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesKeyAgreement:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesKeyCertSign:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesKeyEncipherment:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsagesNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm.
+const (
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmECDSASHA256     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "ECDSA-SHA256"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmECDSASHA384     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "ECDSA-SHA384"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmECDSASHA512     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "ECDSA-SHA512"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmMLDSA44         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "ML-DSA-44"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmMLDSA65         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "ML-DSA-65"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmMLDSA87         CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "ML-DSA-87"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmRSASHA256       CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "RSA-SHA256"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmRSASHA384       CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "RSA-SHA384"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmRSASHA512       CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "RSA-SHA512"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2128f  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-128f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2128s  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-128s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2192f  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-192f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2192s  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-192s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2256f  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-256f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2256s  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHA2-256s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE128f CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-128f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE128s CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-128s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE192f CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-192f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE192s CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-192s"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE256f CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-256f"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE256s CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm enum.
+func (e CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm) Valid() bool {
+	switch e {
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmECDSASHA256:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmECDSASHA384:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmECDSASHA512:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmMLDSA44:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmMLDSA65:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmMLDSA87:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmRSASHA256:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmRSASHA384:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmRSASHA512:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2128f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2128s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2192f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2192s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2256f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHA2256s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE128f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE128s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE192f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE192s:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE256f:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType.
+const (
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeDnsName   CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType = "dns_name"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeEmail     CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType = "email"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeIpAddress CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType = "ip_address"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeUpn       CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType = "upn"
+	CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeUri       CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType = "uri"
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType enum.
+func (e CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType) Valid() bool {
+	switch e {
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeDnsName:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeEmail:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeIpAddress:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeUpn:
+		return true
+	case CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesTypeUri:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile400JSONResponseBodyStatusCode.
+const (
+	CreateCertificateProfile400JSONResponseBodyStatusCodeN400 CreateCertificateProfile400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile400JSONResponseBodyStatusCode enum.
+func (e CreateCertificateProfile400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificateProfile400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile401JSONResponseBodyStatusCode.
+const (
+	CreateCertificateProfile401JSONResponseBodyStatusCodeN401 CreateCertificateProfile401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile401JSONResponseBodyStatusCode enum.
+func (e CreateCertificateProfile401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificateProfile401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile403JSONResponseBodyStatusCode.
+const (
+	CreateCertificateProfile403JSONResponseBodyStatusCodeN403 CreateCertificateProfile403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile403JSONResponseBodyStatusCode enum.
+func (e CreateCertificateProfile403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificateProfile403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile404JSONResponseBodyStatusCode.
+const (
+	CreateCertificateProfile404JSONResponseBodyStatusCodeN404 CreateCertificateProfile404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile404JSONResponseBodyStatusCode enum.
+func (e CreateCertificateProfile404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificateProfile404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile422JSONResponseBodyStatusCode.
+const (
+	CreateCertificateProfile422JSONResponseBodyStatusCodeN422 CreateCertificateProfile422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile422JSONResponseBodyStatusCode enum.
+func (e CreateCertificateProfile422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificateProfile422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCertificateProfile500JSONResponseBodyStatusCode.
+const (
+	CreateCertificateProfile500JSONResponseBodyStatusCodeN500 CreateCertificateProfile500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateCertificateProfile500JSONResponseBodyStatusCode enum.
+func (e CreateCertificateProfile500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCertificateProfile500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertManagerInstanceState400JSONResponseBodyStatusCode.
+const (
+	GetCertManagerInstanceState400JSONResponseBodyStatusCodeN400 GetCertManagerInstanceState400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetCertManagerInstanceState400JSONResponseBodyStatusCode enum.
+func (e GetCertManagerInstanceState400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertManagerInstanceState400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertManagerInstanceState401JSONResponseBodyStatusCode.
+const (
+	GetCertManagerInstanceState401JSONResponseBodyStatusCodeN401 GetCertManagerInstanceState401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetCertManagerInstanceState401JSONResponseBodyStatusCode enum.
+func (e GetCertManagerInstanceState401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertManagerInstanceState401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertManagerInstanceState403JSONResponseBodyStatusCode.
+const (
+	GetCertManagerInstanceState403JSONResponseBodyStatusCodeN403 GetCertManagerInstanceState403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetCertManagerInstanceState403JSONResponseBodyStatusCode enum.
+func (e GetCertManagerInstanceState403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertManagerInstanceState403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertManagerInstanceState404JSONResponseBodyStatusCode.
+const (
+	GetCertManagerInstanceState404JSONResponseBodyStatusCodeN404 GetCertManagerInstanceState404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetCertManagerInstanceState404JSONResponseBodyStatusCode enum.
+func (e GetCertManagerInstanceState404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertManagerInstanceState404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertManagerInstanceState422JSONResponseBodyStatusCode.
+const (
+	GetCertManagerInstanceState422JSONResponseBodyStatusCodeN422 GetCertManagerInstanceState422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetCertManagerInstanceState422JSONResponseBodyStatusCode enum.
+func (e GetCertManagerInstanceState422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertManagerInstanceState422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertManagerInstanceState500JSONResponseBodyStatusCode.
+const (
+	GetCertManagerInstanceState500JSONResponseBodyStatusCodeN500 GetCertManagerInstanceState500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetCertManagerInstanceState500JSONResponseBodyStatusCode enum.
+func (e GetCertManagerInstanceState500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertManagerInstanceState500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetAccessibleSecretMetadata200JSONResponseBodySecretsType.
 const (
 	GetAccessibleSecretMetadata200JSONResponseBodySecretsTypePersonal GetAccessibleSecretMetadata200JSONResponseBodySecretsType = "personal"
@@ -24777,6 +28083,36 @@ func (e DeepSearchSecrets200JSONResponseBodySecretRotations29Type) Valid() bool 
 	}
 }
 
+// Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionAppClickhouse DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations30Type.
+const (
+	DeepSearchSecrets200JSONResponseBodySecretRotations30TypeClickhouseCredentials DeepSearchSecrets200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations30Type enum.
+func (e DeepSearchSecrets200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case DeepSearchSecrets200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeepSearchSecrets400JSONResponseBodyStatusCode.
 const (
 	DeepSearchSecrets400JSONResponseBodyStatusCodeN400 DeepSearchSecrets400JSONResponseBodyStatusCode = 400
@@ -24894,6 +28230,24 @@ func (e ListProjectSecretsDetailsParamsOrderDirection) Valid() bool {
 	case ListProjectSecretsDetailsParamsOrderDirectionAsc:
 		return true
 	case ListProjectSecretsDetailsParamsOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy.
+const (
+	ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByInstance     ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy = "instance"
+	ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByOrganization ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy enum.
+func (e ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByInstance:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -26706,6 +30060,36 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type) Valid
 	}
 }
 
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionAppClickhouse ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations30TypeClickhouseCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProjectSecretsDetails400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails400JSONResponseBodyStatusCodeN400 ListProjectSecretsDetails400JSONResponseBodyStatusCode = 400
@@ -26829,6 +30213,24 @@ func (e ListProjectSecretsOverviewParamsOrderDirection) Valid() bool {
 	case ListProjectSecretsOverviewParamsOrderDirectionAsc:
 		return true
 	case ListProjectSecretsOverviewParamsOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy.
+const (
+	ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByInstance     ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy = "instance"
+	ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByOrganization ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy enum.
+func (e ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByInstance:
+		return true
+	case ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -28641,6 +32043,36 @@ func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type) Vali
 	}
 }
 
+// Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionAppClickhouse ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type.
+const (
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations30TypeClickhouseCredentials ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type enum.
+func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProjectSecretsOverview400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsOverview400JSONResponseBodyStatusCodeN400 ListProjectSecretsOverview400JSONResponseBodyStatusCode = 400
@@ -28988,13 +32420,13 @@ func (e CreateDynamicSecretJSONBodyProvider0Type) Valid() bool {
 
 // Defines values for CreateDynamicSecretJSONBodyProvider1Type.
 const (
-	Clickhouse CreateDynamicSecretJSONBodyProvider1Type = "clickhouse"
+	CreateDynamicSecretJSONBodyProvider1TypeClickhouse CreateDynamicSecretJSONBodyProvider1Type = "clickhouse"
 )
 
 // Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider1Type enum.
 func (e CreateDynamicSecretJSONBodyProvider1Type) Valid() bool {
 	switch e {
-	case Clickhouse:
+	case CreateDynamicSecretJSONBodyProvider1TypeClickhouse:
 		return true
 	default:
 		return false
@@ -34923,6 +38355,24 @@ func (e AddUserToGroup500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateHoneyTokenJSONBodyConfigManagedBy.
+const (
+	CreateHoneyTokenJSONBodyConfigManagedByInstance     CreateHoneyTokenJSONBodyConfigManagedBy = "instance"
+	CreateHoneyTokenJSONBodyConfigManagedByOrganization CreateHoneyTokenJSONBodyConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateHoneyTokenJSONBodyConfigManagedBy enum.
+func (e CreateHoneyTokenJSONBodyConfigManagedBy) Valid() bool {
+	switch e {
+	case CreateHoneyTokenJSONBodyConfigManagedByInstance:
+		return true
+	case CreateHoneyTokenJSONBodyConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateHoneyTokenJSONBodyType.
 const (
 	CreateHoneyTokenJSONBodyTypeAws CreateHoneyTokenJSONBodyType = "aws"
@@ -34932,6 +38382,24 @@ const (
 func (e CreateHoneyTokenJSONBodyType) Valid() bool {
 	switch e {
 	case CreateHoneyTokenJSONBodyTypeAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -35478,6 +38946,24 @@ func (e GetHoneyTokenLimits500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetHoneyToken400JSONResponseBodyStatusCode.
 const (
 	GetHoneyToken400JSONResponseBodyStatusCodeN400 GetHoneyToken400JSONResponseBodyStatusCode = 400
@@ -35562,6 +39048,24 @@ const (
 func (e GetHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetHoneyToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -47646,6 +51150,24 @@ const (
 func (e GetProjectBySlug500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetProjectBySlug500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteProjectParamsHardDelete.
+const (
+	DeleteProjectParamsHardDeleteFalse DeleteProjectParamsHardDelete = "false"
+	DeleteProjectParamsHardDeleteTrue  DeleteProjectParamsHardDelete = "true"
+)
+
+// Valid indicates whether the value is a known member of the DeleteProjectParamsHardDelete enum.
+func (e DeleteProjectParamsHardDelete) Valid() bool {
+	switch e {
+	case DeleteProjectParamsHardDeleteFalse:
+		return true
+	case DeleteProjectParamsHardDeleteTrue:
 		return true
 	default:
 		return false
@@ -93049,6 +96571,338 @@ type UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode float32
 // UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode defines parameters for UpdateAzureKeyVaultAppConnection.
 type UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode float32
 
+// CreateCloudflareAppConnectionJSONBody defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBody struct {
+	// Description An optional description for the Cloudflare Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for Cloudflare Connections.
+	GatewayId *CreateCloudflareAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for Cloudflare Connections.
+	GatewayPoolId *CreateCloudflareAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for Cloudflare Connections.
+	IsAutoRotationEnabled *CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for Cloudflare Connections.
+	IsPlatformManagedCredentials *CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the Cloudflare Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the Cloudflare Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for Cloudflare Connections.
+	Rotation *CreateCloudflareAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreateCloudflareAppConnectionJSONBodyGatewayId0 defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBodyGatewayId0 = interface{}
+
+// CreateCloudflareAppConnectionJSONBodyGatewayId1 defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBodyGatewayId1 = interface{}
+
+// CreateCloudflareAppConnectionJSONBody_GatewayId defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// CreateCloudflareAppConnectionJSONBodyGatewayPoolId0 defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// CreateCloudflareAppConnectionJSONBodyGatewayPoolId1 defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// CreateCloudflareAppConnectionJSONBody_GatewayPoolId defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateCloudflareAppConnectionJSONBodyRotation0 defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBodyRotation0 = interface{}
+
+// CreateCloudflareAppConnectionJSONBodyRotation1 defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBodyRotation1 = interface{}
+
+// CreateCloudflareAppConnectionJSONBody_Rotation defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreateCloudflareAppConnectionJSONBody0 defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with Cloudflare.
+	Credentials struct {
+		AccountId string `json:"accountId"`
+		ApiToken  string `json:"apiToken"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with Cloudflare.
+	Method CreateCloudflareAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateCloudflareAppConnectionJSONBody0Method defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnectionJSONBody0Method string
+
+// CreateCloudflareAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         CreateCloudflareAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                         `json:"createdAt"`
+	Credentials struct {
+		AccountId string `json:"accountId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                              `json:"credentialsHash,omitempty"`
+	Description                  *string                                                              `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                  `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                  `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                   `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateCloudflareAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                               `json:"name"`
+	OrgId                        openapi_types.UUID                                                   `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateCloudflareAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateCloudflareAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateCloudflareAppConnection200JSONResponseBody_AppConnection defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateCloudflareAppConnection400JSONResponseBodyStatusCode defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateCloudflareAppConnection401JSONResponseBodyStatusCode defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateCloudflareAppConnection403JSONResponseBodyStatusCode defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateCloudflareAppConnection404JSONResponseBodyStatusCode defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateCloudflareAppConnection422JSONResponseBodyStatusCode defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateCloudflareAppConnection500JSONResponseBodyStatusCode defines parameters for CreateCloudflareAppConnection.
+type CreateCloudflareAppConnection500JSONResponseBodyStatusCode float32
+
+// CreateDnsMadeEasyAppConnectionJSONBody defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBody struct {
+	// Description An optional description for the DNS Made Easy Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for DNS Made Easy Connections.
+	GatewayId *CreateDnsMadeEasyAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for DNS Made Easy Connections.
+	GatewayPoolId *CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for DNS Made Easy Connections.
+	IsAutoRotationEnabled *CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for DNS Made Easy Connections.
+	IsPlatformManagedCredentials *CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the DNS Made Easy Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the DNS Made Easy Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for DNS Made Easy Connections.
+	Rotation *CreateDnsMadeEasyAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0 defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0 = interface{}
+
+// CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1 defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1 = interface{}
+
+// CreateDnsMadeEasyAppConnectionJSONBody_GatewayId defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0 defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1 defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateDnsMadeEasyAppConnectionJSONBodyRotation0 defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBodyRotation0 = interface{}
+
+// CreateDnsMadeEasyAppConnectionJSONBodyRotation1 defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBodyRotation1 = interface{}
+
+// CreateDnsMadeEasyAppConnectionJSONBody_Rotation defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreateDnsMadeEasyAppConnectionJSONBody0 defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with DNS Made Easy.
+	Credentials struct {
+		ApiKey    string `json:"apiKey"`
+		SecretKey string `json:"secretKey"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with DNS Made Easy.
+	Method CreateDnsMadeEasyAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateDnsMadeEasyAppConnectionJSONBody0Method defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnectionJSONBody0Method string
+
+// CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                          `json:"createdAt"`
+	Credentials struct {
+		ApiKey string `json:"apiKey"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                               `json:"credentialsHash,omitempty"`
+	Description                  *string                                                               `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                   `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                   `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                    `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                 `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                 `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                                `json:"name"`
+	OrgId                        openapi_types.UUID                                                    `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode defines parameters for CreateDnsMadeEasyAppConnection.
+type CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode float32
+
 // ListGitHubAppConnectionsParams defines parameters for ListGitHubAppConnections.
 type ListGitHubAppConnectionsParams struct {
 	// ProjectId The ID of the project to list GitHub Connections from.
@@ -97690,7 +101544,7 @@ type UpdateKubernetesAuthJSONBody struct {
 	// TokenReviewMode The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.
 	TokenReviewMode *UpdateKubernetesAuthJSONBodyTokenReviewMode `json:"tokenReviewMode,omitempty"`
 
-	// TokenReviewerJwt Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.
+	// TokenReviewerJwt Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token replaces the stored one and is used to validate service account tokens during authentication. Omit it, or send an empty string, to keep the stored JWT. Set it to null to remove the stored JWT; the client's own JWT is then used instead, which requires the client to have the system:auth-delegator ClusterRole binding. A stored JWT cannot be read back, so it must be supplied again when changing the host, gateway, gateway pool, CA certificate, or TLS verification.
 	TokenReviewerJwt *string `json:"tokenReviewerJwt,omitempty"`
 
 	// VerifyTlsCertificate Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and the resulting effective CA must be empty. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.
@@ -99594,6 +103448,812 @@ type LoginWithUniversalAuth422JSONResponseBodyStatusCode float32
 
 // LoginWithUniversalAuth500JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
 type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
+
+// CreateAcmeApplicationAccountJSONBody defines parameters for CreateAcmeApplicationAccount.
+type CreateAcmeApplicationAccountJSONBody struct {
+	Payload   string `json:"payload"`
+	Protected string `json:"protected"`
+	Signature string `json:"signature"`
+}
+
+// ListAcmeOrdersJSONBody defines parameters for ListAcmeOrders.
+type ListAcmeOrdersJSONBody struct {
+	Payload   string `json:"payload"`
+	Protected string `json:"protected"`
+	Signature string `json:"signature"`
+}
+
+// GetAcmeAuthorizationJSONBody defines parameters for GetAcmeAuthorization.
+type GetAcmeAuthorizationJSONBody struct {
+	Payload   string `json:"payload"`
+	Protected string `json:"protected"`
+	Signature string `json:"signature"`
+}
+
+// GetAcmeAuthorization200JSONResponseBodyChallengesType defines parameters for GetAcmeAuthorization.
+type GetAcmeAuthorization200JSONResponseBodyChallengesType string
+
+// GetAcmeAuthorization200JSONResponseBodyStatus defines parameters for GetAcmeAuthorization.
+type GetAcmeAuthorization200JSONResponseBodyStatus string
+
+// RespondToAcmeChallengeJSONBody defines parameters for RespondToAcmeChallenge.
+type RespondToAcmeChallengeJSONBody struct {
+	Payload   string `json:"payload"`
+	Protected string `json:"protected"`
+	Signature string `json:"signature"`
+}
+
+// RespondToAcmeChallenge200JSONResponseBodyType defines parameters for RespondToAcmeChallenge.
+type RespondToAcmeChallenge200JSONResponseBodyType string
+
+// CreateAcmeOrderJSONBody defines parameters for CreateAcmeOrder.
+type CreateAcmeOrderJSONBody struct {
+	Payload   string `json:"payload"`
+	Protected string `json:"protected"`
+	Signature string `json:"signature"`
+}
+
+// CreateAcmeOrder201JSONResponseBodyStatus defines parameters for CreateAcmeOrder.
+type CreateAcmeOrder201JSONResponseBodyStatus string
+
+// GetAcmeOrderJSONBody defines parameters for GetAcmeOrder.
+type GetAcmeOrderJSONBody struct {
+	Payload   string `json:"payload"`
+	Protected string `json:"protected"`
+	Signature string `json:"signature"`
+}
+
+// GetAcmeOrder200JSONResponseBodyStatus defines parameters for GetAcmeOrder.
+type GetAcmeOrder200JSONResponseBodyStatus string
+
+// DownloadAcmeCertificateJSONBody defines parameters for DownloadAcmeCertificate.
+type DownloadAcmeCertificateJSONBody struct {
+	Payload   string `json:"payload"`
+	Protected string `json:"protected"`
+	Signature string `json:"signature"`
+}
+
+// FinalizeAcmeOrderJSONBody defines parameters for FinalizeAcmeOrder.
+type FinalizeAcmeOrderJSONBody struct {
+	Payload   string `json:"payload"`
+	Protected string `json:"protected"`
+	Signature string `json:"signature"`
+}
+
+// FinalizeAcmeOrder200JSONResponseBodyStatus defines parameters for FinalizeAcmeOrder.
+type FinalizeAcmeOrder200JSONResponseBodyStatus string
+
+// CreatePkiApplicationJSONBody defines parameters for CreatePkiApplication.
+type CreatePkiApplicationJSONBody struct {
+	Description *string               `json:"description,omitempty"`
+	Name        string                `json:"name"`
+	ProfileIds  *[]openapi_types.UUID `json:"profileIds,omitempty"`
+}
+
+// CreatePkiApplication400JSONResponseBodyStatusCode defines parameters for CreatePkiApplication.
+type CreatePkiApplication400JSONResponseBodyStatusCode float32
+
+// CreatePkiApplication401JSONResponseBodyStatusCode defines parameters for CreatePkiApplication.
+type CreatePkiApplication401JSONResponseBodyStatusCode float32
+
+// CreatePkiApplication403JSONResponseBodyStatusCode defines parameters for CreatePkiApplication.
+type CreatePkiApplication403JSONResponseBodyStatusCode float32
+
+// CreatePkiApplication404JSONResponseBodyStatusCode defines parameters for CreatePkiApplication.
+type CreatePkiApplication404JSONResponseBodyStatusCode float32
+
+// CreatePkiApplication422JSONResponseBodyStatusCode defines parameters for CreatePkiApplication.
+type CreatePkiApplication422JSONResponseBodyStatusCode float32
+
+// CreatePkiApplication500JSONResponseBodyStatusCode defines parameters for CreatePkiApplication.
+type CreatePkiApplication500JSONResponseBodyStatusCode float32
+
+// AttachPkiApplicationProfilesJSONBody defines parameters for AttachPkiApplicationProfiles.
+type AttachPkiApplicationProfilesJSONBody struct {
+	ProfileIds []openapi_types.UUID `json:"profileIds"`
+}
+
+// AttachPkiApplicationProfiles400JSONResponseBodyStatusCode defines parameters for AttachPkiApplicationProfiles.
+type AttachPkiApplicationProfiles400JSONResponseBodyStatusCode float32
+
+// AttachPkiApplicationProfiles401JSONResponseBodyStatusCode defines parameters for AttachPkiApplicationProfiles.
+type AttachPkiApplicationProfiles401JSONResponseBodyStatusCode float32
+
+// AttachPkiApplicationProfiles403JSONResponseBodyStatusCode defines parameters for AttachPkiApplicationProfiles.
+type AttachPkiApplicationProfiles403JSONResponseBodyStatusCode float32
+
+// AttachPkiApplicationProfiles404JSONResponseBodyStatusCode defines parameters for AttachPkiApplicationProfiles.
+type AttachPkiApplicationProfiles404JSONResponseBodyStatusCode float32
+
+// AttachPkiApplicationProfiles422JSONResponseBodyStatusCode defines parameters for AttachPkiApplicationProfiles.
+type AttachPkiApplicationProfiles422JSONResponseBodyStatusCode float32
+
+// AttachPkiApplicationProfiles500JSONResponseBodyStatusCode defines parameters for AttachPkiApplicationProfiles.
+type AttachPkiApplicationProfiles500JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationAcmeEnrollmentJSONBody defines parameters for SetPkiApplicationAcmeEnrollment.
+type SetPkiApplicationAcmeEnrollmentJSONBody struct {
+	SkipDnsOwnershipVerification *bool `json:"skipDnsOwnershipVerification,omitempty"`
+	SkipEabBinding               *bool `json:"skipEabBinding,omitempty"`
+}
+
+// SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode defines parameters for SetPkiApplicationAcmeEnrollment.
+type SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode defines parameters for SetPkiApplicationAcmeEnrollment.
+type SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode defines parameters for SetPkiApplicationAcmeEnrollment.
+type SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode defines parameters for SetPkiApplicationAcmeEnrollment.
+type SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode defines parameters for SetPkiApplicationAcmeEnrollment.
+type SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode defines parameters for SetPkiApplicationAcmeEnrollment.
+type SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode float32
+
+// RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode defines parameters for RevealPkiApplicationAcmeEabSecret.
+type RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode float32
+
+// RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode defines parameters for RevealPkiApplicationAcmeEabSecret.
+type RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode float32
+
+// RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode defines parameters for RevealPkiApplicationAcmeEabSecret.
+type RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode float32
+
+// RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode defines parameters for RevealPkiApplicationAcmeEabSecret.
+type RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode float32
+
+// RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode defines parameters for RevealPkiApplicationAcmeEabSecret.
+type RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode float32
+
+// RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode defines parameters for RevealPkiApplicationAcmeEabSecret.
+type RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationScepEnrollmentJSONBody defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollmentJSONBody struct {
+	AllowCertBasedRenewal         *bool                                                 `json:"allowCertBasedRenewal,omitempty"`
+	ChallengePassword             *string                                               `json:"challengePassword,omitempty"`
+	ChallengeType                 *SetPkiApplicationScepEnrollmentJSONBodyChallengeType `json:"challengeType,omitempty"`
+	DynamicChallengeExpiryMinutes *int                                                  `json:"dynamicChallengeExpiryMinutes,omitempty"`
+	DynamicChallengeMaxPending    *int                                                  `json:"dynamicChallengeMaxPending,omitempty"`
+	IncludeCaCertInResponse       *bool                                                 `json:"includeCaCertInResponse,omitempty"`
+	SignRaWithCa                  *bool                                                 `json:"signRaWithCa,omitempty"`
+	ValidationConnectionId        *openapi_types.UUID                                   `json:"validationConnectionId,omitempty"`
+}
+
+// SetPkiApplicationScepEnrollmentJSONBodyChallengeType defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollmentJSONBodyChallengeType string
+
+// SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType string
+
+// SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode float32
+
+// SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode defines parameters for SetPkiApplicationScepEnrollment.
+type SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode float32
+
+// CreateAcmeCertificateAuthorityV1JSONBody defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1JSONBody struct {
+	Configuration struct {
+		// AccountEmail The email address for the ACME Certificate Authority.
+		AccountEmail string `json:"accountEmail"`
+
+		// DirectoryUrl The directory URL for the ACME Certificate Authority.
+		DirectoryUrl string `json:"directoryUrl"`
+
+		// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
+		DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
+		DnsProviderConfig  struct {
+			// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+			HostedZoneId string `json:"hostedZoneId"`
+
+			// Provider The DNS provider for the ACME Certificate Authority.
+			Provider CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider `json:"provider"`
+		} `json:"dnsProviderConfig"`
+
+		// DnsResolver An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.
+		DnsResolver *string `json:"dnsResolver,omitempty"`
+
+		// EabHmacKey The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.
+		EabHmacKey *string `json:"eabHmacKey,omitempty"`
+
+		// EabKid The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.
+		EabKid *string `json:"eabKid,omitempty"`
+	} `json:"configuration"`
+
+	// Name The name of the ACME-compatible CA Certificate Authority to create. Must be slug-friendly.
+	Name      string              `json:"name"`
+	ProjectId *openapi_types.UUID `json:"projectId,omitempty"`
+
+	// Status The status of the ACME-compatible CA Certificate Authority.
+	Status CreateAcmeCertificateAuthorityV1JSONBodyStatus `json:"status"`
+}
+
+// CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider string
+
+// CreateAcmeCertificateAuthorityV1JSONBodyStatus defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1JSONBodyStatus string
+
+// CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider string
+
+// CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus string
+
+// CreateAcmeCertificateAuthorityV1200JSONResponseBodyType defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1200JSONResponseBodyType string
+
+// CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode float32
+
+// CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode float32
+
+// CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode float32
+
+// CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode float32
+
+// CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode float32
+
+// CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode defines parameters for CreateAcmeCertificateAuthorityV1.
+type CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1JSONBody defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBody struct {
+	Configuration struct {
+		ActiveCaCertId *openapi_types.UUID `json:"activeCaCertId,omitempty"`
+
+		// AppConnectionId The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.
+		AppConnectionId *openapi_types.UUID `json:"appConnectionId,omitempty"`
+
+		// AppConnectionName The name of the AWS connection the CA's signing key is reached through. Not user-supplied.
+		AppConnectionName *string `json:"appConnectionName,omitempty"`
+
+		// CommonName The common name (CN) for the CA.
+		CommonName *string `json:"commonName,omitempty"`
+
+		// Country The country name (C) for the CA.
+		Country *string `json:"country,omitempty"`
+
+		// CrlDistributionPointUrls Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.
+		CrlDistributionPointUrls *[]string `json:"crlDistributionPointUrls,omitempty"`
+
+		// DisableManagedCrlDistributionPointUrl When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.
+		DisableManagedCrlDistributionPointUrl *bool   `json:"disableManagedCrlDistributionPointUrl,omitempty"`
+		Dn                                    *string `json:"dn,omitempty"`
+
+		// ExternalKeyId The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.
+		ExternalKeyId *string `json:"externalKeyId,omitempty"`
+
+		// FriendlyName A friendly name for the CA.
+		FriendlyName *string `json:"friendlyName,omitempty"`
+
+		// HsmConnectorId The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.
+		HsmConnectorId *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+
+		// HsmConnectorName The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.
+		HsmConnectorName *string `json:"hsmConnectorName,omitempty"`
+
+		// HsmKeyLabel Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.
+		// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+		HsmKeyLabel *string `json:"hsmKeyLabel,omitempty"`
+
+		// IsOcspEnabled When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.
+		IsOcspEnabled *bool `json:"isOcspEnabled,omitempty"`
+
+		// KeyAlgorithm The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.
+		KeyAlgorithm CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm `json:"keyAlgorithm"`
+
+		// KeySource Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.
+		KeySource *CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource `json:"keySource,omitempty"`
+
+		// Locality The locality name for the CA.
+		Locality *string `json:"locality,omitempty"`
+
+		// MaxPathLength The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.
+		MaxPathLength *float32 `json:"maxPathLength,omitempty"`
+
+		// NotAfter The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.
+		NotAfter *string `json:"notAfter,omitempty"`
+
+		// NotBefore The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.
+		NotBefore *string `json:"notBefore,omitempty"`
+
+		// Organization The organization (O) for the CA.
+		Organization *string `json:"organization,omitempty"`
+
+		// Ou The organization unit (OU) for the CA.
+		Ou         *string             `json:"ou,omitempty"`
+		ParentCaId *openapi_types.UUID `json:"parentCaId,omitempty"`
+
+		// Province The state of province name for the CA.
+		Province *string `json:"province,omitempty"`
+
+		// Region The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.
+		Region       *CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion `json:"region,omitempty"`
+		SerialNumber *string                                                          `json:"serialNumber,omitempty"`
+
+		// Type The type of CA to create.
+		Type CreateInternalCertificateAuthorityV1JSONBodyConfigurationType `json:"type"`
+	} `json:"configuration"`
+
+	// Name The name of the Internal Certificate Authority to create. Must be slug-friendly.
+	Name      string              `json:"name"`
+	ProjectId *openapi_types.UUID `json:"projectId,omitempty"`
+
+	// Status The status of the Internal Certificate Authority.
+	Status CreateInternalCertificateAuthorityV1JSONBodyStatus `json:"status"`
+}
+
+// CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm string
+
+// CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource string
+
+// CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion string
+
+// CreateInternalCertificateAuthorityV1JSONBodyConfigurationType defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyConfigurationType string
+
+// CreateInternalCertificateAuthorityV1JSONBodyStatus defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyStatus string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyType defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyType string
+
+// CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode float32
+
+// CreateCertificatePolicyJSONBody defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBody struct {
+	Algorithms *struct {
+		KeyAlgorithm *[]string `json:"keyAlgorithm,omitempty"`
+		Signature    *[]string `json:"signature,omitempty"`
+	} `json:"algorithms,omitempty"`
+	BasicConstraints *struct {
+		IsCA          *CreateCertificatePolicyJSONBodyBasicConstraintsIsCA `json:"isCA,omitempty"`
+		MaxPathLength *int                                                 `json:"maxPathLength,omitempty"`
+	} `json:"basicConstraints,omitempty"`
+
+	// CustomExtensions Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.
+	CustomExtensions *[]struct {
+		// Allowed Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.
+		Allowed  *[]string                                                `json:"allowed,omitempty"`
+		Critical *CreateCertificatePolicyJSONBodyCustomExtensionsCritical `json:"critical,omitempty"`
+
+		// Denied Value patterns this extension must not take, with * as a wildcard. A denied match is rejected even when an allowed pattern also matches.
+		Denied *[]string `json:"denied,omitempty"`
+		Label  *string   `json:"label,omitempty"`
+		Oid    string    `json:"oid"`
+
+		// Required Value patterns this extension must match, with * as a wildcard. Setting any required pattern also makes the extension mandatory on every request.
+		Required *[]string `json:"required,omitempty"`
+	} `json:"customExtensions,omitempty"`
+	Description       *string `json:"description,omitempty"`
+	ExtendedKeyUsages *struct {
+		Allowed  *[]CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed  `json:"allowed,omitempty"`
+		Denied   *[]CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied   `json:"denied,omitempty"`
+		Required *[]CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired `json:"required,omitempty"`
+	} `json:"extendedKeyUsages,omitempty"`
+	KeyUsages *struct {
+		Allowed  *[]CreateCertificatePolicyJSONBodyKeyUsagesAllowed  `json:"allowed,omitempty"`
+		Denied   *[]CreateCertificatePolicyJSONBodyKeyUsagesDenied   `json:"denied,omitempty"`
+		Required *[]CreateCertificatePolicyJSONBodyKeyUsagesRequired `json:"required,omitempty"`
+	} `json:"keyUsages,omitempty"`
+	Name      string  `json:"name"`
+	ProjectId *string `json:"projectId,omitempty"`
+	Sans      *[]struct {
+		Allowed  *[]string                               `json:"allowed,omitempty"`
+		Denied   *[]string                               `json:"denied,omitempty"`
+		Required *[]string                               `json:"required,omitempty"`
+		Type     CreateCertificatePolicyJSONBodySansType `json:"type"`
+	} `json:"sans,omitempty"`
+	Subject  *[]CreateCertificatePolicyJSONBody_Subject_Item `json:"subject,omitempty"`
+	Validity *struct {
+		Max *string `json:"max,omitempty"`
+	} `json:"validity,omitempty"`
+}
+
+// CreateCertificatePolicyJSONBodyBasicConstraintsIsCA defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodyBasicConstraintsIsCA string
+
+// CreateCertificatePolicyJSONBodyCustomExtensionsCritical defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodyCustomExtensionsCritical string
+
+// CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed string
+
+// CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied string
+
+// CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired string
+
+// CreateCertificatePolicyJSONBodyKeyUsagesAllowed defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodyKeyUsagesAllowed string
+
+// CreateCertificatePolicyJSONBodyKeyUsagesDenied defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodyKeyUsagesDenied string
+
+// CreateCertificatePolicyJSONBodyKeyUsagesRequired defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodyKeyUsagesRequired string
+
+// CreateCertificatePolicyJSONBodySansType defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodySansType string
+
+// CreateCertificatePolicyJSONBodySubject0 defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodySubject0 struct {
+	Allowed  *[]string                                   `json:"allowed,omitempty"`
+	Denied   *[]string                                   `json:"denied,omitempty"`
+	Required *[]string                                   `json:"required,omitempty"`
+	Type     CreateCertificatePolicyJSONBodySubject0Type `json:"type"`
+}
+
+// CreateCertificatePolicyJSONBodySubject0Type defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodySubject0Type string
+
+// CreateCertificatePolicyJSONBodySubject1 defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodySubject1 struct {
+	// Allowed Domain component sequences that are permitted. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.
+	Allowed *[]string `json:"allowed,omitempty"`
+
+	// Denied Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.
+	Denied *[]string `json:"denied,omitempty"`
+
+	// Required Domain component sequences that are required. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.
+	Required *[]string                                   `json:"required,omitempty"`
+	Type     CreateCertificatePolicyJSONBodySubject1Type `json:"type"`
+}
+
+// CreateCertificatePolicyJSONBodySubject1Type defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBodySubject1Type string
+
+// CreateCertificatePolicyJSONBody_Subject_Item defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicyJSONBody_Subject_Item struct {
+	union json.RawMessage
+}
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0 defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0 struct {
+	Allowed  *[]string                                                               `json:"allowed,omitempty"`
+	Denied   *[]string                                                               `json:"denied,omitempty"`
+	Required *[]string                                                               `json:"required,omitempty"`
+	Type     CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type `json:"type"`
+}
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0Type string
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1 defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1 struct {
+	// Allowed Domain component sequences that are permitted. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.
+	Allowed *[]string `json:"allowed,omitempty"`
+
+	// Denied Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.
+	Denied *[]string `json:"denied,omitempty"`
+
+	// Required Domain component sequences that are required. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.
+	Required *[]string                                                               `json:"required,omitempty"`
+	Type     CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1Type `json:"type"`
+}
+
+// CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1Type defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1Type string
+
+// CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item struct {
+	union json.RawMessage
+}
+
+// CreateCertificatePolicy400JSONResponseBodyStatusCode defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy400JSONResponseBodyStatusCode float32
+
+// CreateCertificatePolicy401JSONResponseBodyStatusCode defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy401JSONResponseBodyStatusCode float32
+
+// CreateCertificatePolicy403JSONResponseBodyStatusCode defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy403JSONResponseBodyStatusCode float32
+
+// CreateCertificatePolicy404JSONResponseBodyStatusCode defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy404JSONResponseBodyStatusCode float32
+
+// CreateCertificatePolicy422JSONResponseBodyStatusCode defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy422JSONResponseBodyStatusCode float32
+
+// CreateCertificatePolicy500JSONResponseBodyStatusCode defines parameters for CreateCertificatePolicy.
+type CreateCertificatePolicy500JSONResponseBodyStatusCode float32
+
+// CreateCertificateProfileJSONBody defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBody struct {
+	AcmeConfig *struct {
+		SkipDnsOwnershipVerification *bool `json:"skipDnsOwnershipVerification,omitempty"`
+		SkipEabBinding               *bool `json:"skipEabBinding,omitempty"`
+	} `json:"acmeConfig,omitempty"`
+	ApiConfig *struct {
+		AutoRenew       *bool    `json:"autoRenew,omitempty"`
+		RenewBeforeDays *float32 `json:"renewBeforeDays,omitempty"`
+	} `json:"apiConfig,omitempty"`
+	CaId                *openapi_types.UUID `json:"caId,omitempty"`
+	CertificatePolicyId openapi_types.UUID  `json:"certificatePolicyId"`
+	Defaults            *struct {
+		BasicConstraints *struct {
+			IsCA       bool `json:"isCA"`
+			PathLength *int `json:"pathLength,omitempty"`
+		} `json:"basicConstraints,omitempty"`
+		CommonName       *string `json:"commonName,omitempty"`
+		Country          *string `json:"country,omitempty"`
+		CustomExtensions *[]struct {
+			Critical *bool   `json:"critical,omitempty"`
+			Label    *string `json:"label,omitempty"`
+			Oid      string  `json:"oid"`
+			Value    *string `json:"value,omitempty"`
+		} `json:"customExtensions,omitempty"`
+		DomainComponents   *[]string                                                    `json:"domainComponents,omitempty"`
+		ExtendedKeyUsages  *[]CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages `json:"extendedKeyUsages,omitempty"`
+		KeyAlgorithm       *CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm        `json:"keyAlgorithm,omitempty"`
+		KeyUsages          *[]CreateCertificateProfileJSONBodyDefaultsKeyUsages         `json:"keyUsages,omitempty"`
+		Locality           *string                                                      `json:"locality,omitempty"`
+		Organization       *string                                                      `json:"organization,omitempty"`
+		OrganizationalUnit *string                                                      `json:"organizationalUnit,omitempty"`
+		SignatureAlgorithm *CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
+		State              *string                                                      `json:"state,omitempty"`
+		SubjectAltNames    *[]struct {
+			Type  CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType `json:"type"`
+			Value string                                                      `json:"value"`
+		} `json:"subjectAltNames,omitempty"`
+		TtlDays *int `json:"ttlDays,omitempty"`
+	} `json:"defaults,omitempty"`
+	Description    *string                                         `json:"description,omitempty"`
+	EnrollmentType *CreateCertificateProfileJSONBodyEnrollmentType `json:"enrollmentType,omitempty"`
+	EstConfig      *struct {
+		CaChain                      *string `json:"caChain,omitempty"`
+		DisableBootstrapCaValidation *bool   `json:"disableBootstrapCaValidation,omitempty"`
+		Passphrase                   string  `json:"passphrase"`
+	} `json:"estConfig,omitempty"`
+	ExternalConfigs *CreateCertificateProfileJSONBody_ExternalConfigs `json:"externalConfigs,omitempty"`
+	IssuerType      *CreateCertificateProfileJSONBodyIssuerType       `json:"issuerType,omitempty"`
+	ProjectId       *string                                           `json:"projectId,omitempty"`
+	ScepConfig      *struct {
+		AllowCertBasedRenewal         *bool                                                    `json:"allowCertBasedRenewal,omitempty"`
+		ChallengePassword             *string                                                  `json:"challengePassword,omitempty"`
+		ChallengeType                 *CreateCertificateProfileJSONBodyScepConfigChallengeType `json:"challengeType,omitempty"`
+		DynamicChallengeExpiryMinutes *int                                                     `json:"dynamicChallengeExpiryMinutes,omitempty"`
+		DynamicChallengeMaxPending    *int                                                     `json:"dynamicChallengeMaxPending,omitempty"`
+		IncludeCaCertInResponse       *bool                                                    `json:"includeCaCertInResponse,omitempty"`
+	} `json:"scepConfig,omitempty"`
+	Slug string `json:"slug"`
+}
+
+// CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyDefaultsExtendedKeyUsages string
+
+// CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyDefaultsKeyAlgorithm string
+
+// CreateCertificateProfileJSONBodyDefaultsKeyUsages defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyDefaultsKeyUsages string
+
+// CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm string
+
+// CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType string
+
+// CreateCertificateProfileJSONBodyEnrollmentType defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyEnrollmentType string
+
+// CreateCertificateProfileJSONBodyExternalConfigs0 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs0 struct {
+	// Template Certificate template name for Azure AD CS
+	Template string `json:"template"`
+}
+
+// CreateCertificateProfileJSONBodyExternalConfigs1 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs1 struct {
+	// Template Certificate template name for Active Directory Certificate Service
+	Template string `json:"template"`
+}
+
+// CreateCertificateProfileJSONBodyExternalConfigs2 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs2 = map[string]interface{}
+
+// CreateCertificateProfileJSONBodyExternalConfigs3 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs3 = map[string]interface{}
+
+// CreateCertificateProfileJSONBodyExternalConfigs4 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs4 = map[string]interface{}
+
+// CreateCertificateProfileJSONBodyExternalConfigs5 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs5 = map[string]interface{}
+
+// CreateCertificateProfileJSONBodyExternalConfigs6 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs6 = map[string]interface{}
+
+// CreateCertificateProfileJSONBodyExternalConfigs7 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs7 = map[string]interface{}
+
+// CreateCertificateProfileJSONBodyExternalConfigs8 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyExternalConfigs8 = map[string]interface{}
+
+// CreateCertificateProfileJSONBody_ExternalConfigs defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBody_ExternalConfigs struct {
+	union json.RawMessage
+}
+
+// CreateCertificateProfileJSONBodyIssuerType defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyIssuerType string
+
+// CreateCertificateProfileJSONBodyScepConfigChallengeType defines parameters for CreateCertificateProfile.
+type CreateCertificateProfileJSONBodyScepConfigChallengeType string
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages string
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm string
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages string
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm string
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType string
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0 struct {
+	// Template Certificate template name for Azure AD CS
+	Template string `json:"template"`
+}
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1 struct {
+	// Template Certificate template name for Active Directory Certificate Service
+	Template string `json:"template"`
+}
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2 = map[string]interface{}
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3 = map[string]interface{}
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4 = map[string]interface{}
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5 = map[string]interface{}
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6 = map[string]interface{}
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7 = map[string]interface{}
+
+// CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8 defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8 = map[string]interface{}
+
+// CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs struct {
+	union json.RawMessage
+}
+
+// CreateCertificateProfile400JSONResponseBodyStatusCode defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile400JSONResponseBodyStatusCode float32
+
+// CreateCertificateProfile401JSONResponseBodyStatusCode defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile401JSONResponseBodyStatusCode float32
+
+// CreateCertificateProfile403JSONResponseBodyStatusCode defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile403JSONResponseBodyStatusCode float32
+
+// CreateCertificateProfile404JSONResponseBodyStatusCode defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile404JSONResponseBodyStatusCode float32
+
+// CreateCertificateProfile422JSONResponseBodyStatusCode defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile422JSONResponseBodyStatusCode float32
+
+// CreateCertificateProfile500JSONResponseBodyStatusCode defines parameters for CreateCertificateProfile.
+type CreateCertificateProfile500JSONResponseBodyStatusCode float32
+
+// GetCertManagerInstanceState400JSONResponseBodyStatusCode defines parameters for GetCertManagerInstanceState.
+type GetCertManagerInstanceState400JSONResponseBodyStatusCode float32
+
+// GetCertManagerInstanceState401JSONResponseBodyStatusCode defines parameters for GetCertManagerInstanceState.
+type GetCertManagerInstanceState401JSONResponseBodyStatusCode float32
+
+// GetCertManagerInstanceState403JSONResponseBodyStatusCode defines parameters for GetCertManagerInstanceState.
+type GetCertManagerInstanceState403JSONResponseBodyStatusCode float32
+
+// GetCertManagerInstanceState404JSONResponseBodyStatusCode defines parameters for GetCertManagerInstanceState.
+type GetCertManagerInstanceState404JSONResponseBodyStatusCode float32
+
+// GetCertManagerInstanceState422JSONResponseBodyStatusCode defines parameters for GetCertManagerInstanceState.
+type GetCertManagerInstanceState422JSONResponseBodyStatusCode float32
+
+// GetCertManagerInstanceState500JSONResponseBodyStatusCode defines parameters for GetCertManagerInstanceState.
+type GetCertManagerInstanceState500JSONResponseBodyStatusCode float32
 
 // GetAccessibleSecretMetadataParams defines parameters for GetAccessibleSecretMetadata.
 type GetAccessibleSecretMetadataParams struct {
@@ -101928,6 +106588,67 @@ type DeepSearchSecrets200JSONResponseBodySecretRotations29ConnectionApp string
 // DeepSearchSecrets200JSONResponseBodySecretRotations29Type defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets200JSONResponseBodySecretRotations29Type string
 
+// DeepSearchSecrets200JSONResponseBodySecretRotations30 defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                 `json:"id"`
+		Name string                                                             `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      DeepSearchSecrets200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                 `json:"updatedAt"`
+}
+
+// DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp string
+
+// DeepSearchSecrets200JSONResponseBodySecretRotations30Type defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30Type string
+
 // DeepSearchSecrets200JSONResponseBody_SecretRotations_Item defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets200JSONResponseBody_SecretRotations_Item struct {
 	union json.RawMessage
@@ -102007,6 +106728,9 @@ type ListProjectSecretsDetailsParamsOrderBy string
 
 // ListProjectSecretsDetailsParamsOrderDirection defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetailsParamsOrderDirection string
+
+// ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy string
 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations0 struct {
@@ -104100,6 +108824,67 @@ type ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type string
 
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type string
+
 // ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item struct {
 	Secrets []*struct {
@@ -104231,6 +109016,9 @@ type ListProjectSecretsOverviewParamsOrderBy string
 
 // ListProjectSecretsOverviewParamsOrderDirection defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverviewParamsOrderDirection string
+
+// ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy string
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations0 struct {
@@ -106323,6 +111111,67 @@ type ListProjectSecretsOverview200JSONResponseBodySecretRotations29ConnectionApp
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type string
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30 defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                          `json:"id"`
+		Name string                                                                      `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                          `json:"updatedAt"`
+}
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp string
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type string
 
 // ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item struct {
@@ -109397,6 +114246,11 @@ type AddUserToGroup500JSONResponseBodyStatusCode float32
 
 // CreateHoneyTokenJSONBody defines parameters for CreateHoneyToken.
 type CreateHoneyTokenJSONBody struct {
+	// Config Settings that depend on the honey token's type.
+	Config *struct {
+		// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+		ManagedBy *CreateHoneyTokenJSONBodyConfigManagedBy `json:"managedBy,omitempty"`
+	} `json:"config,omitempty"`
 	Description    *string                      `json:"description,omitempty"`
 	Environment    string                       `json:"environment"`
 	Name           string                       `json:"name"`
@@ -109406,8 +114260,14 @@ type CreateHoneyTokenJSONBody struct {
 	Type           CreateHoneyTokenJSONBodyType `json:"type"`
 }
 
+// CreateHoneyTokenJSONBodyConfigManagedBy defines parameters for CreateHoneyToken.
+type CreateHoneyTokenJSONBodyConfigManagedBy string
+
 // CreateHoneyTokenJSONBodyType defines parameters for CreateHoneyToken.
 type CreateHoneyTokenJSONBodyType string
+
+// CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for CreateHoneyToken.
+type CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // CreateHoneyToken400JSONResponseBodyStatusCode defines parameters for CreateHoneyToken.
 type CreateHoneyToken400JSONResponseBodyStatusCode float32
@@ -109532,6 +114392,9 @@ type GetHoneyTokenLimits422JSONResponseBodyStatusCode float32
 // GetHoneyTokenLimits500JSONResponseBodyStatusCode defines parameters for GetHoneyTokenLimits.
 type GetHoneyTokenLimits500JSONResponseBodyStatusCode float32
 
+// GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for GetHoneyToken.
+type GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
+
 // GetHoneyToken400JSONResponseBodyStatusCode defines parameters for GetHoneyToken.
 type GetHoneyToken400JSONResponseBodyStatusCode float32
 
@@ -109556,6 +114419,9 @@ type UpdateHoneyTokenJSONBody struct {
 	Name           *string            `json:"name,omitempty"`
 	SecretsMapping *map[string]string `json:"secretsMapping,omitempty"`
 }
+
+// UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for UpdateHoneyToken.
+type UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // UpdateHoneyToken400JSONResponseBodyStatusCode defines parameters for UpdateHoneyToken.
 type UpdateHoneyToken400JSONResponseBodyStatusCode float32
@@ -110878,12 +115744,11 @@ type GetInsightsSummary500JSONResponseBodyStatusCode float32
 
 // InviteUsersToOrganizationJSONBody defines parameters for InviteUsersToOrganization.
 type InviteUsersToOrganizationJSONBody struct {
-	GrantAgentVaultAccess *bool                 `json:"grantAgentVaultAccess,omitempty"`
-	GrantPamAccess        *bool                 `json:"grantPamAccess,omitempty"`
-	InviteeEmails         []openapi_types.Email `json:"inviteeEmails"`
-	OrganizationId        string                `json:"organizationId"`
-	OrganizationRoleSlug  *string               `json:"organizationRoleSlug,omitempty"`
-	ProjectIds            *[]string             `json:"projectIds,omitempty"`
+	GrantPamAccess       *bool                 `json:"grantPamAccess,omitempty"`
+	InviteeEmails        []openapi_types.Email `json:"inviteeEmails"`
+	OrganizationId       string                `json:"organizationId"`
+	OrganizationRoleSlug *string               `json:"organizationRoleSlug,omitempty"`
+	ProjectIds           *[]string             `json:"projectIds,omitempty"`
 }
 
 // InviteUsersToOrganization400JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
@@ -114090,6 +118955,15 @@ type GetProjectBySlug422JSONResponseBodyStatusCode float32
 
 // GetProjectBySlug500JSONResponseBodyStatusCode defines parameters for GetProjectBySlug.
 type GetProjectBySlug500JSONResponseBodyStatusCode float32
+
+// DeleteProjectParams defines parameters for DeleteProject.
+type DeleteProjectParams struct {
+	// HardDelete When true, the project is permanently deleted shortly after the request. When false or omitted, a secret manager project is soft-deleted (preserved and scheduled for permanent deletion after a grace period) and hidden from subsequent reads.
+	HardDelete *DeleteProjectParamsHardDelete `form:"hardDelete,omitempty" json:"hardDelete,omitempty"`
+}
+
+// DeleteProjectParamsHardDelete defines parameters for DeleteProject.
+type DeleteProjectParamsHardDelete string
 
 // DeleteProject400JSONResponseBodyStatusCode defines parameters for DeleteProject.
 type DeleteProject400JSONResponseBodyStatusCode float32
@@ -127995,6 +132869,18 @@ type GetSecretReferenceTreeV4422JSONResponseBodyStatusCode float32
 // GetSecretReferenceTreeV4500JSONResponseBodyStatusCode defines parameters for GetSecretReferenceTreeV4.
 type GetSecretReferenceTreeV4500JSONResponseBodyStatusCode float32
 
+// GetScepApplicationOperationParams defines parameters for GetScepApplicationOperation.
+type GetScepApplicationOperationParams struct {
+	Operation string  `form:"operation" json:"operation"`
+	Message   *string `form:"message,omitempty" json:"message,omitempty"`
+}
+
+// GetScepOperationParams defines parameters for GetScepOperation.
+type GetScepOperationParams struct {
+	Operation string  `form:"operation" json:"operation"`
+	Message   *string `form:"message,omitempty" json:"message,omitempty"`
+}
+
 // CreateAccessApprovalPolicyJSONRequestBody defines body for CreateAccessApprovalPolicy for application/json ContentType.
 type CreateAccessApprovalPolicyJSONRequestBody CreateAccessApprovalPolicyJSONBody
 
@@ -128066,6 +132952,12 @@ type CreateAzureKeyVaultAppConnectionJSONRequestBody CreateAzureKeyVaultAppConne
 
 // UpdateAzureKeyVaultAppConnectionJSONRequestBody defines body for UpdateAzureKeyVaultAppConnection for application/json ContentType.
 type UpdateAzureKeyVaultAppConnectionJSONRequestBody UpdateAzureKeyVaultAppConnectionJSONBody
+
+// CreateCloudflareAppConnectionJSONRequestBody defines body for CreateCloudflareAppConnection for application/json ContentType.
+type CreateCloudflareAppConnectionJSONRequestBody CreateCloudflareAppConnectionJSONBody
+
+// CreateDnsMadeEasyAppConnectionJSONRequestBody defines body for CreateDnsMadeEasyAppConnection for application/json ContentType.
+type CreateDnsMadeEasyAppConnectionJSONRequestBody CreateDnsMadeEasyAppConnectionJSONBody
 
 // CreateGitHubAppConnectionJSONRequestBody defines body for CreateGitHubAppConnection for application/json ContentType.
 type CreateGitHubAppConnectionJSONRequestBody CreateGitHubAppConnectionJSONBody
@@ -128234,6 +133126,54 @@ type CreateUniversalAuthClientSecretJSONRequestBody CreateUniversalAuthClientSec
 
 // LoginWithUniversalAuthJSONRequestBody defines body for LoginWithUniversalAuth for application/json ContentType.
 type LoginWithUniversalAuthJSONRequestBody LoginWithUniversalAuthJSONBody
+
+// CreateAcmeApplicationAccountJSONRequestBody defines body for CreateAcmeApplicationAccount for application/json ContentType.
+type CreateAcmeApplicationAccountJSONRequestBody CreateAcmeApplicationAccountJSONBody
+
+// ListAcmeOrdersJSONRequestBody defines body for ListAcmeOrders for application/json ContentType.
+type ListAcmeOrdersJSONRequestBody ListAcmeOrdersJSONBody
+
+// GetAcmeAuthorizationJSONRequestBody defines body for GetAcmeAuthorization for application/json ContentType.
+type GetAcmeAuthorizationJSONRequestBody GetAcmeAuthorizationJSONBody
+
+// RespondToAcmeChallengeJSONRequestBody defines body for RespondToAcmeChallenge for application/json ContentType.
+type RespondToAcmeChallengeJSONRequestBody RespondToAcmeChallengeJSONBody
+
+// CreateAcmeOrderJSONRequestBody defines body for CreateAcmeOrder for application/json ContentType.
+type CreateAcmeOrderJSONRequestBody CreateAcmeOrderJSONBody
+
+// GetAcmeOrderJSONRequestBody defines body for GetAcmeOrder for application/json ContentType.
+type GetAcmeOrderJSONRequestBody GetAcmeOrderJSONBody
+
+// DownloadAcmeCertificateJSONRequestBody defines body for DownloadAcmeCertificate for application/json ContentType.
+type DownloadAcmeCertificateJSONRequestBody DownloadAcmeCertificateJSONBody
+
+// FinalizeAcmeOrderJSONRequestBody defines body for FinalizeAcmeOrder for application/json ContentType.
+type FinalizeAcmeOrderJSONRequestBody FinalizeAcmeOrderJSONBody
+
+// CreatePkiApplicationJSONRequestBody defines body for CreatePkiApplication for application/json ContentType.
+type CreatePkiApplicationJSONRequestBody CreatePkiApplicationJSONBody
+
+// AttachPkiApplicationProfilesJSONRequestBody defines body for AttachPkiApplicationProfiles for application/json ContentType.
+type AttachPkiApplicationProfilesJSONRequestBody AttachPkiApplicationProfilesJSONBody
+
+// SetPkiApplicationAcmeEnrollmentJSONRequestBody defines body for SetPkiApplicationAcmeEnrollment for application/json ContentType.
+type SetPkiApplicationAcmeEnrollmentJSONRequestBody SetPkiApplicationAcmeEnrollmentJSONBody
+
+// SetPkiApplicationScepEnrollmentJSONRequestBody defines body for SetPkiApplicationScepEnrollment for application/json ContentType.
+type SetPkiApplicationScepEnrollmentJSONRequestBody SetPkiApplicationScepEnrollmentJSONBody
+
+// CreateAcmeCertificateAuthorityV1JSONRequestBody defines body for CreateAcmeCertificateAuthorityV1 for application/json ContentType.
+type CreateAcmeCertificateAuthorityV1JSONRequestBody CreateAcmeCertificateAuthorityV1JSONBody
+
+// CreateInternalCertificateAuthorityV1JSONRequestBody defines body for CreateInternalCertificateAuthorityV1 for application/json ContentType.
+type CreateInternalCertificateAuthorityV1JSONRequestBody CreateInternalCertificateAuthorityV1JSONBody
+
+// CreateCertificatePolicyJSONRequestBody defines body for CreateCertificatePolicy for application/json ContentType.
+type CreateCertificatePolicyJSONRequestBody CreateCertificatePolicyJSONBody
+
+// CreateCertificateProfileJSONRequestBody defines body for CreateCertificateProfile for application/json ContentType.
+type CreateCertificateProfileJSONRequestBody CreateCertificateProfileJSONBody
 
 // HandleDelegatedApprovalCallbackJSONRequestBody defines body for HandleDelegatedApprovalCallback for application/json ContentType.
 type HandleDelegatedApprovalCallbackJSONRequestBody HandleDelegatedApprovalCallbackJSONBody
@@ -131787,6 +136727,782 @@ func (t UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) Marsh
 }
 
 func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateCloudflareAppConnectionJSONBody0 returns the union data inside the CreateCloudflareAppConnectionJSONBody as a CreateCloudflareAppConnectionJSONBody0
+func (t CreateCloudflareAppConnectionJSONBody) AsCreateCloudflareAppConnectionJSONBody0() (CreateCloudflareAppConnectionJSONBody0, error) {
+	var body CreateCloudflareAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCloudflareAppConnectionJSONBody0 overwrites any union data inside the CreateCloudflareAppConnectionJSONBody as the provided CreateCloudflareAppConnectionJSONBody0
+func (t *CreateCloudflareAppConnectionJSONBody) FromCreateCloudflareAppConnectionJSONBody0(v CreateCloudflareAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCloudflareAppConnectionJSONBody0 performs a merge with any union data inside the CreateCloudflareAppConnectionJSONBody, using the provided CreateCloudflareAppConnectionJSONBody0
+func (t *CreateCloudflareAppConnectionJSONBody) MergeCreateCloudflareAppConnectionJSONBody0(v CreateCloudflareAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCloudflareAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateCloudflareAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateCloudflareAppConnectionJSONBodyGatewayId0 returns the union data inside the CreateCloudflareAppConnectionJSONBody_GatewayId as a CreateCloudflareAppConnectionJSONBodyGatewayId0
+func (t CreateCloudflareAppConnectionJSONBody_GatewayId) AsCreateCloudflareAppConnectionJSONBodyGatewayId0() (CreateCloudflareAppConnectionJSONBodyGatewayId0, error) {
+	var body CreateCloudflareAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCloudflareAppConnectionJSONBodyGatewayId0 overwrites any union data inside the CreateCloudflareAppConnectionJSONBody_GatewayId as the provided CreateCloudflareAppConnectionJSONBodyGatewayId0
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayId) FromCreateCloudflareAppConnectionJSONBodyGatewayId0(v CreateCloudflareAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCloudflareAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the CreateCloudflareAppConnectionJSONBody_GatewayId, using the provided CreateCloudflareAppConnectionJSONBodyGatewayId0
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayId) MergeCreateCloudflareAppConnectionJSONBodyGatewayId0(v CreateCloudflareAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCloudflareAppConnectionJSONBodyGatewayId1 returns the union data inside the CreateCloudflareAppConnectionJSONBody_GatewayId as a CreateCloudflareAppConnectionJSONBodyGatewayId1
+func (t CreateCloudflareAppConnectionJSONBody_GatewayId) AsCreateCloudflareAppConnectionJSONBodyGatewayId1() (CreateCloudflareAppConnectionJSONBodyGatewayId1, error) {
+	var body CreateCloudflareAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCloudflareAppConnectionJSONBodyGatewayId1 overwrites any union data inside the CreateCloudflareAppConnectionJSONBody_GatewayId as the provided CreateCloudflareAppConnectionJSONBodyGatewayId1
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayId) FromCreateCloudflareAppConnectionJSONBodyGatewayId1(v CreateCloudflareAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCloudflareAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the CreateCloudflareAppConnectionJSONBody_GatewayId, using the provided CreateCloudflareAppConnectionJSONBodyGatewayId1
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayId) MergeCreateCloudflareAppConnectionJSONBodyGatewayId1(v CreateCloudflareAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCloudflareAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateCloudflareAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the CreateCloudflareAppConnectionJSONBody_GatewayPoolId as a CreateCloudflareAppConnectionJSONBodyGatewayPoolId0
+func (t CreateCloudflareAppConnectionJSONBody_GatewayPoolId) AsCreateCloudflareAppConnectionJSONBodyGatewayPoolId0() (CreateCloudflareAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body CreateCloudflareAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCloudflareAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the CreateCloudflareAppConnectionJSONBody_GatewayPoolId as the provided CreateCloudflareAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayPoolId) FromCreateCloudflareAppConnectionJSONBodyGatewayPoolId0(v CreateCloudflareAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCloudflareAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the CreateCloudflareAppConnectionJSONBody_GatewayPoolId, using the provided CreateCloudflareAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayPoolId) MergeCreateCloudflareAppConnectionJSONBodyGatewayPoolId0(v CreateCloudflareAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCloudflareAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the CreateCloudflareAppConnectionJSONBody_GatewayPoolId as a CreateCloudflareAppConnectionJSONBodyGatewayPoolId1
+func (t CreateCloudflareAppConnectionJSONBody_GatewayPoolId) AsCreateCloudflareAppConnectionJSONBodyGatewayPoolId1() (CreateCloudflareAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body CreateCloudflareAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCloudflareAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the CreateCloudflareAppConnectionJSONBody_GatewayPoolId as the provided CreateCloudflareAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayPoolId) FromCreateCloudflareAppConnectionJSONBodyGatewayPoolId1(v CreateCloudflareAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCloudflareAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the CreateCloudflareAppConnectionJSONBody_GatewayPoolId, using the provided CreateCloudflareAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayPoolId) MergeCreateCloudflareAppConnectionJSONBodyGatewayPoolId1(v CreateCloudflareAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCloudflareAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateCloudflareAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateCloudflareAppConnectionJSONBodyRotation0 returns the union data inside the CreateCloudflareAppConnectionJSONBody_Rotation as a CreateCloudflareAppConnectionJSONBodyRotation0
+func (t CreateCloudflareAppConnectionJSONBody_Rotation) AsCreateCloudflareAppConnectionJSONBodyRotation0() (CreateCloudflareAppConnectionJSONBodyRotation0, error) {
+	var body CreateCloudflareAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCloudflareAppConnectionJSONBodyRotation0 overwrites any union data inside the CreateCloudflareAppConnectionJSONBody_Rotation as the provided CreateCloudflareAppConnectionJSONBodyRotation0
+func (t *CreateCloudflareAppConnectionJSONBody_Rotation) FromCreateCloudflareAppConnectionJSONBodyRotation0(v CreateCloudflareAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCloudflareAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreateCloudflareAppConnectionJSONBody_Rotation, using the provided CreateCloudflareAppConnectionJSONBodyRotation0
+func (t *CreateCloudflareAppConnectionJSONBody_Rotation) MergeCreateCloudflareAppConnectionJSONBodyRotation0(v CreateCloudflareAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCloudflareAppConnectionJSONBodyRotation1 returns the union data inside the CreateCloudflareAppConnectionJSONBody_Rotation as a CreateCloudflareAppConnectionJSONBodyRotation1
+func (t CreateCloudflareAppConnectionJSONBody_Rotation) AsCreateCloudflareAppConnectionJSONBodyRotation1() (CreateCloudflareAppConnectionJSONBodyRotation1, error) {
+	var body CreateCloudflareAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCloudflareAppConnectionJSONBodyRotation1 overwrites any union data inside the CreateCloudflareAppConnectionJSONBody_Rotation as the provided CreateCloudflareAppConnectionJSONBodyRotation1
+func (t *CreateCloudflareAppConnectionJSONBody_Rotation) FromCreateCloudflareAppConnectionJSONBodyRotation1(v CreateCloudflareAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCloudflareAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreateCloudflareAppConnectionJSONBody_Rotation, using the provided CreateCloudflareAppConnectionJSONBodyRotation1
+func (t *CreateCloudflareAppConnectionJSONBody_Rotation) MergeCreateCloudflareAppConnectionJSONBodyRotation1(v CreateCloudflareAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCloudflareAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateCloudflareAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateCloudflareAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateCloudflareAppConnection200JSONResponseBody_AppConnection as a CreateCloudflareAppConnection200JSONResponseBodyAppConnection0
+func (t CreateCloudflareAppConnection200JSONResponseBody_AppConnection) AsCreateCloudflareAppConnection200JSONResponseBodyAppConnection0() (CreateCloudflareAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateCloudflareAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCloudflareAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateCloudflareAppConnection200JSONResponseBody_AppConnection as the provided CreateCloudflareAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateCloudflareAppConnection200JSONResponseBody_AppConnection) FromCreateCloudflareAppConnection200JSONResponseBodyAppConnection0(v CreateCloudflareAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCloudflareAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateCloudflareAppConnection200JSONResponseBody_AppConnection, using the provided CreateCloudflareAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateCloudflareAppConnection200JSONResponseBody_AppConnection) MergeCreateCloudflareAppConnection200JSONResponseBodyAppConnection0(v CreateCloudflareAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCloudflareAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateCloudflareAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateDnsMadeEasyAppConnectionJSONBody0 returns the union data inside the CreateDnsMadeEasyAppConnectionJSONBody as a CreateDnsMadeEasyAppConnectionJSONBody0
+func (t CreateDnsMadeEasyAppConnectionJSONBody) AsCreateDnsMadeEasyAppConnectionJSONBody0() (CreateDnsMadeEasyAppConnectionJSONBody0, error) {
+	var body CreateDnsMadeEasyAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDnsMadeEasyAppConnectionJSONBody0 overwrites any union data inside the CreateDnsMadeEasyAppConnectionJSONBody as the provided CreateDnsMadeEasyAppConnectionJSONBody0
+func (t *CreateDnsMadeEasyAppConnectionJSONBody) FromCreateDnsMadeEasyAppConnectionJSONBody0(v CreateDnsMadeEasyAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDnsMadeEasyAppConnectionJSONBody0 performs a merge with any union data inside the CreateDnsMadeEasyAppConnectionJSONBody, using the provided CreateDnsMadeEasyAppConnectionJSONBody0
+func (t *CreateDnsMadeEasyAppConnectionJSONBody) MergeCreateDnsMadeEasyAppConnectionJSONBody0(v CreateDnsMadeEasyAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateDnsMadeEasyAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateDnsMadeEasyAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateDnsMadeEasyAppConnectionJSONBodyGatewayId0 returns the union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayId as a CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0
+func (t CreateDnsMadeEasyAppConnectionJSONBody_GatewayId) AsCreateDnsMadeEasyAppConnectionJSONBodyGatewayId0() (CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0, error) {
+	var body CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDnsMadeEasyAppConnectionJSONBodyGatewayId0 overwrites any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayId as the provided CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayId) FromCreateDnsMadeEasyAppConnectionJSONBodyGatewayId0(v CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDnsMadeEasyAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayId, using the provided CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayId) MergeCreateDnsMadeEasyAppConnectionJSONBodyGatewayId0(v CreateDnsMadeEasyAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateDnsMadeEasyAppConnectionJSONBodyGatewayId1 returns the union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayId as a CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1
+func (t CreateDnsMadeEasyAppConnectionJSONBody_GatewayId) AsCreateDnsMadeEasyAppConnectionJSONBodyGatewayId1() (CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1, error) {
+	var body CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDnsMadeEasyAppConnectionJSONBodyGatewayId1 overwrites any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayId as the provided CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayId) FromCreateDnsMadeEasyAppConnectionJSONBodyGatewayId1(v CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDnsMadeEasyAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayId, using the provided CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayId) MergeCreateDnsMadeEasyAppConnectionJSONBodyGatewayId1(v CreateDnsMadeEasyAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateDnsMadeEasyAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId as a CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0
+func (t CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId) AsCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0() (CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId as the provided CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId) FromCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0(v CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId, using the provided CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId) MergeCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0(v CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId as a CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1
+func (t CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId) AsCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1() (CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId as the provided CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId) FromCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1(v CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId, using the provided CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId) MergeCreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1(v CreateDnsMadeEasyAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateDnsMadeEasyAppConnectionJSONBodyRotation0 returns the union data inside the CreateDnsMadeEasyAppConnectionJSONBody_Rotation as a CreateDnsMadeEasyAppConnectionJSONBodyRotation0
+func (t CreateDnsMadeEasyAppConnectionJSONBody_Rotation) AsCreateDnsMadeEasyAppConnectionJSONBodyRotation0() (CreateDnsMadeEasyAppConnectionJSONBodyRotation0, error) {
+	var body CreateDnsMadeEasyAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDnsMadeEasyAppConnectionJSONBodyRotation0 overwrites any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_Rotation as the provided CreateDnsMadeEasyAppConnectionJSONBodyRotation0
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_Rotation) FromCreateDnsMadeEasyAppConnectionJSONBodyRotation0(v CreateDnsMadeEasyAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDnsMadeEasyAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_Rotation, using the provided CreateDnsMadeEasyAppConnectionJSONBodyRotation0
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_Rotation) MergeCreateDnsMadeEasyAppConnectionJSONBodyRotation0(v CreateDnsMadeEasyAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateDnsMadeEasyAppConnectionJSONBodyRotation1 returns the union data inside the CreateDnsMadeEasyAppConnectionJSONBody_Rotation as a CreateDnsMadeEasyAppConnectionJSONBodyRotation1
+func (t CreateDnsMadeEasyAppConnectionJSONBody_Rotation) AsCreateDnsMadeEasyAppConnectionJSONBodyRotation1() (CreateDnsMadeEasyAppConnectionJSONBodyRotation1, error) {
+	var body CreateDnsMadeEasyAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDnsMadeEasyAppConnectionJSONBodyRotation1 overwrites any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_Rotation as the provided CreateDnsMadeEasyAppConnectionJSONBodyRotation1
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_Rotation) FromCreateDnsMadeEasyAppConnectionJSONBodyRotation1(v CreateDnsMadeEasyAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDnsMadeEasyAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreateDnsMadeEasyAppConnectionJSONBody_Rotation, using the provided CreateDnsMadeEasyAppConnectionJSONBodyRotation1
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_Rotation) MergeCreateDnsMadeEasyAppConnectionJSONBodyRotation1(v CreateDnsMadeEasyAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateDnsMadeEasyAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateDnsMadeEasyAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection as a CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0
+func (t CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection) AsCreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0() (CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection as the provided CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection) FromCreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0(v CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection, using the provided CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection) MergeCreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0(v CreateDnsMadeEasyAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -136471,6 +142187,618 @@ func (t *RefreshSpiffeBundle200JSONResponseBody_IdentitySpiffeAuth_TrustBundleDi
 	return err
 }
 
+// AsCreateCertificatePolicyJSONBodySubject0 returns the union data inside the CreateCertificatePolicyJSONBody_Subject_Item as a CreateCertificatePolicyJSONBodySubject0
+func (t CreateCertificatePolicyJSONBody_Subject_Item) AsCreateCertificatePolicyJSONBodySubject0() (CreateCertificatePolicyJSONBodySubject0, error) {
+	var body CreateCertificatePolicyJSONBodySubject0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificatePolicyJSONBodySubject0 overwrites any union data inside the CreateCertificatePolicyJSONBody_Subject_Item as the provided CreateCertificatePolicyJSONBodySubject0
+func (t *CreateCertificatePolicyJSONBody_Subject_Item) FromCreateCertificatePolicyJSONBodySubject0(v CreateCertificatePolicyJSONBodySubject0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificatePolicyJSONBodySubject0 performs a merge with any union data inside the CreateCertificatePolicyJSONBody_Subject_Item, using the provided CreateCertificatePolicyJSONBodySubject0
+func (t *CreateCertificatePolicyJSONBody_Subject_Item) MergeCreateCertificatePolicyJSONBodySubject0(v CreateCertificatePolicyJSONBodySubject0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificatePolicyJSONBodySubject1 returns the union data inside the CreateCertificatePolicyJSONBody_Subject_Item as a CreateCertificatePolicyJSONBodySubject1
+func (t CreateCertificatePolicyJSONBody_Subject_Item) AsCreateCertificatePolicyJSONBodySubject1() (CreateCertificatePolicyJSONBodySubject1, error) {
+	var body CreateCertificatePolicyJSONBodySubject1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificatePolicyJSONBodySubject1 overwrites any union data inside the CreateCertificatePolicyJSONBody_Subject_Item as the provided CreateCertificatePolicyJSONBodySubject1
+func (t *CreateCertificatePolicyJSONBody_Subject_Item) FromCreateCertificatePolicyJSONBodySubject1(v CreateCertificatePolicyJSONBodySubject1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificatePolicyJSONBodySubject1 performs a merge with any union data inside the CreateCertificatePolicyJSONBody_Subject_Item, using the provided CreateCertificatePolicyJSONBodySubject1
+func (t *CreateCertificatePolicyJSONBody_Subject_Item) MergeCreateCertificatePolicyJSONBodySubject1(v CreateCertificatePolicyJSONBodySubject1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCertificatePolicyJSONBody_Subject_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateCertificatePolicyJSONBody_Subject_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0 returns the union data inside the CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item as a CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0
+func (t CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item) AsCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0() (CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0, error) {
+	var body CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0 overwrites any union data inside the CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item as the provided CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0
+func (t *CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item) FromCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0(v CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0 performs a merge with any union data inside the CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item, using the provided CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0
+func (t *CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item) MergeCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0(v CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1 returns the union data inside the CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item as a CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1
+func (t CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item) AsCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1() (CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1, error) {
+	var body CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1 overwrites any union data inside the CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item as the provided CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1
+func (t *CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item) FromCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1(v CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1 performs a merge with any union data inside the CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item, using the provided CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1
+func (t *CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item) MergeCreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1(v CreateCertificatePolicy200JSONResponseBodyCertificatePolicySubject1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs0 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs0
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs0() (CreateCertificateProfileJSONBodyExternalConfigs0, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs0 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs0
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs0(v CreateCertificateProfileJSONBodyExternalConfigs0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs0 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs0
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs0(v CreateCertificateProfileJSONBodyExternalConfigs0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs1 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs1
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs1() (CreateCertificateProfileJSONBodyExternalConfigs1, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs1 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs1
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs1(v CreateCertificateProfileJSONBodyExternalConfigs1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs1 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs1
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs1(v CreateCertificateProfileJSONBodyExternalConfigs1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs2 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs2
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs2() (CreateCertificateProfileJSONBodyExternalConfigs2, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs2 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs2
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs2(v CreateCertificateProfileJSONBodyExternalConfigs2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs2 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs2
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs2(v CreateCertificateProfileJSONBodyExternalConfigs2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs3 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs3
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs3() (CreateCertificateProfileJSONBodyExternalConfigs3, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs3 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs3
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs3(v CreateCertificateProfileJSONBodyExternalConfigs3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs3 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs3
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs3(v CreateCertificateProfileJSONBodyExternalConfigs3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs4 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs4
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs4() (CreateCertificateProfileJSONBodyExternalConfigs4, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs4 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs4
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs4(v CreateCertificateProfileJSONBodyExternalConfigs4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs4 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs4
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs4(v CreateCertificateProfileJSONBodyExternalConfigs4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs5 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs5
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs5() (CreateCertificateProfileJSONBodyExternalConfigs5, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs5
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs5 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs5
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs5(v CreateCertificateProfileJSONBodyExternalConfigs5) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs5 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs5
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs5(v CreateCertificateProfileJSONBodyExternalConfigs5) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs6 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs6
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs6() (CreateCertificateProfileJSONBodyExternalConfigs6, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs6
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs6 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs6
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs6(v CreateCertificateProfileJSONBodyExternalConfigs6) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs6 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs6
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs6(v CreateCertificateProfileJSONBodyExternalConfigs6) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs7 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs7
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs7() (CreateCertificateProfileJSONBodyExternalConfigs7, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs7
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs7 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs7
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs7(v CreateCertificateProfileJSONBodyExternalConfigs7) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs7 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs7
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs7(v CreateCertificateProfileJSONBodyExternalConfigs7) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfileJSONBodyExternalConfigs8 returns the union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as a CreateCertificateProfileJSONBodyExternalConfigs8
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) AsCreateCertificateProfileJSONBodyExternalConfigs8() (CreateCertificateProfileJSONBodyExternalConfigs8, error) {
+	var body CreateCertificateProfileJSONBodyExternalConfigs8
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfileJSONBodyExternalConfigs8 overwrites any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs as the provided CreateCertificateProfileJSONBodyExternalConfigs8
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) FromCreateCertificateProfileJSONBodyExternalConfigs8(v CreateCertificateProfileJSONBodyExternalConfigs8) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfileJSONBodyExternalConfigs8 performs a merge with any union data inside the CreateCertificateProfileJSONBody_ExternalConfigs, using the provided CreateCertificateProfileJSONBodyExternalConfigs8
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) MergeCreateCertificateProfileJSONBodyExternalConfigs8(v CreateCertificateProfileJSONBodyExternalConfigs8) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCertificateProfileJSONBody_ExternalConfigs) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateCertificateProfileJSONBody_ExternalConfigs) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs5) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs6) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs7) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8 returns the union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as a CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) AsCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8() (CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8, error) {
+	var body CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8 overwrites any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs as the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) FromCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8 performs a merge with any union data inside the CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs, using the provided CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MergeCreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8(v CreateCertificateProfile200JSONResponseBodyCertificateProfileExternalConfigs8) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsDeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0 returns the union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength as a DeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0
 func (t DeepSearchSecrets200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) AsDeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0() (DeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0, error) {
 	var body DeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0
@@ -137303,6 +143631,32 @@ func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) FromDeepSear
 
 // MergeDeepSearchSecrets200JSONResponseBodySecretRotations29 performs a merge with any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item, using the provided DeepSearchSecrets200JSONResponseBodySecretRotations29
 func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MergeDeepSearchSecrets200JSONResponseBodySecretRotations29(v DeepSearchSecrets200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeepSearchSecrets200JSONResponseBodySecretRotations30 returns the union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item as a DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) AsDeepSearchSecrets200JSONResponseBodySecretRotations30() (DeepSearchSecrets200JSONResponseBodySecretRotations30, error) {
+	var body DeepSearchSecrets200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeepSearchSecrets200JSONResponseBodySecretRotations30 overwrites any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item as the provided DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) FromDeepSearchSecrets200JSONResponseBodySecretRotations30(v DeepSearchSecrets200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeepSearchSecrets200JSONResponseBodySecretRotations30 performs a merge with any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item, using the provided DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MergeDeepSearchSecrets200JSONResponseBodySecretRotations30(v DeepSearchSecrets200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -138155,6 +144509,32 @@ func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) From
 
 // MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations29
 func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29(v ListProjectSecretsDetails200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations30 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations30() (ListProjectSecretsDetails200JSONResponseBodySecretRotations30, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations30 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations30(v ListProjectSecretsDetails200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations30 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations30(v ListProjectSecretsDetails200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -139041,6 +145421,32 @@ func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) Fro
 
 // MergeListProjectSecretsOverview200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations29
 func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsOverview200JSONResponseBodySecretRotations29(v ListProjectSecretsOverview200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsOverview200JSONResponseBodySecretRotations30 returns the union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsOverview200JSONResponseBodySecretRotations30() (ListProjectSecretsOverview200JSONResponseBodySecretRotations30, error) {
+	var body ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsOverview200JSONResponseBodySecretRotations30 overwrites any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsOverview200JSONResponseBodySecretRotations30(v ListProjectSecretsOverview200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsOverview200JSONResponseBodySecretRotations30 performs a merge with any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsOverview200JSONResponseBodySecretRotations30(v ListProjectSecretsOverview200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -155773,6 +162179,30 @@ type ClientInterface interface {
 	// Update the specified Azure Key Vault Connection.
 	UpdateAzureKeyVaultAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateCloudflareAppConnectionWithBody performs a POST /api/v1/app-connections/cloudflare (the `CreateCloudflareAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Cloudflare Connection.
+	CreateCloudflareAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCloudflareAppConnection performs a POST /api/v1/app-connections/cloudflare (the `CreateCloudflareAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a Cloudflare Connection.
+	CreateCloudflareAppConnection(ctx context.Context, body CreateCloudflareAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDnsMadeEasyAppConnectionWithBody performs a POST /api/v1/app-connections/dns-made-easy (the `CreateDnsMadeEasyAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a DNS Made Easy Connection.
+	CreateDnsMadeEasyAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDnsMadeEasyAppConnection performs a POST /api/v1/app-connections/dns-made-easy (the `CreateDnsMadeEasyAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a DNS Made Easy Connection.
+	CreateDnsMadeEasyAppConnection(ctx context.Context, body CreateDnsMadeEasyAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListGitHubAppConnections performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 	//
 	// List the GitHub Connections for the current organization or project.
@@ -156672,6 +163102,202 @@ type ClientInterface interface {
 	//
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAcmeApplicationDirectory performs a GET /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/directory (the `GetAcmeApplicationDirectory` operationId) request.
+	//
+	// ACME Directory - provides URLs for the client to make API calls to.
+	GetAcmeApplicationDirectory(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAcmeApplicationAccountWithBody performs a POST /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/new-account (the `CreateAcmeApplicationAccount` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME New Account - register a new account or find existing one.
+	CreateAcmeApplicationAccountWithBody(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAcmeApplicationAccount performs a POST /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/new-account (the `CreateAcmeApplicationAccount` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// ACME New Account - register a new account or find existing one.
+	CreateAcmeApplicationAccount(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body CreateAcmeApplicationAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAcmeOrdersWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/accounts/{accountId}/orders (the `ListAcmeOrders` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME List Orders - get existing orders from current account.
+	ListAcmeOrdersWithBody(ctx context.Context, profileId openapi_types.UUID, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAcmeOrders performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/accounts/{accountId}/orders (the `ListAcmeOrders` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// ACME List Orders - get existing orders from current account.
+	ListAcmeOrders(ctx context.Context, profileId openapi_types.UUID, accountId string, body ListAcmeOrdersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAcmeAuthorizationWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId} (the `GetAcmeAuthorization` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Identifier Authorization - get authorization info (challenges).
+	GetAcmeAuthorizationWithBody(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAcmeAuthorization performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId} (the `GetAcmeAuthorization` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// ACME Identifier Authorization - get authorization info (challenges).
+	GetAcmeAuthorization(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, body GetAcmeAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RespondToAcmeChallengeWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId}/challenges/{challengeId} (the `RespondToAcmeChallenge` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Respond to Challenge - let ACME server know challenge is ready.
+	RespondToAcmeChallengeWithBody(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RespondToAcmeChallenge performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId}/challenges/{challengeId} (the `RespondToAcmeChallenge` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// ACME Respond to Challenge - let ACME server know challenge is ready.
+	RespondToAcmeChallenge(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, body RespondToAcmeChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAcmeNewNonce performs a GET /api/v1/cert-manager/acme/profiles/{profileId}/new-nonce (the `GetAcmeNewNonce` operationId) request.
+	//
+	// ACME New Nonce (GET) - generate a new nonce and return in Replay-Nonce header with 204 No Content.
+	GetAcmeNewNonce(ctx context.Context, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAcmeOrderWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/new-order (the `CreateAcmeOrder` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME New Order - apply for a new certificate.
+	CreateAcmeOrderWithBody(ctx context.Context, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAcmeOrder performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/new-order (the `CreateAcmeOrder` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// ACME New Order - apply for a new certificate.
+	CreateAcmeOrder(ctx context.Context, profileId openapi_types.UUID, body CreateAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAcmeOrderWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId} (the `GetAcmeOrder` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Get Order - return status and details of the order.
+	GetAcmeOrderWithBody(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAcmeOrder performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId} (the `GetAcmeOrder` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// ACME Get Order - return status and details of the order.
+	GetAcmeOrder(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body GetAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DownloadAcmeCertificateWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/certificate (the `DownloadAcmeCertificate` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Download Certificate - download certificate when ready.
+	DownloadAcmeCertificateWithBody(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DownloadAcmeCertificate performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/certificate (the `DownloadAcmeCertificate` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// ACME Download Certificate - download certificate when ready.
+	DownloadAcmeCertificate(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body DownloadAcmeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// FinalizeAcmeOrderWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/finalize (the `FinalizeAcmeOrder` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Finalize Order - finalize cert order by providing CSR.
+	FinalizeAcmeOrderWithBody(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// FinalizeAcmeOrder performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/finalize (the `FinalizeAcmeOrder` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// ACME Finalize Order - finalize cert order by providing CSR.
+	FinalizeAcmeOrder(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body FinalizeAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePkiApplicationWithBody performs a POST /api/v1/cert-manager/applications (the `CreatePkiApplication` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an application.
+	CreatePkiApplicationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePkiApplication performs a POST /api/v1/cert-manager/applications (the `CreatePkiApplication` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create an application.
+	CreatePkiApplication(ctx context.Context, body CreatePkiApplicationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AttachPkiApplicationProfilesWithBody performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles (the `AttachPkiApplicationProfiles` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Attach one or more profiles to an application.
+	AttachPkiApplicationProfilesWithBody(ctx context.Context, applicationId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AttachPkiApplicationProfiles performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles (the `AttachPkiApplicationProfiles` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Attach one or more profiles to an application.
+	AttachPkiApplicationProfiles(ctx context.Context, applicationId openapi_types.UUID, body AttachPkiApplicationProfilesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPkiApplicationAcmeEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Enable or update the ACME enrollment method for a profile on an application.
+	SetPkiApplicationAcmeEnrollmentWithBody(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPkiApplicationAcmeEnrollment performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Enable or update the ACME enrollment method for a profile on an application.
+	SetPkiApplicationAcmeEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationAcmeEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevealPkiApplicationAcmeEabSecret performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme/eab/reveal (the `RevealPkiApplicationAcmeEabSecret` operationId) request.
+	//
+	// Reveal the ACME EAB secret for a profile on an application.
+	RevealPkiApplicationAcmeEabSecret(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPkiApplicationScepEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Enable or update the SCEP enrollment method for a profile on an application.
+	SetPkiApplicationScepEnrollmentWithBody(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPkiApplicationScepEnrollment performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Enable or update the SCEP enrollment method for a profile on an application.
+	SetPkiApplicationScepEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationScepEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAcmeCertificateAuthorityV1WithBody performs a POST /api/v1/cert-manager/ca/acme (the `CreateAcmeCertificateAuthorityV1` operationId) request,
+	// with any type of body and a specified content type.
+	CreateAcmeCertificateAuthorityV1WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAcmeCertificateAuthorityV1 performs a POST /api/v1/cert-manager/ca/acme (the `CreateAcmeCertificateAuthorityV1` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateAcmeCertificateAuthorityV1(ctx context.Context, body CreateAcmeCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateInternalCertificateAuthorityV1WithBody performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request,
+	// with any type of body and a specified content type.
+	CreateInternalCertificateAuthorityV1WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateInternalCertificateAuthorityV1 performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateInternalCertificateAuthorityV1(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCertificatePolicyWithBody performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request,
+	// with any type of body and a specified content type.
+	CreateCertificatePolicyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCertificatePolicy performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateCertificatePolicy(ctx context.Context, body CreateCertificatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCertificateProfileWithBody performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request,
+	// with any type of body and a specified content type.
+	CreateCertificateProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCertificateProfile performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateCertificateProfile(ctx context.Context, body CreateCertificateProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCertManagerInstanceState performs a GET /api/v1/cert-manager/instance (the `GetCertManagerInstanceState` operationId) request.
+	//
+	// Get the active Certificate Manager project and the list of legacy Certificate Manager projects in this organization.
+	GetCertManagerInstanceState(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAccessibleSecretMetadata performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
 	//
@@ -157738,7 +164364,7 @@ type ClientInterface interface {
 	// DeleteProject performs a DELETE /api/v1/projects/{projectId} (the `DeleteProject` operationId) request.
 	//
 	// Delete project.
-	DeleteProject(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteProject(ctx context.Context, projectId string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectById performs a GET /api/v1/projects/{projectId} (the `GetProjectById` operationId) request.
 	//
@@ -160098,6 +166724,12 @@ type ClientInterface interface {
 	//
 	// Get secret reference tree.
 	GetSecretReferenceTreeV4(ctx context.Context, secretName string, params *GetSecretReferenceTreeV4Params, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetScepApplicationOperation performs a GET /scep/applications/{applicationId}/profiles/{profileId}/pkiclient.exe (the `GetScepApplicationOperation` operationId) request.
+	GetScepApplicationOperation(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *GetScepApplicationOperationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetScepOperation performs a GET /scep/{profileId}/pkiclient.exe (the `GetScepOperation` operationId) request.
+	GetScepOperation(ctx context.Context, profileId openapi_types.UUID, params *GetScepOperationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetInstanceStatus performs a GET /api/status (the `GetInstanceStatus` operationId) request.
@@ -161257,6 +167889,70 @@ func (c *Client) UpdateAzureKeyVaultAppConnectionWithBody(ctx context.Context, c
 // Update the specified Azure Key Vault Connection.
 func (c *Client) UpdateAzureKeyVaultAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAzureKeyVaultAppConnectionRequest(c.Server, connectionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCloudflareAppConnectionWithBody performs a POST /api/v1/app-connections/cloudflare (the `CreateCloudflareAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Cloudflare Connection.
+func (c *Client) CreateCloudflareAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCloudflareAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCloudflareAppConnection performs a POST /api/v1/app-connections/cloudflare (the `CreateCloudflareAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a Cloudflare Connection.
+func (c *Client) CreateCloudflareAppConnection(ctx context.Context, body CreateCloudflareAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCloudflareAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDnsMadeEasyAppConnectionWithBody performs a POST /api/v1/app-connections/dns-made-easy (the `CreateDnsMadeEasyAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a DNS Made Easy Connection.
+func (c *Client) CreateDnsMadeEasyAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDnsMadeEasyAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDnsMadeEasyAppConnection performs a POST /api/v1/app-connections/dns-made-easy (the `CreateDnsMadeEasyAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a DNS Made Easy Connection.
+func (c *Client) CreateDnsMadeEasyAppConnection(ctx context.Context, body CreateDnsMadeEasyAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDnsMadeEasyAppConnectionRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -163837,6 +170533,562 @@ func (c *Client) LoginWithUniversalAuthWithBody(ctx context.Context, contentType
 // Login with Universal Auth for machine identity.
 func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLoginWithUniversalAuthRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAcmeApplicationDirectory performs a GET /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/directory (the `GetAcmeApplicationDirectory` operationId) request.
+//
+// ACME Directory - provides URLs for the client to make API calls to.
+func (c *Client) GetAcmeApplicationDirectory(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAcmeApplicationDirectoryRequest(c.Server, applicationId, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAcmeApplicationAccountWithBody performs a POST /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/new-account (the `CreateAcmeApplicationAccount` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME New Account - register a new account or find existing one.
+func (c *Client) CreateAcmeApplicationAccountWithBody(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAcmeApplicationAccountRequestWithBody(c.Server, applicationId, profileId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAcmeApplicationAccount performs a POST /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/new-account (the `CreateAcmeApplicationAccount` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// ACME New Account - register a new account or find existing one.
+func (c *Client) CreateAcmeApplicationAccount(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body CreateAcmeApplicationAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAcmeApplicationAccountRequest(c.Server, applicationId, profileId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAcmeOrdersWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/accounts/{accountId}/orders (the `ListAcmeOrders` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME List Orders - get existing orders from current account.
+func (c *Client) ListAcmeOrdersWithBody(ctx context.Context, profileId openapi_types.UUID, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAcmeOrdersRequestWithBody(c.Server, profileId, accountId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAcmeOrders performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/accounts/{accountId}/orders (the `ListAcmeOrders` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// ACME List Orders - get existing orders from current account.
+func (c *Client) ListAcmeOrders(ctx context.Context, profileId openapi_types.UUID, accountId string, body ListAcmeOrdersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAcmeOrdersRequest(c.Server, profileId, accountId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAcmeAuthorizationWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId} (the `GetAcmeAuthorization` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Identifier Authorization - get authorization info (challenges).
+func (c *Client) GetAcmeAuthorizationWithBody(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAcmeAuthorizationRequestWithBody(c.Server, profileId, authzId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAcmeAuthorization performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId} (the `GetAcmeAuthorization` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// ACME Identifier Authorization - get authorization info (challenges).
+func (c *Client) GetAcmeAuthorization(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, body GetAcmeAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAcmeAuthorizationRequest(c.Server, profileId, authzId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RespondToAcmeChallengeWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId}/challenges/{challengeId} (the `RespondToAcmeChallenge` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Respond to Challenge - let ACME server know challenge is ready.
+func (c *Client) RespondToAcmeChallengeWithBody(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRespondToAcmeChallengeRequestWithBody(c.Server, profileId, authzId, challengeId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RespondToAcmeChallenge performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId}/challenges/{challengeId} (the `RespondToAcmeChallenge` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// ACME Respond to Challenge - let ACME server know challenge is ready.
+func (c *Client) RespondToAcmeChallenge(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, body RespondToAcmeChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRespondToAcmeChallengeRequest(c.Server, profileId, authzId, challengeId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAcmeNewNonce performs a GET /api/v1/cert-manager/acme/profiles/{profileId}/new-nonce (the `GetAcmeNewNonce` operationId) request.
+//
+// ACME New Nonce (GET) - generate a new nonce and return in Replay-Nonce header with 204 No Content.
+func (c *Client) GetAcmeNewNonce(ctx context.Context, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAcmeNewNonceRequest(c.Server, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAcmeOrderWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/new-order (the `CreateAcmeOrder` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME New Order - apply for a new certificate.
+func (c *Client) CreateAcmeOrderWithBody(ctx context.Context, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAcmeOrderRequestWithBody(c.Server, profileId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAcmeOrder performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/new-order (the `CreateAcmeOrder` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// ACME New Order - apply for a new certificate.
+func (c *Client) CreateAcmeOrder(ctx context.Context, profileId openapi_types.UUID, body CreateAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAcmeOrderRequest(c.Server, profileId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAcmeOrderWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId} (the `GetAcmeOrder` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Get Order - return status and details of the order.
+func (c *Client) GetAcmeOrderWithBody(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAcmeOrderRequestWithBody(c.Server, profileId, orderId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAcmeOrder performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId} (the `GetAcmeOrder` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// ACME Get Order - return status and details of the order.
+func (c *Client) GetAcmeOrder(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body GetAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAcmeOrderRequest(c.Server, profileId, orderId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DownloadAcmeCertificateWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/certificate (the `DownloadAcmeCertificate` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Download Certificate - download certificate when ready.
+func (c *Client) DownloadAcmeCertificateWithBody(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDownloadAcmeCertificateRequestWithBody(c.Server, profileId, orderId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DownloadAcmeCertificate performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/certificate (the `DownloadAcmeCertificate` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// ACME Download Certificate - download certificate when ready.
+func (c *Client) DownloadAcmeCertificate(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body DownloadAcmeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDownloadAcmeCertificateRequest(c.Server, profileId, orderId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// FinalizeAcmeOrderWithBody performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/finalize (the `FinalizeAcmeOrder` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Finalize Order - finalize cert order by providing CSR.
+func (c *Client) FinalizeAcmeOrderWithBody(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFinalizeAcmeOrderRequestWithBody(c.Server, profileId, orderId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// FinalizeAcmeOrder performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/finalize (the `FinalizeAcmeOrder` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// ACME Finalize Order - finalize cert order by providing CSR.
+func (c *Client) FinalizeAcmeOrder(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body FinalizeAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFinalizeAcmeOrderRequest(c.Server, profileId, orderId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePkiApplicationWithBody performs a POST /api/v1/cert-manager/applications (the `CreatePkiApplication` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an application.
+func (c *Client) CreatePkiApplicationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePkiApplicationRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePkiApplication performs a POST /api/v1/cert-manager/applications (the `CreatePkiApplication` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create an application.
+func (c *Client) CreatePkiApplication(ctx context.Context, body CreatePkiApplicationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePkiApplicationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AttachPkiApplicationProfilesWithBody performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles (the `AttachPkiApplicationProfiles` operationId) request,
+// with any type of body and a specified content type.
+//
+// Attach one or more profiles to an application.
+func (c *Client) AttachPkiApplicationProfilesWithBody(ctx context.Context, applicationId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAttachPkiApplicationProfilesRequestWithBody(c.Server, applicationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AttachPkiApplicationProfiles performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles (the `AttachPkiApplicationProfiles` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Attach one or more profiles to an application.
+func (c *Client) AttachPkiApplicationProfiles(ctx context.Context, applicationId openapi_types.UUID, body AttachPkiApplicationProfilesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAttachPkiApplicationProfilesRequest(c.Server, applicationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPkiApplicationAcmeEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request,
+// with any type of body and a specified content type.
+//
+// Enable or update the ACME enrollment method for a profile on an application.
+func (c *Client) SetPkiApplicationAcmeEnrollmentWithBody(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPkiApplicationAcmeEnrollmentRequestWithBody(c.Server, applicationId, profileId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPkiApplicationAcmeEnrollment performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Enable or update the ACME enrollment method for a profile on an application.
+func (c *Client) SetPkiApplicationAcmeEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationAcmeEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPkiApplicationAcmeEnrollmentRequest(c.Server, applicationId, profileId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevealPkiApplicationAcmeEabSecret performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme/eab/reveal (the `RevealPkiApplicationAcmeEabSecret` operationId) request.
+//
+// Reveal the ACME EAB secret for a profile on an application.
+func (c *Client) RevealPkiApplicationAcmeEabSecret(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevealPkiApplicationAcmeEabSecretRequest(c.Server, applicationId, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPkiApplicationScepEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request,
+// with any type of body and a specified content type.
+//
+// Enable or update the SCEP enrollment method for a profile on an application.
+func (c *Client) SetPkiApplicationScepEnrollmentWithBody(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPkiApplicationScepEnrollmentRequestWithBody(c.Server, applicationId, profileId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPkiApplicationScepEnrollment performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Enable or update the SCEP enrollment method for a profile on an application.
+func (c *Client) SetPkiApplicationScepEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationScepEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPkiApplicationScepEnrollmentRequest(c.Server, applicationId, profileId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAcmeCertificateAuthorityV1WithBody performs a POST /api/v1/cert-manager/ca/acme (the `CreateAcmeCertificateAuthorityV1` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateAcmeCertificateAuthorityV1WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAcmeCertificateAuthorityV1RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAcmeCertificateAuthorityV1 performs a POST /api/v1/cert-manager/ca/acme (the `CreateAcmeCertificateAuthorityV1` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateAcmeCertificateAuthorityV1(ctx context.Context, body CreateAcmeCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAcmeCertificateAuthorityV1Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateInternalCertificateAuthorityV1WithBody performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateInternalCertificateAuthorityV1WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateInternalCertificateAuthorityV1RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateInternalCertificateAuthorityV1 performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateInternalCertificateAuthorityV1(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateInternalCertificateAuthorityV1Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCertificatePolicyWithBody performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateCertificatePolicyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCertificatePolicyRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCertificatePolicy performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateCertificatePolicy(ctx context.Context, body CreateCertificatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCertificatePolicyRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCertificateProfileWithBody performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateCertificateProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCertificateProfileRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCertificateProfile performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateCertificateProfile(ctx context.Context, body CreateCertificateProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCertificateProfileRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCertManagerInstanceState performs a GET /api/v1/cert-manager/instance (the `GetCertManagerInstanceState` operationId) request.
+//
+// Get the active Certificate Manager project and the list of legacy Certificate Manager projects in this organization.
+func (c *Client) GetCertManagerInstanceState(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCertManagerInstanceStateRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -167391,8 +174643,8 @@ func (c *Client) GetProjectBySlug(ctx context.Context, slug string, reqEditors .
 // DeleteProject performs a DELETE /api/v1/projects/{projectId} (the `DeleteProject` operationId) request.
 //
 // Delete project.
-func (c *Client) DeleteProject(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteProjectRequest(c.Server, projectId)
+func (c *Client) DeleteProject(ctx context.Context, projectId string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteProjectRequest(c.Server, projectId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -174824,6 +182076,32 @@ func (c *Client) GetSecretReferenceTreeV4(ctx context.Context, secretName string
 	return c.Client.Do(req)
 }
 
+// GetScepApplicationOperation performs a GET /scep/applications/{applicationId}/profiles/{profileId}/pkiclient.exe (the `GetScepApplicationOperation` operationId) request.
+func (c *Client) GetScepApplicationOperation(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *GetScepApplicationOperationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetScepApplicationOperationRequest(c.Server, applicationId, profileId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetScepOperation performs a GET /scep/{profileId}/pkiclient.exe (the `GetScepOperation` operationId) request.
+func (c *Client) GetScepOperation(ctx context.Context, profileId openapi_types.UUID, params *GetScepOperationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetScepOperationRequest(c.Server, profileId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // NewGetInstanceStatusRequest constructs an http.Request for the GetInstanceStatus method
 func NewGetInstanceStatusRequest(server string) (*http.Request, error) {
 	var err error
@@ -177418,6 +184696,86 @@ func NewUpdateAzureKeyVaultAppConnectionRequestWithBody(server string, connectio
 	}
 
 	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateCloudflareAppConnectionRequest calls the generic CreateCloudflareAppConnection builder with application/json body
+func NewCreateCloudflareAppConnectionRequest(server string, body CreateCloudflareAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateCloudflareAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateCloudflareAppConnectionRequestWithBody constructs an http.Request for the CreateCloudflareAppConnection method, with any body, and a specified content type
+func NewCreateCloudflareAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/cloudflare")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateDnsMadeEasyAppConnectionRequest calls the generic CreateDnsMadeEasyAppConnection builder with application/json body
+func NewCreateDnsMadeEasyAppConnectionRequest(server string, body CreateDnsMadeEasyAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateDnsMadeEasyAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateDnsMadeEasyAppConnectionRequestWithBody constructs an http.Request for the CreateDnsMadeEasyAppConnection method, with any body, and a specified content type
+func NewCreateDnsMadeEasyAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/dns-made-easy")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -181910,6 +189268,936 @@ func NewLoginWithUniversalAuthRequestWithBody(server string, contentType string,
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAcmeApplicationDirectoryRequest constructs an http.Request for the GetAcmeApplicationDirectory method
+func NewGetAcmeApplicationDirectoryRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/applications/%s/profiles/%s/directory", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateAcmeApplicationAccountRequest calls the generic CreateAcmeApplicationAccount builder with application/json body
+func NewCreateAcmeApplicationAccountRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, body CreateAcmeApplicationAccountJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAcmeApplicationAccountRequestWithBody(server, applicationId, profileId, "application/json", bodyReader)
+}
+
+// NewCreateAcmeApplicationAccountRequestWithBody constructs an http.Request for the CreateAcmeApplicationAccount method, with any body, and a specified content type
+func NewCreateAcmeApplicationAccountRequestWithBody(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/applications/%s/profiles/%s/new-account", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAcmeOrdersRequest calls the generic ListAcmeOrders builder with application/json body
+func NewListAcmeOrdersRequest(server string, profileId openapi_types.UUID, accountId string, body ListAcmeOrdersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewListAcmeOrdersRequestWithBody(server, profileId, accountId, "application/json", bodyReader)
+}
+
+// NewListAcmeOrdersRequestWithBody constructs an http.Request for the ListAcmeOrders method, with any body, and a specified content type
+func NewListAcmeOrdersRequestWithBody(server string, profileId openapi_types.UUID, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "accountId", accountId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/profiles/%s/accounts/%s/orders", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAcmeAuthorizationRequest calls the generic GetAcmeAuthorization builder with application/json body
+func NewGetAcmeAuthorizationRequest(server string, profileId openapi_types.UUID, authzId openapi_types.UUID, body GetAcmeAuthorizationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGetAcmeAuthorizationRequestWithBody(server, profileId, authzId, "application/json", bodyReader)
+}
+
+// NewGetAcmeAuthorizationRequestWithBody constructs an http.Request for the GetAcmeAuthorization method, with any body, and a specified content type
+func NewGetAcmeAuthorizationRequestWithBody(server string, profileId openapi_types.UUID, authzId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "authzId", authzId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/profiles/%s/authorizations/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRespondToAcmeChallengeRequest calls the generic RespondToAcmeChallenge builder with application/json body
+func NewRespondToAcmeChallengeRequest(server string, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, body RespondToAcmeChallengeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRespondToAcmeChallengeRequestWithBody(server, profileId, authzId, challengeId, "application/json", bodyReader)
+}
+
+// NewRespondToAcmeChallengeRequestWithBody constructs an http.Request for the RespondToAcmeChallenge method, with any body, and a specified content type
+func NewRespondToAcmeChallengeRequestWithBody(server string, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "authzId", authzId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "challengeId", challengeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/profiles/%s/authorizations/%s/challenges/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAcmeNewNonceRequest constructs an http.Request for the GetAcmeNewNonce method
+func NewGetAcmeNewNonceRequest(server string, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/profiles/%s/new-nonce", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateAcmeOrderRequest calls the generic CreateAcmeOrder builder with application/json body
+func NewCreateAcmeOrderRequest(server string, profileId openapi_types.UUID, body CreateAcmeOrderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAcmeOrderRequestWithBody(server, profileId, "application/json", bodyReader)
+}
+
+// NewCreateAcmeOrderRequestWithBody constructs an http.Request for the CreateAcmeOrder method, with any body, and a specified content type
+func NewCreateAcmeOrderRequestWithBody(server string, profileId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/profiles/%s/new-order", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAcmeOrderRequest calls the generic GetAcmeOrder builder with application/json body
+func NewGetAcmeOrderRequest(server string, profileId openapi_types.UUID, orderId openapi_types.UUID, body GetAcmeOrderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGetAcmeOrderRequestWithBody(server, profileId, orderId, "application/json", bodyReader)
+}
+
+// NewGetAcmeOrderRequestWithBody constructs an http.Request for the GetAcmeOrder method, with any body, and a specified content type
+func NewGetAcmeOrderRequestWithBody(server string, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "orderId", orderId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/profiles/%s/orders/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDownloadAcmeCertificateRequest calls the generic DownloadAcmeCertificate builder with application/json body
+func NewDownloadAcmeCertificateRequest(server string, profileId openapi_types.UUID, orderId openapi_types.UUID, body DownloadAcmeCertificateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDownloadAcmeCertificateRequestWithBody(server, profileId, orderId, "application/json", bodyReader)
+}
+
+// NewDownloadAcmeCertificateRequestWithBody constructs an http.Request for the DownloadAcmeCertificate method, with any body, and a specified content type
+func NewDownloadAcmeCertificateRequestWithBody(server string, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "orderId", orderId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/profiles/%s/orders/%s/certificate", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewFinalizeAcmeOrderRequest calls the generic FinalizeAcmeOrder builder with application/json body
+func NewFinalizeAcmeOrderRequest(server string, profileId openapi_types.UUID, orderId openapi_types.UUID, body FinalizeAcmeOrderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewFinalizeAcmeOrderRequestWithBody(server, profileId, orderId, "application/json", bodyReader)
+}
+
+// NewFinalizeAcmeOrderRequestWithBody constructs an http.Request for the FinalizeAcmeOrder method, with any body, and a specified content type
+func NewFinalizeAcmeOrderRequestWithBody(server string, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "orderId", orderId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/acme/profiles/%s/orders/%s/finalize", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreatePkiApplicationRequest calls the generic CreatePkiApplication builder with application/json body
+func NewCreatePkiApplicationRequest(server string, body CreatePkiApplicationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreatePkiApplicationRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreatePkiApplicationRequestWithBody constructs an http.Request for the CreatePkiApplication method, with any body, and a specified content type
+func NewCreatePkiApplicationRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAttachPkiApplicationProfilesRequest calls the generic AttachPkiApplicationProfiles builder with application/json body
+func NewAttachPkiApplicationProfilesRequest(server string, applicationId openapi_types.UUID, body AttachPkiApplicationProfilesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAttachPkiApplicationProfilesRequestWithBody(server, applicationId, "application/json", bodyReader)
+}
+
+// NewAttachPkiApplicationProfilesRequestWithBody constructs an http.Request for the AttachPkiApplicationProfiles method, with any body, and a specified content type
+func NewAttachPkiApplicationProfilesRequestWithBody(server string, applicationId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSetPkiApplicationAcmeEnrollmentRequest calls the generic SetPkiApplicationAcmeEnrollment builder with application/json body
+func NewSetPkiApplicationAcmeEnrollmentRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationAcmeEnrollmentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetPkiApplicationAcmeEnrollmentRequestWithBody(server, applicationId, profileId, "application/json", bodyReader)
+}
+
+// NewSetPkiApplicationAcmeEnrollmentRequestWithBody constructs an http.Request for the SetPkiApplicationAcmeEnrollment method, with any body, and a specified content type
+func NewSetPkiApplicationAcmeEnrollmentRequestWithBody(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles/%s/enrollment/acme", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRevealPkiApplicationAcmeEabSecretRequest constructs an http.Request for the RevealPkiApplicationAcmeEabSecret method
+func NewRevealPkiApplicationAcmeEabSecretRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles/%s/enrollment/acme/eab/reveal", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetPkiApplicationScepEnrollmentRequest calls the generic SetPkiApplicationScepEnrollment builder with application/json body
+func NewSetPkiApplicationScepEnrollmentRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationScepEnrollmentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetPkiApplicationScepEnrollmentRequestWithBody(server, applicationId, profileId, "application/json", bodyReader)
+}
+
+// NewSetPkiApplicationScepEnrollmentRequestWithBody constructs an http.Request for the SetPkiApplicationScepEnrollment method, with any body, and a specified content type
+func NewSetPkiApplicationScepEnrollmentRequestWithBody(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles/%s/enrollment/scep", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateAcmeCertificateAuthorityV1Request calls the generic CreateAcmeCertificateAuthorityV1 builder with application/json body
+func NewCreateAcmeCertificateAuthorityV1Request(server string, body CreateAcmeCertificateAuthorityV1JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAcmeCertificateAuthorityV1RequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateAcmeCertificateAuthorityV1RequestWithBody constructs an http.Request for the CreateAcmeCertificateAuthorityV1 method, with any body, and a specified content type
+func NewCreateAcmeCertificateAuthorityV1RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/acme")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateInternalCertificateAuthorityV1Request calls the generic CreateInternalCertificateAuthorityV1 builder with application/json body
+func NewCreateInternalCertificateAuthorityV1Request(server string, body CreateInternalCertificateAuthorityV1JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateInternalCertificateAuthorityV1RequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateInternalCertificateAuthorityV1RequestWithBody constructs an http.Request for the CreateInternalCertificateAuthorityV1 method, with any body, and a specified content type
+func NewCreateInternalCertificateAuthorityV1RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/internal")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateCertificatePolicyRequest calls the generic CreateCertificatePolicy builder with application/json body
+func NewCreateCertificatePolicyRequest(server string, body CreateCertificatePolicyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateCertificatePolicyRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateCertificatePolicyRequestWithBody constructs an http.Request for the CreateCertificatePolicy method, with any body, and a specified content type
+func NewCreateCertificatePolicyRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/certificate-policies")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateCertificateProfileRequest calls the generic CreateCertificateProfile builder with application/json body
+func NewCreateCertificateProfileRequest(server string, body CreateCertificateProfileJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateCertificateProfileRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateCertificateProfileRequestWithBody constructs an http.Request for the CreateCertificateProfile method, with any body, and a specified content type
+func NewCreateCertificateProfileRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/certificate-profiles")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetCertManagerInstanceStateRequest constructs an http.Request for the GetCertManagerInstanceState method
+func NewGetCertManagerInstanceStateRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/instance")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -191051,7 +199339,7 @@ func NewGetProjectBySlugRequest(server string, slug string) (*http.Request, erro
 }
 
 // NewDeleteProjectRequest constructs an http.Request for the DeleteProject method
-func NewDeleteProjectRequest(server string, projectId string) (*http.Request, error) {
+func NewDeleteProjectRequest(server string, projectId string, params *DeleteProjectParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -191074,6 +199362,33 @@ func NewDeleteProjectRequest(server string, projectId string) (*http.Request, er
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.HardDelete != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "hardDelete", *params.HardDelete, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
@@ -207590,6 +215905,151 @@ func NewGetSecretReferenceTreeV4Request(server string, secretName string, params
 	return req, nil
 }
 
+// NewGetScepApplicationOperationRequest constructs an http.Request for the GetScepApplicationOperation method
+func NewGetScepApplicationOperationRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *GetScepApplicationOperationParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/scep/applications/%s/profiles/%s/pkiclient.exe", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "operation", params.Operation, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Message != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "message", *params.Message, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetScepOperationRequest constructs an http.Request for the GetScepOperation method
+func NewGetScepOperationRequest(server string, profileId openapi_types.UUID, params *GetScepOperationParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/scep/%s/pkiclient.exe", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "operation", params.Operation, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Message != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "message", *params.Message, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -208104,6 +216564,34 @@ type ClientWithResponsesInterface interface {
 	//
 	// Update the specified Azure Key Vault Connection.
 	UpdateAzureKeyVaultAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAzureKeyVaultAppConnectionResponse, error)
+
+	// CreateCloudflareAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/cloudflare (the `CreateCloudflareAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Cloudflare Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateCloudflareAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCloudflareAppConnectionResponse, error)
+
+	// CreateCloudflareAppConnectionWithResponse performs a POST /api/v1/app-connections/cloudflare (the `CreateCloudflareAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a Cloudflare Connection.
+	CreateCloudflareAppConnectionWithResponse(ctx context.Context, body CreateCloudflareAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCloudflareAppConnectionResponse, error)
+
+	// CreateDnsMadeEasyAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/dns-made-easy (the `CreateDnsMadeEasyAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a DNS Made Easy Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateDnsMadeEasyAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDnsMadeEasyAppConnectionResponse, error)
+
+	// CreateDnsMadeEasyAppConnectionWithResponse performs a POST /api/v1/app-connections/dns-made-easy (the `CreateDnsMadeEasyAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a DNS Made Easy Connection.
+	CreateDnsMadeEasyAppConnectionWithResponse(ctx context.Context, body CreateDnsMadeEasyAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDnsMadeEasyAppConnectionResponse, error)
 
 	// ListGitHubAppConnectionsWithResponse performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 	//
@@ -209228,6 +217716,242 @@ type ClientWithResponsesInterface interface {
 	//
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
+
+	// GetAcmeApplicationDirectoryWithResponse performs a GET /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/directory (the `GetAcmeApplicationDirectory` operationId) request.
+	//
+	// ACME Directory - provides URLs for the client to make API calls to.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetAcmeApplicationDirectoryWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetAcmeApplicationDirectoryResponse, error)
+
+	// CreateAcmeApplicationAccountWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/new-account (the `CreateAcmeApplicationAccount` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME New Account - register a new account or find existing one.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateAcmeApplicationAccountWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAcmeApplicationAccountResponse, error)
+
+	// CreateAcmeApplicationAccountWithResponse performs a POST /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/new-account (the `CreateAcmeApplicationAccount` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// ACME New Account - register a new account or find existing one.
+	CreateAcmeApplicationAccountWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body CreateAcmeApplicationAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAcmeApplicationAccountResponse, error)
+
+	// ListAcmeOrdersWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/accounts/{accountId}/orders (the `ListAcmeOrders` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME List Orders - get existing orders from current account.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListAcmeOrdersWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListAcmeOrdersResponse, error)
+
+	// ListAcmeOrdersWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/accounts/{accountId}/orders (the `ListAcmeOrders` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// ACME List Orders - get existing orders from current account.
+	ListAcmeOrdersWithResponse(ctx context.Context, profileId openapi_types.UUID, accountId string, body ListAcmeOrdersJSONRequestBody, reqEditors ...RequestEditorFn) (*ListAcmeOrdersResponse, error)
+
+	// GetAcmeAuthorizationWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId} (the `GetAcmeAuthorization` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Identifier Authorization - get authorization info (challenges).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetAcmeAuthorizationWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetAcmeAuthorizationResponse, error)
+
+	// GetAcmeAuthorizationWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId} (the `GetAcmeAuthorization` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// ACME Identifier Authorization - get authorization info (challenges).
+	GetAcmeAuthorizationWithResponse(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, body GetAcmeAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*GetAcmeAuthorizationResponse, error)
+
+	// RespondToAcmeChallengeWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId}/challenges/{challengeId} (the `RespondToAcmeChallenge` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Respond to Challenge - let ACME server know challenge is ready.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RespondToAcmeChallengeWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RespondToAcmeChallengeResponse, error)
+
+	// RespondToAcmeChallengeWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId}/challenges/{challengeId} (the `RespondToAcmeChallenge` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// ACME Respond to Challenge - let ACME server know challenge is ready.
+	RespondToAcmeChallengeWithResponse(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, body RespondToAcmeChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*RespondToAcmeChallengeResponse, error)
+
+	// GetAcmeNewNonceWithResponse performs a GET /api/v1/cert-manager/acme/profiles/{profileId}/new-nonce (the `GetAcmeNewNonce` operationId) request.
+	//
+	// ACME New Nonce (GET) - generate a new nonce and return in Replay-Nonce header with 204 No Content.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetAcmeNewNonceWithResponse(ctx context.Context, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetAcmeNewNonceResponse, error)
+
+	// CreateAcmeOrderWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/new-order (the `CreateAcmeOrder` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME New Order - apply for a new certificate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateAcmeOrderWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAcmeOrderResponse, error)
+
+	// CreateAcmeOrderWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/new-order (the `CreateAcmeOrder` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// ACME New Order - apply for a new certificate.
+	CreateAcmeOrderWithResponse(ctx context.Context, profileId openapi_types.UUID, body CreateAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAcmeOrderResponse, error)
+
+	// GetAcmeOrderWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId} (the `GetAcmeOrder` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Get Order - return status and details of the order.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetAcmeOrderWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetAcmeOrderResponse, error)
+
+	// GetAcmeOrderWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId} (the `GetAcmeOrder` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// ACME Get Order - return status and details of the order.
+	GetAcmeOrderWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body GetAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*GetAcmeOrderResponse, error)
+
+	// DownloadAcmeCertificateWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/certificate (the `DownloadAcmeCertificate` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Download Certificate - download certificate when ready.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DownloadAcmeCertificateWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DownloadAcmeCertificateResponse, error)
+
+	// DownloadAcmeCertificateWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/certificate (the `DownloadAcmeCertificate` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// ACME Download Certificate - download certificate when ready.
+	DownloadAcmeCertificateWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body DownloadAcmeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*DownloadAcmeCertificateResponse, error)
+
+	// FinalizeAcmeOrderWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/finalize (the `FinalizeAcmeOrder` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// ACME Finalize Order - finalize cert order by providing CSR.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	FinalizeAcmeOrderWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FinalizeAcmeOrderResponse, error)
+
+	// FinalizeAcmeOrderWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/finalize (the `FinalizeAcmeOrder` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// ACME Finalize Order - finalize cert order by providing CSR.
+	FinalizeAcmeOrderWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body FinalizeAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*FinalizeAcmeOrderResponse, error)
+
+	// CreatePkiApplicationWithBodyWithResponse performs a POST /api/v1/cert-manager/applications (the `CreatePkiApplication` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreatePkiApplicationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePkiApplicationResponse, error)
+
+	// CreatePkiApplicationWithResponse performs a POST /api/v1/cert-manager/applications (the `CreatePkiApplication` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create an application.
+	CreatePkiApplicationWithResponse(ctx context.Context, body CreatePkiApplicationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePkiApplicationResponse, error)
+
+	// AttachPkiApplicationProfilesWithBodyWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles (the `AttachPkiApplicationProfiles` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Attach one or more profiles to an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	AttachPkiApplicationProfilesWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AttachPkiApplicationProfilesResponse, error)
+
+	// AttachPkiApplicationProfilesWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles (the `AttachPkiApplicationProfiles` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Attach one or more profiles to an application.
+	AttachPkiApplicationProfilesWithResponse(ctx context.Context, applicationId openapi_types.UUID, body AttachPkiApplicationProfilesJSONRequestBody, reqEditors ...RequestEditorFn) (*AttachPkiApplicationProfilesResponse, error)
+
+	// SetPkiApplicationAcmeEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Enable or update the ACME enrollment method for a profile on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SetPkiApplicationAcmeEnrollmentWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPkiApplicationAcmeEnrollmentResponse, error)
+
+	// SetPkiApplicationAcmeEnrollmentWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Enable or update the ACME enrollment method for a profile on an application.
+	SetPkiApplicationAcmeEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationAcmeEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPkiApplicationAcmeEnrollmentResponse, error)
+
+	// RevealPkiApplicationAcmeEabSecretWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme/eab/reveal (the `RevealPkiApplicationAcmeEabSecret` operationId) request.
+	//
+	// Reveal the ACME EAB secret for a profile on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RevealPkiApplicationAcmeEabSecretWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RevealPkiApplicationAcmeEabSecretResponse, error)
+
+	// SetPkiApplicationScepEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Enable or update the SCEP enrollment method for a profile on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SetPkiApplicationScepEnrollmentWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPkiApplicationScepEnrollmentResponse, error)
+
+	// SetPkiApplicationScepEnrollmentWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Enable or update the SCEP enrollment method for a profile on an application.
+	SetPkiApplicationScepEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationScepEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPkiApplicationScepEnrollmentResponse, error)
+
+	// CreateAcmeCertificateAuthorityV1WithBodyWithResponse performs a POST /api/v1/cert-manager/ca/acme (the `CreateAcmeCertificateAuthorityV1` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateAcmeCertificateAuthorityV1WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAcmeCertificateAuthorityV1Response, error)
+
+	// CreateAcmeCertificateAuthorityV1WithResponse performs a POST /api/v1/cert-manager/ca/acme (the `CreateAcmeCertificateAuthorityV1` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateAcmeCertificateAuthorityV1WithResponse(ctx context.Context, body CreateAcmeCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAcmeCertificateAuthorityV1Response, error)
+
+	// CreateInternalCertificateAuthorityV1WithBodyWithResponse performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateInternalCertificateAuthorityV1WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error)
+
+	// CreateInternalCertificateAuthorityV1WithResponse performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateInternalCertificateAuthorityV1WithResponse(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error)
+
+	// CreateCertificatePolicyWithBodyWithResponse performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateCertificatePolicyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCertificatePolicyResponse, error)
+
+	// CreateCertificatePolicyWithResponse performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateCertificatePolicyWithResponse(ctx context.Context, body CreateCertificatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCertificatePolicyResponse, error)
+
+	// CreateCertificateProfileWithBodyWithResponse performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateCertificateProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCertificateProfileResponse, error)
+
+	// CreateCertificateProfileWithResponse performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateCertificateProfileWithResponse(ctx context.Context, body CreateCertificateProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCertificateProfileResponse, error)
+
+	// GetCertManagerInstanceStateWithResponse performs a GET /api/v1/cert-manager/instance (the `GetCertManagerInstanceState` operationId) request.
+	//
+	// Get the active Certificate Manager project and the list of legacy Certificate Manager projects in this organization.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetCertManagerInstanceStateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCertManagerInstanceStateResponse, error)
 
 	// GetAccessibleSecretMetadataWithResponse performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
 	//
@@ -210674,7 +219398,7 @@ type ClientWithResponsesInterface interface {
 	// Delete project.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteProjectWithResponse(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
+	DeleteProjectWithResponse(ctx context.Context, projectId string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error)
 
 	// GetProjectByIdWithResponse performs a GET /api/v1/projects/{projectId} (the `GetProjectById` operationId) request.
 	//
@@ -213748,6 +222472,16 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetSecretReferenceTreeV4WithResponse(ctx context.Context, secretName string, params *GetSecretReferenceTreeV4Params, reqEditors ...RequestEditorFn) (*GetSecretReferenceTreeV4Response, error)
+
+	// GetScepApplicationOperationWithResponse performs a GET /scep/applications/{applicationId}/profiles/{profileId}/pkiclient.exe (the `GetScepApplicationOperation` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetScepApplicationOperationWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *GetScepApplicationOperationParams, reqEditors ...RequestEditorFn) (*GetScepApplicationOperationResponse, error)
+
+	// GetScepOperationWithResponse performs a GET /scep/{profileId}/pkiclient.exe (the `GetScepOperation` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetScepOperationWithResponse(ctx context.Context, profileId openapi_types.UUID, params *GetScepOperationParams, reqEditors ...RequestEditorFn) (*GetScepOperationResponse, error)
 }
 
 type GetInstanceStatusResponse struct {
@@ -224344,6 +233078,308 @@ func (r UpdateAzureKeyVaultAppConnectionResponse) ContentType() string {
 	return ""
 }
 
+type CreateCloudflareAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateCloudflareAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateCloudflareAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateCloudflareAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateCloudflareAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateCloudflareAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                     `json:"error"`
+		Message    interface{}                                                `json:"message,omitempty"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateCloudflareAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateCloudflareAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateCloudflareAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateCloudflareAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateCloudflareAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateCloudflareAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateCloudflareAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateCloudflareAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateCloudflareAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateCloudflareAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateCloudflareAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateCloudflareAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateCloudflareAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                     `json:"error"`
+	Message    interface{}                                                `json:"message,omitempty"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateCloudflareAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateCloudflareAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateCloudflareAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateCloudflareAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCloudflareAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCloudflareAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCloudflareAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateDnsMadeEasyAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                      `json:"error"`
+		Message    interface{}                                                 `json:"message,omitempty"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateDnsMadeEasyAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateDnsMadeEasyAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateDnsMadeEasyAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateDnsMadeEasyAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateDnsMadeEasyAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateDnsMadeEasyAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                      `json:"error"`
+	Message    interface{}                                                 `json:"message,omitempty"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateDnsMadeEasyAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateDnsMadeEasyAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateDnsMadeEasyAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateDnsMadeEasyAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateDnsMadeEasyAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListGitHubAppConnectionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -233868,16 +242904,19 @@ type DeleteKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -233937,16 +242976,19 @@ type DeleteKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -234057,26 +243099,31 @@ type GetKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -234128,26 +243175,31 @@ type GetKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -234250,26 +243302,31 @@ type UpdateKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -234321,26 +243378,31 @@ type UpdateKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -234443,26 +243505,31 @@ type AttachKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -234514,26 +243581,31 @@ type AttachKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r AttachKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -243650,6 +252722,2564 @@ func (r LoginWithUniversalAuthResponse) ContentType() string {
 	return ""
 }
 
+type GetAcmeApplicationDirectoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Meta *struct {
+			CaaIdentities           *[]string `json:"caaIdentities,omitempty"`
+			ExternalAccountRequired *bool     `json:"externalAccountRequired,omitempty"`
+			TermsOfService          *string   `json:"termsOfService,omitempty"`
+			Website                 *string   `json:"website,omitempty"`
+		} `json:"meta,omitempty"`
+		NewAccount string  `json:"newAccount"`
+		NewNonce   string  `json:"newNonce"`
+		NewOrder   string  `json:"newOrder"`
+		RevokeCert *string `json:"revokeCert,omitempty"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAcmeApplicationDirectoryResponse) GetJSON200() *struct {
+	Meta *struct {
+		CaaIdentities           *[]string `json:"caaIdentities,omitempty"`
+		ExternalAccountRequired *bool     `json:"externalAccountRequired,omitempty"`
+		TermsOfService          *string   `json:"termsOfService,omitempty"`
+		Website                 *string   `json:"website,omitempty"`
+	} `json:"meta,omitempty"`
+	NewAccount string  `json:"newAccount"`
+	NewNonce   string  `json:"newNonce"`
+	NewOrder   string  `json:"newOrder"`
+	RevokeCert *string `json:"revokeCert,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAcmeApplicationDirectoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAcmeApplicationDirectoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAcmeApplicationDirectoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAcmeApplicationDirectoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAcmeApplicationAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *struct {
+		Contact *[]string `json:"contact,omitempty"`
+		Orders  *string   `json:"orders,omitempty"`
+		Status  string    `json:"status"`
+	}
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateAcmeApplicationAccountResponse) GetJSON201() *struct {
+	Contact *[]string `json:"contact,omitempty"`
+	Orders  *string   `json:"orders,omitempty"`
+	Status  string    `json:"status"`
+} {
+	return r.JSON201
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAcmeApplicationAccountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAcmeApplicationAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAcmeApplicationAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAcmeApplicationAccountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAcmeOrdersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Orders []string `json:"orders"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAcmeOrdersResponse) GetJSON200() *struct {
+	Orders []string `json:"orders"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAcmeOrdersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAcmeOrdersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAcmeOrdersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAcmeOrdersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAcmeAuthorizationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Challenges []struct {
+			Status    string                                                `json:"status"`
+			Token     string                                                `json:"token"`
+			Type      GetAcmeAuthorization200JSONResponseBodyChallengesType `json:"type"`
+			Url       string                                                `json:"url"`
+			Validated *string                                               `json:"validated,omitempty"`
+		} `json:"challenges"`
+		Expires    *string `json:"expires,omitempty"`
+		Identifier struct {
+			Type  string `json:"type"`
+			Value string `json:"value"`
+		} `json:"identifier"`
+		Status   GetAcmeAuthorization200JSONResponseBodyStatus `json:"status"`
+		Wildcard *bool                                         `json:"wildcard,omitempty"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAcmeAuthorizationResponse) GetJSON200() *struct {
+	Challenges []struct {
+		Status    string                                                `json:"status"`
+		Token     string                                                `json:"token"`
+		Type      GetAcmeAuthorization200JSONResponseBodyChallengesType `json:"type"`
+		Url       string                                                `json:"url"`
+		Validated *string                                               `json:"validated,omitempty"`
+	} `json:"challenges"`
+	Expires    *string `json:"expires,omitempty"`
+	Identifier struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	} `json:"identifier"`
+	Status   GetAcmeAuthorization200JSONResponseBodyStatus `json:"status"`
+	Wildcard *bool                                         `json:"wildcard,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAcmeAuthorizationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAcmeAuthorizationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAcmeAuthorizationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAcmeAuthorizationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RespondToAcmeChallengeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Error *struct {
+			Detail string  `json:"detail"`
+			Status float32 `json:"status"`
+			Type   string  `json:"type"`
+		} `json:"error,omitempty"`
+		Status    string                                        `json:"status"`
+		Token     string                                        `json:"token"`
+		Type      RespondToAcmeChallenge200JSONResponseBodyType `json:"type"`
+		Url       string                                        `json:"url"`
+		Validated *string                                       `json:"validated,omitempty"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RespondToAcmeChallengeResponse) GetJSON200() *struct {
+	Error *struct {
+		Detail string  `json:"detail"`
+		Status float32 `json:"status"`
+		Type   string  `json:"type"`
+	} `json:"error,omitempty"`
+	Status    string                                        `json:"status"`
+	Token     string                                        `json:"token"`
+	Type      RespondToAcmeChallenge200JSONResponseBodyType `json:"type"`
+	Url       string                                        `json:"url"`
+	Validated *string                                       `json:"validated,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r RespondToAcmeChallengeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RespondToAcmeChallengeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RespondToAcmeChallengeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RespondToAcmeChallengeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAcmeNewNonceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON204 the response for an HTTP 204 `application/json` response
+	JSON204 *string
+}
+
+// GetJSON204 returns the response for an HTTP 204 `application/json` response
+func (r GetAcmeNewNonceResponse) GetJSON204() *string {
+	return r.JSON204
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAcmeNewNonceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAcmeNewNonceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAcmeNewNonceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAcmeNewNonceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAcmeOrderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *struct {
+		Authorizations []string `json:"authorizations"`
+		Certificate    *string  `json:"certificate,omitempty"`
+		Expires        *string  `json:"expires,omitempty"`
+		Finalize       string   `json:"finalize"`
+		Identifiers    []struct {
+			Type  string `json:"type"`
+			Value string `json:"value"`
+		} `json:"identifiers"`
+		NotAfter  *string                                  `json:"notAfter,omitempty"`
+		NotBefore *string                                  `json:"notBefore,omitempty"`
+		Status    CreateAcmeOrder201JSONResponseBodyStatus `json:"status"`
+	}
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateAcmeOrderResponse) GetJSON201() *struct {
+	Authorizations []string `json:"authorizations"`
+	Certificate    *string  `json:"certificate,omitempty"`
+	Expires        *string  `json:"expires,omitempty"`
+	Finalize       string   `json:"finalize"`
+	Identifiers    []struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	} `json:"identifiers"`
+	NotAfter  *string                                  `json:"notAfter,omitempty"`
+	NotBefore *string                                  `json:"notBefore,omitempty"`
+	Status    CreateAcmeOrder201JSONResponseBodyStatus `json:"status"`
+} {
+	return r.JSON201
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAcmeOrderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAcmeOrderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAcmeOrderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAcmeOrderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAcmeOrderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Authorizations []string `json:"authorizations"`
+		Certificate    *string  `json:"certificate,omitempty"`
+		Expires        *string  `json:"expires,omitempty"`
+		Finalize       string   `json:"finalize"`
+		Identifiers    []struct {
+			Type  string `json:"type"`
+			Value string `json:"value"`
+		} `json:"identifiers"`
+		NotAfter  *string                               `json:"notAfter,omitempty"`
+		NotBefore *string                               `json:"notBefore,omitempty"`
+		Status    GetAcmeOrder200JSONResponseBodyStatus `json:"status"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAcmeOrderResponse) GetJSON200() *struct {
+	Authorizations []string `json:"authorizations"`
+	Certificate    *string  `json:"certificate,omitempty"`
+	Expires        *string  `json:"expires,omitempty"`
+	Finalize       string   `json:"finalize"`
+	Identifiers    []struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	} `json:"identifiers"`
+	NotAfter  *string                               `json:"notAfter,omitempty"`
+	NotBefore *string                               `json:"notBefore,omitempty"`
+	Status    GetAcmeOrder200JSONResponseBodyStatus `json:"status"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAcmeOrderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAcmeOrderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAcmeOrderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAcmeOrderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DownloadAcmeCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DownloadAcmeCertificateResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r DownloadAcmeCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DownloadAcmeCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DownloadAcmeCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DownloadAcmeCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type FinalizeAcmeOrderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Authorizations []string `json:"authorizations"`
+		Certificate    *string  `json:"certificate,omitempty"`
+		Expires        *string  `json:"expires,omitempty"`
+		Finalize       string   `json:"finalize"`
+		Identifiers    []struct {
+			Type  string `json:"type"`
+			Value string `json:"value"`
+		} `json:"identifiers"`
+		NotAfter  *string                                    `json:"notAfter,omitempty"`
+		NotBefore *string                                    `json:"notBefore,omitempty"`
+		Status    FinalizeAcmeOrder200JSONResponseBodyStatus `json:"status"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r FinalizeAcmeOrderResponse) GetJSON200() *struct {
+	Authorizations []string `json:"authorizations"`
+	Certificate    *string  `json:"certificate,omitempty"`
+	Expires        *string  `json:"expires,omitempty"`
+	Finalize       string   `json:"finalize"`
+	Identifiers    []struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	} `json:"identifiers"`
+	NotAfter  *string                                    `json:"notAfter,omitempty"`
+	NotBefore *string                                    `json:"notBefore,omitempty"`
+	Status    FinalizeAcmeOrder200JSONResponseBodyStatus `json:"status"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r FinalizeAcmeOrderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r FinalizeAcmeOrderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r FinalizeAcmeOrderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r FinalizeAcmeOrderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreatePkiApplicationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Application struct {
+			CreatedAt   time.Time          `json:"createdAt"`
+			Description *string            `json:"description,omitempty"`
+			Id          openapi_types.UUID `json:"id"`
+			Name        string             `json:"name"`
+			ProjectId   string             `json:"projectId"`
+			UpdatedAt   time.Time          `json:"updatedAt"`
+		} `json:"application"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreatePkiApplication400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreatePkiApplication401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreatePkiApplication403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreatePkiApplication404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreatePkiApplication422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreatePkiApplication500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreatePkiApplicationResponse) GetJSON200() *struct {
+	Application struct {
+		CreatedAt   time.Time          `json:"createdAt"`
+		Description *string            `json:"description,omitempty"`
+		Id          openapi_types.UUID `json:"id"`
+		Name        string             `json:"name"`
+		ProjectId   string             `json:"projectId"`
+		UpdatedAt   time.Time          `json:"updatedAt"`
+	} `json:"application"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreatePkiApplicationResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreatePkiApplication400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreatePkiApplicationResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreatePkiApplication401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreatePkiApplicationResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreatePkiApplication403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreatePkiApplicationResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreatePkiApplication404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreatePkiApplicationResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreatePkiApplication422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreatePkiApplicationResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreatePkiApplication500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreatePkiApplicationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreatePkiApplicationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreatePkiApplicationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreatePkiApplicationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AttachPkiApplicationProfilesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Profiles []struct {
+			AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+			ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
+			ApplicationId      openapi_types.UUID  `json:"applicationId"`
+			CreatedAt          time.Time           `json:"createdAt"`
+			EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
+			ProfileDescription *string             `json:"profileDescription,omitempty"`
+			ProfileId          openapi_types.UUID  `json:"profileId"`
+			ProfileSlug        string              `json:"profileSlug"`
+			ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
+			UpdatedAt          time.Time           `json:"updatedAt"`
+		} `json:"profiles"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode AttachPkiApplicationProfiles400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode AttachPkiApplicationProfiles401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode AttachPkiApplicationProfiles403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode AttachPkiApplicationProfiles404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                    `json:"error"`
+		Message    interface{}                                               `json:"message,omitempty"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode AttachPkiApplicationProfiles422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode AttachPkiApplicationProfiles500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AttachPkiApplicationProfilesResponse) GetJSON200() *struct {
+	Profiles []struct {
+		AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+		ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
+		ApplicationId      openapi_types.UUID  `json:"applicationId"`
+		CreatedAt          time.Time           `json:"createdAt"`
+		EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
+		ProfileDescription *string             `json:"profileDescription,omitempty"`
+		ProfileId          openapi_types.UUID  `json:"profileId"`
+		ProfileSlug        string              `json:"profileSlug"`
+		ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
+		UpdatedAt          time.Time           `json:"updatedAt"`
+	} `json:"profiles"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AttachPkiApplicationProfilesResponse) GetJSON400() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode AttachPkiApplicationProfiles400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AttachPkiApplicationProfilesResponse) GetJSON401() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode AttachPkiApplicationProfiles401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AttachPkiApplicationProfilesResponse) GetJSON403() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode AttachPkiApplicationProfiles403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r AttachPkiApplicationProfilesResponse) GetJSON404() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode AttachPkiApplicationProfiles404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r AttachPkiApplicationProfilesResponse) GetJSON422() *struct {
+	Error      string                                                    `json:"error"`
+	Message    interface{}                                               `json:"message,omitempty"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode AttachPkiApplicationProfiles422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r AttachPkiApplicationProfilesResponse) GetJSON500() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode AttachPkiApplicationProfiles500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AttachPkiApplicationProfilesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AttachPkiApplicationProfilesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AttachPkiApplicationProfilesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AttachPkiApplicationProfilesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetPkiApplicationAcmeEnrollmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Acme struct {
+			Id                           openapi_types.UUID `json:"id"`
+			SkipDnsOwnershipVerification bool               `json:"skipDnsOwnershipVerification"`
+			SkipEabBinding               bool               `json:"skipEabBinding"`
+		} `json:"acme"`
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		ProfileId     openapi_types.UUID `json:"profileId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                       `json:"error"`
+		Message    interface{}                                                  `json:"message,omitempty"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetPkiApplicationAcmeEnrollmentResponse) GetJSON200() *struct {
+	Acme struct {
+		Id                           openapi_types.UUID `json:"id"`
+		SkipDnsOwnershipVerification bool               `json:"skipDnsOwnershipVerification"`
+		SkipEabBinding               bool               `json:"skipEabBinding"`
+	} `json:"acme"`
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	ProfileId     openapi_types.UUID `json:"profileId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetPkiApplicationAcmeEnrollmentResponse) GetJSON400() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetPkiApplicationAcmeEnrollmentResponse) GetJSON401() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetPkiApplicationAcmeEnrollmentResponse) GetJSON403() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetPkiApplicationAcmeEnrollmentResponse) GetJSON404() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetPkiApplicationAcmeEnrollmentResponse) GetJSON422() *struct {
+	Error      string                                                       `json:"error"`
+	Message    interface{}                                                  `json:"message,omitempty"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r SetPkiApplicationAcmeEnrollmentResponse) GetJSON500() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SetPkiApplicationAcmeEnrollmentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetPkiApplicationAcmeEnrollmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetPkiApplicationAcmeEnrollmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetPkiApplicationAcmeEnrollmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RevealPkiApplicationAcmeEabSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		EabKid        string             `json:"eabKid"`
+		EabSecret     string             `json:"eabSecret"`
+		ProfileId     openapi_types.UUID `json:"profileId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                         `json:"error"`
+		Message    interface{}                                                    `json:"message,omitempty"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RevealPkiApplicationAcmeEabSecretResponse) GetJSON200() *struct {
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	EabKid        string             `json:"eabKid"`
+	EabSecret     string             `json:"eabSecret"`
+	ProfileId     openapi_types.UUID `json:"profileId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RevealPkiApplicationAcmeEabSecretResponse) GetJSON400() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RevealPkiApplicationAcmeEabSecretResponse) GetJSON401() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RevealPkiApplicationAcmeEabSecretResponse) GetJSON403() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RevealPkiApplicationAcmeEabSecretResponse) GetJSON404() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RevealPkiApplicationAcmeEabSecretResponse) GetJSON422() *struct {
+	Error      string                                                         `json:"error"`
+	Message    interface{}                                                    `json:"message,omitempty"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RevealPkiApplicationAcmeEabSecretResponse) GetJSON500() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RevealPkiApplicationAcmeEabSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RevealPkiApplicationAcmeEabSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevealPkiApplicationAcmeEabSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevealPkiApplicationAcmeEabSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetPkiApplicationScepEnrollmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		ProfileId     openapi_types.UUID `json:"profileId"`
+		Scep          struct {
+			ChallengeType SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
+			Id            openapi_types.UUID                                                  `json:"id"`
+		} `json:"scep"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                       `json:"error"`
+		Message    interface{}                                                  `json:"message,omitempty"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetPkiApplicationScepEnrollmentResponse) GetJSON200() *struct {
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	ProfileId     openapi_types.UUID `json:"profileId"`
+	Scep          struct {
+		ChallengeType SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
+		Id            openapi_types.UUID                                                  `json:"id"`
+	} `json:"scep"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetPkiApplicationScepEnrollmentResponse) GetJSON400() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetPkiApplicationScepEnrollmentResponse) GetJSON401() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetPkiApplicationScepEnrollmentResponse) GetJSON403() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetPkiApplicationScepEnrollmentResponse) GetJSON404() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetPkiApplicationScepEnrollmentResponse) GetJSON422() *struct {
+	Error      string                                                       `json:"error"`
+	Message    interface{}                                                  `json:"message,omitempty"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r SetPkiApplicationScepEnrollmentResponse) GetJSON500() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SetPkiApplicationScepEnrollmentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetPkiApplicationScepEnrollmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetPkiApplicationScepEnrollmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetPkiApplicationScepEnrollmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAcmeCertificateAuthorityV1Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Configuration struct {
+			// AccountEmail The email address for the ACME Certificate Authority.
+			AccountEmail string `json:"accountEmail"`
+
+			// DirectoryUrl The directory URL for the ACME Certificate Authority.
+			DirectoryUrl string `json:"directoryUrl"`
+
+			// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
+			DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
+			DnsProviderConfig  struct {
+				// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+				HostedZoneId string `json:"hostedZoneId"`
+
+				// Provider The DNS provider for the ACME Certificate Authority.
+				Provider CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider `json:"provider"`
+			} `json:"dnsProviderConfig"`
+
+			// DnsResolver An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.
+			DnsResolver *string `json:"dnsResolver,omitempty"`
+
+			// EabKid The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.
+			EabKid *string `json:"eabKid,omitempty"`
+		} `json:"configuration"`
+		EnableDirectIssuance *bool                                                     `json:"enableDirectIssuance,omitempty"`
+		Id                   openapi_types.UUID                                        `json:"id"`
+		Name                 string                                                    `json:"name"`
+		ProjectId            string                                                    `json:"projectId"`
+		Status               CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+		Type                 CreateAcmeCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateAcmeCertificateAuthorityV1Response) GetJSON200() *struct {
+	Configuration struct {
+		// AccountEmail The email address for the ACME Certificate Authority.
+		AccountEmail string `json:"accountEmail"`
+
+		// DirectoryUrl The directory URL for the ACME Certificate Authority.
+		DirectoryUrl string `json:"directoryUrl"`
+
+		// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
+		DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
+		DnsProviderConfig  struct {
+			// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+			HostedZoneId string `json:"hostedZoneId"`
+
+			// Provider The DNS provider for the ACME Certificate Authority.
+			Provider CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider `json:"provider"`
+		} `json:"dnsProviderConfig"`
+
+		// DnsResolver An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.
+		DnsResolver *string `json:"dnsResolver,omitempty"`
+
+		// EabKid The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.
+		EabKid *string `json:"eabKid,omitempty"`
+	} `json:"configuration"`
+	EnableDirectIssuance *bool                                                     `json:"enableDirectIssuance,omitempty"`
+	Id                   openapi_types.UUID                                        `json:"id"`
+	Name                 string                                                    `json:"name"`
+	ProjectId            string                                                    `json:"projectId"`
+	Status               CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+	Type                 CreateAcmeCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateAcmeCertificateAuthorityV1Response) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateAcmeCertificateAuthorityV1Response) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateAcmeCertificateAuthorityV1Response) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateAcmeCertificateAuthorityV1Response) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateAcmeCertificateAuthorityV1Response) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateAcmeCertificateAuthorityV1Response) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAcmeCertificateAuthorityV1Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAcmeCertificateAuthorityV1Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAcmeCertificateAuthorityV1Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAcmeCertificateAuthorityV1Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateInternalCertificateAuthorityV1Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Configuration struct {
+			ActiveCaCertId *openapi_types.UUID `json:"activeCaCertId,omitempty"`
+
+			// AppConnectionId The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.
+			AppConnectionId *openapi_types.UUID `json:"appConnectionId,omitempty"`
+
+			// AppConnectionName The name of the AWS connection the CA's signing key is reached through. Not user-supplied.
+			AppConnectionName *string `json:"appConnectionName,omitempty"`
+
+			// CommonName The common name (CN) for the CA.
+			CommonName *string `json:"commonName,omitempty"`
+
+			// Country The country name (C) for the CA.
+			Country *string `json:"country,omitempty"`
+
+			// CrlDistributionPointUrls Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.
+			CrlDistributionPointUrls *[]string `json:"crlDistributionPointUrls,omitempty"`
+
+			// DisableManagedCrlDistributionPointUrl When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.
+			DisableManagedCrlDistributionPointUrl *bool   `json:"disableManagedCrlDistributionPointUrl,omitempty"`
+			Dn                                    *string `json:"dn,omitempty"`
+
+			// ExternalKeyId The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.
+			ExternalKeyId *string `json:"externalKeyId,omitempty"`
+
+			// FriendlyName A friendly name for the CA.
+			FriendlyName *string `json:"friendlyName,omitempty"`
+
+			// HsmConnectorId The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.
+			HsmConnectorId *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+
+			// HsmConnectorName The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.
+			HsmConnectorName *string `json:"hsmConnectorName,omitempty"`
+
+			// HsmKeyLabel Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.
+			// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+			HsmKeyLabel *string `json:"hsmKeyLabel,omitempty"`
+
+			// IsOcspEnabled When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.
+			IsOcspEnabled *bool `json:"isOcspEnabled,omitempty"`
+
+			// KeyAlgorithm The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.
+			KeyAlgorithm CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm `json:"keyAlgorithm"`
+
+			// KeySource Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.
+			KeySource *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource `json:"keySource,omitempty"`
+
+			// Locality The locality name for the CA.
+			Locality *string `json:"locality,omitempty"`
+
+			// MaxPathLength The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.
+			MaxPathLength *float32 `json:"maxPathLength,omitempty"`
+
+			// NotAfter The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.
+			NotAfter *string `json:"notAfter,omitempty"`
+
+			// NotBefore The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.
+			NotBefore *string `json:"notBefore,omitempty"`
+
+			// Organization The organization (O) for the CA.
+			Organization *string `json:"organization,omitempty"`
+
+			// Ou The organization unit (OU) for the CA.
+			Ou         *string             `json:"ou,omitempty"`
+			ParentCaId *openapi_types.UUID `json:"parentCaId,omitempty"`
+
+			// Province The state of province name for the CA.
+			Province *string `json:"province,omitempty"`
+
+			// Region The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.
+			Region       *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion `json:"region,omitempty"`
+			SerialNumber *string                                                                     `json:"serialNumber,omitempty"`
+
+			// Type The type of CA to create.
+			Type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType `json:"type"`
+		} `json:"configuration"`
+		EnableDirectIssuance *bool                                                         `json:"enableDirectIssuance,omitempty"`
+		Id                   openapi_types.UUID                                            `json:"id"`
+		Name                 string                                                        `json:"name"`
+		ProjectId            string                                                        `json:"projectId"`
+		Status               CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+		Type                 CreateInternalCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                       `json:"details,omitempty"`
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                       `json:"details,omitempty"`
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                            `json:"error"`
+		Message    interface{}                                                       `json:"message,omitempty"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON200() *struct {
+	Configuration struct {
+		ActiveCaCertId *openapi_types.UUID `json:"activeCaCertId,omitempty"`
+
+		// AppConnectionId The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.
+		AppConnectionId *openapi_types.UUID `json:"appConnectionId,omitempty"`
+
+		// AppConnectionName The name of the AWS connection the CA's signing key is reached through. Not user-supplied.
+		AppConnectionName *string `json:"appConnectionName,omitempty"`
+
+		// CommonName The common name (CN) for the CA.
+		CommonName *string `json:"commonName,omitempty"`
+
+		// Country The country name (C) for the CA.
+		Country *string `json:"country,omitempty"`
+
+		// CrlDistributionPointUrls Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.
+		CrlDistributionPointUrls *[]string `json:"crlDistributionPointUrls,omitempty"`
+
+		// DisableManagedCrlDistributionPointUrl When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.
+		DisableManagedCrlDistributionPointUrl *bool   `json:"disableManagedCrlDistributionPointUrl,omitempty"`
+		Dn                                    *string `json:"dn,omitempty"`
+
+		// ExternalKeyId The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.
+		ExternalKeyId *string `json:"externalKeyId,omitempty"`
+
+		// FriendlyName A friendly name for the CA.
+		FriendlyName *string `json:"friendlyName,omitempty"`
+
+		// HsmConnectorId The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.
+		HsmConnectorId *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+
+		// HsmConnectorName The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.
+		HsmConnectorName *string `json:"hsmConnectorName,omitempty"`
+
+		// HsmKeyLabel Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.
+		// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+		HsmKeyLabel *string `json:"hsmKeyLabel,omitempty"`
+
+		// IsOcspEnabled When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.
+		IsOcspEnabled *bool `json:"isOcspEnabled,omitempty"`
+
+		// KeyAlgorithm The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.
+		KeyAlgorithm CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm `json:"keyAlgorithm"`
+
+		// KeySource Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.
+		KeySource *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource `json:"keySource,omitempty"`
+
+		// Locality The locality name for the CA.
+		Locality *string `json:"locality,omitempty"`
+
+		// MaxPathLength The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.
+		MaxPathLength *float32 `json:"maxPathLength,omitempty"`
+
+		// NotAfter The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.
+		NotAfter *string `json:"notAfter,omitempty"`
+
+		// NotBefore The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.
+		NotBefore *string `json:"notBefore,omitempty"`
+
+		// Organization The organization (O) for the CA.
+		Organization *string `json:"organization,omitempty"`
+
+		// Ou The organization unit (OU) for the CA.
+		Ou         *string             `json:"ou,omitempty"`
+		ParentCaId *openapi_types.UUID `json:"parentCaId,omitempty"`
+
+		// Province The state of province name for the CA.
+		Province *string `json:"province,omitempty"`
+
+		// Region The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.
+		Region       *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion `json:"region,omitempty"`
+		SerialNumber *string                                                                     `json:"serialNumber,omitempty"`
+
+		// Type The type of CA to create.
+		Type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType `json:"type"`
+	} `json:"configuration"`
+	EnableDirectIssuance *bool                                                         `json:"enableDirectIssuance,omitempty"`
+	Id                   openapi_types.UUID                                            `json:"id"`
+	Name                 string                                                        `json:"name"`
+	ProjectId            string                                                        `json:"projectId"`
+	Status               CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+	Type                 CreateInternalCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON400() *struct {
+	Details    interface{}                                                       `json:"details,omitempty"`
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON401() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON403() *struct {
+	Details    interface{}                                                       `json:"details,omitempty"`
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON404() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON422() *struct {
+	Error      string                                                            `json:"error"`
+	Message    interface{}                                                       `json:"message,omitempty"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON500() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateInternalCertificateAuthorityV1Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateInternalCertificateAuthorityV1Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateInternalCertificateAuthorityV1Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateInternalCertificateAuthorityV1Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateCertificatePolicyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CertificatePolicy struct {
+			Algorithms *struct {
+				KeyAlgorithm *[]string `json:"keyAlgorithm,omitempty"`
+				Signature    *[]string `json:"signature,omitempty"`
+			} `json:"algorithms,omitempty"`
+			BasicConstraints *struct {
+				IsCA          *CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA `json:"isCA,omitempty"`
+				MaxPathLength *int                                                                             `json:"maxPathLength,omitempty"`
+			} `json:"basicConstraints,omitempty"`
+			CreatedAt        time.Time `json:"createdAt"`
+			CustomExtensions *[]struct {
+				// Allowed Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.
+				Allowed  *[]string                                                                            `json:"allowed,omitempty"`
+				Critical *CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical `json:"critical,omitempty"`
+
+				// Denied Value patterns this extension must not take, with * as a wildcard. A denied match is rejected even when an allowed pattern also matches.
+				Denied *[]string `json:"denied,omitempty"`
+				Label  *string   `json:"label,omitempty"`
+				Oid    string    `json:"oid"`
+
+				// Required Value patterns this extension must match, with * as a wildcard. Setting any required pattern also makes the extension mandatory on every request.
+				Required *[]string `json:"required,omitempty"`
+			} `json:"customExtensions,omitempty"`
+			Description       *string `json:"description,omitempty"`
+			ExtendedKeyUsages *struct {
+				Allowed  *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed  `json:"allowed,omitempty"`
+				Denied   *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied   `json:"denied,omitempty"`
+				Required *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired `json:"required,omitempty"`
+			} `json:"extendedKeyUsages,omitempty"`
+			Id        openapi_types.UUID `json:"id"`
+			KeyUsages *struct {
+				Allowed  *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed  `json:"allowed,omitempty"`
+				Denied   *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied   `json:"denied,omitempty"`
+				Required *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired `json:"required,omitempty"`
+			} `json:"keyUsages,omitempty"`
+			Name      string             `json:"name"`
+			ProjectId openapi_types.UUID `json:"projectId"`
+			Sans      *[]struct {
+				Allowed  *[]string                                                           `json:"allowed,omitempty"`
+				Denied   *[]string                                                           `json:"denied,omitempty"`
+				Required *[]string                                                           `json:"required,omitempty"`
+				Type     CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType `json:"type"`
+			} `json:"sans,omitempty"`
+			Subject   *[]CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item `json:"subject,omitempty"`
+			UpdatedAt time.Time                                                                    `json:"updatedAt"`
+			Validity  *struct {
+				Max *string `json:"max,omitempty"`
+			} `json:"validity,omitempty"`
+		} `json:"certificatePolicy"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                          `json:"details,omitempty"`
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CreateCertificatePolicy400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CreateCertificatePolicy401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                          `json:"details,omitempty"`
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CreateCertificatePolicy403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CreateCertificatePolicy404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                               `json:"error"`
+		Message    interface{}                                          `json:"message,omitempty"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CreateCertificatePolicy422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CreateCertificatePolicy500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateCertificatePolicyResponse) GetJSON200() *struct {
+	CertificatePolicy struct {
+		Algorithms *struct {
+			KeyAlgorithm *[]string `json:"keyAlgorithm,omitempty"`
+			Signature    *[]string `json:"signature,omitempty"`
+		} `json:"algorithms,omitempty"`
+		BasicConstraints *struct {
+			IsCA          *CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA `json:"isCA,omitempty"`
+			MaxPathLength *int                                                                             `json:"maxPathLength,omitempty"`
+		} `json:"basicConstraints,omitempty"`
+		CreatedAt        time.Time `json:"createdAt"`
+		CustomExtensions *[]struct {
+			// Allowed Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.
+			Allowed  *[]string                                                                            `json:"allowed,omitempty"`
+			Critical *CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical `json:"critical,omitempty"`
+
+			// Denied Value patterns this extension must not take, with * as a wildcard. A denied match is rejected even when an allowed pattern also matches.
+			Denied *[]string `json:"denied,omitempty"`
+			Label  *string   `json:"label,omitempty"`
+			Oid    string    `json:"oid"`
+
+			// Required Value patterns this extension must match, with * as a wildcard. Setting any required pattern also makes the extension mandatory on every request.
+			Required *[]string `json:"required,omitempty"`
+		} `json:"customExtensions,omitempty"`
+		Description       *string `json:"description,omitempty"`
+		ExtendedKeyUsages *struct {
+			Allowed  *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed  `json:"allowed,omitempty"`
+			Denied   *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied   `json:"denied,omitempty"`
+			Required *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired `json:"required,omitempty"`
+		} `json:"extendedKeyUsages,omitempty"`
+		Id        openapi_types.UUID `json:"id"`
+		KeyUsages *struct {
+			Allowed  *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed  `json:"allowed,omitempty"`
+			Denied   *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied   `json:"denied,omitempty"`
+			Required *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired `json:"required,omitempty"`
+		} `json:"keyUsages,omitempty"`
+		Name      string             `json:"name"`
+		ProjectId openapi_types.UUID `json:"projectId"`
+		Sans      *[]struct {
+			Allowed  *[]string                                                           `json:"allowed,omitempty"`
+			Denied   *[]string                                                           `json:"denied,omitempty"`
+			Required *[]string                                                           `json:"required,omitempty"`
+			Type     CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType `json:"type"`
+		} `json:"sans,omitempty"`
+		Subject   *[]CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item `json:"subject,omitempty"`
+		UpdatedAt time.Time                                                                    `json:"updatedAt"`
+		Validity  *struct {
+			Max *string `json:"max,omitempty"`
+		} `json:"validity,omitempty"`
+	} `json:"certificatePolicy"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateCertificatePolicyResponse) GetJSON400() *struct {
+	Details    interface{}                                          `json:"details,omitempty"`
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CreateCertificatePolicy400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateCertificatePolicyResponse) GetJSON401() *struct {
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CreateCertificatePolicy401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateCertificatePolicyResponse) GetJSON403() *struct {
+	Details    interface{}                                          `json:"details,omitempty"`
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CreateCertificatePolicy403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateCertificatePolicyResponse) GetJSON404() *struct {
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CreateCertificatePolicy404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateCertificatePolicyResponse) GetJSON422() *struct {
+	Error      string                                               `json:"error"`
+	Message    interface{}                                          `json:"message,omitempty"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CreateCertificatePolicy422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateCertificatePolicyResponse) GetJSON500() *struct {
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CreateCertificatePolicy500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateCertificatePolicyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCertificatePolicyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCertificatePolicyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCertificatePolicyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateCertificateProfileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CertificateProfile struct {
+			AcmeConfigId        *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+			ApiConfigId         *openapi_types.UUID `json:"apiConfigId,omitempty"`
+			CaId                *openapi_types.UUID `json:"caId,omitempty"`
+			CertificatePolicyId openapi_types.UUID  `json:"certificatePolicyId"`
+			CreatedAt           time.Time           `json:"createdAt"`
+			Defaults            *struct {
+				BasicConstraints *struct {
+					IsCA       bool     `json:"isCA"`
+					PathLength *float32 `json:"pathLength,omitempty"`
+				} `json:"basicConstraints,omitempty"`
+				CommonName       *string `json:"commonName,omitempty"`
+				Country          *string `json:"country,omitempty"`
+				CustomExtensions *[]struct {
+					Critical *bool   `json:"critical,omitempty"`
+					Label    *string `json:"label,omitempty"`
+					Oid      string  `json:"oid"`
+					Value    *string `json:"value,omitempty"`
+				} `json:"customExtensions,omitempty"`
+				DomainComponents   *[]string                                                                                 `json:"domainComponents,omitempty"`
+				ExtendedKeyUsages  *[]CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages `json:"extendedKeyUsages,omitempty"`
+				KeyAlgorithm       *CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm        `json:"keyAlgorithm,omitempty"`
+				KeyUsages          *[]CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages         `json:"keyUsages,omitempty"`
+				Locality           *string                                                                                   `json:"locality,omitempty"`
+				Organization       *string                                                                                   `json:"organization,omitempty"`
+				OrganizationalUnit *string                                                                                   `json:"organizationalUnit,omitempty"`
+				SignatureAlgorithm *CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
+				State              *string                                                                                   `json:"state,omitempty"`
+				SubjectAltNames    *[]struct {
+					Type  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType `json:"type"`
+					Value string                                                                                   `json:"value"`
+				} `json:"subjectAltNames,omitempty"`
+				TtlDays *float32 `json:"ttlDays,omitempty"`
+			} `json:"defaults,omitempty"`
+			Description     *string                                                                         `json:"description,omitempty"`
+			EnrollmentType  string                                                                          `json:"enrollmentType"`
+			EstConfigId     *openapi_types.UUID                                                             `json:"estConfigId,omitempty"`
+			ExternalConfigs *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs `json:"externalConfigs,omitempty"`
+			Id              openapi_types.UUID                                                              `json:"id"`
+			IssuerType      *string                                                                         `json:"issuerType,omitempty"`
+			ProjectId       string                                                                          `json:"projectId"`
+			ScepConfigId    *openapi_types.UUID                                                             `json:"scepConfigId,omitempty"`
+			Slug            string                                                                          `json:"slug"`
+			UpdatedAt       time.Time                                                                       `json:"updatedAt"`
+		} `json:"certificateProfile"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode CreateCertificateProfile400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode CreateCertificateProfile401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode CreateCertificateProfile403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode CreateCertificateProfile404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                `json:"error"`
+		Message    interface{}                                           `json:"message,omitempty"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode CreateCertificateProfile422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode CreateCertificateProfile500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateCertificateProfileResponse) GetJSON200() *struct {
+	CertificateProfile struct {
+		AcmeConfigId        *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+		ApiConfigId         *openapi_types.UUID `json:"apiConfigId,omitempty"`
+		CaId                *openapi_types.UUID `json:"caId,omitempty"`
+		CertificatePolicyId openapi_types.UUID  `json:"certificatePolicyId"`
+		CreatedAt           time.Time           `json:"createdAt"`
+		Defaults            *struct {
+			BasicConstraints *struct {
+				IsCA       bool     `json:"isCA"`
+				PathLength *float32 `json:"pathLength,omitempty"`
+			} `json:"basicConstraints,omitempty"`
+			CommonName       *string `json:"commonName,omitempty"`
+			Country          *string `json:"country,omitempty"`
+			CustomExtensions *[]struct {
+				Critical *bool   `json:"critical,omitempty"`
+				Label    *string `json:"label,omitempty"`
+				Oid      string  `json:"oid"`
+				Value    *string `json:"value,omitempty"`
+			} `json:"customExtensions,omitempty"`
+			DomainComponents   *[]string                                                                                 `json:"domainComponents,omitempty"`
+			ExtendedKeyUsages  *[]CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages `json:"extendedKeyUsages,omitempty"`
+			KeyAlgorithm       *CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm        `json:"keyAlgorithm,omitempty"`
+			KeyUsages          *[]CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages         `json:"keyUsages,omitempty"`
+			Locality           *string                                                                                   `json:"locality,omitempty"`
+			Organization       *string                                                                                   `json:"organization,omitempty"`
+			OrganizationalUnit *string                                                                                   `json:"organizationalUnit,omitempty"`
+			SignatureAlgorithm *CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
+			State              *string                                                                                   `json:"state,omitempty"`
+			SubjectAltNames    *[]struct {
+				Type  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType `json:"type"`
+				Value string                                                                                   `json:"value"`
+			} `json:"subjectAltNames,omitempty"`
+			TtlDays *float32 `json:"ttlDays,omitempty"`
+		} `json:"defaults,omitempty"`
+		Description     *string                                                                         `json:"description,omitempty"`
+		EnrollmentType  string                                                                          `json:"enrollmentType"`
+		EstConfigId     *openapi_types.UUID                                                             `json:"estConfigId,omitempty"`
+		ExternalConfigs *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs `json:"externalConfigs,omitempty"`
+		Id              openapi_types.UUID                                                              `json:"id"`
+		IssuerType      *string                                                                         `json:"issuerType,omitempty"`
+		ProjectId       string                                                                          `json:"projectId"`
+		ScepConfigId    *openapi_types.UUID                                                             `json:"scepConfigId,omitempty"`
+		Slug            string                                                                          `json:"slug"`
+		UpdatedAt       time.Time                                                                       `json:"updatedAt"`
+	} `json:"certificateProfile"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateCertificateProfileResponse) GetJSON400() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode CreateCertificateProfile400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateCertificateProfileResponse) GetJSON401() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode CreateCertificateProfile401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateCertificateProfileResponse) GetJSON403() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode CreateCertificateProfile403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateCertificateProfileResponse) GetJSON404() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode CreateCertificateProfile404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateCertificateProfileResponse) GetJSON422() *struct {
+	Error      string                                                `json:"error"`
+	Message    interface{}                                           `json:"message,omitempty"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode CreateCertificateProfile422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateCertificateProfileResponse) GetJSON500() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode CreateCertificateProfile500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateCertificateProfileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCertificateProfileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCertificateProfileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCertificateProfileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCertManagerInstanceStateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ActiveProjectId *string `json:"activeProjectId"`
+		IsMultiInstance bool    `json:"isMultiInstance"`
+		Projects        []struct {
+			CreatedAt time.Time `json:"createdAt"`
+			Id        string    `json:"id"`
+			Name      string    `json:"name"`
+			Slug      string    `json:"slug"`
+		} `json:"projects"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetCertManagerInstanceState400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetCertManagerInstanceState401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetCertManagerInstanceState403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetCertManagerInstanceState404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                   `json:"error"`
+		Message    interface{}                                              `json:"message,omitempty"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetCertManagerInstanceState422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetCertManagerInstanceState500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCertManagerInstanceStateResponse) GetJSON200() *struct {
+	ActiveProjectId *string `json:"activeProjectId"`
+	IsMultiInstance bool    `json:"isMultiInstance"`
+	Projects        []struct {
+		CreatedAt time.Time `json:"createdAt"`
+		Id        string    `json:"id"`
+		Name      string    `json:"name"`
+		Slug      string    `json:"slug"`
+	} `json:"projects"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetCertManagerInstanceStateResponse) GetJSON400() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetCertManagerInstanceState400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCertManagerInstanceStateResponse) GetJSON401() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetCertManagerInstanceState401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCertManagerInstanceStateResponse) GetJSON403() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetCertManagerInstanceState403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCertManagerInstanceStateResponse) GetJSON404() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetCertManagerInstanceState404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetCertManagerInstanceStateResponse) GetJSON422() *struct {
+	Error      string                                                   `json:"error"`
+	Message    interface{}                                              `json:"message,omitempty"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetCertManagerInstanceState422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetCertManagerInstanceStateResponse) GetJSON500() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetCertManagerInstanceState500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCertManagerInstanceStateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCertManagerInstanceStateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCertManagerInstanceStateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCertManagerInstanceStateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetAccessibleSecretMetadataResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -245530,6 +257160,10 @@ type ListProjectSecretsDetailsResponse struct {
 			Version            *float32            `json:"version,omitempty"`
 		} `json:"folders,omitempty"`
 		HoneyTokens *[]struct {
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment struct {
@@ -245774,6 +257408,10 @@ func (r ListProjectSecretsDetailsResponse) GetJSON200() *struct {
 		Version            *float32            `json:"version,omitempty"`
 	} `json:"folders,omitempty"`
 	HoneyTokens *[]struct {
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment struct {
@@ -246071,6 +257709,10 @@ type ListProjectSecretsOverviewResponse struct {
 			Version            *float32            `json:"version,omitempty"`
 		} `json:"folders,omitempty"`
 		HoneyTokens *[]struct {
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment struct {
@@ -246322,6 +257964,10 @@ func (r ListProjectSecretsOverviewResponse) GetJSON200() *struct {
 		Version            *float32            `json:"version,omitempty"`
 	} `json:"folders,omitempty"`
 	HoneyTokens *[]struct {
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment struct {
@@ -255403,6 +267049,11 @@ type CreateHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt      time.Time          `json:"createdAt"`
 			Description    *string            `json:"description,omitempty"`
 			Id             openapi_types.UUID `json:"id"`
@@ -255467,6 +267118,11 @@ type CreateHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt      time.Time          `json:"createdAt"`
 		Description    *string            `json:"description,omitempty"`
 		Id             openapi_types.UUID `json:"id"`
@@ -256385,6 +268041,11 @@ type GetHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment *struct {
@@ -256455,6 +268116,11 @@ type GetHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment *struct {
@@ -256576,6 +268242,11 @@ type UpdateHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt      time.Time          `json:"createdAt"`
 			Description    *string            `json:"description,omitempty"`
 			Id             openapi_types.UUID `json:"id"`
@@ -256636,6 +268307,11 @@ type UpdateHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt      time.Time          `json:"createdAt"`
 		Description    *string            `json:"description,omitempty"`
 		Id             openapi_types.UUID `json:"id"`
@@ -261567,9 +273243,8 @@ type InviteUsersToOrganizationResponse struct {
 			Link  string `json:"link"`
 		} `json:"completeInviteLinks,omitempty"`
 		GrantFailures *struct {
-			AgentVaultAccess bool     `json:"agentVaultAccess"`
-			PamAccess        bool     `json:"pamAccess"`
-			ProjectIds       []string `json:"projectIds"`
+			PamAccess  bool     `json:"pamAccess"`
+			ProjectIds []string `json:"projectIds"`
 		} `json:"grantFailures,omitempty"`
 		Message string `json:"message"`
 	}
@@ -261626,9 +273301,8 @@ func (r InviteUsersToOrganizationResponse) GetJSON200() *struct {
 		Link  string `json:"link"`
 	} `json:"completeInviteLinks,omitempty"`
 	GrantFailures *struct {
-		AgentVaultAccess bool     `json:"agentVaultAccess"`
-		PamAccess        bool     `json:"pamAccess"`
-		ProjectIds       []string `json:"projectIds"`
+		PamAccess  bool     `json:"pamAccess"`
+		ProjectIds []string `json:"projectIds"`
 	} `json:"grantFailures,omitempty"`
 	Message string `json:"message"`
 } {
@@ -269732,7 +281406,6 @@ type GetOrganizationByIdResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Organization struct {
-			AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -269818,7 +281491,6 @@ type GetOrganizationByIdResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetOrganizationByIdResponse) GetJSON200() *struct {
 	Organization struct {
-		AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -342704,6 +354376,74 @@ func (r GetSecretReferenceTreeV4Response) ContentType() string {
 	return ""
 }
 
+type GetScepApplicationOperationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r GetScepApplicationOperationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetScepApplicationOperationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetScepApplicationOperationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetScepApplicationOperationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetScepOperationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r GetScepOperationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetScepOperationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetScepOperationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetScepOperationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetInstanceStatusWithResponse performs a GET /api/status (the `GetInstanceStatus` operationId) request.
 //
 // Get the status of the Infisical instance and the features configured on it. Public and unauthenticated; used by liveness and readiness probes and exempt from the API-wide rate limit.
@@ -343659,6 +355399,58 @@ func (c *ClientWithResponses) UpdateAzureKeyVaultAppConnectionWithResponse(ctx c
 		return nil, err
 	}
 	return ParseUpdateAzureKeyVaultAppConnectionResponse(rsp)
+}
+
+// CreateCloudflareAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/cloudflare (the `CreateCloudflareAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Cloudflare Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateCloudflareAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCloudflareAppConnectionResponse, error) {
+	rsp, err := c.CreateCloudflareAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCloudflareAppConnectionResponse(rsp)
+}
+
+// CreateCloudflareAppConnectionWithResponse performs a POST /api/v1/app-connections/cloudflare (the `CreateCloudflareAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a Cloudflare Connection.
+func (c *ClientWithResponses) CreateCloudflareAppConnectionWithResponse(ctx context.Context, body CreateCloudflareAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCloudflareAppConnectionResponse, error) {
+	rsp, err := c.CreateCloudflareAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCloudflareAppConnectionResponse(rsp)
+}
+
+// CreateDnsMadeEasyAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/dns-made-easy (the `CreateDnsMadeEasyAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a DNS Made Easy Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateDnsMadeEasyAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDnsMadeEasyAppConnectionResponse, error) {
+	rsp, err := c.CreateDnsMadeEasyAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDnsMadeEasyAppConnectionResponse(rsp)
+}
+
+// CreateDnsMadeEasyAppConnectionWithResponse performs a POST /api/v1/app-connections/dns-made-easy (the `CreateDnsMadeEasyAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a DNS Made Easy Connection.
+func (c *ClientWithResponses) CreateDnsMadeEasyAppConnectionWithResponse(ctx context.Context, body CreateDnsMadeEasyAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDnsMadeEasyAppConnectionResponse, error) {
+	rsp, err := c.CreateDnsMadeEasyAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDnsMadeEasyAppConnectionResponse(rsp)
 }
 
 // ListGitHubAppConnectionsWithResponse performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
@@ -345791,6 +357583,458 @@ func (c *ClientWithResponses) LoginWithUniversalAuthWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseLoginWithUniversalAuthResponse(rsp)
+}
+
+// GetAcmeApplicationDirectoryWithResponse performs a GET /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/directory (the `GetAcmeApplicationDirectory` operationId) request.
+//
+// ACME Directory - provides URLs for the client to make API calls to.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetAcmeApplicationDirectoryWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetAcmeApplicationDirectoryResponse, error) {
+	rsp, err := c.GetAcmeApplicationDirectory(ctx, applicationId, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAcmeApplicationDirectoryResponse(rsp)
+}
+
+// CreateAcmeApplicationAccountWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/new-account (the `CreateAcmeApplicationAccount` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME New Account - register a new account or find existing one.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateAcmeApplicationAccountWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAcmeApplicationAccountResponse, error) {
+	rsp, err := c.CreateAcmeApplicationAccountWithBody(ctx, applicationId, profileId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAcmeApplicationAccountResponse(rsp)
+}
+
+// CreateAcmeApplicationAccountWithResponse performs a POST /api/v1/cert-manager/acme/applications/{applicationId}/profiles/{profileId}/new-account (the `CreateAcmeApplicationAccount` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// ACME New Account - register a new account or find existing one.
+func (c *ClientWithResponses) CreateAcmeApplicationAccountWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body CreateAcmeApplicationAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAcmeApplicationAccountResponse, error) {
+	rsp, err := c.CreateAcmeApplicationAccount(ctx, applicationId, profileId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAcmeApplicationAccountResponse(rsp)
+}
+
+// ListAcmeOrdersWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/accounts/{accountId}/orders (the `ListAcmeOrders` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME List Orders - get existing orders from current account.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListAcmeOrdersWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListAcmeOrdersResponse, error) {
+	rsp, err := c.ListAcmeOrdersWithBody(ctx, profileId, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAcmeOrdersResponse(rsp)
+}
+
+// ListAcmeOrdersWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/accounts/{accountId}/orders (the `ListAcmeOrders` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// ACME List Orders - get existing orders from current account.
+func (c *ClientWithResponses) ListAcmeOrdersWithResponse(ctx context.Context, profileId openapi_types.UUID, accountId string, body ListAcmeOrdersJSONRequestBody, reqEditors ...RequestEditorFn) (*ListAcmeOrdersResponse, error) {
+	rsp, err := c.ListAcmeOrders(ctx, profileId, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAcmeOrdersResponse(rsp)
+}
+
+// GetAcmeAuthorizationWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId} (the `GetAcmeAuthorization` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Identifier Authorization - get authorization info (challenges).
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetAcmeAuthorizationWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetAcmeAuthorizationResponse, error) {
+	rsp, err := c.GetAcmeAuthorizationWithBody(ctx, profileId, authzId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAcmeAuthorizationResponse(rsp)
+}
+
+// GetAcmeAuthorizationWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId} (the `GetAcmeAuthorization` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// ACME Identifier Authorization - get authorization info (challenges).
+func (c *ClientWithResponses) GetAcmeAuthorizationWithResponse(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, body GetAcmeAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*GetAcmeAuthorizationResponse, error) {
+	rsp, err := c.GetAcmeAuthorization(ctx, profileId, authzId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAcmeAuthorizationResponse(rsp)
+}
+
+// RespondToAcmeChallengeWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId}/challenges/{challengeId} (the `RespondToAcmeChallenge` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Respond to Challenge - let ACME server know challenge is ready.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RespondToAcmeChallengeWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RespondToAcmeChallengeResponse, error) {
+	rsp, err := c.RespondToAcmeChallengeWithBody(ctx, profileId, authzId, challengeId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRespondToAcmeChallengeResponse(rsp)
+}
+
+// RespondToAcmeChallengeWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/authorizations/{authzId}/challenges/{challengeId} (the `RespondToAcmeChallenge` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// ACME Respond to Challenge - let ACME server know challenge is ready.
+func (c *ClientWithResponses) RespondToAcmeChallengeWithResponse(ctx context.Context, profileId openapi_types.UUID, authzId openapi_types.UUID, challengeId openapi_types.UUID, body RespondToAcmeChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*RespondToAcmeChallengeResponse, error) {
+	rsp, err := c.RespondToAcmeChallenge(ctx, profileId, authzId, challengeId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRespondToAcmeChallengeResponse(rsp)
+}
+
+// GetAcmeNewNonceWithResponse performs a GET /api/v1/cert-manager/acme/profiles/{profileId}/new-nonce (the `GetAcmeNewNonce` operationId) request.
+//
+// ACME New Nonce (GET) - generate a new nonce and return in Replay-Nonce header with 204 No Content.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetAcmeNewNonceWithResponse(ctx context.Context, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetAcmeNewNonceResponse, error) {
+	rsp, err := c.GetAcmeNewNonce(ctx, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAcmeNewNonceResponse(rsp)
+}
+
+// CreateAcmeOrderWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/new-order (the `CreateAcmeOrder` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME New Order - apply for a new certificate.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateAcmeOrderWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAcmeOrderResponse, error) {
+	rsp, err := c.CreateAcmeOrderWithBody(ctx, profileId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAcmeOrderResponse(rsp)
+}
+
+// CreateAcmeOrderWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/new-order (the `CreateAcmeOrder` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// ACME New Order - apply for a new certificate.
+func (c *ClientWithResponses) CreateAcmeOrderWithResponse(ctx context.Context, profileId openapi_types.UUID, body CreateAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAcmeOrderResponse, error) {
+	rsp, err := c.CreateAcmeOrder(ctx, profileId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAcmeOrderResponse(rsp)
+}
+
+// GetAcmeOrderWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId} (the `GetAcmeOrder` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Get Order - return status and details of the order.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetAcmeOrderWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetAcmeOrderResponse, error) {
+	rsp, err := c.GetAcmeOrderWithBody(ctx, profileId, orderId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAcmeOrderResponse(rsp)
+}
+
+// GetAcmeOrderWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId} (the `GetAcmeOrder` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// ACME Get Order - return status and details of the order.
+func (c *ClientWithResponses) GetAcmeOrderWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body GetAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*GetAcmeOrderResponse, error) {
+	rsp, err := c.GetAcmeOrder(ctx, profileId, orderId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAcmeOrderResponse(rsp)
+}
+
+// DownloadAcmeCertificateWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/certificate (the `DownloadAcmeCertificate` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Download Certificate - download certificate when ready.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DownloadAcmeCertificateWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DownloadAcmeCertificateResponse, error) {
+	rsp, err := c.DownloadAcmeCertificateWithBody(ctx, profileId, orderId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDownloadAcmeCertificateResponse(rsp)
+}
+
+// DownloadAcmeCertificateWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/certificate (the `DownloadAcmeCertificate` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// ACME Download Certificate - download certificate when ready.
+func (c *ClientWithResponses) DownloadAcmeCertificateWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body DownloadAcmeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*DownloadAcmeCertificateResponse, error) {
+	rsp, err := c.DownloadAcmeCertificate(ctx, profileId, orderId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDownloadAcmeCertificateResponse(rsp)
+}
+
+// FinalizeAcmeOrderWithBodyWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/finalize (the `FinalizeAcmeOrder` operationId) request,
+// with any type of body and a specified content type.
+//
+// ACME Finalize Order - finalize cert order by providing CSR.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) FinalizeAcmeOrderWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FinalizeAcmeOrderResponse, error) {
+	rsp, err := c.FinalizeAcmeOrderWithBody(ctx, profileId, orderId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFinalizeAcmeOrderResponse(rsp)
+}
+
+// FinalizeAcmeOrderWithResponse performs a POST /api/v1/cert-manager/acme/profiles/{profileId}/orders/{orderId}/finalize (the `FinalizeAcmeOrder` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// ACME Finalize Order - finalize cert order by providing CSR.
+func (c *ClientWithResponses) FinalizeAcmeOrderWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body FinalizeAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*FinalizeAcmeOrderResponse, error) {
+	rsp, err := c.FinalizeAcmeOrder(ctx, profileId, orderId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFinalizeAcmeOrderResponse(rsp)
+}
+
+// CreatePkiApplicationWithBodyWithResponse performs a POST /api/v1/cert-manager/applications (the `CreatePkiApplication` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreatePkiApplicationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePkiApplicationResponse, error) {
+	rsp, err := c.CreatePkiApplicationWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePkiApplicationResponse(rsp)
+}
+
+// CreatePkiApplicationWithResponse performs a POST /api/v1/cert-manager/applications (the `CreatePkiApplication` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create an application.
+func (c *ClientWithResponses) CreatePkiApplicationWithResponse(ctx context.Context, body CreatePkiApplicationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePkiApplicationResponse, error) {
+	rsp, err := c.CreatePkiApplication(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePkiApplicationResponse(rsp)
+}
+
+// AttachPkiApplicationProfilesWithBodyWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles (the `AttachPkiApplicationProfiles` operationId) request,
+// with any type of body and a specified content type.
+//
+// Attach one or more profiles to an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) AttachPkiApplicationProfilesWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AttachPkiApplicationProfilesResponse, error) {
+	rsp, err := c.AttachPkiApplicationProfilesWithBody(ctx, applicationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAttachPkiApplicationProfilesResponse(rsp)
+}
+
+// AttachPkiApplicationProfilesWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles (the `AttachPkiApplicationProfiles` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Attach one or more profiles to an application.
+func (c *ClientWithResponses) AttachPkiApplicationProfilesWithResponse(ctx context.Context, applicationId openapi_types.UUID, body AttachPkiApplicationProfilesJSONRequestBody, reqEditors ...RequestEditorFn) (*AttachPkiApplicationProfilesResponse, error) {
+	rsp, err := c.AttachPkiApplicationProfiles(ctx, applicationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAttachPkiApplicationProfilesResponse(rsp)
+}
+
+// SetPkiApplicationAcmeEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request,
+// with any type of body and a specified content type.
+//
+// Enable or update the ACME enrollment method for a profile on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SetPkiApplicationAcmeEnrollmentWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPkiApplicationAcmeEnrollmentResponse, error) {
+	rsp, err := c.SetPkiApplicationAcmeEnrollmentWithBody(ctx, applicationId, profileId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPkiApplicationAcmeEnrollmentResponse(rsp)
+}
+
+// SetPkiApplicationAcmeEnrollmentWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Enable or update the ACME enrollment method for a profile on an application.
+func (c *ClientWithResponses) SetPkiApplicationAcmeEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationAcmeEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPkiApplicationAcmeEnrollmentResponse, error) {
+	rsp, err := c.SetPkiApplicationAcmeEnrollment(ctx, applicationId, profileId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPkiApplicationAcmeEnrollmentResponse(rsp)
+}
+
+// RevealPkiApplicationAcmeEabSecretWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme/eab/reveal (the `RevealPkiApplicationAcmeEabSecret` operationId) request.
+//
+// Reveal the ACME EAB secret for a profile on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RevealPkiApplicationAcmeEabSecretWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RevealPkiApplicationAcmeEabSecretResponse, error) {
+	rsp, err := c.RevealPkiApplicationAcmeEabSecret(ctx, applicationId, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevealPkiApplicationAcmeEabSecretResponse(rsp)
+}
+
+// SetPkiApplicationScepEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request,
+// with any type of body and a specified content type.
+//
+// Enable or update the SCEP enrollment method for a profile on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SetPkiApplicationScepEnrollmentWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPkiApplicationScepEnrollmentResponse, error) {
+	rsp, err := c.SetPkiApplicationScepEnrollmentWithBody(ctx, applicationId, profileId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPkiApplicationScepEnrollmentResponse(rsp)
+}
+
+// SetPkiApplicationScepEnrollmentWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Enable or update the SCEP enrollment method for a profile on an application.
+func (c *ClientWithResponses) SetPkiApplicationScepEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationScepEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPkiApplicationScepEnrollmentResponse, error) {
+	rsp, err := c.SetPkiApplicationScepEnrollment(ctx, applicationId, profileId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPkiApplicationScepEnrollmentResponse(rsp)
+}
+
+// CreateAcmeCertificateAuthorityV1WithBodyWithResponse performs a POST /api/v1/cert-manager/ca/acme (the `CreateAcmeCertificateAuthorityV1` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateAcmeCertificateAuthorityV1WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAcmeCertificateAuthorityV1Response, error) {
+	rsp, err := c.CreateAcmeCertificateAuthorityV1WithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAcmeCertificateAuthorityV1Response(rsp)
+}
+
+// CreateAcmeCertificateAuthorityV1WithResponse performs a POST /api/v1/cert-manager/ca/acme (the `CreateAcmeCertificateAuthorityV1` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateAcmeCertificateAuthorityV1WithResponse(ctx context.Context, body CreateAcmeCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAcmeCertificateAuthorityV1Response, error) {
+	rsp, err := c.CreateAcmeCertificateAuthorityV1(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAcmeCertificateAuthorityV1Response(rsp)
+}
+
+// CreateInternalCertificateAuthorityV1WithBodyWithResponse performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateInternalCertificateAuthorityV1WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error) {
+	rsp, err := c.CreateInternalCertificateAuthorityV1WithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateInternalCertificateAuthorityV1Response(rsp)
+}
+
+// CreateInternalCertificateAuthorityV1WithResponse performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateInternalCertificateAuthorityV1WithResponse(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error) {
+	rsp, err := c.CreateInternalCertificateAuthorityV1(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateInternalCertificateAuthorityV1Response(rsp)
+}
+
+// CreateCertificatePolicyWithBodyWithResponse performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateCertificatePolicyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCertificatePolicyResponse, error) {
+	rsp, err := c.CreateCertificatePolicyWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCertificatePolicyResponse(rsp)
+}
+
+// CreateCertificatePolicyWithResponse performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateCertificatePolicyWithResponse(ctx context.Context, body CreateCertificatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCertificatePolicyResponse, error) {
+	rsp, err := c.CreateCertificatePolicy(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCertificatePolicyResponse(rsp)
+}
+
+// CreateCertificateProfileWithBodyWithResponse performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateCertificateProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCertificateProfileResponse, error) {
+	rsp, err := c.CreateCertificateProfileWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCertificateProfileResponse(rsp)
+}
+
+// CreateCertificateProfileWithResponse performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateCertificateProfileWithResponse(ctx context.Context, body CreateCertificateProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCertificateProfileResponse, error) {
+	rsp, err := c.CreateCertificateProfile(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCertificateProfileResponse(rsp)
+}
+
+// GetCertManagerInstanceStateWithResponse performs a GET /api/v1/cert-manager/instance (the `GetCertManagerInstanceState` operationId) request.
+//
+// Get the active Certificate Manager project and the list of legacy Certificate Manager projects in this organization.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetCertManagerInstanceStateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCertManagerInstanceStateResponse, error) {
+	rsp, err := c.GetCertManagerInstanceState(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCertManagerInstanceStateResponse(rsp)
 }
 
 // GetAccessibleSecretMetadataWithResponse performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
@@ -348726,8 +360970,8 @@ func (c *ClientWithResponses) GetProjectBySlugWithResponse(ctx context.Context, 
 // Delete project.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, projectId string, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
-	rsp, err := c.DeleteProject(ctx, projectId, reqEditors...)
+func (c *ClientWithResponses) DeleteProjectWithResponse(ctx context.Context, projectId string, params *DeleteProjectParams, reqEditors ...RequestEditorFn) (*DeleteProjectResponse, error) {
+	rsp, err := c.DeleteProject(ctx, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -354845,6 +367089,28 @@ func (c *ClientWithResponses) GetSecretReferenceTreeV4WithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseGetSecretReferenceTreeV4Response(rsp)
+}
+
+// GetScepApplicationOperationWithResponse performs a GET /scep/applications/{applicationId}/profiles/{profileId}/pkiclient.exe (the `GetScepApplicationOperation` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetScepApplicationOperationWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *GetScepApplicationOperationParams, reqEditors ...RequestEditorFn) (*GetScepApplicationOperationResponse, error) {
+	rsp, err := c.GetScepApplicationOperation(ctx, applicationId, profileId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetScepApplicationOperationResponse(rsp)
+}
+
+// GetScepOperationWithResponse performs a GET /scep/{profileId}/pkiclient.exe (the `GetScepOperation` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetScepOperationWithResponse(ctx context.Context, profileId openapi_types.UUID, params *GetScepOperationParams, reqEditors ...RequestEditorFn) (*GetScepOperationResponse, error) {
+	rsp, err := c.GetScepOperation(ctx, profileId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetScepOperationResponse(rsp)
 }
 
 // ParseGetInstanceStatusResponse parses an HTTP response from a GetInstanceStatusWithResponse call
@@ -361627,6 +373893,210 @@ func ParseUpdateAzureKeyVaultAppConnectionResponse(rsp *http.Response) (*UpdateA
 	return response, nil
 }
 
+// ParseCreateCloudflareAppConnectionResponse parses an HTTP response from a CreateCloudflareAppConnectionWithResponse call
+func ParseCreateCloudflareAppConnectionResponse(rsp *http.Response) (*CreateCloudflareAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCloudflareAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateCloudflareAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateCloudflareAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateCloudflareAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateCloudflareAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateCloudflareAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    interface{}                                                `json:"message,omitempty"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateCloudflareAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateCloudflareAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateDnsMadeEasyAppConnectionResponse parses an HTTP response from a CreateDnsMadeEasyAppConnectionWithResponse call
+func ParseCreateDnsMadeEasyAppConnectionResponse(rsp *http.Response) (*CreateDnsMadeEasyAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateDnsMadeEasyAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateDnsMadeEasyAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode CreateDnsMadeEasyAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode CreateDnsMadeEasyAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode CreateDnsMadeEasyAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode CreateDnsMadeEasyAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    interface{}                                                 `json:"message,omitempty"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode CreateDnsMadeEasyAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode CreateDnsMadeEasyAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListGitHubAppConnectionsResponse parses an HTTP response from a ListGitHubAppConnectionsWithResponse call
 func ParseListGitHubAppConnectionsResponse(rsp *http.Response) (*ListGitHubAppConnectionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -367887,16 +380357,19 @@ func ParseDeleteKubernetesAuthResponse(rsp *http.Response) (*DeleteKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -368008,26 +380481,31 @@ func ParseGetKubernetesAuthResponse(rsp *http.Response) (*GetKubernetesAuthRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -368131,26 +380609,31 @@ func ParseUpdateKubernetesAuthResponse(rsp *http.Response) (*UpdateKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -368254,26 +380737,31 @@ func ParseAttachKubernetesAuthResponse(rsp *http.Response) (*AttachKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -374248,6 +386736,1605 @@ func ParseLoginWithUniversalAuthResponse(rsp *http.Response) (*LoginWithUniversa
 	return response, nil
 }
 
+// ParseGetAcmeApplicationDirectoryResponse parses an HTTP response from a GetAcmeApplicationDirectoryWithResponse call
+func ParseGetAcmeApplicationDirectoryResponse(rsp *http.Response) (*GetAcmeApplicationDirectoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAcmeApplicationDirectoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Meta *struct {
+				CaaIdentities           *[]string `json:"caaIdentities,omitempty"`
+				ExternalAccountRequired *bool     `json:"externalAccountRequired,omitempty"`
+				TermsOfService          *string   `json:"termsOfService,omitempty"`
+				Website                 *string   `json:"website,omitempty"`
+			} `json:"meta,omitempty"`
+			NewAccount string  `json:"newAccount"`
+			NewNonce   string  `json:"newNonce"`
+			NewOrder   string  `json:"newOrder"`
+			RevokeCert *string `json:"revokeCert,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAcmeApplicationAccountResponse parses an HTTP response from a CreateAcmeApplicationAccountWithResponse call
+func ParseCreateAcmeApplicationAccountResponse(rsp *http.Response) (*CreateAcmeApplicationAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAcmeApplicationAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest struct {
+			Contact *[]string `json:"contact,omitempty"`
+			Orders  *string   `json:"orders,omitempty"`
+			Status  string    `json:"status"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAcmeOrdersResponse parses an HTTP response from a ListAcmeOrdersWithResponse call
+func ParseListAcmeOrdersResponse(rsp *http.Response) (*ListAcmeOrdersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAcmeOrdersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Orders []string `json:"orders"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAcmeAuthorizationResponse parses an HTTP response from a GetAcmeAuthorizationWithResponse call
+func ParseGetAcmeAuthorizationResponse(rsp *http.Response) (*GetAcmeAuthorizationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAcmeAuthorizationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Challenges []struct {
+				Status    string                                                `json:"status"`
+				Token     string                                                `json:"token"`
+				Type      GetAcmeAuthorization200JSONResponseBodyChallengesType `json:"type"`
+				Url       string                                                `json:"url"`
+				Validated *string                                               `json:"validated,omitempty"`
+			} `json:"challenges"`
+			Expires    *string `json:"expires,omitempty"`
+			Identifier struct {
+				Type  string `json:"type"`
+				Value string `json:"value"`
+			} `json:"identifier"`
+			Status   GetAcmeAuthorization200JSONResponseBodyStatus `json:"status"`
+			Wildcard *bool                                         `json:"wildcard,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRespondToAcmeChallengeResponse parses an HTTP response from a RespondToAcmeChallengeWithResponse call
+func ParseRespondToAcmeChallengeResponse(rsp *http.Response) (*RespondToAcmeChallengeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RespondToAcmeChallengeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Error *struct {
+				Detail string  `json:"detail"`
+				Status float32 `json:"status"`
+				Type   string  `json:"type"`
+			} `json:"error,omitempty"`
+			Status    string                                        `json:"status"`
+			Token     string                                        `json:"token"`
+			Type      RespondToAcmeChallenge200JSONResponseBodyType `json:"type"`
+			Url       string                                        `json:"url"`
+			Validated *string                                       `json:"validated,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAcmeNewNonceResponse parses an HTTP response from a GetAcmeNewNonceWithResponse call
+func ParseGetAcmeNewNonceResponse(rsp *http.Response) (*GetAcmeNewNonceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAcmeNewNonceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 204:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON204 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAcmeOrderResponse parses an HTTP response from a CreateAcmeOrderWithResponse call
+func ParseCreateAcmeOrderResponse(rsp *http.Response) (*CreateAcmeOrderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAcmeOrderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest struct {
+			Authorizations []string `json:"authorizations"`
+			Certificate    *string  `json:"certificate,omitempty"`
+			Expires        *string  `json:"expires,omitempty"`
+			Finalize       string   `json:"finalize"`
+			Identifiers    []struct {
+				Type  string `json:"type"`
+				Value string `json:"value"`
+			} `json:"identifiers"`
+			NotAfter  *string                                  `json:"notAfter,omitempty"`
+			NotBefore *string                                  `json:"notBefore,omitempty"`
+			Status    CreateAcmeOrder201JSONResponseBodyStatus `json:"status"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAcmeOrderResponse parses an HTTP response from a GetAcmeOrderWithResponse call
+func ParseGetAcmeOrderResponse(rsp *http.Response) (*GetAcmeOrderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAcmeOrderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Authorizations []string `json:"authorizations"`
+			Certificate    *string  `json:"certificate,omitempty"`
+			Expires        *string  `json:"expires,omitempty"`
+			Finalize       string   `json:"finalize"`
+			Identifiers    []struct {
+				Type  string `json:"type"`
+				Value string `json:"value"`
+			} `json:"identifiers"`
+			NotAfter  *string                               `json:"notAfter,omitempty"`
+			NotBefore *string                               `json:"notBefore,omitempty"`
+			Status    GetAcmeOrder200JSONResponseBodyStatus `json:"status"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDownloadAcmeCertificateResponse parses an HTTP response from a DownloadAcmeCertificateWithResponse call
+func ParseDownloadAcmeCertificateResponse(rsp *http.Response) (*DownloadAcmeCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DownloadAcmeCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseFinalizeAcmeOrderResponse parses an HTTP response from a FinalizeAcmeOrderWithResponse call
+func ParseFinalizeAcmeOrderResponse(rsp *http.Response) (*FinalizeAcmeOrderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &FinalizeAcmeOrderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Authorizations []string `json:"authorizations"`
+			Certificate    *string  `json:"certificate,omitempty"`
+			Expires        *string  `json:"expires,omitempty"`
+			Finalize       string   `json:"finalize"`
+			Identifiers    []struct {
+				Type  string `json:"type"`
+				Value string `json:"value"`
+			} `json:"identifiers"`
+			NotAfter  *string                                    `json:"notAfter,omitempty"`
+			NotBefore *string                                    `json:"notBefore,omitempty"`
+			Status    FinalizeAcmeOrder200JSONResponseBodyStatus `json:"status"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreatePkiApplicationResponse parses an HTTP response from a CreatePkiApplicationWithResponse call
+func ParseCreatePkiApplicationResponse(rsp *http.Response) (*CreatePkiApplicationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreatePkiApplicationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Application struct {
+				CreatedAt   time.Time          `json:"createdAt"`
+				Description *string            `json:"description,omitempty"`
+				Id          openapi_types.UUID `json:"id"`
+				Name        string             `json:"name"`
+				ProjectId   string             `json:"projectId"`
+				UpdatedAt   time.Time          `json:"updatedAt"`
+			} `json:"application"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreatePkiApplication400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreatePkiApplication401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreatePkiApplication403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreatePkiApplication404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreatePkiApplication422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreatePkiApplication500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAttachPkiApplicationProfilesResponse parses an HTTP response from a AttachPkiApplicationProfilesWithResponse call
+func ParseAttachPkiApplicationProfilesResponse(rsp *http.Response) (*AttachPkiApplicationProfilesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AttachPkiApplicationProfilesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Profiles []struct {
+				AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+				ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
+				ApplicationId      openapi_types.UUID  `json:"applicationId"`
+				CreatedAt          time.Time           `json:"createdAt"`
+				EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
+				ProfileDescription *string             `json:"profileDescription,omitempty"`
+				ProfileId          openapi_types.UUID  `json:"profileId"`
+				ProfileSlug        string              `json:"profileSlug"`
+				ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
+				UpdatedAt          time.Time           `json:"updatedAt"`
+			} `json:"profiles"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode AttachPkiApplicationProfiles400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode AttachPkiApplicationProfiles401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode AttachPkiApplicationProfiles403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode AttachPkiApplicationProfiles404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    interface{}                                               `json:"message,omitempty"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode AttachPkiApplicationProfiles422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode AttachPkiApplicationProfiles500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetPkiApplicationAcmeEnrollmentResponse parses an HTTP response from a SetPkiApplicationAcmeEnrollmentWithResponse call
+func ParseSetPkiApplicationAcmeEnrollmentResponse(rsp *http.Response) (*SetPkiApplicationAcmeEnrollmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetPkiApplicationAcmeEnrollmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Acme struct {
+				Id                           openapi_types.UUID `json:"id"`
+				SkipDnsOwnershipVerification bool               `json:"skipDnsOwnershipVerification"`
+				SkipEabBinding               bool               `json:"skipEabBinding"`
+			} `json:"acme"`
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			ProfileId     openapi_types.UUID `json:"profileId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    interface{}                                                  `json:"message,omitempty"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRevealPkiApplicationAcmeEabSecretResponse parses an HTTP response from a RevealPkiApplicationAcmeEabSecretWithResponse call
+func ParseRevealPkiApplicationAcmeEabSecretResponse(rsp *http.Response) (*RevealPkiApplicationAcmeEabSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevealPkiApplicationAcmeEabSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			EabKid        string             `json:"eabKid"`
+			EabSecret     string             `json:"eabSecret"`
+			ProfileId     openapi_types.UUID `json:"profileId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RevealPkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RevealPkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RevealPkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RevealPkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    interface{}                                                    `json:"message,omitempty"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetPkiApplicationScepEnrollmentResponse parses an HTTP response from a SetPkiApplicationScepEnrollmentWithResponse call
+func ParseSetPkiApplicationScepEnrollmentResponse(rsp *http.Response) (*SetPkiApplicationScepEnrollmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetPkiApplicationScepEnrollmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			ProfileId     openapi_types.UUID `json:"profileId"`
+			Scep          struct {
+				ChallengeType SetPkiApplicationScepEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
+				Id            openapi_types.UUID                                                  `json:"id"`
+			} `json:"scep"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationScepEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationScepEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationScepEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationScepEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    interface{}                                                  `json:"message,omitempty"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationScepEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode SetPkiApplicationScepEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAcmeCertificateAuthorityV1Response parses an HTTP response from a CreateAcmeCertificateAuthorityV1WithResponse call
+func ParseCreateAcmeCertificateAuthorityV1Response(rsp *http.Response) (*CreateAcmeCertificateAuthorityV1Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAcmeCertificateAuthorityV1Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Configuration struct {
+				// AccountEmail The email address for the ACME Certificate Authority.
+				AccountEmail string `json:"accountEmail"`
+
+				// DirectoryUrl The directory URL for the ACME Certificate Authority.
+				DirectoryUrl string `json:"directoryUrl"`
+
+				// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
+				DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
+				DnsProviderConfig  struct {
+					// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+					HostedZoneId string `json:"hostedZoneId"`
+
+					// Provider The DNS provider for the ACME Certificate Authority.
+					Provider CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider `json:"provider"`
+				} `json:"dnsProviderConfig"`
+
+				// DnsResolver An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.
+				DnsResolver *string `json:"dnsResolver,omitempty"`
+
+				// EabKid The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.
+				EabKid *string `json:"eabKid,omitempty"`
+			} `json:"configuration"`
+			EnableDirectIssuance *bool                                                     `json:"enableDirectIssuance,omitempty"`
+			Id                   openapi_types.UUID                                        `json:"id"`
+			Name                 string                                                    `json:"name"`
+			ProjectId            string                                                    `json:"projectId"`
+			Status               CreateAcmeCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+			Type                 CreateAcmeCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAcmeCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAcmeCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAcmeCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAcmeCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAcmeCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAcmeCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateInternalCertificateAuthorityV1Response parses an HTTP response from a CreateInternalCertificateAuthorityV1WithResponse call
+func ParseCreateInternalCertificateAuthorityV1Response(rsp *http.Response) (*CreateInternalCertificateAuthorityV1Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateInternalCertificateAuthorityV1Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Configuration struct {
+				ActiveCaCertId *openapi_types.UUID `json:"activeCaCertId,omitempty"`
+
+				// AppConnectionId The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.
+				AppConnectionId *openapi_types.UUID `json:"appConnectionId,omitempty"`
+
+				// AppConnectionName The name of the AWS connection the CA's signing key is reached through. Not user-supplied.
+				AppConnectionName *string `json:"appConnectionName,omitempty"`
+
+				// CommonName The common name (CN) for the CA.
+				CommonName *string `json:"commonName,omitempty"`
+
+				// Country The country name (C) for the CA.
+				Country *string `json:"country,omitempty"`
+
+				// CrlDistributionPointUrls Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.
+				CrlDistributionPointUrls *[]string `json:"crlDistributionPointUrls,omitempty"`
+
+				// DisableManagedCrlDistributionPointUrl When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.
+				DisableManagedCrlDistributionPointUrl *bool   `json:"disableManagedCrlDistributionPointUrl,omitempty"`
+				Dn                                    *string `json:"dn,omitempty"`
+
+				// ExternalKeyId The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.
+				ExternalKeyId *string `json:"externalKeyId,omitempty"`
+
+				// FriendlyName A friendly name for the CA.
+				FriendlyName *string `json:"friendlyName,omitempty"`
+
+				// HsmConnectorId The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.
+				HsmConnectorId *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+
+				// HsmConnectorName The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.
+				HsmConnectorName *string `json:"hsmConnectorName,omitempty"`
+
+				// HsmKeyLabel Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.
+				// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+				HsmKeyLabel *string `json:"hsmKeyLabel,omitempty"`
+
+				// IsOcspEnabled When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.
+				IsOcspEnabled *bool `json:"isOcspEnabled,omitempty"`
+
+				// KeyAlgorithm The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.
+				KeyAlgorithm CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm `json:"keyAlgorithm"`
+
+				// KeySource Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.
+				KeySource *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource `json:"keySource,omitempty"`
+
+				// Locality The locality name for the CA.
+				Locality *string `json:"locality,omitempty"`
+
+				// MaxPathLength The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.
+				MaxPathLength *float32 `json:"maxPathLength,omitempty"`
+
+				// NotAfter The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.
+				NotAfter *string `json:"notAfter,omitempty"`
+
+				// NotBefore The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.
+				NotBefore *string `json:"notBefore,omitempty"`
+
+				// Organization The organization (O) for the CA.
+				Organization *string `json:"organization,omitempty"`
+
+				// Ou The organization unit (OU) for the CA.
+				Ou         *string             `json:"ou,omitempty"`
+				ParentCaId *openapi_types.UUID `json:"parentCaId,omitempty"`
+
+				// Province The state of province name for the CA.
+				Province *string `json:"province,omitempty"`
+
+				// Region The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.
+				Region       *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion `json:"region,omitempty"`
+				SerialNumber *string                                                                     `json:"serialNumber,omitempty"`
+
+				// Type The type of CA to create.
+				Type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType `json:"type"`
+			} `json:"configuration"`
+			EnableDirectIssuance *bool                                                         `json:"enableDirectIssuance,omitempty"`
+			Id                   openapi_types.UUID                                            `json:"id"`
+			Name                 string                                                        `json:"name"`
+			ProjectId            string                                                        `json:"projectId"`
+			Status               CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+			Type                 CreateInternalCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                       `json:"details,omitempty"`
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                       `json:"details,omitempty"`
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    interface{}                                                       `json:"message,omitempty"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateCertificatePolicyResponse parses an HTTP response from a CreateCertificatePolicyWithResponse call
+func ParseCreateCertificatePolicyResponse(rsp *http.Response) (*CreateCertificatePolicyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCertificatePolicyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CertificatePolicy struct {
+				Algorithms *struct {
+					KeyAlgorithm *[]string `json:"keyAlgorithm,omitempty"`
+					Signature    *[]string `json:"signature,omitempty"`
+				} `json:"algorithms,omitempty"`
+				BasicConstraints *struct {
+					IsCA          *CreateCertificatePolicy200JSONResponseBodyCertificatePolicyBasicConstraintsIsCA `json:"isCA,omitempty"`
+					MaxPathLength *int                                                                             `json:"maxPathLength,omitempty"`
+				} `json:"basicConstraints,omitempty"`
+				CreatedAt        time.Time `json:"createdAt"`
+				CustomExtensions *[]struct {
+					// Allowed Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.
+					Allowed  *[]string                                                                            `json:"allowed,omitempty"`
+					Critical *CreateCertificatePolicy200JSONResponseBodyCertificatePolicyCustomExtensionsCritical `json:"critical,omitempty"`
+
+					// Denied Value patterns this extension must not take, with * as a wildcard. A denied match is rejected even when an allowed pattern also matches.
+					Denied *[]string `json:"denied,omitempty"`
+					Label  *string   `json:"label,omitempty"`
+					Oid    string    `json:"oid"`
+
+					// Required Value patterns this extension must match, with * as a wildcard. Setting any required pattern also makes the extension mandatory on every request.
+					Required *[]string `json:"required,omitempty"`
+				} `json:"customExtensions,omitempty"`
+				Description       *string `json:"description,omitempty"`
+				ExtendedKeyUsages *struct {
+					Allowed  *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesAllowed  `json:"allowed,omitempty"`
+					Denied   *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesDenied   `json:"denied,omitempty"`
+					Required *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyExtendedKeyUsagesRequired `json:"required,omitempty"`
+				} `json:"extendedKeyUsages,omitempty"`
+				Id        openapi_types.UUID `json:"id"`
+				KeyUsages *struct {
+					Allowed  *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesAllowed  `json:"allowed,omitempty"`
+					Denied   *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesDenied   `json:"denied,omitempty"`
+					Required *[]CreateCertificatePolicy200JSONResponseBodyCertificatePolicyKeyUsagesRequired `json:"required,omitempty"`
+				} `json:"keyUsages,omitempty"`
+				Name      string             `json:"name"`
+				ProjectId openapi_types.UUID `json:"projectId"`
+				Sans      *[]struct {
+					Allowed  *[]string                                                           `json:"allowed,omitempty"`
+					Denied   *[]string                                                           `json:"denied,omitempty"`
+					Required *[]string                                                           `json:"required,omitempty"`
+					Type     CreateCertificatePolicy200JSONResponseBodyCertificatePolicySansType `json:"type"`
+				} `json:"sans,omitempty"`
+				Subject   *[]CreateCertificatePolicy200JSONResponseBody_CertificatePolicy_Subject_Item `json:"subject,omitempty"`
+				UpdatedAt time.Time                                                                    `json:"updatedAt"`
+				Validity  *struct {
+					Max *string `json:"max,omitempty"`
+				} `json:"validity,omitempty"`
+			} `json:"certificatePolicy"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                          `json:"details,omitempty"`
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CreateCertificatePolicy400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CreateCertificatePolicy401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                          `json:"details,omitempty"`
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CreateCertificatePolicy403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CreateCertificatePolicy404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                               `json:"error"`
+			Message    interface{}                                          `json:"message,omitempty"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CreateCertificatePolicy422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CreateCertificatePolicy500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateCertificateProfileResponse parses an HTTP response from a CreateCertificateProfileWithResponse call
+func ParseCreateCertificateProfileResponse(rsp *http.Response) (*CreateCertificateProfileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCertificateProfileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CertificateProfile struct {
+				AcmeConfigId        *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+				ApiConfigId         *openapi_types.UUID `json:"apiConfigId,omitempty"`
+				CaId                *openapi_types.UUID `json:"caId,omitempty"`
+				CertificatePolicyId openapi_types.UUID  `json:"certificatePolicyId"`
+				CreatedAt           time.Time           `json:"createdAt"`
+				Defaults            *struct {
+					BasicConstraints *struct {
+						IsCA       bool     `json:"isCA"`
+						PathLength *float32 `json:"pathLength,omitempty"`
+					} `json:"basicConstraints,omitempty"`
+					CommonName       *string `json:"commonName,omitempty"`
+					Country          *string `json:"country,omitempty"`
+					CustomExtensions *[]struct {
+						Critical *bool   `json:"critical,omitempty"`
+						Label    *string `json:"label,omitempty"`
+						Oid      string  `json:"oid"`
+						Value    *string `json:"value,omitempty"`
+					} `json:"customExtensions,omitempty"`
+					DomainComponents   *[]string                                                                                 `json:"domainComponents,omitempty"`
+					ExtendedKeyUsages  *[]CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsExtendedKeyUsages `json:"extendedKeyUsages,omitempty"`
+					KeyAlgorithm       *CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyAlgorithm        `json:"keyAlgorithm,omitempty"`
+					KeyUsages          *[]CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsKeyUsages         `json:"keyUsages,omitempty"`
+					Locality           *string                                                                                   `json:"locality,omitempty"`
+					Organization       *string                                                                                   `json:"organization,omitempty"`
+					OrganizationalUnit *string                                                                                   `json:"organizationalUnit,omitempty"`
+					SignatureAlgorithm *CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
+					State              *string                                                                                   `json:"state,omitempty"`
+					SubjectAltNames    *[]struct {
+						Type  CreateCertificateProfile200JSONResponseBodyCertificateProfileDefaultsSubjectAltNamesType `json:"type"`
+						Value string                                                                                   `json:"value"`
+					} `json:"subjectAltNames,omitempty"`
+					TtlDays *float32 `json:"ttlDays,omitempty"`
+				} `json:"defaults,omitempty"`
+				Description     *string                                                                         `json:"description,omitempty"`
+				EnrollmentType  string                                                                          `json:"enrollmentType"`
+				EstConfigId     *openapi_types.UUID                                                             `json:"estConfigId,omitempty"`
+				ExternalConfigs *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs `json:"externalConfigs,omitempty"`
+				Id              openapi_types.UUID                                                              `json:"id"`
+				IssuerType      *string                                                                         `json:"issuerType,omitempty"`
+				ProjectId       string                                                                          `json:"projectId"`
+				ScepConfigId    *openapi_types.UUID                                                             `json:"scepConfigId,omitempty"`
+				Slug            string                                                                          `json:"slug"`
+				UpdatedAt       time.Time                                                                       `json:"updatedAt"`
+			} `json:"certificateProfile"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode CreateCertificateProfile400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode CreateCertificateProfile401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode CreateCertificateProfile403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode CreateCertificateProfile404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    interface{}                                           `json:"message,omitempty"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode CreateCertificateProfile422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode CreateCertificateProfile500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCertManagerInstanceStateResponse parses an HTTP response from a GetCertManagerInstanceStateWithResponse call
+func ParseGetCertManagerInstanceStateResponse(rsp *http.Response) (*GetCertManagerInstanceStateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCertManagerInstanceStateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ActiveProjectId *string `json:"activeProjectId"`
+			IsMultiInstance bool    `json:"isMultiInstance"`
+			Projects        []struct {
+				CreatedAt time.Time `json:"createdAt"`
+				Id        string    `json:"id"`
+				Name      string    `json:"name"`
+				Slug      string    `json:"slug"`
+			} `json:"projects"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetCertManagerInstanceState400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetCertManagerInstanceState401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetCertManagerInstanceState403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetCertManagerInstanceState404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    interface{}                                              `json:"message,omitempty"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetCertManagerInstanceState422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetCertManagerInstanceState500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetAccessibleSecretMetadataResponse parses an HTTP response from a GetAccessibleSecretMetadataWithResponse call
 func ParseGetAccessibleSecretMetadataResponse(rsp *http.Response) (*GetAccessibleSecretMetadataResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -375458,6 +389545,10 @@ func ParseListProjectSecretsDetailsResponse(rsp *http.Response) (*ListProjectSec
 				Version            *float32            `json:"version,omitempty"`
 			} `json:"folders,omitempty"`
 			HoneyTokens *[]struct {
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment struct {
@@ -375756,6 +389847,10 @@ func ParseListProjectSecretsOverviewResponse(rsp *http.Response) (*ListProjectSe
 				Version            *float32            `json:"version,omitempty"`
 			} `json:"folders,omitempty"`
 			HoneyTokens *[]struct {
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment struct {
@@ -381754,6 +395849,11 @@ func ParseCreateHoneyTokenResponse(rsp *http.Response) (*CreateHoneyTokenRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt      time.Time          `json:"createdAt"`
 				Description    *string            `json:"description,omitempty"`
 				Id             openapi_types.UUID `json:"id"`
@@ -382404,6 +396504,11 @@ func ParseGetHoneyTokenResponse(rsp *http.Response) (*GetHoneyTokenResponse, err
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment *struct {
@@ -382526,6 +396631,11 @@ func ParseUpdateHoneyTokenResponse(rsp *http.Response) (*UpdateHoneyTokenRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt      time.Time          `json:"createdAt"`
 				Description    *string            `json:"description,omitempty"`
 				Id             openapi_types.UUID `json:"id"`
@@ -385792,9 +399902,8 @@ func ParseInviteUsersToOrganizationResponse(rsp *http.Response) (*InviteUsersToO
 				Link  string `json:"link"`
 			} `json:"completeInviteLinks,omitempty"`
 			GrantFailures *struct {
-				AgentVaultAccess bool     `json:"agentVaultAccess"`
-				PamAccess        bool     `json:"pamAccess"`
-				ProjectIds       []string `json:"projectIds"`
+				PamAccess  bool     `json:"pamAccess"`
+				ProjectIds []string `json:"projectIds"`
 			} `json:"grantFailures,omitempty"`
 			Message string `json:"message"`
 		}
@@ -391116,7 +405225,6 @@ func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdR
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Organization struct {
-				AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -437467,6 +451575,38 @@ func ParseGetSecretReferenceTreeV4Response(rsp *http.Response) (*GetSecretRefere
 		}
 		response.JSON500 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseGetScepApplicationOperationResponse parses an HTTP response from a GetScepApplicationOperationWithResponse call
+func ParseGetScepApplicationOperationResponse(rsp *http.Response) (*GetScepApplicationOperationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetScepApplicationOperationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetScepOperationResponse parses an HTTP response from a GetScepOperationWithResponse call
+func ParseGetScepOperationResponse(rsp *http.Response) (*GetScepOperationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetScepOperationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil
