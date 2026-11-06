@@ -929,7 +929,7 @@
       "id": "breadcrumb-name-navigates",
       "title": "A crumb's name navigates; its chevron switches",
       "category": "Interaction",
-      "instruction": "Give every switcher crumb (organization, project, environment and similar) two targets. The name goes to that level's page through link (a typed route built with linkOptions), href or onNavigate; the chevron is its own button, named for its purpose such as Switch project, and is what opens the Switcher. Only when a level has no page of its own, or is the current page, does its name open the same Switcher. A crumb with neither a page nor a switcher is plain text.",
+      "instruction": "Give every switcher crumb (organization, project, environment and similar) two targets. The name goes to that level's page through link (a typed route built with linkOptions), href or onNavigate; the chevron is its own button, named for its purpose such as Switch project, and is what opens the Switcher. Only when a level has no page of its own, or is the current page, does the whole segment (media, name and chevron) become one button that opens the Switcher. A crumb with neither a page nor a switcher is plain text.",
       "good": "Acme Corp links to the organization home and its chevron opens Switch organization; Production has no page, so its name and its chevron both open Switch environment.",
       "avoid": "A crumb whose name opens the switcher popover although the level has a page, or a name that looks like a link and does nothing.",
       "detect": {
@@ -1069,6 +1069,19 @@
         "by": "review"
       },
       "category": "Visual"
+    },
+    {
+      "id": "pointer-cursor-for-links",
+      "title": "Only links take the pointer cursor",
+      "category": "Interaction",
+      "instruction": "Styled controls keep the default cursor, even when one renders an anchor: Button in every variant except link, Toggle and ToggleGroup, Select, Combobox and MultiSelect triggers, menu, Switcher and Sidebar rows, Tabs, crumb switcher triggers and chevrons, row actions, nav sheet rows, Checkbox, Radio and Switch. Their hover and press grounds already show they act. Only links take cursor: pointer: text anchors, RowLink and CardLink with the row or card they cover, crumb names that navigate, the link Button variant, and unstyled text buttons that read as links, such as a List title or a toast action.",
+      "good": "An outline Export Button with the arrow cursor and its hover ground, beside a docs link in body text that shows the pointer.",
+      "avoid": "cursor: pointer on a Select trigger, a Sidebar row or a Button that renders an anchor, or a cursor-pointer class added so a control feels clickable.",
+      "detect": {
+        "by": "lint",
+        "check": "cursor-pointer"
+      },
+      "exceptions": "A selector that names a link (a, [href], :any-link, or link in a class or attribute name) passes. An unstyled text button that reads as a link, or a DataTable row that opens its record like a RowLink row, keeps the pointer and marks the rule with v4-check-ignore cursor-pointer and that reason."
     },
     {
       "id": "no-left-accent-bars",

@@ -108,7 +108,6 @@ const SwitcherCrumb = ({
     defaultValue: switcher.defaultOpen ?? false,
     onChange: switcher.onOpenChange
   });
-  const openAtPress = React.useRef(false);
   const navigates = !current && hasPage(crumb);
   const media = crumb.media && (
     <span className={breadcrumbStyles.media} aria-hidden="true">
@@ -124,6 +123,36 @@ const SwitcherCrumb = ({
       {crumb.label}
     </span>
   );
+  const purpose = (
+    <span id={purposeId} className="sr-only">
+      {switcher.label}
+    </span>
+  );
+  if (!navigates)
+    return (
+      <Switcher
+        {...switcher}
+        open={open}
+        onOpenChange={setOpen}
+        trigger={
+          <button
+            type="button"
+            data-slot="breadcrumb-switcher"
+            data-name-target="switcher"
+            className={breadcrumbStyles.segment}
+            aria-current={current ? "page" : undefined}
+            aria-labelledby={`${purposeId} ${labelId}`}
+          >
+            {purpose}
+            {media}
+            {label}
+            <span className={breadcrumbStyles.chevron} aria-hidden="true">
+              <Icon name="chev-ud" size={14} />
+            </span>
+          </button>
+        }
+      />
+    );
   return (
     <Switcher
       {...switcher}
@@ -136,39 +165,16 @@ const SwitcherCrumb = ({
           className={breadcrumbStyles.chevron}
           aria-labelledby={`${purposeId} ${labelId}`}
         >
-          <span id={purposeId} className="sr-only">
-            {switcher.label}
-          </span>
+          {purpose}
           <Icon name="chev-ud" size={14} />
         </button>
       }
       anchor={(trigger) => (
-        <span
-          className={breadcrumbStyles.segment}
-          data-name-target={navigates ? "page" : "switcher"}
-        >
-          {!navigates && media}
-          {navigates ? (
-            <CrumbName crumb={crumb} className={breadcrumbStyles.name} labelId={labelId}>
-              {media}
-              {label}
-            </CrumbName>
-          ) : (
-            <button
-              type="button"
-              data-slot="breadcrumb-name"
-              className={breadcrumbStyles.name}
-              aria-current={current ? "page" : undefined}
-              aria-haspopup="dialog"
-              aria-expanded={open}
-              onPointerDown={() => {
-                openAtPress.current = open;
-              }}
-              onClick={(event) => setOpen(event.detail === 0 ? !open : !openAtPress.current)}
-            >
-              {label}
-            </button>
-          )}
+        <span className={breadcrumbStyles.segment} data-name-target="page">
+          <CrumbName crumb={crumb} className={breadcrumbStyles.name} labelId={labelId}>
+            {media}
+            {label}
+          </CrumbName>
           {trigger}
         </span>
       )}

@@ -222,7 +222,6 @@
   min-width: var(--v4-size-nested-sm);
   min-height: var(--v4-size-nested-sm);
   text-align: start;
-  cursor: pointer;
   background: none;
   border: 0;
   padding: 0;

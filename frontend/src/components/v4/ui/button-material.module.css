@@ -198,6 +198,7 @@
   background: transparent;
   color: var(--v4-link);
   vertical-align: baseline;
+  cursor: pointer;
   text-decoration-line: underline;
   text-decoration-thickness: var(--v4-size-control-border);
   text-underline-offset: var(--v4-space-3);

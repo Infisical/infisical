@@ -82,7 +82,6 @@
   border: 0;
   border-radius: 0;
   background: var(--v4-line);
-  cursor: pointer;
   transition-property: width, background-color;
   transition-duration: var(--v4-duration-moderate);
   transition-timing-function: var(--v4-ease-standard);

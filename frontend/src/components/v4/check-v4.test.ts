@@ -240,6 +240,31 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, 'const [path, setPath] = useState("/");']
     ]
   },
+  "cursor-pointer": {
+    bad: [
+      [css, ".trigger { cursor: pointer; }"],
+      [css, "a.title,\nbutton.title {\n  cursor: pointer;\n}"],
+      [css, ".row:has(.badge) { cursor: pointer; }"],
+      [ui, '<button className="cursor-pointer px-2" />'],
+      [ui, 'cn("hover:cursor-pointer", className)'],
+      [example, '<div style={{ cursor: "pointer" }} />']
+    ],
+    good: [
+      [css, ".link { cursor: pointer; }"],
+      [css, "a.title:hover { cursor: pointer; }"],
+      [
+        css,
+        ':global(tr):has(> td a.stretched),\n:global([data-slot="card"]):has(a.stretched) {\n  cursor: pointer;\n}'
+      ],
+      [css, ".row { cursor: default; }"],
+      [
+        css,
+        "/* v4-check-ignore cursor-pointer -- an unstyled text action that reads as a link */\n.action,\n.undo {\n  cursor: pointer;\n}"
+      ],
+      [ui, '<button className="cursor-default" />'],
+      [ui, "<p>Only links take cursor: pointer.</p>"]
+    ]
+  },
   "suspense-fallback": {
     bad: [
       [example, '<Suspense fallback={<Spinner label="Loading secrets" />}>'],

@@ -188,7 +188,6 @@
   color: inherit;
   background: none;
   border: 0;
-  cursor: pointer;
 }
 .gridCell {
   padding: var(--v4-space-6) var(--v4-space-8);
@@ -444,7 +443,6 @@
   gap: var(--v4-space-8);
   min-height: var(--v4-size-control-sm);
   padding: 0 var(--v4-space-8);
-  cursor: pointer;
   outline-offset: -2px;
   font-family: var(--v4-type-mono-font-family);
   font-size: var(--v4-type-mono-font-size);
@@ -663,6 +661,7 @@
   min-width: 0;
   cursor: inherit;
 }
+/* v4-check-ignore cursor-pointer -- a List title button opens its item like the anchor title beside it, so it reads as a link */
 a.rowTitle,
 button.rowTitle {
   cursor: pointer;
@@ -890,6 +889,7 @@ button.rowTitle::after {
     var(--v4-row-ring-bottom),
     var(--v4-frame-pad) 0 0 var(--v4-tint);
 }
+/* v4-check-ignore cursor-pointer -- an activatable row opens its record like a RowLink row, so the two read the same */
 .tableScroll tbody tr[data-activatable] {
   cursor: pointer;
 }
@@ -1077,7 +1077,6 @@ button.rowTitle::after {
   color: inherit;
   background: none;
   border: 0;
-  cursor: pointer;
   white-space: nowrap;
 }
 .tableSort[data-active] {
@@ -1125,7 +1124,6 @@ button.rowTitle::after {
   background: none;
   border: 0;
   color: inherit;
-  cursor: pointer;
   padding: 0;
   min-width: var(--v4-space-16);
   font: inherit;

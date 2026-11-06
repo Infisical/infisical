@@ -59,6 +59,7 @@
   letter-spacing: var(--v4-type-small-letter-spacing);
   color: var(--v4-toast-muted);
 }
+/* v4-check-ignore cursor-pointer -- the toast action is unstyled accent text, so it reads as a link */
 .action[data-button] {
   flex: none;
   margin-inline-start: auto;

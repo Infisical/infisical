@@ -99,7 +99,6 @@
   border: 1px solid var(--v4-line, var(--border));
   background: var(--v4-surface, var(--background));
   color: var(--v4-ink, var(--foreground));
-  cursor: pointer;
 }
 .tile:hover {
   border-color: var(--v4-control, var(--border));

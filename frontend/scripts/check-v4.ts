@@ -141,6 +141,27 @@ export const disabledButtonsInTooltips = (text: string) => {
   return [...found].map(([index, match]) => ({ index, text: match }));
 };
 
+const topLevelParts = (selector: string) => {
+  const parts = [""];
+  let depth = 0;
+  [...selector].forEach((char) => {
+    if (char === "(" || char === "[") depth += 1;
+    else if (char === ")" || char === "]") depth -= 1;
+    if (char === "," && depth === 0) parts.push("");
+    else parts[parts.length - 1] += char;
+  });
+  return parts.map((part) => part.trim()).filter(Boolean);
+};
+const namesLink = /(?:^|[\s>+~(])a(?=$|[\s.:#[>+~)])|\[href\b|:any-link\b|link/i;
+
+/** cursor: pointer on a selector list with a part that does not name a link. */
+export const pointerOutsideLinks = (selector: string, body: string) => {
+  const declarations = [...body.matchAll(/(?:^|;|\n)\s*(cursor\s*:\s*pointer\b[^;]*)/g)];
+  if (!declarations.length || topLevelParts(selector).every((part) => namesLink.test(part)))
+    return [];
+  return declarations.map((match) => match[1].trim());
+};
+
 const classCallee = /(?:^|[^\w.$])(?:cn|cva|cx|clsx|twMerge)\s*$/;
 
 /** String literals that hold classes: className attributes and cn/cva/clsx call arguments, at any depth. */
@@ -408,6 +429,26 @@ export const v4Checks: readonly V4Check[] = [
     css: [/content\s*:\s*["']\/["']/g]
   },
   {
+    id: "cursor-pointer",
+    rule: "pointer-cursor-for-links",
+    message:
+      "Only links take the pointer cursor: a selector that names an anchor (a, [href], :any-link) or a link by name (.link, .rowLink, [data-row-link]). Buttons, triggers, menu and sidebar items, tabs, toggles and other styled controls keep the default cursor. An unstyled text button that reads as a link takes v4-check-ignore cursor-pointer with that reason.",
+    appliesTo: isAuthored,
+    cssBlock: pointerOutsideLinks,
+    source: (text) => [
+      ...classStringLiterals(text).flatMap(({ value, index }) =>
+        value
+          .split(/\s+/)
+          .filter((token) => splitVariant(token).utility === "cursor-pointer")
+          .map((token) => ({ index, text: token }))
+      ),
+      ...[...text.matchAll(/\bcursor\s*[:=]\s*\{?[^,;}\n]*?["'`]pointer["'`]/g)].map((match) => ({
+        index: match.index ?? 0,
+        text: match[0]
+      }))
+    ]
+  },
+  {
     id: "suspense-fallback",
     rule: "page-loading",
     message:
@@ -453,7 +494,10 @@ export const scanSource = (file: string, text: string): Finding[] => {
           const selector = match[1].replace(/\/\*[\s\S]*?\*\//g, "").trim();
           if (selector.startsWith("@")) return [];
           const line = text.slice(0, (match.index ?? 0) + match[0].indexOf("{")).split("\n").length;
-          if (exemptLine(line, check.id)) return [];
+          const markedRule = [...match[1].matchAll(new RegExp(ignoreMarker, "g"))].some(
+            (marker) => marker[1] === check.id
+          );
+          if (markedRule || exemptLine(line, check.id)) return [];
           return block(selector, match[2]).map((found) => ({
             check: check.id,
             file,

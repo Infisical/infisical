@@ -31,8 +31,8 @@
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
   outline-offset: calc(-1 * var(--v4-size-focus-ring));
 }
-:global(tr):has(> td .stretched),
-:global([data-slot="card"]):has(.stretched) {
+:global(tr):has(> td a.stretched),
+:global([data-slot="card"]):has(a.stretched) {
   position: relative;
   cursor: pointer;
 }

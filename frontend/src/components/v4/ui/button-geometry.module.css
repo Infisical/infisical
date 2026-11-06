@@ -21,6 +21,7 @@
   line-height: var(--v4-action-line-height);
   font-weight: var(--v4-type-label-font-weight);
   letter-spacing: var(--v4-type-label-letter-spacing);
+  cursor: default;
 }
 .default {
   --v4-action-icon-size: var(--v4-size-icon-sm);

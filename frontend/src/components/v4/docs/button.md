@@ -44,6 +44,24 @@ Source evidence:
 - src/components/v4/ui/button.tsx
 - src/pages/design-system/examples/button/default.tsx
 
+### button-cursor
+
+Owner: button.
+
+When a Button, Toggle or other styled control sits beside text links.
+
+Do: Leave the cursor to the component: styled controls show the default cursor and only the link variant, text anchors, RowLink and CardLink show the pointer.
+
+Avoid: Add cursor: pointer or a cursor-pointer class to a Button, a trigger or a Button that renders an anchor so it feels clickable.
+
+Why: The pointer marks a link. A styled control already reads as actionable through its grounds, and a pointer on it blurs which targets navigate.
+
+Checked by: review only. Look for: Hover each variant, including an asChild anchor: only link shows the pointer. npm run ui:lint (cursor-pointer) flags any cursor: pointer or cursor-pointer outside a link selector.
+
+Source evidence:
+- src/components/v4/ui/button-geometry.module.css
+- src/components/v4/ui/button-material.module.css
+
 ### button-row-icon-size
 
 Owner: button.
@@ -108,6 +126,7 @@ Exports: Button, buttonVariants. Source TypeScript defines the API.
 
 - Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the light accent face (one yellow in both themes) with owned inset illumination and an on-accent label in both themes, for a page's one primary create action in its header or toolbar and for approval and grant moments, never as a second primary. Ghost hover is ink at opacity-hover (6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad-fill fill and border with a white on-bad label at 600 in both themes, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.
 - The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. icon-row is the table row action: a size-target-row (28px) box with a size-glyph (16px) glyph, separate from icon-sm so field and nested actions keep their 12 and 14px glyphs. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target.
+- Every variant except link keeps the default cursor, also when asChild renders an anchor: its fill, border or hover ground already shows that it acts. link takes the pointer cursor, like any text link.
 
 ## Accessibility
 

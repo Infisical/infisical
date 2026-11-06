@@ -192,7 +192,6 @@
   background: transparent;
   color: var(--v4-text2);
   text-align: start;
-  cursor: pointer;
 }
 .userRow:hover,
 .userRow[aria-expanded="true"] {
@@ -232,7 +231,7 @@
   line-height: var(--v4-type-body-line-height);
   text-align: start;
   text-decoration: none;
-  cursor: pointer;
+  cursor: default;
 }
 .sheetRow:hover {
   background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);

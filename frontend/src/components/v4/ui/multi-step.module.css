@@ -138,9 +138,6 @@
   color: inherit;
   text-align: start;
 }
-button.stepButton {
-  cursor: pointer;
-}
 button.stepButton:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
   outline-offset: var(--v4-size-focus-ring);

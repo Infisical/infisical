@@ -122,7 +122,6 @@
   gap: var(--v4-space-control-gap);
   text-align: start;
   white-space: nowrap;
-  cursor: pointer;
 }
 @media (hover: hover) {
   .triggerHover:hover:not(:disabled, [aria-disabled="true"]) {
@@ -381,7 +380,6 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  cursor: pointer;
 }
 .choiceText {
   min-width: 0;

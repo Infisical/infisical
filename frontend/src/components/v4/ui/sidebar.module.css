@@ -40,7 +40,6 @@
   border-radius: 0;
   background: transparent;
   color: var(--v4-text2);
-  cursor: pointer;
 }
 .tool:hover {
   background: var(--v4-sidebar-hover);
@@ -253,7 +252,6 @@
   border-radius: 0;
   background: transparent;
   color: var(--v4-text2);
-  cursor: pointer;
 }
 .railSpace:hover {
   color: var(--v4-ink);
@@ -390,7 +388,7 @@
   text-align: start;
   text-decoration: none;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: default;
   transition-property: background-color, color;
   transition-duration: var(--v4-duration-fast);
   transition-timing-function: var(--v4-ease-standard);
