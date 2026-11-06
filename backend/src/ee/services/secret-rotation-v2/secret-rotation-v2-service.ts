@@ -304,12 +304,12 @@ export const secretRotationV2ServiceFactory = ({
     ).length > 0;
 
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
-    const { name, type, projectId, lastRotationAttemptedAt, folder, environment, id } = secretRotation;
+    const { name, type, projectId, id } = secretRotation;
 
     await queueService.queue(
       QueueName.SecretRotationV2,
       QueueJobs.SecretRotationV2SendNotification,
-      { secretRotation: { name, type, projectId, lastRotationAttemptedAt, folder, environment, id } },
+      { secretRotation: { name, type, projectId, id } },
       {
         jobId: `secret-rotation-v2-notifications-${secretRotation.id}`,
         attempts: 5,
