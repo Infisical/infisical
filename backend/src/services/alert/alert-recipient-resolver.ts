@@ -90,13 +90,16 @@ export const alertRecipientResolverFactory = ({
       ]);
       const memberIds = [...new Set([...directMembers, ...projectGroupMembers].map((member) => member.user.id))];
       (
-        await findUsersWithOrgAccess({ orgDAL, userGroupMembershipDAL }, { orgId: scope.orgId, userIds: memberIds })
+        await findUsersWithOrgAccess(
+          { orgDAL, userGroupMembershipDAL, userDAL },
+          { orgId: scope.orgId, userIds: memberIds }
+        )
       ).forEach((userId) => projectMemberIds.add(userId));
     }
     if (wantsProjectAdmins && scope.projectId) {
       (
         await findProjectAdminUserIds(
-          { projectMembershipDAL, orgDAL, userGroupMembershipDAL },
+          { projectMembershipDAL, orgDAL, userGroupMembershipDAL, userDAL },
           { orgId: scope.orgId, projectId: scope.projectId }
         )
       ).forEach((userId) => projectAdminIds.add(userId));

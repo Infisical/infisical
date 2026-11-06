@@ -4842,6 +4842,7 @@ export const registerRoutes = async (
     projectMembershipDAL,
     orgDAL,
     userGroupMembershipDAL,
+    userDAL,
     notificationService
   });
 

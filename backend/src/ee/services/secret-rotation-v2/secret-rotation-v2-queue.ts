@@ -24,6 +24,7 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -36,6 +37,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgLinkedGroupIds">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  userDAL: Pick<TUserDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
@@ -48,6 +50,7 @@ export const secretRotationV2QueueServiceFactory = async ({
   projectMembershipDAL,
   orgDAL,
   userGroupMembershipDAL,
+  userDAL,
   projectDAL,
   notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
@@ -141,7 +144,7 @@ export const secretRotationV2QueueServiceFactory = async ({
         }
 
         const adminUserIds = await findProjectAdminUserIds(
-          { projectMembershipDAL, orgDAL, userGroupMembershipDAL },
+          { projectMembershipDAL, orgDAL, userGroupMembershipDAL, userDAL },
           { orgId: project.orgId, projectId }
         );
 
