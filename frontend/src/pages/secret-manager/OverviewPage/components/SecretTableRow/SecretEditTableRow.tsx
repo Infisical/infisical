@@ -1407,7 +1407,7 @@ export const SecretEditTableRow = ({
               className={
                 isSingleEnvView
                   ? twMerge(
-                      "transition-opacity duration-150 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
+                      "-mr-1 transition-opacity duration-150 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
                       isAnnotating && "[@media(hover:hover)]:opacity-100"
                     )
                   : "size-7 border-0"
@@ -1630,7 +1630,6 @@ export const SecretEditTableRow = ({
           </TooltipContent>
         </Tooltip>
       )}
-      {isSingleEnvView && annotateMenu}
     </div>
   );
 
@@ -2427,6 +2426,7 @@ export const SecretEditTableRow = ({
               {annotationSlot}
             </div>
             <SecretLastEditedTime secret={lastEdited} field={timestampField} />
+            {annotateMenu}
           </div>
         </TableCell>
         <TableCell

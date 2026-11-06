@@ -4477,7 +4477,7 @@ const OverviewPageContent = () => {
                         <TableHead className="min-w-[368px] text-sm font-medium text-muted">
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
-                            <div className="flex items-center gap-2">
+                            <div className="-mr-1.5 flex items-center gap-2">
                               <Badge variant="ghost" asChild>
                                 <button
                                   type="button"

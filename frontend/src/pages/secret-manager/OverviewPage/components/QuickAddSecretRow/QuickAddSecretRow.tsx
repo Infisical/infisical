@@ -438,6 +438,7 @@ export const QuickAddSecretRow = ({
                       <IconButton
                         aria-label="Annotate secret"
                         tabIndex={-1}
+                        className="-mr-1"
                         variant="ghost-muted"
                         size="2xs"
                         isDisabled={isSubmitting}
@@ -556,7 +557,7 @@ export const QuickAddSecretRow = ({
           {isDraftActive && (
             <SecretInputActions
               className={
-                isMultiEnvironmentView ? "absolute top-1.5 right-0" : "absolute top-0 right-0"
+                isMultiEnvironmentView ? "absolute top-1.5 right-0" : "absolute top-0 -right-1.5"
               }
               isSaveDisabled={isSubmitting || Boolean(duplicateError)}
               isUndoDisabled={isSubmitting}
