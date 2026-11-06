@@ -18,6 +18,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
@@ -482,6 +483,7 @@ export const ProjectIdentityDetail = () => {
                   <Icon name="user" />
                   Assume privileges
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={!canDelete || deleteBlocked}

@@ -17,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
@@ -224,6 +225,7 @@ const RoleEditor = ({
                   <Icon name="copy" />
                   Duplicate role
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={!isCustom || !can.delete || isDefault}

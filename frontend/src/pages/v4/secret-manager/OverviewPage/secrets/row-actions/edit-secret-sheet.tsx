@@ -29,6 +29,7 @@ import { slugSchema } from "@app/lib/schemas/slugSchema";
 import { readableValue, type Secret } from "../../secrets-model";
 import { type Entry, SecretEntryFields } from "../flows/create-secret-flow";
 import { DiscardDialog } from "../flows/shared";
+import { useDependents } from "./references-dialog";
 import type { SecretPatch } from "./types";
 
 import flowStyles from "../flows/flows.module.css";
@@ -53,17 +54,16 @@ export function EditSecretSheet({
   secret,
   environmentLabel,
   tagOptions,
-  dependents,
   onClose,
   onSave
 }: {
   secret: Secret;
   environmentLabel: string;
   tagOptions: string[];
-  dependents: Secret[];
   onClose: () => void;
   onSave: (patch: SecretPatch) => void;
 }) {
+  const dependents = useDependents(secret);
   const initial = useMemo(() => toEntry(secret), [secret]);
   const [entry, setEntry] = useState(initial);
   const [createdTags, setCreatedTags] = useState<string[]>([]);

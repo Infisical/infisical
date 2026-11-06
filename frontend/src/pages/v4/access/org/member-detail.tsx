@@ -31,6 +31,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
@@ -383,6 +384,7 @@ export const OrgMemberDetail = () => {
                       <Icon name="user" />
                       {membership.isActive ? "Deactivate user" : "Activate user"}
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
                       disabled={

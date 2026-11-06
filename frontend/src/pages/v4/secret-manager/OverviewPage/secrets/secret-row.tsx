@@ -81,7 +81,7 @@ import {
 import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
 import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
-import { dependentsOf, ReferencesDialog } from "./row-actions/references-dialog";
+import { ReferencesDialog } from "./row-actions/references-dialog";
 import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
 import { VersionHistorySheet } from "./row-actions/version-history-sheet";
@@ -107,6 +107,7 @@ export type SecretRowHandlers = {
   onCopySecret: (secret: Secret) => void;
   copySecretBlock?: string;
   onNavigate: (environment: string, path: string, key: string) => void;
+  onRefresh: () => void;
   importedFrom: (environment: string, key: string) => string | undefined;
   resources: readonly Resource[];
   tagOptions: string[];
@@ -568,7 +569,6 @@ function SecretActions({
           secret={secret}
           environmentLabel={label}
           tagOptions={handlers.tagOptions}
-          dependents={dependentsOf(handlers.resources, secret)}
           onClose={() => setOpen(undefined)}
           onSave={(patch) => update(secret, patch, saved(`Updated ${secret.name}`))}
         />
@@ -601,12 +601,14 @@ function SecretActions({
                 });
             setOpen(undefined);
             request.then(
-              () =>
+              () => {
+                handlers.onRefresh();
                 ctx.report(
                   reminder
                     ? `${secret.reminder ? "Updated" : "Created"} the reminder on ${secret.name}.`
                     : `Deleted the reminder on ${secret.name}.`
-                ),
+                );
+              },
               () => ctx.report(`Could not save the reminder on ${secret.name}.`)
             );
           }}
@@ -645,7 +647,6 @@ function SecretActions({
         <ReferencesDialog
           open
           secret={secret}
-          resources={handlers.resources}
           onOpenChange={(next) => setOpen(next ? "references" : undefined)}
           onNavigate={handlers.onNavigate}
         />
