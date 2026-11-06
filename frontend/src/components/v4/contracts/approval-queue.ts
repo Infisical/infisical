@@ -6,10 +6,7 @@ export const approvalQueueDefinition = {
   group: "Patterns",
   summary:
     "Requests waiting on you, each moving through new, pending, then resolved or failed in place.",
-  sourceFiles: [
-    "src/components/v4/patterns/approval-queue.tsx",
-    "src/components/v4/patterns/approval-queue.module.css"
-  ],
+  sourceFiles: ["src/components/v4/patterns/approval-queue.tsx"],
   exports: [
     "ApprovalQueue",
     "ApprovalQueueHeader",
@@ -21,7 +18,7 @@ export const approvalQueueDefinition = {
   referenceNames: ["ApprovalQueue"],
   behavior: [
     "Compose ApprovalQueue from ApprovalQueueHeader (title, count and an actions slot), ApprovalQueueList with ApprovalQueueItem rows and optional ApprovalQueueGroup labels, and an optional ApprovalQueueFooter.",
-    "The variant on the root sets the treatment. framed (default) is the tint frame with an eyebrow header band, rows in one bordered inset surface and the footer inside the frame. segmented drops the frame: the header is its own row and each item is a borderless tint card with a small gap between cards; resolved cards fade to half the tint so they keep their edge in dark. divided drops the frame and the cards: items sit on the page separated by line-soft rules.",
+    "The variant passes straight through to List, which owns every ground, gap, rule, hover, press and resolved fill: framed (default) is List's tint frame with the eyebrow band, segmented makes each item a borderless tint card under a header row, and divided splits items with line-soft rules. The parts lower to ListHeader, ListSection, ListRow and ListFooter. The queue adds only its extras: the icon and failed tiles, the unread dot, the Approve, View diff, Undo and Retry actions, the resolved and failed states, and its default copy.",
     "Passing requests instead of children renders the composed queue for you: header Needs you with the waiting count, one item per request and a View history footer when historyHref is set. It takes the same variant.",
     "Actions sit in a second row under each request's text, so the age ends every title line in the same place.",
     "New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry.",
@@ -32,7 +29,7 @@ export const approvalQueueDefinition = {
     "ApprovalQueueList's label names the list (Requests waiting on you by default); the header title is visible text, not a heading."
   ],
   limitations: [
-    "ApprovalQueueItem and ApprovalQueueGroup must be direct children of ApprovalQueueList or ApprovalQueueGroup (arrays are fine). The list finds its rows by element type, so an item inside a fragment or another wrapper is not counted and the empty message shows.",
+    "Header, list and footer must be direct children of ApprovalQueue, and items and groups direct children of ApprovalQueueList or ApprovalQueueGroup (arrays are fine). The parts are found by element type, so one inside a fragment or another wrapper is skipped.",
     "Groups take a plain label and no count. Use them to split a long queue by day or environment, not to nest queues.",
     "The host owns request state and the approve, undo and retry calls. Leave out onUndo only when the decision really cannot be reversed, and say so in the resolved row's description."
   ],
@@ -109,6 +106,23 @@ export const approvalQueueDefinition = {
     decision:
       "Choose ApprovalQueue for decisions waiting on someone. Use ActivityLog for what already happened.",
     rules: [
+      {
+        id: "approval-queue-inherits-list",
+        when: "Changing how a queue variant looks.",
+        do: "Change List's variant in data.module.css so List and every composite on it move together.",
+        avoid:
+          "Add CSS to the queue that restyles its List's rows, cards, rules, header or footer.",
+        reason:
+          "The queue's variants are List's variants; a local override makes them drift apart.",
+        evidence: [
+          "src/components/v4/patterns/approval-queue.tsx",
+          "src/pages/design-system/examples/approval-queue/variants.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "The pattern ships no stylesheet, and its segmented and divided renders match List's."
+        }
+      },
       {
         id: "approval-queue-variant",
         when: "Placing a queue on a page.",

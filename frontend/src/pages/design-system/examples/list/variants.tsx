@@ -53,6 +53,11 @@ export default function Variants() {
           {rows("plain")}
         </List>
       </ExampleCell>
+      <ExampleCell align="stretch" label="bare">
+        <List label="Bare identities" variant="bare">
+          {rows("bare")}
+        </List>
+      </ExampleCell>
       <ExampleCell align="stretch" label="sm">
         <List label="Small identities" size="sm" title="Identities">
           {rows("sm")}

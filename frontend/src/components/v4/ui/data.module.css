@@ -515,6 +515,17 @@
   letter-spacing: var(--v4-type-small-letter-spacing);
   color: var(--v4-muted);
 }
+.listHeaderCount {
+  flex: none;
+  color: var(--v4-muted);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+}
+.listHeaderCount + .listHeaderAction {
+  margin-inline-start: 0;
+}
 .list {
   list-style: none;
   padding: 0;
@@ -574,8 +585,13 @@
   display: grid;
   gap: var(--v4-space-4);
 }
-.listShell[data-variant="segmented"] .sectionHead {
-  padding-inline: 0;
+.listShell[data-variant="segmented"] > .listHeader,
+.listShell[data-variant="divided"] > .listHeader,
+.listShell[data-variant="segmented"] > .status,
+.listShell[data-variant="divided"] > .status,
+.listShell[data-variant="segmented"] .sectionHead,
+.listShell[data-variant="divided"] .sectionHead {
+  padding-inline: var(--v4-space-surface-inset-sm);
 }
 .listRow {
   display: flex;
@@ -642,8 +658,8 @@
   color: var(--v4-muted);
 }
 :where(.listShell[data-variant="segmented"]) .listRow[data-resolved] {
-  background: color-mix(in oklab, var(--v4-tint) 50%, transparent);
-  --v4-list-row-surface: color-mix(in oklab, var(--v4-tint) 50%, transparent);
+  background: var(--v4-row-done-card);
+  --v4-list-row-surface: var(--v4-row-done-card);
 }
 .listRow[data-disabled] {
   color: var(--v4-muted);

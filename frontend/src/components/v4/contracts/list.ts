@@ -6,12 +6,14 @@ export const listDefinition = {
   group: "Data display",
   summary: "Object rows with independent current state, selection and actions.",
   sourceFiles: ["src/components/v4/ui/list.tsx", "src/components/v4/ui/data.module.css"],
-  exports: ["List", "ListRow", "ListSection", "DataList"],
+  exports: ["List", "ListRow", "ListSection", "ListHeader", "ListFooter", "DataList"],
   referenceNames: ["List"],
   behavior: [
     "Interactive rows use a translucent ink overlay on hover and press (opacity-hover and opacity-press tokens), so tinted surfaces behind the list show through.",
     "Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface), bare, segmented (no container, each row a borderless tint card with a gap between) or divided (no container, rows split by line-soft rules); md/sm, static/link/button rows and actions below.",
     "Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.",
+    "ListHeader (title, count, action) and ListFooter can sit among List's children in place of the title, count, action and footer props. framed puts the header in its eyebrow band with count and action on the right; every other variant gives it its own row with a title-sm title, a muted count and the action slot.",
+    "segmented and divided align the header, section heads and footer with the row content at surface-inset-sm. Every ground, gap, rule, hover, press and resolved fill of a variant lives here, so composites built on List (ApprovalQueue, ActivityLog, AccessList) inherit it.",
     "Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.",
     "The title line never wraps: the title shrinks and ends in an ellipsis, and the meta keeps its width at the top right of the title's first line.",
     "Selection skips disabled and locked rows. Current details and bulk selection remain independent.",
@@ -29,6 +31,7 @@ export const listDefinition = {
   limitations: [
     "Supply unique string row ids and accessible labels.",
     "ListRow and ListSection must be direct descendants or wrappers that forward children for selection discovery.",
+    "ListHeader and ListFooter must be direct children of List, not inside a fragment; List finds them by element type.",
     "Large columnar datasets belong in DataTable; cell editing belongs in DataGrid.",
     "Compact density is for props and meta DataLists. A stat value keeps the display role and grows its row past 32px.",
     "A compact full-width row gives the value less room than default density, so a UUID in a size-sidecar card wraps onto a second line."
@@ -54,6 +57,12 @@ export const listDefinition = {
       states: ["default"]
     },
     {
+      id: "segmented-divided",
+      title: "Segmented and divided, with header, sections and footer",
+      module: "./examples/list/segmented-divided.tsx",
+      states: ["default"]
+    },
+    {
       id: "density",
       title: "DataList default and compact density",
       module: "./examples/list/density.tsx",
@@ -65,33 +74,11 @@ export const listDefinition = {
       axis: "variant",
       expected: ["framed", "plain", "bare", "segmented", "divided"],
       shown: [
-        {
-          value: "framed",
-          exampleId: "default",
-          label: "framed"
-        },
-        {
-          value: "plain",
-          exampleId: "variants",
-          label: "plain"
-        }
-      ],
-      omitted: [
-        {
-          value: "bare",
-          reason:
-            "bare drops the border and the row rules and keeps the inset; the list fixture test renders it."
-        },
-        {
-          value: "segmented",
-          reason:
-            "segmented makes each row a borderless tint card with a gap between; the approval-queue variants example renders it."
-        },
-        {
-          value: "divided",
-          reason:
-            "divided keeps the row rules and drops the container; the approval-queue variants example renders it."
-        }
+        { value: "framed", exampleId: "default", label: "framed" },
+        { value: "plain", exampleId: "variants", label: "plain" },
+        { value: "bare", exampleId: "variants", label: "bare" },
+        { value: "segmented", exampleId: "segmented-divided", label: "segmented" },
+        { value: "divided", exampleId: "segmented-divided", label: "divided" }
       ]
     },
     {
@@ -215,6 +202,23 @@ export const listDefinition = {
     decision:
       "Choose List for a stable collection of comparable resource rows. Use Item for an isolated rich object and DataTable when columns need comparison. For a DataList, choose compact when a card holds more than about five facts that a reader scans for one value, and default when it holds a few facts that each deserve a full row.",
     rules: [
+      {
+        id: "list-variant-owner",
+        when: "A composite needs a list treatment: cards, rules, a header row or a footer.",
+        do: "Pass the variant through to List and compose ListHeader, ListSection, ListRow and ListFooter. Add only what the composite owns, such as media tiles, row actions and its copy.",
+        avoid:
+          "Restyle List's grounds, gaps, rules, hover, press or resolved fills from a composite's own CSS.",
+        reason:
+          "One source per treatment keeps List and every composite on it identical, and a fix in List reaches all of them.",
+        evidence: [
+          "src/components/v4/ui/data.module.css",
+          "src/pages/design-system/examples/list/segmented-divided.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "A composite built on List ships no CSS that targets list rows, sections, the list header or footer."
+        }
+      },
       {
         id: "list-usage",
         when: "A focused row disappears after removal or filtering.",

@@ -157,10 +157,15 @@ function rowProps(children: React.ReactNode): ListRowProps[] {
     return rowProps(child.props.children);
   });
 }
-export interface ListProps {
-  children?: React.ReactNode;
+export interface ListHeaderProps {
   title?: React.ReactNode;
+  count?: React.ReactNode;
   action?: React.ReactNode;
+}
+export const ListHeader: React.FC<ListHeaderProps> = () => null;
+export const ListFooter: React.FC<{ children: React.ReactNode }> = () => null;
+export interface ListProps extends ListHeaderProps {
+  children?: React.ReactNode;
   label: string;
   variant?: "framed" | "plain" | "bare" | "segmented" | "divided";
   size?: "md" | "sm";
@@ -175,9 +180,10 @@ export interface ListProps {
   footer?: React.ReactNode;
 }
 export function List({
-  children,
-  title,
-  action,
+  children: content,
+  title: titleProp,
+  count: countProp,
+  action: actionProp,
   label,
   variant = "framed",
   size = "md",
@@ -189,8 +195,28 @@ export function List({
   loading,
   loadingRows = 3,
   empty = "No items",
-  footer
+  footer: footerProp
 }: ListProps) {
+  let header: ListHeaderProps = { title: titleProp, count: countProp, action: actionProp };
+  let footer = footerProp;
+  let children = content;
+  const parts = React.Children.toArray(content);
+  if (
+    parts.some(
+      (part) => React.isValidElement(part) && (part.type === ListHeader || part.type === ListFooter)
+    )
+  ) {
+    children = parts.filter((part) => {
+      if (!React.isValidElement(part)) return true;
+      if (part.type === ListHeader) header = part.props as ListHeaderProps;
+      else if (part.type === ListFooter)
+        footer = (part.props as { children: React.ReactNode }).children;
+      else return true;
+      return false;
+    });
+  }
+  const { title, count: headerCount, action } = header;
+  const framed = variant === "framed";
   const [own, setOwn] = React.useState<readonly string[]>(defaultSelectedIds);
   const selected = selectedIds ?? own;
   const list = React.useRef<HTMLUListElement>(null);
@@ -255,14 +281,14 @@ export function List({
       value={{ selected, multiple: selection === "multiple", toggle, size, actionsPlacement }}
     >
       <div
-        className={cn(styles.listShell, variant === "framed" && frame.frame)}
+        className={cn(styles.listShell, framed && frame.frame)}
         data-slot="list"
         data-variant={variant}
         data-size={size}
       >
-        {(title || action) && (
+        {(title || headerCount || action) && (
           <div
-            className={variant === "framed" ? frame.frameHead : styles.listHeader}
+            className={framed ? frame.frameHead : styles.listHeader}
             data-select={selection === "multiple" || undefined}
           >
             {selection === "multiple" && (
@@ -283,21 +309,21 @@ export function List({
                 }
               />
             )}
-            {title && (
-              <div className={variant === "framed" ? frame.frameTitle : styles.listTitle}>
-                {title}
-              </div>
-            )}
-            {action && (
-              <div className={variant === "framed" ? frame.frameAction : styles.listHeaderAction}>
-                {action}
-              </div>
-            )}
+            {title && <div className={framed ? frame.frameTitle : styles.listTitle}>{title}</div>}
+            {framed
+              ? (headerCount || action) && (
+                  <div className={frame.frameAction}>
+                    {headerCount}
+                    {action}
+                  </div>
+                )
+              : headerCount && <div className={styles.listHeaderCount}>{headerCount}</div>}
+            {!framed && action && <div className={styles.listHeaderAction}>{action}</div>}
           </div>
         )}
         <ul
           ref={list}
-          className={cn(styles.list, variant === "framed" && frame.frameInset)}
+          className={cn(styles.list, framed && frame.frameInset)}
           aria-label={label}
           aria-busy={loading}
           tabIndex={-1}

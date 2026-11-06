@@ -8,6 +8,24 @@ Choose List for a stable collection of comparable resource rows. Use Item for an
 
 ## Usage rules
 
+### list-variant-owner
+
+Owner: list.
+
+When a composite needs a list treatment: cards, rules, a header row or a footer.
+
+Do: Pass the variant through to List and compose ListHeader, ListSection, ListRow and ListFooter. Add only what the composite owns, such as media tiles, row actions and its copy.
+
+Avoid: Restyle List's grounds, gaps, rules, hover, press or resolved fills from a composite's own CSS.
+
+Why: One source per treatment keeps List and every composite on it identical, and a fix in List reaches all of them.
+
+Checked by: review only. Look for: A composite built on List ships no CSS that targets list rows, sections, the list header or footer.
+
+Source evidence:
+- src/components/v4/ui/data.module.css
+- src/pages/design-system/examples/list/segmented-divided.tsx
+
 ### list-usage
 
 Owner: list.
@@ -82,13 +100,15 @@ Why: Consistent meaningful geometry helps compare resources without unnecessary 
 - src/components/v4/ui/list.tsx
 - src/components/v4/ui/data.module.css
 
-Exports: List, ListRow, ListSection, DataList. Source TypeScript defines the API.
+Exports: List, ListRow, ListSection, ListHeader, ListFooter, DataList. Source TypeScript defines the API.
 
 ## Behavior
 
 - Interactive rows use a translucent ink overlay on hover and press (opacity-hover and opacity-press tokens), so tinted surfaces behind the list show through.
 - Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface), bare, segmented (no container, each row a borderless tint card with a gap between) or divided (no container, rows split by line-soft rules); md/sm, static/link/button rows and actions below.
 - Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.
+- ListHeader (title, count, action) and ListFooter can sit among List's children in place of the title, count, action and footer props. framed puts the header in its eyebrow band with count and action on the right; every other variant gives it its own row with a title-sm title, a muted count and the action slot.
+- segmented and divided align the header, section heads and footer with the row content at surface-inset-sm. Every ground, gap, rule, hover, press and resolved fill of a variant lives here, so composites built on List (ApprovalQueue, ActivityLog, AccessList) inherit it.
 - Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.
 - The title line never wraps: the title shrinks and ends in an ellipsis, and the meta keeps its width at the top right of the title's first line.
 - Selection skips disabled and locked rows. Current details and bulk selection remain independent.
@@ -113,6 +133,7 @@ Exports: List, ListRow, ListSection, DataList. Source TypeScript defines the API
 
 - Supply unique string row ids and accessible labels.
 - ListRow and ListSection must be direct descendants or wrappers that forward children for selection discovery.
+- ListHeader and ListFooter must be direct children of List, not inside a fragment; List finds them by element type.
 - Large columnar datasets belong in DataTable; cell editing belongs in DataGrid.
 - Compact density is for props and meta DataLists. A stat value keeps the display role and grows its row past 32px.
 - A compact full-width row gives the value less room than default density, so a UUID in a size-sidecar card wraps onto a second line.
@@ -125,9 +146,9 @@ Source declarations and review criteria only. Generation checks references and c
 
 - framed: example `default`, visible label "framed".
 - plain: example `variants`, visible label "plain".
-- bare: omitted. bare drops the border and the row rules and keeps the inset; the list fixture test renders it.
-- segmented: omitted. segmented makes each row a borderless tint card with a gap between; the approval-queue variants example renders it.
-- divided: omitted. divided keeps the row rules and drops the container; the approval-queue variants example renders it.
+- bare: example `variants`, visible label "bare".
+- segmented: example `segmented-divided`, visible label "segmented".
+- divided: example `segmented-divided`, visible label "divided".
 
 ### size
 
@@ -375,11 +396,124 @@ export default function Variants() {
       </figure>
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="Bare identities" variant="bare">
+            {rows("bare")}
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"bare"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
           <List label="Small identities" size="sm" title="Identities">
             {rows("sm")}
           </List>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Segmented and divided, with header, sections and footer
+
+Save this example at `src/pages/design-system/examples/list/segmented-divided.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/button, @infisical/item, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Button } from "../../../../components/v4/ui/button";
+import { Media } from "../../../../components/v4/ui/item";
+import { List, ListFooter, ListHeader, ListRow, ListSection } from "../../../../components/v4/ui/list";
+
+const header = (
+  <ListHeader
+    title="What's new"
+    count="2 unread"
+    action={
+      <Button variant="link" size="sm" asChild>
+        <a href="#list">View all</a>
+      </Button>
+    }
+  />
+);
+
+const sections = (variant: string) => [
+  <ListSection key="week" label="This week">
+    <ListRow
+      value={`${variant}-gateway-pools`}
+      label="Gateway pools"
+      title="Gateway pools"
+      description="Route PAM sessions through any healthy gateway in a pool."
+      media={<Media icon="globe" />}
+      meta="Nov 5"
+      href="#list"
+      unread
+    />
+    <ListRow
+      value={`${variant}-rotation`}
+      label="Scheduled rotation for Postgres"
+      title="Scheduled rotation for Postgres"
+      description="Rotate database credentials on a schedule you set per environment."
+      media={<Media icon="key" />}
+      meta="Nov 4"
+      href="#list"
+      unread
+    />
+  </ListSection>,
+  <ListSection key="earlier" label="Earlier">
+    <ListRow
+      value={`${variant}-audit-streams`}
+      label="Audit log streams to Datadog"
+      title="Audit log streams to Datadog"
+      description="Send every audit event to Datadog as it happens."
+      media={<Media icon="sync" />}
+      meta="Oct 28"
+      href="#list"
+    />
+    <ListRow
+      value={`${variant}-sso`}
+      label="SSO enforcement for sub-organizations"
+      title="SSO enforcement for sub-organizations"
+      description="Require SSO in every sub-organization from the parent's settings."
+      media={<Media icon="lock" />}
+      meta="Oct 21"
+      href="#list"
+      resolved
+    />
+  </ListSection>
+];
+
+const footer = (
+  <ListFooter>
+    <Button variant="link" size="sm" asChild>
+      <a href="#list">Release notes</a>
+    </Button>
+  </ListFooter>
+);
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="What's new" variant="segmented">
+            {header}
+            {sections("segmented")}
+            {footer}
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"segmented"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="What's new" variant="divided">
+            {header}
+            {sections("divided")}
+            {footer}
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"divided"}</figcaption>
       </figure>
     </div>
   );

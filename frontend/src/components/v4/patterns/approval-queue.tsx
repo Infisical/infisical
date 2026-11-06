@@ -2,10 +2,7 @@ import * as React from "react";
 
 import { Button } from "../ui/button";
 import { Media } from "../ui/item";
-import { List, ListRow, type ListRowProps, ListSection } from "../ui/list";
-
-import frame from "../ui/frame.module.css";
-import styles from "./approval-queue.module.css";
+import { List, ListFooter, ListHeader, ListRow, type ListRowProps, ListSection } from "../ui/list";
 
 interface ApprovalRequestBase {
   id: string;
@@ -23,53 +20,11 @@ export type ApprovalRequest = ApprovalRequestBase &
 
 export type ApprovalQueueVariant = "framed" | "segmented" | "divided";
 
-const VariantContext = React.createContext<ApprovalQueueVariant>("framed");
-
-export type ApprovalQueueProps = {
-  variant?: ApprovalQueueVariant;
-} & (
-  | {
-      requests: readonly ApprovalRequest[];
-      current?: string;
-      onApprove: (id: string) => void;
-      onView?: (id: string) => void;
-      onUndo?: (id: string) => void;
-      onRetry: (id: string) => void;
-      historyHref?: string;
-      children?: never;
-    }
-  | { children: React.ReactNode; requests?: never }
-);
-
-export function ApprovalQueueHeader({
-  title,
-  count,
-  actions
-}: {
+export const ApprovalQueueHeader: React.FC<{
   title: React.ReactNode;
   count?: React.ReactNode;
   actions?: React.ReactNode;
-}) {
-  if (React.use(VariantContext) === "framed")
-    return (
-      <div className={frame.frameHead}>
-        <div className={frame.frameTitle}>{title}</div>
-        {(count || actions) && (
-          <div className={frame.frameAction}>
-            {count}
-            {actions}
-          </div>
-        )}
-      </div>
-    );
-  return (
-    <div className={styles.header}>
-      <div className={styles.title}>{title}</div>
-      {count && <div className={styles.count}>{count}</div>}
-      {actions && <div className={styles.actions}>{actions}</div>}
-    </div>
-  );
-}
+}> = () => null;
 
 export interface ApprovalQueueItemProps {
   request: ApprovalRequest;
@@ -140,58 +95,71 @@ export function ApprovalQueueItem(props: ApprovalQueueItemProps) {
   return <ListRow {...itemRow(props)} />;
 }
 
-export function ApprovalQueueGroup({
-  label,
-  children
-}: {
+export const ApprovalQueueGroup: React.FC<{
   label: React.ReactNode;
   children: React.ReactNode;
-}) {
-  return <ListSection label={label}>{children}</ListSection>;
-}
+}> = () => null;
 
-// List finds its rows by element type, so items and groups are lowered to ListRow and ListSection before it sees them.
-function lower(children: React.ReactNode): React.ReactNode {
+export const ApprovalQueueList: React.FC<{
+  label?: string;
+  empty?: React.ReactNode;
+  children?: React.ReactNode;
+}> = () => null;
+
+export const ApprovalQueueFooter: React.FC<{ children: React.ReactNode }> = () => null;
+
+// List places its header, footer, sections and rows by element type, so the queue's parts are lowered to List's own parts before List sees them.
+function lower(
+  children: React.ReactNode,
+  list: React.ComponentProps<typeof ApprovalQueueList>
+): React.ReactNode {
   return React.Children.map(children, (child) => {
     if (!React.isValidElement(child)) return child;
+    if (child.type === React.Fragment)
+      return lower((child.props as { children?: React.ReactNode }).children, list);
     if (child.type === ApprovalQueueItem)
       return <ListRow {...itemRow(child.props as ApprovalQueueItemProps)} />;
     if (child.type === ApprovalQueueGroup) {
       const { label, children: items } = child.props as React.ComponentProps<
         typeof ApprovalQueueGroup
       >;
-      return <ListSection label={label}>{lower(items)}</ListSection>;
+      return <ListSection label={label}>{lower(items, list)}</ListSection>;
     }
+    if (child.type === ApprovalQueueList) {
+      Object.assign(list, child.props);
+      return lower(list.children, list);
+    }
+    if (child.type === ApprovalQueueHeader) {
+      const { title, count, actions } = child.props as React.ComponentProps<
+        typeof ApprovalQueueHeader
+      >;
+      return <ListHeader title={title} count={count} action={actions} />;
+    }
+    if (child.type === ApprovalQueueFooter)
+      return (
+        <ListFooter>
+          {(child.props as React.ComponentProps<typeof ApprovalQueueFooter>).children}
+        </ListFooter>
+      );
     return child;
   });
 }
 
-export function ApprovalQueueList({
-  label = "Requests waiting on you",
-  empty = "Nothing is waiting on you.",
-  children
-}: {
-  label?: string;
-  empty?: React.ReactNode;
-  children?: React.ReactNode;
-}) {
-  const variant = React.use(VariantContext);
-  const list = (
-    <List
-      label={label}
-      variant={variant === "segmented" ? "segmented" : "divided"}
-      actionsPlacement="below"
-      empty={empty}
-    >
-      {lower(children)}
-    </List>
-  );
-  return variant === "framed" ? <div className={frame.frameInset}>{list}</div> : list;
-}
-
-export function ApprovalQueueFooter({ children }: { children: React.ReactNode }) {
-  return <div className={styles.footer}>{children}</div>;
-}
+export type ApprovalQueueProps = {
+  variant?: ApprovalQueueVariant;
+} & (
+  | {
+      requests: readonly ApprovalRequest[];
+      current?: string;
+      onApprove: (id: string) => void;
+      onView?: (id: string) => void;
+      onUndo?: (id: string) => void;
+      onRetry: (id: string) => void;
+      historyHref?: string;
+      children?: never;
+    }
+  | { children: React.ReactNode; requests?: never }
+);
 
 export function ApprovalQueue({ variant = "framed", ...props }: ApprovalQueueProps) {
   let children: React.ReactNode = props.children;
@@ -226,15 +194,18 @@ export function ApprovalQueue({ variant = "framed", ...props }: ApprovalQueuePro
       </>
     );
   }
+  const list: React.ComponentProps<typeof ApprovalQueueList> = {};
+  const content = lower(children, list);
   return (
-    <VariantContext value={variant}>
-      <div
-        data-slot="approval-queue"
-        data-variant={variant}
-        className={variant === "framed" ? frame.frame : styles.queue}
+    <div data-slot="approval-queue" data-variant={variant}>
+      <List
+        label={list.label ?? "Requests waiting on you"}
+        variant={variant}
+        actionsPlacement="below"
+        empty={list.empty ?? "Nothing is waiting on you."}
       >
-        {children}
-      </div>
-    </VariantContext>
+        {content}
+      </List>
+    </div>
   );
 }
