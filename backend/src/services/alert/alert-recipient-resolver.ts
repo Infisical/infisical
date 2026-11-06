@@ -1,7 +1,5 @@
-import { ProjectMembershipRole } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { logger } from "@app/lib/logger";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -10,13 +8,19 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAlertRecipient } from "./alert-channel-types";
-import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
+import {
+  findProjectAdminUserIds,
+  findUsersWithOrgAccess,
+  findVerifiedEmailDomains,
+  isOnVerifiedDomain,
+  resolvePrincipalsInScope
+} from "./alert-principal-scope-fns";
 import { AlertPrincipalType } from "./alert-types";
 
 type TAlertRecipientResolverDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgLinkedGroupIds">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findAllProjectGroupMembers">;
@@ -26,9 +30,6 @@ type TAlertRecipientResolverDep = {
 type TResolvableRecipient = { principalType: string; principalId: string };
 
 type TResolveScope = { orgId: string; projectId?: string | null };
-
-const holdsActiveAdminRole = (roles: { role: string; isTemporary?: boolean; temporaryAccessEndTime?: Date | null }[]) =>
-  roles.some((role) => role.role === ProjectMembershipRole.Admin && isActiveRole(role));
 
 export type TAlertRecipientResolver = ReturnType<typeof alertRecipientResolverFactory>;
 
@@ -79,20 +80,26 @@ export const alertRecipientResolverFactory = ({
     const wantsProjectAdmins = wantsPrincipal(AlertPrincipalType.PROJECT_ADMINS);
     const projectMemberIds = new Set<string>();
     const projectAdminIds = new Set<string>();
-    if ((wantsProjectMembers || wantsProjectAdmins) && scope.projectId) {
-      // Direct members and members through a project group. These skip the org check below, which needs a
-      // direct org row: in a sub-org everyone gets in through a linked root group and would be dropped.
-      // Their own org status still excludes deactivated and invited users.
+    // Project-wide recipients skip the org check below, which needs a direct org row: in a sub-org everyone
+    // gets in through a linked root group and would be dropped. findUsersWithOrgAccess accepts that path
+    // instead, and still drops deactivated and invited users.
+    if (wantsProjectMembers && scope.projectId) {
       const [directMembers, projectGroupMembers] = await Promise.all([
         projectMembershipDAL.findAllProjectMembers(scope.projectId),
         groupProjectDAL.findAllProjectGroupMembers(scope.projectId)
       ]);
-      [...directMembers, ...projectGroupMembers]
-        .filter((member) => member.user.isOrgMembershipActive && !member.user.isOrgMembershipPending)
-        .forEach((member) => {
-          if (wantsProjectMembers) projectMemberIds.add(member.user.id);
-          if (wantsProjectAdmins && holdsActiveAdminRole(member.roles)) projectAdminIds.add(member.user.id);
-        });
+      const memberIds = [...new Set([...directMembers, ...projectGroupMembers].map((member) => member.user.id))];
+      (
+        await findUsersWithOrgAccess({ orgDAL, userGroupMembershipDAL }, { orgId: scope.orgId, userIds: memberIds })
+      ).forEach((userId) => projectMemberIds.add(userId));
+    }
+    if (wantsProjectAdmins && scope.projectId) {
+      (
+        await findProjectAdminUserIds(
+          { projectMembershipDAL, orgDAL, userGroupMembershipDAL },
+          { orgId: scope.orgId, projectId: scope.projectId }
+        )
+      ).forEach((userId) => projectAdminIds.add(userId));
     }
 
     const { userIds: inScopeUserIds, groupIds: inScopeGroupIds } = await resolvePrincipalsInScope(

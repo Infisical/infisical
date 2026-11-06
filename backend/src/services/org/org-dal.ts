@@ -924,6 +924,22 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Of the given groups, the ones with an active membership in the org, eg a root group linked into a sub-org.
+  const findOrgLinkedGroupIds = async (orgId: string, groupIds: string[], tx?: Knex): Promise<string[]> => {
+    if (groupIds.length === 0) return [];
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.isActive`, true)
+        .whereIn(`${TableName.Membership}.actorGroupId`, groupIds)
+        .select(`${TableName.Membership}.actorGroupId`)) as { actorGroupId: string }[];
+      return rows.map((row) => row.actorGroupId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find org linked group ids" });
+    }
+  };
+
   /**
    * Returns all effective org memberships for an actor (user or identity) in the org: direct
    * membership and any memberships via groups the actor belongs to. Single query
@@ -1480,6 +1496,7 @@ export const orgDALFactory = (db: TDbClient) => {
     updateById,
     deleteById,
     findMembership,
+    findOrgLinkedGroupIds,
     findEffectiveOrgMembership,
     findEffectiveOrgMemberships,
     findActiveEffectiveOrgMembershipsByUserId,
