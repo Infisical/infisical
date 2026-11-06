@@ -94,9 +94,6 @@ export enum AgentVaultSessionLogDecision {
   Skills = "skills"
 }
 
-// Infisical gives the built-in skill this fixed ID, so a skill sheet can tell it apart before anything loads.
-export const AGENT_VAULT_BUILTIN_SKILL_ID = "8f1c2d4e-6a7b-4c3d-9e8f-0a1b2c3d4e5f";
-
 /** Which value of a service uses a variable. A basic credential's password is its credential-value. */
 export enum AgentVaultVariableReferenceField {
   CredentialValue = "credential-value",

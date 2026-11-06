@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { EyeIcon, MoreHorizontalIcon, PlusIcon, TrashIcon } from "lucide-react";
 
-import { BuiltinSkillBadge } from "@app/components/agent-vault/skills/BuiltinSkillBadge";
 import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkillSheet";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
 import { createNotification } from "@app/components/notifications";
@@ -42,7 +41,6 @@ import {
 } from "@app/context";
 import {
   useAddAgentVaultAccessBundleSkill,
-  useGetAgentVaultBuiltinSkill,
   useListAgentVaultAccessBundleSkills,
   useRemoveAgentVaultAccessBundleSkill
 } from "@app/hooks/api/agentVault";
@@ -71,7 +69,6 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
     projectId,
     accessBundleId
   );
-  const { data: builtinSkill } = useGetAgentVaultBuiltinSkill(projectId);
   const addSkill = useAddAgentVaultAccessBundleSkill(projectId);
   const removeSkill = useRemoveAgentVaultAccessBundleSkill(projectId);
   const [skillToRemove, setSkillToRemove] = useState<TAgentVaultBundleSkill | null>(null);
@@ -123,7 +120,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
         )}
       </CardHeader>
 
-      {!isPending && bundleSkills.length === 0 && !builtinSkill ? (
+      {!isPending && bundleSkills.length === 0 ? (
         <CardContent>
           <Empty className="border">
             <EmptyHeader>
@@ -159,48 +156,6 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
                   <TableCell variant="action" />
                 </TableRow>
               ))}
-            {!isPending && builtinSkill && (
-              <TableRow linked>
-                <TableCell isTruncatable>
-                  <div className="flex items-center gap-x-1.5">
-                    <RowLink
-                      to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
-                      params={{ orgId: currentOrg.id, projectId, accessBundleId }}
-                      search={(prev) => ({ ...prev, skillId: builtinSkill.id })}
-                      title={builtinSkill.description}
-                    >
-                      {builtinSkill.name}
-                    </RowLink>
-                    <BuiltinSkillBadge />
-                  </div>
-                </TableCell>
-                <TableCell isTruncatable>{builtinSkill.description}</TableCell>
-                <TableCell variant="action">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton
-                        variant="ghost"
-                        size="xs"
-                        aria-label="Open skill actions"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <MoreHorizontalIcon />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      sideOffset={2}
-                      align="end"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <DropdownMenuItem onClick={() => openSheet(builtinSkill.id)}>
-                        <EyeIcon />
-                        View Skill
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            )}
             {!isPending &&
               bundleSkills.map((skill) => (
                 <TableRow key={skill.id} linked>

@@ -775,15 +775,6 @@ export type TAgentVaultSkillVersionWithFiles = TAgentVaultSkillVersion & {
   files: TAgentVaultSkillFile[];
 };
 
-/** infisical-agent-vault, which Infisical gives every agent. It can't be edited, deleted or added to a bundle. */
-export type TAgentVaultBuiltinSkill = {
-  id: string;
-  name: string;
-  description: string;
-  sha256: string;
-  files: TAgentVaultSkillFile[];
-};
-
 export type TAgentVaultBundleSkill = {
   id: string;
   name: string;

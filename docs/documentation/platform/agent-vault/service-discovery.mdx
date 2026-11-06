@@ -90,14 +90,9 @@ The skill tells the agent to request the list first, and to ignore the skill if 
 
 ### Read the built-in skill
 
-To read the built-in skill, select `infisical-agent-vault` in one of these places:
+To read the built-in skill, call the [Get built-in skill](/api-reference/endpoints/agent-vault-skills/get-builtin) endpoint. After `infisical agent-vault run` installs the skill, its files are also on the agent's host, in the [folder where the CLI installs skills](/documentation/platform/agent-vault/skills#where-the-cli-installs-skills).
 
-- **Skills** in your Agent Vault project, if you're an admin of the project
-- The **Skills** section of an access bundle
-
-The skill opens in a panel, where you can select **Download** to get a copy of its files.
-
-Infisical provides the built-in skill, so you can't edit it, delete it, or remove it from an access bundle. To leave it out, [turn it off](#turn-off-the-built-in-skill).
+Infisical provides the built-in skill, so you can't edit it or delete it. To leave it out, [turn it off](#turn-off-the-built-in-skill).
 
 ### How agents get the built-in skill
 

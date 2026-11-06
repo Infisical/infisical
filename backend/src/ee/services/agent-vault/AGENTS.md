@@ -611,11 +611,10 @@ an installed copy.
   every session start would record it. Infisical holds the only copy; the CLI and the proxy keep none. The name is
   reserved: create and update refuse it (`assertSkillNameNotReserved`), and a library skill created under it before
   the reservation is replaced by the built-in in the response.
-- **`GET /skills/builtin` serves the built-in skill to the dashboard** (`getBuiltinSkill`): skill `Read` without the
+- **`GET /skills/builtin` serves the built-in skill outside a session** (`getBuiltinSkill`): skill `Read` without the
   bundle reachability filter, since every agent gets it whatever its bundle, not audited, and no `version` in the
-  response. The frontend pins it above the library on the Skills page and in each bundle's Skills card, and
-  `SkillSheet` opens a read-only body for it by its fixed id (`AGENT_VAULT_BUILTIN_SKILL_ID`, which has to match
-  `AGENT_VAULT_BUILTIN_SKILL_ID` here).
+  response. The dashboard doesn't show the built-in skill; the docs point readers to this endpoint and to the copy
+  `agent-vault run` installs.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
   (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
