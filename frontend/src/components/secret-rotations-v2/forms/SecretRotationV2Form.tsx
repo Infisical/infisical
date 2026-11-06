@@ -190,13 +190,19 @@ const SecretRotationV2FormContent = ({
   const { name: rotationType } = SECRET_ROTATION_MAP[type];
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
   const { rotationOption } = useSecretRotationV2Option(type);
+  // Fixed at open: a later refetch must not change what a save compares against, or saving an unrelated
+  // rotation change could write over alert changes made elsewhere.
+  const [savedFailureAlert] = useState(failureAlert);
 
   const formMethods = useForm<TSecretRotationV2Form>({
     resolver: zodResolver(
       SecretRotationV2FormSchema(
         Boolean(secretRotation),
-        failureAlert
-          ? { enabled: failureAlert.enabled, channels: failureAlert.channels.map(toChannelForm) }
+        savedFailureAlert
+          ? {
+              enabled: savedFailureAlert.enabled,
+              channels: savedFailureAlert.channels.map(toChannelForm)
+            }
           : undefined
       )
     ),
@@ -205,9 +211,9 @@ const SecretRotationV2FormContent = ({
           ...secretRotation,
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
-          isFailureAlertEnabled: failureAlert?.enabled ?? false,
-          channels: failureAlert
-            ? failureAlert.channels.map(toChannelForm)
+          isFailureAlertEnabled: savedFailureAlert?.enabled ?? false,
+          channels: savedFailureAlert
+            ? savedFailureAlert.channels.map(toChannelForm)
             : [buildProjectAdminsChannel(currentProject.id)]
         }
       : {
@@ -251,19 +257,19 @@ const SecretRotationV2FormContent = ({
   ) => {
     if (isFailureAlertUnavailable || !canManage) return;
 
-    if (failureAlert) {
+    if (savedFailureAlert) {
       if (isFailureAlertEnabled) {
         const hasChannelChanges =
           serializeFailureAlertChannels(channels) !==
-          serializeFailureAlertChannels(failureAlert.channels.map(toChannelForm));
-        if (failureAlert.enabled && !hasChannelChanges) return;
+          serializeFailureAlertChannels(savedFailureAlert.channels.map(toChannelForm));
+        if (savedFailureAlert.enabled && !hasChannelChanges) return;
         await updateAlert.mutateAsync({
-          alertId: failureAlert.id,
+          alertId: savedFailureAlert.id,
           enabled: true,
           channels: channels.map(toChannelInput)
         });
-      } else if (failureAlert.enabled) {
-        await updateAlert.mutateAsync({ alertId: failureAlert.id, enabled: false });
+      } else if (savedFailureAlert.enabled) {
+        await updateAlert.mutateAsync({ alertId: savedFailureAlert.id, enabled: false });
       }
       return;
     }
@@ -490,7 +496,7 @@ export const SecretRotationV2Form = (props: Props) => {
 
   const {
     data: alerts,
-    isPending,
+    isFetchedAfterMount,
     isError
   } = useListAlerts(
     {
@@ -498,12 +504,13 @@ export const SecretRotationV2Form = (props: Props) => {
       resourceId: secretRotation?.id,
       projectId: secretRotation?.projectId
     },
-    { enabled: isEditMode }
+    // A cached list can predate a change made elsewhere, and the form starts from this read.
+    { enabled: isEditMode, refetchOnMount: "always" }
   );
 
   // The alert goes into the default values rather than a later resetField, which ignores fields
   // that aren't registered yet, and the Alerts step mounts near the end.
-  if (isEditMode && isPending) {
+  if (isEditMode && !isFetchedAfterMount) {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner size="lg" label="Loading secret rotation" />
