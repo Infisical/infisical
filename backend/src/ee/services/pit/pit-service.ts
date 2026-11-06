@@ -49,7 +49,7 @@ type TPitServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretChangeRequestService: Pick<
     TSecretChangeRequestServiceFactory,
-    "generateSecretApprovalRequest" | "generateSecretApprovalRequestV2Bridge" | "createSecretApprovalSideEffects"
+    "generateSecretApprovalRequestV2Bridge" | "createSecretApprovalSideEffects"
   >;
   secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;

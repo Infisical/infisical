@@ -20,7 +20,6 @@ import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridg
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
-  SecretOperations,
   SecretProtectionType
 } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -53,6 +52,14 @@ type TSecretReferenceNode = z.infer<typeof SecretReferenceNode> & { children: TS
 const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReferenceNode.extend({
   children: z.lazy(() => SecretReferenceNodeTree.array())
 });
+
+const assertNoSecretApprovalPolicy = (policy?: { id: string }) => {
+  if (policy) {
+    throw new BadRequestError({
+      message: `Secret approval policy with ID '${policy.id}' governs this path, and changes to it need a secret approval request. Use the /api/v4/secrets endpoints to submit the change for review.`
+    });
+  }
+};
 
 export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -1340,53 +1347,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment,
           projectId
         });
-        if (policy) {
-          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
-            secretPath,
-            environment,
-            projectId,
-            policy,
-            data: {
-              [SecretOperations.Create]: [
-                {
-                  secretName: req.params.secretName,
-                  secretValueCiphertext,
-                  secretValueIV,
-                  secretValueTag,
-                  secretCommentIV,
-                  secretCommentTag,
-                  secretCommentCiphertext,
-                  skipMultilineEncoding,
-                  secretKeyTag,
-                  secretKeyCiphertext,
-                  secretKeyIV
-                }
-              ]
-            }
-          });
-
-          await server.services.auditLog.createAuditLog({
-            projectId: req.body.workspaceId,
-            ...req.auditLogInfo,
-            event: {
-              type: EventType.SECRET_APPROVAL_REQUEST,
-              metadata: {
-                committedBy: approval.committerUserId,
-                secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug,
-                secretPath,
-                environment,
-                eventType: SecretApprovalEvent.Create
-              }
-            }
-          });
-
-          return { approval };
-        }
+        assertNoSecretApprovalPolicy(policy);
       }
       const secret = await server.services.secret.createSecret({
         actorId: req.permission.id,
@@ -1536,55 +1497,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment,
           projectId
         });
-        if (policy) {
-          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
-            secretPath,
-            environment,
-            projectId,
-            policy,
-            data: {
-              [SecretOperations.Update]: [
-                {
-                  secretName: req.params.secretName,
-                  newSecretName,
-                  secretValueCiphertext,
-                  secretValueIV,
-                  secretValueTag,
-                  secretCommentIV,
-                  secretCommentTag,
-                  secretCommentCiphertext,
-                  skipMultilineEncoding,
-                  secretKeyTag,
-                  secretKeyCiphertext,
-                  secretKeyIV,
-                  tagIds: tags
-                }
-              ]
-            }
-          });
-
-          await server.services.auditLog.createAuditLog({
-            projectId: req.body.workspaceId,
-            ...req.auditLogInfo,
-            event: {
-              type: EventType.SECRET_APPROVAL_REQUEST,
-              metadata: {
-                committedBy: approval.committerUserId,
-                secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug,
-                secretPath,
-                environment,
-                secretKey: req.params.secretName,
-                eventType: SecretApprovalEvent.Update
-              }
-            }
-          });
-          return { approval };
-        }
+        assertNoSecretApprovalPolicy(policy);
       }
 
       const secret = await server.services.secret.updateSecret({
@@ -1699,43 +1612,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment,
           projectId
         });
-        if (policy) {
-          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
-            secretPath,
-            environment,
-            projectId,
-            policy,
-            data: {
-              [SecretOperations.Delete]: [
-                {
-                  secretName: req.params.secretName
-                }
-              ]
-            }
-          });
-
-          await server.services.auditLog.createAuditLog({
-            projectId: req.body.workspaceId,
-            ...req.auditLogInfo,
-            event: {
-              type: EventType.SECRET_APPROVAL_REQUEST,
-              metadata: {
-                committedBy: approval.committerUserId,
-                secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug,
-                secretPath,
-                environment,
-                secretKey: req.params.secretName,
-                eventType: SecretApprovalEvent.Delete
-              }
-            }
-          });
-          return { approval };
-        }
+        assertNoSecretApprovalPolicy(policy);
       }
 
       const secret = await server.services.secret.deleteSecret({
@@ -1902,38 +1779,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment,
           projectId
         });
-        if (policy) {
-          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
-            secretPath,
-            environment,
-            projectId,
-            policy,
-            data: {
-              [SecretOperations.Create]: inputSecrets
-            }
-          });
-
-          await server.services.auditLog.createAuditLog({
-            projectId: req.body.workspaceId,
-            ...req.auditLogInfo,
-            event: {
-              type: EventType.SECRET_APPROVAL_REQUEST,
-              metadata: {
-                committedBy: approval.committerUserId,
-                secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug,
-                secretPath,
-                environment,
-                eventType: SecretApprovalEvent.CreateMany
-              }
-            }
-          });
-          return { approval };
-        }
+        assertNoSecretApprovalPolicy(policy);
       }
 
       const secrets = await server.services.secret.createManySecret({
@@ -2042,41 +1888,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment,
           projectId
         });
-        if (policy) {
-          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
-            secretPath,
-            environment,
-            projectId,
-            policy,
-            data: {
-              [SecretOperations.Update]: inputSecrets.filter(({ type }) => type === "shared")
-            }
-          });
-
-          await server.services.auditLog.createAuditLog({
-            projectId: req.body.workspaceId,
-            ...req.auditLogInfo,
-            event: {
-              type: EventType.SECRET_APPROVAL_REQUEST,
-              metadata: {
-                committedBy: approval.committerUserId,
-                secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug,
-                secretPath,
-                environment,
-                eventType: SecretApprovalEvent.UpdateMany,
-                secrets: inputSecrets.map((secret) => ({
-                  secretKey: secret.secretName
-                }))
-              }
-            }
-          });
-          return { approval };
-        }
+        assertNoSecretApprovalPolicy(policy);
       }
       const secrets = await server.services.secret.updateManySecret({
         actorId: req.permission.id,
@@ -2177,40 +1989,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment,
           projectId
         });
-        if (policy) {
-          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
-            secretPath,
-            environment,
-            projectId,
-            policy,
-            data: {
-              [SecretOperations.Delete]: inputSecrets.filter(({ type }) => type === "shared")
-            }
-          });
-          await server.services.auditLog.createAuditLog({
-            projectId: req.body.workspaceId,
-            ...req.auditLogInfo,
-            event: {
-              type: EventType.SECRET_APPROVAL_REQUEST,
-              metadata: {
-                committedBy: approval.committerUserId,
-                secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug,
-                secretPath,
-                environment,
-                secrets: inputSecrets.map((secret) => ({
-                  secretKey: secret.secretName
-                })),
-                eventType: SecretApprovalEvent.DeleteMany
-              }
-            }
-          });
-          return { approval };
-        }
+        assertNoSecretApprovalPolicy(policy);
       }
       const secrets = await server.services.secret.deleteManySecret({
         actorId: req.permission.id,

@@ -149,7 +149,8 @@ which every type now uses for policy CRUD, requests, approve, reject and grant r
 endpoint**: secret access (`ee/services/access-approval-*`) and secret change
 (`ee/services/secret-change-policy/`, `ee/services/secret-change-request/`) approvals both run on this module and no
 longer read the legacy `access_approval_*` / `secret_approval_*` tables. The one exception is
-`secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+`secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request.
+Secret change policies exist only on V3 projects, so older projects have no secret approval path. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.

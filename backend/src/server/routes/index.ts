@@ -1927,8 +1927,6 @@ export const registerRoutes = async (
     secretVersionDAL,
     projectKeyDAL,
     projectBotDAL,
-    secretApprovalRequestDAL,
-    secretApprovalSecretDAL: secretApprovalRequestSecretDAL,
     membershipRoleDAL,
     membershipUserDAL
   });
@@ -2486,7 +2484,6 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     integrationAuthDAL,
-    secretApprovalRequestDAL,
     projectKeyDAL,
     orgService,
     resourceMetadataDAL,
