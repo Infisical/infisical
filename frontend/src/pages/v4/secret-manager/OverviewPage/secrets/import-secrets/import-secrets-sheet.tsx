@@ -43,6 +43,10 @@ import { Tabs, TabsList, TabsTrigger } from "@app/components/v4/ui/tabs";
 import { Textarea } from "@app/components/v4/ui/textarea";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   buildFolderTree,
   flattenNestedJson,
   getNestedJsonObject,
@@ -52,7 +56,8 @@ import {
 import type { TParsedEnv } from "@app/pages/secret-manager/OverviewPage/components/SecretDropzone/types";
 
 import type { Resource, Secret } from "../../secrets-model";
-import { environmentLabel, folderExists, secretsAt } from "../flows/shared";
+import { environmentLabel, folderExists, Gate, secretsAt } from "../flows/shared";
+import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
 import {
   buildInitialMatrixMap,
@@ -199,6 +204,26 @@ function ImportSecretsContent({
       .map((environment) => environment.value)
       .filter((value) => environmentValues.includes(value))
   );
+
+  const blockFor = useManagedBlock(scope.project);
+  const uploadBlock = selectedEnvs
+    .flatMap((environment) => [
+      blockFor(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.Create,
+        { environment, secretPath: scope.path },
+        `create secrets in ${environmentLabel(environment)}`
+      ),
+      shouldOverwrite
+        ? blockFor(
+            ProjectPermissionSub.Secrets,
+            ProjectPermissionSecretActions.Edit,
+            { environment, secretPath: scope.path },
+            `overwrite secrets in ${environmentLabel(environment)}`
+          )
+        : undefined
+    ])
+    .find(Boolean);
 
   const activeSecrets = initialParsedSecrets || parsedSecrets;
 
@@ -975,14 +1000,20 @@ function ImportSecretsContent({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            disabled={
-              !selectedEnvs.length || hasInvalidKey || isOverRequestLimit || hasNestedErrors
-            }
-            onClick={handleImport}
-          >
-            {`Upload ${plural(secretCount, "secret")}`}
-          </Button>
+          <Gate reason={uploadBlock}>
+            <Button
+              disabled={
+                !selectedEnvs.length ||
+                hasInvalidKey ||
+                isOverRequestLimit ||
+                hasNestedErrors ||
+                Boolean(uploadBlock)
+              }
+              onClick={handleImport}
+            >
+              {`Upload ${plural(secretCount, "secret")}`}
+            </Button>
+          </Gate>
         </Inline>
       </SheetFooter>
     </SheetContent>

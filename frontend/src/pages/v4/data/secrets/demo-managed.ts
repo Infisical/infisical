@@ -6,6 +6,7 @@ import type {
 } from "@app/hooks/api/secretRotationsV2/types";
 
 import type { SecretsManagedAdapter } from "./contract-managed";
+import { DEMO_ROTATION_CONNECTIONS, secretsOptionsDemo } from "./demo-options";
 import {
   demoMutation,
   type DemoStore,
@@ -83,6 +84,7 @@ const valuesOf = (store: DemoStore, rotation: TSecretRotationV2) => {
 };
 
 export const secretsManagedDemo: SecretsManagedAdapter = {
+  ...secretsOptionsDemo,
   useSecretRotationCredentials: ({ rotationId }, options) => {
     const store = useStore();
     const state = store.use();
@@ -112,7 +114,11 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
       type: dto.type,
       folderId: `${dto.projectId}:${dto.environment}:${dto.secretPath}`,
       connectionId: dto.connectionId,
-      connection: { app: "", id: dto.connectionId, name: dto.connectionId },
+      connection: DEMO_ROTATION_CONNECTIONS.find((entry) => entry.id === dto.connectionId) ?? {
+        app: "",
+        id: dto.connectionId,
+        name: dto.connectionId
+      },
       createdAt: timestamp,
       updatedAt: timestamp,
       rotationInterval: dto.rotationInterval,

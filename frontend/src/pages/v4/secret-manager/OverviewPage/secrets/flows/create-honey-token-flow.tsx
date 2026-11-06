@@ -18,6 +18,10 @@ import {
   OrgPermissionHoneyTokenActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import {
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AwsHoneyTokenDeploymentUnavailableReason,
@@ -27,8 +31,9 @@ import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import { useOrgId, useOrgPermission } from "../../../../access/permissions";
 import { useV4Adapter } from "../../../../data/adapters";
+import { useCreateBlock } from "../row-actions/permissions";
 import { InfoTip } from "./secret-rotation/fields";
-import { DiscardDialog, secretsAt } from "./shared";
+import { DiscardDialog, Gate, secretsAt } from "./shared";
 import type { AddFlowProps } from "./types";
 import { ProviderLogo, WizardSheet } from "./wizard-sheet";
 
@@ -207,6 +212,14 @@ export function CreateHoneyTokenFlow({
   const [accountChosen, setAccountChosen] = useState(false);
   const orgId = useOrgId();
   const { permission } = useOrgPermission();
+  const createBlock = useCreateBlock(
+    scope.project,
+    ProjectPermissionSub.HoneyTokens,
+    ProjectPermissionHoneyTokenActions.Create,
+    draft.environment ? [draft.environment] : scope.environments.map((entry) => entry.value),
+    scope.path,
+    "create honey tokens here"
+  );
   const canSetUpAccount = permission.can(
     OrgPermissionHoneyTokenActions.Setup,
     OrgPermissionSubjects.HoneyTokens
@@ -420,9 +433,16 @@ export function CreateHoneyTokenFlow({
               <Button type="button" variant="outline" onClick={back}>
                 Back
               </Button>
-              <Button type="button" variant={last ? "primary" : "outline"} onClick={next}>
-                {last ? "Create honey token" : "Next"}
-              </Button>
+              <Gate reason={last ? createBlock : undefined}>
+                <Button
+                  type="button"
+                  variant={last ? "primary" : "outline"}
+                  disabled={last && Boolean(createBlock)}
+                  onClick={next}
+                >
+                  {last ? "Create honey token" : "Next"}
+                </Button>
+              </Gate>
             </Inline>
           </Inline>
         }

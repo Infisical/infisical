@@ -34,6 +34,9 @@ import { Stack } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import { Switch } from "@app/components/v4/ui/switch";
 import { Textarea } from "@app/components/v4/ui/textarea";
+import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+
+import { useV4Adapter } from "../../../../../data/adapters";
 
 export const fieldError = (error?: { message?: unknown }) =>
   typeof error?.message === "string" ? error.message : undefined;
@@ -427,12 +430,6 @@ export function SslRejectUnauthorizedField<TValues extends FieldValues>({
 
 export type GatewayValue = { gatewayId: string | null; gatewayPoolId: string | null };
 
-export const localGateways = [
-  { id: "local-gateway-us-east", name: "us-east-gateway", online: true },
-  { id: "local-gateway-eu-west", name: "eu-west-gateway", online: false }
-];
-export const localGatewayPools = [{ id: "local-pool-primary", name: "primary-pool" }];
-
 export function GatewayPicker({
   value,
   onChange,
@@ -450,6 +447,9 @@ export function GatewayPicker({
   placeholder?: string;
   noGatewayLabel?: string;
 }) {
+  const adapter = useV4Adapter("secrets");
+  const gateways = adapter.useGateways().data ?? [];
+  const pools = adapter.useGatewayPools().data ?? [];
   let selected = isRequired ? "" : "internet";
   if (value.gatewayPoolId) selected = `pool:${value.gatewayPoolId}`;
   else if (value.gatewayId) selected = `gateway:${value.gatewayId}`;
@@ -461,16 +461,16 @@ export function GatewayPicker({
       placeholder={placeholder}
       options={[
         ...(isRequired ? [] : [{ value: "internet", label: noGatewayLabel }]),
-        ...localGatewayPools.map((pool) => ({
+        ...pools.map((pool) => ({
           value: `pool:${pool.id}`,
           label: pool.name,
           description: "High Availability",
           group: "Gateway Pools"
         })),
-        ...localGateways.map((gateway) => ({
+        ...gateways.map((gateway) => ({
           value: `gateway:${gateway.id}`,
           label: gateway.name,
-          description: gateway.online ? "Online" : "Offline",
+          description: isGatewayHealthy(gateway) ? "Online" : "Offline",
           group: "Individual Gateways"
         }))
       ]}

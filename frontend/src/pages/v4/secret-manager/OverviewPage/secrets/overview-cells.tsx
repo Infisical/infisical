@@ -22,6 +22,7 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { Resource, ResourceKind } from "../secrets-model";
 import type { PendingType } from "./batch/pending";
+import type { useManagedBlock } from "./row-actions/permissions";
 import type { RowAction } from "./row-actions/types";
 
 import styles from "./overview.module.css";
@@ -35,6 +36,7 @@ export type RowContext = {
   single: boolean;
   path: string;
   writeBlock?: string;
+  blockFor?: ReturnType<typeof useManagedBlock>;
   selected: string[];
   recent: string[];
   onToggleSelect: (key: string) => void;

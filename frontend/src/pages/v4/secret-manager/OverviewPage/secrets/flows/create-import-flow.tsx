@@ -14,8 +14,13 @@ import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Select } from "@app/components/v4/ui/select";
 import { SmallText } from "@app/components/v4/ui/text";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
-import { environmentLabel, folderExists } from "./shared";
+import { useCreateBlock } from "../row-actions/permissions";
+import { environmentLabel, folderExists, Gate } from "./shared";
 import type { AddFlowProps } from "./types";
 
 import styles from "./flows.module.css";
@@ -34,6 +39,14 @@ export function CreateImportFlow({
   onError
 }: AddFlowProps) {
   const destination = scope.visibleEnvironments[0].value;
+  const createBlock = useCreateBlock(
+    scope.project,
+    ProjectPermissionSub.SecretImports,
+    ProjectPermissionActions.Create,
+    [destination],
+    scope.path,
+    "add secret imports here"
+  );
   const [environment, setEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [replication, setReplication] = useState(false);
@@ -158,9 +171,11 @@ export function CreateImportFlow({
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="submit" form="create-import-flow">
-            Create import
-          </Button>
+          <Gate reason={createBlock}>
+            <Button type="submit" form="create-import-flow" disabled={Boolean(createBlock)}>
+              Create import
+            </Button>
+          </Gate>
         </DialogFooter>
       </DialogContent>
     </Dialog>

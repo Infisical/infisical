@@ -31,6 +31,15 @@ import {
   TableRowIndicators
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionProxiedServiceActions,
+  ProjectPermissionSecretFolderActions,
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 import {
   environments,
@@ -50,11 +59,31 @@ import {
   StatusCell,
   stopRowClick
 } from "./overview-cells";
+import type { PermissionScope } from "./row-actions/permissions";
 import { canReconcile } from "./row-actions/rotation-actions";
 
 import styles from "./overview.module.css";
 
 type Of<K extends ResourceKind> = Extract<Resource, { kind: K }>;
+
+const gate = (
+  ctx: RowContext,
+  sub: ProjectPermissionSub,
+  action: string,
+  scope: PermissionScope,
+  verb: string
+) => ctx.writeBlock ?? ctx.blockFor?.(sub, action, scope, verb);
+
+const gateAny = (
+  ctx: RowContext,
+  sub: ProjectPermissionSub,
+  action: string,
+  scopes: PermissionScope[],
+  verb: string
+) => {
+  const blocks = scopes.map((scope) => gate(ctx, sub, action, scope, verb));
+  return blocks.every(Boolean) ? blocks[0] : undefined;
+};
 const mask = "••••••••••••••••";
 const tone = (value: string): BadgeTone =>
   (
@@ -145,21 +174,49 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"dynamic">;
       const run = (action: "leases" | "edit" | "delete" | "force-delete") => () =>
         ctx.onAction({ kind: "dynamic", action, entry: item });
-      const block =
-        ctx.writeBlock ??
+      const scope = { environment: item.environment, secretPath: item.path };
+      const dynamicGate = (action: ProjectPermissionDynamicSecretActions, verb: string) =>
+        gate(ctx, ProjectPermissionSub.DynamicSecrets, action, scope, verb) ??
         (item.status === "deleting" ? "Dynamic secret is being revoked" : undefined);
+      const leaseBlock = dynamicGate(
+        ProjectPermissionDynamicSecretActions.Lease,
+        "lease this dynamic secret"
+      );
+      const editBlock = dynamicGate(
+        ProjectPermissionDynamicSecretActions.EditRootCredential,
+        "edit this dynamic secret"
+      );
+      const block = dynamicGate(
+        ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+        "delete this dynamic secret"
+      );
       const forceBlock =
-        ctx.writeBlock ??
+        gate(
+          ctx,
+          ProjectPermissionSub.DynamicSecrets,
+          ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+          scope,
+          "delete this dynamic secret"
+        ) ??
         (item.status === "failed-deletion"
           ? undefined
           : "Only a dynamic secret whose deletion failed can be force deleted");
       return {
         inline: [
-          { label: "Leases", icon: FileKeyIcon, disabledReason: block, onSelect: run("leases") }
+          {
+            label: "Leases",
+            icon: FileKeyIcon,
+            disabledReason: leaseBlock,
+            onSelect: run("leases")
+          }
         ],
         menu: (
           <>
-            <DropdownMenuItem disabled={Boolean(block)} description={block} onSelect={run("edit")}>
+            <DropdownMenuItem
+              disabled={Boolean(editBlock)}
+              description={editBlock}
+              onSelect={run("edit")}
+            >
               <Icon icon={EditIcon} />
               Edit
             </DropdownMenuItem>
@@ -215,29 +272,65 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const run =
         (action: "validate" | "credentials" | "rotate" | "reconcile" | "edit" | "delete") => () =>
           ctx.onAction({ kind: "rotation", action, entry: item });
-      const block = ctx.writeBlock;
+      const rotationGate = (action: ProjectPermissionSecretRotationActions, verb: string) =>
+        gate(
+          ctx,
+          ProjectPermissionSub.SecretRotation,
+          action,
+          {
+            environment: item.environment,
+            secretPath: item.path,
+            ...(item.connectionId ? { connectionId: item.connectionId } : {})
+          },
+          verb
+        );
+      const rotateBlock = rotationGate(
+        ProjectPermissionSecretRotationActions.RotateSecrets,
+        "rotate this rotation's secrets"
+      );
+      const validateBlock = rotationGate(
+        ProjectPermissionSecretRotationActions.Read,
+        "validate this rotation's credentials"
+      );
+      const credentialsBlock = rotationGate(
+        ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+        "view this rotation's generated credentials"
+      );
+      const editBlock = rotationGate(
+        ProjectPermissionSecretRotationActions.Edit,
+        "edit this rotation"
+      );
+      const block = rotationGate(
+        ProjectPermissionSecretRotationActions.Delete,
+        "delete this rotation"
+      );
       const reconcileBlock =
-        block ??
+        rotationGate(ProjectPermissionSecretRotationActions.Edit, "reconcile this rotation") ??
         (canReconcile(item)
           ? undefined
           : "Only local account rotations that log in as the target can be reconciled");
       return {
         inline: [
-          { label: "Rotate secret", icon: "sync", disabledReason: block, onSelect: run("rotate") }
+          {
+            label: "Rotate secret",
+            icon: "sync",
+            disabledReason: rotateBlock,
+            onSelect: run("rotate")
+          }
         ],
         menu: (
           <>
             <DropdownMenuItem
-              disabled={Boolean(block)}
-              description={block}
+              disabled={Boolean(validateBlock)}
+              description={validateBlock}
               onSelect={run("validate")}
             >
               <Icon icon={ActivityIcon} />
               Validate credentials
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={Boolean(block)}
-              description={block}
+              disabled={Boolean(credentialsBlock)}
+              description={credentialsBlock}
               onSelect={run("credentials")}
             >
               <Icon name="eye" />
@@ -252,7 +345,11 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
               Reconcile secret
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled={Boolean(block)} description={block} onSelect={run("edit")}>
+            <DropdownMenuItem
+              disabled={Boolean(editBlock)}
+              description={editBlock}
+              onSelect={run("edit")}
+            >
               <Icon icon={EditIcon} />
               Edit
             </DropdownMenuItem>
@@ -293,8 +390,21 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"honey">;
       const run = (action: "details" | "edit" | "revoke") => () =>
         ctx.onAction({ kind: "honey", action, entry: item });
-      const block =
-        item.status === "revoked" ? "Revoked honey tokens cannot be edited" : ctx.writeBlock;
+      const honeyGate = (action: ProjectPermissionHoneyTokenActions, verb: string) =>
+        item.status === "revoked"
+          ? "Revoked honey tokens cannot be edited"
+          : gate(
+              ctx,
+              ProjectPermissionSub.HoneyTokens,
+              action,
+              { environment: item.environment, secretPath: item.path },
+              verb
+            );
+      const block = honeyGate(ProjectPermissionHoneyTokenActions.Edit, "edit this honey token");
+      const revokeBlock = honeyGate(
+        ProjectPermissionHoneyTokenActions.Revoke,
+        "revoke this honey token"
+      );
       return {
         inline: [],
         menu: (
@@ -310,8 +420,8 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              disabled={Boolean(block)}
-              description={block}
+              disabled={Boolean(revokeBlock)}
+              description={revokeBlock}
               variant="destructive"
               onSelect={run("revoke")}
             >
@@ -354,13 +464,29 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"proxy">;
       const run = (action: "edit" | "delete") => () =>
         ctx.onAction({ kind: "proxy", action, entry: item });
+      const proxyGate = (action: ProjectPermissionProxiedServiceActions, verb: string) =>
+        gate(
+          ctx,
+          ProjectPermissionSub.ProxiedServices,
+          action,
+          { environment: item.environment, secretPath: item.path },
+          verb
+        );
+      const editBlock = proxyGate(
+        ProjectPermissionProxiedServiceActions.Edit,
+        "edit this proxied service"
+      );
+      const deleteBlock = proxyGate(
+        ProjectPermissionProxiedServiceActions.Delete,
+        "delete this proxied service"
+      );
       return {
         inline: [],
         menu: (
           <>
             <DropdownMenuItem
-              disabled={Boolean(ctx.writeBlock)}
-              description={ctx.writeBlock}
+              disabled={Boolean(editBlock)}
+              description={editBlock}
               onSelect={run("edit")}
             >
               <Icon icon={EditIcon} />
@@ -369,8 +495,8 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
-              disabled={Boolean(ctx.writeBlock)}
-              description={ctx.writeBlock}
+              disabled={Boolean(deleteBlock)}
+              description={deleteBlock}
               onSelect={run("delete")}
             >
               <Icon name="trash" />
@@ -546,8 +672,16 @@ export function FolderRow({
   onDelete: (folder: Of<"folder">) => void;
 }) {
   const first = entries[0];
+  const folderScopes = entries.map((entry) => ({
+    environment: entry.environment,
+    secretPath: `${entry.path.replace(/\/$/, "")}/${entry.name}`
+  }));
+  const folderGate = (action: string, verb: string) =>
+    gateAny(ctx, ProjectPermissionSub.SecretFolders, action, folderScopes, verb);
+  const editBlock = folderGate(ProjectPermissionActions.Edit, "edit this folder");
+  const deleteBlock = folderGate(ProjectPermissionActions.Delete, "delete this folder");
   const accessBlock = ctx.single
-    ? ctx.writeBlock
+    ? folderGate(ProjectPermissionSecretFolderActions.ManageAccess, "manage access to this folder")
     : "Select a single environment to manage folder access.";
   return (
     <TableRow
@@ -577,8 +711,8 @@ export function FolderRow({
             <>
               <PendingMenuItems id={first.id} ctx={ctx} />
               <DropdownMenuItem
-                disabled={Boolean(ctx.writeBlock)}
-                description={ctx.writeBlock}
+                disabled={Boolean(editBlock)}
+                description={editBlock}
                 onSelect={() =>
                   ctx.onAction({ kind: "folder", action: "move", entry: first, entries })
                 }
@@ -598,8 +732,8 @@ export function FolderRow({
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                disabled={Boolean(ctx.writeBlock)}
-                description={ctx.writeBlock}
+                disabled={Boolean(editBlock)}
+                description={editBlock}
                 onSelect={() => onEdit(first)}
               >
                 <Icon icon={EditIcon} />
@@ -608,8 +742,8 @@ export function FolderRow({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
-                disabled={Boolean(ctx.writeBlock)}
-                description={ctx.writeBlock}
+                disabled={Boolean(deleteBlock)}
+                description={deleteBlock}
                 onSelect={() => onDelete(first)}
               >
                 <Icon name="trash" />
@@ -668,8 +802,19 @@ export function ImportRow({
         </span>
       </Tooltip>
     );
+  const importGate = (entry: Of<"import">, action: ProjectPermissionActions, verb: string) =>
+    gate(
+      ctx,
+      ProjectPermissionSub.SecretImports,
+      action,
+      { environment: entry.environment, secretPath: entry.path },
+      verb
+    );
   const resyncBlock = (entry: Of<"import">) =>
-    ctx.writeBlock ?? (entry.replicated ? undefined : "Only replicated imports resync");
+    importGate(entry, ProjectPermissionActions.Edit, "resync this secret import") ??
+    (entry.replicated ? undefined : "Only replicated imports resync");
+  const deleteBlock = (entry: Of<"import">) =>
+    importGate(entry, ProjectPermissionActions.Delete, "remove this secret import");
   const actions = (entry: Of<"import">) => (
     <RowActions
       label={`secret import ${entry.source.path}`}
@@ -686,8 +831,8 @@ export function ImportRow({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
-            disabled={Boolean(ctx.writeBlock)}
-            description={ctx.writeBlock}
+            disabled={Boolean(deleteBlock(entry))}
+            description={deleteBlock(entry)}
             onSelect={() => ctx.onAction({ kind: "import", action: "delete", entry })}
           >
             <Icon name="trash" />

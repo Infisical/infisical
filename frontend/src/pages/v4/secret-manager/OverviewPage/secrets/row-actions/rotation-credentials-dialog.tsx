@@ -79,11 +79,13 @@ function CredentialSet({
 export function RotationCredentialsDialog({
   open,
   rotation,
-  onOpenChange
+  onOpenChange,
+  block
 }: {
   open: boolean;
   rotation: RotationResource;
   onOpenChange: (open: boolean) => void;
+  block?: string;
 }) {
   const type = rotationTypeOf(rotation);
   const rotationType = SECRET_ROTATION_MAP[type].name;
@@ -91,7 +93,7 @@ export function RotationCredentialsDialog({
   const fields = CREDENTIAL_FIELDS[type];
   const { data } = useV4Adapter("secrets").useSecretRotationCredentials(
     { rotationId: rotation.id, type: type as unknown as ApiSecretRotation },
-    { enabled: open }
+    { enabled: open && !block }
   );
   const credentials = (data?.generatedCredentials ?? []) as (Record<string, string> | undefined)[];
   const activeIndex = data?.activeIndex ?? 0;
@@ -105,7 +107,12 @@ export function RotationCredentialsDialog({
           <DialogTitle>Generated credentials</DialogTitle>
           <DialogDescription>View the current and retired {rotationType}.</DialogDescription>
         </DialogHeader>
-        <div className={styles.body}>
+        {block && (
+          <Alert tone="warn" title="Access restricted">
+            {block}.
+          </Alert>
+        )}
+        <div className={styles.body} hidden={Boolean(block)}>
           <CredentialSet
             title="Current credentials"
             description="The active credential set currently mapped to the rotation secrets."

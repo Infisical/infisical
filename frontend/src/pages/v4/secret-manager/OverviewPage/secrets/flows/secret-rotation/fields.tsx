@@ -25,6 +25,7 @@ import { Heading, SmallText } from "@app/components/v4/ui/text";
 import { Textarea } from "@app/components/v4/ui/textarea";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
+import type { V4QueryResult } from "../../../../../data/contract";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "./schemas";
 
 import styles from "../flows.module.css";
@@ -45,6 +46,13 @@ export const useIsUpdate = () => {
 export const useConnectionId = () => {
   const { control } = useRotationForm();
   return useWatch({ control, name: "connection.id" }) as string | undefined;
+};
+
+export const useConnectionOptions = <T,>(
+  useList: (connectionId: string, options?: { enabled?: boolean }) => V4QueryResult<T[]>
+) => {
+  const connectionId = useConnectionId();
+  return useList(connectionId ?? "", { enabled: Boolean(connectionId) }).data ?? [];
 };
 
 export function InfoTip({ content }: { content: ReactNode }) {

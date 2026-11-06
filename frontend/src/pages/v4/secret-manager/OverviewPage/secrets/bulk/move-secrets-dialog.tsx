@@ -18,10 +18,15 @@ import { Select } from "@app/components/v4/ui/select";
 import { Switch } from "@app/components/v4/ui/switch";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 import type { Resource, Secret } from "../../secrets-model";
-import { childPath } from "../flows/shared";
+import { childPath, Gate } from "../flows/shared";
 import type { EnvironmentOption, FlowFeedback } from "../flows/types";
+import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
 import {
   isPathInsideFolder,
@@ -148,6 +153,20 @@ function MoveSecretsDialogContent({
   const sourceEnv = scope.visibleEnvironments[0];
   const [destinationEnv, setDestinationEnv] = useState(sourceEnv.value);
   const [selectedPath, setSelectedPath] = useState("/");
+  const blockFor = useManagedBlock(project);
+  const moveBlock =
+    blockFor(
+      ProjectPermissionSub.Secrets,
+      ProjectPermissionSecretActions.Delete,
+      { environment: sourceEnv.value, secretPath: sourcePath },
+      "move secrets out of this folder"
+    ) ??
+    blockFor(
+      ProjectPermissionSub.Secrets,
+      ProjectPermissionSecretActions.Create,
+      { environment: destinationEnv, secretPath: selectedPath },
+      "create secrets in this destination"
+    );
   const [shouldOverwrite, setShouldOverwrite] = useState(false);
   const [createError, setCreateError] = useState<string>();
   const [results, setResults] = useState<MoveResult[]>();
@@ -724,12 +743,14 @@ function MoveSecretsDialogContent({
               <Button variant="ghost" onClick={close}>
                 Cancel
               </Button>
-              <Button
-                disabled={!destinationSelected || isSelfMove}
-                onClick={isSingleEnvMode ? submitSingle : submitMulti}
-              >
-                {title}
-              </Button>
+              <Gate reason={moveBlock}>
+                <Button
+                  disabled={!destinationSelected || isSelfMove || Boolean(moveBlock)}
+                  onClick={isSingleEnvMode ? submitSingle : submitMulti}
+                >
+                  {title}
+                </Button>
+              </Gate>
             </>
           )}
         </DialogFooter>

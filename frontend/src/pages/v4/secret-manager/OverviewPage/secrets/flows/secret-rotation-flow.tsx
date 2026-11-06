@@ -33,13 +33,19 @@ import {
 } from "@app/components/v4/ui/sheet";
 import { Switch } from "@app/components/v4/ui/switch";
 import { Heading, SmallText, Text } from "@app/components/v4/ui/text";
+import {
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import type { AppConnection as ApiAppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { useV4Adapter, useV4Mode } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
+import { useCreateBlock } from "../row-actions/permissions";
 import { ReviewSection, RotationField, TextField, useRotationForm } from "./secret-rotation/fields";
 import {
   appConnectionName,
   DEFAULT_ROTATION_INTERVAL,
-  LOCAL_ROTATION_CONNECTIONS,
   nextRotationFrom,
   ROTATION_TEMPLATES,
   type RotationConnection,
@@ -51,12 +57,14 @@ import {
 } from "./secret-rotation/model";
 import { ROTATION_VIEWS } from "./secret-rotation/registry";
 import {
+  type AppConnection,
   getSecretRotationConnectionApps,
   IS_ROTATION_DUAL_CREDENTIALS,
   SECRET_ROTATION_MAP,
   SecretRotation,
   SecretRotationV2FormSchema
 } from "./secret-rotation/schemas";
+import { Gate } from "./shared";
 
 export type { RotationResource };
 
@@ -227,14 +235,16 @@ function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void
 
 function ConfigurationFields({
   isUpdate,
+  project,
   environments,
-  connections,
+  addedConnections,
   onCreateConnection
 }: {
   isUpdate: boolean;
+  project: string;
   environments?: RotationEnvironment[];
-  connections: RotationConnection[];
-  onCreateConnection: (connection: RotationConnection) => void;
+  addedConnections: RotationConnection[];
+  onCreateConnection?: (connection: RotationConnection) => void;
 }) {
   const { control, setValue } = useRotationForm();
   const [type, isAutoRotationEnabled] = useWatch({
@@ -243,7 +253,18 @@ function ConfigurationFields({
   }) as [SecretRotation, boolean];
   const apps = getSecretRotationConnectionApps(type);
   const app = apps[0];
-  const available = connections.filter((connection) => apps.includes(connection.app));
+  const loaded = useV4Adapter("secrets").useAvailableConnections(
+    apps.map((entry) => entry as string as ApiAppConnection),
+    project
+  );
+  const available = [
+    ...loaded.connections.map(({ id, name, app: connectionApp }) => ({
+      id,
+      name,
+      app: connectionApp as string as AppConnection
+    })),
+    ...addedConnections
+  ].filter((connection) => apps.includes(connection.app));
   const connectionLabel = apps.length > 1 ? "Connection" : `${appConnectionName(app)} Connection`;
   return (
     <Stack gap={16}>
@@ -306,13 +327,18 @@ function ConfigurationFields({
                 meta: apps.length > 1 ? appConnectionName(connection.app) : undefined
               }))}
               placeholder="Select connection..."
+              emptyText={`No ${apps.map(appConnectionName).join(" or ")} connections yet. Create one in App Connections.`}
               invalid={Boolean(error)}
               disabled={isUpdate}
-              onCreate={(name) => {
-                const connection = { id: crypto.randomUUID(), name, app };
-                onCreateConnection(connection);
-                setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
-              }}
+              loading={loaded.isPending}
+              onCreate={
+                onCreateConnection &&
+                ((name) => {
+                  const connection = { id: crypto.randomUUID(), name, app };
+                  onCreateConnection(connection);
+                  setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
+                })
+              }
             />
           </RotationField>
         )}
@@ -465,8 +491,9 @@ function RotationSteps({
   step,
   onStep,
   onCancel,
+  project,
   environments,
-  connections,
+  addedConnections,
   onCreateConnection
 }: {
   isUpdate: boolean;
@@ -474,9 +501,10 @@ function RotationSteps({
   step: number;
   onStep: (step: number) => void;
   onCancel: () => void;
+  project: string;
   environments: RotationEnvironment[];
-  connections: RotationConnection[];
-  onCreateConnection: (connection: RotationConnection) => void;
+  addedConnections: RotationConnection[];
+  onCreateConnection?: (connection: RotationConnection) => void;
 }) {
   const Views = ROTATION_VIEWS[type];
   const current = FORM_STEPS[step];
@@ -517,7 +545,8 @@ function RotationSteps({
           <ConfigurationFields
             isUpdate={isUpdate}
             environments={environments}
-            connections={connections}
+            project={project}
+            addedConnections={addedConnections}
             onCreateConnection={onCreateConnection}
           />
         )}
@@ -574,7 +603,8 @@ export function SecretRotationFlow({
   const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState<string>();
   const [discard, setDiscard] = useState<"close" | "provider" | null>(null);
-  const [connections, setConnections] = useState(LOCAL_ROTATION_CONNECTIONS);
+  const [addedConnections, setAddedConnections] = useState<RotationConnection[]>([]);
+  const isDemo = useV4Mode() === "demo";
   const form = useForm<FieldValues>({
     resolver: zodResolver(SecretRotationV2FormSchema(isUpdate)),
     defaultValues: rotation
@@ -692,6 +722,7 @@ export function SecretRotationFlow({
       updatedAt: now.toISOString(),
       provider: SECRET_ROTATION_MAP[values.type as SecretRotation].name,
       connection: values.connection.name,
+      connectionId: values.connection.id,
       status: "success",
       lastRotatedAt: now.toISOString(),
       nextRotationAt: values.isAutoRotationEnabled
@@ -701,6 +732,20 @@ export function SecretRotationFlow({
     close();
   };
   const isFinalStep = step === FORM_STEPS.length - 1;
+  const formEnvironment = form.watch("environment") as RotationEnvironment | undefined;
+  let submitEnvironments = rotationEnvironments.map((entry) => entry.slug);
+  if (formEnvironment) submitEnvironments = [formEnvironment.slug];
+  if (rotation) submitEnvironments = [rotation.environment];
+  const submitBlock = useCreateBlock(
+    project,
+    ProjectPermissionSub.SecretRotation,
+    isUpdate
+      ? ProjectPermissionSecretRotationActions.Edit
+      : ProjectPermissionSecretRotationActions.Create,
+    submitEnvironments,
+    rotation?.path ?? secretPath,
+    isUpdate ? "edit this rotation" : "create secret rotations here"
+  );
   const handleNext = async () => {
     setSubmitError(undefined);
     if (isFinalStep) {
@@ -758,8 +803,13 @@ export function SecretRotationFlow({
                 onStep={setStep}
                 onCancel={() => request("provider")}
                 environments={rotationEnvironments}
-                connections={connections}
-                onCreateConnection={(connection) => setConnections([...connections, connection])}
+                project={project}
+                addedConnections={addedConnections}
+                onCreateConnection={
+                  isDemo
+                    ? (connection) => setAddedConnections([...addedConnections, connection])
+                    : undefined
+                }
               />
             ) : (
               <div
@@ -784,11 +834,17 @@ export function SecretRotationFlow({
                     <Button variant="outline" onClick={handlePrev}>
                       Back
                     </Button>
-                    <Button variant="primary" onClick={handleNext}>
-                      {isFinalStep
-                        ? `${isUpdate ? "Update" : "Create"} secret rotation`
-                        : "Continue"}
-                    </Button>
+                    <Gate reason={isFinalStep ? submitBlock : undefined}>
+                      <Button
+                        variant="primary"
+                        disabled={isFinalStep && Boolean(submitBlock)}
+                        onClick={handleNext}
+                      >
+                        {isFinalStep
+                          ? `${isUpdate ? "Update" : "Create"} secret rotation`
+                          : "Continue"}
+                      </Button>
+                    </Gate>
                   </Inline>
                 </Inline>
               </SheetFooter>

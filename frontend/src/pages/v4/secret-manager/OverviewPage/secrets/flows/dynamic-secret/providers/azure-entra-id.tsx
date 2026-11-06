@@ -16,6 +16,7 @@ import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { useV4Adapter } from "../../../../../../data/adapters";
 import { fieldError, ProviderGroup } from "../fields";
 import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
@@ -30,24 +31,6 @@ const credentialPlaceholders = {
   applicationId: "00000000-0000-0000-0000-000000000000",
   clientSecret: "Enter client secret"
 } as const;
-
-const localUsers = [
-  {
-    id: "3d6b1f2a-7c4e-4a1b-9f0d-2e8c5a7b1d40",
-    name: "Avery Chen",
-    email: "avery.chen@example.com"
-  },
-  {
-    id: "8a2e4c6f-1b3d-4f5a-8c7e-9d0b2a4c6e81",
-    name: "Jordan Patel",
-    email: "jordan.patel@example.com"
-  },
-  {
-    id: "c5f7a9b1-3d5e-4c7a-9b1d-3f5a7c9e1b22",
-    name: "Riley Moreno",
-    email: "riley.moreno@example.com"
-  }
-];
 
 const editFields = [
   ["email", "Email", true],
@@ -86,11 +69,25 @@ function AzureEntraIdEditFields() {
   );
 }
 
-function AzureEntraIdFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
+function AzureEntraIdFields({
+  mode,
+  context
+}: Pick<DynamicSecretRendererProps, "mode" | "context">) {
   const { control, watch } = useFormContext<TAzureEntraIdCreateValues>();
-  const isConfigured = Boolean(
-    watch("inputs.tenantId") && watch("inputs.applicationId") && watch("inputs.clientSecret")
-  );
+  const tenantId = watch("inputs.tenantId");
+  const applicationId = watch("inputs.applicationId");
+  const clientSecret = watch("inputs.clientSecret");
+  const isConfigured = Boolean(tenantId && applicationId && clientSecret);
+  const adapter = useV4Adapter("secrets");
+  const projectSlug = adapter.useProject(context.projectSlug).data?.slug ?? context.projectSlug;
+  const users =
+    adapter.useEntraIdUsers({
+      projectSlug,
+      tenantId,
+      applicationId,
+      clientSecret,
+      enabled: mode !== "edit" && isConfigured
+    }).data ?? [];
 
   if (mode === "edit") return <AzureEntraIdEditFields />;
 
@@ -122,7 +119,7 @@ function AzureEntraIdFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) 
             <Field
               wide
               label="Users"
-              description="A unique dynamic secret is created for each selected user. These are local preview options."
+              description="A unique dynamic secret is created for each selected user."
               error={fieldError(error)}
             >
               <Combobox
@@ -131,14 +128,12 @@ function AzureEntraIdFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) 
                 disabled={!isConfigured}
                 invalid={Boolean(error)}
                 placeholder="Select users..."
-                options={localUsers.map((user) => ({
+                options={users.map((user) => ({
                   value: user.id,
                   label: `${user.name} (${user.email})`
                 }))}
                 value={(field.value ?? []).map((user) => user.id)}
-                onChange={(ids) =>
-                  field.onChange(localUsers.filter((user) => ids.includes(user.id)))
-                }
+                onChange={(ids) => field.onChange(users.filter((user) => ids.includes(user.id)))}
               />
             </Field>
           )}

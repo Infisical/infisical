@@ -45,6 +45,7 @@ import {
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { DynamicSecretResource } from "../flows/dynamic-secret-flow";
+import { Gate } from "../flows/shared";
 
 import styles from "./dynamic-secret-actions.module.css";
 
@@ -154,12 +155,14 @@ export function DynamicSecretLeaseList({
   canRenew,
   onGenerate,
   onRenew,
-  onRevoke
+  onRevoke,
+  leaseBlock
 }: {
   entry: DynamicSecretResource;
   leases: readonly DynamicSecretLease[];
   loading: boolean;
   canRenew: boolean;
+  leaseBlock?: string;
   onGenerate: () => void;
   onRenew: (leaseId: string, ttl: string) => void;
   onRevoke: (leaseId: string, isForced: boolean) => void;
@@ -169,7 +172,9 @@ export function DynamicSecretLeaseList({
   const [revokeOpen, setRevokeOpen] = useState(false);
 
   let body;
-  if (loading)
+  if (leaseBlock)
+    body = <EmptyState icon="lock" title="Access restricted" description={`${leaseBlock}.`} />;
+  else if (loading)
     body = (
       <div className={styles.loading}>
         <Spinner label="Loading leases" />
@@ -182,9 +187,11 @@ export function DynamicSecretLeaseList({
         title="No active leases"
         description="Generate a lease to get temporary credentials from this dynamic secret."
         actions={
-          <Button size="sm" onClick={onGenerate}>
-            Generate lease
-          </Button>
+          <Gate reason={leaseBlock}>
+            <Button size="sm" disabled={Boolean(leaseBlock)} onClick={onGenerate}>
+              Generate lease
+            </Button>
+          </Gate>
         }
       />
     );
@@ -235,6 +242,7 @@ export function DynamicSecretLeaseList({
                           {
                             label: "Renew lease",
                             icon: "sync",
+                            disabledReason: leaseBlock,
                             onSelect: () => setRenewLeaseId(id)
                           }
                         ]
@@ -244,6 +252,8 @@ export function DynamicSecretLeaseList({
                     <>
                       <DropdownMenuItem
                         variant="destructive"
+                        disabled={Boolean(leaseBlock)}
+                        description={leaseBlock}
                         onSelect={() => {
                           setRevoke({ leaseId: id, isForced: false });
                           setRevokeOpen(true);
@@ -255,7 +265,11 @@ export function DynamicSecretLeaseList({
                       {status === "failed-deletion" && (
                         <DropdownMenuItem
                           variant="destructive"
-                          description="Removes the lease from Infisical without revoking it in the external provider."
+                          disabled={Boolean(leaseBlock)}
+                          description={
+                            leaseBlock ??
+                            "Removes the lease from Infisical without revoking it in the external provider."
+                          }
                           onSelect={() => {
                             setRevoke({ leaseId: id, isForced: true });
                             setRevokeOpen(true);

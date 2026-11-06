@@ -10,6 +10,7 @@ import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { Select, type SelectOption } from "@app/components/v4/ui/select";
 import { SmallText } from "@app/components/v4/ui/text";
 
+import { useV4Adapter } from "../../../../../../data/adapters";
 import {
   InfoTip,
   notListedHint,
@@ -22,6 +23,7 @@ import {
   SecretsMappingFields,
   TextField,
   useConnectionId,
+  useConnectionOptions,
   useIsUpdate,
   useRotationForm
 } from "../fields";
@@ -380,12 +382,6 @@ function HpIloParameters() {
   );
 }
 
-const DBT_PROJECTS = [
-  { id: 70001, name: "demo-analytics" },
-  { id: 70002, name: "demo-marketing-models" },
-  { id: 70003, name: "demo-finance-reporting" }
-];
-
 const ALL_PROJECTS = "all";
 
 const DBT_PERMISSION_SET_OPTIONS: SelectOption[] = Object.entries(DBT_PERMISSION_SET_MAP).map(
@@ -401,11 +397,12 @@ const DEFAULT_DBT_GRANT = { permissionSet: DbtPermissionsSet.AccountAdmin, proje
 function DbtServiceTokenParameters() {
   const { control, getValues, setValue } = useRotationForm();
   const connectionId = useConnectionId();
+  const projects = useConnectionOptions(useV4Adapter("secrets").useDbtProjects);
   const permissionGrantsFields = useFieldArray({ control, name: "parameters.permissionGrants" });
   const projectOptions = connectionId
     ? [
         { value: ALL_PROJECTS, label: "All projects" },
-        ...DBT_PROJECTS.map((project) => ({ value: String(project.id), label: project.name }))
+        ...projects.map((project) => ({ value: String(project.id), label: project.name }))
       ]
     : [];
 
@@ -520,13 +517,12 @@ function DbtServiceTokenParameters() {
   );
 }
 
-const SNOWFLAKE_USERS = ["DEMO_ETL_SERVICE", "DEMO_REPORTING_SERVICE", "DEMO_DBT_RUNNER"];
-
 const RSA_MODULUS_LENGTHS = [2048, 4096] as const;
 
 function SnowflakeUserKeyPairParameters() {
   const { control } = useRotationForm();
   const connectionId = useConnectionId();
+  const users = useConnectionOptions(useV4Adapter("secrets").useSnowflakeUsers);
   const isUpdate = useIsUpdate();
   return (
     <>
@@ -552,9 +548,7 @@ function SnowflakeUserKeyPairParameters() {
               value={field.value ?? ""}
               onValueChange={field.onChange}
               onCreate={(inputValue) => field.onChange(inputValue)}
-              options={
-                connectionId ? SNOWFLAKE_USERS.map((name) => ({ value: name, label: name })) : []
-              }
+              options={users.map(({ name }) => ({ value: name, label: name }))}
               placeholder="Select or add a new user..."
               disabled={!connectionId || isUpdate}
               invalid={Boolean(error)}
@@ -588,17 +582,13 @@ function SnowflakeUserKeyPairParameters() {
   );
 }
 
-const SUPABASE_PROJECTS = [
-  { id: "demoprojref0000000001", name: "demo-web-app" },
-  { id: "demoprojref0000000002", name: "demo-staging" }
-];
-
 const SUPABASE_KEY_TYPE_OPTIONS = [
   { label: "Publishable", value: SupabaseApiKeyType.Publishable },
   { label: "Secret", value: SupabaseApiKeyType.Secret }
 ];
 
 function SupabaseApiKeyParameters() {
+  const projects = useConnectionOptions(useV4Adapter("secrets").useSupabaseProjects);
   return (
     <>
       <ResourceComboboxField
@@ -606,7 +596,7 @@ function SupabaseApiKeyParameters() {
         label="Project"
         tooltip="The Supabase project to rotate the API key for"
         placeholder="Select a project..."
-        options={SUPABASE_PROJECTS.map((project) => ({
+        options={projects.map((project) => ({
           value: project.id,
           label: `${project.name} (id: ${project.id})`
         }))}

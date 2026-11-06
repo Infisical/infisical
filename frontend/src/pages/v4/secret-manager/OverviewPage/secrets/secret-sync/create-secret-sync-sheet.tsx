@@ -39,6 +39,10 @@ import { RadioGroup, RadioGroupItem } from "@app/components/v4/ui/radio-group";
 import { Switch } from "@app/components/v4/ui/switch";
 import { SmallText } from "@app/components/v4/ui/text";
 import {
+  ProjectPermissionSecretSyncActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   POPULAR_SECRET_SYNCS,
   SECRET_SYNC_CONNECTION_MAP,
   SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP,
@@ -49,7 +53,7 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/hooks/api/secret
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { getSecretSyncDestinationColValues } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/helpers";
 
-import { useV4Adapter } from "../../../../data/adapters";
+import { useV4Adapter, useV4Mode } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import type { FlowFeedback, FlowScope } from "../flows";
 import {
@@ -60,6 +64,7 @@ import {
 import { DiscardDialog, Gate } from "../flows/shared";
 import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
 import { NEXT_PHASE } from "../overview-cells";
+import { useCreateBlock } from "../row-actions/permissions";
 import type { RowActionTone } from "../row-actions/types";
 import { SYNC_VIEWS, SyncConnections } from "./destination-fields";
 import {
@@ -975,6 +980,7 @@ export function CreateSecretSyncSheet({
   const [discard, setDiscard] = useState<"close" | "provider">();
   const [confirming, setConfirming] = useState(false);
   const [addedConnections, setAddedConnections] = useState<LocalSyncConnection[]>([]);
+  const isDemo = useV4Mode() === "demo";
   const connectionApp = destination ? SECRET_SYNC_CONNECTION_MAP[destination] : AppConnection.AWS;
   const loadedConnections = useV4Adapter("secrets").useSyncConnections(
     connectionApp,
@@ -1003,6 +1009,14 @@ export function CreateSecretSyncSheet({
   const tabs = destination ? formTabs(destination, destinationName) : [];
   const current = tabs[step];
   const isFinalStep = step === tabs.length - 1;
+  const createBlock = useCreateBlock(
+    scope.project,
+    ProjectPermissionSub.SecretSyncs,
+    ProjectPermissionSecretSyncActions.Create,
+    values.environment?.slug ? [values.environment.slug] : environments.map((entry) => entry.slug),
+    values.secretPath ?? initial?.path ?? "/",
+    "create secret syncs here"
+  );
   const conflicts = recursiveConflicts(
     resources,
     scope.project,
@@ -1148,7 +1162,9 @@ export function CreateSecretSyncSheet({
     <SyncConnections
       value={{
         connections,
-        addConnection: (connection) => setAddedConnections((list) => [...list, connection])
+        addConnection: isDemo
+          ? (connection) => setAddedConnections((list) => [...list, connection])
+          : undefined
       }}
     >
       <FormProvider {...form}>
@@ -1215,13 +1231,18 @@ export function CreateSecretSyncSheet({
                   >
                     Back
                   </Button>
-                  <Button
-                    type="button"
-                    disabled={step === 0 && conflicts.length > 0}
-                    onClick={handleNext}
-                  >
-                    {isFinalStep ? "Create sync" : "Continue"}
-                  </Button>
+                  <Gate reason={isFinalStep ? createBlock : undefined}>
+                    <Button
+                      type="button"
+                      disabled={
+                        (step === 0 && conflicts.length > 0) ||
+                        (isFinalStep && Boolean(createBlock))
+                      }
+                      onClick={handleNext}
+                    >
+                      {isFinalStep ? "Create sync" : "Continue"}
+                    </Button>
+                  </Gate>
                 </Inline>
               </Inline>
             ) : undefined

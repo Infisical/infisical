@@ -42,44 +42,6 @@ export const APP_CONNECTION_NAME: Partial<Record<AppConnection, string>> = {
 };
 export const appConnectionName = (app: AppConnection) => APP_CONNECTION_NAME[app] ?? app;
 
-const CONNECTION_NAMES: [AppConnection, string[]][] = [
-  [AppConnection.Postgres, ["payments-postgres", "ledger-postgres"]],
-  [AppConnection.MsSql, ["reporting-mssql"]],
-  [AppConnection.MySql, ["legacy-mysql"]],
-  [AppConnection.OracleDB, ["finance-oracle"]],
-  [AppConnection.Auth0, ["payments-auth0"]],
-  [AppConnection.AzureClientSecrets, ["payments-entra"]],
-  [AppConnection.LDAP, ["corp-ldap"]],
-  [AppConnection.AWS, ["aws-production"]],
-  [AppConnection.Okta, ["payments-okta"]],
-  [AppConnection.Redis, ["cache-redis"]],
-  [AppConnection.MongoDB, ["events-mongodb"]],
-  [AppConnection.Databricks, ["analytics-databricks"]],
-  [AppConnection.SSH, ["bastion-ssh"]],
-  [AppConnection.Dbt, ["analytics-dbt"]],
-  [AppConnection.SMB, ["billing-windows"]],
-  [AppConnection.OpenRouter, ["payments-openrouter"]],
-  [AppConnection.LiteLLM, ["internal-litellm"]],
-  [AppConnection.OpenAI, ["payments-openai"]],
-  [AppConnection.HpeIloRedFish, ["rack-a-ilo"]],
-  [AppConnection.Supabase, ["web-supabase"]],
-  [AppConnection.Salesforce, ["sales-salesforce"]],
-  [AppConnection.Datadog, ["observability-datadog"]],
-  [AppConnection.Convex, ["web-convex"]],
-  [AppConnection.Fireworks, ["inference-fireworks"]],
-  [AppConnection.Snowflake, ["warehouse-snowflake"]],
-  [AppConnection.Cloudflare, ["edge-cloudflare"]],
-  [AppConnection.Stripe, ["payments-stripe"]],
-  [AppConnection.GCP, ["payments-gcp"]]
-];
-
-export const LOCAL_ROTATION_CONNECTIONS: RotationConnection[] = CONNECTION_NAMES.flatMap(
-  ([app, names]) => names.map((name) => ({ name, app }))
-).map((connection, index) => ({
-  ...connection,
-  id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`
-}));
-
 type RotationTemplate = {
   createUserStatement?: string;
   rotationStatement?: string;
@@ -264,12 +226,11 @@ export const rotationTypeOf = (rotation: RotationResource) => {
   );
 };
 
-export const rotationConnectionOf = (rotation: RotationResource): RotationConnection =>
-  LOCAL_ROTATION_CONNECTIONS.find((connection) => connection.name === rotation.connection) ?? {
-    id: "00000000-0000-4000-8000-000000000000",
-    name: rotation.connection,
-    app: getSecretRotationConnectionApps(rotationTypeOf(rotation))[0]
-  };
+export const rotationConnectionOf = (rotation: RotationResource): RotationConnection => ({
+  id: rotation.connectionId ?? "",
+  name: rotation.connection,
+  app: getSecretRotationConnectionApps(rotationTypeOf(rotation))[0]
+});
 
 export const rotationSecretsMapping = (rotation: RotationResource): Record<string, string> =>
   rotation.secretsMapping ??

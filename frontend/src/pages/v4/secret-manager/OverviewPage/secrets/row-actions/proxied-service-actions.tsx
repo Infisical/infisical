@@ -23,6 +23,10 @@ import {
   SheetTitle
 } from "@app/components/v4/ui/sheet";
 import { SmallText } from "@app/components/v4/ui/text";
+import {
+  ProjectPermissionProxiedServiceActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 import type { Resource } from "../../secrets-model";
 import {
@@ -49,6 +53,8 @@ import {
   SubstitutionDiagram,
   SubstitutionFields
 } from "../flows/proxied-service-fields";
+import { Gate } from "../flows/shared";
+import { useManagedBlock } from "./permissions";
 import type { RowActionHostProps } from "./types";
 
 import flowStyles from "../flows/flows.module.css";
@@ -68,7 +74,8 @@ function EditProxiedServiceSheet({
   open,
   onOpenChange,
   onSave,
-  onCreateSecret
+  onCreateSecret,
+  block
 }: {
   service: ProxiedService;
   existingNames: string[];
@@ -77,6 +84,7 @@ function EditProxiedServiceSheet({
   onOpenChange: (open: boolean) => void;
   onSave: (form: TProxiedServiceForm) => void;
   onCreateSecret: (key: string, value: string) => void;
+  block?: string;
 }) {
   const [initial] = useState(() => toDefaultValues(service));
   const [form, setForm] = useState(initial);
@@ -243,9 +251,11 @@ function EditProxiedServiceSheet({
                     Next
                   </Button>
                 )}
-                <Button type="button" onClick={update}>
-                  Update
-                </Button>
+                <Gate reason={block}>
+                  <Button type="button" disabled={Boolean(block)} onClick={update}>
+                    Update
+                  </Button>
+                </Gate>
               </Inline>
             </Inline>
           </SheetFooter>
@@ -274,12 +284,14 @@ function DeleteProxiedServiceDialog({
   service,
   open,
   onOpenChange,
-  onDelete
+  onDelete,
+  block
 }: {
   service: ProxiedService;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDelete: () => void;
+  block?: string;
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -293,9 +305,11 @@ function DeleteProxiedServiceDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onDelete}>
-            Delete
-          </AlertDialogAction>
+          <Gate reason={block}>
+            <AlertDialogAction variant="destructive" disabled={Boolean(block)} onClick={onDelete}>
+              Delete
+            </AlertDialogAction>
+          </Gate>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -311,11 +325,19 @@ export function ProxiedServiceActions({
 }: RowActionHostProps<"proxy">) {
   const [shown, setShown] = useState(action);
   const [session, setSession] = useState(0);
+  const blockFor = useManagedBlock(scope.project);
   if (action && action !== shown) {
     setShown(action);
     setSession(session + 1);
   }
   if (!shown) return null;
+  const proxyBlock = (proxyAction: ProjectPermissionProxiedServiceActions, verb: string) =>
+    blockFor(
+      ProjectPermissionSub.ProxiedServices,
+      proxyAction,
+      { environment: shown.entry.environment, secretPath: shown.entry.path },
+      verb
+    );
   const open = Boolean(action);
   const service =
     resources.find(
@@ -333,6 +355,10 @@ export function ProxiedServiceActions({
         service={service}
         open={open}
         onOpenChange={onOpenChange}
+        block={proxyBlock(
+          ProjectPermissionProxiedServiceActions.Delete,
+          "delete this proxied service"
+        )}
         onDelete={() => {
           onApply((current) => current.filter((resource) => resource.id !== service.id), {
             title: `Successfully deleted proxied service "${service.name}"`
@@ -363,6 +389,7 @@ export function ProxiedServiceActions({
       resources={resources}
       open={open}
       onOpenChange={onOpenChange}
+      block={proxyBlock(ProjectPermissionProxiedServiceActions.Edit, "edit this proxied service")}
       onCreateSecret={(key, value) =>
         onApply(
           (current) => [

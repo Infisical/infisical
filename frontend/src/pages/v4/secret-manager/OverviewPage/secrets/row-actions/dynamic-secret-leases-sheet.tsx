@@ -17,7 +17,7 @@ import {
 import type { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import type { DynamicSecretResource } from "../flows/dynamic-secret-flow";
-import { environmentLabel } from "../flows/shared";
+import { environmentLabel, Gate } from "../flows/shared";
 import {
   DynamicSecretLeaseProvision,
   LEASE_FORM_ID,
@@ -51,7 +51,8 @@ export function DynamicSecretLeasesSheet({
   onClose,
   onProvision,
   onRenew,
-  onRevoke
+  onRevoke,
+  leaseBlock
 }: {
   entry?: DynamicSecretResource;
   provider: DynamicSecretProviders;
@@ -61,6 +62,7 @@ export function DynamicSecretLeasesSheet({
   onProvision: (request: LeaseRequest) => Promise<LeaseResult | undefined>;
   onRenew: (leaseId: string, ttl: string) => void;
   onRevoke: (leaseId: string, isForced: boolean) => void;
+  leaseBlock?: string;
 }) {
   const lastEntry = useRef(openEntry);
   if (openEntry) lastEntry.current = openEntry;
@@ -92,7 +94,13 @@ export function DynamicSecretLeasesSheet({
 
   let footer;
   if (view === "list" && !loading && leases.length > 0)
-    footer = <Button onClick={startGenerating}>Generate lease</Button>;
+    footer = (
+      <Gate reason={leaseBlock}>
+        <Button disabled={Boolean(leaseBlock)} onClick={startGenerating}>
+          Generate lease
+        </Button>
+      </Gate>
+    );
   if (view === "generate" && !leaseCapabilities.autoGenerate)
     footer = (
       <>
@@ -134,6 +142,7 @@ export function DynamicSecretLeasesSheet({
               onGenerate={startGenerating}
               onRenew={onRenew}
               onRevoke={onRevoke}
+              leaseBlock={leaseBlock}
             />
           ) : (
             <DynamicSecretLeaseProvision
