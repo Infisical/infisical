@@ -25,7 +25,7 @@ func TestSessionBinding_Reissue(t *testing.T) {
 		// Setup
 		iss, other := setup(t, "member")
 		other.Enforce(t)
-		sso.EnforceMFA(t, iss.tn, api.None)
+		sso.EnforceMFA(t, iss.tn, api.UpdateOrganizationJSONBodySsoMfaTrustNone)
 		challenge := iss.selectOrg(t, iss.login(t), iss.tn.OrgID)
 		require.Equalf(t, http.StatusOK, challenge.StatusCode(), "selecting the issuing org: %s", apierr.Body(challenge.Body))
 		require.True(t, challenge.JSON200.IsMfaEnabled, "the issuing org didn't ask for MFA")

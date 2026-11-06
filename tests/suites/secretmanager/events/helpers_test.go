@@ -88,21 +88,22 @@ func watch(t *testing.T, proj *fixture.Project, regs ...registration) *stream {
 	return subscribe(t, proj.NewMachineIdentity(t, fixture.WithRoles("viewer")), proj, regs...)
 }
 
-// subscribe opens a stream that stays open until the test ends. The method without
-// WithResponse hands back the unread body, so frames are read as they arrive.
+// subscribe opens a stream that stays open until the test ends. api.WithUnreadBody hands
+// back the unread body, so frames are read as they arrive.
 func subscribe(t *testing.T, p *harness.Principal, proj *fixture.Project, regs ...registration) *stream {
 	t.Helper()
-	res, err := p.API.SubscribeToProjectEventsWithBody(t.Context(), "application/json", subscription(t, proj, regs))
+	res, err := p.API.SubscribeToProjectEventsWithBodyWithResponse(api.WithUnreadBody(t.Context()), "application/json", subscription(t, proj, regs))
 	require.NoError(t, err, "subscribing to project events")
-	t.Cleanup(func() { _ = res.Body.Close() })
-	if res.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
-		t.Fatalf("subscribing to project events returned %d: %s", res.StatusCode, apierr.Body(body))
+	body := res.HTTPResponse.Body
+	t.Cleanup(func() { _ = body.Close() })
+	if res.StatusCode() != http.StatusOK {
+		raw, _ := io.ReadAll(body)
+		t.Fatalf("subscribing to project events returned %d: %s", res.StatusCode(), apierr.Body(raw))
 	}
-	require.Equal(t, "text/event-stream", res.Header.Get("Content-Type"))
+	require.Equal(t, "text/event-stream", res.HTTPResponse.Header.Get("Content-Type"))
 
 	s := &stream{frames: make(chan frame, 64)}
-	go s.read(t.Context(), res.Body)
+	go s.read(t.Context(), body)
 	return s
 }
 

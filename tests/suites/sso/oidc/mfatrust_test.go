@@ -45,7 +45,7 @@ func TestOIDCMFATrust(t *testing.T) {
 			// Setup
 			o := setup(t)
 			alice := o.SignedUp(t)
-			sso.EnforceMFA(t, o.Tenant, api.Signal)
+			sso.EnforceMFA(t, o.Tenant, api.UpdateOrganizationJSONBodySsoMfaTrustSignal)
 			if c.config != nil {
 				updateConfig(t, o, *c.config)
 			}

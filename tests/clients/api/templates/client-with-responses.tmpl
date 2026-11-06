@@ -1,0 +1,114 @@
+{{- /*
+Overrides oapi-codegen's client-with-responses.tmpl.
+
+Per operation this emits the response type and the methods that return it, and only
+what differs between operations: the path, the parameters and the bodies. Assembling
+the request, sending it, decoding the answer and the error bodies every route shares
+live in runtime.go.
+
+A response typed ApiError or ApiValidationError (the shared error bodies overlay.yaml
+points every route at) is declared and decoded by the embedded Response, so it is
+skipped here.
+
+A spec feature runtime.go does not handle is emitted as a call to the undefined
+clientTemplateCannotGenerate, so generation succeeds and the build names the gap.
+*/ -}}
+
+{{- define "unsupported"}}
+	clientTemplateCannotGenerate({{. | toGoString}})
+{{- end}}
+
+{{- range .}}
+{{- $op := .}}
+{{- $opid := .OperationId}}
+{{- $res := genResponseTypeName $opid | ucFirst}}
+{{- $deprecated := .DeprecationComment}}
+{{- $paramsArg := ""}}{{if .RequiresParamObject}}{{$paramsArg = printf ", params *%sParams" $opid}}{{end}}
+{{- $paramsName := ""}}{{if .RequiresParamObject}}{{$paramsName = ", params"}}{{end}}
+
+// {{$res}} is the answer to {{$opid}}.
+type {{$res}} struct {
+	Response
+{{- range getResponseTypeDefinitions .}}
+{{- if not (or (eq .Schema.TypeDecl "ApiError") (eq .Schema.TypeDecl "ApiValidationError"))}}
+	{{.TypeName}} *{{.Schema.TypeDecl}}
+{{- end}}
+{{- end}}
+}
+
+{{- range .Bodies}}
+{{- if .IsSupportedByClient}}
+
+// {{$opid}}{{.Suffix}}WithResponse calls {{$op.Method}} {{$op.Path}} with a typed body.
+{{- with $deprecated}}
+//
+{{.}}
+{{- end}}
+func (c *ClientWithResponses) {{$opid}}{{.Suffix}}WithResponse(ctx context.Context{{genParamArgs $op.PathParams}}{{$paramsArg}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors ...RequestEditorFn) (*{{$res}}, error) {
+{{- if .IsJSON}}
+	return c.{{$opid}}WithBodyWithResponse(ctx{{genParamNames $op.PathParams}}{{$paramsName}}, {{.ContentType | toGoString}}, jsonBody(body), reqEditors...)
+{{- else if eq .NameTag "Formdata"}}
+	return c.{{$opid}}WithBodyWithResponse(ctx{{genParamNames $op.PathParams}}{{$paramsName}}, {{.ContentType | toGoString}}, formBody(body), reqEditors...)
+{{- else}}
+{{- template "unsupported" (printf "%s request body" .ContentType)}}
+{{- end}}
+}
+{{- end}}
+{{- end}}
+
+// {{$opid}}{{if .HasBody}}WithBody{{end}}WithResponse calls {{.Method}} {{.Path}}.
+{{- with $deprecated}}
+//
+{{.}}
+{{- end}}
+func (c *ClientWithResponses) {{$opid}}{{if .HasBody}}WithBody{{end}}WithResponse(ctx context.Context{{genParamArgs .PathParams}}{{$paramsArg}}{{if .HasBody}}, contentType string, body io.Reader{{end}}, reqEditors ...RequestEditorFn) (*{{$res}}, error) {
+	req := c.newRequest({{.Method | httpMethodConstant}}, {{.Path | toGoString}})
+{{- range .PathParams}}
+{{- if or .IsJson .IsPassThrough (eq .SchemaFormat "byte")}}
+{{- template "unsupported" (printf "path parameter %s" .ParamName)}}
+{{- else if and (eq .Style "simple") (not .Explode)}}
+	req.pathParam({{.ParamName | toGoString}}, {{.GoVariableName}})
+{{- else}}
+	req.param(runtime.ParamLocationPath, {{.Style | toGoString}}, {{.Explode}}, {{.ParamName | toGoString}}, {{.GoVariableName}})
+{{- end}}
+{{- end}}
+{{- if or .QueryParams .HeaderParams}}
+	if params != nil {
+{{- range .QueryParams}}
+{{- if or .IsJson .IsPassThrough (eq .SchemaFormat "byte")}}
+{{- template "unsupported" (printf "query parameter %s" .ParamName)}}
+{{- else if and (eq .Style "form") .Explode}}
+		req.queryParam({{.ParamName | toGoString}}, params.{{.GoName}})
+{{- else}}
+		req.param(runtime.ParamLocationQuery, {{.Style | toGoString}}, {{.Explode}}, {{.ParamName | toGoString}}, params.{{.GoName}})
+{{- end}}
+{{- end}}
+{{- range .HeaderParams}}
+{{- if or .IsJson .IsPassThrough (eq .SchemaFormat "byte")}}
+{{- template "unsupported" (printf "header parameter %s" .ParamName)}}
+{{- else if and (eq .Style "simple") (not .Explode)}}
+		req.headerParam({{.ParamName | toGoString}}, params.{{.GoName}})
+{{- else}}
+		req.param(runtime.ParamLocationHeader, {{.Style | toGoString}}, {{.Explode}}, {{.ParamName | toGoString}}, params.{{.GoName}})
+{{- end}}
+{{- end}}
+	}
+{{- end}}
+{{- range .CookieParams}}
+{{- template "unsupported" (printf "cookie parameter %s" .ParamName)}}
+{{- end}}
+{{- if .HasBody}}
+	req.setBody(contentType, body)
+{{- end}}
+{{- range getResponseTypeDefinitions .}}
+{{- if ne .ContentTypeName "application/json"}}
+{{- template "unsupported" (printf "%s response" .ContentTypeName)}}
+{{- end}}
+{{- end}}
+	res := new({{$res}})
+	return send(ctx, req, reqEditors, res
+{{- range getResponseTypeDefinitions .}}
+{{- if not (or (eq .Schema.TypeDecl "ApiError") (eq .Schema.TypeDecl "ApiValidationError"))}}, decodeJSON({{.ResponseName | toGoString}}, &res.{{.TypeName}}){{end}}
+{{- end}})
+}
+{{- end}}

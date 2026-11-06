@@ -1,0 +1,10 @@
+{{- /*
+Overrides oapi-codegen's client.tmpl. The client type and its options are hand-written
+in runtime.go, and client-with-responses.tmpl generates the only methods the suite
+calls, so the raw *http.Response methods, their request builders and ClientInterface
+are not generated at all.
+
+text/template keeps the built-in body when an override holds only comments and
+whitespace, so this has to emit something; the line below is it.
+*/ -}}
+// The client type and its options are hand-written in runtime.go.

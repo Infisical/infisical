@@ -129,7 +129,7 @@ func groupNames(t *testing.T, client *api.ClientWithResponses) []string {
 
 func groupIdentityIDs(t *testing.T, tn *harness.Tenant, groupID uuid.UUID) []uuid.UUID {
 	t.Helper()
-	filter := api.AssignedMachineIdentities
+	filter := api.ListGroupMachineIdentitiesParamsFilterAssignedMachineIdentities
 	res, err := tn.Admin.API.ListGroupMachineIdentitiesWithResponse(t.Context(), groupID.String(),
 		&api.ListGroupMachineIdentitiesParams{Filter: &filter})
 	require.NoError(t, err)

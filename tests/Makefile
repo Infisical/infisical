@@ -10,11 +10,11 @@ INFISICAL_OPENAPI_URL ?= http://localhost:8080
 
 .PHONY: fmt lint test test-unit test-docker test-suites test-isolated test-harness test-all up down status generate-client
 
-# The generated client (clients/api) is its own Go module, so ./... leaves it out of vet,
-# staticcheck and test: regenerating fixes it, nothing in it is for a person to correct, and
-# analysing its 400k lines was most of lint's run time. gofmt walks folders rather than
-# modules, so it is given this module's package folders.
-GO_DIRS = $$(go list -f '{{.Dir}}' ./...)
+# The API client (clients/api) is its own Go module, so ./... leaves it out; every target
+# below names it as well. gofmt walks folders rather than modules, so it is given the
+# package folders of both.
+CLIENT = github.com/Infisical/infisical/tests/clients/api
+GO_DIRS = $$(go list -f '{{.Dir}}' ./... $(CLIENT))
 
 fmt:
 	$(GOFMT) -w $(GO_DIRS)
@@ -22,8 +22,8 @@ fmt:
 lint:
 	@out="$$($(GOFMT) -l $(GO_DIRS))"; \
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
-	go vet ./...
-	go tool staticcheck ./...
+	go vet ./... $(CLIENT)
+	go tool staticcheck ./... $(CLIENT)
 
 # Unit tests only: no Docker, no containers, runs in under a second.
 #
@@ -31,7 +31,7 @@ lint:
 # because a hand-written list silently stops covering a package the day someone adds
 # one -- which is exactly what happened when fixture/, provider/ and stub/ appeared.
 test-unit:
-	go test $$(go list ./... | grep -vE '/(suites|suitesisolated|harnesstest)/') -count=1
+	go test $$(go list ./... | grep -vE '/(suites|suitesisolated|harnesstest)/') $(CLIENT) -count=1
 
 test: lint test-unit
 

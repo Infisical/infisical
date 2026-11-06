@@ -67,7 +67,7 @@ func TestOrganization_SsoMfaTrust(t *testing.T) {
 func trustIdP(t *testing.T, tn *harness.Tenant, actor *harness.Principal) *api.UpdateOrganizationResponse {
 	t.Helper()
 	res, err := fresh(t, tn, actor).UpdateOrganizationWithResponse(t.Context(), tn.OrgID.String(),
-		api.UpdateOrganizationJSONRequestBody{SsoMfaTrust: new(api.Signal)})
+		api.UpdateOrganizationJSONRequestBody{SsoMfaTrust: new(api.UpdateOrganizationJSONBodySsoMfaTrustSignal)})
 	require.NoError(t, err)
 	return res
 }

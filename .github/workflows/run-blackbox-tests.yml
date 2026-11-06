@@ -18,8 +18,6 @@ jobs:
   lint-and-unit:
     name: Lint and unit tests
     runs-on: ubuntu-latest
-    # staticcheck over the generated client (clients/api) takes about 9 minutes on a
-    # cold cache.
     timeout-minutes: 25
     defaults:
       run:

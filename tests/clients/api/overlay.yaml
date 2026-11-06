@@ -219,3 +219,49 @@ actions:
       items:
         type: object
         additionalProperties: true
+  # Every route declares the same 4xx/5xx bodies inline, so the generator emitted a struct,
+  # a statusCode enum and a decode branch per status per operation. Pointing them at shared
+  # schemas gives one type each, held by the embedded Response in runtime.go; its test
+  # checks these status lists against Response's fields.
+  #
+  # 422 is a schema of its own: a validation failure's message is a list of issues, so it
+  # is untyped and optional there, where every other status has a string.
+  - target: $.components
+    update:
+      schemas:
+        ApiError:
+          type: object
+          required: [reqId, statusCode, message, error]
+          properties:
+            reqId:
+              type: string
+            statusCode:
+              type: number
+            message:
+              type: string
+            error:
+              type: string
+            details: {}
+        ApiValidationError:
+          type: object
+          required: [reqId, statusCode, error]
+          properties:
+            reqId:
+              type: string
+            statusCode:
+              type: number
+            message: {}
+            error:
+              type: string
+  - target: $.paths.*.*.responses['400','401','403','404','500'].content['application/json'].schema
+    remove: true
+  - target: $.paths.*.*.responses['400','401','403','404','500'].content['application/json']
+    update:
+      schema:
+        $ref: '#/components/schemas/ApiError'
+  - target: $.paths.*.*.responses['422'].content['application/json'].schema
+    remove: true
+  - target: $.paths.*.*.responses['422'].content['application/json']
+    update:
+      schema:
+        $ref: '#/components/schemas/ApiValidationError'

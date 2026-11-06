@@ -6,9 +6,38 @@ Every call goes through `clients/api`. A route the client cannot reach is missin
 `operationId`; fix the router, not the test.
 
 `clients/api` is a Go module of its own, required from `tests/go.mod` through a `replace`
-to the folder. That keeps the generated code out of `./...`, so lint, vet and test do not
-analyse it; the suites still compile against it. A new import in the generated code goes in
-`clients/api/go.mod` (`go mod tidy` there), at the version `tests/go.mod` already uses.
+to the folder, so `./...` leaves it out; `make lint` and `make test-unit` name it
+explicitly. A new import in it goes in `clients/api/go.mod` (`go mod tidy` there), at the
+version `tests/go.mod` already uses.
+
+## How the client is built
+
+| File | What it is |
+|---|---|
+| `oapi-codegen.yaml` | The operations to generate, and the generator's options |
+| `overlay.yaml` | Fixes applied to the spec before generation (see below) |
+| `templates/client-with-responses.tmpl` | Per operation: the response type and the methods that return it |
+| `templates/client.tmpl` | Emits nothing; replaces oapi-codegen's raw client |
+| `runtime.go` | Hand-written. The client type, request assembly, sending, decoding, the shared `Response` |
+| `api.gen.go` | Generated. Never edit it by hand |
+
+The templates emit only what differs between operations: the path, its parameters and its
+bodies. Anything every operation does the same way belongs in `runtime.go`, with a test in
+`runtime_test.go`, rather than in a template, where it would be repeated for every
+operation.
+
+Every response type embeds `Response`, which carries `Body`, `HTTPResponse`,
+`StatusCode()` and the error bodies all routes share: `JSON400`, `JSON401`, `JSON403`,
+`JSON404` and `JSON500` as `*ApiError`, and `JSON422` as `*ApiValidationError`, whose
+`message` is a list of issues rather than a string. `overlay.yaml` points every route's
+error responses at those two schemas, so they are generated once rather than per
+operation. If you add a status there, add the field to `Response`;
+`TestResponseCoversOverlayStatuses` fails until the two agree.
+
+If the spec uses something `runtime.go` cannot send or decode (a cookie parameter, a
+`text/plain` body), the template emits a call to the undefined
+`clientTemplateCannotGenerate("...")`. Generation still succeeds, and the build error
+names what is missing. Support it in `runtime.go` and the template together.
 
 ## Adding an endpoint
 
@@ -23,6 +52,22 @@ The full spec is served only when `NODE_ENV` is not `production` and
 `OPENAPI_FULL_SPEC=true`. The harness container runs in production mode, so generating
 against it silently drops operations. Use the dev stack, or a throwaway container from
 the harness image with `NODE_ENV=development`.
+
+Every listed operation is generated whether or not a test calls it, so
+`TestLayout_EveryGeneratedOperationIsUsed` (in `harness/`) fails on an id no test uses.
+Remove an id when you remove its last caller.
+
+Enum constants always carry their type's name (`api.UpdateManySecretsV4JSONBodyModeUpsert`,
+not `api.Upsert`). Without `always-prefix-enum-values` the generator prefixes a constant
+only when another collides with it, so adding an operation could rename constants it
+never touched.
+
+## Streaming responses
+
+A call normally reads the whole body before returning. For an endpoint that answers with a
+stream, such as server-sent events, pass a context from `api.WithUnreadBody`: the call
+returns once the headers arrive, and `res.HTTPResponse.Body` is left open for you to read
+and close.
 
 ## Unions
 

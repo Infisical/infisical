@@ -104,7 +104,7 @@ func TestSecret_Batch(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		secretmanager.CreateSecret(t, proj, "dev", "A", "old-a")
-		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.FailOnNotFound)}
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.UpdateManySecretsV4JSONBodyModeFailOnNotFound)}
 		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
 		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "A", new("new-a")
 		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = "MISSING", new("value")
@@ -126,7 +126,7 @@ func TestSecret_Batch(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		secretmanager.CreateSecret(t, proj, "dev", "EXISTING", "old")
-		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.Upsert)}
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.UpdateManySecretsV4JSONBodyModeUpsert)}
 		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
 		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "EXISTING", new("new")
 		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = "BRAND_NEW", new("created")
@@ -147,7 +147,7 @@ func TestSecret_Batch(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		secretmanager.CreateFolder(t, proj, "dev", "/app")
-		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.Upsert)}
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.UpdateManySecretsV4JSONBodyModeUpsert)}
 		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
 		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue, body.Secrets[0].SecretPath = "ROOT_KEY", new("root"), new("/")
 		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue, body.Secrets[1].SecretPath = "APP_KEY", new("app"), new("/app")
@@ -303,7 +303,7 @@ func TestSecret_Batch(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		configureProject(t, proj, api.UpdateProjectJSONRequestBody{AutoCapitalization: new(true)})
-		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.Upsert)}
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.UpdateManySecretsV4JSONBodyModeUpsert)}
 		body.Secrets = slices.Grow(body.Secrets, 1)[:1]
 		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "db_url", new("created")
 
