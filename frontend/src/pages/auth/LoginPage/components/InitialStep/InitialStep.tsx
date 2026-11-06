@@ -266,9 +266,9 @@ export const InitialStep = ({ isAdmin }: Props) => {
 
   const handleLoginError = (err: any) => {
     const errorType = err.response?.data?.error;
-    if (errorType === "User Locked") {
+    if (errorType === "UserLocked") {
       createNotification({
-        title: err.response.data.error,
+        title: "Account locked",
         text: err.response.data.message,
         type: "error"
       });
