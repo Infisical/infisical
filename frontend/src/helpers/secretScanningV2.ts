@@ -65,12 +65,12 @@ export const CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP: Record<
   [ClaudeCodeSecretDetectedAction.Block]: {
     name: "Block the prompt",
     description:
-      "Claude Code blocks the prompt until the finding is marked as false positive or ignored. A resolved secret that comes back is recorded as a new finding."
+      "Claude Code blocks the prompt until the finding is marked as false positive or ignored.\nA resolved secret that comes back is recorded as a new finding."
   },
   [ClaudeCodeSecretDetectedAction.Report]: {
     name: "Report only",
     description:
-      "The prompt continues with a warning until the finding is marked as false positive or ignored. A resolved secret that comes back is recorded as a new finding."
+      "The prompt continues with a warning until the finding is marked as false positive or ignored.\nA resolved secret that comes back is recorded as a new finding."
   }
 };
 

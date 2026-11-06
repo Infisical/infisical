@@ -47,6 +47,7 @@ export const ClaudeCodeDataSourceScanFields = () => {
               <SelectContent position="popper">
                 {Object.values(ClaudeCodeSecretDetectedAction).map((action) => (
                   <SelectItem
+                    className="whitespace-pre-line"
                     key={action}
                     value={action}
                     description={CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[action].description}

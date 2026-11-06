@@ -199,7 +199,7 @@ const PageContent = () => {
                     <span className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-sm border border-border pl-1.5">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <code className="truncate font-mono text-xs">
+                          <code className="truncate font-mono text-2xs">
                             {CLAUDE_CODE_PLUGIN_INSTALL_COMMAND}
                           </code>
                         </TooltipTrigger>
