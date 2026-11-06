@@ -258,14 +258,14 @@ export const FolderAccessRow = ({
           {!access && !inheritedAccess && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span
-                  tabIndex={0}
+                <button
+                  type="button"
                   aria-label="Via project role"
                   className="flex cursor-default items-center gap-1 text-xs text-muted"
                 >
                   <CornerDownRightIcon className="size-3.5" />
                   <span className="hidden sm:inline">Via project role</span>
-                </span>
+                </button>
               </TooltipTrigger>
               <TooltipContent>
                 <p className="font-medium">
