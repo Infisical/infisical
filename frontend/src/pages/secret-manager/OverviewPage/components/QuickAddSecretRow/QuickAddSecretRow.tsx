@@ -450,7 +450,6 @@ export const QuickAddSecretRow = ({
                 </Tooltip>
                 <DropdownMenuContent
                   align="start"
-                  className="min-w-[185px] [&_[data-variant=default]]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
                   onCloseAutoFocus={(event) => {
                     event.preventDefault();
                     const annotation = pendingAnnotationRef.current;
@@ -469,7 +468,6 @@ export const QuickAddSecretRow = ({
                 >
                   <DropdownMenuLabel>Annotate</DropdownMenuLabel>
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5"
                     onClick={() => {
                       pendingAnnotationRef.current = "comment";
                     }}
@@ -478,7 +476,6 @@ export const QuickAddSecretRow = ({
                     {comment ? "Edit Comment" : "Add Comment"}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5"
                     isDisabled={
                       !permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags)
                     }
@@ -491,7 +488,7 @@ export const QuickAddSecretRow = ({
                   </DropdownMenuItem>
                   <Tooltip>
                     <TooltipTrigger className="block w-full">
-                      <DropdownMenuItem className="px-2.5 py-1.5" isDisabled>
+                      <DropdownMenuItem isDisabled>
                         <BellIcon />
                         Add Reminder
                       </DropdownMenuItem>
@@ -499,7 +496,6 @@ export const QuickAddSecretRow = ({
                     <TooltipContent side="right">Create Secret to Add Reminder</TooltipContent>
                   </Tooltip>
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5"
                     onClick={() => {
                       pendingAnnotationRef.current = "metadata";
                     }}

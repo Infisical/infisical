@@ -4616,7 +4616,17 @@ const OverviewPageContent = () => {
                             <QuickAddSecretRow
                               onAnnotate={
                                 isSingleEnvView
-                                  ? (key, action) => setQuickAddAnnotation({ key, action })
+                                  ? (key, action) => {
+                                      if (
+                                        !key
+                                          .toLowerCase()
+                                          .includes(searchFilter.trim().toLowerCase())
+                                      )
+                                        setSearchFilter("");
+                                      if (isFilteredByResources && !filter.secret)
+                                        setFilter((state) => ({ ...state, secret: true }));
+                                      setQuickAddAnnotation({ key, action });
+                                    }
                                   : undefined
                               }
                               autoQueueOnBlur={isSingleEnvView}
