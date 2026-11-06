@@ -2,6 +2,7 @@ package acme_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/harness"
@@ -167,6 +168,35 @@ func TestAcmeRequest_ProtectedHeader(t *testing.T) {
 
 				// Assert
 				requireProblem(t, res, http.StatusBadRequest, "malformed", "URL mismatch in the protected header")
+			})
+		}
+	})
+
+	t.Run("should answer a body that is not a JWS with an ACME malformed problem", func(t *testing.T) {
+		t.Parallel()
+		tn := h.NewTenant(t)
+		p := newAcmeProfile(t, tn)
+
+		for _, name := range append([]string{"new-account"}, accountEndpointNames...) {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				// Setup
+				c := p.registered(t)
+				url := c.NewAccountURL()
+				if name != "new-account" {
+					url = accountEndpoints(t, c, c.NewOrder(t, domain("www")))[name]
+				}
+
+				// Action
+				res := c.send(t, url, []byte(`{"protected":"x"}`))
+
+				// Assert
+				require.Equalf(t, http.StatusBadRequest, res.Status, "ACME answered %d: %s", res.Status, res.Body)
+				require.Contains(t, res.Header.Get("Content-Type"), "application/problem+json")
+				prob := res.Problem(t)
+				require.Equal(t, "urn:ietf:params:acme:error:malformed", prob.Type)
+				require.True(t, strings.HasPrefix(prob.Detail, "Invalid request: "), prob.Detail)
 			})
 		}
 	})

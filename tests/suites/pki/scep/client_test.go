@@ -129,8 +129,8 @@ func (p scepProfile) enroll(t *testing.T, signer device, commonName, password st
 	return readCertRep(t, res.Body, ra, signer), key
 }
 
-// readCertRep checks a CertRep is signed by the RA and reads its outcome, decrypting
-// the issued certificate for the signer.
+// readCertRep checks a CertRep is signed by the RA over the content it carries, and
+// reads its outcome, decrypting the issued certificate for the signer.
 //
 // The signature is checked over the signed attributes as sent, the way sscep checks
 // it, rather than over their DER re-encoding: Infisical does not sort them, which
@@ -140,6 +140,10 @@ func readCertRep(t *testing.T, raw []byte, ra *x509.Certificate, signer device) 
 	require.NoError(t, verifyAsSent(raw, ra), "the CertRep is not signed by the RA")
 	p7, err := pkcs7.Parse(raw)
 	require.NoError(t, err)
+	var signedDigest []byte
+	require.NoError(t, p7.UnmarshalSignedAttribute(oidMessageDigest, &signedDigest))
+	contentDigest := sha256.Sum256(p7.Content)
+	require.Equal(t, contentDigest[:], signedDigest, "the signed messageDigest does not match the CertRep content")
 
 	var msgType scep.MessageType
 	require.NoError(t, p7.UnmarshalSignedAttribute(oidMessageType, &msgType))
@@ -166,9 +170,10 @@ func readCertRep(t *testing.T, raw []byte, ra *x509.Certificate, signer device) 
 }
 
 var (
-	oidMessageType = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 2}
-	oidPKIStatus   = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 3}
-	oidFailInfo    = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 4}
+	oidMessageDigest = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 4}
+	oidMessageType   = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 2}
+	oidPKIStatus     = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 3}
+	oidFailInfo      = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 4}
 )
 
 // verifyAsSent checks the first signer's RSA signature over its signed attributes

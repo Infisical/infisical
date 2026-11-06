@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { FastifyReply, FastifyRequest } from "fastify";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 
+import { AcmeMalformedError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import {
   AcmeOrderResourceSchema,
   CreateAcmeAccountResponseSchema,
@@ -58,6 +59,16 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     res.header("Cache-Control", "no-store");
     return response.body;
   };
+
+  // ACME clients only understand RFC 7807 problem documents, so a request that fails schema
+  // validation is answered as an ACME malformed error rather than the generic 422.
+  server.setErrorHandler((error) => {
+    if (error instanceof ZodError) {
+      const fields = error.issues.map((issue) => `${issue.path.join(".") || "body"}: ${issue.message}`).join("; ");
+      throw new AcmeMalformedError({ message: `Invalid request: ${fields}`, error });
+    }
+    throw error;
+  });
 
   server.addContentTypeParser("application/jose+json", { parseAs: "string" }, (_, body, done) => {
     try {
