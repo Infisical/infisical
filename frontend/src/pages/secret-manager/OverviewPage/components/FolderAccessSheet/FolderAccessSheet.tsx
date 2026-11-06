@@ -29,6 +29,7 @@ import {
   InputGroupButton,
   InputGroupInput,
   Pagination,
+  Separator,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -593,12 +594,16 @@ export const FolderAccessSheet = ({
               <Accordion
                 type="single"
                 collapsible
+                variant="ghost"
                 value={noAccessSection}
                 onValueChange={setNoAccessSection}
               >
                 <AccordionItem value={NO_ACCESS_SECTION}>
                   <AccordionTrigger>
-                    <span className="flex-1">No Access</span>
+                    <span className="shrink-0">No Access</span>
+                    <span className="flex-1">
+                      <Separator />
+                    </span>
                     <span className="flex items-center gap-3 text-xs font-normal text-muted tabular-nums">
                       <span className="flex items-center gap-1" title="Users">
                         <UserIcon className="size-3.5" />
@@ -610,7 +615,7 @@ export const FolderAccessSheet = ({
                       </span>
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent className="border-t border-border p-4">
+                  <AccordionContent>
                     <Tabs
                       value={noAccessTab}
                       onValueChange={(value) => setNoAccessTab(value as TFolderAccessActor["type"])}
