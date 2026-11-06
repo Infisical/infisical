@@ -63,9 +63,11 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ExternalInfisical]: "Infisical",
   [AppConnection.Doppler]: "Doppler",
   [AppConnection.NetScaler]: "NetScaler",
+  [AppConnection.PaloAltoNetworks]: "Palo Alto Networks",
   [AppConnection.KempLoadMaster]: "Kemp LoadMaster",
+  [AppConnection.Imperva]: "Imperva",
   [AppConnection.Anthropic]: "Anthropic",
-  [AppConnection.OVH]: "OVH",
+  [AppConnection.OVH]: "OVHcloud",
   [AppConnection.Devin]: "Devin",
   [AppConnection.Ona]: "Ona",
   [AppConnection.DigiCert]: "DigiCert",
@@ -77,6 +79,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.GoDaddy]: "GoDaddy",
   [AppConnection.Convex]: "Convex",
   [AppConnection.Rundeck]: "Rundeck",
+  [AppConnection.Portainer]: "Portainer",
   [AppConnection.HasuraCloud]: "Hasura Cloud",
   [AppConnection.Qovery]: "Qovery",
   [AppConnection.Cloud66]: "Cloud 66",
@@ -89,7 +92,11 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.MicrosoftIntune]: "Microsoft Intune",
   [AppConnection.Stripe]: "Stripe",
   [AppConnection.Keeper]: "Keeper",
-  [AppConnection.HpeIloRedFish]: "HPE iLO"
+  [AppConnection.HpeIloRedFish]: "HPE iLO",
+  [AppConnection.ServiceNow]: "ServiceNow",
+  [AppConnection.S3Compatible]: "S3-Compatible Storage",
+  [AppConnection.Jira]: "Jira",
+  [AppConnection.ClickHouse]: "ClickHouse"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -155,7 +162,9 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
   [AppConnection.Doppler]: AppConnectionPlanType.Regular,
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
+  [AppConnection.PaloAltoNetworks]: AppConnectionPlanType.Regular,
   [AppConnection.KempLoadMaster]: AppConnectionPlanType.Regular,
+  [AppConnection.Imperva]: AppConnectionPlanType.Regular,
   [AppConnection.Anthropic]: AppConnectionPlanType.Regular,
   [AppConnection.OVH]: AppConnectionPlanType.Regular,
   [AppConnection.Devin]: AppConnectionPlanType.Regular,
@@ -169,6 +178,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.GoDaddy]: AppConnectionPlanType.Regular,
   [AppConnection.Convex]: AppConnectionPlanType.Regular,
   [AppConnection.Rundeck]: AppConnectionPlanType.Regular,
+  [AppConnection.Portainer]: AppConnectionPlanType.Regular,
   [AppConnection.HasuraCloud]: AppConnectionPlanType.Regular,
   [AppConnection.Qovery]: AppConnectionPlanType.Regular,
   [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
@@ -181,5 +191,9 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Enterprise,
   [AppConnection.Stripe]: AppConnectionPlanType.Regular,
   [AppConnection.Keeper]: AppConnectionPlanType.Regular,
-  [AppConnection.HpeIloRedFish]: AppConnectionPlanType.Regular
+  [AppConnection.HpeIloRedFish]: AppConnectionPlanType.Regular,
+  [AppConnection.ServiceNow]: AppConnectionPlanType.Enterprise,
+  [AppConnection.S3Compatible]: AppConnectionPlanType.Regular,
+  [AppConnection.Jira]: AppConnectionPlanType.Regular,
+  [AppConnection.ClickHouse]: AppConnectionPlanType.Regular
 };

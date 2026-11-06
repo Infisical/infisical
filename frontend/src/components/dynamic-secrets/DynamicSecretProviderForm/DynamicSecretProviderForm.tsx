@@ -17,7 +17,8 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  Input
+  Input,
+  SheetFooter
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { useCreateDynamicSecret, useUpdateDynamicSecret } from "@app/hooks/api";
@@ -246,8 +247,8 @@ export const DynamicSecretProviderForm = <
         data-slot="dynamic-secret-provider-form"
         className="@container flex min-h-0 flex-1 flex-col overflow-hidden"
       >
+        {header}
         <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-5 overflow-y-auto px-4 py-5">
-          {header}
           <section className="flex flex-col gap-4" aria-label="Dynamic secret details">
             <div className={cn("grid grid-cols-1 gap-3", commonFieldGrid)}>
               {commonFields?.name?.isVisible !== false && (
@@ -456,18 +457,9 @@ export const DynamicSecretProviderForm = <
           </section>
         </div>
 
-        <div
-          data-slot="dynamic-secret-provider-form-footer"
-          className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-4 py-3 @sm:flex-row @sm:items-center @sm:justify-end"
-        >
+        <SheetFooter className="shrink-0 border-t">
           {onBack && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="@sm:mr-auto"
-              onClick={onBack}
-              isDisabled={isPending}
-            >
+            <Button type="button" variant="ghost" onClick={onBack} isDisabled={isPending}>
               Back
             </Button>
           )}
@@ -482,7 +474,7 @@ export const DynamicSecretProviderForm = <
           >
             {mode === "create" ? definition.create.submitLabel : definition.edit.submitLabel}
           </Button>
-        </div>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

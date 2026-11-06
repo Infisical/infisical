@@ -1,4 +1,5 @@
 import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
+import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 
@@ -17,6 +18,7 @@ export type TCreateSapDTO = {
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
   bypassForMachineIdentities: boolean;
+  delegatedApproval?: TDelegatedApprovalPolicyInput;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateSapDTO = {
@@ -33,6 +35,7 @@ export type TUpdateSapDTO = {
   allowedSelfApprovals?: boolean;
   bypassForMachineIdentities?: boolean;
   environments?: string[];
+  delegatedApproval?: TDelegatedApprovalPolicyInput;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteSapDTO = {

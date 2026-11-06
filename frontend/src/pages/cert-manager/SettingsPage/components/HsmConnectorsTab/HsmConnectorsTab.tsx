@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   CheckCircle2Icon,
@@ -37,6 +37,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -45,11 +46,12 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useSubscription } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useTimedReset } from "@app/hooks";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
@@ -65,8 +67,9 @@ import { DeleteHsmConnectorDialog } from "./DeleteHsmConnectorDialog";
 import { EditHsmConnectorSheet } from "./EditHsmConnectorSheet";
 
 export const HsmConnectorsTab = () => {
-  const navigate = useNavigate();
-  const { orgId, projectId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { subscription } = useSubscription();
   const isLicensed = Boolean(subscription?.hsm);
   const [addOpen, setAddOpen] = useState(false);
@@ -77,13 +80,7 @@ export const HsmConnectorsTab = () => {
   const [copiedId, , setCopiedId] = useTimedReset<string>({ initialState: "" });
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
-  const openDetail = (connectorId: string) => {
-    if (!orgId || !projectId) return;
-    navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId",
-      params: { orgId, projectId, connectorId }
-    });
-  };
+  const canOpenDetail = Boolean(orgId && projectId);
 
   const { data: connectors = [], isPending } = useListHsmConnectors({
     enabled: isLicensed
@@ -222,16 +219,23 @@ export const HsmConnectorsTab = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((c) => (
-                    <TableRow
-                      key={c.id}
-                      className="cursor-pointer hover:bg-surface-hover"
-                      onClick={() => openDetail(c.id)}
-                    >
-                      <TableCell>{c.name}</TableCell>
+                    <TableRow key={c.id} className="hover:bg-surface-hover" linked={canOpenDetail}>
+                      <TableCell>
+                        <RowLink
+                          {...getInstancePinningLink(
+                            currentProject.orgId,
+                            currentProject,
+                            `hsm-connectors/${c.id}`
+                          )!}
+                          disabled={!canOpenDetail}
+                        >
+                          {c.name}
+                        </RowLink>
+                      </TableCell>
                       <TableCell>{reachedFromLabel(c)}</TableCell>
                       <TableCell>{c.slotLabel}</TableCell>
                       <TableCell>{format(new Date(c.createdAt), "MMM d, yyyy")}</TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
+                      <TableCell data-row-interactive className="cursor-default">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton aria-label="Actions" variant="ghost">

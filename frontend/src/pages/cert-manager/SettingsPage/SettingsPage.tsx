@@ -1,6 +1,6 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -16,16 +16,14 @@ import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
 import { HsmConnectorsTab } from "./components/HsmConnectorsTab";
 
 export const SettingsPage = () => {
-  const { orgId, projectId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
   const activeTab = search.selectedTab ?? "app-connections";
 
   return (
     <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
-      <Helmet>
-        <title>Settings</title>
-      </Helmet>
+      <PageTitle title="Settings" />
       <div className="flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
@@ -37,8 +35,8 @@ export const SettingsPage = () => {
           value={activeTab}
           onValueChange={(v) =>
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
-              params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+              to: "/organizations/$orgId/cert-manager/settings",
+              params: { orgId: orgId ?? "" },
               search: { selectedTab: v }
             })
           }

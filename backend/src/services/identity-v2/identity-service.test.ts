@@ -236,3 +236,48 @@ describe("instance admin identities are protected on the v2 surface", () => {
     expect(identityDAL.updateById).not.toHaveBeenCalled();
   });
 });
+
+describe("updateIdentity name check", () => {
+  const SOFT_HYPHEN = String.fromCharCode(0xad);
+  const LEGACY_NAME = `ci${SOFT_HYPHEN}bot`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+  });
+
+  const update = (service: ReturnType<typeof createService>["service"], data: Record<string, unknown>) =>
+    service.updateIdentity({ ...buildDto(), data } as never);
+
+  test("an unchanged name is let through even if it predates the rule", async () => {
+    const { service, identityDAL } = createService({
+      existingIdentity: { id: IDENTITY_ID, name: LEGACY_NAME, hasDeleteProtection: false }
+    });
+
+    await update(service, { name: LEGACY_NAME, hasDeleteProtection: true });
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(
+      IDENTITY_ID,
+      { name: LEGACY_NAME, hasDeleteProtection: true },
+      TX
+    );
+  });
+
+  test("a rename to an unsafe name is refused", async () => {
+    const { service, identityDAL } = createService();
+
+    await expect(update(service, { name: LEGACY_NAME })).rejects.toThrow(
+      "Value cannot contain control, escape, bidirectional or zero-width characters"
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("a rename to a safe name goes through", async () => {
+    const { service, identityDAL } = createService();
+
+    await update(service, { name: "ci-bot" });
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(IDENTITY_ID, { name: "ci-bot" }, TX);
+  });
+});

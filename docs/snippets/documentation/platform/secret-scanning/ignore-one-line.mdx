@@ -1,0 +1,9 @@
+## Ignore one line
+
+To ignore a secret on one line of code, add a `betterleaks:allow` comment at the end of the line:
+
+```js example.js
+const testKey = "8dyfuiRyq=vVc3RRr_edRk-fK__JItpZ"; // betterleaks:allow
+```
+
+The scanner also accepts `gitleaks:allow`, so existing `gitleaks:allow` comments keep working.

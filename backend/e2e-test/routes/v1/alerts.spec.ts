@@ -86,6 +86,56 @@ describe("Alerts API", () => {
     expect(await testDb("alert_channels").where({ id: webhook.id })).toHaveLength(0);
   });
 
+  test("webhook headers are returned as they are, and saved credentials only go to the URL they were saved with", async () => {
+    const alert = await createAlert({
+      body: identityAlert({
+        name: "webhook-auth",
+        channels: [
+          {
+            ...webhookChannel,
+            config: {
+              url: "https://example.com/hook",
+              authType: "bearer",
+              authCredentials: "abc",
+              headers: [{ key: "X-Env", value: "prod" }]
+            }
+          }
+        ]
+      }),
+      authToken
+    });
+    const [webhook] = alert.channels;
+    expect(webhook.config).toMatchObject({
+      authType: "bearer",
+      hasAuthCredentials: true,
+      headers: [{ key: "X-Env", value: "prod" }]
+    });
+    expect(webhook.config).not.toHaveProperty("authCredentials");
+
+    const updateConfig = (config: Record<string, unknown>) =>
+      updateAlert({
+        alertId: alert.id,
+        authToken,
+        body: { channels: [{ id: webhook.id, name: webhook.name, channelType: "webhook", config }] }
+      });
+
+    const kept = await updateConfig({
+      url: "https://example.com/hook",
+      authType: "bearer",
+      headers: [{ key: "X-Env", value: "staging" }]
+    });
+    expect(kept.channels[0].config).toMatchObject({
+      hasAuthCredentials: true,
+      headers: [{ key: "X-Env", value: "staging" }]
+    });
+
+    const moved = await updateConfig({ url: "https://example.com/other-hook", authType: "bearer" }).raw();
+    expect(moved.statusCode).toBe(400);
+    expect(moved.json().message).toContain(
+      "Enter the authentication credentials again because the webhook URL changed"
+    );
+  });
+
   test("updating with another alert's channel id is refused", async () => {
     const first = await createAlert({ body: identityAlert({ name: "first" }), authToken });
     const second = await createAlert({ body: identityAlert({ name: "second", projectId }), authToken });

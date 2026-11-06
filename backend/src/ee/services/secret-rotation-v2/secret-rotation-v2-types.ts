@@ -4,8 +4,8 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -30,6 +30,12 @@ import {
   TAzureClientSecretRotationListItem,
   TAzureClientSecretRotationWithConnection
 } from "./azure-client-secret";
+import {
+  TClickHouseCredentialsRotation,
+  TClickHouseCredentialsRotationInput,
+  TClickHouseCredentialsRotationListItem,
+  TClickHouseCredentialsRotationWithConnection
+} from "./clickhouse-credentials";
 import {
   TCloudflareApiTokenRotation,
   TCloudflareApiTokenRotationGeneratedCredentials,
@@ -247,7 +253,8 @@ export type TSecretRotationV2 =
   | TCloudflareApiTokenRotation
   | TCloudflareR2AccessKeyRotation
   | TStripeApiKeyRotation
-  | TGcpServiceAccountKeyRotation;
+  | TGcpServiceAccountKeyRotation
+  | TClickHouseCredentialsRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -279,7 +286,8 @@ export type TSecretRotationV2WithConnection =
   | TCloudflareApiTokenRotationWithConnection
   | TCloudflareR2AccessKeyRotationWithConnection
   | TStripeApiKeyRotationWithConnection
-  | TGcpServiceAccountKeyRotationWithConnection;
+  | TGcpServiceAccountKeyRotationWithConnection
+  | TClickHouseCredentialsRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -339,7 +347,8 @@ export type TSecretRotationV2Input =
   | TCloudflareApiTokenRotationInput
   | TCloudflareR2AccessKeyRotationInput
   | TStripeApiKeyRotationInput
-  | TGcpServiceAccountKeyRotationInput;
+  | TGcpServiceAccountKeyRotationInput
+  | TClickHouseCredentialsRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -371,7 +380,8 @@ export type TSecretRotationV2ListItem =
   | TCloudflareApiTokenRotationListItem
   | TCloudflareR2AccessKeyRotationListItem
   | TStripeApiKeyRotationListItem
-  | TGcpServiceAccountKeyRotationListItem;
+  | TGcpServiceAccountKeyRotationListItem
+  | TClickHouseCredentialsRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

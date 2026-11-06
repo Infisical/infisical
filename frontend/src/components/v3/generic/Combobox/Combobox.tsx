@@ -3,8 +3,13 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import {
+  useIsInsideModalOverlayLayer,
+  useOverlayPopupRegistration
+} from "../../utils/overlay-layer";
 import { useScrollEdges } from "../../utils/useScrollEdges";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../Dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../Sheet";
 import { getComboboxInputAriaLabel } from "./combobox-accessibility";
 import {
   COMBOBOX_CHIP_CLASS,
@@ -44,27 +49,64 @@ type ComboboxInlineCreationConfig<TOption> = ComboboxCreationBaseConfig<TOption>
   isPending?: boolean;
 };
 
-type ComboboxDialogCreationRenderProps = {
+type ComboboxFormCreationRenderProps = {
   initialInput: string;
   complete: () => void;
   cancel: () => void;
 };
 
-type ComboboxDialogCreationConfig<TOption> = ComboboxCreationBaseConfig<TOption> & {
+type ComboboxDialogCreationRenderProps = ComboboxFormCreationRenderProps;
+
+type ComboboxFormCreationConfig<TOption> = ComboboxCreationBaseConfig<TOption> & {
+  renderForm: (props: ComboboxFormCreationRenderProps) => React.ReactNode;
+  /** Prevent dismissing the creation overlay while caller-owned persistence is pending. */
+  isPending?: boolean;
+  /** Intercepts Escape, outside press, and the close button (e.g. to confirm discarding changes); call `cancel` to close. */
+  onDismiss?: (cancel: () => void) => void;
+};
+
+type ComboboxDialogCreationConfig<TOption> = ComboboxFormCreationConfig<TOption> & {
   mode: "dialog";
   title: React.ReactNode;
   description: React.ReactNode;
-  renderForm: (props: ComboboxDialogCreationRenderProps) => React.ReactNode;
-  /** Prevent dismissing the dialog while caller-owned persistence is pending. */
-  isPending?: boolean;
+};
+
+type ComboboxSheetCreationConfig<TOption> = ComboboxFormCreationConfig<TOption> & {
+  mode: "sheet";
+  size?: React.ComponentProps<typeof SheetContent>["size"];
+} & (
+    | {
+        showHeader?: true;
+        title: React.ReactNode;
+        description: React.ReactNode;
+      }
+    | {
+        /** The form must provide SheetHeader, SheetTitle, and SheetDescription. */
+        showHeader: false;
+        title?: never;
+        description?: never;
+      }
+  );
+
+type ComboboxActionCreationConfig<TOption> = Pick<
+  ComboboxCreationBaseConfig<TOption>,
+  "emptyLabel" | "formatLabel" | "isDisabled"
+> & {
+  mode: "action";
+  /** Closes the picker and starts a caller-owned workflow without persisting or selecting an option. */
+  onAction: (inputValue: string) => void;
 };
 
 type ComboboxCreationConfig<TOption> =
   | ComboboxInlineCreationConfig<TOption>
-  | ComboboxDialogCreationConfig<TOption>;
+  | ComboboxDialogCreationConfig<TOption>
+  | ComboboxSheetCreationConfig<TOption>
+  | ComboboxActionCreationConfig<TOption>;
 
 type ComboboxSharedProps<TOption> = {
   options?: readonly TOption[];
+  /** `sm` is a shorter control with badge-sized chips, for dense rows. */
+  size?: "md" | "sm";
   getOptionValue: (option: TOption) => string;
   getOptionLabel: (option: TOption) => string;
   getOptionKeywords?: (option: TOption) => readonly string[];
@@ -95,15 +137,16 @@ type ComboboxSharedProps<TOption> = {
   includeMissingSelectedOptions?: boolean;
   /**
    * Adds a fixed Create footer option. Inline mode persists directly from the query;
-   * dialog mode delegates metadata, validation, persistence, and controlled
+   * dialog and sheet modes delegate metadata, validation, persistence, and controlled
    * option/selection updates to the caller's form.
+   * Action mode starts a caller-owned workflow without an additional overlay.
    */
   creation?: ComboboxCreationConfig<TOption>;
 };
 
 type ComboboxInputProps = Omit<
-  React.ComponentPropsWithoutRef<"input">,
-  "children" | "disabled" | "multiple" | "onChange" | "type" | "value"
+  React.ComponentProps<"input">,
+  "children" | "disabled" | "multiple" | "onChange" | "size" | "type" | "value"
 >;
 
 type ComboboxSingleValueProps<TOption> = {
@@ -182,7 +225,9 @@ const useComboboxOpen = (onPopupOpenChange?: (open: boolean) => void) => {
     []
   );
 
-  return [open, setOpen] as const;
+  const markPopupDismissEvent = useOverlayPopupRegistration(open);
+
+  return [open, setOpen, markPopupDismissEvent] as const;
 };
 
 const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
@@ -215,6 +260,7 @@ type ComboboxTrailingSlotProps = {
   canClear: boolean;
   clearAriaLabel: string;
   isBusy: boolean;
+  size?: "md" | "sm";
   className?: string;
   onClear: () => void;
 };
@@ -223,9 +269,11 @@ const ComboboxTrailingSlot = ({
   canClear,
   clearAriaLabel,
   isBusy,
+  size = "md",
   className,
   onClear
 }: ComboboxTrailingSlotProps) => {
+  const iconClassName = size === "sm" ? "size-3.5" : "size-4";
   let state = "chevron";
   if (canClear) state = "clear";
   if (isBusy) state = "loading";
@@ -235,11 +283,14 @@ const ComboboxTrailingSlot = ({
       data-slot="combobox-trailing-slot"
       data-state={state}
       className={cn(
-        "pointer-events-none flex size-7 shrink-0 items-center justify-center text-accent",
+        "pointer-events-none flex shrink-0 items-center justify-center text-accent",
+        size === "sm" ? "size-6" : "size-7",
         className
       )}
     >
-      {state === "loading" && <Loader2Icon aria-hidden="true" className="size-4 animate-spin" />}
+      {state === "loading" && (
+        <Loader2Icon aria-hidden="true" className={cn(iconClassName, "animate-spin")} />
+      )}
       {state === "clear" && (
         <button
           type="button"
@@ -250,10 +301,10 @@ const ComboboxTrailingSlot = ({
           onClick={onClear}
           className="pointer-events-auto flex size-full items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <XIcon aria-hidden="true" className="size-4" />
+          <XIcon aria-hidden="true" className={iconClassName} />
         </button>
       )}
-      {state === "chevron" && <ChevronDownIcon aria-hidden="true" className="size-4" />}
+      {state === "chevron" && <ChevronDownIcon aria-hidden="true" className={iconClassName} />}
     </div>
   );
 };
@@ -292,11 +343,12 @@ type ComboboxGroup<TOption> = {
 const isInlineCreationConfig = <TOption,>(
   creation?: ComboboxCreationConfig<TOption>
 ): creation is ComboboxInlineCreationConfig<TOption> =>
-  Boolean(creation && creation.mode !== "dialog");
+  Boolean(creation && (creation.mode === undefined || creation.mode === "inline"));
 
-const isDialogCreationConfig = <TOption,>(
+const isFormCreationConfig = <TOption,>(
   creation?: ComboboxCreationConfig<TOption>
-): creation is ComboboxDialogCreationConfig<TOption> => creation?.mode === "dialog";
+): creation is ComboboxDialogCreationConfig<TOption> | ComboboxSheetCreationConfig<TOption> =>
+  creation?.mode === "dialog" || creation?.mode === "sheet";
 
 const usePrimitiveComboboxItems = <TOption,>(
   items: readonly TOption[],
@@ -360,7 +412,7 @@ type ComboboxListProps<TOption> = Omit<
   creationError: { error: unknown; inputValue: string } | null;
   isCreationPending: boolean;
   selectedValues: ReadonlySet<string>;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
   maxHeight: string;
 };
 
@@ -407,7 +459,12 @@ const ComboboxList = <TOption,>({
           key={`create:${item.inputValue}`}
           data-slot="combobox-create-item"
           value={item}
-          disabled={!canCreate || creation?.isDisabled || creation?.isPending || isCreationPending}
+          disabled={
+            !canCreate ||
+            creation?.isDisabled ||
+            (creation?.mode !== "action" && creation?.isPending) ||
+            isCreationPending
+          }
           className={cn(
             COMBOBOX_ROW_CLASS,
             "w-full px-2 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-65 data-[highlighted]:bg-foreground/5 data-[highlighted]:text-foreground"
@@ -701,8 +758,8 @@ const useComboboxCreation = <TOption,>({
   };
 };
 
-type ComboboxDialogCreationState<TOption> = {
-  creation?: ComboboxDialogCreationConfig<TOption>;
+type ComboboxFormCreationState<TOption> = {
+  creation?: ComboboxDialogCreationConfig<TOption> | ComboboxSheetCreationConfig<TOption>;
   initialInput: string;
   isOpen: boolean;
   open: (inputValue: string) => void;
@@ -712,9 +769,9 @@ type ComboboxDialogCreationState<TOption> = {
   onCloseAutoFocus: (event: Event) => void;
 };
 
-type ComboboxCreationDialogProps<TOption> = Omit<ComboboxDialogCreationState<TOption>, "open">;
+type ComboboxCreationOverlayProps<TOption> = Omit<ComboboxFormCreationState<TOption>, "open">;
 
-const useComboboxDialogCreation = <TOption,>({
+const useComboboxFormCreation = <TOption,>({
   creation,
   onComplete,
   onClosed
@@ -722,20 +779,20 @@ const useComboboxDialogCreation = <TOption,>({
   creation?: ComboboxCreationConfig<TOption>;
   onComplete: (inputValue: string) => void;
   onClosed: (outcome: "complete" | "cancel") => void;
-}): ComboboxDialogCreationState<TOption> => {
-  const dialogCreation = isDialogCreationConfig(creation) ? creation : undefined;
+}): ComboboxFormCreationState<TOption> => {
+  const formCreation = isFormCreationConfig(creation) ? creation : undefined;
   const [initialInput, setInitialInput] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
   const outcomeRef = React.useRef<"complete" | "cancel" | null>(null);
 
   const open = React.useCallback(
     (inputValue: string) => {
-      if (!dialogCreation || dialogCreation.isDisabled || dialogCreation.isPending) return;
+      if (!formCreation || formCreation.isDisabled || formCreation.isPending) return;
       outcomeRef.current = null;
       setInitialInput(inputValue);
       setIsOpen(true);
     },
-    [dialogCreation]
+    [formCreation]
   );
 
   const complete = React.useCallback(() => {
@@ -745,16 +802,18 @@ const useComboboxDialogCreation = <TOption,>({
   }, [initialInput, onComplete]);
 
   const cancel = React.useCallback(() => {
-    if (dialogCreation?.isPending) return;
+    if (formCreation?.isPending) return;
     outcomeRef.current = "cancel";
     setIsOpen(false);
-  }, [dialogCreation?.isPending]);
+  }, [formCreation?.isPending]);
 
   const onOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      if (!nextOpen) cancel();
+      if (nextOpen) return;
+      if (formCreation?.onDismiss) formCreation.onDismiss(cancel);
+      else cancel();
     },
-    [cancel]
+    [cancel, formCreation]
   );
 
   const onCloseAutoFocus = React.useCallback(
@@ -768,7 +827,7 @@ const useComboboxDialogCreation = <TOption,>({
   );
 
   return {
-    creation: dialogCreation,
+    creation: formCreation,
     initialInput,
     isOpen,
     open,
@@ -779,7 +838,7 @@ const useComboboxDialogCreation = <TOption,>({
   };
 };
 
-const ComboboxCreationDialog = <TOption,>({
+const ComboboxCreationOverlay = <TOption,>({
   creation,
   initialInput,
   isOpen,
@@ -787,12 +846,33 @@ const ComboboxCreationDialog = <TOption,>({
   cancel,
   onOpenChange,
   onCloseAutoFocus
-}: ComboboxCreationDialogProps<TOption>) => {
+}: ComboboxCreationOverlayProps<TOption>) => {
   if (!creation) return null;
 
   const preventPendingDismissal = (event: Event) => {
     if (creation.isPending) event.preventDefault();
   };
+
+  if (creation.mode === "sheet") {
+    return (
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetContent
+          size={creation.size}
+          isPending={creation.isPending}
+          onCloseAutoFocus={onCloseAutoFocus}
+          onSubmit={(event) => event.stopPropagation()}
+        >
+          {creation.showHeader !== false && (
+            <SheetHeader>
+              <SheetTitle>{creation.title}</SheetTitle>
+              <SheetDescription>{creation.description}</SheetDescription>
+            </SheetHeader>
+          )}
+          {creation.renderForm({ initialInput, complete, cancel })}
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -840,10 +920,11 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     isDisabled = false,
     isLoading = false,
     isError = false,
-    modal = false,
+    modal: modalProp,
     onPopupOpenChange,
     portalContainer: portalContainerProp,
     variant = "default",
+    size = "md",
     className,
     contentClassName,
     onInputValueChange,
@@ -854,17 +935,21 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onClick,
     onFocus,
     onKeyDown,
+    ref,
     ...inputProps
   } = props;
+  const isInsideModalOverlayLayer = useIsInsideModalOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, []);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
-  const [open, setOpen] = useComboboxOpen(onPopupOpenChange);
+  const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
+  const modal = modalProp ?? isInsideModalOverlayLayer;
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
   searchRef.current = search;
-  const isDialogCreationActiveRef = React.useRef(false);
+  const isFormCreationActiveRef = React.useRef(false);
   const [isEditing, setIsEditingState] = React.useState(false);
   const isEditingRef = React.useRef(isEditing);
   isEditingRef.current = isEditing;
@@ -920,17 +1005,21 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onSearchChange?.(nextSearch);
     onInputValueChange?.(nextSearch);
   };
+  // Dialog creation collects its own fields, so its create row also opens from an empty query.
+  const creationQuery = isEditing ? search.trim() : "";
   const creationInput =
-    creation && isEditing
-      ? getComboboxCreationInput({
-          inputValue: search,
-          options,
-          selectedOptions,
-          getOptionLabel,
-          isDuplicate: creation.isDuplicate,
-          isValid: creation.isValid
-        })
-      : null;
+    creation?.mode === "action"
+      ? creationQuery
+      : ((creation && isEditing
+          ? getComboboxCreationInput({
+              inputValue: search,
+              options,
+              selectedOptions,
+              getOptionLabel,
+              isDuplicate: creation.isDuplicate,
+              isValid: creation.isValid
+            })
+          : null) ?? (isFormCreationConfig(creation) && !(isEditing && search.trim()) ? "" : null));
   const handleCreationSuccess = React.useCallback(
     (inputValue: string) => {
       if (searchRef.current.trim() !== inputValue) return;
@@ -942,17 +1031,17 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     },
     [onInputValueChange, onSearchChange, setIsEditing]
   );
-  const handleCreationDialogClosed = React.useCallback((outcome: "complete" | "cancel") => {
+  const handleCreationOverlayClosed = React.useCallback((outcome: "complete" | "cancel") => {
     if (outcome === "cancel") setOpen(true);
     window.requestAnimationFrame(() => {
       inputRef.current?.focus();
-      isDialogCreationActiveRef.current = false;
+      isFormCreationActiveRef.current = false;
     });
   }, []);
-  const dialogCreation = useComboboxDialogCreation({
+  const formCreation = useComboboxFormCreation({
     creation,
     onComplete: handleCreationSuccess,
-    onClosed: handleCreationDialogClosed
+    onClosed: handleCreationOverlayClosed
   });
   const {
     clearError: clearCreationError,
@@ -974,7 +1063,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     window.requestAnimationFrame(() => inputRef.current?.focus());
   };
   const creationItem: ComboboxCreateItem | null = creation
-    ? { type: "create", inputValue: pendingInputValue ?? (isEditing ? search.trim() : "") }
+    ? { type: "create", inputValue: pendingInputValue ?? creationQuery }
     : null;
   const primitiveItems = React.useMemo(() => {
     if (!creationItem) return rootItems;
@@ -1006,11 +1095,15 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
             }
             if (nextValue.type === "create") {
               eventDetails.cancel();
-              if (!creationInput || nextValue.inputValue !== creationInput) return;
-              if (dialogCreation.creation) {
-                isDialogCreationActiveRef.current = true;
+              if (creationInput === null || nextValue.inputValue !== creationInput) return;
+              if (creation?.mode === "action") {
+                if (creation.isDisabled) return;
                 setOpen(false);
-                dialogCreation.open(creationInput);
+                creation.onAction(creationInput);
+              } else if (formCreation.creation) {
+                isFormCreationActiveRef.current = true;
+                setOpen(false);
+                formCreation.open(creationInput);
               } else {
                 createOption(creationInput);
               }
@@ -1032,13 +1125,14 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               setOpen(true);
               return;
             }
-            const isOpeningCreationDialog =
+            const isOpeningCreationOverlay =
               !nextOpen &&
               eventDetails.reason === "item-press" &&
-              isDialogCreationConfig(creation) &&
-              (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+              isFormCreationConfig(creation) &&
+              (isFormCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+            if (!nextOpen) markPopupDismissEvent(eventDetails.event);
             setOpen(nextOpen);
-            if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
+            if (!nextOpen && !isCreationActive() && !isOpeningCreationOverlay) {
               highlightedOptionValueRef.current = null;
               setIsEditing(false);
               updateSearch("");
@@ -1054,7 +1148,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
             if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
               if (
                 eventDetails.reason === "input-clear" &&
-                (isCreationActive() || isDialogCreationActiveRef.current)
+                (isCreationActive() || isFormCreationActiveRef.current)
               )
                 return;
               setIsEditing(eventDetails.reason === "input-change");
@@ -1132,12 +1226,16 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
                 preventComboboxFormSubmit(event);
               }}
               className={cn(
-                "h-9 w-full bg-transparent py-2 pr-9 text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
+                "w-full bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
+                size === "sm" ? "h-7 py-1 pr-7" : "h-9 py-2 pr-9",
                 "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
                 variant === "default" &&
                   "rounded-md border border-border pl-2.5 hover:border-foreground/20 focus:border-ring focus:ring-[3px] focus:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
                 variant === "input-group" && "rounded-none border-0 pl-2 shadow-none",
-                !isEditing && value != null && renderValue && "text-transparent",
+                !isEditing &&
+                  value != null &&
+                  renderValue &&
+                  "text-transparent selection:text-transparent",
                 className
               )}
               {...inputProps}
@@ -1146,6 +1244,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               <span
                 className={cn(
                   "pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground",
+                  size === "sm" && "right-7",
                   isDisabled && "opacity-50"
                 )}
               >
@@ -1178,7 +1277,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               showEmptyMessage={!creation}
               creation={creation}
               creationItem={creationItem}
-              canCreate={Boolean(creationInput)}
+              canCreate={creationInput !== null}
               creationError={creationError}
               isCreationPending={isCreationPending}
               selectedValues={selectedValues}
@@ -1189,7 +1288,8 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
           </ComboboxPopup>
         </ComboboxPrimitive.Root>
         <ComboboxTrailingSlot
-          className="absolute top-1 right-1 z-10"
+          className={cn("absolute z-10", size === "sm" ? "top-0.5 right-0.5" : "top-1 right-1")}
+          size={size}
           isBusy={isLoading || isCreationPending}
           canClear={Boolean(
             isClearable && !isDisabled && (value != null || (isEditing && search.length > 0))
@@ -1198,7 +1298,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
           onClear={handleClear}
         />
       </div>
-      <ComboboxCreationDialog {...dialogCreation} />
+      <ComboboxCreationOverlay {...formCreation} />
     </>
   );
 };
@@ -1230,9 +1330,10 @@ const MultipleCombobox = <TOption,>({
   isDisabled = false,
   isLoading = false,
   isError = false,
-  modal = false,
+  modal: modalProp,
   onPopupOpenChange,
   portalContainer: portalContainerProp,
+  size = "md",
   className,
   contentClassName,
   onInputValueChange,
@@ -1243,21 +1344,25 @@ const MultipleCombobox = <TOption,>({
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   onKeyDown,
+  ref,
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
+  const isInsideModalOverlayLayer = useIsInsideModalOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, []);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
   const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(
     singleLine ? "horizontal" : "vertical"
   );
-  const [open, setOpen] = useComboboxOpen(onPopupOpenChange);
+  const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
+  const modal = modalProp ?? isInsideModalOverlayLayer;
   const openRef = React.useRef(open);
   openRef.current = open;
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
   searchRef.current = search;
-  const isDialogCreationActiveRef = React.useRef(false);
+  const isFormCreationActiveRef = React.useRef(false);
   const selectedOptions = React.useMemo(() => [...value], [value]);
   // A caller-owned search returns one already-filtered page after a debounce and a round trip.
   // The local matcher must not filter that page again, a selection missing from it is not a
@@ -1314,16 +1419,20 @@ const MultipleCombobox = <TOption,>({
   const areAllOptionsSelected =
     selectAllOptions.length > 0 &&
     selectAllOptions.every((option) => selectedValues.has(getOptionValue(option)));
-  const creationInput = creation
-    ? getComboboxCreationInput({
-        inputValue: search,
-        options,
-        selectedOptions,
-        getOptionLabel,
-        isDuplicate: creation.isDuplicate,
-        isValid: creation.isValid
-      })
-    : null;
+  // Dialog creation collects its own fields, so its create row also opens from an empty query.
+  const creationInput =
+    creation?.mode === "action"
+      ? search.trim()
+      : ((creation
+          ? getComboboxCreationInput({
+              inputValue: search,
+              options,
+              selectedOptions,
+              getOptionLabel,
+              isDuplicate: creation.isDuplicate,
+              isValid: creation.isValid
+            })
+          : null) ?? (isFormCreationConfig(creation) && !search.trim() ? "" : null));
   const handleCreationSuccess = React.useCallback(
     (inputValue: string) => {
       if (searchRef.current.trim() !== inputValue) return;
@@ -1334,20 +1443,20 @@ const MultipleCombobox = <TOption,>({
     },
     [onInputValueChange, onSearchChange]
   );
-  const handleCreationDialogClosed = React.useCallback((outcome: "complete" | "cancel") => {
+  const handleCreationOverlayClosed = React.useCallback((outcome: "complete" | "cancel") => {
     if (outcome === "cancel") {
       openRef.current = true;
       setOpen(true);
     }
     window.requestAnimationFrame(() => {
       inputRef.current?.focus();
-      isDialogCreationActiveRef.current = false;
+      isFormCreationActiveRef.current = false;
     });
   }, []);
-  const dialogCreation = useComboboxDialogCreation({
+  const formCreation = useComboboxFormCreation({
     creation,
     onComplete: handleCreationSuccess,
-    onClosed: handleCreationDialogClosed
+    onClosed: handleCreationOverlayClosed
   });
   const {
     clearError: clearCreationError,
@@ -1409,15 +1518,24 @@ const MultipleCombobox = <TOption,>({
           items={primitiveItems}
           value={selectedItems}
           onValueChange={(nextValue, eventDetails) => {
+            if (eventDetails.reason === "escape-key") {
+              eventDetails.cancel();
+              return;
+            }
             const createItem = nextValue.find((item) => item.type === "create");
             if (createItem) {
               eventDetails.cancel();
-              if (!creationInput || createItem.inputValue !== creationInput) return;
-              if (dialogCreation.creation) {
-                isDialogCreationActiveRef.current = true;
+              if (creationInput === null || createItem.inputValue !== creationInput) return;
+              if (creation?.mode === "action") {
+                if (creation.isDisabled) return;
                 openRef.current = false;
                 setOpen(false);
-                dialogCreation.open(creationInput);
+                creation.onAction(creationInput);
+              } else if (formCreation.creation) {
+                isFormCreationActiveRef.current = true;
+                openRef.current = false;
+                setOpen(false);
+                formCreation.open(creationInput);
               } else {
                 createOption(creationInput);
               }
@@ -1455,14 +1573,15 @@ const MultipleCombobox = <TOption,>({
               setOpen(true);
               return;
             }
-            const isOpeningCreationDialog =
+            const isOpeningCreationOverlay =
               !nextOpen &&
               eventDetails.reason === "item-press" &&
-              isDialogCreationConfig(creation) &&
-              (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+              isFormCreationConfig(creation) &&
+              (isFormCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+            if (!nextOpen) markPopupDismissEvent(eventDetails.event);
             openRef.current = nextOpen;
             setOpen(nextOpen);
-            if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
+            if (!nextOpen && !isCreationActive() && !isOpeningCreationOverlay) {
               updateSearch("");
               clearCreationError();
             }
@@ -1471,7 +1590,7 @@ const MultipleCombobox = <TOption,>({
           onInputValueChange={(nextValue, eventDetails) => {
             if (
               eventDetails.reason === "input-clear" &&
-              (isCreationActive() || isDialogCreationActiveRef.current)
+              (isCreationActive() || isFormCreationActiveRef.current)
             )
               return;
             if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
@@ -1506,11 +1625,12 @@ const MultipleCombobox = <TOption,>({
               COMBOBOX_CHIPS_CLASS,
               singleLine ? "items-center" : "items-start",
               value.length > 0 ? "p-1 pr-8" : "py-1 pr-8 pl-2.5",
+              size === "sm" && cn("min-h-7 py-0.5 pr-7", value.length > 0 ? "pl-1" : "pl-2"),
               className
             )}
           >
             <div
-              className={comboboxChipsViewportClass(singleLine)}
+              className={comboboxChipsViewportClass(singleLine, size === "sm")}
               ref={setViewportRef}
               data-scroll-edge-axis={singleLine ? "horizontal" : "vertical"}
               data-scrollable-start={scrollEdges.start}
@@ -1526,7 +1646,7 @@ const MultipleCombobox = <TOption,>({
                       return (
                         <ComboboxPrimitive.Chip
                           key={getOptionValue(option)}
-                          className={COMBOBOX_CHIP_CLASS}
+                          className={cn(COMBOBOX_CHIP_CLASS, size === "sm" && "h-5 gap-0.5 px-1")}
                         >
                           <span className={COMBOBOX_CHIP_LABEL_CLASS}>
                             {renderValue?.(option) ?? label}
@@ -1534,7 +1654,10 @@ const MultipleCombobox = <TOption,>({
                           {!isDisabled && (
                             <ComboboxPrimitive.ChipRemove
                               aria-label={`Remove ${label}`}
-                              className={COMBOBOX_CHIP_REMOVE_CLASS}
+                              className={cn(
+                                COMBOBOX_CHIP_REMOVE_CLASS,
+                                size === "sm" && "size-3.5"
+                              )}
                             >
                               <XIcon className="size-3" />
                             </ComboboxPrimitive.ChipRemove>
@@ -1562,7 +1685,7 @@ const MultipleCombobox = <TOption,>({
                   onKeyDown?.(event);
                   preventComboboxFormSubmit(event);
                 }}
-                className={COMBOBOX_CHIPS_INPUT_CLASS}
+                className={cn(COMBOBOX_CHIPS_INPUT_CLASS, size === "sm" && "h-5")}
                 {...inputProps}
               />
             </div>
@@ -1597,7 +1720,7 @@ const MultipleCombobox = <TOption,>({
               showEmptyMessage={!creation}
               creation={creation}
               creationItem={creationItem}
-              canCreate={Boolean(creationInput)}
+              canCreate={creationInput !== null}
               creationError={creationError}
               isCreationPending={isCreationPending}
               selectedValues={selectedValues}
@@ -1608,21 +1731,22 @@ const MultipleCombobox = <TOption,>({
           </ComboboxPopup>
         </ComboboxPrimitive.Root>
         <ComboboxTrailingSlot
-          className="absolute top-1 right-1 z-10"
+          className={cn("absolute z-10", size === "sm" ? "top-0.5 right-0.5" : "top-1 right-1")}
+          size={size}
           isBusy={isLoading || isCreationPending}
           canClear={isClearable && !isDisabled && (value.length > 0 || search.length > 0)}
           clearAriaLabel={clearAriaLabel}
           onClear={handleClear}
         />
       </div>
-      <ComboboxCreationDialog {...dialogCreation} />
+      <ComboboxCreationOverlay {...formCreation} />
     </>
   );
 };
 
 /**
  * Searchable object select built on Base UI. Use `multiple` for the chips-based
- * multi-select contract while legacy `FilterableSelect` consumers migrate incrementally.
+ * multi-select contract.
  * Options are filtered in the browser unless `onSearchChange` is passed, which hands
  * filtering to the caller so the list can be fetched a page at a time.
  */
@@ -1650,12 +1774,15 @@ function Combobox<TOption>(props: ComboboxProps<TOption>) {
 
 export {
   Combobox,
+  type ComboboxActionCreationConfig,
   type ComboboxCreationConfig,
   type ComboboxDialogCreationConfig,
   type ComboboxDialogCreationRenderProps,
+  type ComboboxFormCreationRenderProps,
   type ComboboxInlineCreationConfig,
   type ComboboxMultipleProps,
   type ComboboxProps,
   type ComboboxRenderOptionState,
+  type ComboboxSheetCreationConfig,
   type ComboboxSingleProps
 };

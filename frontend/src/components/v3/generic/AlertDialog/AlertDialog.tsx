@@ -2,6 +2,7 @@ import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { cn } from "../../utils";
+import { OverlayLayerContext, useOverlayLayer } from "../../utils/overlay-layer";
 import { Button } from "../Button";
 import { DIALOG_CONTENT_WIDTH_CLASSNAME } from "../Dialog";
 import { Field, FieldLabel } from "../Field";
@@ -13,6 +14,7 @@ type AlertDialogConfirmationContextValue = {
   confirmationValue?: string;
   inputValue: string;
   isConfirmed: boolean;
+  isPending: boolean;
   setInputValue: React.Dispatch<React.SetStateAction<string>>;
 };
 
@@ -20,11 +22,13 @@ const AlertDialogConfirmationContext = React.createContext<AlertDialogConfirmati
   actionRef: { current: null },
   inputValue: "",
   isConfirmed: true,
+  isPending: false,
   setInputValue: () => undefined
 });
 
 type AlertDialogProps = React.ComponentProps<typeof AlertDialogPrimitive.Root> & {
   confirmationValue?: string;
+  isPending?: boolean;
 };
 
 function AlertDialog(alertDialogProps: AlertDialogProps) {
@@ -32,21 +36,26 @@ function AlertDialog(alertDialogProps: AlertDialogProps) {
     alertDialogProps,
     "confirmationValue"
   );
-  const { confirmationValue, onOpenChange, ...props } = alertDialogProps;
+  const { confirmationValue, isPending = false, onOpenChange, ...props } = alertDialogProps;
   const [inputValue, setInputValue] = React.useState("");
   const actionRef = React.useRef<HTMLButtonElement>(null);
   const isConfirmed =
-    !hasConfirmation || (confirmationValue !== undefined && inputValue === confirmationValue);
+    !hasConfirmation || (Boolean(confirmationValue) && inputValue === confirmationValue);
   const confirmationContextValue = React.useMemo(
-    () => ({ actionRef, confirmationValue, inputValue, isConfirmed, setInputValue }),
-    [confirmationValue, inputValue, isConfirmed]
+    () => ({ actionRef, confirmationValue, inputValue, isConfirmed, isPending, setInputValue }),
+    [confirmationValue, inputValue, isConfirmed, isPending]
   );
 
   React.useEffect(() => {
     if (props.open === false) setInputValue("");
   }, [props.open]);
 
+  React.useEffect(() => {
+    setInputValue("");
+  }, [confirmationValue]);
+
   const handleOpenChange = (open: boolean) => {
+    if (!open && isPending) return;
     if (!open) setInputValue("");
     onOpenChange?.(open);
   };
@@ -91,11 +100,18 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  children,
   onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
 }) {
+  const { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn } =
+    useOverlayLayer(false);
+  const { isPending } = React.useContext(AlertDialogConfirmationContext);
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -108,7 +124,7 @@ function AlertDialogContent({
           className
         )}
         onOpenAutoFocus={(event) => {
-          onOpenAutoFocus?.(event);
+          captureFocusReturn(event, onOpenAutoFocus);
           if (event.defaultPrevented) return;
 
           const inputs = (
@@ -122,8 +138,18 @@ function AlertDialogContent({
 
           if (focusedInput) event.preventDefault();
         }}
+        onCloseAutoFocus={(event) => restoreFocusReturn(event, onCloseAutoFocus)}
+        onEscapeKeyDown={(event) => {
+          if (isPending) {
+            event.preventDefault();
+            return;
+          }
+          guardDismiss(event, onEscapeKeyDown);
+        }}
         {...props}
-      />
+      >
+        <OverlayLayerContext.Provider value={contextValue}>{children}</OverlayLayerContext.Provider>
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }
@@ -300,9 +326,8 @@ function AlertDialogConfirmationField({
   onConfirm?: () => void;
 }) {
   const inputId = React.useId();
-  const { actionRef, confirmationValue, inputValue, isConfirmed, setInputValue } = React.useContext(
-    AlertDialogConfirmationContext
-  );
+  const { actionRef, confirmationValue, inputValue, isConfirmed, isPending, setInputValue } =
+    React.useContext(AlertDialogConfirmationContext);
 
   return (
     <div data-slot="alert-dialog-confirmation-field" className={cn("mt-4", className)} {...props}>
@@ -316,15 +341,16 @@ function AlertDialogConfirmationField({
           />
           <Input
             autoComplete="off"
-            autoFocus
             placeholder={confirmationValue}
+            spellCheck={false}
             {...inputProps}
+            disabled={inputProps?.disabled || isPending}
             id={inputProps?.id ?? inputId}
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
             onKeyDown={(event) => {
               inputProps?.onKeyDown?.(event);
-              if (!event.defaultPrevented && event.key === "Enter" && isConfirmed) {
+              if (!event.defaultPrevented && event.key === "Enter" && isConfirmed && !isPending) {
                 event.preventDefault();
                 if (onConfirm) {
                   onConfirm();
@@ -354,7 +380,11 @@ function AlertDialogAction({
     React.ComponentProps<typeof Button>,
     "variant" | "size" | "isFullWidth" | "isDisabled" | "isPending"
   >) {
-  const { actionRef, isConfirmed } = React.useContext(AlertDialogConfirmationContext);
+  const {
+    actionRef,
+    isConfirmed,
+    isPending: isDialogPending
+  } = React.useContext(AlertDialogConfirmationContext);
 
   const setActionRef = React.useCallback(
     (node: HTMLButtonElement | null) => {
@@ -380,9 +410,9 @@ function AlertDialogAction({
         data-slot="alert-dialog-action"
         variant={variant}
         size={size}
-        isPending={isPending}
+        isPending={isPending || isDialogPending}
         isFullWidth={isFullWidth}
-        isDisabled={isDisabled || !isConfirmed}
+        isDisabled={isDisabled || !isConfirmed || isDialogPending}
         className={cn(className)}
         {...props}
       />
@@ -399,8 +429,16 @@ function AlertDialogCancel({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel> &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size" | "isFullWidth" | "isDisabled">) {
+  const { isPending } = React.useContext(AlertDialogConfirmationContext);
+
   return (
-    <Button variant={variant} size={size} isFullWidth={isFullWidth} isDisabled={isDisabled} asChild>
+    <Button
+      variant={variant}
+      size={size}
+      isFullWidth={isFullWidth}
+      isDisabled={isDisabled || isPending}
+      asChild
+    >
       <AlertDialogPrimitive.Cancel
         data-slot="alert-dialog-cancel"
         className={cn(className)}

@@ -64,11 +64,29 @@ export const PKI_SYNC_MAP: Record<
     category: "Networking",
     description: "Sync certificates to Citrix NetScaler / ADC."
   },
+  [PkiSync.PaloAltoNetworks]: {
+    name: "Palo Alto Networks",
+    image: "Palo Alto Networks.png",
+    category: "Networking",
+    description: "Push certificates to a Palo Alto Networks firewall or Panorama template."
+  },
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: {
+    name: "Palo Alto Networks SSL/TLS Profile",
+    image: "Palo Alto Networks.png",
+    category: "Networking",
+    description: "Set the certificate of a Palo Alto Networks SSL/TLS service profile."
+  },
   [PkiSync.F5BigIp]: {
     name: "F5 BIG-IP",
     image: "F5 BIG-IP.png",
     category: "Networking",
     description: "Sync certificates to F5 BIG-IP."
+  },
+  [PkiSync.Imperva]: {
+    name: "Imperva",
+    image: "Imperva.png",
+    category: "Networking",
+    description: "Sync certificates to Imperva Cloud WAF websites."
   },
   [PkiSync.KempLoadMaster]: {
     name: "Kemp LoadMaster",
@@ -132,8 +150,11 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.GcpCertificateManager]: AppConnection.GCP,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
+  [PkiSync.PaloAltoNetworks]: AppConnection.PaloAltoNetworks,
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: AppConnection.PaloAltoNetworks,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
   [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
+  [PkiSync.Imperva]: AppConnection.Imperva,
   [PkiSync.LinuxServer]: AppConnection.SSH,
   [PkiSync.WindowsServer]: AppConnection.WinRM,
   [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
@@ -150,7 +171,7 @@ export const getPkiSyncConnectionApps = (destination: PkiSync): AppConnection[] 
 ];
 
 export const BOOLEAN_SYNC_OPTION_FIELDS = [
-  { key: "canRemoveCertificates", label: "Allow to remove certificates from destination" },
+  { key: "canRemoveCertificates", label: "Remove certificates from destination" },
   { key: "canImportCertificates", label: "Import Certificates" },
   { key: "includeRootCa", label: "Include Root CA in Chain" },
   { key: "preserveArn", label: "Preserve ARN on Renewal" },
@@ -175,8 +196,37 @@ export const PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS: PkiSync[] = [
   PkiSync.F5BigIp,
   PkiSync.GcpCertificateManager,
   PkiSync.KempLoadMaster,
-  PkiSync.NetScaler
+  PkiSync.NetScaler,
+  PkiSync.PaloAltoNetworks,
+  PkiSync.PaloAltoNetworksSslTlsProfile
 ];
+
+// Destinations that name a certificate themselves, so a name schema has nothing to drive.
+export const CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
+  PkiSync.NutanixPrismCentral,
+  PkiSync.Imperva
+];
+
+export const INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
+  PkiSync.CloudflareCustomCertificate,
+  PkiSync.NutanixPrismCentral,
+  PkiSync.PaloAltoNetworks,
+  PkiSync.PaloAltoNetworksSslTlsProfile
+];
+
+export const PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE =
+  "Palo Alto Networks needs each certificate's private key. Certificates without one, such as those issued from a CSR generated outside Infisical, are skipped.";
+
+export const isPaloAltoNetworksPkiSync = (destination?: PkiSync) =>
+  destination === PkiSync.PaloAltoNetworks || destination === PkiSync.PaloAltoNetworksSslTlsProfile;
+
+export const getPaloAltoNetworksProfileLabel = ({
+  name,
+  vsys
+}: {
+  name: string;
+  vsys?: string | null;
+}) => (vsys ? `${name} (${vsys})` : name);
 
 export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "certificateNameSchema", label: "Certificate Name Schema" },

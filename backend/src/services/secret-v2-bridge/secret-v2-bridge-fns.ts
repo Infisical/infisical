@@ -15,7 +15,7 @@ import {
 } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
+import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import {
   InternalMetadataType,
   TInternalMetadata
@@ -23,23 +23,25 @@ import {
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorType } from "../auth/auth-type";
+import { EventModificationType } from "../event-outbox/event-definition";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderMove } from "../reminder/reminder-types";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
-import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
-import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import {
   describeSecretValidationFailures,
   SecretValidationError
 } from "../secret-validation-rule/secret-validation-rule-errors";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { createSecretBlindIndexer, TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
+import { emitSecretsModified, secretModifiedEvents } from "./secret-events";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
@@ -73,6 +75,8 @@ export const fnSecretBulkInsert = async ({
   secretTagDAL,
   secretVersionTagDAL,
   folderCommitService,
+  eventEmitter,
+  eventScope,
   actor,
   tx
 }: TFnSecretBulkInsert) => {
@@ -223,6 +227,13 @@ export const fnSecretBulkInsert = async ({
     { tx }
   );
 
+  await emitSecretsModified(
+    eventEmitter,
+    { ...eventScope, modificationType: EventModificationType.Created },
+    newSecrets,
+    tx
+  );
+
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
@@ -238,6 +249,8 @@ export const fnSecretBulkUpdate = async ({
   secretTagDAL,
   secretVersionTagDAL,
   resourceMetadataDAL,
+  eventEmitter,
+  eventScope,
   actor
 }: TFnSecretBulkUpdate) => {
   const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
@@ -421,6 +434,13 @@ export const fnSecretBulkUpdate = async ({
     }
   }
 
+  await emitSecretsModified(
+    eventEmitter,
+    { ...eventScope, modificationType: EventModificationType.Updated },
+    newSecrets,
+    tx
+  );
+
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
@@ -435,7 +455,9 @@ export const fnSecretBulkDelete = async ({
   folderCommitService,
   secretVersionDAL,
   projectId,
-  commitChanges
+  commitChanges,
+  eventEmitter,
+  eventScope
 }: TFnSecretBulkDelete) => {
   const deletedSecrets = await secretDAL.deleteMany(
     inputSecrets.map(({ type, secretKey }) => ({
@@ -486,6 +508,13 @@ export const fnSecretBulkDelete = async ({
       );
     }
   }
+
+  await emitSecretsModified(
+    eventEmitter,
+    { ...eventScope, modificationType: EventModificationType.Deleted },
+    deletedSecrets,
+    tx
+  );
 
   return deletedSecrets;
 };
@@ -775,6 +804,30 @@ function escapeRegex(str: string): string {
   return str.replace(new RE2(/[.*+?^${}()|[\]\\]/g), "\\$&");
 }
 
+const emitSecretsUpdatedByFolder = (
+  eventEmitter: TEventEmitter,
+  projectId: string,
+  folderPaths: ({ id: string; environmentSlug: string; path: string } | undefined)[],
+  updatedSecretsByFolder: ReadonlyMap<string, { secret: { id: string; type: string } }[]>,
+  tx?: Knex
+) =>
+  eventEmitter.emit(
+    folderPaths.flatMap((folder) =>
+      folder
+        ? secretModifiedEvents(
+            {
+              projectId,
+              environment: folder.environmentSlug,
+              secretPath: folder.path,
+              modificationType: EventModificationType.Updated
+            },
+            (updatedSecretsByFolder.get(folder.id) ?? []).map(({ secret }) => secret)
+          )
+        : []
+    ),
+    tx
+  );
+
 type TFnUpdateSecretLinkedReferences = {
   orgId: string;
   projectId: string;
@@ -796,10 +849,12 @@ type TFnUpdateSecretLinkedReferences = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  eventEmitter: TEventEmitter;
   encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
   decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
   blindIndexer: TSecretBlindIndexer;
   tx?: Knex;
+  deferredSyncs?: Parameters<TSecretQueueFactory["syncSecrets"]>[0][];
 };
 
 /**
@@ -820,10 +875,12 @@ export const fnUpdateSecretLinkedReferences = async ({
   folderCommitService,
   folderDAL,
   secretQueueService,
+  eventEmitter,
   encryptor,
   decryptor,
   blindIndexer,
-  tx
+  tx,
+  deferredSyncs
 }: TFnUpdateSecretLinkedReferences) => {
   // case: nested references, can be inferred directly from the secret references table
   const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
@@ -981,10 +1038,12 @@ export const fnUpdateSecretLinkedReferences = async ({
   if (updatedFolderIds.length > 0) {
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
 
+    await emitSecretsUpdatedByFolder(eventEmitter, projectId, folderPaths, updatedSecretsByFolder, tx);
+
     await Promise.all(
       folderPaths.map(async (folder) => {
         if (folder) {
-          await secretQueueService.syncSecrets({
+          const syncPayload = {
             projectId,
             orgId,
             environmentSlug: folder.environmentSlug,
@@ -992,7 +1051,9 @@ export const fnUpdateSecretLinkedReferences = async ({
             secretPath: folder.path,
             actor: ActorType.PLATFORM,
             actorId: ""
-          });
+          };
+          if (deferredSyncs) deferredSyncs.push(syncPayload);
+          else await secretQueueService.syncSecrets(syncPayload);
         }
       })
     );
@@ -1023,6 +1084,7 @@ type TFnUpdateMovedSecretReferences = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  eventEmitter: TEventEmitter;
   encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
   decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
   blindIndexer: TSecretBlindIndexer;
@@ -1052,6 +1114,7 @@ export const fnUpdateMovedSecretReferences = async ({
   folderCommitService,
   folderDAL,
   secretQueueService,
+  eventEmitter,
   encryptor,
   decryptor,
   blindIndexer,
@@ -1386,6 +1449,8 @@ export const fnUpdateMovedSecretReferences = async ({
   if (updatedFolderIds.length > 0) {
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
 
+    await emitSecretsUpdatedByFolder(eventEmitter, projectId, folderPaths, updatedSecretsByFolder, tx);
+
     await Promise.all(
       folderPaths.map(async (folder) => {
         if (folder) {
@@ -1478,6 +1543,7 @@ type TCreateRelativeImportExpanderArg = {
   decryptSecretValue: (value?: Buffer | null) => string;
   canExpandValue: (environment: string, secretPath: string, secretKey: string, secretTagSlugs: string[]) => boolean;
   userId?: string;
+  onSecretExpanded?: Parameters<typeof expandSecretReferencesFactory>[0]["onSecretExpanded"];
   abortSignal?: AbortSignal;
 };
 
@@ -1491,6 +1557,7 @@ export const createRelativeImportExpander = ({
   decryptSecretValue,
   canExpandValue,
   userId,
+  onSecretExpanded,
   abortSignal
 }: TCreateRelativeImportExpanderArg): {
   expandImportedSecretReferences: (inputSecret: {
@@ -1571,6 +1638,7 @@ export const createRelativeImportExpander = ({
         return canExpandValue(environment, secretPath, secretKey, secretTagSlugs);
       },
       userId,
+      onSecretExpanded,
       abortSignal
     });
 
@@ -1621,9 +1689,9 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     secretVersionTagDAL,
     resourceMetadataDAL,
     folderCommitService,
+    eventEmitter,
     secretApprovalPolicyService,
-    secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     secretQueueService,
     reminderService,
     secretValidationRuleService
@@ -1852,7 +1920,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,
     destinationFolder.environment.slug,
-    destinationFolder.path
+    destinationFolder.path,
+    tx
   );
 
   let destinationSecretIdByKey: Record<string, string | undefined> = {};
@@ -1863,18 +1932,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
       destinationFolder.id,
       localSecretsIds,
-      tx
-    );
-
-    const approvalRequestDoc = await secretApprovalRequestDAL.create(
-      {
-        folderId: destinationFolder.id,
-        slug: alphaNumericNanoId(),
-        policyId: destinationFolderPolicy.id,
-        status: "open",
-        hasMerged: false,
-        ...getCommitterIds(actor, actorId)
-      },
       tx
     );
 
@@ -1897,30 +1954,22 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
             }
           : {}),
         op: operation,
-        requestId: approvalRequestDoc.id,
         metadata: doc.metadata,
         key: doc.key,
         encryptedValue: doc.encryptedValue,
         encryptedComment: doc.encryptedComment,
         skipMultilineEncoding: doc.skipMultilineEncoding,
+        tagIds: doc.tags.map((tag) => tag.id),
         // except create operation other two needs the secret id and version id
         ...(operation !== SecretOperations.Create
           ? { secretId: localSecret.id, secretVersion: latestSecretVersions[localSecret.id].id }
           : {})
       };
     });
-    const approvalCommits = await secretApprovalRequestSecretDAL.insertV2Bridge(commits, tx);
-
-    const approvalCommitsGroupedByKey = groupBy(approvalCommits, (i) => i.key);
-    const approvalSecretTags = secretsToApplyAtDestination.flatMap((doc) =>
-      doc.tags.map((tag) => ({
-        secretId: approvalCommitsGroupedByKey[doc.key][0].id,
-        tagId: tag.id
-      }))
+    await secretApprovalRequestCreationFns.createSecretApprovalRequestV2Bridge(
+      { policy: destinationFolderPolicy, folderId: destinationFolder.id, actor, actorId, commits },
+      tx
     );
-    if (approvalSecretTags.length) {
-      await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(approvalSecretTags, tx);
-    }
   } else {
     // apply changes directly
     let createdSecrets: { id: string; key: string }[] = [];
@@ -1949,6 +1998,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
       createdSecrets = await fnSecretBulkInsert({
         folderId: destinationFolder.id,
+        eventEmitter,
+        eventScope: { projectId, environment: destinationEnvironment, secretPath: destinationFolder.path },
         orgId: actorOrgId,
         secretVersionDAL,
         secretDAL,
@@ -1998,6 +2049,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
       await fnSecretBulkUpdate({
         folderId: destinationFolder.id,
+        eventEmitter,
+        eventScope: { projectId, environment: destinationEnvironment, secretPath: destinationFolder.path },
         orgId: actorOrgId,
         resourceMetadataDAL,
         folderCommitService,
@@ -2047,17 +2100,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     // if secret approval policy exists for source, we create the secret approval request
     const localSecretsIds = decryptedSourceSecrets.map(({ id }) => id);
     const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(sourceFolder.id, localSecretsIds, tx);
-    const approvalRequestDoc = await secretApprovalRequestDAL.create(
-      {
-        folderId: sourceFolder.id,
-        slug: alphaNumericNanoId(),
-        policyId: sourceFolderPolicy.id,
-        status: "open",
-        hasMerged: false,
-        ...getCommitterIds(actor, actorId)
-      },
-      tx
-    );
 
     const commits = locallyDeletedSecrets.map((doc) => {
       const { operation } = doc;
@@ -2065,7 +2107,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
       return {
         op: operation,
-        requestId: approvalRequestDoc.id,
         metadata: doc.metadata,
         key: doc.key,
         encryptedComment: doc.encryptedComment,
@@ -2076,7 +2117,10 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       };
     });
 
-    await secretApprovalRequestSecretDAL.insertV2Bridge(commits, tx);
+    await secretApprovalRequestCreationFns.createSecretApprovalRequestV2Bridge(
+      { policy: sourceFolderPolicy, folderId: sourceFolder.id, actor, actorId, commits },
+      tx
+    );
   } else {
     // if no secret approval policy is present, we delete directly.
     await secretDAL.delete(
@@ -2086,6 +2130,17 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         },
         folderId: sourceFolder.id
       },
+      tx
+    );
+    await emitSecretsModified(
+      eventEmitter,
+      {
+        projectId,
+        environment: sourceEnvironment,
+        secretPath: sourceFolder.path,
+        modificationType: EventModificationType.Deleted
+      },
+      locallyDeletedSecrets,
       tx
     );
 
@@ -2119,6 +2174,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         folderCommitService,
         folderDAL,
         secretQueueService,
+        eventEmitter,
         encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
         decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
         blindIndexer,

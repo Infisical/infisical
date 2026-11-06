@@ -9,18 +9,18 @@ type Props = {
 
 export const CertManagerAdminOnly = ({ children }: Props) => {
   const { hasProjectRole } = useProjectPermission();
-  const { orgId, projectId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
   const navigate = useNavigate();
   const isAdmin = hasProjectRole("admin");
 
   useEffect(() => {
-    if (!isAdmin && orgId && projectId) {
+    if (!isAdmin && orgId) {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications",
-        params: { orgId, projectId }
+        to: "/organizations/$orgId/cert-manager/applications",
+        params: { orgId }
       });
     }
-  }, [isAdmin, orgId, projectId, navigate]);
+  }, [isAdmin, orgId, navigate]);
 
   if (!isAdmin) return null;
   // eslint-disable-next-line react/jsx-no-useless-fragment

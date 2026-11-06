@@ -76,7 +76,7 @@ export const codeSigningApprovalResourceFactory = ({
     if (event !== ApprovalNotificationEvent.Requested) return null;
 
     const cfg = getConfig();
-    const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
+    const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
 
     return {
       inApp: {

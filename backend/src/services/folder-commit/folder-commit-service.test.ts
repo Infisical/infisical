@@ -8,11 +8,14 @@ import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
+import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
+import { SecretModifiedEventV1 } from "../secret-v2-bridge/secret-events";
 import {
   ChangeType,
   CommitType,
   folderCommitServiceFactory,
   ResourceChange,
+  ResourceType,
   TFolderCommitServiceFactory
 } from "./folder-commit-service";
 
@@ -96,7 +99,12 @@ describe("folderCommitServiceFactory", () => {
     findById: vi.fn().mockResolvedValue({})
   };
 
+  const mockEventEmitter = {
+    emit: vi.fn().mockResolvedValue(undefined)
+  };
+
   const mockFolderDAL = {
+    findSecretPathByFolderIds: vi.fn().mockResolvedValue([]),
     findByParentId: vi.fn().mockResolvedValue([]),
     findByProjectId: vi.fn().mockResolvedValue([]),
     deleteById: vi.fn().mockResolvedValue({}),
@@ -111,6 +119,7 @@ describe("folderCommitServiceFactory", () => {
 
   const mockFolderVersionDAL = {
     findLatestFolderVersions: vi.fn().mockResolvedValue({}),
+    findLatestVersion: vi.fn().mockResolvedValue(null),
     findById: vi.fn().mockResolvedValue({}),
     deleteById: vi.fn().mockResolvedValue({}),
     create: vi.fn().mockResolvedValue({}),
@@ -203,7 +212,8 @@ describe("folderCommitServiceFactory", () => {
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
       secretTagDAL: mockSecretTagDAL,
-      resourceMetadataDAL: mockResourceMetadataDAL
+      resourceMetadataDAL: mockResourceMetadataDAL,
+      eventEmitter: mockEventEmitter
     });
   });
 
@@ -742,6 +752,95 @@ describe("folderCommitServiceFactory", () => {
 
       // Check that we got the right counts
       expect(result.totalChanges).toEqual(2);
+    });
+
+    // A rollback rewrites secrets and folders without going through their services, so the events are
+    // emitted here. The folder paths are read before the writes because an update can rename a folder.
+    it("emits secret and folder events for what the rollback changed, in the transaction", async () => {
+      const folderId = "folder-id";
+      const projectId = "project-id";
+      const tx = {} as Knex;
+      const locations: Record<string, { path: string; environmentSlug: string }> = {
+        [folderId]: { path: "/app", environmentSlug: "dev" },
+        "folder-1": { path: "/app/old", environmentSlug: "dev" },
+        "folder-2": { path: "/app/gone", environmentSlug: "dev" }
+      };
+
+      mockFolderDAL.findById.mockResolvedValue({ id: folderId, envId: "env-1", projectId });
+      mockFolderDAL.findSecretPathByFolderIds.mockImplementation((_, ids: string[]) =>
+        Promise.resolve(ids.map((id) => locations[id]))
+      );
+      mockFolderDAL.updateById.mockResolvedValue({});
+      mockFolderDAL.deleteById.mockResolvedValue({});
+      mockFolderDAL.findByParentId.mockResolvedValue([]);
+      mockProjectDAL.findById.mockResolvedValue(null);
+      mockSecretVersionV2BridgeDAL.findByIdsWithLatestVersion.mockResolvedValue({
+        "secret-1": { secretId: "secret-1", type: "shared" }
+      });
+      mockSecretVersionV2BridgeDAL.findLatestVersionMany.mockResolvedValue({});
+      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretV2BridgeDAL.deleteById.mockResolvedValue({});
+      mockFolderVersionDAL.findByIdsWithLatestVersion.mockResolvedValue({
+        "folder-1": { folderId: "folder-1", name: "renamed", envId: "env-1", version: 1 }
+      });
+      mockFolderVersionDAL.create.mockResolvedValue({ id: "folder-version-2" });
+      mockFolderVersionDAL.findLatestVersion.mockResolvedValue(null);
+      mockFolderVersionDAL.find.mockResolvedValue({});
+      mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id", folderId });
+      mockFolderCommitDAL.create.mockResolvedValue({ id: "new-commit-id" });
+      mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
+
+      await folderCommitService.applyFolderStateDifferences({
+        differences: [
+          { id: "secret-1", versionId: "sv-1", changeType: ChangeType.DELETE, type: ResourceType.SECRET },
+          { id: "folder-1", versionId: "fv-1", changeType: ChangeType.UPDATE, type: ResourceType.FOLDER },
+          { id: "folder-2", versionId: "fv-2", changeType: ChangeType.DELETE, type: ResourceType.FOLDER }
+        ] as ResourceChange[],
+        actorInfo: { actorType: ActorType.USER, actorId: "user-id", message: "Rolling back" },
+        folderId,
+        projectId,
+        reconstructNewFolders: false,
+        tx
+      });
+
+      const calls = mockEventEmitter.emit.mock.calls as [{ type: string; data: unknown }[], unknown][];
+      expect(calls.every(([, emitTx]) => emitTx === tx)).toBe(true);
+      expect(calls.flatMap(([events]) => events)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: SecretModifiedEventV1.type,
+            data: {
+              secretId: "secret-1",
+              projectId,
+              environment: "dev",
+              secretPath: "/app",
+              modificationType: "deleted"
+            }
+          }),
+          expect.objectContaining({
+            type: FolderModifiedEventV1.type,
+            data: {
+              folderId: "folder-1",
+              projectId,
+              environment: "dev",
+              secretPath: "/app/renamed",
+              modificationType: "updated",
+              previous: { secretPath: "/app/old" }
+            }
+          }),
+          expect.objectContaining({
+            type: FolderModifiedEventV1.type,
+            data: {
+              folderId: "folder-2",
+              projectId,
+              environment: "dev",
+              secretPath: "/app/gone",
+              modificationType: "deleted"
+            }
+          })
+        ])
+      );
+      expect(calls.flatMap(([events]) => events)).toHaveLength(3);
     });
   });
 });

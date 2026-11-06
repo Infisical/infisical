@@ -8,15 +8,16 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
-import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectServiceFactory } from "../project/project-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
@@ -53,6 +54,7 @@ export type TExternalMigrationQueueFactoryDep = {
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret" | "dispatchSecretCreateSideEffects">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
@@ -78,6 +80,7 @@ export const externalMigrationQueueFactory = ({
   secretVersionTagDAL,
   folderDAL,
   folderCommitService,
+  eventEmitter,
   folderVersionDAL,
   resourceMetadataDAL,
   notificationService,
@@ -156,6 +159,7 @@ export const externalMigrationQueueFactory = ({
         projectEnvService,
         secretV2BridgeService,
         folderCommitService,
+        eventEmitter,
         folderVersionDAL,
         resourceMetadataDAL
       });

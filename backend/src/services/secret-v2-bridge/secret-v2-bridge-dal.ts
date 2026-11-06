@@ -16,28 +16,8 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
-import { SecretSortField } from "@app/services/secret/secret-types";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
-
-export const SecretServiceCacheKeys = {
-  get productKey() {
-    return `${ProjectType.SecretManager}`;
-  },
-  getSecretDalVersion: (projectId: string) => {
-    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal-version`;
-  },
-  getSecretsOfServiceLayer: (arg: {
-    projectId: string;
-    version: number;
-    actorId: string;
-    permissionFingerprint: string;
-    permissionHash: string;
-    requestParamsHash: string;
-  }) => {
-    const { projectId, version, actorId, permissionFingerprint, permissionHash, requestParamsHash } = arg;
-    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal:v${version}:get-secrets-service-layer-bin:${actorId}-${permissionFingerprint}-${permissionHash}-${requestParamsHash}`;
-  }
-};
+import { SecretSortField } from "@app/services/secret/secret-types";
 
 export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFactory>;
 interface TSecretV2DalArg {
@@ -48,11 +28,22 @@ interface TSecretV2DalArg {
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
+export const LARGE_SECRET_CACHE_LOG_BYTES = 1024 * 1024;
+
+const SECRET_V2_COLUMNS = Object.keys(SecretsV2Schema.shape) as (keyof TSecretsV2)[];
+
+// Same output as SecretsV2Schema.parse for a row selected with selectAllTableCols, without parsing every row.
+const pickSecretV2Columns = (row: TSecretsV2) => {
+  const secret: Record<string, unknown> = {};
+  for (const column of SECRET_V2_COLUMNS) secret[column] = row[column];
+  return secret as TSecretsV2;
+};
+
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
   const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
-    const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
+    const secretDalVersionKey = KeyStorePrefixes.SecretDalVersion(projectId);
     await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
     await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId, utcDayStamp()));
 
@@ -67,7 +58,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     const stamp = utcDayStamp();
     await Promise.all(
       targetGrants.map(async ({ targetProjectId }) => {
-        const targetVersionKey = SecretServiceCacheKeys.getSecretDalVersion(targetProjectId);
+        const targetVersionKey = KeyStorePrefixes.SecretDalVersion(targetProjectId);
         await keyStore.pgIncrementBy(targetVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
         await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(targetProjectId, stamp));
       })
@@ -532,6 +523,51 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const selectSecretTags = (subQuery: Knex.QueryBuilder) =>
+    subQuery
+      .select(db.raw("1"))
+      .from(TableName.SecretV2JnTag)
+      .join(TableName.SecretTag, `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+      .whereRaw(`??.?? = ??.??`, [TableName.SecretV2JnTag, `${TableName.SecretV2}Id`, TableName.SecretV2, "id"]);
+
+  const whereSecretHasTagSlugs = (bd: Knex.QueryBuilder, slugs: string[]) =>
+    bd.whereExists((subQuery) => {
+      void selectSecretTags(subQuery).whereIn(`${TableName.SecretTag}.slug`, slugs);
+    });
+
+  const whereSecretMatchesSearch = (
+    bd: Knex.QueryBuilder,
+    {
+      search,
+      includeTagsInSearch,
+      includeMetadataInSearch
+    }: { search?: string; includeTagsInSearch?: boolean; includeMetadataInSearch?: boolean }
+  ) => {
+    if (!search) return;
+    const searchPattern = `%${sanitizeSqlLikeString(search)}%`;
+    void bd.where((searchBd) => {
+      void searchBd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
+      if (includeTagsInSearch) {
+        void searchBd.orWhereExists((subQuery) => {
+          void selectSecretTags(subQuery).whereILike(`${TableName.SecretTag}.slug`, searchPattern);
+        });
+      }
+      if (includeMetadataInSearch) {
+        void searchBd.orWhereExists((subQuery) => {
+          void subQuery
+            .select(db.raw("1"))
+            .from(TableName.ResourceMetadata)
+            .whereRaw(`??.?? = ??.??`, [TableName.ResourceMetadata, "secretId", TableName.SecretV2, "id"])
+            .where((metadataBd) => {
+              void metadataBd
+                .whereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
+            });
+        });
+      }
+    });
+  };
+
   // get unique secret count by folder IDs
   const countByFolderIds = async (
     folderIds: string[],
@@ -565,18 +601,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         )
         .whereIn("folderId", folderIds)
         .where((bd) => {
-          if (filters?.search) {
-            const searchPattern = `%${sanitizeSqlLikeString(filters.search)}%`;
-            void bd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
-            if (filters?.includeTagsInSearch) {
-              void bd.orWhereILike(`${TableName.SecretTag}.slug`, searchPattern);
-            }
-            if (filters?.includeMetadataInSearch) {
-              void bd
-                .orWhereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
-                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
-            }
-          }
+          whereSecretMatchesSearch(bd, filters ?? {});
         })
         .where((bd) => {
           void bd.whereNull(`${TableName.SecretV2}.userId`);
@@ -586,32 +611,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         })
         .countDistinct(`${TableName.SecretV2}.key`);
 
-      // only need to join tags if filtering by tag slugs
       const slugs = filters?.tagSlugs?.filter(Boolean);
-      if ((slugs && slugs.length > 0) || filters?.includeTagsInSearch) {
-        void query
-          .leftJoin(
-            TableName.SecretV2JnTag,
-            `${TableName.SecretV2}.id`,
-            `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
-          )
-          .leftJoin(
-            TableName.SecretTag,
-            `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
-            `${TableName.SecretTag}.id`
-          );
-
-        if (slugs?.length) {
-          void query.whereIn("slug", slugs);
-        }
-      }
-
-      if (filters?.includeMetadataInSearch) {
-        void query.leftJoin(
-          TableName.ResourceMetadata,
-          `${TableName.SecretV2}.id`,
-          `${TableName.ResourceMetadata}.secretId`
-        );
+      if (slugs?.length) {
+        void query.where((bd) => {
+          void whereSecretHasTagSlugs(bd, slugs);
+        });
       }
 
       if (filters?.excludeRotatedSecrets) {
@@ -718,18 +722,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       const query = (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
         .where((bd) => {
-          if (filters?.search) {
-            const searchPattern = `%${sanitizeSqlLikeString(filters.search)}%`;
-            void bd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
-            if (filters?.includeTagsInSearch) {
-              void bd.orWhereILike(`${TableName.SecretTag}.slug`, searchPattern);
-            }
-            if (filters?.includeMetadataInSearch) {
-              void bd
-                .orWhereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
-                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
-            }
-          }
+          whereSecretMatchesSearch(bd, filters ?? {});
 
           if (filters?.keys) {
             void bd.whereIn(`${TableName.SecretV2}.key`, filters.keys);
@@ -798,7 +791,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .where((bd) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
-            void bd.whereIn(`${TableName.SecretTag}.slug`, slugs);
+            void whereSecretHasTagSlugs(bd, slugs);
           }
         })
         .where((bd) => {
@@ -893,7 +886,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         key: "id",
         parentMapper: (el) => ({
           _id: el.id,
-          ...SecretsV2Schema.parse(el),
+          ...pickSecretV2Columns(el),
           isHoneyTokenSecret: Boolean(el.honeyTokenId),
           rotationId: el.rotationId,
           isRotatedSecret: Boolean(el.rotationId)
@@ -925,6 +918,38 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
+    }
+  };
+
+  const findSharedKeyInFolders = async ({ folderIds, key }: { folderIds: string[]; key: string }) => {
+    try {
+      const rows = await db
+        .replicaNode()(TableName.SecretV2)
+        .where(`${TableName.SecretV2}.key`, key)
+        .where(`${TableName.SecretV2}.type`, SecretType.Shared)
+        .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(db.ref("folderId").withSchema(TableName.SecretV2))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+
+      const tagSlugsByFolderId = new Map<string, string[]>();
+      rows.forEach(({ folderId, tagSlug }) => {
+        const tagSlugs = tagSlugsByFolderId.get(folderId) ?? [];
+        if (tagSlug) tagSlugs.push(tagSlug);
+        tagSlugsByFolderId.set(folderId, tagSlugs);
+      });
+      return Array.from(tagSlugsByFolderId, ([folderId, tagSlugs]) => ({ folderId, tagSlugs }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find shared secret key in folders" });
     }
   };
 
@@ -1108,6 +1133,25 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindReferencedSecretReferences" });
+    }
+  };
+
+  const findSecretReferencesByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
+        .whereNull(`${TableName.SecretReferenceV2}.targetProjectSlug`)
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .select(selectAllTableCols(TableName.SecretReferenceV2))
+        .select("folderId")
+        .select(db.ref("userId").withSchema(TableName.SecretV2));
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretReferencesByProjectId" });
     }
   };
 
@@ -1825,8 +1869,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findByFolderIds,
     findMetadataByFolderIds,
     findBySecretKeys,
+    findSharedKeyInFolders,
     upsertSecretReferences,
     findReferencedSecretReferences,
+    findSecretReferencesByProjectId,
     findAllProjectSecretValues,
     findSecretsInFolderAfter,
     batchSetBlindIndexes,

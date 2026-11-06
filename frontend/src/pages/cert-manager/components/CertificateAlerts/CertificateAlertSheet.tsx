@@ -10,6 +10,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Spinner,
@@ -244,7 +245,7 @@ const CertificateAlertWizard = ({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+      <SheetFooter className="shrink-0 items-center justify-between border-t">
         {isReadOnly ? (
           <Button variant="outline" className="ml-auto" onClick={() => onOpenChange(false)}>
             Close
@@ -271,7 +272,7 @@ const CertificateAlertWizard = ({
             </div>
           </>
         )}
-      </div>
+      </SheetFooter>
     </FormProvider>
   );
 };

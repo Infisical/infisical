@@ -831,7 +831,8 @@ export enum DynamicSecretProviders {
   Ssh = "ssh",
   IbmApiConnect = "ibm-api-connect",
   Tailscale = "tailscale",
-  OAuth2 = "oauth2"
+  OAuth2 = "oauth2",
+  Kafka = "kafka"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -1099,6 +1100,81 @@ export const DynamicSecretOAuth2Schema = z.discriminatedUnion("grantType", [
   })
 ]);
 
+export enum KafkaSaslMechanism {
+  Plain = "PLAIN",
+  ScramSha256 = "SCRAM-SHA-256",
+  ScramSha512 = "SCRAM-SHA-512"
+}
+
+// ACL values use Kafka's own names, which are also the keys of @platformatic/kafka's enum maps
+export enum KafkaAclResourceType {
+  Topic = "TOPIC",
+  Group = "GROUP",
+  Cluster = "CLUSTER",
+  TransactionalId = "TRANSACTIONAL_ID"
+}
+
+export enum KafkaAclPatternType {
+  Literal = "LITERAL",
+  Prefixed = "PREFIXED"
+}
+
+export enum KafkaAclOperation {
+  All = "ALL",
+  Read = "READ",
+  Write = "WRITE",
+  Create = "CREATE",
+  Delete = "DELETE",
+  Alter = "ALTER",
+  Describe = "DESCRIBE",
+  DescribeConfigs = "DESCRIBE_CONFIGS",
+  AlterConfigs = "ALTER_CONFIGS",
+  IdempotentWrite = "IDEMPOTENT_WRITE"
+}
+
+export enum KafkaAclPermissionType {
+  Allow = "ALLOW",
+  Deny = "DENY"
+}
+
+const KAFKA_CLUSTER_RESOURCE_NAME = "kafka-cluster";
+
+export const DynamicSecretKafkaSchema = z.object({
+  bootstrapServers: z
+    .array(z.object({ host: z.string().trim().min(1).max(255), port: z.number().int().min(1).max(65535) }))
+    .min(1)
+    .describe("Brokers Infisical tries in order until one connects"),
+  saslMechanism: z
+    .nativeEnum(KafkaSaslMechanism)
+    .describe("SASL mechanism Infisical uses to authenticate as the admin user"),
+  username: z.string().trim().min(1).max(255).describe("Admin username used to manage SCRAM users and ACLs"),
+  password: z.string().min(1).max(1024).describe("Admin password used to manage SCRAM users and ACLs"),
+  acls: z
+    .array(
+      z
+        .object({
+          resourceType: z.nativeEnum(KafkaAclResourceType),
+          patternType: z.nativeEnum(KafkaAclPatternType).default(KafkaAclPatternType.Literal),
+          resourceName: z.string().trim().min(1).max(255).describe('Resource name or prefix, or "*" for all'),
+          operation: z.nativeEnum(KafkaAclOperation),
+          permissionType: z.nativeEnum(KafkaAclPermissionType).default(KafkaAclPermissionType.Allow)
+        })
+        .refine(
+          ({ resourceType, resourceName }) =>
+            resourceType !== KafkaAclResourceType.Cluster || resourceName === KAFKA_CLUSTER_RESOURCE_NAME,
+          {
+            message: `Cluster ACLs must use the resource name '${KAFKA_CLUSTER_RESOURCE_NAME}'`,
+            path: ["resourceName"]
+          }
+        )
+    )
+    .min(1)
+    .describe("ACLs granted to each lease user"),
+  sslEnabled: z.boolean().default(false),
+  ca: z.string().max(10240).optional(),
+  sslRejectUnauthorized: z.boolean().default(true)
+});
+
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
   keyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519),
@@ -1144,7 +1220,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
     inputs: DynamicSecretIbmApiConnectSchema
   }),
   z.object({ type: z.literal(DynamicSecretProviders.Tailscale), inputs: DynamicSecretTailscaleSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.OAuth2), inputs: DynamicSecretOAuth2Schema })
+  z.object({ type: z.literal(DynamicSecretProviders.OAuth2), inputs: DynamicSecretOAuth2Schema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Kafka), inputs: DynamicSecretKafkaSchema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project

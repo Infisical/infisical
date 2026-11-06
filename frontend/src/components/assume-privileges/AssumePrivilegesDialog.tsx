@@ -62,11 +62,10 @@ export const AssumePrivilegesDialog = ({ isOpen, onOpenChange, actorType, actorI
 
   return (
     <AlertDialog
+      isPending={assumePrivileges.isPending}
       open={isOpen}
       confirmationValue={CONFIRM_KEY}
-      onOpenChange={(open) => {
-        if (!assumePrivileges.isPending) onOpenChange(open);
-      }}
+      onOpenChange={onOpenChange}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -84,10 +83,9 @@ export const AssumePrivilegesDialog = ({ isOpen, onOpenChange, actorType, actorI
           onConfirm={handleConfirm}
         />
         <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={assumePrivileges.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="project"
-            isPending={assumePrivileges.isPending}
             isDisabled={isActionDisabled}
             onClick={(event) => {
               event.preventDefault();

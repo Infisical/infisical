@@ -112,6 +112,10 @@ SecretProviderClass
 CustomResourceDefinition
 Kubebuilder
 Kyverno
+gVisor
+Kata
+containerd
+RuntimeClass
 minikube
 Traefik
 Bitnami
@@ -170,6 +174,10 @@ Authenticode
 signtool
 DevOps
 BigQuery
+NodeLocal DNSCache
+DNSCache
+Dataplane
+Dataplane V2
 Cloud SQL
 Cloud Run
 Cloud 66
@@ -180,6 +188,7 @@ GitHub App
 GitHub Actions
 GitLab
 Bitbucket
+Bitbucket Pipelines
 Jenkins
 CircleCI
 TeamCity
@@ -195,6 +204,7 @@ Render
 Railway
 Qovery
 Northflank
+Portainer
 Fly.io
 DigitalOcean
 Cloudflare
@@ -250,6 +260,7 @@ Devin
 Mintlify
 Ona
 Daytona
+E2B
 DBT
 Ab Initio
 Initio
@@ -306,10 +317,15 @@ Tomcat
 HAProxy
 JBoss
 WildFly
+Imperva
 Kemp
 LoadMaster
 NetScaler
 Citrix
+Palo Alto Networks
+Alto
+PAN-OS
+Panorama
 F5
 BIG-IP
 iControl
@@ -325,6 +341,7 @@ Patroni
 # --- Databases ---
 PostgreSQL
 MySQL
+CockroachDB
 MongoDB
 MongoDB Atlas
 Redis
@@ -353,6 +370,8 @@ LiteLLM
 Fireworks
 Cohere
 Cursor
+Cursor Cloud Agents
+Superserve
 DeepSeek
 Gemini
 Grok
@@ -364,6 +383,8 @@ OpenClaw
 OpenCode
 Perplexity
 xAI
+# The MCP transport, always written "Streamable HTTP"
+Streamable
 
 # --- Communication and messaging ---
 Discord
@@ -399,7 +420,7 @@ Notion
 # The `(?:s|'s)?` suffix accepts the plural and possessive forms.
 2FA
 ABAC
-ACL
+ACL(?:s|'s)?
 ACM
 ACME
 AD
@@ -545,6 +566,7 @@ VPC(?:s)?
 VPN(?:s)?
 vCPU(?:s)?
 
+booleans
 walkthrough
 walkthroughs
 
@@ -669,6 +691,7 @@ dce
 dcr
 als
 ua
+amr
 iss
 
 # --- Surfaced by the code-signing pages ---
@@ -681,3 +704,9 @@ snowsql
 
 # --- Surfaced by the Stripe API key rotation pages ---
 Stripe
+
+# --- Surfaced by the Agent Vault Docker guide ---
+gVisor
+
+# --- Surfaced by the Agent Vault E2B guide ---
+SOCKS5

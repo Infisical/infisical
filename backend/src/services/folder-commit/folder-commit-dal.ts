@@ -522,7 +522,14 @@ export const folderCommitDALFactory = (db: TDbClient) => {
             folderCount: string;
             totalCount: string;
           }[]
-        >("folderCommitId", "changeType", "isUpdate", trx.raw(`COUNT(*) FILTER (WHERE "secretVersionId" IS NOT NULL) AS "secretCount"`), trx.raw(`COUNT(*) FILTER (WHERE "folderVersionId" IS NOT NULL) AS "folderCount"`), trx.raw(`COUNT(*) AS "totalCount"`));
+        >(
+          "folderCommitId",
+          "changeType",
+          "isUpdate",
+          trx.raw(`COUNT(*) FILTER (WHERE "secretVersionId" IS NOT NULL) AS "secretCount"`),
+          trx.raw(`COUNT(*) FILTER (WHERE "folderVersionId" IS NOT NULL) AS "folderCount"`),
+          trx.raw(`COUNT(*) AS "totalCount"`)
+        );
 
       const countsMap = countRows.reduce(
         (acc, row) => {

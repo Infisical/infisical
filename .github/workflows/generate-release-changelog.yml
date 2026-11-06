@@ -12,7 +12,14 @@ on:
       - "!*nightly*"
 
 jobs:
+  freeze-check:
+    name: Release freeze check
+    uses: ./.github/workflows/release-freeze-check.yml
+    with:
+      freeze: ${{ vars.DEPLOY_FREEZE }}
+
   generate_changelog:
+    needs: [freeze-check]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

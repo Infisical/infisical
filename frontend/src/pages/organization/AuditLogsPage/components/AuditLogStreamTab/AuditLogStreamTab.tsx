@@ -16,8 +16,8 @@ import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@a
 import { withPermission } from "@app/hoc";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 
+import { AddAuditLogStreamModal, AuditLogStreamAlertAction } from "./components";
 import { AuditLogStreamTable } from "./components/AuditLogStreamTable";
-import { AddAuditLogStreamModal } from "./components";
 
 export const AuditLogStreamsTab = withPermission(
   () => {
@@ -40,7 +40,8 @@ export const AuditLogStreamsTab = withPermission(
             <CardDescription>
               Send audit logs from Infisical to external logging providers via HTTP
             </CardDescription>
-            <CardAction>
+            <CardAction className="flex items-center gap-2">
+              <AuditLogStreamAlertAction />
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Settings}>
                 {(isAllowed) => (
                   <Button

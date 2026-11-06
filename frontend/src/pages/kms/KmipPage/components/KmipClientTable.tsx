@@ -140,7 +140,7 @@ export const KmipClientTable = () => {
       <CardHeader>
         <CardTitle>
           KMIP Clients
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms" />
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip-clients" />
         </CardTitle>
         <CardDescription>
           Manage clients that connect to this project&apos;s KMIP server.

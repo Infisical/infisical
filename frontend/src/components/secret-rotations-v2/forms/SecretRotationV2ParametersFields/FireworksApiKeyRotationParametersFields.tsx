@@ -1,9 +1,8 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
-import { Field, FieldError, FilterableSelect } from "@app/components/v3";
+import { Combobox, Field, FieldError } from "@app/components/v3";
 import {
   TFireworksServiceAccount,
   useFireworksConnectionListServiceAccounts
@@ -44,21 +43,20 @@ export const FireworksApiKeyRotationParametersFields = () => {
           >
             Service Account
           </FieldLabelWithTooltip>
-          <FilterableSelect
-            inputId="fireworks-service-account"
+          <Combobox
+            id="fireworks-service-account"
             isLoading={isServiceAccountsLoading && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={serviceAccounts.find((sa) => getUserId(sa.name) === value) ?? null}
             onBlur={onBlur}
-            onChange={(option) => {
-              const selected = option as SingleValue<TFireworksServiceAccount>;
-              onChange(selected ? getUserId(selected.name) : null);
-            }}
+            onValueChange={(selected) => onChange(getUserId(selected.name))}
+            isClearable={false}
             options={serviceAccounts}
             placeholder="Select a service account..."
             getOptionLabel={(option) => `${option.displayName} (${getUserId(option.name)})`}
             getOptionValue={(option) => getUserId(option.name)}
-            formatOptionLabel={formatServiceAccountLabel}
+            renderOption={formatServiceAccountLabel}
+            renderValue={formatServiceAccountLabel}
             isError={Boolean(error)}
           />
           <FieldError>{error?.message}</FieldError>

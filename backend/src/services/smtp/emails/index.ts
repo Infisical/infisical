@@ -1,5 +1,6 @@
 export * from "./AccessApprovalRequestTemplate";
 export * from "./AccessApprovalRequestUpdatedTemplate";
+export * from "./AccessPamRequestAutoApprovedTemplate";
 export * from "./AccessPamRequestBypassedTemplate";
 export * from "./AccessPamRequestTemplate";
 export * from "./AccountDeletionConfirmationTemplate";

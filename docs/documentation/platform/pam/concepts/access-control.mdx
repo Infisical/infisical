@@ -1,115 +1,111 @@
 ---
 title: "Access control"
-sidebarTitle: "Access control"
-description: "Understand how permissions work in Infisical PAM."
+sidebarTitle: "Overview"
+description: "Control who can manage PAM and who can connect to each account."
 ---
 
-Access control in PAM happens at two levels:
+Access to Infisical PAM has two levels:
 
-1. **Product membership** — being added to PAM itself (the "entry ticket")
-2. **Folder and account memberships** — being granted a role on specific folders or accounts (this is what lets you connect)
+- **Product membership** makes someone a member of PAM and decides whether they can manage PAM itself
+- **Folder and account memberships** decide what someone can do with the accounts in a folder, such as connect to them
 
-Users, groups, and [machine identities](/documentation/platform/identities/machine-identities) all go through both levels and hold the same roles, so everything below applies to all three unless it says otherwise. An [AI agent](/documentation/platform/pam/ai-agents/overview) runs as whoever started it, so it uses either a person's access or a machine identity's.
+Users, groups, and [machine identities](/documentation/platform/identities/machine-identities) need both. An [AI agent](/documentation/platform/pam/ai-agents/overview) has no access of its own and uses the access of the user or machine identity that starts it.
 
 ## Product membership
 
-Before anyone can do anything in PAM, they need to be added as a product member. This is the "entry ticket" to PAM.
+A product membership gives a user, group, or machine identity one of two roles in PAM:
 
-There are two product roles:
+| Role | What it allows |
+| --- | --- |
+| **Admin** | Manage account templates, folders, and product members |
+| **Member** | Use PAM, with access only to the folders and accounts they have a role on |
 
-| Role | What they can do |
-|------|------------------|
-| **Product Admin** | Create and manage templates, folders, and product-level settings |
-| **Product Member** | Access PAM — needs folder/account memberships to connect |
+A product admin can't connect to an account unless they also have a role on the account or its folder.
 
-Product Admins set up the governance layer — they don't automatically get access to connect to accounts. To connect, you need a membership on a folder or account. If you have the organization Admin role, you can also [join any folder as its Admin](/documentation/platform/pam/folders/overview#managing-access).
+### Add product members
 
-<Note>
-Organization Admins can enter PAM as a Product Admin without being explicitly added — they just need to opt in.
-</Note>
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Access Control**.
+  </Step>
+  <Step>
+    Select the tab for the kind of member you're adding, then select the button on that tab:
 
-### Adding product members
+    - **Members**: **Invite Member**
+    - **Groups**: **Add Group**
+    - **Identities**: **Add Identity**
+  </Step>
+  <Step>
+    Select the users, group, or identity, choose **Admin** or **Member**, and confirm.
+  </Step>
+</Steps>
 
-1. Go to **Privileged Access Management → Access Control**
-2. Select the **Users**, **Groups**, or **Identities** tab
-3. Select **Add**
-4. Select from users, groups, or machine identities in your organization
-5. Choose **Product Admin** or **Product Member**
-6. Select **Add**
+On the **Identities** tab, you can also create a new machine identity for PAM. To learn how an AI agent uses one, see [Run agents unattended](/documentation/platform/pam/ai-agents/unattended).
 
-The **Identities** tab can also create a new machine identity for PAM instead of adding an existing one. See [AI Agents](/documentation/platform/pam/ai-agents/overview) for the agent workflow that uses it.
+### Organization admins
+
+When your organization first opens PAM, everyone with the organization Admin role at that moment becomes a product admin.
+
+If you get the organization Admin role later, you aren't a member of PAM yet. Open **Privileged Access Management** and select **Join as Admin** to add yourself as a product admin. You can also [join any folder as its Admin](/documentation/platform/pam/folders/overview#join-a-folder-as-an-organization-admin).
 
 ## Folder and account memberships
 
-Once someone is a product member, they still need to be granted access to specific folders or accounts. You do this by assigning them a **role** on a folder or account.
+A folder or account membership gives a product member one of the following roles on a [folder](/documentation/platform/pam/folders/overview) or an [account](/documentation/platform/pam/accounts/overview):
 
-### Roles
-
-| Role | What they can do |
-|------|------------------|
-| **Admin** | Full control — accounts, folders, sessions, memberships |
-| **Operator** | Launch sessions and [view account credentials](/documentation/platform/pam/accounts/overview#viewing-credentials) |
-| **Connector** | Launch sessions and connect to accounts |
+| Role | What it allows |
+| --- | --- |
+| **Admin** | Manage the accounts, sessions, and memberships in the folder or account |
+| **Operator** | Launch sessions and [view account credentials](/documentation/platform/pam/accounts/view-credentials) |
+| **Connector** | Launch sessions and request access to accounts that need approval |
 | **Auditor** | View audit logs and session recordings |
 
-<Note>
-  **Operator** is Connector plus the right to read an account's stored password or key. Grant it only where someone genuinely needs the credential in hand, since a revealed credential leaves no session recording.
-</Note>
+Infisical records a session for every connection, but not what someone does with a credential they've viewed. Give the Operator role only to people who need the credential itself.
 
-### Folder vs account memberships
+### Folder or account
 
-You can assign roles at two levels:
+A role on a folder applies to every account in the folder, including accounts added later. Grant access on folders whenever you can.
 
-**Folder memberships** apply to all accounts in the folder. This is the primary way to grant access — if someone needs access to a set of accounts, grant them a role on the folder.
+A role on an account applies to that account only. Use it when someone needs one account in a folder but not the others, such as a contractor who needs one database.
 
-**Account memberships** apply to a single account. Use this for exceptions — a contractor who needs just one database, or temporary elevated access to a specific account.
+### Assign a role
 
-### How to assign memberships
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**.
+  </Step>
+  <Step>
+    Open the options menu on the folder's or account's row and select **Configure**, then select the **Permissions** tab.
+  </Step>
+  <Step>
+    Select **Assign Access**.
+  </Step>
+  <Step>
+    Choose the **Assignee** and the **Role**. To remove the access automatically after a set time, choose an **Expiry**.
+  </Step>
+  <Step>
+    Select **Assign**.
+  </Step>
+</Steps>
 
-For folders:
-1. Open the folder and go to **Permissions**
-2. Select **Assign Access**
-3. Select a user, group, or machine identity, then set the role and an optional expiration
-4. Select **Add**
+The **Assignee** list only includes product members. To give a role to someone who isn't in the list, [add them to PAM](#add-product-members) first.
 
-For accounts:
-1. Open the account and go to **Permissions**
-2. Same process as above
+If you assign a role to a group, the role follows the group's membership. When someone joins or leaves the group, including through a sync from an identity provider such as Okta or Microsoft Entra ID, their access changes with it.
 
-The picker only offers members of PAM, so a machine identity has to be added on the **Access Control** page before it can be granted a role here.
+### What machine identities can't do
 
-### What only people can do
+Machine identities can hold any role, but the following stay with users and groups:
 
-Two things stay with users and groups:
+- **Connecting in the browser**: Machine identities connect through the [CLI](/cli/reference#pam-agentic-access)
+- **Approving access requests**: A machine identity can request access, but only users and groups can [approve requests](/documentation/platform/pam/access-requests/overview)
+- **Accounts that require MFA**: A machine identity can't complete an MFA challenge, so it can't connect to an account whose template requires MFA
 
-- **Web Access.** Connecting in the browser is for users. Machine identities connect through the [CLI](/cli/reference#pam-agentic-access).
-- **Approving [access requests](/documentation/platform/pam/access-requests/overview).** A machine identity can file a request, but only users and groups can approve one.
+## Example setup
 
-An account whose [template](/documentation/platform/pam/templates/overview) requires MFA also stays with people: a machine identity can never complete the challenge, and [agent runs](/documentation/platform/pam/ai-agents/overview) don't support it yet.
+The following example gives a platform team access to its databases:
 
-## Putting it together
+1. A product admin adds the platform team's lead to PAM as a **Member**
+2. The product admin creates a `platform-team` folder and gives the team lead the **Admin** role on it
+3. The team lead adds the team's accounts to the folder
+4. The team lead gives the rest of the team the **Connector** role on the folder
 
-Here's a typical setup:
-
-1. **Product Admin** adds the Platform team lead as a Product Member
-2. **Product Admin** creates a `platform-team` folder
-3. **Product Admin** grants the team lead **Admin** on that folder
-4. **Team lead** (now a Folder Admin) adds accounts to the folder
-5. **Team lead** grants the rest of the team **Connector** on the folder
-6. **Team members** can now connect to any account in the folder
-
-The Product Admin sets up the governance structure. The Folder Admin manages day-to-day access within their scope. Team members connect to what they've been granted access to.
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Folders" icon="folder-tree" href="/documentation/platform/pam/folders/overview">
-    Create folders and manage folder memberships.
-  </Card>
-  <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
-    Add accounts and manage account memberships.
-  </Card>
-  <Card title="AI Agents" icon="bot" href="/documentation/platform/pam/ai-agents/overview">
-    Grant the same access to an AI agent.
-  </Card>
-</CardGroup>
+The team can then connect to every account in the folder, and the team lead manages the folder's access without involving the product admin.

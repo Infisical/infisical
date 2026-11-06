@@ -1,11 +1,11 @@
-import { useEffect, useRef } from "react";
+import { HTMLAttributes, useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, CreatableSelect } from "@app/components/v3";
+import { Button, Combobox } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -16,6 +16,8 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useCreateWsTag, useGetWsTags, useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType, WsTag } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
+
+import { AnnotationPopoverHeader } from "./AnnotationPopoverHeader";
 
 const formSchema = z.object({
   tags: z.array(z.object({ label: z.string(), value: z.string() })).default([])
@@ -31,6 +33,7 @@ type Props = {
   onClose?: () => void;
   isBatchMode?: boolean;
   onTagsChange?: (tags: { id: string; slug: string }[]) => void;
+  dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
 export const SecretTagForm = ({
@@ -40,7 +43,8 @@ export const SecretTagForm = ({
   secretPath,
   onClose,
   isBatchMode,
-  onTagsChange
+  onTagsChange,
+  dragHandleProps
 }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3, isPending } = useUpdateSecretV3();
@@ -90,7 +94,7 @@ export const SecretTagForm = ({
 
   // In batch mode, debounce tag changes to parent form
   const watchedTags = watch("tags");
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};
@@ -137,16 +141,18 @@ export const SecretTagForm = ({
   if (isBatchMode) {
     return (
       <div className="space-y-3">
-        <p className="text-sm font-medium">Tags</p>
+        <AnnotationPopoverHeader title="Tags" dragHandleProps={dragHandleProps} />
         <Controller
           name="tags"
           control={control}
           render={({ field }) => (
-            <CreatableSelect
-              menuPlacement="top"
-              isMulti
-              noOptionsMessage={({ inputValue }) =>
-                inputValue && !slugSchema().safeParse(inputValue)
+            <Combobox
+              multiple
+              searchAriaLabel="Search tags"
+              getOptionValue={(option) => option.value}
+              getOptionLabel={(option) => option.label}
+              emptyMessage={(inputValue) =>
+                inputValue && !slugSchema().safeParse(inputValue).success
                   ? "Tag must be slug-friendly"
                   : "No tags match search"
               }
@@ -155,14 +161,13 @@ export const SecretTagForm = ({
               placeholder="Select or create tags..."
               options={projectTags?.map((tag) => ({ label: tag.slug, value: tag.id }))}
               value={field.value}
-              onChange={(newValue) => field.onChange(newValue)}
-              onCreateOption={handleCreateTag}
-              isValidNewOption={(inputValue) =>
-                !canAddTags
-                  ? false
-                  : slugSchema().safeParse(inputValue).success &&
-                    !projectTags?.map((tag) => tag.slug).includes(inputValue)
-              }
+              onValueChange={field.onChange}
+              creation={{
+                onCreate: handleCreateTag,
+                isDisabled: !canAddTags,
+                isValid: (inputValue) => slugSchema().safeParse(inputValue).success,
+                isDuplicate: (inputValue, option) => option.label === inputValue
+              }}
             />
           )}
         />
@@ -182,16 +187,18 @@ export const SecretTagForm = ({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-      <p className="text-sm font-medium">Tags</p>
+      <AnnotationPopoverHeader title="Tags" dragHandleProps={dragHandleProps} />
       <Controller
         name="tags"
         control={control}
         render={({ field }) => (
-          <CreatableSelect
-            menuPlacement="top"
-            isMulti
-            noOptionsMessage={({ inputValue }) =>
-              inputValue && !slugSchema().safeParse(inputValue)
+          <Combobox
+            multiple
+            searchAriaLabel="Search tags"
+            getOptionValue={(option) => option.value}
+            getOptionLabel={(option) => option.label}
+            emptyMessage={(inputValue) =>
+              inputValue && !slugSchema().safeParse(inputValue).success
                 ? "Tag must be slug-friendly"
                 : "No tags match search"
             }
@@ -200,14 +207,13 @@ export const SecretTagForm = ({
             placeholder="Select or create tags..."
             options={projectTags?.map((tag) => ({ label: tag.slug, value: tag.id }))}
             value={field.value}
-            onChange={(newValue) => field.onChange(newValue)}
-            onCreateOption={handleCreateTag}
-            isValidNewOption={(inputValue) =>
-              !canAddTags
-                ? false
-                : slugSchema().safeParse(inputValue).success &&
-                  !projectTags?.map((tag) => tag.slug).includes(inputValue)
-            }
+            onValueChange={field.onChange}
+            creation={{
+              onCreate: handleCreateTag,
+              isDisabled: !canAddTags,
+              isValid: (inputValue) => slugSchema().safeParse(inputValue).success,
+              isDuplicate: (inputValue, option) => option.label === inputValue
+            }}
           />
         )}
       />

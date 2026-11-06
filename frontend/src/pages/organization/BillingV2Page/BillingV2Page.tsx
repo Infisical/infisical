@@ -1,16 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
-import { getSafeUpgradeReturnPath } from "@app/components/license/UpgradeGate";
+import {
+  getSelfHostedLicenseState,
+  SELF_HOSTED_LICENSE_COPY
+} from "@app/components/license/self-hosted-license";
+import {
+  BillingProduct,
+  getSafeUpgradeReturnPath,
+  PamUpgradeIntent,
+  SecretsManagementUpgradeIntent,
+  UpgradeGate,
+  UpgradeIntent
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission
+  useOrgPermission,
+  useSubscription
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useDebounce } from "@app/hooks";
@@ -21,33 +33,42 @@ import {
   useCreateBillingV2PortalSession,
   useGetBillingV2Catalog,
   useGetBillingV2Organizations,
-  useGetBillingV2Overview
+  useGetBillingV2Overview,
+  useRefreshBillingV2Entitlements
 } from "@app/hooks/api";
 
+import { catalogById } from "./billing-v2-format";
+import { BillingV2RenderState } from "./billing-v2-view-types";
 import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { RemoveProductModal } from "./components/RemoveProductModal";
 import { ALL_ORGS_VALUE } from "./components/RootOrgFilter";
 import { UsageBreakdownSheet } from "./components/UsageBreakdownSheet";
-import { catalogById } from "./billing-v2-format";
-import { BillingV2RenderState } from "./billing-v2-view-types";
+import { useOfflineBilling } from "./useOfflineBilling";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
 // One popup's worth of organizations. The rest are reached by searching, which the picker's footer says.
 const ORG_PAGE_SIZE = 10;
 
+const PRICING_TRIAL_INTENTS: Record<string, UpgradeIntent> = {
+  [BillingProduct.SecretsManagement]: SecretsManagementUpgradeIntent,
+  [BillingProduct.Pam]: PamUpgradeIntent
+};
+
 // `view` optionally opens the product sheet straight into a sub-view (e.g. the set-commitment flow
 // from the "commit and save" nudge) instead of the default plans view.
 type BillingV2Flow =
   | { type: "sheet"; prodId: string; view?: "commitment" }
-  | { type: "breakdown"; prodId: string };
+  | { type: "breakdown"; prodId: string; dimensionKey?: string };
 
 export const BillingV2Page = () => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
+  const { subscription } = useSubscription();
   const orgId = currentOrg?.id ?? "";
+  const isOfflineLicense = getSelfHostedLicenseState(subscription) === "offline";
   const hasManageBillingPermission = permission.can(
     OrgPermissionBillingActions.ManageBilling,
     OrgPermissionSubjects.Billing
@@ -75,17 +96,14 @@ export const BillingV2Page = () => {
   const { data: unsearchedOrgPage, isPending: isRootOrgCountPending } =
     useGetBillingV2Organizations(orgId, { limit: ORG_PAGE_SIZE });
 
-  const {
-    data: overview,
-    isPending,
-    isPlaceholderData,
-    isError,
-    refetch
-  } = useGetBillingV2Overview(selectedOrgId);
-  const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
+  const onlineOverview = useGetBillingV2Overview(selectedOrgId, { enabled: !isOfflineLicense });
+  const { data: onlineCatalog = [] } = useGetBillingV2Catalog(selectedOrgId, {
+    enabled: !isOfflineLicense
+  });
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
   const confirmTrialPayment = useConfirmBillingV2TrialPayment();
+  const refreshEntitlements = useRefreshBillingV2Entitlements();
 
   // More than one organization means the server decided this caller may switch: an instance admin on
   // self-hosted, where one licence spans every org on the box. Cloud is bounded to the logged-in root
@@ -94,6 +112,21 @@ export const BillingV2Page = () => {
   const rootOrgCount = unsearchedOrgPage?.totalCount ?? 0;
   const showOrgFilter = rootOrgCount > 1;
 
+  const offlineBilling = useOfflineBilling({
+    orgId: selectedOrgId,
+    scope: showOrgFilter ? breakdownScope : "organization",
+    enabled:
+      isOfflineLicense &&
+      !isRootOrgCountPending &&
+      permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing)
+  });
+  const overview = isOfflineLicense ? offlineBilling.overview : onlineOverview.data;
+  const isPending = isOfflineLicense ? offlineBilling.isPending : onlineOverview.isPending;
+  const isPlaceholderData = !isOfflineLicense && onlineOverview.isPlaceholderData;
+  const isError = isOfflineLicense ? offlineBilling.isError : onlineOverview.isError;
+  const refetch = isOfflineLicense ? offlineBilling.refetch : onlineOverview.refetch;
+  const catalog = isOfflineLicense ? offlineBilling.catalog : onlineCatalog;
+
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const openedUpgradeProduct = useRef(false);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
@@ -101,23 +134,27 @@ export const BillingV2Page = () => {
   const trialApprovalUrl = trialApproval?.orgId === selectedOrgId ? trialApproval.url : null;
   const deepLinkSearch = new URLSearchParams(window.location.search);
   const upgradeProduct = deepLinkSearch.get("upgradeProduct");
+  const upgradePlan = deepLinkSearch.get("upgradePlan");
+  const upgradeCycle = deepLinkSearch.get("upgradeCycle");
   const upgradeReturnPath = getSafeUpgradeReturnPath(
     deepLinkSearch.get("upgradeReturnPath"),
     window.location.origin
   );
 
+  const [pricingTrialIntent, setPricingTrialIntent] = useState(() =>
+    upgradeProduct && upgradePlan ? (PRICING_TRIAL_INTENTS[upgradeProduct] ?? null) : null
+  );
+
   useEffect(() => {
-    if (
-      flow ||
-      openedUpgradeProduct.current ||
-      !upgradeProduct ||
-      !catalog.some((product) => product.id === upgradeProduct)
-    ) {
+    if (flow || openedUpgradeProduct.current || !upgradeProduct || upgradePlan) {
+      return;
+    }
+    if (!catalog.some((candidate) => candidate.id === upgradeProduct)) {
       return;
     }
     openedUpgradeProduct.current = true;
     setFlow({ type: "sheet", prodId: upgradeProduct });
-  }, [catalog, flow, upgradeProduct]);
+  }, [catalog, flow, upgradeProduct, upgradePlan]);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -130,12 +167,11 @@ export const BillingV2Page = () => {
         type: "success",
         text: "Subscription started. It may take a moment to appear here."
       });
-      refetch();
+      refreshEntitlements.mutate({ orgId: selectedOrgId });
     } else if (checkout === "canceled") {
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
     window.history.replaceState({}, "", window.location.pathname);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // An instance admin can point the page at an organization they are not a member of, which the
@@ -157,17 +193,23 @@ export const BillingV2Page = () => {
 
   const removeProd = removeProdId ? catalogById(catalog, removeProdId) : undefined;
 
+  const clearUpgradeSearch = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("upgradeProduct");
+    url.searchParams.delete("upgradeReturnPath");
+    url.searchParams.delete("upgradePlan");
+    url.searchParams.delete("upgradeCycle");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`
+    );
+  };
+
   const close = () => {
     setFlow(null);
     if (openedUpgradeProduct.current) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("upgradeProduct");
-      url.searchParams.delete("upgradeReturnPath");
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `${url.pathname}${url.search}${url.hash}`
-      );
+      clearUpgradeSearch();
       openedUpgradeProduct.current = false;
     }
   };
@@ -201,8 +243,8 @@ export const BillingV2Page = () => {
     setFlow({ type: "sheet", prodId: productId, view: "commitment" });
   };
 
-  const onViewBreakdown = (productId: string) => {
-    setFlow({ type: "breakdown", prodId: productId });
+  const onViewBreakdown = (productId: string, dimensionKey?: string) => {
+    setFlow({ type: "breakdown", prodId: productId, dimensionKey });
   };
 
   const hasActiveSubscription = overview?.subState === "active";
@@ -254,7 +296,10 @@ export const BillingV2Page = () => {
     }
     window.open(trialApprovalUrl, "_blank", "noopener,noreferrer");
     setTrialApproval(null);
-    refetch();
+    const orgIdAtApproval = selectedOrgId;
+    window.addEventListener("focus", () => refreshEntitlements.mutate({ orgId: orgIdAtApproval }), {
+      once: true
+    });
   };
 
   // Billing name/email and address are edited in the Stripe billing portal.
@@ -270,19 +315,17 @@ export const BillingV2Page = () => {
     refetch();
   };
 
-  // A managed (self-hosted licensed) org can't self-serve through Stripe; its plan is set by the license.
+  // A managed (self-hosted) org can't self-serve through Stripe; its plan is set by its license state.
   const isManaged = overview ? overview.mode === "managed" : !isInfisicalCloud();
   const pageDescription = isManaged
-    ? "View your subscription, products, and usage. Your plan is managed through your license."
+    ? SELF_HOSTED_LICENSE_COPY[getSelfHostedLicenseState(subscription)].pageDescription
     : "Manage your subscription, products, and payment. Payment is handled securely through Stripe.";
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("billing.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <PageTitle title={t("billing.title")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="mb-8 flex w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
@@ -313,6 +356,8 @@ export const BillingV2Page = () => {
                 setBreakdownScope("organization");
                 setSelectedOrgId(nextId);
               }}
+              breakdownOrgId={selectedOrgId}
+              breakdownScope={showOrgFilter ? breakdownScope : "organization"}
               onSearchOrgs={setOrgSearch}
               showOrgFilter={showOrgFilter}
               onUpdatePayment={onUpdatePayment}
@@ -359,6 +404,7 @@ export const BillingV2Page = () => {
           scope={showOrgFilter ? breakdownScope : "organization"}
           prod={catalogById(catalog, flow.prodId)!}
           entitlement={overview?.entitlements[flow.prodId]}
+          initialDimensionKey={flow.dimensionKey}
           onClose={close}
         />
       )}
@@ -371,6 +417,21 @@ export const BillingV2Page = () => {
           onRemoved={() => {
             setRemoveProdId(null);
             close();
+          }}
+        />
+      )}
+
+      {pricingTrialIntent && (
+        <UpgradeGate
+          intent={pricingTrialIntent}
+          paywallKey="pricing-page-trial"
+          initialTier={upgradePlan ?? undefined}
+          initialCadence={upgradeCycle === "monthly" ? "monthly" : "annual"}
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (isOpen) return;
+            setPricingTrialIntent(null);
+            clearUpgradeSearch();
           }}
         />
       )}

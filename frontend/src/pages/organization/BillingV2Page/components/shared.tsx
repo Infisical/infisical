@@ -33,6 +33,8 @@ import {
   dimMonthlyRate,
   dimOnDemandQuantity,
   fmtMoney,
+  fmtMoneyCents,
+  meteredRateInCaption,
   unitForCount
 } from "../billing-v2-format";
 
@@ -159,13 +161,13 @@ export const DimensionRateLegend = ({
           {dim.committedRate !== undefined && (
             <span className="flex items-center gap-1.5">
               <span className="size-2 rounded-full" style={{ background: committedTint }} />
-              Committed {`${fmtMoney(dim.committedRate)} / ${dim.noun} /yr`}
+              Committed {`${fmtMoneyCents(dim.committedRate)} / ${dim.noun} /yr`}
             </span>
           )}
           {dim.onDemandRate !== undefined && (
             <span className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-warning/85" />
-              On-demand {`${fmtMoney(dim.onDemandRate)} / ${dim.noun} /mo`}
+              On-demand {`${fmtMoneyCents(dim.onDemandRate)} / ${dim.noun} /mo`}
             </span>
           )}
         </Fragment>
@@ -217,7 +219,9 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
         {dim.limit !== null
           ? ` / ${dim.limit.toLocaleString()}`
           : ` ${unitForCount(dim.noun, dim.used)}`}
-        {monthlyRate > 0 && <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>}
+        {!meteredRateInCaption(dim) && monthlyRate > 0 && (
+          <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>
+        )}
       </>
     );
   }

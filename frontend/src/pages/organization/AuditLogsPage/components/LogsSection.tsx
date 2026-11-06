@@ -104,6 +104,7 @@ const LogsSectionComponent = ({
   // An org-scoped product has its own colour, and "primary" would paint its chrome the secrets yellow.
   let dateRangeAccent: DateRangeFilterAccent = project ? "primary" : "secondary";
   if (project?.type === ProjectType.AgentVault) dateRangeAccent = "av";
+  if (project?.type === ProjectType.SecretScanning) dateRangeAccent = "ss";
 
   useEffect(() => {
     if (subscription && !subscription.auditLogs) {

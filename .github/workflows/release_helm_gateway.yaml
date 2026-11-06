@@ -47,9 +47,16 @@ jobs:
             --helm-extra-args="--timeout=300s" \
             --namespace infisical-gateway
 
+  freeze-check:
+    name: Release freeze check
+    needs: [test-helm]
+    uses: ./.github/workflows/release-freeze-check.yml
+    with:
+      freeze: ${{ vars.DEPLOY_FREEZE }}
+
   release-helm:
     name: Release Helm Chart
-    needs: test-helm
+    needs: [freeze-check]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

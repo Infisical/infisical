@@ -799,16 +799,16 @@ export const RequestAccessForm = ({
           )}
         />
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           type="submit"
           variant="project"
           isPending={form.formState.isSubmitting || requestAccess.isPending}
         >
           Request Access
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
         </Button>
       </SheetFooter>
     </form>

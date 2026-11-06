@@ -4,6 +4,9 @@ sidebarTitle: "Overview"
 description: "Learn how to set up automated secret rotation in Infisical."
 ---
 
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { secretRotations, secretRotationCategories, secretRotationBadges } from "/snippets/catalogs/secret-rotations.jsx";
+
 ## Introduction
 
 Secret rotation is a security best practice that involves systematically updating credentials and access tokens at regular intervals to minimize the risk of compromise. By proactively replacing existing secrets with new ones, organizations reduce the potential impact of credential theft or leakage.
@@ -12,6 +15,16 @@ Examples of rotated secrets include:
 
 - API keys and authentication tokens for cloud services and third-party integrations
 - Database credentials across production, staging, and development environments
+
+## Supported providers
+
+<CatalogBrowser
+  id="secret-rotations"
+  items={secretRotations}
+  categories={secretRotationCategories}
+  noun="secret rotation"
+  badges={secretRotationBadges}
+/>
 
 ## How rotation works
 
@@ -125,7 +138,7 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
 
 For most providers, including Redis and API key providers such as AWS and Cloudflare, Infisical issues a new credential on each rotation and removes the old one once it has been replaced.
 
-Database rotations work differently. Infisical never creates or drops users in [PostgreSQL](/documentation/platform/secret-rotation/postgres-credentials), [MySQL](/documentation/platform/secret-rotation/mysql-credentials), [Microsoft SQL Server](/documentation/platform/secret-rotation/mssql-credentials), [Oracle Database](/documentation/platform/secret-rotation/oracledb-credentials), or [MongoDB](/documentation/platform/secret-rotation/mongodb-credentials). Doing so would require broader privileges than rotation needs, and a new user wouldn't inherit the grants your applications depend on. Instead, you create two users up front and name them in the rotation.
+Database rotations work differently. Infisical never creates or drops users in [PostgreSQL](/documentation/platform/secret-rotation/postgres-credentials), [MySQL](/documentation/platform/secret-rotation/mysql-credentials), [Microsoft SQL Server](/documentation/platform/secret-rotation/mssql-credentials), [Oracle Database](/documentation/platform/secret-rotation/oracledb-credentials), [MongoDB](/documentation/platform/secret-rotation/mongodb-credentials), or [ClickHouse](/documentation/platform/secret-rotation/clickhouse-credentials). Doing so would require broader privileges than rotation needs, and a new user wouldn't inherit the grants your applications depend on. Instead, you create two users up front and name them in the rotation.
 
 ### Why two users?
 

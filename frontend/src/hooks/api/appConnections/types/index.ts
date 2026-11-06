@@ -17,6 +17,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
+import { TClickHouseConnection } from "./clickhouse-connection";
 import { TCloud66Connection } from "./cloud-66-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
@@ -43,6 +44,8 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TImpervaConnection } from "./imperva-connection";
+import { TJiraConnection } from "./jira-connection";
 import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
@@ -64,6 +67,8 @@ import { TOpenAIConnection } from "./open-ai-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
+import { TPaloAltoNetworksConnection } from "./palo-alto-networks-connection";
+import { TPortainerConnection } from "./portainer-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TPowerDnsConnection } from "./powerdns-connection";
 import { TQoveryConnection } from "./qovery-connection";
@@ -71,7 +76,9 @@ import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TRundeckConnection } from "./rundeck-connection";
+import { TS3CompatibleConnection } from "./s3-compatible-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
+import { TServiceNowConnection } from "./servicenow-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSpaceliftConnection } from "./spacelift-connection";
@@ -104,6 +111,7 @@ export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./checkly-connection";
+export * from "./clickhouse-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloud-66-connection";
@@ -130,6 +138,8 @@ export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
+export * from "./imperva-connection";
+export * from "./jira-connection";
 export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
 export * from "./laravel-forge-connection";
@@ -151,6 +161,8 @@ export * from "./open-ai-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
+export * from "./palo-alto-networks-connection";
+export * from "./portainer-connection";
 export * from "./postgres-connection";
 export * from "./powerdns-connection";
 export * from "./qovery-connection";
@@ -158,7 +170,9 @@ export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
 export * from "./rundeck-connection";
+export * from "./s3-compatible-connection";
 export * from "./salesforce-connection";
+export * from "./servicenow-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
 export * from "./spacelift-connection";
@@ -241,7 +255,9 @@ export type TAppConnection =
   | TVenafiTppConnection
   | TExternalInfisicalConnection
   | TNetScalerConnection
+  | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
+  | TImpervaConnection
   | TDopplerConnection
   | TOvhConnection
   | TDevinConnection
@@ -256,6 +272,7 @@ export type TAppConnection =
   | TConvexConnection
   | TTriggerDevConnection
   | TRundeckConnection
+  | TPortainerConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
@@ -266,9 +283,16 @@ export type TAppConnection =
   | TDaytonaConnection
   | TStripeConnection
   | TKeeperConnection
-  | THpeIloConnection;
+  | THpeIloConnection
+  | TServiceNowConnection
+  | TS3CompatibleConnection
+  | TJiraConnection
+  | TClickHouseConnection;
 
-export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
+export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId"> & {
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+};
 
 export type TListAppConnections<T extends TAppConnection> = { appConnections: T[] };
 // scott: we will need this once we have individual app connection page

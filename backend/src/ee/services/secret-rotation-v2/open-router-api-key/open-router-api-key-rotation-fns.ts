@@ -45,7 +45,7 @@ export const openRouterApiKeyRotationFactory: TRotationFactory<
 > = (secretRotation) => {
   const {
     connection,
-    parameters: { name, limit, limitReset, includeByokInLimit },
+    parameters: { name, workspaceId, limit, limitReset, includeByokInLimit },
     secretsMapping
   } = secretRotation;
 
@@ -56,22 +56,15 @@ export const openRouterApiKeyRotationFactory: TRotationFactory<
    */
   const $createApiKey = async () => {
     try {
-      const requestBody: {
-        name: string;
-        limit?: number | null;
-        limit_reset?: string | null;
-        include_byok_in_limit?: boolean | null;
-      } = { name };
-
-      if (limit !== undefined && limit !== null) {
-        requestBody.limit = limit;
-      }
-      if (limitReset !== undefined && limitReset !== null) {
-        requestBody.limit_reset = limitReset;
-      }
-      if (includeByokInLimit !== undefined && includeByokInLimit !== null) {
-        requestBody.include_byok_in_limit = includeByokInLimit;
-      }
+      const requestBody = {
+        name,
+        ...(workspaceId ? { workspace_id: workspaceId } : {}),
+        ...(limit !== undefined && limit !== null ? { limit } : {}),
+        ...(limitReset !== undefined && limitReset !== null ? { limit_reset: limitReset } : {}),
+        ...(includeByokInLimit !== undefined && includeByokInLimit !== null
+          ? { include_byok_in_limit: includeByokInLimit }
+          : {})
+      };
 
       const { data } = await request.post<TOpenRouterApiKeyCreateResponse>(
         `${OPEN_ROUTER_API_BASE_URL}/keys`,

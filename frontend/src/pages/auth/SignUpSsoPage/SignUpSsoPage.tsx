@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
@@ -8,6 +7,7 @@ import { captureSignupCompleted } from "@app/components/analytics/experiments/si
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
@@ -132,13 +132,11 @@ export const SignupSsoPage = () => {
         </Button>
       }
     >
-      <Helmet>
-        <title>{t("common.head-title", { title: t("signup.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("signup.og-title") as string} />
-        <meta name="og:description" content={t("signup.og-description") as string} />
-      </Helmet>
+      <PageTitle title={t("signup.title")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content={t("signup.og-title") as string} />
+      <meta name="og:description" content={t("signup.og-description") as string} />
       <div className="mx-auto flex w-full flex-col items-center justify-center">
         <AuthPagePanel>
           <VerificationCodeHeader

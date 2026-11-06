@@ -12,10 +12,12 @@ import {
   ChefPkiSyncDestinationSection,
   F5BigIpPkiSyncDestinationSection,
   GcpCertificateManagerPkiSyncDestinationSection,
+  ImpervaPkiSyncDestinationSection,
   KempLoadMasterPkiSyncDestinationSection,
   LinuxServerPkiSyncDestinationSection,
   NetScalerPkiSyncDestinationSection,
   NutanixPrismCentralPkiSyncDestinationSection,
+  PaloAltoNetworksPkiSyncDestinationSection,
   WindowsServerPkiSyncDestinationSection
 } from "./PkiSyncDestinationSection/index";
 
@@ -51,11 +53,18 @@ export const PkiSyncDestinationSection = ({ pkiSync }: Props) => {
     case PkiSync.NetScaler:
       DestinationComponents = <NetScalerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
+    case PkiSync.PaloAltoNetworks:
+    case PkiSync.PaloAltoNetworksSslTlsProfile:
+      DestinationComponents = <PaloAltoNetworksPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
     case PkiSync.F5BigIp:
       DestinationComponents = <F5BigIpPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     case PkiSync.KempLoadMaster:
       DestinationComponents = <KempLoadMasterPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.Imperva:
+      DestinationComponents = <ImpervaPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     case PkiSync.LinuxServer:
       DestinationComponents = <LinuxServerPkiSyncDestinationSection pkiSync={pkiSync} />;

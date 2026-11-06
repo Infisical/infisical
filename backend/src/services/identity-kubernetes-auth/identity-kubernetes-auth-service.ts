@@ -21,6 +21,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -59,10 +60,10 @@ import {
 } from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
-import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
-import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -108,7 +109,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
-  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId">;
+  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId" | "findByIdForShare">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   permissionService: Pick<
@@ -428,7 +429,9 @@ export const identityKubernetesAuthServiceFactory = ({
           const serviceAccountJwtFingerprint = getJwtFingerprintForLog(serviceAccountJwt);
 
           if (err instanceof AxiosError) {
-            logger.error(
+            const status = err.response?.status;
+            const level = status === 401 || status === 403 ? "warn" : "error";
+            logger[level](
               {
                 host,
                 port,
@@ -448,7 +451,7 @@ export const identityKubernetesAuthServiceFactory = ({
             );
           }
 
-          logger.error(
+          logger[isKnownError(err) ? "warn" : "error"](
             { error: err as Error, host, port, tokenReviewerJwtFingerprint, serviceAccountJwtFingerprint },
             `tokenReviewCallbackRaw: Kubernetes token review request error (non-request error) [identityId=${identityKubernetesAuth.identityId}]`
           );
@@ -850,35 +853,6 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -1116,6 +1090,9 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityKubernetesAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
@@ -1159,9 +1136,8 @@ export const identityKubernetesAuthServiceFactory = ({
     return {
       ...identityKubernetesAuth,
       caCert: caCert ?? "",
-      // a template's reviewer JWT is an org-scoped write-only credential; identity-level
-      // readers must not be able to recover it through the identity endpoints
-      tokenReviewerJwt: template ? "" : tokenReviewerJwt,
+      tokenReviewerJwt: "",
+      hasTokenReviewerJwt: Boolean(identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt),
       orgId: identityMembershipOrg.scopeOrgId,
       gatewayId: identityKubernetesAuth.gatewayV2Id
     };
@@ -1188,7 +1164,7 @@ export const identityKubernetesAuthServiceFactory = ({
     let { tokenReviewMode } = dto;
     // "" (the schema trims) matches neither persistence branch below, so the stored JWT
     // survives it; it must read as "no change" everywhere else too, or it would slip past
-    // the template-JWT host-change guard while the stored credential stays live
+    // the stored-JWT host-change guard while the stored credential stays live
     if (tokenReviewerJwt === "") tokenReviewerJwt = undefined;
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1216,35 +1192,6 @@ export const identityKubernetesAuthServiceFactory = ({
         (accessTokenMaxTTL || identityKubernetesAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
-    }
-
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
     }
 
     await assertIdentityAuthAccessAllowed(
@@ -1344,23 +1291,20 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     }
 
-    // a template-sourced reviewer JWT stays write-only to the caller, so it must only ever
-    // travel to the destination, and over the trust, that the template chose. unlinking
-    // deliberately leaves the credential in place to keep login working, which would otherwise
-    // let an actor with identity EditAuth (plus AttachGateways, for the gateway fields) repoint
-    // the connection and have the unauthenticated login endpoint deliver the JWT to a server or
-    // gateway they control, or downgrade TLS trust to intercept it in transit. keyed on the
-    // provenance flag rather than on the unlink itself, so a repoint in a later request is caught
-    // too. every field below decides where or how the JWT is sent; the host alone is not enough
-    // (a gateway tunnels it in API mode, and CA/verify settings guard it on the wire)
-    if (!template && identityKubernetesAuth.isTokenReviewerJwtTemplateSourced && tokenReviewerJwt === undefined) {
-      // includes the retired v1 column: unlinking a v1-pinned gateway still repoints where
-      // the template-sourced reviewer JWT would be sent
+    // the stored JWT is write-only, so changing where or over what trust it is sent must resupply it;
+    // otherwise an EditAuth actor could repoint the connection and have login deliver it to a server they control
+    if (!template && identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt && tokenReviewerJwt === undefined) {
+      // compare what the write below persists: sending either gateway field rewrites both columns, and the
+      // retired v1 column counts, so unlinking a v1-pinned gateway still repoints where the stored JWT is sent
       const storedGatewayId = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId ?? null;
+      const storedGatewayPoolId = identityKubernetesAuth.gatewayPoolId ?? null;
+      const changesGateway = gatewayId !== undefined || gatewayPoolId !== undefined;
+      const nextGatewayId = changesGateway ? (!gatewayPoolId && gatewayId) || null : storedGatewayId;
+      const nextGatewayPoolId = changesGateway ? (gatewayPoolId ?? null) : storedGatewayPoolId;
       const repointsConnection =
         (kubernetesHost !== undefined && kubernetesHost !== identityKubernetesAuth.kubernetesHost) ||
-        (gatewayId !== undefined && (gatewayId ?? null) !== storedGatewayId) ||
-        (gatewayPoolId !== undefined && (gatewayPoolId ?? null) !== (identityKubernetesAuth.gatewayPoolId ?? null)) ||
+        nextGatewayId !== storedGatewayId ||
+        nextGatewayPoolId !== storedGatewayPoolId ||
         (verifyTlsCertificate !== undefined && verifyTlsCertificate !== identityKubernetesAuth.verifyTlsCertificate) ||
         (caCert !== undefined &&
           caCert !==
@@ -1369,8 +1313,9 @@ export const identityKubernetesAuthServiceFactory = ({
               : ""));
       if (repointsConnection) {
         throw new BadRequestError({
-          message:
-            "This identity still uses the token reviewer JWT copied from its auth template, so its Kubernetes connection settings (host, gateway, gateway pool, CA certificate, or TLS verification) cannot be changed. Supply your own tokenReviewerJwt with this change, or set tokenReviewerJwt to null to remove the stored one."
+          message: identityKubernetesAuth.isTokenReviewerJwtTemplateSourced
+            ? "This identity still uses the token reviewer JWT copied from its auth template, so its Kubernetes connection settings (host, gateway, gateway pool, CA certificate, or TLS verification) cannot be changed. Supply your own tokenReviewerJwt with this change, or set tokenReviewerJwt to null to remove the stored one."
+            : "Changing the Kubernetes host, gateway, gateway pool, CA certificate, or TLS verification requires supplying tokenReviewerJwt, because the stored token reviewer JWT cannot be read back. Send the reviewer JWT with this change, or set tokenReviewerJwt to null to remove the stored one."
         });
       }
     }
@@ -1639,6 +1584,9 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery, tx);
       await emitIdentityAuthMethodChanged(
         eventEmitter,
@@ -1660,21 +1608,13 @@ export const identityKubernetesAuthServiceFactory = ({
         }).toString()
       : "";
 
-    const updatedTokenReviewerJwt =
-      !updatedKubernetesAuth.templateId &&
-      !updatedKubernetesAuth.isTokenReviewerJwtTemplateSourced &&
-      updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
-        ? decryptor({
-            cipherTextBlob: updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
-          }).toString()
-        : "";
-
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.KUBERNETES_AUTH);
     return {
       ...updatedKubernetesAuth,
       orgId: identityMembershipOrg.scopeOrgId,
       caCert: updatedCACert,
-      tokenReviewerJwt: updatedTokenReviewerJwt,
+      tokenReviewerJwt: "",
+      hasTokenReviewerJwt: Boolean(updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt),
       gatewayId: updatedKubernetesAuth.gatewayV2Id
     };
   };
@@ -1744,25 +1684,11 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert = decryptor({ cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate }).toString();
     }
 
-    // a template's reviewer JWT is an org-scoped write-only credential copied onto the
-    // identity row; identity-level readers must not be able to recover it, including
-    // after an unlink (the copied credential keeps its template provenance). Manually
-    // configured identities keep read-back (the caller supplied that value themselves).
-    let tokenReviewerJwt = "";
-    if (
-      !identityKubernetesAuth.templateId &&
-      !identityKubernetesAuth.isTokenReviewerJwtTemplateSourced &&
-      identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
-    ) {
-      tokenReviewerJwt = decryptor({
-        cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
-      }).toString();
-    }
-
     return {
       ...identityKubernetesAuth,
       caCert,
-      tokenReviewerJwt,
+      tokenReviewerJwt: "",
+      hasTokenReviewerJwt: Boolean(identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt),
       orgId: identityMembershipOrg.scopeOrgId,
       gatewayId: identityKubernetesAuth.gatewayV2Id
     };
@@ -1793,32 +1719,6 @@ export const identityKubernetesAuthServiceFactory = ({
         message: "The identity does not have kubernetes auth"
       });
     }
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {

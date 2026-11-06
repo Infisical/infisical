@@ -8,6 +8,7 @@ import {
   createResourcePermissionQueryHook,
   ResourcePermissionResponse
 } from "@app/helpers/resourcePermissions";
+import { TAutoApprovalInputDetails } from "@app/hooks/api/approvalPolicies/types";
 import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 import {
@@ -172,15 +173,19 @@ export const usePamAccountActions = (accountId: string, enabled = true) => {
 
 // Builds a `can` checker from packed permission rules already embedded in a list item, so list rows
 // don't each fire a per-account /permissions request (see useListPamAccounts).
+export const buildPamAccountCan = (
+  permissions?: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"]
+) => {
+  const rules = unpackRules<RawRuleOf<MongoAbility<PamFolderPermissionSet>>>(permissions ?? []);
+  const permission = createMongoAbility<PamFolderPermissionSet>(rules, { conditionsMatcher });
+  return (action: PamResourcePermissionActions) =>
+    permission.can(action, PamResourcePermissionSub.PamResource);
+};
+
 export const usePamAccountActionsFromPermissions = (
   permissions?: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"]
 ) => {
-  const can = useMemo(() => {
-    const rules = unpackRules<RawRuleOf<MongoAbility<PamFolderPermissionSet>>>(permissions ?? []);
-    const permission = createMongoAbility<PamFolderPermissionSet>(rules, { conditionsMatcher });
-    return (action: PamResourcePermissionActions) =>
-      permission.can(action, PamResourcePermissionSub.PamResource);
-  }, [permissions]);
+  const can = useMemo(() => buildPamAccountCan(permissions), [permissions]);
   return { can };
 };
 
@@ -652,11 +657,12 @@ export const useGetPamAccountApprovers = (
     queryKey: pamKeys.accountApprovers(accountId ?? "", accessType),
     enabled: Boolean(accountId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ steps: TPamApprovalWorkflowStep[] }>(
-        `/api/v1/pam/access-requests/accounts/${accountId}/approvers`,
-        { params: { accessType } }
-      );
-      return data.steps;
+      const { data } = await apiRequest.get<{
+        steps: TPamApprovalWorkflowStep[];
+        autoApprovalInputs: TAutoApprovalInputDetails[];
+        autoApprovalOnly: boolean;
+      }>(`/api/v1/pam/access-requests/accounts/${accountId}/approvers`, { params: { accessType } });
+      return data;
     }
   });
 };

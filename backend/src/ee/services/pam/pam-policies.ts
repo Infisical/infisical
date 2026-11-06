@@ -5,6 +5,7 @@ import { PamAccountType } from "./pam-enums";
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
+  AllowAutoApproval = "allow-auto-approval",
   AllowBreakGlass = "allow-break-glass",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
@@ -68,6 +69,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.RequiresApproval]: {
     label: "Require Approval",
     description: "Users must request and receive approval before launching sessions and viewing credentials.",
+    appliesTo: "all",
+    schema: z.boolean()
+  },
+  [PamPolicyType.AllowAutoApproval]: {
+    label: "Allow Auto-Approval",
+    description:
+      "Requests are approved instantly when they pass one of the folder's auto-approval rules. Set the rules under the folder's Approvals tab.",
     appliesTo: "all",
     schema: z.boolean()
   },
@@ -187,6 +195,7 @@ export const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknow
 
 export type TPamAccessControls = {
   requiresApproval: boolean;
+  allowAutoApproval: boolean;
   allowBreakGlass: boolean;
   requireReason: boolean;
   requireMfa: boolean;
@@ -245,6 +254,7 @@ export const resolveAccessControls = (policyMap: unknown): TPamAccessControls =>
   const requiresApproval = resolvePolicy(policyMap, PamPolicyType.RequiresApproval) === true;
   return {
     requiresApproval,
+    allowAutoApproval: requiresApproval && resolvePolicy(policyMap, PamPolicyType.AllowAutoApproval) === true,
     allowBreakGlass: requiresApproval && resolvePolicy(policyMap, PamPolicyType.AllowBreakGlass) === true,
     requireReason: resolvePolicy(policyMap, PamPolicyType.RequireReason) === true,
     requireMfa: resolvePolicy(policyMap, PamPolicyType.RequireMfa) === true,

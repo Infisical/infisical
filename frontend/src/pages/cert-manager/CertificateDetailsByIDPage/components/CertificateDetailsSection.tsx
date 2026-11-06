@@ -1,4 +1,3 @@
-import { CopyButton } from "@app/components/v2/CopyButton";
 import {
   Badge,
   Card,
@@ -6,6 +5,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CopyButton,
   Detail,
   DetailGroup,
   DetailLabel,
@@ -274,8 +274,7 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
                     {certificate.fingerprints.sha256 && (
                       <CopyButton
                         value={certificate.fingerprints.sha256}
-                        size="xs"
-                        variant="plain"
+                        ariaLabel="Copy SHA-256 fingerprint"
                       />
                     )}
                   </DetailValue>
@@ -285,7 +284,10 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
                   <DetailValue className="flex items-center gap-2 font-mono">
                     {certificate.fingerprints.sha1 || <span className="text-muted">—</span>}
                     {certificate.fingerprints.sha1 && (
-                      <CopyButton value={certificate.fingerprints.sha1} size="xs" variant="plain" />
+                      <CopyButton
+                        value={certificate.fingerprints.sha1}
+                        ariaLabel="Copy SHA-1 fingerprint"
+                      />
                     )}
                   </DetailValue>
                 </Detail>

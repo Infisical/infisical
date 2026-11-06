@@ -11,6 +11,7 @@ type TAlertRecord = {
     name: string;
     channelType: string;
     enabled: boolean;
+    config: Record<string, unknown>;
     recipients: { principalType: string; principalId: string }[];
   }[];
 };

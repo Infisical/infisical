@@ -132,6 +132,7 @@ export const RelayPageHeader = ({
       </PageHeader>
 
       <AlertDialog
+        isPending={isDeleting}
         open={popUp.deleteRelay.isOpen}
         confirmationValue={relay.name}
         onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
@@ -148,10 +149,9 @@ export const RelayPageHeader = ({
             <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isDeleting}
               onClick={(event) => {
                 event.preventDefault();
                 onDelete();
@@ -163,6 +163,7 @@ export const RelayPageHeader = ({
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
+        isPending={isRevoking}
         open={popUp.revokeRelay.isOpen}
         confirmationValue={relay.name}
         onOpenChange={(open) => handlePopUpToggle("revokeRelay", open)}
@@ -177,10 +178,9 @@ export const RelayPageHeader = ({
           </AlertDialogHeader>
           <AlertDialogConfirmationField inputProps={{ placeholder: relay.name }} />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRevoking}
               onClick={(event) => {
                 event.preventDefault();
                 onRevoke();

@@ -387,6 +387,14 @@ export const appConnections = [
     category: "SaaS",
   },
   {
+    name: "ServiceNow",
+    slug: "servicenow",
+    path: "/integrations/app-connections/servicenow",
+    description:
+      "Learn how to connect ServiceNow to route Infisical access requests through ServiceNow approvals.",
+    category: "SaaS",
+  },
+  {
     name: "OpenRouter",
     slug: "openrouter",
     path: "/integrations/app-connections/openrouter",
@@ -442,6 +450,13 @@ export const appConnections = [
     category: "Databases"
   },
   {
+    name: "ClickHouse",
+    slug: "clickhouse",
+    path: "/integrations/app-connections/clickhouse",
+    description: "Learn how to connect Infisical to ClickHouse to rotate database credentials.",
+    category: "Databases"
+  },
+  {
     name: "Octopus Deploy",
     slug: "octopus-deploy",
     path: "/integrations/app-connections/octopus-deploy",
@@ -480,11 +495,11 @@ export const appConnections = [
     category: "DevOps Tools",
   }, 
   {
-    name: "OVH",
+    name: "OVHcloud",
     slug: "ovh",
     path: "/integrations/app-connections/ovh",
     description:
-      "Learn how to connect OVH Cloud to pull secrets from OVH Secret Manager to Infisical.",
+      "Learn how to connect OVHcloud to pull secrets from OVHcloud Secret Manager to Infisical.",
     category: "Cloud Providers",
   },
   {
@@ -608,6 +623,14 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "Palo Alto Networks",
+    slug: "palo-alto-networks",
+    path: "/integrations/app-connections/palo-alto-networks",
+    description:
+      "Learn how to connect Palo Alto Networks firewalls and Panorama to deploy certificates with Infisical.",
+    category: "Networking & DNS",
+  },
+  {
     name: "GoDaddy",
     slug: "godaddy",
     path: "/integrations/app-connections/godaddy",
@@ -621,6 +644,14 @@ export const appConnections = [
     path: "/integrations/app-connections/rundeck",
     description:
       "Learn how to connect Rundeck to pull secrets from Infisical.",
+    category: "DevOps Tools",
+  },
+  {
+    name: "Portainer",
+    slug: "portainer",
+    path: "/integrations/app-connections/portainer",
+    description:
+      "Learn how to connect Portainer to pull secrets from Infisical.",
     category: "DevOps Tools",
   },
   {
@@ -682,5 +713,13 @@ export const appConnections = [
     description:
       "Learn how to connect Keeper Commander Service Mode to sync secrets from Infisical.",
     category: "Security",
+  },
+  {
+    name: "Jira",
+    slug: "jira",
+    path: "/integrations/app-connections/jira",
+    description:
+      "Learn how to connect Jira Cloud or Jira Data Center so Infisical can read your Jira tickets.",
+    category: "SaaS",
   },
 ];

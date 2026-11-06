@@ -15,6 +15,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { useDebounce } from "@app/hooks";
 
+import { Combobox, type ComboboxDialogCreationRenderProps, type ComboboxProps } from ".";
 import { Button } from "../Button";
 import {
   Dialog,
@@ -29,7 +30,6 @@ import { Field, FieldError, FieldLabel } from "../Field";
 import { Input } from "../Input";
 import { InputGroup, InputGroupAddon } from "../InputGroup";
 import { TextArea } from "../TextArea";
-import { Combobox, type ComboboxDialogCreationRenderProps, type ComboboxProps } from ".";
 
 const ENVIRONMENTS = [
   { id: "development", name: "Development" },
@@ -1737,6 +1737,58 @@ export const DialogCreation: Story = {
     ).toBeInTheDocument();
     const additionalMetadata = await canvas.findByLabelText("Security review metadata");
     await expect(within(additionalMetadata).getByText("tag-security-review")).toBeInTheDocument();
+  }
+};
+
+export const DialogCreationFromEmptyQuery: Story = {
+  name: "Creation: Dialog From Empty Query",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Dialog creation collects its own fields, so its Create row is enabled with an empty query and opens the dialog with an empty `initialInput`. Inline creation still needs a query."
+      }
+    }
+  },
+  render: () => (
+    <div className="flex w-80 flex-col gap-8">
+      <SingleDialogCreationRender />
+      <MultipleDialogCreationRender />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const primaryInput = canvas.getByRole("combobox", { name: "Primary tag" });
+    const additionalInput = canvas.getByRole("combobox", { name: "Additional tags" });
+
+    await userEvent.click(primaryInput);
+    await expect(canvas.getByRole("option", { name: "Create" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
+    await userEvent.click(canvas.getByRole("option", { name: "Create" }));
+    let dialog = await body.findByRole("dialog", { name: "Create Tag" });
+    await expect(within(dialog).getByLabelText("Name")).toHaveValue("");
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Release workflow");
+    await userEvent.type(within(dialog).getByLabelText("Slug"), "release-workflow");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create Tag" }));
+    await expect(await canvas.findByLabelText("Release workflow metadata")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(body.queryByRole("dialog", { name: "Create Tag" })).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(primaryInput).toHaveFocus());
+
+    await userEvent.click(additionalInput);
+    await userEvent.click(canvas.getByRole("option", { name: "Create" }));
+    dialog = await body.findByRole("dialog", { name: "Create Tag" });
+    await expect(within(dialog).getByLabelText("Name")).toHaveValue("");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(body.queryByRole("dialog", { name: "Create Tag" })).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(additionalInput).toHaveFocus());
+    await waitFor(() => expect(additionalInput).toHaveAttribute("aria-expanded", "true"));
   }
 };
 

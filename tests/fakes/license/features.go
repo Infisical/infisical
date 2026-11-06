@@ -10,7 +10,6 @@ var (
 	CertManager                  = Feature{V2: "cert_manager", V1: "certManager"}
 	CrossProjectSecretSharing    = Feature{V2: "cross_project_secret_sharing", V1: "crossProjectSecretSharing"}
 	CustomAlerts                 = Feature{V2: "custom_alerts", V1: "customAlerts"}
-	CustomRateLimits             = Feature{V2: "custom_rate_limits", V1: "customRateLimits"}
 	DynamicSecret                = Feature{V2: "dynamic_secret", V1: "dynamicSecret"}
 	EnforceGoogleSSO             = Feature{V2: "enforce_google_sso", V1: "enforceGoogleSSO"}
 	EnforceMFA                   = Feature{V2: "enforce_mfa", V1: "enforceMfa"}
@@ -45,7 +44,7 @@ var (
 	MaxWildcardCertificates      = Feature{V2: "max_wildcard_certificates", V1: "maxWildcardCertificates"}
 	OIDCSSO                      = Feature{V2: "oidc_sso", V1: "oidcSSO"}
 	PAM                          = Feature{V2: "pam", V1: "pam"}
-	PAMSlackNotifications        = Feature{V2: "pam_slack_notifications", V1: "pamSlackNotifications"}
+	PAMEnterpriseAlerting        = Feature{V2: "pam_enterprise_alerting", V1: "pamEnterpriseAlerting"}
 	PITRecovery                  = Feature{V2: "pit_recovery", V1: "pitRecovery"}
 	PKIACME                      = Feature{V2: "pki_acme", V1: "pkiAcme"}
 	PKIApprovals                 = Feature{V2: "pki_approvals", V1: "pkiApprovals"}
@@ -93,7 +92,6 @@ var All = []Feature{
 	CertManager,
 	CrossProjectSecretSharing,
 	CustomAlerts,
-	CustomRateLimits,
 	DynamicSecret,
 	EnforceGoogleSSO,
 	EnforceMFA,
@@ -128,7 +126,7 @@ var All = []Feature{
 	MaxWildcardCertificates,
 	OIDCSSO,
 	PAM,
-	PAMSlackNotifications,
+	PAMEnterpriseAlerting,
 	PITRecovery,
 	PKIACME,
 	PKIApprovals,

@@ -3,8 +3,10 @@ import { Knex } from "knex";
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
+import { TSecretChangeRequestData } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
+import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
@@ -18,6 +20,13 @@ import {
   ApproverType,
   EnforcementLevel
 } from "./approval-policy-enums";
+import {
+  TAutoApprovalConfig,
+  TAutoApprovalEvidence,
+  TAutoApprovalInputValue,
+  TAutoApprovalOutcome,
+  TAutoApprovalPolicyResponse
+} from "./auto-approval/auto-approval-types";
 import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
@@ -77,6 +86,7 @@ export type TApprovalRequestData =
   | TPamAccessRequestData
   | TCertRequestRequestData
   | TCodeSigningRequestData
+  | TSecretChangeRequestData
   | TSecretAccessRequestData;
 
 // Bypass-affordance fields the service stamps onto every request response.
@@ -84,6 +94,10 @@ export type TBypassAffordances = {
   canBreakGlass: boolean;
   isBreakGlass: boolean;
   bypassReason: string | null;
+};
+
+export type TAutoApprovalAffordance = {
+  autoApproval: TAutoApprovalOutcome | null;
 };
 
 export type BreakGlassBypassMetadata = {
@@ -126,6 +140,7 @@ export interface TCreatePolicyDTO {
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   bypassers?: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfig;
 }
 
 export interface TUpdatePolicyDTO {
@@ -137,19 +152,23 @@ export interface TUpdatePolicyDTO {
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   bypassers?: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfig;
 }
 
 // Request DTOs
 export interface TCreateRequestDTO {
   scope: ApprovalPolicyScope;
   scopeId: string;
-  // Secret access requests are created in the access-approval bridge, not through this DTO.
-  requestData: Exclude<TApprovalRequestData, TSecretAccessRequestData>;
+  // Secret access and secret change requests are created in their bridges, not through this DTO.
+  requestData: Exclude<TApprovalRequestData, TSecretAccessRequestData | TSecretChangeRequestData>;
   justification?: TApprovalRequest["justification"];
   requestDuration?: string | null;
   // Set by a caller that decides the request in the same breath (break-glass), so approvers are not
   // asked to act on something that is already resolved
   skipApproverNotification?: boolean;
+  autoApprovalInputs?: TAutoApprovalInputValue[];
+  // Break-glass approves the request itself, so its rules are not evaluated
+  skipAutoApproval?: boolean;
 }
 
 export interface TCreateRequestFromPolicyDTO {
@@ -164,6 +183,7 @@ export interface TCreateRequestFromPolicyDTO {
   requesterName: string;
   requesterEmail: string;
   skipApproverNotification?: boolean;
+  autoApprovalEvidence?: TAutoApprovalEvidence | null;
   tx?: Knex;
 }
 
@@ -192,6 +212,15 @@ export type TApprovalResource<
     breakGlass?: { bypassReason: string }
   ) => Promise<{ grantId: string } | void>;
   postApprovalRoutine?: (request: TApprovalRequest, actor?: TApprovalActor) => Promise<void>;
+
+  // Policies of this type can hold auto-approval rules
+  supportsAutoApproval?: boolean;
+  // Whether the policy's auto-approval rules may decide this request
+  allowsAutoApproval?: (args: {
+    projectId: string;
+    requestData: TApprovalRequestData | TApprovalPolicyInputs;
+    tx?: Knex;
+  }) => Promise<boolean>;
   postRejectionRoutine?: (request: TApprovalRequest) => Promise<void>;
 
   // Whether a stored grant's attributes or a request's payload is for the thing these inputs name.
@@ -234,6 +263,8 @@ export type TApprovalResource<
     comment?: string;
     bypassReason?: string;
   }) => Promise<TApprovalNotification | null>;
+  // The domain event a lifecycle event owes; called inside the transaction, so it must not touch the database.
+  buildEvent?: (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }) => TEventInput | null;
   // Narrows the notified approvers to those still eligible, for a type where an approver row can
   // outlive the membership behind it.
   filterActiveApprovers?: (
@@ -275,6 +306,8 @@ export type TApprovalResource<
     policy: TApprovalPolicy;
     requestData: TApprovalRequestData;
     actor: TApprovalActor;
+    hasAutoApprovalRules: boolean;
+    skipsAutoApproval: boolean;
   }) => Promise<void>;
   assertCanReview?: (args: {
     request: TApprovalRequests;
@@ -315,6 +348,7 @@ export type TApprovalAccessStatus = {
 export type TApprovalScopeConfiguration = {
   steps: { requiredApprovals: number; approvers: PolicyBypasser[] }[];
   bypassers: PolicyBypasser[];
+  autoApproval: TAutoApprovalPolicyResponse;
 };
 
 export type TApprovalResourceRegistry = Partial<Record<ApprovalPolicyType, TApprovalResource>>;

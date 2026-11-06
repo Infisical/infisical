@@ -48,7 +48,7 @@ export const PolicyCustomExtensionsSection = ({ policy }: Props) => {
             {policy.customExtensions.map((rule) => (
               <div
                 key={rule.oid}
-                className="flex flex-col gap-y-3 border-b border-mineshaft-700 pb-3 last:border-b-0 last:pb-0"
+                className="flex flex-col gap-y-3 border-b border-border pb-3 last:border-b-0 last:pb-0"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-foreground">
@@ -58,7 +58,7 @@ export const PolicyCustomExtensionsSection = ({ policy }: Props) => {
                     <Badge variant="neutral">{CRITICALITY_LABEL[rule.critical]}</Badge>
                   )}
                 </div>
-                <p className="font-mono text-xs text-mineshaft-400">{rule.oid}</p>
+                <p className="font-mono text-xs text-muted">{rule.oid}</p>
                 {Boolean(rule.required?.length) && (
                   <RuleList label="Required" values={rule.required ?? []} />
                 )}

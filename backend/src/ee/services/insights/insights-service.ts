@@ -4,8 +4,8 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
-import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
+import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -29,8 +29,8 @@ import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal"
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
@@ -73,7 +73,13 @@ export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
-  clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg" | "countByIdentityAuthMethodForOrg">;
+  clickhouseAuditLogDAL?: Pick<
+    TClickHouseAuditLogDALFactory,
+    | "countByDateForOrg"
+    | "countByIdentityAuthMethodForOrg"
+    | "countByDateAndActorForProject"
+    | "countByAuthMethodForProject"
+  >;
   secretRotationV2DAL: Pick<
     TSecretRotationV2DALFactory,
     "findByProjectAndDateRange" | "findByProject" | "countByProject"
@@ -121,8 +127,8 @@ const assertInsightsPlanEnabled = async (
   }
 };
 
-const checkInsightsPermission = async (
-  permissionService: TInsightsServiceFactoryDep["permissionService"],
+export const checkInsightsPermission = async (
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
   licenseService: TInsightsServiceFactoryDep["licenseService"],
   projectId: string,
   actor: OrgServiceActor
@@ -257,9 +263,15 @@ export const insightsServiceFactory = ({
     });
   };
 
+  // With ClickHouse audit logging on, new audit logs are written only to ClickHouse, so the project
+  // cards must read from there or they show nothing that happened after the switch.
+  const $getClickHouseAuditLogDAL = () =>
+    getConfig().CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL ? clickhouseAuditLogDAL : undefined;
+
   const getAccessVolume = async (dto: TGetAccessVolumeDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
+    const clickhouseDAL = $getClickHouseAuditLogDAL();
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "access-volume");
     return withCache({
       keyStore,
@@ -268,13 +280,16 @@ export const insightsServiceFactory = ({
       fetcher: async () => {
         const { dates, startDate, endDate } = buildAccessVolumeWindow();
 
-        const rows = await auditLogDAL.countByDateAndActor({
+        const countQuery = {
           orgId: actorDto.orgId,
           projectId: dto.projectId,
           eventTypes: VALUE_EVENT_TYPES,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString()
-        });
+        };
+        const rows = clickhouseDAL
+          ? await clickhouseDAL.countByDateAndActorForProject(countQuery)
+          : await auditLogDAL.countByDateAndActor(countQuery);
 
         const userNameMap = await resolveUserDisplayNames(userDAL, [
           ...new Set(
@@ -314,6 +329,7 @@ export const insightsServiceFactory = ({
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
+    const clickhouseDAL = $getClickHouseAuditLogDAL();
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
     return withCache({
       keyStore,
@@ -324,13 +340,16 @@ export const insightsServiceFactory = ({
         const startDate = new Date();
         startDate.setUTCDate(startDate.getUTCDate() - dto.days);
 
-        const authRows = await auditLogDAL.countByAuthMethod({
+        const countQuery = {
           orgId: actorDto.orgId,
           projectId: dto.projectId,
           eventTypes: VALUE_EVENT_TYPES,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString()
-        });
+        };
+        const authRows = clickhouseDAL
+          ? await clickhouseDAL.countByAuthMethodForProject(countQuery)
+          : await auditLogDAL.countByAuthMethod(countQuery);
 
         const methodCounts = new Map<string, number>();
 

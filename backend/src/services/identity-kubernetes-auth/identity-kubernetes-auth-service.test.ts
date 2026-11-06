@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
+import { ConflictError } from "@app/lib/errors";
 
 import { identityKubernetesAuthServiceFactory } from "./identity-kubernetes-auth-service";
 import { IdentityKubernetesAuthTokenReviewMode } from "./identity-kubernetes-auth-types";
@@ -50,11 +51,13 @@ const createService = ({
     allowedAudience: ""
   },
   templateGatewayColumns = NO_GATEWAY,
-  identityAuthMethods = [] as string[]
+  identityAuthMethods = [] as string[],
+  storedAuthOverrides = {} as Record<string, unknown>
 }: {
   templateBlobFields?: TKubernetesTemplateFields;
   templateGatewayColumns?: typeof NO_GATEWAY;
   identityAuthMethods?: string[];
+  storedAuthOverrides?: Record<string, unknown>;
 } = {}) => {
   const templateRow = {
     id: TEMPLATE_ID,
@@ -63,7 +66,13 @@ const createService = ({
     authMethod: "kubernetes",
     // the fake cipher pair below round-trips plaintext, so the "encrypted" blob is the JSON
     templateFields: Buffer.from(JSON.stringify(templateBlobFields)),
+    updatedAt: new Date("2026-10-01T00:00:00Z"),
     ...templateGatewayColumns
+  };
+
+  const identityAuthTemplateDAL = {
+    findByIdAndOrgId: vi.fn().mockResolvedValue(templateRow),
+    findByIdForShare: vi.fn().mockResolvedValue(templateRow)
   };
 
   const storedAuthRow = {
@@ -81,7 +90,8 @@ const createService = ({
     verifyTlsCertificate: false,
     encryptedKubernetesCaCertificate: null,
     encryptedKubernetesTokenReviewerJwt: null,
-    ...NO_GATEWAY
+    ...NO_GATEWAY,
+    ...storedAuthOverrides
   };
 
   const identityKubernetesAuthDAL = {
@@ -99,7 +109,7 @@ const createService = ({
     identityDAL: { findById: vi.fn() },
     identityKubernetesAuthDAL,
     identityAccessTokenDAL: { delete: vi.fn() },
-    identityAuthTemplateDAL: { findByIdAndOrgId: vi.fn().mockResolvedValue(templateRow) },
+    identityAuthTemplateDAL,
     membershipIdentityDAL: {
       findOne: vi.fn(),
       update: vi.fn(),
@@ -147,7 +157,7 @@ const createService = ({
     eventEmitter: { emit: vi.fn() }
   } as unknown as Parameters<typeof identityKubernetesAuthServiceFactory>[0]);
 
-  return { service, identityKubernetesAuthDAL };
+  return { service, identityKubernetesAuthDAL, identityAuthTemplateDAL, templateRow };
 };
 
 const baseActor = {
@@ -243,6 +253,134 @@ describe("identityKubernetesAuthServiceFactory template attach validation", () =
     });
 
     await expect(updateWithTemplate(service)).rejects.toThrow("Cannot use auth template 'auth-template'");
+    expect(identityKubernetesAuthDAL.updateById).not.toHaveBeenCalled();
+  });
+});
+
+describe("identityKubernetesAuthServiceFactory template lock", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("holds the template row before inserting the link", async () => {
+    const { service, identityKubernetesAuthDAL, identityAuthTemplateDAL, templateRow } = createService();
+    const order: string[] = [];
+    identityAuthTemplateDAL.findByIdForShare.mockImplementation(async () => {
+      order.push("lock");
+      return templateRow;
+    });
+    identityKubernetesAuthDAL.create.mockImplementation(async (data: Record<string, unknown>) => {
+      order.push("create");
+      return { id: "k8s-auth-id", ...data };
+    });
+
+    await attachWithTemplate(service);
+
+    expect(order).toEqual(["lock", "create"]);
+  });
+
+  it("rejects an attach when the template was edited after it was validated", async () => {
+    const { service, identityKubernetesAuthDAL, identityAuthTemplateDAL, templateRow } = createService();
+    identityAuthTemplateDAL.findByIdForShare.mockResolvedValue({
+      ...templateRow,
+      updatedAt: new Date("2026-10-01T00:00:01Z")
+    });
+
+    await expect(attachWithTemplate(service)).rejects.toBeInstanceOf(ConflictError);
+    expect(identityKubernetesAuthDAL.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a link change on update when the template was edited after it was validated", async () => {
+    const { service, identityKubernetesAuthDAL, identityAuthTemplateDAL, templateRow } = createService({
+      identityAuthMethods: [IdentityAuthMethod.KUBERNETES_AUTH]
+    });
+    identityAuthTemplateDAL.findByIdForShare.mockResolvedValue({
+      ...templateRow,
+      updatedAt: new Date("2026-10-01T00:00:01Z")
+    });
+
+    await expect(updateWithTemplate(service)).rejects.toBeInstanceOf(ConflictError);
+    expect(identityKubernetesAuthDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  it("takes no template lock on an update that does not link a template", async () => {
+    const { service, identityAuthTemplateDAL } = createService({
+      identityAuthMethods: [IdentityAuthMethod.KUBERNETES_AUTH]
+    });
+
+    await service.updateKubernetesAuth({
+      ...baseActor,
+      identityId: IDENTITY_ID,
+      accessTokenTTL: 3600
+    } as unknown as Parameters<typeof service.updateKubernetesAuth>[0]);
+
+    expect(identityAuthTemplateDAL.findByIdForShare).not.toHaveBeenCalled();
+  });
+});
+
+describe("identityKubernetesAuthServiceFactory stored reviewer JWT", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const withStoredJwt = (overrides: Record<string, unknown> = {}) =>
+    createService({
+      identityAuthMethods: [IdentityAuthMethod.KUBERNETES_AUTH],
+      storedAuthOverrides: { encryptedKubernetesTokenReviewerJwt: Buffer.from("stored-reviewer-jwt"), ...overrides }
+    });
+
+  it("reports a stored JWT without returning it", async () => {
+    const { service } = withStoredJwt();
+
+    const config = await service.getKubernetesAuth({
+      ...baseActor,
+      identityId: IDENTITY_ID
+    } as unknown as Parameters<typeof service.getKubernetesAuth>[0]);
+
+    expect(config.tokenReviewerJwt).toBe("");
+    expect(config.hasTokenReviewerJwt).toBe(true);
+  });
+
+  it("attaches without returning the JWT", async () => {
+    const { service } = createService();
+
+    const config = await attachWithTemplate(service);
+
+    expect(config.tokenReviewerJwt).toBe("");
+    expect(config.hasTokenReviewerJwt).toBe(true);
+  });
+
+  it.each([
+    { name: "a blank JWT keeps it", tokenReviewerJwt: "", hasTokenReviewerJwt: true },
+    { name: "a new JWT replaces it", tokenReviewerJwt: "new-reviewer-jwt", hasTokenReviewerJwt: true },
+    { name: "null removes it", tokenReviewerJwt: null, hasTokenReviewerJwt: false }
+  ])("updates without returning the JWT: $name", async ({ tokenReviewerJwt, hasTokenReviewerJwt }) => {
+    const { service } = withStoredJwt();
+
+    const config = await service.updateKubernetesAuth({
+      ...baseActor,
+      identityId: IDENTITY_ID,
+      tokenReviewerJwt
+    } as unknown as Parameters<typeof service.updateKubernetesAuth>[0]);
+
+    expect(config.tokenReviewerJwt).toBe("");
+    expect(config.hasTokenReviewerJwt).toBe(hasTokenReviewerJwt);
+  });
+
+  it.each([
+    { name: "a host change", stored: {}, change: { kubernetesHost: "https://1.1.1.1" } },
+    {
+      name: "a gateway cleared by the pool field",
+      stored: { gatewayV2Id: "gateway-id" },
+      change: { gatewayPoolId: null }
+    },
+    { name: "a pool cleared by the gateway field", stored: { gatewayPoolId: "pool-id" }, change: { gatewayId: null } }
+  ])("rejects $name that does not resupply the stored JWT", async ({ stored, change }) => {
+    const { service, identityKubernetesAuthDAL } = withStoredJwt(stored);
+
+    await expect(
+      service.updateKubernetesAuth({
+        ...baseActor,
+        identityId: IDENTITY_ID,
+        ...change
+      } as unknown as Parameters<typeof service.updateKubernetesAuth>[0])
+    ).rejects.toThrow("requires supplying tokenReviewerJwt");
     expect(identityKubernetesAuthDAL.updateById).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -9,10 +8,10 @@ import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms
 import {
   Badge,
   Button,
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Select,
@@ -140,20 +139,23 @@ export const DbtServiceTokenRotationParametersFields = () => {
                 name={`parameters.permissionGrants.${i}.projectId`}
                 render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
                   <Field className="min-w-0" data-invalid={Boolean(error)}>
-                    <FilterableSelect
+                    <Combobox
                       isLoading={isProjectsPending && Boolean(connectionId)}
                       isDisabled={!connectionId}
                       options={selectableProjects}
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) =>
-                        typeof option.id === "undefined" ? option.id : option.id.toString()
+                        typeof option.id === "undefined" ? "" : option.id.toString()
                       }
-                      value={selectableProjects?.find((p) => p.id === value) ?? undefined}
+                      getOptionKeywords={(option) =>
+                        typeof option.id === "undefined" ? [] : [option.id.toString()]
+                      }
+                      value={selectableProjects.find((p) => p.id === value) ?? null}
                       onBlur={onBlur}
-                      onChange={(option) => {
-                        const v = (option as SingleValue<TDbtProject>)?.id;
-                        onChange(v ? Number(v) : undefined);
-                      }}
+                      onValueChange={(option) =>
+                        onChange(option.id ? Number(option.id) : undefined)
+                      }
+                      isClearable={false}
                       isError={Boolean(error)}
                     />
                     <FieldError>{error?.message}</FieldError>

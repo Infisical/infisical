@@ -3,8 +3,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import { z } from "zod";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Combobox,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -18,10 +21,14 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   DatabricksConnectionMethod,
+  DatabricksConnectionScope,
   TDatabricksConnection
 } from "@app/hooks/api/appConnections/types/databricks-connection";
 
@@ -46,12 +53,20 @@ const formSchema = z.discriminatedUnion("method", [
     credentials: z.object({
       workspaceUrl: z.string().url().trim().min(1, "Workspace URL required"),
       clientId: z.string().trim().min(1, "Client ID required"),
-      clientSecret: z.string().trim().min(1, "Client secret required")
+      clientSecret: z.string().trim().min(1, "Client secret required"),
+      scopes: z.nativeEnum(DatabricksConnectionScope).array().optional()
     })
   })
 ]);
 
 type FormData = z.infer<typeof formSchema>;
+
+const SCOPE_DESCRIPTIONS: Record<DatabricksConnectionScope, string> = {
+  [DatabricksConnectionScope.Secrets]: "Syncs secrets to Databricks secret scopes.",
+  [DatabricksConnectionScope.Authentication]:
+    "Creates and deletes service principal secrets during rotation.",
+  [DatabricksConnectionScope.Scim]: "Lists service principals when setting up a rotation."
+};
 
 export const DatabricksConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
@@ -60,16 +75,64 @@ export const DatabricksConnectionForm = ({ appConnection, onSubmit }: Props) => 
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Databricks,
-      method: DatabricksConnectionMethod.ServicePrincipal
+      method: DatabricksConnectionMethod.ServicePrincipal,
+      gatewayId: null,
+      gatewayPoolId: null
     }
   });
 
-  const { handleSubmit, control } = form;
+  const { handleSubmit, control, setValue, watch } = form;
+
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
 
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         {!isUpdate && <GenericAppConnectionsFields />}
+        <OrgPermissionCan
+          I={OrgGatewayPermissionActions.AttachGateways}
+          a={OrgPermissionSubjects.Gateway}
+        >
+          {(isAllowed) => {
+            const picker = (
+              <GatewayPicker
+                isDisabled={!isAllowed}
+                value={{
+                  gatewayId: gatewayId ?? null,
+                  gatewayPoolId: gatewayPoolId ?? null
+                }}
+                onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                  setValue("gatewayId", newGwId, { shouldDirty: true });
+                  setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                }}
+              />
+            );
+
+            return (
+              <Field className="mb-4">
+                <FieldLabel>Gateway</FieldLabel>
+                <FieldDescription>
+                  Route requests through a Gateway when your Databricks workspace is not reachable
+                  from the internet.
+                </FieldDescription>
+                {isAllowed ? (
+                  picker
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="block w-full cursor-not-allowed">{picker}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </Field>
+            );
+          }}
+        </OrgPermissionCan>
         <Controller
           name="method"
           control={control}
@@ -155,6 +218,49 @@ export const DatabricksConnectionForm = ({ appConnection, onSubmit }: Props) => 
                 onChange={(e) => onChange(e.target.value)}
               />
               <FieldError id="client-secret-error" errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.scopes"
+          control={control}
+          shouldUnregister
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="scopes">
+                Scopes <span className="text-muted">(optional)</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The OAuth scopes assigned to the client secret. Secret syncs require
+                    &apos;secrets&apos;, and secret rotations require &apos;authentication&apos; and
+                    &apos;scim&apos;.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Combobox
+                id="scopes"
+                multiple
+                value={value ?? []}
+                onValueChange={onChange}
+                options={Object.values(DatabricksConnectionScope)}
+                getOptionValue={(scope) => scope}
+                getOptionLabel={(scope) => scope}
+                placeholder="all-apis"
+                isError={Boolean(error)}
+              />
+              <FieldDescription>
+                {value?.length
+                  ? value.map((scope) => (
+                      <span key={scope} className="block">
+                        {scope}: {SCOPE_DESCRIPTIONS[scope]}
+                      </span>
+                    ))
+                  : "Infisical will request all-apis, which allows every API the service principal can access."}
+              </FieldDescription>
+              <FieldError errors={[error]} />
             </Field>
           )}
         />

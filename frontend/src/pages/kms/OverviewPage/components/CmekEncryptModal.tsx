@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faCopy, faInfoCircle, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,9 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Modal, ModalClose, ModalContent } from "@app/components/v2";
 import {
   Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Field,
   FieldError,
   FieldLabel,
@@ -35,11 +41,15 @@ type Props = {
   cmek: TCmek;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, "cmek"> & {
+  cmekEncrypt: ReturnType<typeof useCmekEncrypt>;
+};
 
-const EncryptForm = ({ cmek }: FormProps) => {
-  const cmekEncrypt = useCmekEncrypt();
+const EncryptForm = ({ cmek, cmekEncrypt }: FormProps) => {
   const fieldId = useId();
+  const { reset: resetEncryptResult } = cmekEncrypt;
+
+  useEffect(() => resetEncryptResult, [resetEncryptResult]);
 
   const {
     handleSubmit,
@@ -126,10 +136,12 @@ const EncryptForm = ({ cmek }: FormProps) => {
           />
         </>
       )}
-      <div className="flex flex-wrap items-center gap-4">
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost">{ciphertext ? "Close" : "Cancel"}</Button>
+        </DialogClose>
         <Button
           className={ciphertext ? "w-44" : undefined}
-          size="sm"
           variant="project"
           onClick={ciphertext ? handleCopyToClipboard : undefined}
           type={ciphertext ? "button" : "submit"}
@@ -150,28 +162,26 @@ const EncryptForm = ({ cmek }: FormProps) => {
           }
           {ciphertext ? copyCiphertext : "Encrypt"}
         </Button>
-        <ModalClose asChild>
-          <Button variant="ghost">{ciphertext ? "Close" : "Cancel"}</Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
 
 export const CmekEncryptModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+  const cmekEncrypt = useCmekEncrypt();
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Encrypt Data"
-        subTitle={
-          <>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent isPending={cmekEncrypt.isPending}>
+        <DialogHeader>
+          <DialogTitle>Encrypt Data</DialogTitle>
+          <DialogDescription>
             Encrypt data using <span className="font-bold">{cmek?.name}</span>. Returns Base64
             encoded ciphertext.
-          </>
-        }
-      >
-        <EncryptForm cmek={cmek} />
-      </ModalContent>
-    </Modal>
+          </DialogDescription>
+        </DialogHeader>
+        <EncryptForm cmek={cmek} cmekEncrypt={cmekEncrypt} />
+      </DialogContent>
+    </Dialog>
   );
 };

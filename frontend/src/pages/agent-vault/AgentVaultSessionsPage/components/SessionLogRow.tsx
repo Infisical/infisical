@@ -4,10 +4,10 @@ import {
   ArrowRightIcon,
   CircleHelpIcon,
   CircleXIcon,
-  InfoIcon,
-  KeyRoundIcon,
+  KeyIcon,
   type LucideIcon,
   PlusIcon,
+  ServerIcon,
   ShieldBanIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -22,10 +22,19 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
-import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
+import { AgentVaultServiceType, AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
+import {
+  TAgentVaultSessionLogMcpCall,
+  TAgentVaultSessionLogRecord
+} from "@app/hooks/api/agentVault/types";
 
-import { httpStatusLabel } from "./SessionLogsPanel.utils";
+import {
+  groupRepeatedMcpCalls,
+  httpStatusLabel,
+  mcpMoreCallsLabel,
+  sessionLogMcpCalls,
+  sessionLogMcpCallsTruncated
+} from "./SessionLogsPanel.utils";
 
 const ARRIVAL_HOLD_MS = 1200;
 
@@ -41,7 +50,7 @@ export const DECISION_PRESENTATION: Record<
   [AgentVaultSessionLogDecision.Brokered]: {
     label: "Brokered",
     variant: "success",
-    icon: KeyRoundIcon,
+    icon: KeyIcon,
     iconClassName: "text-success"
   },
   [AgentVaultSessionLogDecision.Passthrough]: {
@@ -96,23 +105,86 @@ export const hostPatternFor = (record: TAgentVaultSessionLogRecord) => {
   return record.port === "443" ? host : `${host}:${record.port}`;
 };
 
+const PathDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => (
+  <span className="block truncate" title={record.path}>
+    {record.path}
+  </span>
+);
+
+// The proxy records a tool only for tools/call, so the method beside it would say nothing new.
+const McpCallText = ({ call, path }: { call: TAgentVaultSessionLogMcpCall; path: string }) =>
+  call.tool ? (
+    <Tooltip>
+      <TooltipTrigger className="min-w-0 truncate text-left">{call.tool}</TooltipTrigger>
+      <TooltipContent className="max-w-sm break-all">{call.tool}</TooltipContent>
+    </Tooltip>
+  ) : (
+    <span className="min-w-0 truncate" title={path}>
+      {call.method}
+    </span>
+  );
+
+const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
+  const [first, ...rest] = sessionLogMcpCalls(record);
+  const truncated = sessionLogMcpCallsTruncated(record);
+
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <Badge variant="info">
+        <ServerIcon />
+        MCP
+      </Badge>
+      {first ? (
+        <McpCallText call={first} path={record.path} />
+      ) : (
+        <span className="min-w-0 truncate" title={record.path}>
+          {record.path}
+        </span>
+      )}
+      {(rest.length > 0 || truncated) && (
+        <Tooltip>
+          <TooltipTrigger className="shrink-0 text-xs text-muted">
+            {mcpMoreCallsLabel(rest.length, truncated)}
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm">
+            {rest.length > 0 && (
+              <div className="flex flex-col text-xs">
+                {groupRepeatedMcpCalls(rest).map(({ label, count }, index) => (
+                  // eslint-disable-next-line react/no-array-index-key
+                  <span key={index}>
+                    {label}
+                    {count > 1 && <span className="text-muted"> ×{count}</span>}
+                  </span>
+                ))}
+              </div>
+            )}
+            {truncated && (
+              <p className={twMerge("text-xs text-muted", rest.length > 0 && "mt-1.5")}>
+                More calls in this request weren&apos;t recorded.
+              </p>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </span>
+  );
+};
+
+const RequestDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) =>
+  record.serviceType === AgentVaultServiceType.Mcp ? (
+    <McpDetail record={record} />
+  ) : (
+    <PathDetail record={record} />
+  );
+
 type Props = {
   record: TAgentVaultSessionLogRecord;
   arrivedAt?: number;
-  proxyName?: string;
-  showProxy: boolean;
   accessBundleName?: string;
   onAddService?: () => void;
 };
 
-export const SessionLogRow = ({
-  record,
-  arrivedAt,
-  proxyName,
-  showProxy,
-  accessBundleName,
-  onAddService
-}: Props) => {
+export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddService }: Props) => {
   const [isArriving, setIsArriving] = useState(false);
 
   useEffect(() => {
@@ -151,22 +223,15 @@ export const SessionLogRow = ({
       <TableCell>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="font-mono text-xs whitespace-nowrap">
-              {format(new Date(record.ts), "MMM d, yyyy HH:mm:ss")}
+            <span className="whitespace-nowrap tabular-nums">
+              {format(new Date(record.ts), "MMM dd, yyyy HH:mm:ss")}
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            {format(new Date(record.ts), "MMM d, yyyy HH:mm:ss.SSS (zzz)")}
+            {format(new Date(record.ts), "MMM dd, yyyy HH:mm:ss.SSS (zzz)")}
           </TooltipContent>
         </Tooltip>
       </TableCell>
-      {showProxy && (
-        <TableCell className="text-xs text-muted">
-          <span className="block truncate" title={proxyName}>
-            {proxyName}
-          </span>
-        </TableCell>
-      )}
       <TableCell className="font-mono text-xs">{record.method}</TableCell>
       <TableCell>
         {record.service ? (
@@ -179,9 +244,7 @@ export const SessionLogRow = ({
         )}
       </TableCell>
       <TableCell>
-        <span className="block truncate" title={record.path}>
-          {record.path}
-        </span>
+        <RequestDetail record={record} />
       </TableCell>
       <TableCell className="font-mono text-xs">
         {!proxyAnswered && record.status ? (
@@ -225,29 +288,3 @@ export const SessionLogRow = ({
     </TableRow>
   );
 };
-
-export const SessionLogDropRow = ({
-  droppedCount,
-  columnCount
-}: {
-  droppedCount: number;
-  columnCount: number;
-}) => (
-  <TableRow className="bg-neutral/5 hover:bg-neutral/5">
-    <TableCell colSpan={columnCount} className="text-xs text-muted">
-      <span className="flex items-center justify-center gap-2">
-        Something went wrong while recording {droppedCount.toLocaleString()}{" "}
-        {droppedCount === 1 ? "request" : "requests"}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <InfoIcon aria-label="Why these requests are missing" className="size-3.5 shrink-0" />
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm">
-            These requests went through as normal, but the proxy couldn&apos;t save them to the
-            session log.
-          </TooltipContent>
-        </Tooltip>
-      </span>
-    </TableCell>
-  </TableRow>
-);

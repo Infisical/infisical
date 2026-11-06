@@ -15,6 +15,7 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateGatewayPool, useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export const CreateGatewayPoolModal = ({ isOpen, onToggle }: Props) => {
+  const scopeVariant = useScopeVariant();
   const createPool = useCreateGatewayPool();
   const { data: pools } = useListGatewayPools();
   const [name, setName] = useState("");
@@ -104,7 +106,7 @@ export const CreateGatewayPoolModal = ({ isOpen, onToggle }: Props) => {
           <Button variant="ghost" onClick={() => onToggle(false)} type="button">
             Cancel
           </Button>
-          <Button variant="org" onClick={handleSubmit} isPending={createPool.isPending}>
+          <Button variant={scopeVariant} onClick={handleSubmit} isPending={createPool.isPending}>
             Create Pool
           </Button>
         </DialogFooter>

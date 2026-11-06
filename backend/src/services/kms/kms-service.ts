@@ -31,12 +31,14 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
+  buildWrappedKeyPayload,
   getByteLengthForSymmetricEncryptionAlgorithm,
   getKekLabel,
   KMS_LEGACY_ENCRYPTION_KEY_UUID,
   KMS_ROOT_CONFIG_UUID,
   MAX_HMAC_IMPORT_KEY_BYTE_LENGTH,
   MIN_HMAC_IMPORT_KEY_BYTE_LENGTH,
+  openWrappedKey,
   resolveInstanceEncryptionKeyBuffer,
   validateClassicalKeyMaterial,
   verifyKeyTypeAndAlgorithm
@@ -720,8 +722,8 @@ export const kmsServiceFactory = ({
     return doc;
   };
 
-  const getPublicKey = async ({ kmsId }: TGetPublicKeyDTO) => {
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+  const getPublicKey = async ({ kmsId }: TGetPublicKeyDTO, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
@@ -738,8 +740,8 @@ export const kmsServiceFactory = ({
     return signingService(encryptionAlgorithm).getPublicKeyFromPrivateKey(kmsKey);
   };
 
-  const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">) => {
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+  const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
@@ -1288,6 +1290,28 @@ export const kmsServiceFactory = ({
       },
       generateSecretBlindIndex
     };
+  };
+
+  // Wraps a key with the project's SecretManager data key, bound to a label (see buildWrappedKeyPayload).
+  const wrapKey = async ({ projectId, label, key }: { projectId: string; label: string; key: Buffer }) => {
+    const { encryptor } = await createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    return encryptor({ plainText: buildWrappedKeyPayload(label, key) }).cipherTextBlob;
+  };
+
+  // Null when the key wasn't wrapped for this label. Throws when the ciphertext doesn't decrypt.
+  const unwrapKey = async ({
+    projectId,
+    label,
+    wrappedKey,
+    keyBytes
+  }: {
+    projectId: string;
+    label: string;
+    wrappedKey: Buffer;
+    keyBytes: number;
+  }) => {
+    const { decryptor } = await createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    return openWrappedKey({ label, payload: decryptor({ cipherTextBlob: wrappedKey }), keyBytes });
   };
 
   const updateProjectSecretManagerKmsKey = async ({ projectId, kms }: TUpdateProjectSecretManagerKmsKeyDTO) => {
@@ -1905,6 +1929,8 @@ export const kmsServiceFactory = ({
     loadProjectKeyBackup,
     getKmsById,
     createCipherPairWithDataKey,
+    wrapKey,
+    unwrapKey,
     getKeyMaterial,
     getBulkKeyMaterial,
     importKeyMaterial,

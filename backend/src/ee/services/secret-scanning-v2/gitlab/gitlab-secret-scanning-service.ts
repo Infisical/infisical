@@ -1,4 +1,3 @@
-import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
@@ -12,7 +11,7 @@ import { TGitLabDataSourceCredentials, THandleGitLabPushEvent } from "./gitlab-s
 
 export const gitlabSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
-  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">,
+  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
   const handlePushEvent = async ({ payload, token, dataSourceId }: THandleGitLabPushEvent) => {
@@ -47,8 +46,7 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const { isAutoScanEnabled, encryptedCredentials, projectId } = dataSource;
-    const config = parsedConfig.data;
+    const { encryptedCredentials, projectId } = dataSource;
 
     if (!encryptedCredentials) {
       logger.info(
@@ -79,28 +77,11 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    if (!isAutoScanEnabled) {
-      logger.info(
-        `secretScanningV2PushEvent: GitLab - ignoring due to auto scan disabled [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
-      );
-      return;
-    }
-
-    if (
-      config.scope === GitLabDataSourceScope.Project
-        ? config.projectId.toString() === payload.project_id.toString()
-        : config.includeProjects.includes("*") || config.includeProjects.includes(payload.project.path_with_namespace)
-    ) {
-      await secretScanningV2Queue.queueResourceDiffScan({
-        dataSourceType: SecretScanningDataSource.GitLab,
-        payload,
-        dataSourceId: dataSource.id
-      });
-    } else {
-      logger.info(
-        `secretScanningV2PushEvent: GitLab - ignoring due to repository not being present in config [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
-      );
-    }
+    await secretScanningV2Queue.handleResourcePushEvent({
+      dataSource,
+      dataSourceType: SecretScanningDataSource.GitLab,
+      payload
+    });
   };
 
   return {

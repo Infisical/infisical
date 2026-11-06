@@ -8,6 +8,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { SecretAccessPolicyConstraintsSchema } from "@app/services/approval-policy/secret-access/secret-access-policy-schemas";
+import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
 
 const StoredConstraintsSchema = z.object({ version: z.literal(1), constraints: SecretAccessPolicyConstraintsSchema });
 
@@ -74,6 +75,11 @@ export const secretAccessApprovalGlobalPolicyBridgeDALFactory = (db: TDbClient) 
           `${TableName.ApprovalPolicyBypassers}.userId`,
           "bypasserUsers.id"
         )
+        .leftJoin(
+          TableName.DelegatedApprovalPolicies,
+          `${TableName.ApprovalPolicies}.id`,
+          `${TableName.DelegatedApprovalPolicies}.policyId`
+        )
         .select(selectAllTableCols(TableName.ApprovalPolicies))
         .select(
           db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment),
@@ -89,7 +95,9 @@ export const secretAccessApprovalGlobalPolicyBridgeDALFactory = (db: TDbClient) 
           db.ref("username").withSchema(TableName.Users).as("approverUsername"),
           db.ref("userId").withSchema(TableName.ApprovalPolicyBypassers).as("bypasserUserId"),
           db.ref("groupId").withSchema(TableName.ApprovalPolicyBypassers).as("bypasserGroupId"),
-          db.ref("username").withSchema("bypasserUsers").as("bypasserUsername")
+          db.ref("username").withSchema("bypasserUsers").as("bypasserUsername"),
+          db.ref("type").withSchema(TableName.DelegatedApprovalPolicies).as("delegatedApprovalType"),
+          db.ref("connectionId").withSchema(TableName.DelegatedApprovalPolicies).as("delegatedApprovalConnectionId")
         )
         .orderBy(`${TableName.ApprovalPolicySteps}.stepNumber`, "asc");
 
@@ -111,7 +119,13 @@ export const secretAccessApprovalGlobalPolicyBridgeDALFactory = (db: TDbClient) 
             envId: data.environmentId,
             maxTimePeriod,
             allowedSelfApprovals,
-            requestExpirationTime
+            requestExpirationTime,
+            delegatedApproval: data.delegatedApprovalType
+              ? {
+                  type: data.delegatedApprovalType as DelegatedApprovalPolicyType,
+                  connectionId: data.delegatedApprovalConnectionId as string
+                }
+              : null
           };
         },
         childrenMapper: [

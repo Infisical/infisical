@@ -1,11 +1,10 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -16,6 +15,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -240,14 +240,15 @@ const Page = () => {
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteIdentity.isOpen}
         title={`Are you sure you want to delete ${
           (popUp?.deleteIdentity?.data as { name: string })?.name || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeleteIdentitySubmit(
             (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
           )
@@ -261,10 +262,8 @@ export const IdentityDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.machine-identity")} />
+      <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}
         I={OrgPermissionIdentityActions.Read}

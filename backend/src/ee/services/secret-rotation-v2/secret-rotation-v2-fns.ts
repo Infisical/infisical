@@ -9,6 +9,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
+import { CLICKHOUSE_CREDENTIALS_ROTATION_LIST_OPTION, TClickHouseCredentialsRotation } from "./clickhouse-credentials";
 import { CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION } from "./cloudflare-api-token";
 import { CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION } from "./cloudflare-r2-access-key";
 import { CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION } from "./convex-access-key";
@@ -24,11 +25,11 @@ import { GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION, TGcpServiceAccountKeyRota
 import { HP_ILO_ROTATION_LIST_OPTION, THpIloRotation } from "./hp-ilo-rotation";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { LITELLM_API_KEY_ROTATION_LIST_OPTION } from "./litellm-api-key";
-import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials";
+import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION, TMongoDBCredentialsRotation } from "./mongodb-credentials";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
-import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION } from "./open-router-api-key";
+import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION, TOpenRouterApiKeyRotation } from "./open-router-api-key";
 import { OPENAI_SERVICE_ACCOUNT_ROTATION_LIST_OPTION, TOpenAIServiceAccountRotation } from "./openai-service-account";
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
@@ -88,7 +89,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.CloudflareApiToken]: CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION,
   [SecretRotation.CloudflareR2AccessKey]: CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.StripeApiKey]: STRIPE_API_KEY_ROTATION_LIST_OPTION,
-  [SecretRotation.GcpServiceAccountKey]: GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION
+  [SecretRotation.GcpServiceAccountKey]: GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.ClickHouseCredentials]: CLICKHOUSE_CREDENTIALS_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -429,6 +431,20 @@ export const throwOnImmutableParameterUpdate = (
         throw new BadRequestError({ message: "Cannot update project ID" });
       }
       break;
+    case SecretRotation.OpenRouterApiKey:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TOpenRouterApiKeyRotation["parameters"],
+          secretRotation.parameters as TOpenRouterApiKeyRotation["parameters"],
+          ["workspaceId"]
+        )
+      ) {
+        throw new BadRequestError({
+          message:
+            "Cannot update the OpenRouter workspace of an existing rotation. Create a new rotation to use a different workspace."
+        });
+      }
+      break;
     case SecretRotation.SnowflakeUserKeyPair:
       if (
         haveUnequalProperties(
@@ -449,6 +465,18 @@ export const throwOnImmutableParameterUpdate = (
         )
       ) {
         throw new BadRequestError({ message: "Cannot update service account email" });
+      }
+      break;
+    case SecretRotation.MongoDBCredentials:
+    case SecretRotation.ClickHouseCredentials:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as (TMongoDBCredentialsRotation | TClickHouseCredentialsRotation)["parameters"],
+          secretRotation.parameters as (TMongoDBCredentialsRotation | TClickHouseCredentialsRotation)["parameters"],
+          ["username1", "username2"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update usernames" });
       }
       break;
     default:

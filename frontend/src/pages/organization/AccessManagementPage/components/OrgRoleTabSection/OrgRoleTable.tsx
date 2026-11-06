@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -18,7 +18,6 @@ import { twMerge } from "tailwind-merge";
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -28,6 +27,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +42,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -79,7 +80,6 @@ enum RolesOrderBy {
 }
 
 export const OrgRoleTable = () => {
-  const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -96,7 +96,7 @@ export const OrgRoleTable = () => {
   const { subscription } = useSubscription();
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TOrgRole;
+    const { id } = popUp.deleteRole.data as TOrgRole;
     await deleteRole({
       orgId,
       id
@@ -321,25 +321,18 @@ export const OrgRoleTable = () => {
                         ? id === currentOrg?.defaultMembershipRole
                         : slug === currentOrg?.defaultMembershipRole;
                       return (
-                        <TableRow
-                          key={`role-list-${id}`}
-                          className="cursor-pointer"
-                          onClick={() =>
-                            navigate({
-                              to: "/organizations/$orgId/roles/$roleId",
-                              params: {
-                                roleId: id,
-                                orgId
-                              }
-                            })
-                          }
-                        >
+                        <TableRow key={`role-list-${id}`} linked>
                           <TableCell isTruncatable>
                             <div className="flex gap-x-1.5">
-                              <p className="truncate">{name}</p>
+                              <RowLink
+                                to="/organizations/$orgId/roles/$roleId"
+                                params={{ roleId: id, orgId }}
+                              >
+                                {name}
+                              </RowLink>
                               {isDefaultOrgRole && (
                                 <Tooltip>
-                                  <TooltipTrigger asChild>
+                                  <TooltipTrigger asChild data-row-interactive>
                                     <Badge variant="info">Default</Badge>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -383,21 +376,17 @@ export const OrgRoleTable = () => {
                                   a={OrgPermissionSubjects.Role}
                                 >
                                   {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate({
-                                          to: "/organizations/$orgId/roles/$roleId",
-                                          params: {
-                                            roleId: id,
-                                            orgId
-                                          }
-                                        });
-                                      }}
-                                      isDisabled={!isAllowed}
-                                    >
-                                      {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
-                                      {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                    <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                      <Link
+                                        to="/organizations/$orgId/roles/$roleId"
+                                        params={{
+                                          roleId: id,
+                                          orgId
+                                        }}
+                                      >
+                                        {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
+                                        {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                      </Link>
                                     </DropdownMenuItem>
                                   )}
                                 </OrgPermissionCan>
@@ -503,15 +492,15 @@ export const OrgRoleTable = () => {
         </CardContent>
       </Card>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure you want to delete ${
           (popUp?.deleteRole?.data as TOrgRole)?.name || " "
         } role?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
-        deleteKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
-        onClose={() => handlePopUpClose("deleteRole")}
-        onDeleteApproved={handleRoleDelete}
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        confirmKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
+        onConfirm={handleRoleDelete}
       />
       <UpgradeGate
         intent={{

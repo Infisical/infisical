@@ -25,6 +25,7 @@ import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory, TPamAuditLogScope } from "./audit-log-dal";
 import { getAuditLogEventClass, resolveEventClassFilter } from "./audit-log-event-classes";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
+import { hasAuditLogRetention } from "./audit-log-retention-fns";
 import { isAuditLogEventEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
 import {
   ACTOR_TYPE_TO_METADATA_ID_KEY,
@@ -311,7 +312,7 @@ export const auditLogServiceFactory = ({
       if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;
 
       const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
-      if (!plan?.auditLogsRetentionDays) return;
+      if (!plan || !hasAuditLogRetention(plan)) return;
 
       const actorIdKey = ACTOR_TYPE_TO_METADATA_ID_KEY[auditLogInfo.actor.type];
       const actorId = actorIdKey ? (auditLogInfo.actor.metadata as Record<string, unknown>)[actorIdKey] : undefined;

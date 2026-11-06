@@ -1,8 +1,7 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AlertDescription,
   AlertTitle,
@@ -18,10 +17,8 @@ import { OrgGeneralTab } from "../OrgGeneralTab";
 import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgSubOrgsTab } from "../OrgSubOrgsTab";
-import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
 
 export const OrgTabGroup = () => {
-  const { t } = useTranslation();
   const search = useSearch({
     from: ROUTE_PATHS.Organization.SettingsPage.id
   });
@@ -52,13 +49,6 @@ export const OrgTabGroup = () => {
       description: `Configure the key management systems (KMS) used to encrypt your ${
         isSubOrganization ? "sub-" : ""
       }organization's data.`
-    },
-    {
-      name: "Project Templates",
-      key: "project-templates",
-      component: ProjectTemplatesTab,
-      description:
-        "Create reusable templates that standardize roles and environments for new projects."
     },
     {
       name: "Product Settings",
@@ -92,9 +82,7 @@ export const OrgTabGroup = () => {
 
   return (
     <div className="flex w-full flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: pageTitle })}</title>
-      </Helmet>
+      <PageTitle title={pageTitle} />
       <PageHeader
         scope={isSubOrganization ? "namespace" : "org"}
         description={

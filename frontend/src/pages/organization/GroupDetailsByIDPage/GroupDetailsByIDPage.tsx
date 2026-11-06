@@ -1,17 +1,18 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Spinner } from "@app/components/v2";
 import {
   Button,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Spinner
 } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -191,7 +192,7 @@ const Page = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteGroup.isOpen}
         title={
           (popUp?.deleteGroup?.data as { isLinkedGroup?: boolean })?.isLinkedGroup
@@ -202,9 +203,10 @@ const Page = () => {
                 (popUp?.deleteGroup?.data as { name: string })?.name || ""
               }?`
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; id: string })
         }
       />
@@ -216,10 +218,8 @@ export const GroupDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.group")} />
+      <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}
         I={OrgPermissionGroupActions.Read}

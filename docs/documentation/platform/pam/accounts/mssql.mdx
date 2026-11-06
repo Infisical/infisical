@@ -1,96 +1,96 @@
 ---
 title: "Microsoft SQL Server accounts"
-sidebarTitle: "MS SQL"
-description: "Add and connect to Microsoft SQL Server databases."
+sidebarTitle: "Microsoft SQL Server"
+description: "Give people and agents access to a Microsoft SQL Server database without sharing its credentials."
 ---
 
-MS SQL accounts let you manage access to your Microsoft SQL Server databases. Users connect through the CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+A Microsoft SQL Server [account](/documentation/platform/pam/accounts/overview) stores the credentials for one SQL Server login or Windows user. Members connect to the database through the Infisical CLI, and Infisical records every query they run.
 
-## Creating an account
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [gateway](/documentation/platform/gateways/overview) that can reach the database
+- A Microsoft SQL Server [account template](/documentation/platform/pam/templates/overview)
+
+## Create the account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an MS SQL [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** and a Microsoft SQL Server **Account Template**, then select **Next**.
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter a **Name** and the connection details:
+
     | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `analytics-db`) |
-    | **Host** | Database hostname or IP |
-    | **Port** | SQL Server port (default: 1433) |
-    | **Database** | Database name (default: master) |
-    | **SSL Enabled** | Enable SSL for the connection |
-    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
-    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+    | --- | --- |
+    | **Host** | The server's hostname or IP address |
+    | **Port** | The server's port (defaults to `1433`) |
+    | **Database** | The database that sessions connect to (defaults to `master`) |
+    | **SSL Enabled** | Whether to connect over TLS |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (shown when **SSL Enabled** is on) |
+    | **SSL Certificate** | The CA certificate that signed the server's certificate (shown when **SSL Enabled** is on) |
   </Step>
-  <Step title="Choose authentication method">
-    MS SQL supports three authentication methods:
+  <Step>
+    Select the **Auth Method** and enter the credentials:
 
     <Tabs>
       <Tab title="SQL Server Authentication">
-        Standard SQL Server login with username and password.
-
         | Field | Description |
-        |-------|-------------|
-        | **Username** | SQL Server username |
-        | **Password** | SQL Server password |
+        | --- | --- |
+        | **Username** | The SQL Server login |
+        | **Password** | The login's password |
       </Tab>
       <Tab title="Windows Authentication (NTLM)">
-        Windows domain authentication using NTLM.
-
         | Field | Description |
-        |-------|-------------|
-        | **Username** | Windows username |
-        | **Password** | Windows password |
-        | **Domain** | Windows domain name |
+        | --- | --- |
+        | **Username** | The Windows user |
+        | **Password** | The user's password |
+        | **Domain** | The user's Windows domain |
       </Tab>
       <Tab title="Windows Authentication (Kerberos)">
-        Windows domain authentication using Kerberos.
-
         | Field | Description |
-        |-------|-------------|
-        | **Username** | Windows username |
-        | **Password** | Windows password |
-        | **Realm** | Kerberos realm (uppercase) |
-        | **KDC Address** | Key Distribution Center address (optional) |
-        | **SPN** | Service Principal Name |
+        | --- | --- |
+        | **Username** | The Windows user |
+        | **Password** | The user's password |
+        | **Realm** | The Kerberos realm, such as `CORP.EXAMPLE.COM` |
+        | **KDC Address** | The address of the key distribution center (optional) |
+        | **SPN** | The service principal name of the SQL Server instance, such as `MSSQLSvc/sql01.corp.example.com:1433` |
       </Tab>
     </Tabs>
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
-## Connecting
+## Connect
 
-The CLI starts a local proxy that you connect to with your preferred SQL Server client.
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect). Microsoft SQL Server accounts don't support the browser, so use the CLI.
+
+Start the local proxy:
 
 ```bash
-infisical pam access my-folder/analytics-db
+infisical pam access analytics/reporting-db
 ```
 
-The command outputs the local port to connect to. Then use `sqlcmd`, Azure Data Studio, or any SQL Server client:
+The proxy keeps running in that terminal and prints its port. In a second terminal, connect your SQL Server client, such as `sqlcmd` or Azure Data Studio, to that port:
+
 ```bash
 sqlcmd -S localhost,<port> -d analytics
 ```
 
-No password needed since the proxy handles authentication.
-
-**Flags:**
-- `--port <port>` — use a specific local port (otherwise one is assigned automatically)
-- `--reason <reason>` — provide an access reason (if required by template)
+The proxy signs in for you, so the client doesn't need a password.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">
-    Add PostgreSQL database accounts.
+  <Card title="Microsoft SQL Server credential rotation" icon="refresh-cw" href="/documentation/platform/pam/credential-rotation/mssql">
+    Rotate the passwords of Microsoft SQL Server accounts.
   </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
+    Review and end the connections that people and agents make to your accounts.
   </Card>
 </CardGroup>

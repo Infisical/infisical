@@ -116,7 +116,8 @@ interface StepperStepInjectedProps {
 }
 
 interface StepperStepProps
-  extends Omit<React.ComponentProps<"li">, "title">,
+  extends
+    Omit<React.ComponentProps<"li">, "title">,
     StepperStepInjectedProps,
     VariantProps<typeof indicatorVariants> {
   index: number;

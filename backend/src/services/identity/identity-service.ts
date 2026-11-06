@@ -14,18 +14,19 @@ import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
-import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TMembershipIdentityServiceFactory } from "../membership-identity/membership-identity-service";
 import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
@@ -47,18 +48,18 @@ type TIdentityServiceFactoryDep = {
   identityMetadataDAL: TIdentityMetadataDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
+  membershipIdentityService: Pick<TMembershipIdentityServiceFactory, "removeIdentityFromOrg">;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
-  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource" | "deleteAlertsForDeletedResource">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "insertIdentityWideRevocationMarker" | "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
+    "insertIdentityWideRevocationMarker" | "bumpIdentityRevocationVersion"
   >;
 };
 
@@ -74,8 +75,8 @@ export const identityServiceFactory = ({
   keyStore,
   orgDAL,
   membershipIdentityDAL,
+  membershipIdentityService,
   membershipRoleDAL,
-  additionalPrivilegeDAL,
   usageMeteringService,
   alertService,
   identityAccessTokenService
@@ -290,6 +291,10 @@ export const identityServiceFactory = ({
       throw new BadRequestError({ message: `Identity is managed by project` });
     }
 
+    if (name && name !== identityDetails.name && containsLogUnsafeCharacters(name)) {
+      throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
+    }
+
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity =
         identityDetails.orgId === actorOrgId && (name || hasDeleteProtection)
@@ -440,48 +445,7 @@ export const identityServiceFactory = ({
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
-    await membershipIdentityDAL.transaction(async (tx) => {
-      await identityMetadataDAL.delete(
-        {
-          identityId: id,
-          orgId: actorOrgId
-        },
-        tx
-      );
-      const identityProjectMembership = await membershipIdentityDAL.find(
-        {
-          actorIdentityId: id,
-          scope: AccessScope.Project,
-          scopeOrgId: actorOrgId
-        },
-        { tx }
-      );
-      await additionalPrivilegeDAL.delete(
-        {
-          actorIdentityId: id,
-          $in: {
-            projectId: identityProjectMembership.map((el) => el.scopeProjectId)
-          }
-        },
-        tx
-      );
-      const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
-
-      await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId: id, orgId: actorOrgId, tx });
-
-      await alertService.deleteAlertsForResource(
-        {
-          orgId: actorOrgId,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: id
-        },
-        tx
-      );
-
-      return doc;
-    });
-
-    await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
+    await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actorOrgId });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
     usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);

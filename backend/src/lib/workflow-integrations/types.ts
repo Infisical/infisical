@@ -97,6 +97,7 @@ export type TNotification =
         accountName: string;
         folderName: string;
         comment?: string;
+        autoApprovalRuleName?: string;
         approvalUrl: string;
       };
     }

@@ -14,12 +14,14 @@ import {
   auditLogEnqueuedCounter,
   auditLogPersistDurationHistogram
 } from "@app/lib/telemetry/metrics";
+import { sanitizeLogPayload, sanitizeLogText } from "@app/lib/validator/log-safe-text";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { getAuditLogEventClass, isAlwaysRecordedEventClass } from "./audit-log-event-classes";
+import { getAuditLogExpiresAt, hasAuditLogRetention } from "./audit-log-retention-fns";
 import { isAuditLogEventEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
 import { TAuditLogStreamEntry, TCreateAuditLogDTO } from "./audit-log-types";
 
@@ -64,7 +66,6 @@ export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
 // batch deliveries can carry up to AUDIT_LOG_STREAM_BATCH_SIZE events to remote intakes;
 // give them more headroom than the single-event ping timeout above.
 export const AUDIT_LOG_STREAM_BATCH_TIMEOUT = 30 * 1000;
-const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
 const AUDIT_LOG_STREAM_KEY = "audit-log-stream";
 const AUDIT_LOG_STREAM_BATCH_SIZE = 10_000;
@@ -116,13 +117,7 @@ export const auditLogQueueServiceFactory = async ({
     }
 
     const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
-    if (!plan?.auditLogsRetentionDays) return null;
-
-    const ttlInDays =
-      project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
-        ? project.auditLogsRetentionDays
-        : plan.auditLogsRetentionDays;
-    const ttl = ttlInDays * MS_IN_DAY;
+    if (!plan || !hasAuditLogRetention(plan)) return null;
 
     const createdAt = new Date();
     const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
@@ -132,7 +127,7 @@ export const auditLogQueueServiceFactory = async ({
       id,
       orgId,
       createdAt: createdAt.toISOString(),
-      expiresAt: new Date(createdAt.getTime() + ttl).toISOString(),
+      expiresAt: getAuditLogExpiresAt(createdAt, plan, project?.auditLogsRetentionDays).toISOString(),
       projectName: project?.name
     };
   };
@@ -232,14 +227,15 @@ export const auditLogQueueServiceFactory = async ({
       }
 
       const createdAt = new Date(entry.createdAt);
+      // `enriched` feeds both the insert and the stream outbox, so cleaning here covers both.
       return {
         id: entry.id,
         actor: entry.actor.type,
-        actorMetadata: normalizeJsonPayload(entry.actor.metadata),
-        ipAddress: normalizeEmptyValue(entry.ipAddress, isClickHouseBatchEnabled),
+        actorMetadata: sanitizeLogPayload(normalizeJsonPayload(entry.actor.metadata)),
+        ipAddress: normalizeEmptyValue(sanitizeLogText(entry.ipAddress), isClickHouseBatchEnabled),
         eventType: entry.event.type,
-        eventMetadata: normalizeJsonPayload(entry.event.metadata),
-        userAgent: normalizeEmptyValue(entry.userAgent, isClickHouseBatchEnabled),
+        eventMetadata: sanitizeLogPayload(normalizeJsonPayload(entry.event.metadata)),
+        userAgent: normalizeEmptyValue(sanitizeLogText(entry.userAgent), isClickHouseBatchEnabled),
         userAgentType: normalizeEmptyValue(entry.userAgentType, isClickHouseBatchEnabled),
         projectId: normalizeEmptyValue(entry.projectId, isClickHouseBatchEnabled),
         orgId: entry.orgId,
@@ -247,7 +243,7 @@ export const auditLogQueueServiceFactory = async ({
         createdAt,
         updatedAt: createdAt,
         // project name is only stored for non-ClickHouse insertion
-        ...(!isClickHouseBatchEnabled ? { projectName: entry.projectName } : {})
+        ...(!isClickHouseBatchEnabled ? { projectName: sanitizeLogText(entry.projectName) } : {})
       };
     };
 

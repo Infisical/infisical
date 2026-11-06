@@ -246,59 +246,82 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
       >
         <div
           className={cn(
-            "relative mx-auto h-full min-h-0 w-[calc(100%-7rem)] max-w-xl",
-            !showPager && "w-full"
+            "mx-auto flex h-full min-h-0 w-full max-w-xl flex-col gap-3",
+            showPager && "sm:w-[calc(100%-7rem)]"
           )}
         >
-          {announcements.slice(Math.max(0, safeIndex - 2), safeIndex + 3).map((item, itemIndex) => (
-            <AnnouncementCard
-              key={item.id}
-              announcement={item}
-              offset={Math.max(0, safeIndex - 2) + itemIndex - safeIndex}
-              onNavigate={navigate}
-            />
-          ))}
-          <DialogClose asChild>
-            <IconButton
-              aria-label="Close"
-              variant="ghost"
-              size="xs"
-              className="pointer-events-auto absolute top-3 right-3 z-30 bg-popover/80 backdrop-blur-sm hover:bg-container-hover"
-            >
-              <XIcon />
-            </IconButton>
-          </DialogClose>
-          {showPager && (
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute top-3 left-3 z-30 rounded-full border border-border bg-popover/80 px-2.5 py-1 text-xs text-accent tabular-nums backdrop-blur-sm"
-            >
-              {safeIndex + 1} / {total}
-            </span>
-          )}
-          {showPager && (
-            <>
+          <div className="relative min-h-0 flex-1">
+            {announcements
+              .slice(Math.max(0, safeIndex - 2), safeIndex + 3)
+              .map((item, itemIndex) => (
+                <AnnouncementCard
+                  key={item.id}
+                  announcement={item}
+                  offset={Math.max(0, safeIndex - 2) + itemIndex - safeIndex}
+                  onNavigate={navigate}
+                />
+              ))}
+            <DialogClose asChild>
               <IconButton
+                aria-label="Close"
                 variant="ghost"
-                size="md"
-                aria-label="Previous announcement"
+                size="xs"
+                className="pointer-events-auto absolute top-3 right-3 z-30 bg-popover/80 backdrop-blur-sm hover:bg-container-hover"
+              >
+                <XIcon />
+              </IconButton>
+            </DialogClose>
+          </div>
+          {showPager && (
+            <nav
+              aria-label="Announcements"
+              className="pointer-events-auto relative z-30 flex shrink-0 items-center justify-between gap-3 rounded-lg border border-border bg-popover p-2 shadow-lg"
+            >
+              <Button
+                variant="outline"
+                size="sm"
                 aria-disabled={!hasPrev}
                 onClick={() => hasPrev && navigate(-1)}
-                className="pointer-events-auto absolute top-1/2 -left-14 z-30 size-11 -translate-y-1/2 transition-[color,background-color,transform] aria-disabled:cursor-default aria-disabled:opacity-30 motion-reduce:transition-none [&>svg]:size-5"
+                className="aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:bg-transparent"
               >
                 <ChevronLeft />
-              </IconButton>
-              <IconButton
-                variant="ghost"
-                size="md"
-                aria-label="Next announcement"
-                aria-disabled={!hasNext}
-                onClick={() => hasNext && navigate(1)}
-                className="pointer-events-auto absolute top-1/2 -right-14 z-30 size-11 -translate-y-1/2 transition-[color,background-color,transform] aria-disabled:cursor-default aria-disabled:opacity-30 motion-reduce:transition-none [&>svg]:size-5"
+                Previous
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center">
+                  {announcements.map((item, itemIndex) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-label={`Go to announcement ${itemIndex + 1}: ${item.title}`}
+                      aria-current={itemIndex === safeIndex ? "step" : undefined}
+                      onClick={() => setIndex(itemIndex)}
+                      className="group flex size-5 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span
+                        className={cn(
+                          "h-1.5 rounded-full transition-[width,background-color] duration-300 motion-reduce:transition-none",
+                          itemIndex === safeIndex
+                            ? "w-4 bg-foreground"
+                            : "w-1.5 bg-foreground/30 group-hover:bg-foreground/60"
+                        )}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <span aria-hidden="true" className="text-xs text-accent tabular-nums">
+                  {safeIndex + 1} of {total}
+                </span>
+              </div>
+              <Button
+                variant="neutral"
+                size="sm"
+                onClick={() => (hasNext ? navigate(1) : onOpenChange(false))}
               >
-                <ChevronRight />
-              </IconButton>
-            </>
+                {hasNext ? "Next" : "Done"}
+                {hasNext && <ChevronRight />}
+              </Button>
+            </nav>
           )}
         </div>
         <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">

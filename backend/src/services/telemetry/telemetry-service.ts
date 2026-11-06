@@ -37,7 +37,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
   PostHogEventTypes.PkiSyncExecuted,
   PostHogEventTypes.CertificateRequestCreated,
   PostHogEventTypes.CmekEncrypt,
-  PostHogEventTypes.CmekDecrypt
+  PostHogEventTypes.CmekDecrypt,
+  PostHogEventTypes.AgentVaultSessionLogChunkAccepted,
+  PostHogEventTypes.SecretScanningScanCompleted
 ];
 
 // Properties that should be used as additional grouping dimensions during aggregation.
@@ -47,7 +49,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
 const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
   [PostHogEventTypes.PkiSyncExecuted]: ["projectId", "destination"],
   [PostHogEventTypes.CertificateRequestCreated]: ["projectId"],
-  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"]
+  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"],
+  [PostHogEventTypes.AgentVaultSessionLogChunkAccepted]: ["storageType"],
+  [PostHogEventTypes.SecretScanningScanCompleted]: ["type", "scanType"]
 };
 
 // Bucket configuration
@@ -287,6 +291,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       ]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
+      properties.has_secret_scanning = Boolean(plan.secretScanning);
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }
@@ -366,7 +371,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // posthog-node implements `groupIdentify` as a regular capture of a
       // `$groupidentify` event keyed by the supplied `distinctId`. For an
       // anonymous-share viewer of an org-scoped share, that `distinctId`
-      // is the synthesised `anonymous-<shareId>` value, so calling
+      // is the synthesised `anonymous-<share hash>` value, so calling
       // groupIdentify here would create exactly the per-share person
       // record we are trying to suppress — defeating the
       // `$process_person_profile: false` flag we set on the explicit
@@ -402,7 +407,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // When `anonymous` is set, we still record the event but instruct
       // PostHog not to create or update a person record for the synthesised
       // distinctId. This prevents per-request distinctIds (e.g. the
-      // `anonymous-<shareId>` keys used by unauthenticated public secret
+      // `anonymous-<share hash>` keys used by unauthenticated public secret
       // shares) from inflating the person count while preserving event
       // counts, funnels, and breakdowns.
       const instanceId = await getInstanceId();
@@ -562,6 +567,16 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         }
       }
       const properties = aggregateGroupProperties(groupedEvents, breakdownDimensions);
+
+      if (eventType === PostHogEventTypes.SecretPulled) {
+        const numberOfSecretsByChannel: Record<string, number> = {};
+        for (const event of groupedEvents) {
+          const { channel, numberOfSecrets } = event.properties as TSecretModifiedEvent["properties"];
+          const channelKey = channel ?? "unknown";
+          numberOfSecretsByChannel[channelKey] = (numberOfSecretsByChannel[channelKey] ?? 0) + numberOfSecrets;
+        }
+        properties.numberOfSecretsByChannel = numberOfSecretsByChannel;
+      }
 
       for (const dim of breakdownDimensions) {
         if (key[dim] !== undefined) {

@@ -11,7 +11,7 @@ import { TBitbucketDataSourceCredentials, TBitbucketPushEvent } from "./bitbucke
 
 export const bitbucketSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
-  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">,
+  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
   const handlePushEvent = async (
@@ -50,8 +50,7 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    const { isAutoScanEnabled, encryptedCredentials, projectId } = dataSource;
-    const { includeRepos } = parsedConfig.data;
+    const { encryptedCredentials, projectId } = dataSource;
 
     if (!encryptedCredentials) {
       logger.info(
@@ -87,24 +86,11 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    if (!isAutoScanEnabled) {
-      logger.info(
-        `secretScanningV2PushEvent: Bitbucket - ignoring due to auto scan disabled [dataSourceId=${dataSource.id}] [workspaceUuid=${repository.workspace.uuid}]`
-      );
-      return;
-    }
-
-    if (includeRepos.includes("*") || includeRepos.includes(repository.full_name)) {
-      await secretScanningV2Queue.queueResourceDiffScan({
-        dataSourceType: SecretScanningDataSource.Bitbucket,
-        payload,
-        dataSourceId: dataSource.id
-      });
-    } else {
-      logger.info(
-        `secretScanningV2PushEvent: Bitbucket - ignoring due to repository not being present in config [workspaceUuid=${repository.workspace.uuid}] [dataSourceId=${dataSource.id}]`
-      );
-    }
+    await secretScanningV2Queue.handleResourcePushEvent({
+      dataSource,
+      dataSourceType: SecretScanningDataSource.Bitbucket,
+      payload
+    });
   };
 
   return {

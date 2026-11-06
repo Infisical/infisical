@@ -331,10 +331,16 @@ const buildSlackPayload = (notification: TNotification) => {
       const accountName = escapeSlackMrkdwn(payload.accountName);
       const folderName = escapeSlackMrkdwn(payload.folderName);
       const comment = payload.comment ? escapeSlackMrkdwn(payload.comment) : undefined;
+      const autoApprovalRuleName = payload.autoApprovalRuleName
+        ? escapeSlackMrkdwn(payload.autoApprovalRuleName)
+        : undefined;
 
-      const messageBody = `The access request from ${requesterFullName} (${requesterEmail}) for ${accountName} in the ${folderName} folder has been ${decision}.${
-        comment ? `\n\nReviewer comment: ${comment}` : ""
-      }`;
+      let detail = "";
+      if (autoApprovalRuleName)
+        detail = `\n\nApproved automatically by the auto-approval rule "${autoApprovalRuleName}".`;
+      else if (comment) detail = `\n\nReviewer comment: ${comment}`;
+
+      const messageBody = `The access request from ${requesterFullName} (${requesterEmail}) for ${accountName} in the ${folderName} folder has been ${decision}.${detail}`;
 
       const headerBlocks = [
         {

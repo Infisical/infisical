@@ -281,12 +281,20 @@ export type TNetScalerConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.NetScaler;
 };
 
+export type TPaloAltoNetworksConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.PaloAltoNetworks;
+};
+
 export type TKeeperConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Keeper;
 };
 
 export type TKempLoadMasterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.KempLoadMaster;
+};
+
+export type TImpervaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Imperva;
 };
 
 export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
@@ -351,6 +359,10 @@ export type TRundeckConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Rundeck;
 };
 
+export type TPortainerConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Portainer;
+};
+
 export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TriggerDev;
 };
@@ -369,6 +381,22 @@ export type TSpaceliftConnectionOption = TAppConnectionOptionBase & {
 
 export type TDaytonaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Daytona;
+};
+
+export type TServiceNowConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.ServiceNow;
+};
+
+export type TS3CompatibleConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.S3Compatible;
+};
+
+export type TJiraConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Jira;
+};
+
+export type TClickHouseConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.ClickHouse;
 };
 
 export type TAppConnectionOption =
@@ -437,8 +465,10 @@ export type TAppConnectionOption =
   | TExternalInfisicalConnectionOption
   | TDopplerConnectionOption
   | TNetScalerConnectionOption
+  | TPaloAltoNetworksConnectionOption
   | TKeeperConnectionOption
   | TKempLoadMasterConnectionOption
+  | TImpervaConnectionOption
   | TAnthropicConnectionOption
   | TOvhConnectionOption
   | TDevinConnectionOption
@@ -454,13 +484,18 @@ export type TAppConnectionOption =
   | TConvexConnectionOption
   | TTriggerDevConnectionOption
   | TRundeckConnectionOption
+  | TPortainerConnectionOption
   | THasuraCloudConnectionOption
   | TQoveryConnectionOption
   | TLiteLLMConnectionOption
   | TFireworksConnectionOption
   | TNutanixPrismCentralConnectionOption
   | TSpaceliftConnectionOption
-  | TDaytonaConnectionOption;
+  | TDaytonaConnectionOption
+  | TServiceNowConnectionOption
+  | TS3CompatibleConnectionOption
+  | TJiraConnectionOption
+  | TClickHouseConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -528,8 +563,10 @@ export type TAppConnectionOptionMap = {
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
   [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
+  [AppConnection.PaloAltoNetworks]: TPaloAltoNetworksConnectionOption;
   [AppConnection.Keeper]: TKeeperConnectionOption;
   [AppConnection.KempLoadMaster]: TKempLoadMasterConnectionOption;
+  [AppConnection.Imperva]: TImpervaConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
   [AppConnection.OVH]: TOvhConnectionOption;
   [AppConnection.Devin]: TDevinConnectionOption;
@@ -545,6 +582,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.Rundeck]: TRundeckConnectionOption;
+  [AppConnection.Portainer]: TPortainerConnectionOption;
   [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
   [AppConnection.Qovery]: TQoveryConnectionOption;
   [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
@@ -552,4 +590,8 @@ export type TAppConnectionOptionMap = {
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
   [AppConnection.Daytona]: TDaytonaConnectionOption;
+  [AppConnection.ServiceNow]: TServiceNowConnectionOption;
+  [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
+  [AppConnection.Jira]: TJiraConnectionOption;
+  [AppConnection.ClickHouse]: TClickHouseConnectionOption;
 };

@@ -39,7 +39,10 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
-import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
+import {
+  CloudflarePagesSyncOptionsReviewFields,
+  CloudflarePagesSyncReviewFields
+} from "./CloudflarePagesReviewFields";
 import { CloudflareSecretsStoreSyncReviewFields } from "./CloudflareSecretsStoreSyncReviewFields";
 import {
   CloudflareWorkersSyncOptionsReviewFields,
@@ -66,6 +69,7 @@ import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
 import { OnaSyncReviewFields } from "./OnaSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
+import { PortainerSyncReviewFields } from "./PortainerSyncReviewFields";
 import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
@@ -186,6 +190,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflarePages:
       DestinationFieldsComponent = <CloudflarePagesSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <CloudflarePagesSyncOptionsReviewFields />;
       break;
     case SecretSync.CloudflareWorkers:
       DestinationFieldsComponent = <CloudflareWorkersSyncReviewFields />;
@@ -211,6 +216,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Rundeck:
       DestinationFieldsComponent = <RundeckSyncReviewFields />;
+      break;
+    case SecretSync.Portainer:
+      DestinationFieldsComponent = <PortainerSyncReviewFields />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;

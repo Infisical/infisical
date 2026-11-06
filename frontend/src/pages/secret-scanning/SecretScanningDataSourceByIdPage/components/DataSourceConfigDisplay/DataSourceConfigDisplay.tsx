@@ -1,24 +1,33 @@
+import { DetailGroup } from "@app/components/v3";
 import {
   SecretScanningDataSource,
   TSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 
 import { BitbucketDataSourceConfigDisplay } from "./BitbucketDataSourceConfigDisplay";
-import { GitHubDataSourceConfigDisplay } from "./GitHubDataSourceConfigDisplay";
 import { GitLabDataSourceConfigDisplay } from "./GitLabDataSourceConfigDisplay";
 
 type Props = {
   dataSource: TSecretScanningDataSource;
 };
 
+// which repositories are scanned is managed from the Repositories tab, so only the rest of the config shows here
 export const DataSourceConfigDisplay = ({ dataSource }: Props) => {
   switch (dataSource.type) {
     case SecretScanningDataSource.GitHub:
-      return <GitHubDataSourceConfigDisplay dataSource={dataSource} />;
+      return null;
     case SecretScanningDataSource.Bitbucket:
-      return <BitbucketDataSourceConfigDisplay dataSource={dataSource} />;
+      return (
+        <DetailGroup>
+          <BitbucketDataSourceConfigDisplay dataSource={dataSource} />
+        </DetailGroup>
+      );
     case SecretScanningDataSource.GitLab:
-      return <GitLabDataSourceConfigDisplay dataSource={dataSource} />;
+      return (
+        <DetailGroup>
+          <GitLabDataSourceConfigDisplay dataSource={dataSource} />
+        </DetailGroup>
+      );
     default:
       throw new Error(
         `Unhandled dataSource type ${(dataSource as TSecretScanningDataSource).type}`

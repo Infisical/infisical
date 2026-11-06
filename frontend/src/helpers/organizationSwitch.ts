@@ -9,6 +9,7 @@ const organizationSwitchSections = [
   "projects/cert-manager",
   "projects/secret-scanning",
   "projects/kms",
+  "projects/agent-vault",
   "projects",
   "networking",
   "access-management",
@@ -24,13 +25,7 @@ const organizationSwitchSections = [
   "pam/sessions",
   "pam/approval-requests",
   "pam/audit-logs",
-  "pam/access-management",
-  "agent-vault/sessions",
-  "agent-vault/access-bundles",
-  "agent-vault/proxies",
-  "agent-vault/settings",
-  "agent-vault/audit-logs",
-  "agent-vault/access-management"
+  "pam/access-management"
 ];
 
 export const getOrganizationSwitchDestination = (
@@ -39,7 +34,7 @@ export const getOrganizationSwitchDestination = (
   isSubOrganization = false
 ) => {
   const path = location.pathname.match(/^\/organizations\/[^/]+\/(.*?)\/?$/)?.[1] ?? "";
-  const accessResource = path.match(/^(?:(pam|agent-vault)\/)?(groups|members|roles|identities)\//);
+  const accessResource = path.match(/^(?:(pam)\/)?(groups|members|roles|identities)\//);
   let section = organizationSwitchSections.find(
     (candidate) => path === candidate || path.startsWith(`${candidate}/`)
   );
@@ -56,6 +51,14 @@ export const getOrganizationSwitchDestination = (
     selectedTab = "relays";
   } else if (path.startsWith("app-connections")) {
     section = "integrations";
+  } else if (path === "cert-manager" || path.startsWith("cert-manager/")) {
+    // The other org may have no Certificate Manager yet, which the product landing page handles.
+    section = "projects/cert-manager";
+    selectedTab = undefined;
+  } else if (path === "secret-scanning" || path.startsWith("secret-scanning/")) {
+    // The product landing page opens the other org's Secret Scanning project, creating it if needed.
+    section = "projects/secret-scanning";
+    selectedTab = undefined;
   }
 
   if (isSubOrganization) {

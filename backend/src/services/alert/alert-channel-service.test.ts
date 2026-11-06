@@ -149,8 +149,72 @@ describe("alert channel service", () => {
     const [detail] = await service.getDetailsForChannels([channel], { decryptor: decryptor as never });
     expect(detail.name).toBe("Ops webhook");
     // Secret is redacted on the way out.
-    expect(detail.config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
+    expect(detail.config).toEqual({
+      url: "https://example.com/hook",
+      hasSigningSecret: true,
+      hasAuthCredentials: false,
+      hasBasicPassword: false,
+      hasAuthHeaderValue: false
+    });
     expect(detail.recipients).toEqual([]);
+  });
+
+  describe("webhook authentication on update", () => {
+    const seedBearer = () =>
+      seedRow({
+        id: "ch-1",
+        channelType: AlertChannelType.WEBHOOK,
+        encryptedConfig: encConfig({ url: "https://example.com/hook", authType: "bearer", authCredentials: "abc" })
+      });
+
+    const update = async (config: Record<string, unknown>) => {
+      const { service, store } = buildService();
+      await updateChannel(
+        service,
+        { recipientScope: RECIPIENT_SCOPE, channelId: "ch-1", config },
+        seedBearer() as never,
+        cipher,
+        tx
+      );
+      return JSON.parse(store.get("ch-1")!.encryptedConfig.toString()) as Record<string, unknown>;
+    };
+
+    test("keeps the saved credentials when the update leaves them out", async () => {
+      expect(await update({ url: "https://example.com/hook", authType: "bearer" })).toEqual({
+        url: "https://example.com/hook",
+        authType: "bearer",
+        authCredentials: "abc"
+      });
+    });
+
+    test("drops the old type's secret when the authentication type changes", async () => {
+      expect(
+        await update({ url: "https://example.com/hook", authType: "basic", basicUsername: "ops", basicPassword: "pw" })
+      ).toEqual({ url: "https://example.com/hook", authType: "basic", basicUsername: "ops", basicPassword: "pw" });
+    });
+
+    test("removes authentication when the update has no type", async () => {
+      expect(await update({ url: "https://example.com/hook" })).toEqual({ url: "https://example.com/hook" });
+    });
+  });
+
+  test("stores webhook header names trimmed", async () => {
+    const { service, store } = buildService();
+    const created = await createChannel(
+      service,
+      {
+        name: "Ops webhook",
+        channelType: AlertChannelType.WEBHOOK,
+        config: { url: "https://example.com/hook", headers: [{ key: " X-Env ", value: "prod" }] },
+        orgId: "org-1",
+        ...CHANNEL_INPUT
+      },
+      encryptor as never,
+      tx
+    );
+
+    const stored = JSON.parse(store.get(created.id)!.encryptedConfig.toString()) as Record<string, unknown>;
+    expect(stored.headers).toEqual([{ key: "X-Env", value: "prod" }]);
   });
 
   test("requires recipients for a directed (email) channel and rejects them for others", async () => {

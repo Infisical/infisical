@@ -1,8 +1,10 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Ellipsis, PencilIcon, Trash2Icon } from "lucide-react";
+import { format } from "date-fns";
+import { Ellipsis, PencilIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -10,7 +12,10 @@ import {
   IconButton,
   ProviderIcon,
   TableCell,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
@@ -26,7 +31,7 @@ type Props = {
 };
 
 export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Props) => {
-  const { id, provider } = logStream;
+  const { id, provider, failingSince, lastDeliveryError } = logStream;
 
   const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
   const url = getProviderUrl(logStream);
@@ -51,6 +56,20 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
             )}
           </div>
           <span className="hidden lg:inline">{providerDetails.name}</span>
+          {failingSince && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="danger" tabIndex={0}>
+                  <TriangleAlertIcon />
+                  Failing
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                <p>Failing since {format(new Date(failingSince), "PPpp")}</p>
+                {lastDeliveryError && <p className="mt-1 break-words">{lastDeliveryError}</p>}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </TableCell>
       <TableCell className="max-w-0 min-w-32!">

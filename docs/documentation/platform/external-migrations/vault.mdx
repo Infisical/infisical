@@ -154,11 +154,11 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
 **To import secrets from Vault:**
 
 1. Navigate to your project and select a specific environment (e.g., Development, Production)
-2. In the secrets view, select the dropdown icon (caret) next to the **"+ Add Secret"** button
-   ![Add Secret Dropdown](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-caret.png)
+2. In the secrets view, select **Add New**, then hover over **More**
+   ![Add New menu](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-caret.png)
 
 3. Select **"Add from HashiCorp Vault"**
-   ![Add Secret Dropdown](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-option.png)
+   ![Add from HashiCorp Vault under More](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-option.png)
 
 4. Pick the **App Connection**, then the **Namespace**, then the **Secrets Engine** that holds the paths you want, and finally one or more entries under **Vault Secret Path**. Keys are copied using their names from Vault.
 
@@ -234,7 +234,7 @@ If you're using Vault's Kubernetes secrets engine to generate short-lived Kubern
 **To import a Kubernetes dynamic secret configuration:**
 
 1. Navigate to your project and select an environment
-2. Select **"+ Add Secret"** dropdown and choose **"Dynamic Secret"**
+2. Select **Add New** and choose **Add Dynamic Secret**
 3. Select **Kubernetes** as the provider
 4. Select **"Load from Vault"** at the top of the form
 

@@ -4,30 +4,47 @@ import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 type TOrgSsoEnforcement = {
+  id: string;
   authEnforced: boolean;
   googleSsoAuthEnforced: boolean;
   orgAuthMethod: string;
 };
+
+const SSO_ENFORCEMENT_ERRORS = {
+  google: 'This organization requires Google login. Log out, then choose "Continue with Google".',
+  oidc: 'This organization requires OIDC login. Log out, then choose "Continue with OIDC" and enter your work email.',
+  saml: 'This organization requires SAML login. Log out, then choose "Continue with SAML" and enter your work email.',
+  foreignIssuer:
+    "This organization requires its own SSO. Your session was issued by another organization's identity provider; log out, then sign in through this organization's SSO."
+} as const;
 
 // User-facing error when the org enforces an SSO method the session token wasn't issued by,
 // else null. Mirrors the server-side selectOrganization check.
 export const getSsoEnforcementError = (org: TOrgSsoEnforcement): string | null => {
   if (!org.authEnforced && !org.googleSsoAuthEnforced) return null;
 
-  const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
+  const authToken = jwtDecode(getAuthToken()) as {
+    authMethod: AuthMethod;
+    issuingRootOrgId?: string;
+  };
 
-  let ssoType = "";
   if (org.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
-    ssoType = "Google SSO";
-  } else if (org.orgAuthMethod === AuthMethod.OIDC && authToken.authMethod !== AuthMethod.OIDC) {
-    ssoType = "OIDC SSO";
-  } else if (
+    return SSO_ENFORCEMENT_ERRORS.google;
+  }
+  if (org.orgAuthMethod === AuthMethod.OIDC && authToken.authMethod !== AuthMethod.OIDC) {
+    return SSO_ENFORCEMENT_ERRORS.oidc;
+  }
+  if (
     org.orgAuthMethod === AuthMethod.SAML &&
     !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
   ) {
-    ssoType = "SAML SSO";
+    return SSO_ENFORCEMENT_ERRORS.saml;
+  }
+  // An SSO session another org's IdP issued does not satisfy this org's enforcement. Tokens from
+  // before the claim existed carry no issuer and pass on their method, as the server does.
+  if (org.authEnforced && authToken.issuingRootOrgId && authToken.issuingRootOrgId !== org.id) {
+    return SSO_ENFORCEMENT_ERRORS.foreignIssuer;
   }
 
-  if (!ssoType) return null;
-  return `This organization requires ${ssoType}. Please log out and re-login via your identity provider.`;
+  return null;
 };

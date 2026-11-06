@@ -8,11 +8,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import {
-  assertChannelConfigValid,
-  getChannelDefinition,
-  mergeChannelConfigWithStored
-} from "./alert-channel-config-fns";
+import { getChannelDefinition, mergeChannelConfigWithStored, parseChannelConfig } from "./alert-channel-config-fns";
 import {
   decryptChannelConfig,
   encryptChannelConfig,
@@ -212,14 +208,14 @@ export const alertChannelServiceFactory = ({
     const definition = getChannelDefinition(input.channelType);
     const recipients = input.recipients ?? [];
     $assertRecipientRules(definition, input.channelType, recipients);
-    assertChannelConfigValid(definition, input.channelType, input.config);
+    const config = parseChannelConfig(definition, input.channelType, input.config);
     await validateRecipients(input.orgId, input.recipientScope, recipients, tx);
 
     return {
       row: {
         name: input.name,
         channelType: input.channelType,
-        encryptedConfig: encryptChannelConfig(input.config, encryptor),
+        encryptedConfig: encryptChannelConfig(config, encryptor),
         enabled: input.enabled ?? true,
         orgId: input.orgId,
         projectId: input.projectId ?? null,
@@ -265,8 +261,7 @@ export const alertChannelServiceFactory = ({
     let finalConfig = existingConfig;
     if (input.config !== undefined) {
       const merged = mergeChannelConfigWithStored(channel.channelType, input.config, existingConfig);
-      assertChannelConfigValid(definition, channel.channelType, merged);
-      finalConfig = merged;
+      finalConfig = parseChannelConfig(definition, channel.channelType, merged);
     }
 
     const { recipients } = input;

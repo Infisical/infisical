@@ -19,6 +19,7 @@ import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
+import { registerClickHouseConnectionRouter } from "./clickhouse-connection-router";
 import { registerCloud66ConnectionRouter } from "./cloud-66-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerConvexConnectionRouter } from "./convex-connection-router";
@@ -45,6 +46,8 @@ import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
+import { registerImpervaConnectionRouter } from "./imperva-connection-router";
+import { registerJiraConnectionRouter } from "./jira-connection-router";
 import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
@@ -64,6 +67,8 @@ import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 import { registerOpenAIConnectionRouter } from "./openai-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
+import { registerPaloAltoNetworksConnectionRouter } from "./palo-alto-networks-connection-router";
+import { registerPortainerConnectionRouter } from "./portainer-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerPowerDnsConnectionRouter } from "./powerdns-connection-router";
 import { registerQoveryConnectionRouter } from "./qovery-connection-router";
@@ -71,7 +76,9 @@ import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
+import { registerS3CompatibleConnectionRouter } from "./s3-compatible-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
+import { registerServiceNowConnectionRouter } from "./servicenow-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
 import { registerSpaceliftConnectionRouter } from "./spacelift-connection-router";
@@ -159,7 +166,9 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
     [AppConnection.Doppler]: registerDopplerConnectionRouter,
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
+    [AppConnection.PaloAltoNetworks]: registerPaloAltoNetworksConnectionRouter,
     [AppConnection.KempLoadMaster]: registerKempLoadMasterConnectionRouter,
+    [AppConnection.Imperva]: registerImpervaConnectionRouter,
     [AppConnection.Anthropic]: registerAnthropicConnectionRouter,
     [AppConnection.OVH]: registerOvhConnectionRouter,
     [AppConnection.Devin]: registerDevinConnectionRouter,
@@ -173,6 +182,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.F5BigIp]: registerF5BigIpConnectionRouter,
     [AppConnection.Convex]: registerConvexConnectionRouter,
     [AppConnection.Rundeck]: registerRundeckConnectionRouter,
+    [AppConnection.Portainer]: registerPortainerConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
@@ -182,5 +192,9 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Daytona]: registerDaytonaConnectionRouter,
     [AppConnection.Stripe]: registerStripeConnectionRouter,
     [AppConnection.Keeper]: registerKeeperConnectionRouter,
-    [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter
+    [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter,
+    [AppConnection.ServiceNow]: registerServiceNowConnectionRouter,
+    [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter,
+    [AppConnection.Jira]: registerJiraConnectionRouter,
+    [AppConnection.ClickHouse]: registerClickHouseConnectionRouter
   };

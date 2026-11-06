@@ -1,4 +1,4 @@
-import { FormLabel } from "@app/components/v2";
+import { Detail, DetailLabel } from "@app/components/v3";
 import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
 import { IntegrationMappingBehavior, TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 
@@ -14,18 +14,18 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
 
     return (
       <div className="flex flex-row">
-        <div className="flex flex-col">
-          <FormLabel className="text-sm font-medium text-label" label="Organization" />
+        <Detail>
+          <DetailLabel>Organization</DetailLabel>
           <div className="text-sm text-label">{integration?.owner || "-"}</div>
-        </div>
-        <div className="flex flex-col">
-          <FormLabel className="text-sm font-medium text-label" label="Project" />
+        </Detail>
+        <Detail>
+          <DetailLabel>Project</DetailLabel>
           <div className="text-sm text-label">{integration?.targetService || "-"}</div>
-        </div>
-        <div className="flex flex-col">
-          <FormLabel className="text-sm font-medium text-label" label="Target Environment" />
+        </Detail>
+        <Detail>
+          <DetailLabel>Target Environment</DetailLabel>
           <div className="text-sm text-label">{integration?.targetEnvironment || "-"}</div>
-        </div>
+        </Detail>
       </div>
     );
   };
@@ -90,31 +90,31 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     };
 
     return (
-      <div className="flex flex-col">
-        <FormLabel className="text-sm font-medium text-label" label={formLabel()} />
+      <Detail>
+        <DetailLabel>{formLabel()}</DetailLabel>
         <div className="text-sm text-label">{contents()}</div>
-      </div>
+      </Detail>
     );
   };
 
   const targetEnvironmentDetails = () => {
     if (integration.integration === "bitbucket") {
       return (
-        <div className="flex flex-col">
-          <FormLabel className="text-sm font-medium text-label" label="Workspace" />
+        <Detail>
+          <DetailLabel>Workspace</DetailLabel>
           <div className="text-sm text-label">
             {integration.targetEnvironment || integration.targetEnvironmentId}
           </div>
-        </div>
+        </Detail>
       );
     }
 
     if (integration.integration === "octopus-deploy") {
       return (
-        <div>
-          <FormLabel className="text-sm font-medium text-label" label="Space" />
+        <Detail>
+          <DetailLabel>Space</DetailLabel>
           <div className="text-sm text-label">{integration.targetEnvironment}</div>
-        </div>
+        </Detail>
       );
     }
 
@@ -123,12 +123,12 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
       (integration.integration === "github" && integration.scope === "github-env")
     ) {
       return (
-        <div className="flex flex-col">
-          <FormLabel className="text-sm font-medium text-label" label="Target Environment" />
+        <Detail>
+          <DetailLabel>Target Environment</DetailLabel>
           <div className="text-sm text-label">
             {integration.targetEnvironment || integration.targetEnvironmentId}
           </div>
-        </div>
+        </Detail>
       );
     }
 
@@ -138,55 +138,55 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
   const generalIntegrationSpecificDetails = () => {
     if (integration.integration === "checkly" && integration.targetService) {
       return (
-        <div>
-          <FormLabel className="text-sm font-medium text-label" label="Group" />
+        <Detail>
+          <DetailLabel>Group</DetailLabel>
           <div className="text-sm text-label">{integration.targetService}</div>
-        </div>
+        </Detail>
       );
     }
 
     if (integration.integration === "circleci" && integration.owner) {
       return (
-        <div>
-          <FormLabel className="text-sm font-medium text-label" label="Organization" />
+        <Detail>
+          <DetailLabel>Organization</DetailLabel>
           <div className="text-sm text-label">{integration.owner}</div>
-        </div>
+        </Detail>
       );
     }
 
     if (integration.integration === "terraform-cloud" && integration.targetService) {
       return (
-        <div>
-          <FormLabel className="text-sm font-medium text-label" label="Category" />
+        <Detail>
+          <DetailLabel>Category</DetailLabel>
           <div className="text-sm text-label">{integration.targetService}</div>
-        </div>
+        </Detail>
       );
     }
 
     if (integration.integration === "checkly" || integration.integration === "github") {
       return (
-        <div>
-          <FormLabel className="text-sm font-medium text-label" label="Secret Suffix" />
+        <Detail>
+          <DetailLabel>Secret Suffix</DetailLabel>
           <div className="text-sm text-label">{integration?.metadata?.secretSuffix || "-"}</div>
-        </div>
+        </Detail>
       );
     }
 
     if (integration.integration === "bitbucket" && integration.targetServiceId) {
       return (
-        <div>
-          <FormLabel className="text-sm font-medium text-label" label="Deployment Environment" />
+        <Detail>
+          <DetailLabel>Deployment Environment</DetailLabel>
           <div className="text-sm text-label">{integration.targetService}</div>
-        </div>
+        </Detail>
       );
     }
 
     if (integration.integration === "windmill" && integration.url) {
       return (
-        <div>
-          <FormLabel className="text-sm font-medium text-label" label="Instance URL" />
+        <Detail>
+          <DetailLabel>Instance URL</DetailLabel>
           <div className="text-sm text-label">{integration.url}</div>
-        </div>
+        </Detail>
       );
     }
 
@@ -200,25 +200,27 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
       </div>
 
       <div className="mt-4">
-        <FormLabel className="my-2" label="Source" />
+        <DetailLabel className="my-2">Source</DetailLabel>
 
         <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-raised p-2">
-          <div className="flex flex-col">
-            <FormLabel className="text-sm font-medium text-label" label="Environment" />
+          <Detail>
+            <DetailLabel>Environment</DetailLabel>
             <div className="text-sm text-label">{integration.environment.name}</div>
-          </div>
-          <div className="flex flex-col">
-            <FormLabel className="text-sm font-medium text-label" label="Secret Path" />
+          </Detail>
+          <Detail>
+            <DetailLabel>Secret Path</DetailLabel>
             <div className="text-sm text-label">{integration.secretPath}</div>
-          </div>
+          </Detail>
         </div>
 
-        <FormLabel className="my-2" label="Destination" />
+        <DetailLabel className="my-2">Destination</DetailLabel>
         <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-raised p-2">
-          <FormLabel className="text-sm font-medium text-label" label="Platform" />
-          <div className="text-sm text-label">
-            {integrationSlugNameMapping?.[integration.integration]}
-          </div>
+          <Detail>
+            <DetailLabel>Platform</DetailLabel>
+            <div className="text-sm text-label">
+              {integrationSlugNameMapping?.[integration.integration]}
+            </div>
+          </Detail>
 
           {specifcQoveryDetails()}
           {isNotAwsManagerOneToOneDetails()}

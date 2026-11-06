@@ -1,18 +1,38 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import FileSaver from "file-saver";
+import { DownloadIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, IconButton, TextArea, Tooltip } from "@app/components/v2";
-import { useTimedReset } from "@app/hooks";
+import {
+  Button,
+  CopyButton,
+  DialogBody,
+  DialogClose,
+  DialogFooter,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  IconButton,
+  ScrollableContent,
+  Spinner,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { PathLengthDescription, PathLengthSelect, useLockedPathLength } from "./PathLengthSelect";
+
 const schema = z.object({
+  maxPathLength: z.string().min(1, "Select a path length"),
   certificate: z.string().min(1),
   certificateChain: z.string().min(1)
 });
@@ -25,25 +45,40 @@ type Props = {
 };
 
 export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
-  const [copyTextCaCsr, isCopyingCaCsr, setCopyTextCaCsr] = useTimedReset<string>({
-    initialState: "Copy to clipboard"
-  });
-
   const {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(schema),
+    defaultValues: { maxPathLength: "" }
   });
 
-  const { data: csr } = useGetCaCsr(caId);
+  const lockedPathLength = useLockedPathLength(caId);
+  const isPathLengthLocked = lockedPathLength !== undefined;
+  const maxPathLength = watch("maxPathLength");
+  const {
+    data: csr,
+    isFetching: isCsrFetching,
+    isError: isCsrError,
+    error: csrError,
+    refetch: refetchCsr,
+    isPlaceholderData: isCsrPlaceholder
+  } = useGetCaCsr(caId, isPathLengthLocked ? undefined : Number(maxPathLength), {
+    enabled: maxPathLength !== ""
+  });
+  const showCsrError = isCsrError && !isCsrFetching;
+  const isCsrReady = Boolean(csr) && !isCsrFetching && !isCsrError && !isCsrPlaceholder;
+  const csrErrorMessage =
+    (csrError as AxiosError<{ message?: string }>)?.response?.data?.message ??
+    "The CSR could not be generated.";
   const { mutateAsync: importCaCertificate } = useImportCaCertificate();
 
   useEffect(() => {
-    reset();
-  }, []);
+    reset({ maxPathLength: isPathLengthLocked ? String(lockedPathLength) : "" });
+  }, [lockedPathLength]);
 
   const onFormSubmit = async ({ certificate, certificateChain }: FormData) => {
     if (!csr || !caId) return;
@@ -69,94 +104,146 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      {csr && (
-        <>
-          <div className="my-4 flex items-center justify-between">
-            <h2>CSR for this CA</h2>
-            <div className="flex">
-              <Tooltip content={copyTextCaCsr}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  colorSchema="secondary"
-                  className="group relative"
-                  onClick={() => {
-                    navigator.clipboard.writeText(csr);
-                    setCopyTextCaCsr("Copied");
-                  }}
+    <form className="contents" onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogBody>
+        <FieldGroup>
+          <Controller
+            control={control}
+            name="maxPathLength"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Path Length</FieldLabel>
+                <PathLengthSelect
+                  value={value}
+                  onChange={onChange}
+                  lockedPathLength={lockedPathLength}
+                  isError={Boolean(error)}
+                  placeholder="Select a path length"
+                />
+                <PathLengthDescription isLocked={isPathLengthLocked} />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          {maxPathLength !== "" && (
+            <Field>
+              <div className="flex items-center justify-between">
+                <FieldLabel>Certificate Signing Request</FieldLabel>
+                <div className="flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CopyButton value={csr ?? ""} ariaLabel="Copy CSR" disabled={!isCsrReady} />
+                    </TooltipTrigger>
+                    <TooltipContent>Copy CSR</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        aria-label="Download CSR"
+                        isDisabled={!isCsrReady}
+                        onClick={() => csr && downloadTxtFile("csr.pem", csr)}
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>Download CSR</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+              <div className="relative">
+                <ScrollableContent
+                  aria-label="Certificate signing request"
+                  size="sm"
+                  edgeBehavior="fade"
+                  outline={false}
+                  containerClassName="rounded-md border border-border bg-container"
                 >
-                  <FontAwesomeIcon icon={isCopyingCaCsr ? faCheck : faCopy} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip content="Download">
-                <IconButton
-                  ariaLabel="copy icon"
-                  colorSchema="secondary"
-                  className="group relative ml-2"
-                  onClick={() => {
-                    downloadTxtFile("csr.pem", csr);
-                  }}
-                >
-                  <FontAwesomeIcon icon={faDownload} />
-                </IconButton>
-              </Tooltip>
-            </div>
-          </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground-inverse/[0.07] p-2 text-base text-muted-cool">
-            <p className="mr-4 break-all whitespace-pre-wrap">{csr}</p>
-          </div>
-        </>
-      )}
-      <Controller
-        control={control}
-        name="certificate"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Certificate Body" errorText={error?.message} isError={Boolean(error)}>
-            <TextArea
-              {...field}
-              placeholder="PEM-encoded certificate..."
-              reSize="none"
-              className="h-48"
-            />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="certificateChain"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Certificate Chain"
-            errorText={error?.message}
-            isError={Boolean(error)}
-          >
-            <TextArea
-              {...field}
-              placeholder="PEM-encoded certificate chain..."
-              reSize="none"
-              className="h-48"
-            />
-          </FormControl>
-        )}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
+                  {showCsrError && (
+                    <div className="flex h-40 flex-col items-center justify-center gap-2 p-3 text-center">
+                      <p className="text-xs text-danger">{csrErrorMessage}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => refetchCsr()}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  {!showCsrError && csr && (
+                    <pre
+                      className={cn(
+                        "p-3 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground transition-opacity",
+                        !isCsrReady && "opacity-30"
+                      )}
+                    >
+                      {csr}
+                    </pre>
+                  )}
+                  {!showCsrError && !csr && (
+                    <div className="flex h-40 items-center justify-center">
+                      <Spinner size="sm" label="Generating CSR" />
+                    </div>
+                  )}
+                </ScrollableContent>
+                {!showCsrError && csr && !isCsrReady && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <Spinner size="sm" label="Generating CSR" />
+                  </div>
+                )}
+              </div>
+            </Field>
+          )}
+          <Controller
+            control={control}
+            name="certificate"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="ca-install-certificate">Certificate Body</FieldLabel>
+                <TextArea
+                  {...field}
+                  id="ca-install-certificate"
+                  placeholder="PEM-encoded certificate..."
+                  rows={6}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="certificateChain"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="ca-install-certificate-chain">Certificate Chain</FieldLabel>
+                <TextArea
+                  {...field}
+                  id="ca-install-certificate-chain"
+                  placeholder="PEM-encoded certificate chain..."
+                  rows={6}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </FieldGroup>
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost" type="button">
+            Cancel
+          </Button>
+        </DialogClose>
+        <Button variant="neutral" type="submit" isPending={isSubmitting}>
           Install
         </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("installCaCert", false)}
-        >
-          Cancel
-        </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
