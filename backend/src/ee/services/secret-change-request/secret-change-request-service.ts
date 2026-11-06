@@ -2,23 +2,16 @@ import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy, unique } from "@app/lib/fn";
+import { groupBy, groupByUnique, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { EnforcementLevel } from "@app/lib/types";
-import { TQueueServiceFactory } from "@app/queue";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
   ApprovalPolicyType,
   ApprovalRequestApprovalDecision,
   ApprovalRequestStatus
 } from "@app/services/approval-policy/approval-policy-enums";
-import {
-  TApprovalRequestApprovalsDALFactory,
-  TApprovalRequestDALFactory,
-  TApprovalRequestStepEligibleApproversDALFactory,
-  TApprovalRequestStepsDALFactory
-} from "@app/services/approval-policy/approval-request-dal";
+import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import {
   createApprovalRequestWithSteps,
   isEligibleStepApprover,
@@ -26,59 +19,27 @@ import {
   upsertApprovalRequestStepDecision
 } from "@app/services/approval-policy/approval-request-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
-import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
-import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
-import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
-import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
-import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
-import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
-import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
-import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
-import { TSmtpService } from "@app/services/smtp/smtp-service";
-import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
-import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub } from "../permission/project-permission";
-import {
-  pickApprovalCommitColumns,
-  secretApprovalRequestCommitFnsFactory
-} from "../secret-approval-request/secret-approval-request-commit-fns";
+import { pickApprovalCommitColumns, secretApprovalRequestCommitFnsFactory } from "./secret-change-request-commit-fns";
 import {
   buildSecretApprovalCommitValueAccess,
   formatSecretApprovalCommitsV2Bridge
-} from "../secret-approval-request/secret-approval-request-details-fns";
+} from "./secret-change-request-details-fns";
 import {
   buildRequestedByActor,
   buildSecretMutationEvents,
   secretApprovalRequestMergeFnsFactory
-} from "../secret-approval-request/secret-approval-request-merge-fns";
-import { TSecretApprovalRequestSecretDALFactory } from "../secret-approval-request/secret-approval-request-secret-dal";
-import { ApprovalStatus, RequestState } from "../secret-approval-request/secret-approval-request-types";
-import { TSecretChangeGlobalPolicyBridgeServiceFactory } from "../secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
-import { TSecretChangeGlobalRequestBridgeDALFactory } from "./secret-change-global-request-bridge-dal";
+} from "./secret-change-request-merge-fns";
 import {
   groupUserIdsByGroupId,
   isGroupActor,
   resolveActorUserIds,
-  secretChangeGlobalRequestFnsFactory,
+  secretChangeRequestFnsFactory,
   toApprovalRequestUser,
   toDeletedSecretChangePolicyStub,
   toSecretChangeRequest,
@@ -86,109 +47,34 @@ import {
   toSecretChangeRequestCommit,
   toSecretChangeRequestListItem,
   toSecretChangeRequestReview
-} from "./secret-change-global-request-bridge-fns";
+} from "./secret-change-request-fns";
 import {
+  ApprovalStatus,
+  RequestState,
+  TApprovalRequestCountDTO,
   TApprovalRequestUser,
-  TSecretChangeGlobalRequestBridgeMethods,
+  TListApprovalsDTO,
   TSecretChangeRequestCommitInsert,
-  TSecretChangeRequestPolicySummary
-} from "./secret-change-global-request-bridge-types";
-
-type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
-  approvalRequestDAL: Pick<
-    TApprovalRequestDALFactory,
-    | "find"
-    | "findById"
-    | "findByIdForUpdate"
-    | "findStepsByRequestId"
-    | "findStepsByRequestIds"
-    | "create"
-    | "updateById"
-    | "transaction"
-  >;
-  approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
-  approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
-  approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "findOne" | "create" | "updateById">;
-  approvalPolicyDAL: Pick<
-    TApprovalPolicyDALFactory,
-    "findByIdForShare" | "findStepsByPolicyId" | "findBypassersByPolicyIds"
-  >;
-  secretChangeGlobalRequestBridgeDAL: Pick<
-    TSecretChangeGlobalRequestBridgeDALFactory,
-    "create" | "find" | "findOne" | "updateById" | "findByProjectId" | "countByProjectId"
-  >;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    | "insertV2Bridge"
-    | "insertApprovalSecretV2Tags"
-    | "updateV2ById"
-    | "findBySecretChangeIdBridgeSecretV2"
-    | "findCommitsBySecretChangeIds"
-  >;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
-  secretChangeGlobalPolicyBridgeService: Pick<
-    TSecretChangeGlobalPolicyBridgeServiceFactory,
-    "findSecretChangePolicyById"
-  >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  secretV2BridgeDAL: Pick<
-    TSecretV2BridgeDALFactory,
-    | "insertMany"
-    | "upsertSecretReferences"
-    | "findBySecretKeys"
-    | "bulkUpdate"
-    | "deleteMany"
-    | "find"
-    | "invalidateSecretCacheByProjectId"
-    | "updateById"
-    | "findReferencedSecretReferencesBySecretKey"
-    | "updateSecretReferenceSecretKey"
-    | "updateSecretReferenceEnvAndPath"
-    | "findOne"
-  >;
-  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany" | "insertMany">;
-  secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
-  secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
-  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  eventEmitter: TEventEmitter;
-  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
-  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
-  userDAL: Pick<TUserDALFactory, "findById" | "find" | "findOne">;
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
-  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
-  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
-  smtpService: Pick<TSmtpService, "sendMail">;
-  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  queueService: Pick<TQueueServiceFactory, "queue">;
-  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-};
+  TSecretChangeRequestMethods,
+  TSecretChangeRequestPolicySummary,
+  TSecretChangeRequestServiceFactoryDep
+} from "./secret-change-request-types";
 
 type TRequestSteps = Awaited<ReturnType<TApprovalRequestDALFactory["findStepsByRequestId"]>>;
 
 const POLICY_DELETED_MESSAGE = "The policy associated with this secret approval request has been deleted.";
 
-export type TSecretChangeGlobalRequestBridgeServiceFactory = ReturnType<
-  typeof secretChangeGlobalRequestBridgeServiceFactory
->;
+export type TSecretChangeRequestServiceFactory = ReturnType<typeof secretChangeRequestServiceFactory>;
 
-export const secretChangeGlobalRequestBridgeServiceFactory = ({
+export const secretChangeRequestServiceFactory = ({
   approvalRequestDAL,
   approvalRequestStepsDAL,
   approvalRequestStepEligibleApproversDAL,
   approvalRequestApprovalsDAL,
   approvalPolicyDAL,
-  secretChangeGlobalRequestBridgeDAL,
-  secretApprovalRequestSecretDAL,
+  secretChangeRequestDAL,
   membershipUserDAL,
-  secretChangeGlobalPolicyBridgeService,
+  secretChangePolicyService,
   permissionService,
   licenseService,
   userGroupMembershipDAL,
@@ -214,7 +100,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   notificationService,
   queueService,
   telemetryService
-}: TSecretChangeGlobalRequestBridgeServiceFactoryDep) => {
+}: TSecretChangeRequestServiceFactoryDep) => {
   const { buildSecretApprovalCommits, validateSecrets } = secretApprovalRequestCommitFnsFactory({
     permissionService,
     folderDAL,
@@ -242,7 +128,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     folderCommitService,
     eventEmitter,
     secretQueueService,
-    secretApprovalRequestSecretDAL,
+    secretChangeRequestDAL,
     validateSecrets,
     userDAL,
     notificationService,
@@ -250,7 +136,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   });
 
   const { resolveRequester, queueChangeRequestWebhook, runSecretChangeRequestSideEffects } =
-    secretChangeGlobalRequestFnsFactory({
+    secretChangeRequestFnsFactory({
       userDAL,
       identityDAL,
       projectDAL,
@@ -265,12 +151,10 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       telemetryService
     });
 
-  const findSecretChangeRequest = (requestId: string, tx?: Knex) => approvalRequestDAL.findById(requestId, tx);
-
-  const findFolderIdsWithOpenSecretChangeRequests = async (folderIds: string[], tx?: Knex) => {
+  const findFolderIdsWithOpenRequests = async (folderIds: string[], tx?: Knex) => {
     if (!folderIds.length) return [];
 
-    const secretChangeRequests = await secretChangeGlobalRequestBridgeDAL.find(
+    const secretChangeRequests = await secretChangeRequestDAL.find(
       { $in: { folderId: folderIds } },
       { tx }
     );
@@ -292,7 +176,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     if (!approvalRequest || approvalRequest.type !== ApprovalPolicyType.SecretChange) {
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
     }
-    const secretChangeRequest = await secretChangeGlobalRequestBridgeDAL.findOne(
+    const secretChangeRequest = await secretChangeRequestDAL.findOne(
       { approvalRequestId: approvalRequest.id },
       tx
     );
@@ -304,7 +188,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
 
   const $findSecretChangePolicyOrThrow = async (policyId: string | null | undefined, tx?: Knex) => {
     const policy = policyId
-      ? await secretChangeGlobalPolicyBridgeService.findSecretChangePolicyById(policyId, tx)
+      ? await secretChangePolicyService.findSecretChangePolicyById(policyId, tx)
       : undefined;
     if (!policy) {
       throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
@@ -428,7 +312,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   ) => {
     const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policyId, tx);
     const policy = lockedPolicy
-      ? await secretChangeGlobalPolicyBridgeService.findSecretChangePolicyById(policyId, tx)
+      ? await secretChangePolicyService.findSecretChangePolicyById(policyId, tx)
       : null;
     if (!policy) {
       throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
@@ -460,7 +344,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       tx
     );
 
-    const secretChangeRequest = await secretChangeGlobalRequestBridgeDAL.create(
+    const secretChangeRequest = await secretChangeRequestDAL.create(
       {
         approvalRequestId: approvalRequest.id,
         folderId,
@@ -472,7 +356,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       tx
     );
 
-    const approvalCommits = await secretApprovalRequestSecretDAL.insertV2Bridge(
+    const approvalCommits = await secretChangeRequestDAL.insertV2Bridge(
       commits.map((commit) => ({ ...commit, secretChangeId: secretChangeRequest.id })),
       tx
     );
@@ -482,13 +366,13 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       keyTagIds.map((tagId) => ({ secretId: commitsGroupByKey[key][0].id, tagId }))
     );
     if (approvalSecretTags.length) {
-      await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(approvalSecretTags, tx);
+      await secretChangeRequestDAL.insertApprovalSecretV2Tags(approvalSecretTags, tx);
     }
 
     return { policy, approvalRequest, secretChangeRequest, commits: approvalCommits };
   };
 
-  const generateSecretChangeRequest: TSecretChangeGlobalRequestBridgeMethods["generateSecretChangeRequest"] = async (
+  const generateSecretApprovalRequestV2Bridge: TSecretChangeRequestMethods["generateSecretApprovalRequestV2Bridge"] = async (
     dto
   ) => {
     const { actor, actorId, actorOrgId, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } =
@@ -531,7 +415,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     return result;
   };
 
-  const createSecretChangeRequest: TSecretChangeGlobalRequestBridgeMethods["createSecretChangeRequest"] = async (
+  const createSecretApprovalRequestV2Bridge: TSecretChangeRequestMethods["createSecretApprovalRequestV2Bridge"] = async (
     dto,
     trx
   ) => {
@@ -541,7 +425,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     }, {});
 
     const write = async (tx: Knex) => {
-      const policy = await secretChangeGlobalPolicyBridgeService.findSecretChangePolicyById(dto.policy.id, tx);
+      const policy = await secretChangePolicyService.findSecretChangePolicyById(dto.policy.id, tx);
       if (!policy) {
         throw new NotFoundError({ message: `Secret approval policy with ID '${dto.policy.id}' not found` });
       }
@@ -569,7 +453,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     return toSecretChangeRequest(created);
   };
 
-  const createSecretChangeRequestSideEffects: TSecretChangeGlobalRequestBridgeMethods["createSecretChangeRequestSideEffects"] =
+  const createSecretApprovalSideEffects: TSecretChangeRequestMethods["createSecretApprovalSideEffects"] =
     async ({
       secretApprovalRequest,
       projectId,
@@ -605,7 +489,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       });
     };
 
-  const mergeSecretChangeRequest: TSecretChangeGlobalRequestBridgeMethods["mergeSecretChangeRequest"] = async ({
+  const mergeSecretApprovalRequest: TSecretChangeRequestMethods["mergeSecretApprovalRequest"] = async ({
     approvalId,
     actor,
     actorId,
@@ -666,7 +550,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         message: "The policy associated with this secret approval request is not linked to the environment."
       });
     }
-    const commits = await secretApprovalRequestSecretDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
+    const commits = await secretChangeRequestDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
     const { conflicts, creates, updates, deletes } = await detectSecretApprovalCommitConflicts({
       folderId: folder.id,
       commits
@@ -700,7 +584,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         tx
       });
 
-      const mergedChangeRequest = await secretChangeGlobalRequestBridgeDAL.updateById(
+      const mergedChangeRequest = await secretChangeRequestDAL.updateById(
         secretChangeRequest.id,
         {
           conflicts: JSON.stringify(conflicts),
@@ -777,7 +661,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     };
   };
 
-  const reviewSecretChangeRequest: TSecretChangeGlobalRequestBridgeMethods["reviewSecretChangeRequest"] = async ({
+  const reviewApproval: TSecretChangeRequestMethods["reviewApproval"] = async ({
     approvalId,
     actor,
     actorId,
@@ -856,7 +740,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     return { ...toSecretChangeRequestReview(review, approvalRequest.id), projectId: approvalRequest.projectId };
   };
 
-  const updateSecretChangeRequestStatus: TSecretChangeGlobalRequestBridgeMethods["updateSecretChangeRequestStatus"] =
+  const updateApprovalStatus: TSecretChangeRequestMethods["updateApprovalStatus"] =
     async ({ approvalId, actor, actorId, actorAuthMethod, actorOrgId, status }) => {
       const plan = await licenseService.getPlan(actorOrgId);
       if (!plan.secretApproval && status === RequestState.Open) {
@@ -886,7 +770,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
           throw new BadRequestError({ message: alreadyInStatusMessage });
         }
         if (locked.policyId !== policy.id) throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
-        const lockedChangeRequest = await secretChangeGlobalRequestBridgeDAL.findOne(
+        const lockedChangeRequest = await secretChangeRequestDAL.findOne(
           { approvalRequestId: approvalRequest.id },
           tx
         );
@@ -895,7 +779,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         }
 
         const updatedApprovalRequest = await approvalRequestDAL.updateById(approvalRequest.id, { status }, tx);
-        const updatedChangeRequest = await secretChangeGlobalRequestBridgeDAL.updateById(
+        const updatedChangeRequest = await secretChangeRequestDAL.updateById(
           lockedChangeRequest.id,
           { statusChangedByUserId: actorId },
           tx
@@ -936,7 +820,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       return { ...toSecretChangeRequestBase(updated), policyId: policy.id, projectId: approvalRequest.projectId };
     };
 
-  const getSecretChangeRequestById: TSecretChangeGlobalRequestBridgeMethods["getSecretChangeRequestById"] = async ({
+  const getSecretApprovalDetails: TSecretChangeRequestMethods["getSecretApprovalDetails"] = async ({
     id,
     actor,
     actorId,
@@ -961,7 +845,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
 
     const steps = await approvalRequestDAL.findStepsByRequestId(approvalRequest.id);
     const policy = approvalRequest.policyId
-      ? await secretChangeGlobalPolicyBridgeService.findSecretChangePolicyById(approvalRequest.policyId)
+      ? await secretChangePolicyService.findSecretChangePolicyById(approvalRequest.policyId)
       : undefined;
     const bypassers = policy?.bypassers ?? [];
     const groupIds = unique(
@@ -1042,7 +926,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         }
       : toDeletedSecretChangePolicyStub(approvalRequest, steps);
 
-    const commits = await secretApprovalRequestSecretDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
+    const commits = await secretChangeRequestDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     return {
@@ -1103,17 +987,15 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     };
   };
 
-  // The list and count take the access filter the legacy service already derived from the caller's permission,
-  // so they do no permission check of their own.
-  const listSecretChangeRequests: TSecretChangeGlobalRequestBridgeMethods["listSecretChangeRequests"] = async (
+  const listSecretChangeRequests: TSecretChangeRequestMethods["listSecretChangeRequests"] = async (
     filter
   ) => {
-    const { rows, totalCount } = await secretChangeGlobalRequestBridgeDAL.findByProjectId(filter);
+    const { rows, totalCount } = await secretChangeRequestDAL.findByProjectId(filter);
     if (!rows.length) return { approvals: [], totalCount };
 
     const [stepsByRequestId, commits, bypassersByPolicyId] = await Promise.all([
       approvalRequestDAL.findStepsByRequestIds(rows.map((row) => row.id)),
-      secretApprovalRequestSecretDAL.findCommitsBySecretChangeIds(rows.map((row) => row.secretChangeId)),
+      secretChangeRequestDAL.findCommitsBySecretChangeIds(rows.map((row) => row.secretChangeId)),
       approvalPolicyDAL.findBypassersByPolicyIds(
         unique(rows.map((row) => row.policyId).filter((policyId): policyId is string => Boolean(policyId)))
       )
@@ -1142,23 +1024,98 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     };
   };
 
-  const countSecretChangeRequests: TSecretChangeGlobalRequestBridgeMethods["countSecretChangeRequests"] = ({
+  const countSecretChangeRequests: TSecretChangeRequestMethods["countSecretChangeRequests"] = ({
     projectId,
     userId,
     policyId
-  }) => secretChangeGlobalRequestBridgeDAL.countByProjectId(projectId, userId, policyId);
+  }) => secretChangeRequestDAL.countByProjectId(projectId, userId, policyId);
+
+  const $resolveRequestAccessFilter = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: Pick<TListApprovalsDTO, "projectId" | "actor" | "actorId" | "actorAuthMethod" | "actorOrgId">) => {
+    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+    return canReadAllApprovalRequests ? undefined : actorId;
+  };
+
+  const requestCount = async ({ projectId, policyId, ...actorDto }: TApprovalRequestCountDTO) => {
+    const userId = await $resolveRequestAccessFilter({ projectId, ...actorDto });
+    return countSecretChangeRequests({ projectId, userId, policyId });
+  };
+
+  const getSecretApprovals = async ({
+    projectId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    status,
+    environment,
+    committer,
+    limit = 20,
+    offset = 0,
+    search,
+    orderBy,
+    orderDirection
+  }: TListApprovalsDTO) => {
+    const userId = await $resolveRequestAccessFilter({ projectId, actor, actorId, actorAuthMethod, actorOrgId });
+
+    const page = await listSecretChangeRequests({
+      projectId,
+      committer,
+      environment,
+      status,
+      userId,
+      search,
+      orderBy,
+      orderDirection,
+      limit,
+      offset
+    });
+
+    const folderIds = unique(page.approvals.map((el) => el.folderId));
+    const folders = folderIds.length ? await folderDAL.findSecretPathByFolderIds(projectId, folderIds) : [];
+    const folderById = groupByUnique(
+      folders.filter((el) => el !== undefined),
+      (el) => el.id
+    );
+
+    return {
+      ...page,
+      approvals: page.approvals.map((el) => ({
+        ...el,
+        secretPath: folderById[el.folderId]?.path ?? "/"
+      }))
+    };
+  };
 
   return {
-    findSecretChangeRequest,
-    findFolderIdsWithOpenSecretChangeRequests,
-    generateSecretChangeRequest,
-    createSecretChangeRequest,
-    createSecretChangeRequestSideEffects,
-    mergeSecretChangeRequest,
-    reviewSecretChangeRequest,
-    updateSecretChangeRequestStatus,
-    getSecretChangeRequestById,
-    listSecretChangeRequests,
-    countSecretChangeRequests
+    findFolderIdsWithOpenRequests,
+    generateSecretApprovalRequestV2Bridge,
+    createSecretApprovalRequestV2Bridge,
+    createSecretApprovalSideEffects,
+    mergeSecretApprovalRequest,
+    reviewApproval,
+    updateApprovalStatus,
+    getSecretApprovalDetails,
+    getSecretApprovals,
+    requestCount
   };
 };

@@ -1,9 +1,9 @@
 import path from "node:path";
 
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
+import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -80,7 +80,7 @@ type TSecretReplicationServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
-  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
@@ -91,8 +91,8 @@ type TSecretReplicationServiceFactoryDep = {
     | "saveTagsToSecretV2"
     | "deleteTagsToSecretV2"
   >;
-  secretApprovalRequestCreationFns: Pick<
-    TSecretApprovalRequestCreationFnsFactory,
+  secretChangeRequestService: Pick<
+    TSecretChangeRequestServiceFactory,
     "createSecretApprovalRequestV2Bridge" | "createSecretApprovalRequest"
   >;
 
@@ -138,8 +138,8 @@ export const secretReplicationServiceFactory = ({
   secretVersionTagDAL,
   secretTagDAL,
   folderDAL,
-  secretApprovalPolicyService,
-  secretApprovalRequestCreationFns,
+  secretChangePolicyService,
+  secretChangeRequestService,
   secretQueueService,
   projectBotService,
   secretVersionV2TagBridgeDAL,
@@ -471,7 +471,7 @@ export const secretReplicationServiceFactory = ({
             // eslint-disable-next-line
             if (isEmtpy) continue;
 
-            const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+            const policy = await secretChangePolicyService.getSecretApprovalPolicy(
               projectId,
               destinationFolder.environmentSlug,
               destinationFolder.path
@@ -510,7 +510,7 @@ export const secretReplicationServiceFactory = ({
                       : {})
                   };
                 });
-              await secretApprovalRequestCreationFns.createSecretApprovalRequestV2Bridge({
+              await secretChangeRequestService.createSecretApprovalRequestV2Bridge({
                 policy,
                 folderId: destinationReplicationFolderId,
                 actor,
@@ -759,7 +759,7 @@ export const secretReplicationServiceFactory = ({
           // eslint-disable-next-line
           if (isEmtpy) continue;
 
-          const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+          const policy = await secretChangePolicyService.getSecretApprovalPolicy(
             projectId,
             destinationFolder.environmentSlug,
             destinationFolder.path
@@ -800,7 +800,7 @@ export const secretReplicationServiceFactory = ({
                     : {})
                 };
               });
-            await secretApprovalRequestCreationFns.createSecretApprovalRequest({
+            await secretChangeRequestService.createSecretApprovalRequest({
               policy,
               folderId: destinationReplicationFolderId,
               actor,

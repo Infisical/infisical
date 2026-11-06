@@ -112,7 +112,12 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.PkiAlertsV2),
         countTable(db, TableName.DynamicSecret),
         countTable(db, TableName.Groups),
-        countTable(db, TableName.SecretApprovalPolicy),
+        (async () => {
+          const result = (
+            await db(TableName.ApprovalPolicies).where({ type: ApprovalPolicyType.SecretChange }).count().first()
+          )?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
         // new counts
         countTable(db, TableName.SamlConfig),
         countTable(db, TableName.OidcConfig),
