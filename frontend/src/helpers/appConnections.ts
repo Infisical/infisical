@@ -76,6 +76,7 @@ import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
 import { ImpervaConnectionMethod } from "@app/hooks/api/appConnections/types/imperva-connection";
+import { IncidentIoConnectionMethod } from "@app/hooks/api/appConnections/types/incident-io-connection";
 import { JiraConnectionMethod } from "@app/hooks/api/appConnections/types/jira-connection";
 import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
@@ -717,6 +718,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Jira.svg",
     category: "PRODUCTIVITY",
     description: "Atlassian Jira Cloud and Data Center."
+  },
+  [AppConnection.IncidentIo]: {
+    name: "incident.io",
+    image: "incident.io.png",
+    category: "MONITORING",
+    description: "On-call schedules for PAM auto-approval."
   }
 };
 
@@ -888,6 +895,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DaytonaConnectionMethod.ApiKey:
     case PowerDnsConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
+    case IncidentIoConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: KeyRoundIcon };

@@ -61,6 +61,7 @@ import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { ImpervaConnectionForm } from "./ImpervaConnectionForm";
+import { IncidentIoConnectionForm } from "./IncidentIoConnectionForm";
 import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
@@ -409,6 +410,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <HpeIloConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Jira:
         return <JiraConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.IncidentIo:
+        return <IncidentIoConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
@@ -728,6 +731,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <HpeIloConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Jira:
         return <JiraConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.IncidentIo:
+        return <IncidentIoConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:

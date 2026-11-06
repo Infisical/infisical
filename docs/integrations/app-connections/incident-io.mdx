@@ -1,0 +1,71 @@
+---
+title: "incident.io connection"
+sidebarTitle: "incident.io"
+description: "Learn how to configure an incident.io connection for Infisical."
+---
+
+import ConnectionFormFields from "/snippets/app-connections/incident-io/form-fields.mdx";
+
+An incident.io connection authenticates Infisical to incident.io with an [API key](https://docs.incident.io/admin/api-keys), so Infisical can check who is on call in your incident.io schedules.
+
+<Note>
+    This guide only authenticates Infisical with incident.io. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- An incident.io user with the **Manage API keys** and **View on-call resources** permissions (incident.io only lets you give an API key permissions that you have)
+
+## Step 1: Create an API key
+
+Infisical needs an incident.io API key that can read your on-call schedules.
+
+<Steps>
+    <Step>
+        In incident.io, go to **Settings** > **API keys** and create an API key.
+    </Step>
+    <Step>
+        Enter a name, such as `infisical`, and give the key the **View on-call resources** permission.
+    </Step>
+    <Step>
+        Copy the key. incident.io shows it only once.
+    </Step>
+</Steps>
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the [Create incident.io Connection](/api-reference/endpoints/app-connections/incident-io/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In the sidebar, select **Integrations**, then open the **App Connections** tab.
+    </Step>
+    <Step>
+        Select **Add Connection** and choose **incident.io**.
+    </Step>
+    <Step>
+        Fill out the form's fields:
+
+        <ConnectionFormFields />
+
+        Then, select **Connect to incident.io**.
+    </Step>
+</Steps>
+
+When you select **Connect to incident.io**, Infisical checks that the API key can read your schedules, and doesn't save the connection if it can't.
+
+<Check>
+    Your incident.io app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your incident.io app connection is configured, you can use it to set up the following integrations:
+
+<Card title="PAM auto-approval" icon="zap" href="/documentation/platform/pam/access-requests/auto-approval">
+    Approve PAM access requests from users who are on call in incident.io.
+</Card>
