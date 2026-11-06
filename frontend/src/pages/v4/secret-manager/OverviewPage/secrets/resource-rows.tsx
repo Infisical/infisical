@@ -532,7 +532,7 @@ function EnvironmentTable({
         <Table className={styles.nestedTable}>
           <TableHeader>
             <TableRow>
-              <TableHead selection />
+              <TableHead selection divider={false} />
               <TableHead className={styles.envName}>Environment</TableHead>
               <TableHead>{valueHeader}</TableHead>
               <TableActionsHead slots={ROW_ACTION_SLOTS} />
@@ -547,7 +547,7 @@ function EnvironmentTable({
                 const entry = entries.find((item) => item.environment === environment.value)!;
                 return (
                   <TableRow key={environment.value} className={styles.row}>
-                    <TableCell selection />
+                    <TableCell selection divider={false} />
                     <TableCell className={styles.envName}>{environment.label}</TableCell>
                     <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
                     <TableActionsCell slots={ROW_ACTION_SLOTS}>{actions(entry)}</TableActionsCell>
@@ -912,7 +912,7 @@ export function ImportRow({
       </TableRow>
       {ctx.single && expanded && !first.revoked && (
         <TableRow className={styles.nestedHead}>
-          <TableCell selection />
+          <TableCell selection divider={false} />
           <TableCell className={styles.nameCell}>Name</TableCell>
           <TableCell colSpan={2} className={styles.valueCell}>
             Value
@@ -922,7 +922,7 @@ export function ImportRow({
       {ctx.single &&
         keys.map((secret) => (
           <TableRow key={secret.id} className={styles.importedRow}>
-            <TableCell selection />
+            <TableCell selection divider={false} />
             <TableCell className={styles.nameCell}>
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
@@ -935,7 +935,7 @@ export function ImportRow({
         ))}
       {ctx.single && expanded && first.revoked && (
         <TableRow className={styles.importedRow}>
-          <TableCell selection />
+          <TableCell selection divider={false} />
           <TableCell colSpan={3} className={styles.subtle}>
             Access to this source was revoked, so its secrets are not shown.
           </TableCell>
@@ -963,7 +963,7 @@ export function ImportRow({
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>
-                  <TableHead selection />
+                  <TableHead selection divider={false} />
                   <TableHead className={styles.envName}>Name</TableHead>
                   <TableHead>Value</TableHead>
                 </TableRow>
@@ -971,7 +971,7 @@ export function ImportRow({
               <TableBody>
                 {first.revoked ? (
                   <TableRow>
-                    <TableCell selection />
+                    <TableCell selection divider={false} />
                     <TableCell colSpan={2} className={styles.subtle}>
                       Access to this source was revoked, so its secrets are not shown.
                     </TableCell>
@@ -979,7 +979,7 @@ export function ImportRow({
                 ) : (
                   sourceSecrets(first).map((secret) => (
                     <TableRow key={secret.id} className={styles.row}>
-                      <TableCell selection />
+                      <TableCell selection divider={false} />
                       <TableCell className={styles.envName}>
                         <span className={styles.truncate}>{secret.name}</span>
                       </TableCell>

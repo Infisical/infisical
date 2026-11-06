@@ -388,7 +388,7 @@ export function QuickAddRow({
         save(true);
       }}
     >
-      <TableCell selection>
+      <TableCell selection divider={false}>
         <span className={styles.iconSlot}>
           <Button variant="ghost" size="icon-row" iconOnly icon="plus" disabledReason={NEXT_PHASE}>
             Add another resource type
