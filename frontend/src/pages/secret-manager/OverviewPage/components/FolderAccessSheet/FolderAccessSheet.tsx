@@ -100,7 +100,7 @@ const SectionLabel = ({
   description?: string;
 }) => (
   <div className="pb-1">
-    <div className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-accent uppercase">
+    <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
       {title}
       <span className="font-normal text-muted tabular-nums">{count}</span>
     </div>
@@ -298,6 +298,14 @@ export const FolderAccessSheet = ({
     showsNoAccess &&
     ((canAddUsers && (isOrgUsersPending || isProjectUsersPending)) ||
       (canAddIdentities && isOrgIdentitiesPending));
+  const isOrgTypeLoading = {
+    user: canAddUsers && (isOrgUsersPending || isProjectUsersPending),
+    identity: canAddIdentities && isOrgIdentitiesPending
+  };
+  // a type filter can exclude the tab the user last picked, so fall back to the one still shown
+  const activeNoAccessTab = wantsType(noAccessTab)
+    ? noAccessTab
+    : (ACTOR_TYPES.find(wantsType) ?? noAccessTab);
   const isOrgError =
     showsNoAccess &&
     ((canAddUsers && (isOrgUsersError || isProjectUsersError)) ||
@@ -599,23 +607,27 @@ export const FolderAccessSheet = ({
                       </span>
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent className="border-t border-border p-4">
+                  <AccordionContent className="p-4">
                     <Tabs
-                      value={noAccessTab}
+                      value={activeNoAccessTab}
                       onValueChange={(value) => setNoAccessTab(value as TFolderAccessActor["type"])}
                     >
                       <TabsList className="w-full">
-                        <TabsTrigger value="user">
-                          <UserIcon className="hidden sm:block" />
-                          Users
-                          <Badge variant="neutral">{noAccessCounts.user}</Badge>
-                        </TabsTrigger>
-                        <TabsTrigger value="identity">
-                          <BotIcon className="hidden sm:block" />
-                          <span className="sm:hidden">Identities</span>
-                          <span className="hidden sm:inline">Machine Identities</span>
-                          <Badge variant="neutral">{noAccessCounts.identity}</Badge>
-                        </TabsTrigger>
+                        {wantsType("user") && (
+                          <TabsTrigger value="user">
+                            <UserIcon className="hidden sm:block" />
+                            Users
+                            <Badge variant="neutral">{noAccessCounts.user}</Badge>
+                          </TabsTrigger>
+                        )}
+                        {wantsType("identity") && (
+                          <TabsTrigger value="identity">
+                            <BotIcon className="hidden sm:block" />
+                            <span className="sm:hidden">Identities</span>
+                            <span className="hidden sm:inline">Machine Identities</span>
+                            <Badge variant="neutral">{noAccessCounts.identity}</Badge>
+                          </TabsTrigger>
+                        )}
                       </TabsList>
                       {ACTOR_TYPES.map((type) => {
                         const projectCandidates = candidates.filter((actor) => actor.type === type);
@@ -623,12 +635,17 @@ export const FolderAccessSheet = ({
                         const kindLabel = type === "user" ? "users" : "machine identities";
                         return (
                           <TabsContent key={type} value={type} className="space-y-4">
-                            {!projectCandidates.length && !orgTypeCandidates.length && (
-                              <p className="py-2 text-xs text-muted">
-                                No {kindLabel} without access
-                                {isSearching ? " match your search" : ""}.
-                              </p>
-                            )}
+                            {!projectCandidates.length &&
+                              !orgTypeCandidates.length &&
+                              isOrgTypeLoading[type] && <Skeleton className="h-12 w-full" />}
+                            {!projectCandidates.length &&
+                              !orgTypeCandidates.length &&
+                              !isOrgTypeLoading[type] && (
+                                <p className="py-2 text-xs text-muted">
+                                  No {kindLabel} without access
+                                  {isSearching ? " match your search" : ""}.
+                                </p>
+                              )}
                             {Boolean(projectCandidates.length) && (
                               <section className="flex flex-col">
                                 <SectionLabel
