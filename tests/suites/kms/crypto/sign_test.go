@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/kms"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
@@ -58,7 +59,7 @@ func TestKmsKey_SignVerify(t *testing.T) {
 		})
 	}
 
-	t.Run("should report the signature invalid when the data was changed or the signature came from another key", func(t *testing.T) {
+	t.Run("should report the signature invalid when the data was changed or the signature came from another key, and log the failed verification", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -77,6 +78,11 @@ func TestKmsKey_SignVerify(t *testing.T) {
 		require.False(t, changedData)
 		require.False(t, otherKey)
 		require.True(t, verify(t, tn.Admin.API, key.ID, "ECDSA_SHA_256", []byte("original"), signature, false))
+		failed := fixture.WaitForAuditEvents(t, tn, "cmek-verify", 2, func(e fixture.AuditEvent) bool {
+			return e.Metadata["keyId"] == key.ID.String() && e.Metadata["signatureValid"] == false
+		})
+		require.Len(t, failed, 2)
+		require.Equal(t, tn.Admin.ID.String(), failed[0].Actor["userId"])
 	})
 
 	t.Run("should verify a raw message against a signature made over its SHA-256 digest", func(t *testing.T) {

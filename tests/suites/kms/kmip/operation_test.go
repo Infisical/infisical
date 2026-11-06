@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/kms"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
@@ -31,12 +32,13 @@ func TestKmipOperation(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should create a key that the KMS key API lists and can encrypt with", func(t *testing.T) {
+	t.Run("should create a key that the KMS key API lists and can encrypt with, and log it under the KMIP client", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		proj := newProject(t, h.NewTenant(t))
-		s, _ := newSession(t, proj, "create")
+		tn := h.NewTenant(t)
+		proj := newProject(t, tn)
+		s, client := newSession(t, proj, "create")
 
 		// Action
 		created := callOK[struct{ ID uuid.UUID }](t, s, "create", map[string]any{"algorithm": "aes-256-gcm"})
@@ -46,6 +48,12 @@ func TestKmipOperation(t *testing.T) {
 		require.Equal(t, []string{kms.EncryptDecrypt, "aes-256-gcm"}, []string{key.KeyUsage, key.Algorithm})
 		ciphertext := kms.Encrypt(t, proj, key.ID, []byte("from the api"))
 		require.Equal(t, []byte("from the api"), kms.Decrypt(t, proj, key.ID, ciphertext))
+		events := fixture.WaitForAuditEvents(t, tn, "kmip-operation-create", 1, func(e fixture.AuditEvent) bool {
+			return e.Metadata["id"] == created.ID.String()
+		})
+		require.Len(t, events, 1)
+		require.Equal(t, "kmipClient", events[0].ActorType)
+		require.Equal(t, client.ID, events[0].Actor["clientId"])
 	})
 
 	t.Run("should register key material and return the same material on get", func(t *testing.T) {

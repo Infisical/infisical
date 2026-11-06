@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/kms"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
@@ -15,11 +16,12 @@ func TestKmsKey_EncryptDecrypt(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should round-trip plaintext with aes-256-gcm and aes-128-gcm keys, including empty plaintext", func(t *testing.T) {
+	t.Run("should round-trip plaintext with aes-256-gcm and aes-128-gcm keys, including empty plaintext, and log each call", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		proj := newProject(t, h.NewTenant(t))
+		tn := h.NewTenant(t)
+		proj := newProject(t, tn)
 		keys := []kms.Key{kms.NewKey(t, proj), kms.NewKey(t, proj, kms.WithAlgorithm("aes-128-gcm"))}
 
 		for _, key := range keys {
@@ -30,6 +32,13 @@ func TestKmsKey_EncryptDecrypt(t *testing.T) {
 				// Assert
 				require.Equalf(t, plaintext, kms.Decrypt(t, proj, key.ID, ciphertext), "%s", key.Algorithm)
 			}
+		}
+		for _, eventType := range []string{"cmek-encrypt", "cmek-decrypt"} {
+			events := fixture.WaitForAuditEvents(t, tn, eventType, 2, func(e fixture.AuditEvent) bool {
+				return e.Metadata["keyId"] == keys[0].ID.String()
+			})
+			require.Lenf(t, events, 2, "%s", eventType)
+			require.Equalf(t, tn.Admin.ID.String(), events[0].Actor["userId"], "%s", eventType)
 		}
 	})
 

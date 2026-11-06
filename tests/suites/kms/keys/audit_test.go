@@ -1,54 +1,21 @@
 package keys_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
-	"time"
 
-	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/kms"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
-	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
 
-type auditEvent struct {
-	Type      string
-	ActorType string
-	Actor     map[string]any
-	Metadata  map[string]any
-}
-
-// keyEvents waits until the organization's audit log holds at least n events of the type for the key. The log is
-// written from a queue, so a read right after the action is empty.
-func keyEvents(t *testing.T, tn *harness.Tenant, eventType, keyID string, n int) []auditEvent {
+// keyEvents waits for at least n audit events of the type about the key.
+func keyEvents(t *testing.T, tn *harness.Tenant, eventType, keyID string, n int) []fixture.AuditEvent {
 	t.Helper()
-	got, err := wait.For(t.Context(), func(ctx context.Context) ([]auditEvent, bool, error) {
-		res, err := tn.Admin.API.ListOrganizationAuditLogsWithResponse(ctx, &api.ListOrganizationAuditLogsParams{
-			EventType: new(eventType),
-			StartDate: new(time.Now().UTC().Add(-time.Hour).Truncate(time.Second)),
-			Limit:     new(float32(100)),
-		})
-		if err != nil || res.JSON200 == nil {
-			return nil, false, err
-		}
-		var out []auditEvent
-		for _, l := range res.JSON200.AuditLogs {
-			metadata, _ := l.Event.Metadata.(map[string]any)
-			if metadata["keyId"] != keyID {
-				continue
-			}
-			actor, _ := l.Actor.Metadata.(map[string]any)
-			out = append(out, auditEvent{Type: l.Event.Type, ActorType: l.Actor.Type, Actor: actor, Metadata: metadata})
-		}
-		return out, len(out) >= n, nil
-	})
-	require.NoErrorf(t, err, "waiting for %d %s audit events for key %s", n, eventType, keyID)
-	return got
+	return fixture.WaitForAuditEvents(t, tn, eventType, n, func(e fixture.AuditEvent) bool { return e.Metadata["keyId"] == keyID })
 }
 
 func TestKmsKey_AuditLog(t *testing.T) {
