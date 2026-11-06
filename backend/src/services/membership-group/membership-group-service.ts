@@ -8,8 +8,6 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
-import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { reapOrphanedFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -60,8 +58,6 @@ import { newProjectMembershipGroupFactory } from "./project/project-membership-g
 type TMembershipGroupServiceFactoryDep = {
   membershipGroupDAL: TMembershipGroupDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete" | "find">;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
-  accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   approvalPolicyDAL: Pick<
@@ -98,8 +94,6 @@ export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupSe
 export const membershipGroupServiceFactory = ({
   membershipGroupDAL,
   roleDAL,
-  accessApprovalPolicyDAL,
-  accessApprovalPolicyApproverDAL,
   secretApprovalPolicyDAL,
   secretApprovalPolicyApproverDAL,
   approvalPolicyDAL,
@@ -527,29 +521,6 @@ export const membershipGroupServiceFactory = ({
       throw new BadRequestError({
         message: "You can't delete your own membership"
       });
-
-    const accessApprovalPolicyApprovers = await accessApprovalPolicyApproverDAL.find({
-      approverGroupId: dto.selector.groupId
-    });
-
-    // check if group is assigned to any access approval policy
-    const accessApprovalPolicyApproverGroupIds = accessApprovalPolicyApprovers.map(({ policyId }) => policyId);
-    if (accessApprovalPolicyApprovers.length > 0) {
-      const accessApprovalPolicies = await accessApprovalPolicyDAL.find({
-        $in: {
-          [`${TableName.AccessApprovalPolicy}.id` as "id"]: [...new Set(accessApprovalPolicyApproverGroupIds)]
-        },
-        projectId: existingMembership.scopeProjectId ?? undefined,
-        deletedAt: null
-      });
-
-      if (accessApprovalPolicies.length > 0) {
-        const policyNames = accessApprovalPolicies.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `Cannot remove group from project: group is an approver in access approval ${accessApprovalPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-        });
-      }
-    }
 
     const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
       ...(existingMembership.scopeProjectId
