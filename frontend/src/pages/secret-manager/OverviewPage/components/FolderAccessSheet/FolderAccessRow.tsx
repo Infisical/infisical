@@ -4,8 +4,7 @@ import {
   ChevronDownIcon,
   CornerDownRightIcon,
   FolderTreeIcon,
-  LockIcon,
-  ShieldIcon
+  LockIcon
 } from "lucide-react";
 
 import {
@@ -20,7 +19,10 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuTrigger,
-  Input
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { SecretFolderRole, TFolderAccess } from "@app/hooks/api/folderAccess";
 
@@ -85,39 +87,17 @@ const RowCaption = ({ parts }: { parts: TCaptionPart[] }) => {
   );
 };
 
-const roleBadgeLabelOf = (actor: TFolderAccessActor) => {
-  if (actor.isProjectAdmin) return "Admin";
-  const [first, ...rest] = actor.roles;
-  if (!first) return null;
-  return rest.length ? `${first.name} +${rest.length}` : first.name;
-};
-
-export const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => {
-  const roleBadgeLabel = roleBadgeLabelOf(actor);
-  return (
-    <>
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-neutral/10 text-xs font-semibold text-accent">
-        {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
-          {roleBadgeLabel && (
-            <Badge
-              variant="outline"
-              iconPosition="left"
-              title={actor.roles.map((role) => role.name).join(", ") || undefined}
-            >
-              <ShieldIcon />
-              {roleBadgeLabel}
-            </Badge>
-          )}
-        </div>
-        <p className="truncate text-xs text-muted">{actor.subtitle}</p>
-      </div>
-    </>
-  );
-};
+export const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
+  <>
+    <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-neutral/10 text-xs font-semibold text-accent">
+      {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
+      <p className="truncate text-xs text-muted">{actor.subtitle}</p>
+    </div>
+  </>
+);
 
 type Props = {
   actor: TFolderAccessActor;
@@ -276,10 +256,22 @@ export const FolderAccessRow = ({
       <div className="flex shrink-0 flex-col items-end gap-1">
         <div className="flex items-center gap-2">
           {!access && !inheritedAccess && (
-            <span className="flex items-center gap-1 text-xs text-muted">
-              <CornerDownRightIcon className="size-3.5" />
-              Via project role
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex cursor-default items-center gap-1 text-xs text-muted">
+                  <CornerDownRightIcon className="size-3.5" />
+                  Via project role
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-medium">
+                  {actor.roles.length > 1 ? "Project roles" : "Project role"}
+                </p>
+                {actor.roles.map((role) => (
+                  <p key={role.slug}>{role.name}</p>
+                ))}
+              </TooltipContent>
+            </Tooltip>
           )}
           {access?.isPermissionRecursive && (
             <Badge
@@ -297,7 +289,7 @@ export const FolderAccessRow = ({
             }}
           >
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" isDisabled={isDisabled}>
+              <Button variant="ghost" size="sm" isDisabled={isDisabled}>
                 {triggerLabel}
                 <ChevronDownIcon />
               </Button>
