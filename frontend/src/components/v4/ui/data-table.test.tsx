@@ -540,8 +540,10 @@ it("renders persistent row actions in the sticky tail, sized by their count", as
   const blocked = [...second.querySelectorAll("button")].find((button) =>
     button.textContent?.startsWith("Delete host")
   )!;
-  expect(blocked.disabled).toBe(true);
+  expect(blocked.getAttribute("aria-disabled")).toBe("true");
   expect(blocked.getAttribute("aria-description")).toBe("Protected host");
+  await click(blocked);
+  expect(onRowActivate).not.toHaveBeenCalled();
 });
 
 it("draws a header row per group, indents its rows and selects across groups", async () => {

@@ -3,6 +3,7 @@ import { accessListDefinition } from "./contracts/access-list";
 import { activityLogDefinition } from "./contracts/activity-log";
 import { animatedCollapseDefinition } from "./contracts/animated-collapse";
 import { announcementsDefinition } from "./contracts/announcements";
+import { appConnectionFormDefinition } from "./contracts/app-connection-form";
 import { approvalQueueDefinition } from "./contracts/approval-queue";
 import { baselineDefinitions } from "./contracts/baseline";
 import { codeDefinition } from "./contracts/code";
@@ -44,6 +45,7 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   activityLogDefinition,
   animatedCollapseDefinition,
   announcementsDefinition,
+  appConnectionFormDefinition,
   approvalQueueDefinition,
   ...baselineDefinitions,
   codeDefinition,

@@ -339,7 +339,7 @@ function DiscardChangesAlertDialog({
   open,
   onOpenChange,
   onDiscard,
-  title = "Discard Changes?",
+  title = "Discard changes?",
   description = "Your changes will be lost."
 }: {
   open: boolean;
@@ -356,7 +356,7 @@ function DiscardChangesAlertDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+          <AlertDialogCancel>Keep editing</AlertDialogCancel>
           <AlertDialogAction variant="destructive" onClick={onDiscard}>
             Discard
           </AlertDialogAction>

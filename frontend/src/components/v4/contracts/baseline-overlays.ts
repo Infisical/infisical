@@ -35,7 +35,7 @@ export const baselineOverlays = [
       "One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.",
       "When AlertDialogHeader or AlertDialogFooter is a direct child, the lead tile, header and body share one scroll region with the edge fade, and the footer stays pinned below it; the footer's own pad is the space above the actions.",
       "pending on AlertDialogContent blocks Escape and disables AlertDialogCancel while an action runs; the content is aria-busy. Show progress on the Action Button with loading.",
-      "DiscardChangesAlertDialog is the v3 discard prompt: a danger alert with the alert icon, title (default Discard Changes?), description (default Your changes will be lost.), Keep Editing and a destructive Discard that calls onDiscard. useDiscardChangesGuard({ isDirty, onDiscard }) returns the v3 shape (requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen) plus discardDialogProps to spread on the prompt. requestDiscard calls onDiscard at once when clean and opens the prompt when dirty; route a Dialog or Sheet onOpenChange(false) through it."
+      "DiscardChangesAlertDialog is the v3 discard prompt: a danger alert with the alert icon, title (default Discard changes?), description (default Your changes will be lost.), Keep editing and a destructive Discard that calls onDiscard. useDiscardChangesGuard({ isDirty, onDiscard }) returns the v3 shape (requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen) plus discardDialogProps to spread on the prompt. requestDiscard calls onDiscard at once when clean and opens the prompt when dirty; route a Dialog or Sheet onOpenChange(false) through it."
     ],
     accessibility: [
       "Title and Description name the alert dialog. Focus starts on Cancel and returns to the trigger on close. The dialog stays inside the viewport, and Escape inside an open editor closes that editor first.",
@@ -882,7 +882,8 @@ export const baselineOverlays = [
       "The trigger retains its own accessible name. Tooltip shortcut text describes a host binding; it does not register a hotkey."
     ],
     limitations: [
-      "Tooltip content is supplementary text, not a place for focusable actions. A displayed shortcut does not register its binding."
+      "Tooltip content is supplementary text, not a place for focusable actions. A displayed shortcut does not register its binding.",
+      "A natively disabled Button takes no pointer or focus events, so a Tooltip around it never opens, and a span anchor around it opens on hover but never on keyboard focus. Explain a blocked Button with its disabledReason, which renders this Tooltip itself; ui:lint fails a natively disabled Button written inside Tooltip or TooltipTrigger (rule/disabled-reason-tooltip)."
     ],
     examples: [
       {
@@ -908,6 +909,12 @@ export const baselineOverlays = [
         title: "Focusable text",
         module: "./examples/tooltip/text.tsx",
         states: ["default", "keyboard"]
+      },
+      {
+        id: "disabled",
+        title: "Blocked actions",
+        module: "./examples/tooltip/disabled.tsx",
+        states: ["disabled", "keyboard", "loading"]
       }
     ],
     coverage: [
