@@ -145,6 +145,7 @@ type TCertificateServiceFactoryDep = {
     | "findLatestRenewalOf"
     | "updateById"
     | "findByIdForUpdate"
+    | "primaryNode"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;

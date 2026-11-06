@@ -680,11 +680,12 @@ export const getCaCrlIssuer = async ({
   internalCa,
   kmsId,
   certificateAuthorityCertDAL,
-  kmsService
+  kmsService,
+  tx
 }: TGetCaCrlIssuerDTO) => {
   if (!internalCa.activeCaCertId) return internalCa.dn;
 
-  const caCert = await certificateAuthorityCertDAL.findById(internalCa.activeCaCertId);
+  const caCert = await certificateAuthorityCertDAL.findById(internalCa.activeCaCertId, tx);
   if (!caCert) throw new NotFoundError({ message: "CA certificate not found" });
 
   const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
@@ -707,7 +708,8 @@ export const rebuildCaCrl = async ({
   kmsService,
   caKeySourceService
 }: TRebuildCaCrlDTO) => {
-  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  const primaryDb = certificateDAL.primaryNode();
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, primaryDb);
   if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
   const { signer } = await getCaSigner({
@@ -725,10 +727,13 @@ export const rebuildCaCrl = async ({
     kmsService
   });
 
-  const revokedCerts = await certificateDAL.find({
-    caId: ca.id,
-    status: CertStatus.REVOKED
-  });
+  const revokedCerts = await certificateDAL.find(
+    {
+      caId: ca.id,
+      status: CertStatus.REVOKED
+    },
+    { tx: primaryDb }
+  );
 
   const thisUpdate = new Date();
   const nextUpdate = new Date(thisUpdate);
@@ -738,7 +743,8 @@ export const rebuildCaCrl = async ({
     internalCa: ca.internalCa,
     kmsId: keyId,
     certificateAuthorityCertDAL,
-    kmsService
+    kmsService,
+    tx: primaryDb
   });
 
   const crl = await signer.createCrl({
