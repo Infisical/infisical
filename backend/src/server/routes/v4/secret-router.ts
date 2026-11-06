@@ -31,8 +31,6 @@ const SecretReferenceNode = z.object({
   value: z.string().optional(),
   environment: z.string(),
   secretPath: z.string(),
-  projectSlug: z.string().optional(),
-  exists: z.boolean().optional(),
   project: z
     .object({
       id: z.string(),
