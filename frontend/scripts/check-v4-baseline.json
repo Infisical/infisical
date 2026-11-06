@@ -4,17 +4,6 @@
     "src/components/v4/ui/input-group.tsx": 2,
     "src/pages/design-system/FoundationPages.tsx": 2
   },
-  "cursor-pointer": {
-    "src/pages/v4/access/roles/roles.module.css": 1,
-    "src/pages/v4/cert-manager/DashboardPage/components/DonutCard.tsx": 1,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/bulk/copy-secrets.module.css": 2,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/commits/commits.module.css": 2,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/import-secrets/import-secrets.module.css": 4,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/overview.module.css": 1,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/references.module.css": 3,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/row-actions/row-actions.module.css": 1,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/secret-sync/secret-sync.module.css": 2
-  },
   "decorative-effect": {
     "src/components/v4/ui/chart.tsx": 1
   },

@@ -871,7 +871,7 @@ export function ImportRow({
     <>
       <TableRow
         data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
-        className={`${styles.row} ${styles.clickable}`}
+        className={styles.row}
         data-expanded={expanded || undefined}
         onClick={() => setExpanded(!expanded)}
       >
