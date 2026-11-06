@@ -34,7 +34,7 @@ describe("importCertToCa", () => {
     });
     const caCert = await x509.X509CertificateGenerator.create({
       serialNumber: "02",
-      subject: "CN=Example Intermediate CA",
+      subject: "CN=Example Intermediate CA, O=Example Corp",
       issuer: rootCert.subject,
       notBefore,
       notAfter,
@@ -143,6 +143,24 @@ describe("importCertToCa", () => {
     expect(deps.certificateAuthorityCertDAL.create).not.toHaveBeenCalled();
     expect(deps.internalCertificateAuthorityDAL.update).not.toHaveBeenCalled();
     expect(deps.certificateAuthorityCrlDAL.update).not.toHaveBeenCalled();
+  });
+
+  it("signs the CRL with the imported certificate subject as issuer", async () => {
+    const createCrl = vi.fn((params: Omit<x509.X509CrlCreateParams, "signingKey" | "signingAlgorithm">) =>
+      x509.X509CrlGenerator.create({ ...params, signingKey: caKeys.privateKey, signingAlgorithm: SIGNING_ALGORITHM })
+    );
+    const deps = buildService(createCrl);
+
+    await deps.service.importCertToCa({
+      isInternal: true,
+      caId: "ca-1",
+      certificate,
+      certificateChain
+    });
+
+    const crl = (await createCrl.mock.results[0].value) as x509.X509Crl;
+    const { subjectName } = new x509.X509Certificate(certificate);
+    expect(Buffer.from(crl.issuerName.toArrayBuffer())).toEqual(Buffer.from(subjectName.toArrayBuffer()));
   });
 
   it("saves the CRL in the same transaction that activates the certificate", async () => {
