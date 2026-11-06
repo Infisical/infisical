@@ -12,6 +12,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
 
+## Cloud Agent environment
+
+Cloud Agents run the platform on the host, not through `docker-compose.dev.yml`. Postgres and Redis listen on localhost, the API on port 4000, Vite on port 3000, and nginx on port 8080 (`SITE_URL`). A fresh database opens `/admin/signup` until a super admin exists.
+
+`node` and `npm` earlier on `PATH` can be the agent runtime (Node 22). This repo needs Node 26 and npm 11 from `/usr/local/bin`, and Go 1.26 from `/usr/local/bin/go`. Put `/usr/local/bin` first before install, dev, lint, or test commands.
+
+Boot writes a gitignored `.env` from `.env.dev.example`. `ENCRYPTION_KEY` is read as raw UTF-8 and must be 32 bytes, so boot uses the 32-character sample from `.env.example` (`openssl rand -hex 16`). The base64 value in `.env.dev.example` is the wrong length and migrations fail. SMTP is left unset, so signup codes are printed in the API log. Do not point `npm run test:e2e` at this database.
+
 ## Repository Structure
 
 Infisical is an open-source secret management platform. Monorepo layout:
