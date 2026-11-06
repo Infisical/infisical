@@ -193,14 +193,99 @@ describe("credential types", () => {
     expect(() => assertCredentialTypeSupported(mcp, AgentVaultCredentialType.Passthrough)).toThrow();
   });
 
-  test("an HTTP service takes every credential type but OAuth", () => {
+  test("an HTTP service takes every credential type but OAuth and an SSH key", () => {
     Object.values(AgentVaultCredentialType)
-      .filter((type) => type !== AgentVaultCredentialType.OAuth)
+      .filter((type) => type !== AgentVaultCredentialType.OAuth && type !== AgentVaultCredentialType.SshKey)
       .forEach((type) => {
         expect(() => assertCredentialTypeSupported(http, type)).not.toThrow();
       });
     expect(() => assertCredentialTypeSupported(http, AgentVaultCredentialType.OAuth)).toThrow(
       "An HTTP service can't use OAuth as its credential."
     );
+    expect(() => assertCredentialTypeSupported(http, AgentVaultCredentialType.SshKey)).toThrow(
+      "An HTTP service can't use an SSH key as its credential."
+    );
+  });
+});
+
+describe("database and SSH services", () => {
+  const postgres = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Postgres];
+  const mysql = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Mysql];
+  const ssh = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Ssh];
+
+  test("fill in the default port and TLS settings", () => {
+    expect(buildServiceConfig(postgres, { host: "db.internal", database: "app" })).toEqual({
+      host: "db.internal",
+      port: 5432,
+      database: "app",
+      tls: { enabled: true, verify: true }
+    });
+    expect(buildServiceConfig(mysql, { host: "db.internal", database: "orders" })).toMatchObject({ port: 3306 });
+    expect(buildServiceConfig(ssh, { host: "bastion.internal" })).toEqual({ host: "bastion.internal", port: 22 });
+  });
+
+  test("have no host pattern, so HTTP matching can never pick them", () => {
+    const config = buildServiceConfig(postgres, { host: "db.internal", database: "app" });
+    expect(resolveServiceHostPattern(postgres, config, undefined)).toBeNull();
+    expect(findUnsupportedServiceFields(postgres, { hostPattern: "db.internal" })).toEqual(["hostPattern"]);
+  });
+
+  test("need a database for Postgres and MySQL but not for SSH", () => {
+    expect(() => buildServiceConfig(postgres, { host: "db.internal" })).toThrow("'database'");
+    expect(() => buildServiceConfig(mysql, { host: "db.internal" })).toThrow("'database'");
+    expect(findUnsupportedServiceFields(ssh, { database: "app", tls: { enabled: true } })).toEqual(["database", "tls"]);
+  });
+
+  test.each([
+    ["postgres://db.internal", "without a scheme"],
+    ["db.internal:5432", "Port field"],
+    ["*.internal", "Wildcards"],
+    ["db.internal/app", "without a path"],
+    ["bad host", "isn't a valid host name"]
+  ])("refuse the host %s", (host, message) => {
+    expect(() => buildServiceConfig(postgres, { host, database: "app" })).toThrow(message);
+  });
+
+  test("take an IPv6 host with or without brackets", () => {
+    expect(buildServiceConfig(ssh, { host: "[2001:db8::1]" })).toMatchObject({ host: "2001:db8::1" });
+    expect(buildServiceConfig(ssh, { host: "2001:db8::1" })).toMatchObject({ host: "2001:db8::1" });
+  });
+
+  test.each([0, 65536, 1.5])("refuse the port %s", (port) => {
+    expect(() => buildServiceConfig(ssh, { host: "bastion.internal", port })).toThrow("'port'");
+  });
+
+  test("refuse a certificate authority that isn't a PEM certificate", () => {
+    expect(() =>
+      buildServiceConfig(postgres, { host: "db.internal", database: "app", tls: { ca: "not a certificate" } })
+    ).toThrow("isn't a valid PEM certificate");
+  });
+
+  test("keep the stored TLS settings an update leaves out", () => {
+    const stored = { host: "db.internal", port: 5432, database: "app", tls: { enabled: true, verify: true } };
+    expect(buildServiceConfig(postgres, { tls: { verify: false } }, stored)).toMatchObject({
+      tls: { enabled: true, verify: false }
+    });
+  });
+
+  test("are named with the right article", () => {
+    expect(() => assertCredentialTypeSupported(postgres, AgentVaultCredentialType.SshKey)).toThrow(
+      "A PostgreSQL service can't use an SSH key as its credential. Use basic auth."
+    );
+    expect(() => assertServiceFieldsSupported(ssh, { allowedMethods: ["GET"] })).toThrow(
+      "An SSH service doesn't take 'allowedMethods'."
+    );
+  });
+
+  test("an SSH service takes a password or an SSH key", () => {
+    expect(() => assertCredentialTypeSupported(ssh, AgentVaultCredentialType.Basic)).not.toThrow();
+    expect(() => assertCredentialTypeSupported(ssh, AgentVaultCredentialType.SshKey)).not.toThrow();
+    expect(() => assertCredentialTypeSupported(ssh, AgentVaultCredentialType.Bearer)).toThrow();
+  });
+
+  test("a read-back of the fields they don't take is not an attempt to set them", () => {
+    expect(
+      dropReadBackServiceFields(ssh, { hostPattern: null, serverUrl: null, customHeaders: [], database: null }, null)
+    ).toEqual({ hostPattern: undefined, serverUrl: undefined, customHeaders: undefined, database: undefined });
   });
 });

@@ -283,6 +283,38 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
 - **A NULL `encryptedSecrets` means nothing to send only for a pass-through service with no custom headers or
   substitutions.** On any other service it means the session ended, and resolve leaves the service out.
 
+## Database and SSH services
+
+`postgres`, `mysql` and `ssh` are service types like `http` and `mcp`, in the same registry
+(`AGENT_VAULT_SERVICE_TYPES`), tables and grants. The agent reaches one with `infisical agent-vault connect <name>`,
+which opens a local port and tunnels each connection to the proxy as `CONNECT <name>.svc.agent-vault:1` over TLS.
+The proxy then runs PAM's protocol handler, which logs in as the service's account.
+
+- **`hostPattern` is NULL for these types, and the DB enforces it both ways** (`("type" IN ('http','mcp')) =
+  ("hostPattern" IS NOT NULL)`). The server lives in `config` (`host`, `port`, `database`, `tls`). A copy of the host
+  in `hostPattern` would let HTTP matching, which has no type filter, attach the database or SSH password as a Basic
+  header to any web request to that host, on new and old proxies alike. With no pattern an old proxy, which reads an
+  unknown type as `http`, matches nothing. Host-overlap checks skip NULL patterns (`findHostPatternConflicts`), so a
+  database never conflicts with an HTTP service on the same host. Every reader of `hostPattern` handles NULL.
+- **The name is how the agent connects**, so it is at most 63 characters (one DNS label) and an inline one must be
+  given. Postgres pins `database` (PAM's handler overwrites the client's); MySQL only starts in it, and the account's
+  grants decide which other databases the agent can `USE`.
+- **Resolve sends `native: { host, port, database, tls }`**, built by `toResolvedNativeTarget`, never the raw config,
+  so fields of other types stay off the wire. HTTP and MCP services send `native: null`. The proxy prefers an inline
+  service over a bundle one with the same name (`accessBundleName === null`), so a bundle edit made after a session
+  started can't redirect `connect db` to another database.
+- **Credentials.** `basic` for all three, and it must have a username (set, or left to members). `ssh-key` (username,
+  private key, optional certificate) for `ssh` only, enforced by a CHECK too. Its parts span lines, so it takes no
+  member-provided field and no `{{variable}}` yet: personal values and variables refuse line breaks. A partial update
+  keeps the parts it leaves out, and `certificate: null` removes the certificate. Keys are not checked on save, as in
+  PAM; the proxy refuses an unusable one when a connection is requested.
+- **TLS to the database** is `{ enabled, verify, ca }`, defaulting to enabled and verified, merged one level deep on
+  update. A `ca` is parsed on save. It applies only to the proxy's leg to the database.
+- **`GET /api/v1/agent-vault/session/proxy-ca-fingerprints`** (session-token auth, like `/session/skills`) returns
+  the `rootCaFingerprint` of every proxy in the session's project, so `connect` can pin the proxy's CA without
+  trusting the proxy for it. It never returns the fingerprint of a stored certificate that differs from it: that is a
+  CA no proxy serves.
+
 ## Proxies
 
 - There is no enrollment. Create and rotate return a proxy token (the non-expiring access JWT) and every proxy

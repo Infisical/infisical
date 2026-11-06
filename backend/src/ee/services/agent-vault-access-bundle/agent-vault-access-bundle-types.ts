@@ -9,7 +9,8 @@ import {
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
-  AgentVaultVariableReferenceField
+  AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultAccessBundleOrderBy } from "./agent-vault-access-bundle-dal";
 
@@ -34,7 +35,16 @@ export type TAgentVaultCredentialInput =
       memberProvidedFields?: TAgentVaultBasicMemberField[];
     }
   | { type: AgentVaultCredentialType.Passthrough }
-  | { type: AgentVaultCredentialType.OAuth; authorizationId: string };
+  | { type: AgentVaultCredentialType.OAuth; authorizationId: string }
+  | {
+      type: AgentVaultCredentialType.SshKey;
+      username?: string;
+      privateKey?: string;
+      // null removes a stored certificate.
+      certificate?: string | null;
+      // Accepted only so a request that sends any is refused by name: a key can't be left to members yet.
+      memberProvidedFields?: TAgentVaultMemberProvidedField[];
+    };
 
 export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
 
@@ -59,6 +69,7 @@ export type TAgentVaultCredentialSummary =
     }
   | { type: AgentVaultCredentialType.Basic; memberProvidedFields: TAgentVaultBasicMemberField[] }
   | { type: AgentVaultCredentialType.Passthrough }
+  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
   | TAgentVaultOauthCredentialSummary;
 
 export type TAgentVaultVariableReferenceSummary = { variableId: string; key: string } & (
@@ -116,6 +127,9 @@ export type TAgentVaultSubstitutionUpdate = {
 
 // Flat rather than a union on `type`: which of the type-specific fields a service takes is decided by the
 // service type registry, which refuses the ones its type does not take.
+// `ca: null` (or "") removes a stored certificate authority.
+export type TAgentVaultNativeTlsInput = { enabled?: boolean; verify?: boolean; ca?: string | null };
+
 export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   type: AgentVaultServiceType;
@@ -123,6 +137,10 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   hostPattern?: string;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
+  host?: string;
+  port?: number;
+  database?: string;
+  tls?: TAgentVaultNativeTlsInput;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   allowedTools?: string[] | null;
@@ -137,10 +155,16 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   // Must match the stored type, which never changes.
   type: AgentVaultServiceType;
   name?: string;
-  hostPattern?: string;
+  // Null only as a database or SSH service's read-back value.
+  hostPattern?: string | null;
   // Null only as an HTTP service's read-back value.
   serverUrl?: string | null;
   transport?: AgentVaultMcpTransport | null;
+  // Null only as the read-back value of a type that doesn't take them.
+  host?: string | null;
+  port?: number | null;
+  database?: string | null;
+  tls?: TAgentVaultNativeTlsInput | null;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   allowedTools?: string[] | null;

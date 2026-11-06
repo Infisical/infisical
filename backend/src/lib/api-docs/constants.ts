@@ -4681,6 +4681,7 @@ export const AGENT_VAULT = {
     limit: "The maximum number of access bundles to return.",
     offset: "How many access bundles to skip.",
     hostPatterns: "Every host pattern the access bundle's services cover.",
+    serviceTypes: "The types of the access bundle's services, each listed once.",
     requiresSetup:
       "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
     granted:
@@ -4696,9 +4697,29 @@ export const AGENT_VAULT = {
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
-    type: "The service type: `http` for an HTTP API, or `mcp` for a remote MCP server. Can't be changed after the service is created.",
-    updateType: "The service's type, `http` or `mcp`. Must match the type the service was created with.",
-    serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
+    type: "The service type: `http` for an HTTP API, `mcp` for a remote MCP server, or `postgres`, `mysql` or `ssh` for a database or SSH server the agent reaches with `infisical agent-vault connect`. Can't be changed after the service is created.",
+    updateType:
+      "The service's type, `http`, `mcp`, `postgres`, `mysql` or `ssh`. Must match the type the service was created with.",
+    nativeName:
+      "The name of the service. The agent connects to it by this name with `infisical agent-vault connect`, so it can be at most 63 characters.",
+    host: "The database or SSH server's host name or IP address, as the Agent Vault proxy reaches it. No scheme, port or path.",
+    hostRead: "The database or SSH server's host name or IP address. Null for an `http` or `mcp` service.",
+    port: "The server's port. Defaults to 5432 for `postgres`, 3306 for `mysql` and 22 for `ssh`.",
+    portRead: "The server's port. Null for an `http` or `mcp` service.",
+    database:
+      "The database the proxy logs in to. For `postgres` the agent can only use this database. For `mysql` it is the default database, and the account's grants decide which others the agent can switch to.",
+    databaseRead: "The database the proxy logs in to. Null for an `ssh`, `http` or `mcp` service.",
+    tls: "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. Send `ca: null` to remove a stored one.",
+    tlsRead: "How the proxy connects to the database. Null for an `ssh`, `http` or `mcp` service.",
+    nativeCredential:
+      "The account the proxy logs in as. A username and password for `postgres` and `mysql`, and a username with a password or an SSH key for `ssh`.",
+    sshUsername: "The user the proxy logs in to the SSH server as.",
+    sshPrivateKey:
+      "The SSH private key, in OpenSSH or PEM format and without a passphrase. Never returned once saved. Omit on update to keep the stored key.",
+    sshCertificate:
+      "An SSH certificate for the key, in the format of an `-cert.pub` file. Never returned once saved. Omit on update to keep the stored certificate; send null to remove it.",
+    sshHasCertificate: "Whether an SSH certificate is stored with the key.",
+    serverUrlRead: "The MCP server's full URL. Null for every other type.",
     transportRead:
       "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for an `http` service.",
     serverUrl:
@@ -4720,7 +4741,7 @@ export const AGENT_VAULT = {
     oauthAuthorizedAt: "When the connection was last authorized. Not returned to Agent Vault members.",
     oauthLastError: "The last refresh failure, if any. Never contains a token. Not returned to Agent Vault members.",
     hostPattern:
-      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported. Null for a `postgres`, `mysql` or `ssh` service, whose server is set with `host` and `port`.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
@@ -5039,6 +5060,8 @@ export const AGENT_VAULT = {
   },
 
   SESSION: {
+    proxyCaFingerprints:
+      "The SHA-256 fingerprints of the certificate authorities the Agent Vault proxies in the session's project serve, as `SHA256:AA:BB:...`.",
     sessionId: "The ID of the session.",
     revokedAt: "When the session was revoked.",
     accessBundle:

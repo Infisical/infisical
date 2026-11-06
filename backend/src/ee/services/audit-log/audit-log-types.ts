@@ -6677,7 +6677,14 @@ interface AgentVaultServiceCreateEvent {
     // MCP services only.
     serverUrl?: string;
     transport?: string;
-    hostPattern: string;
+    // Database and SSH services only. A host pattern is never set on those, so they report these instead.
+    host?: string;
+    port?: number;
+    database?: string;
+    tlsEnabled?: boolean;
+    tlsVerify?: boolean;
+    // Absent for a database or SSH service.
+    hostPattern?: string;
     credentialType: string;
     // OAuth credentials only.
     oauthIssuer?: string;
@@ -6707,6 +6714,12 @@ interface AgentVaultServiceUpdateEvent {
     serviceType: string;
     serverUrl?: string;
     transport?: string;
+    // Database and SSH services only. A host pattern is never set on those, so they report these instead.
+    host?: string;
+    port?: number;
+    database?: string;
+    tlsEnabled?: boolean;
+    tlsVerify?: boolean;
     hostPattern?: string;
     credentialType?: string;
     // Present when the update connected or reauthorized an OAuth credential.
@@ -7000,7 +7013,11 @@ interface AgentVaultSessionMintEvent {
       name: string;
       serviceType: string;
       serverUrl?: string;
-      hostPattern: string;
+      // Absent for a database or SSH service, which reports host, port and database instead.
+      hostPattern?: string;
+      host?: string;
+      port?: number;
+      database?: string;
       credentialType: string;
       headerName?: string;
       allowedMethods: string[] | null;

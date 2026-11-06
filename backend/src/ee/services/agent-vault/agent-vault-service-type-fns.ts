@@ -10,6 +10,12 @@ import {
 } from "./agent-vault-credential-schemas";
 import { AgentVaultCredentialType, AgentVaultMcpTransport, AgentVaultServiceType } from "./agent-vault-enums";
 import { AGENT_VAULT_DEFAULT_PORT, parseHostPatterns } from "./agent-vault-host-pattern-fns";
+import {
+  AgentVaultMysqlServiceConfigSchema,
+  AgentVaultPostgresServiceConfigSchema,
+  AgentVaultSshServiceConfigSchema,
+  TAgentVaultNativeServiceConfig
+} from "./agent-vault-native-config-schemas";
 
 export const AGENT_VAULT_MAX_SERVER_URL_LENGTH = 2048;
 
@@ -88,8 +94,9 @@ const AgentVaultMcpServiceConfigSchema = z.object({
 type TAgentVaultMcpServiceConfig = z.infer<typeof AgentVaultMcpServiceConfigSchema>;
 
 export type TAgentVaultServiceConfig =
-  | TAgentVaultMcpServiceConfig
-  | { [K in keyof TAgentVaultMcpServiceConfig]?: never };
+  | (TAgentVaultMcpServiceConfig & { [K in keyof TAgentVaultNativeServiceConfig]?: never })
+  | (TAgentVaultNativeServiceConfig & { [K in keyof TAgentVaultMcpServiceConfig]?: never })
+  | { [K in keyof TAgentVaultMcpServiceConfig | keyof TAgentVaultNativeServiceConfig]?: never };
 
 // The server an OAuth token is pinned to: a token is only ever sent to the server URL it was refreshed for.
 export const getServiceServerUrl = (config: unknown): string | null =>
@@ -98,10 +105,12 @@ export const getServiceServerUrl = (config: unknown): string | null =>
 export type TAgentVaultServiceTypeDefinition = {
   type: AgentVaultServiceType;
   label: string;
+  article: "A" | "An";
   configSchema: z.ZodObject<z.ZodRawShape>;
   allowedCredentialTypes: AgentVaultCredentialType[];
-  // Null when the caller enters the host pattern itself.
-  deriveHostPattern: ((config: Record<string, unknown>) => string) | null;
+  // Null when the caller enters the host pattern itself. A database or SSH service derives none: its host lives in config,
+  // and a host pattern would let HTTP matching attach its password to web requests to that host.
+  deriveHostPattern: ((config: Record<string, unknown>) => string | null) | null;
   supportsRequestRules: boolean;
   supportsToolRules: boolean;
   supportsTransformations: { customHeaders: boolean; substitutions: boolean };
@@ -113,6 +122,7 @@ export const AGENT_VAULT_SERVICE_TYPES: Record<AgentVaultServiceType, TAgentVaul
   [AgentVaultServiceType.Http]: {
     type: AgentVaultServiceType.Http,
     label: "HTTP",
+    article: "An",
     configSchema: AgentVaultHttpServiceConfigSchema,
     allowedCredentialTypes: [
       AgentVaultCredentialType.Bearer,
@@ -128,6 +138,7 @@ export const AGENT_VAULT_SERVICE_TYPES: Record<AgentVaultServiceType, TAgentVaul
   [AgentVaultServiceType.Mcp]: {
     type: AgentVaultServiceType.Mcp,
     label: "MCP",
+    article: "An",
     configSchema: AgentVaultMcpServiceConfigSchema,
     allowedCredentialTypes: [AgentVaultCredentialType.Bearer, AgentVaultCredentialType.OAuth],
     deriveHostPattern: (config) => deriveMcpHostPattern((config as TAgentVaultMcpServiceConfig).serverUrl),
@@ -136,8 +147,50 @@ export const AGENT_VAULT_SERVICE_TYPES: Record<AgentVaultServiceType, TAgentVaul
     supportsTransformations: { customHeaders: true, substitutions: false },
     unsupportedFieldHint:
       "Its host comes from 'serverUrl', and method, path and substitution rules apply only to HTTP services."
+  },
+  [AgentVaultServiceType.Postgres]: {
+    type: AgentVaultServiceType.Postgres,
+    label: "PostgreSQL",
+    article: "A",
+    configSchema: AgentVaultPostgresServiceConfigSchema,
+    allowedCredentialTypes: [AgentVaultCredentialType.Basic],
+    deriveHostPattern: () => null,
+    supportsRequestRules: false,
+    supportsToolRules: false,
+    supportsTransformations: { customHeaders: false, substitutions: false },
+    unsupportedFieldHint:
+      "Its server is set with 'host', 'port' and 'database', and request rules apply only to HTTP and MCP services."
+  },
+  [AgentVaultServiceType.Mysql]: {
+    type: AgentVaultServiceType.Mysql,
+    label: "MySQL",
+    article: "A",
+    configSchema: AgentVaultMysqlServiceConfigSchema,
+    allowedCredentialTypes: [AgentVaultCredentialType.Basic],
+    deriveHostPattern: () => null,
+    supportsRequestRules: false,
+    supportsToolRules: false,
+    supportsTransformations: { customHeaders: false, substitutions: false },
+    unsupportedFieldHint:
+      "Its server is set with 'host', 'port' and 'database', and request rules apply only to HTTP and MCP services."
+  },
+  [AgentVaultServiceType.Ssh]: {
+    type: AgentVaultServiceType.Ssh,
+    label: "SSH",
+    article: "An",
+    configSchema: AgentVaultSshServiceConfigSchema,
+    allowedCredentialTypes: [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey],
+    deriveHostPattern: () => null,
+    supportsRequestRules: false,
+    supportsToolRules: false,
+    supportsTransformations: { customHeaders: false, substitutions: false },
+    unsupportedFieldHint:
+      "Its server is set with 'host' and 'port', and request rules apply only to HTTP and MCP services."
   }
 };
+
+export const describeServiceType = (definition: Pick<TAgentVaultServiceTypeDefinition, "article" | "label">) =>
+  `${definition.article} ${definition.label} service`;
 
 export const getAgentVaultServiceType = (type: string): TAgentVaultServiceTypeDefinition => {
   const definition = AGENT_VAULT_SERVICE_TYPES[type as AgentVaultServiceType];
@@ -184,7 +237,7 @@ export const findUnsupportedServiceFields = (
 export const dropReadBackServiceFields = <T extends TAgentVaultServiceTypedFields>(
   definition: TAgentVaultServiceTypeDefinition,
   fields: T,
-  storedHostPattern: string
+  storedHostPattern: string | null
 ): T => {
   const isReadBack = (field: string) => {
     const value = fields[field];
@@ -210,7 +263,7 @@ export const assertServiceFieldsSupported = (
   const unsupported = findUnsupportedServiceFields(definition, fields);
   if (!unsupported.length) return;
   throw new BadRequestError({
-    message: `An ${definition.label} service doesn't take ${quoteList(unsupported)}. ${definition.unsupportedFieldHint}`
+    message: `${describeServiceType(definition)} doesn't take ${quoteList(unsupported)}. ${definition.unsupportedFieldHint}`
   });
 };
 
@@ -218,7 +271,8 @@ const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "a bearer token",
   [AgentVaultCredentialType.Basic]: "basic auth",
   [AgentVaultCredentialType.Passthrough]: "pass-through",
-  [AgentVaultCredentialType.OAuth]: "OAuth"
+  [AgentVaultCredentialType.OAuth]: "OAuth",
+  [AgentVaultCredentialType.SshKey]: "an SSH key"
 };
 
 export const assertCredentialTypeSupported = (
@@ -230,7 +284,7 @@ export const assertCredentialTypeSupported = (
   if (allowedCredentialTypes.includes(credentialType)) return;
   const allowed = allowedCredentialTypes.map((type) => CREDENTIAL_LABELS[type]);
   throw new BadRequestError({
-    message: `An ${definition.label} service can't use ${CREDENTIAL_LABELS[credentialType]} as its credential. Use ${allowed.join(" or ")}.`
+    message: `${describeServiceType(definition)} can't use ${CREDENTIAL_LABELS[credentialType]} as its credential. Use ${allowed.join(" or ")}.`
   });
 };
 
@@ -240,8 +294,18 @@ export const buildServiceConfig = (
   incoming: Record<string, unknown>,
   stored: unknown = {}
 ): TAgentVaultServiceConfig => {
-  const sent = shake(incoming, (value) => value === undefined);
-  const parsed = definition.configSchema.safeParse({ ...((stored ?? {}) as Record<string, unknown>), ...sent });
+  const sent = shake(incoming, (value) => value === undefined) as Record<string, unknown>;
+  const storedConfig = (stored ?? {}) as Record<string, unknown>;
+  // Merged one level deeper so an update sending only `tls.verify` keeps the stored `enabled` and `ca`.
+  const tls =
+    sent.tls && typeof sent.tls === "object" && storedConfig.tls && typeof storedConfig.tls === "object"
+      ? { ...storedConfig.tls, ...shake(sent.tls as Record<string, unknown>, (value) => value === undefined) }
+      : sent.tls;
+  const parsed = definition.configSchema.safeParse({
+    ...storedConfig,
+    ...sent,
+    ...(tls === undefined ? {} : { tls })
+  });
   if (!parsed.success) {
     const [issue] = parsed.error.issues;
     const field = issue.path.join(".");
@@ -254,8 +318,8 @@ export const resolveServiceHostPattern = (
   definition: TAgentVaultServiceTypeDefinition,
   config: TAgentVaultServiceConfig,
   hostPattern: string | undefined
-): string => {
+): string | null => {
   if (definition.deriveHostPattern) return definition.deriveHostPattern(config);
-  if (!hostPattern) throw new BadRequestError({ message: `An ${definition.label} service needs a host pattern.` });
+  if (!hostPattern) throw new BadRequestError({ message: `${describeServiceType(definition)} needs a host pattern.` });
   return hostPattern;
 };

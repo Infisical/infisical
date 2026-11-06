@@ -135,8 +135,22 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Only the fingerprint: the row also holds the CA's sealed private key, which never leaves this module.
+  const findCaFingerprintsByProjectId = async (projectId: string, tx?: Knex): Promise<string[]> => {
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.AgentVaultProxy)
+        .where({ projectId })
+        .whereNotNull("rootCaFingerprint")
+        .select("rootCaFingerprint")) as { rootCaFingerprint: string }[];
+      return rows.map((row) => row.rootCaFingerprint);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault proxy CA fingerprints" });
+    }
+  };
+
   return {
     ...orm,
+    findCaFingerprintsByProjectId,
     findByIdWithOrg,
     findByIdInProject,
     findForList,

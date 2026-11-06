@@ -11,7 +11,7 @@ export type TResolveServiceRow = {
   name: string;
   accessBundleName: string;
   type: string;
-  hostPattern: string;
+  hostPattern: string | null;
   config: unknown;
   credentialType: string;
   credentialConfig: unknown;

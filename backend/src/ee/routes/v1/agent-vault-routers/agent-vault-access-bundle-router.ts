@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
 import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
-import { AgentVaultCredentialType, AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMemberType,
+  AgentVaultServiceType
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -108,6 +112,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
+            serviceTypes: z.nativeEnum(AgentVaultServiceType).array().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceTypes),
             servicesRequiringSetup: z
               .object({
                 id: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupId),
@@ -370,7 +375,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceType: service.type,
             serverUrl: service.serverUrl ?? undefined,
             transport: service.transport ?? undefined,
-            hostPattern: service.hostPattern,
+            host: service.host ?? undefined,
+            port: service.port ?? undefined,
+            database: service.database ?? undefined,
+            tlsEnabled: service.tls?.enabled,
+            tlsVerify: service.tls?.verify,
+            hostPattern: service.hostPattern ?? undefined,
             credentialType: service.credential.type,
             headerName:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
@@ -400,7 +410,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           serviceId: service.id,
           serviceType: service.type,
           credentialType: service.credential.type,
-          hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
+          hostPatternCount: service.hostPattern ? parseHostPatterns(service.hostPattern).patterns.length : 0,
           allowedMethodCount: service.allowedMethods?.length ?? 0,
           allowedPathPrefixCount: service.allowedPathPrefixes?.length ?? 0,
           allowedToolCount: service.allowedTools?.length ?? 0,
@@ -463,8 +473,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceType: service.type,
             serverUrl: update.serverUrl,
             transport: update.transport,
+            host: update.host,
+            port: update.port,
+            database: update.database,
+            tlsEnabled: update.tlsEnabled,
+            tlsVerify: update.tlsVerify,
             // Derived from the server URL for an MCP service, so it is reported whenever that changed.
-            hostPattern: update.hostPattern ?? (update.serverUrl ? service.hostPattern : undefined),
+            hostPattern: update.hostPattern ?? (update.serverUrl ? (service.hostPattern ?? undefined) : undefined),
             credentialType: req.body.credential?.type,
             headerName:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
@@ -516,7 +531,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           serviceId: service.id,
           serviceType: service.type,
           credentialType: service.credential.type,
-          hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
+          hostPatternCount: service.hostPattern ? parseHostPatterns(service.hostPattern).patterns.length : 0,
           allowedMethodCount: service.allowedMethods?.length ?? 0,
           allowedPathPrefixCount: service.allowedPathPrefixes?.length ?? 0,
           allowedToolCount: service.allowedTools?.length ?? 0,
