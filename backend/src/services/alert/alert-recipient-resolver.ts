@@ -1,6 +1,7 @@
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { logger } from "@app/lib/logger";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -26,18 +27,8 @@ type TResolvableRecipient = { principalType: string; principalId: string };
 
 type TResolveScope = { orgId: string; projectId?: string | null };
 
-type TProjectMemberRole = {
-  role: string;
-  isTemporary?: boolean | null;
-  temporaryAccessEndTime?: Date | string | null;
-};
-
-const holdsActiveAdminRole = (roles: TProjectMemberRole[], now: Date) =>
-  roles.some(
-    (role) =>
-      role.role === ProjectMembershipRole.Admin &&
-      (!role.isTemporary || (role.temporaryAccessEndTime && new Date(role.temporaryAccessEndTime) > now))
-  );
+const holdsActiveAdminRole = (roles: { role: string; isTemporary?: boolean; temporaryAccessEndTime?: Date | null }[]) =>
+  roles.some((role) => role.role === ProjectMembershipRole.Admin && isActiveRole(role));
 
 export type TAlertRecipientResolver = ReturnType<typeof alertRecipientResolverFactory>;
 
@@ -95,13 +86,12 @@ export const alertRecipientResolverFactory = ({
         projectMembershipDAL.findAllProjectMembers(scope.projectId),
         groupProjectDAL.findAllProjectGroupMembers(scope.projectId)
       ]);
-      const now = new Date();
       [...directMembers, ...projectGroupMembers].forEach((member) => {
         if (wantsProjectMembers) {
           projectMemberIds.add(member.user.id);
           allUserIds.add(member.user.id);
         }
-        if (wantsProjectAdmins && holdsActiveAdminRole(member.roles as TProjectMemberRole[], now)) {
+        if (wantsProjectAdmins && holdsActiveAdminRole(member.roles)) {
           projectAdminIds.add(member.user.id);
           allUserIds.add(member.user.id);
         }

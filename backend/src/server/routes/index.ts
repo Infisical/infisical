@@ -4840,6 +4840,7 @@ export const registerRoutes = async (
     cronJob,
     projectDAL,
     projectMembershipDAL,
+    groupProjectDAL,
     notificationService
   });
 

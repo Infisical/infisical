@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
@@ -18,6 +19,7 @@ import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -32,6 +34,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
     "rotateGeneratedCredentials" | "reapOrphanedRotationAlerts"
   >;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "findAllProjectGroupMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
@@ -42,6 +45,7 @@ export const secretRotationV2QueueServiceFactory = async ({
   secretRotationV2DAL,
   secretRotationV2Service,
   projectMembershipDAL,
+  groupProjectDAL,
   projectDAL,
   notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
@@ -134,10 +138,18 @@ export const secretRotationV2QueueServiceFactory = async ({
           return;
         }
 
-        const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-
-        const projectAdmins = projectMembers.filter((member) =>
-          member.roles.some((role) => role.role === ProjectMembershipRole.Admin)
+        // Same audience as the failure alert's Project Admins recipient: direct and group admins whose
+        // admin role has not expired.
+        const [directMembers, groupMembers] = await Promise.all([
+          projectMembershipDAL.findAllProjectMembers(projectId),
+          groupProjectDAL.findAllProjectGroupMembers(projectId)
+        ]);
+        const adminUserIds = new Set(
+          [...directMembers, ...groupMembers]
+            .filter((member) =>
+              member.roles.some((role) => role.role === ProjectMembershipRole.Admin && isActiveRole(role))
+            )
+            .map((member) => member.user.id)
         );
 
         const rotationType = SECRET_ROTATION_NAME_MAP[type as SecretRotation];
@@ -145,8 +157,8 @@ export const secretRotationV2QueueServiceFactory = async ({
         const rotationPath = `/organizations/${project.orgId}/projects/secret-management/${projectId}/overview`;
 
         await notificationService.createUserNotifications(
-          projectAdmins.map((admin) => ({
-            userId: admin.userId,
+          [...adminUserIds].map((userId) => ({
+            userId,
             orgId: project.orgId,
             type: NotificationType.SECRET_ROTATION_FAILED,
             title: "Secret Rotation Failed",
