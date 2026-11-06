@@ -570,6 +570,13 @@
 .listShell[data-variant="bare"] .listRow {
   border-bottom-color: transparent;
 }
+.listShell[data-variant="segmented"] .list {
+  display: grid;
+  gap: var(--v4-space-4);
+}
+.listShell[data-variant="segmented"] .sectionHead {
+  padding-inline: 0;
+}
 .listRow {
   display: flex;
   align-items: flex-start;
@@ -600,6 +607,11 @@
 .listRow:last-child {
   border-bottom: 0;
 }
+:where(.listShell[data-variant="segmented"]) .listRow {
+  border-bottom: 0;
+  background: var(--v4-tint);
+  --v4-list-row-surface: var(--v4-tint);
+}
 .listRow[data-selected],
 .listRow[data-current] {
   background: var(--v4-selected-surface);
@@ -612,13 +624,26 @@
   background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
   --v4-list-row-surface: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), var(--v4-surface));
 }
+:where(.listShell[data-variant="segmented"])
+  .listRow[data-interactive]:not([data-selected], [data-current]):hover {
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), var(--v4-tint));
+  --v4-list-row-surface: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), var(--v4-tint));
+}
 .listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
   background: color-mix(in oklab, var(--v4-ink) var(--overlay-press), transparent);
+}
+:where(.listShell[data-variant="segmented"])
+  .listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-press), var(--v4-tint));
 }
 .listRow[data-resolved] {
   background: var(--v4-row-done);
   --v4-list-row-surface: var(--v4-row-done);
   color: var(--v4-muted);
+}
+:where(.listShell[data-variant="segmented"]) .listRow[data-resolved] {
+  background: color-mix(in oklab, var(--v4-tint) 50%, transparent);
+  --v4-list-row-surface: color-mix(in oklab, var(--v4-tint) 50%, transparent);
 }
 .listRow[data-disabled] {
   color: var(--v4-muted);

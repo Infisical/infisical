@@ -8,6 +8,24 @@ Choose ApprovalQueue for decisions waiting on someone. Use ActivityLog for what 
 
 ## Usage rules
 
+### approval-queue-variant
+
+Owner: approval-queue.
+
+When placing a queue on a page.
+
+Do: Keep framed where the queue sits beside other framed panels, use segmented when the queue is the page's main content, and use divided inside a surface that already has an edge, such as a Card or a sheet.
+
+Avoid: Wrap a segmented or divided queue in a Card or frame of your own, or mark a card with a colored left edge.
+
+Why: Each variant brings its own ground. A second wrapper doubles the edge, and state belongs to the whole card's fill, the icon tile and the words.
+
+Checked by: review only. Look for: Check the queue's parent has no frame, Card or border of its own unless the variant is divided.
+
+Source evidence:
+- src/components/v4/patterns/approval-queue.tsx
+- src/pages/design-system/examples/approval-queue/variants.tsx
+
 ### approval-queue-in-place
 
 Owner: approval-queue.
@@ -59,12 +77,15 @@ Why: People decide by what changes and who asked.
 ## Import and exports
 
 - src/components/v4/patterns/approval-queue.tsx
+- src/components/v4/patterns/approval-queue.module.css
 
-Exports: ApprovalQueue. Source TypeScript defines the API.
+Exports: ApprovalQueue, ApprovalQueueHeader, ApprovalQueueList, ApprovalQueueGroup, ApprovalQueueItem, ApprovalQueueFooter. Source TypeScript defines the API.
 
 ## Behavior
 
-- A framed List titled Needs you with the waiting count as its action and a View history footer.
+- Compose ApprovalQueue from ApprovalQueueHeader (title, count and an actions slot), ApprovalQueueList with ApprovalQueueItem rows and optional ApprovalQueueGroup labels, and an optional ApprovalQueueFooter.
+- The variant on the root sets the treatment. framed (default) is the tint frame with an eyebrow header band, rows in one bordered inset surface and the footer inside the frame. segmented drops the frame: the header is its own row and each item is a borderless tint card with a small gap between cards; resolved cards fade to half the tint so they keep their edge in dark. divided drops the frame and the cards: items sit on the page separated by line-soft rules.
+- Passing requests instead of children renders the composed queue for you: header Needs you with the waiting count, one item per request and a View history footer when historyHref is set. It takes the same variant.
 - Actions sit in a second row under each request's text, so the age ends every title line in the same place.
 - New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry.
 - onUndo is optional. Without it resolved rows stay in place with no action, for decisions the host cannot take back.
@@ -72,6 +93,7 @@ Exports: ApprovalQueue. Source TypeScript defines the API.
 ## Accessibility
 
 - Each request title links to the request and marks the open one as current. Errors are announced as alerts.
+- ApprovalQueueList's label names the list (Requests waiting on you by default); the header title is visible text, not a heading.
 
 ## Use cases
 
@@ -83,11 +105,19 @@ Exports: ApprovalQueue. Source TypeScript defines the API.
 
 ## Limits
 
+- ApprovalQueueItem and ApprovalQueueGroup must be direct children of ApprovalQueueList or ApprovalQueueGroup (arrays are fine). The list finds its rows by element type, so an item inside a fragment or another wrapper is not counted and the empty message shows.
+- Groups take a plain label and no count. Use them to split a long queue by day or environment, not to nest queues.
 - The host owns request state and the approve, undo and retry calls. Leave out onUndo only when the decision really cannot be reversed, and say so in the resolved row's description.
 
 ## Declared example coverage
 
 Source declarations and review criteria only. Generation checks references and completeness, not rendered behavior or API parity.
+
+### variant
+
+- framed: example `variants`, visible label "framed".
+- segmented: example `variants`, visible label "segmented".
+- divided: example `variants`, visible label "divided".
 
 ### request state
 
@@ -309,6 +339,357 @@ export default function Example() {
       </div>
       <figcaption className="text-muted-foreground text-xs">
         {"Resolved rows without undo"}
+      </figcaption>
+    </figure>
+  );
+}
+```
+
+### Framed, segmented and divided
+
+Save this example at `src/pages/design-system/examples/approval-queue/variants.tsx`; its relative imports are generated for that exact path. States: default, loading, success, error.
+
+Registry items used: @infisical/approval-queue, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import {
+  ApprovalQueue,
+  ApprovalQueueFooter,
+  ApprovalQueueHeader,
+  ApprovalQueueItem,
+  ApprovalQueueList,
+  type ApprovalQueueVariant,
+  type ApprovalRequest
+} from "../../../../components/v4/patterns/approval-queue";
+import { Button } from "../../../../components/v4/ui/button";
+
+const initial: ApprovalRequest[] = [
+  {
+    id: "stripe",
+    object: "stripe_api_key",
+    title: (
+      <>
+        <code>stripe_api_key</code> change in production
+      </>
+    ),
+    description: "Priya Raman asked to rotate the key before Friday's release.",
+    age: "4m",
+    href: "#approval-queue",
+    state: "new"
+  },
+  {
+    id: "db",
+    object: "database_url",
+    title: (
+      <>
+        <code>database_url</code> change in production
+      </>
+    ),
+    description: "Marcus Okonkwo-Fitzgerald points it at the new replica.",
+    age: "1h",
+    href: "#approval-queue",
+    state: "pending"
+  },
+  {
+    id: "agent",
+    object: "release-notes-agent",
+    title: (
+      <>
+        <code>release-notes-agent</code> access approved
+      </>
+    ),
+    description: "Read access to staging for 1 hour, approved by you.",
+    age: "2h",
+    href: "#approval-queue",
+    state: "resolved"
+  },
+  {
+    id: "export",
+    object: "audit-export",
+    title: (
+      <>
+        <code>audit-export</code> access approved
+      </>
+    ),
+    description: "Read access to audit logs for 1 day, approved by you. Approvals here are final.",
+    age: "3h",
+    href: "#approval-queue",
+    state: "resolved"
+  },
+  {
+    id: "sync",
+    object: "vercel-sync",
+    title: (
+      <>
+        <code>vercel-sync</code> change in staging
+      </>
+    ),
+    description: "Sarah Lin adds 3 secrets to the sync.",
+    age: "3h",
+    href: "#approval-queue",
+    state: "failed",
+    error: "Vercel rejected the token. Reconnect Vercel, then retry."
+  }
+];
+
+const final = new Set(["export"]);
+
+function useRequests() {
+  const [requests, setRequests] = useState(initial);
+  const replace = (id: string, next: (request: ApprovalRequest) => ApprovalRequest) =>
+    setRequests((value) => value.map((request) => (request.id === id ? next(request) : request)));
+  const approve = (id: string) => {
+    replace(id, (request) => ({ ...request, state: "pending", error: undefined }));
+    window.setTimeout(
+      () =>
+        replace(id, (request) => ({
+          ...request,
+          state: "resolved",
+          error: undefined,
+          title: (
+            <>
+              <code>{request.object}</code> change approved
+            </>
+          ),
+          description: "Approved by you just now."
+        })),
+      1200
+    );
+  };
+  const undo = (id: string) =>
+    replace(id, (request) => ({
+      ...request,
+      state: "new",
+      error: undefined,
+      title: (
+        <>
+          <code>{request.object}</code> access requested
+        </>
+      ),
+      description: "The approval was taken back."
+    }));
+  const waiting = `${requests.filter((request) => request.state !== "resolved").length} waiting`;
+  const item = (request: ApprovalRequest) => (
+    <ApprovalQueueItem
+      key={request.id}
+      request={request}
+      onApprove={approve}
+      onUndo={final.has(request.id) ? undefined : undo}
+      onRetry={approve}
+    />
+  );
+  return { requests, waiting, item };
+}
+
+function Queue({ variant }: { variant: ApprovalQueueVariant }) {
+  const { requests, waiting, item } = useRequests();
+  return (
+    <ApprovalQueue variant={variant}>
+      <ApprovalQueueHeader title="Needs you" count={waiting} />
+      <ApprovalQueueList>{requests.map(item)}</ApprovalQueueList>
+      <ApprovalQueueFooter>
+        <Button variant="link" size="sm" asChild>
+          <a href="#approval-queue">View history</a>
+        </Button>
+      </ApprovalQueueFooter>
+    </ApprovalQueue>
+  );
+}
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Queue variant="framed" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"framed"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Queue variant="segmented" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"segmented"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Queue variant="divided" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"divided"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Segmented with group labels
+
+Save this example at `src/pages/design-system/examples/approval-queue/grouped.tsx`; its relative imports are generated for that exact path. States: default, loading, success, error.
+
+Registry items used: @infisical/approval-queue, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import {
+  ApprovalQueue,
+  ApprovalQueueGroup,
+  ApprovalQueueHeader,
+  ApprovalQueueItem,
+  ApprovalQueueList,
+  type ApprovalRequest
+} from "../../../../components/v4/patterns/approval-queue";
+import { Button } from "../../../../components/v4/ui/button";
+
+const initial: ApprovalRequest[] = [
+  {
+    id: "stripe",
+    object: "stripe_api_key",
+    title: (
+      <>
+        <code>stripe_api_key</code> change in production
+      </>
+    ),
+    description: "Priya Raman asked to rotate the key before Friday's release.",
+    age: "4m",
+    href: "#approval-queue",
+    state: "new"
+  },
+  {
+    id: "db",
+    object: "database_url",
+    title: (
+      <>
+        <code>database_url</code> change in production
+      </>
+    ),
+    description: "Marcus Okonkwo-Fitzgerald points it at the new replica.",
+    age: "1h",
+    href: "#approval-queue",
+    state: "pending"
+  },
+  {
+    id: "agent",
+    object: "release-notes-agent",
+    title: (
+      <>
+        <code>release-notes-agent</code> access approved
+      </>
+    ),
+    description: "Read access to staging for 1 hour, approved by you.",
+    age: "2h",
+    href: "#approval-queue",
+    state: "resolved"
+  },
+  {
+    id: "export",
+    object: "audit-export",
+    title: (
+      <>
+        <code>audit-export</code> access approved
+      </>
+    ),
+    description: "Read access to audit logs for 1 day, approved by you. Approvals here are final.",
+    age: "3h",
+    href: "#approval-queue",
+    state: "resolved"
+  },
+  {
+    id: "sync",
+    object: "vercel-sync",
+    title: (
+      <>
+        <code>vercel-sync</code> change in staging
+      </>
+    ),
+    description: "Sarah Lin adds 3 secrets to the sync.",
+    age: "3h",
+    href: "#approval-queue",
+    state: "failed",
+    error: "Vercel rejected the token. Reconnect Vercel, then retry."
+  }
+];
+
+const final = new Set(["export"]);
+
+function useRequests() {
+  const [requests, setRequests] = useState(initial);
+  const replace = (id: string, next: (request: ApprovalRequest) => ApprovalRequest) =>
+    setRequests((value) => value.map((request) => (request.id === id ? next(request) : request)));
+  const approve = (id: string) => {
+    replace(id, (request) => ({ ...request, state: "pending", error: undefined }));
+    window.setTimeout(
+      () =>
+        replace(id, (request) => ({
+          ...request,
+          state: "resolved",
+          error: undefined,
+          title: (
+            <>
+              <code>{request.object}</code> change approved
+            </>
+          ),
+          description: "Approved by you just now."
+        })),
+      1200
+    );
+  };
+  const undo = (id: string) =>
+    replace(id, (request) => ({
+      ...request,
+      state: "new",
+      error: undefined,
+      title: (
+        <>
+          <code>{request.object}</code> access requested
+        </>
+      ),
+      description: "The approval was taken back."
+    }));
+  const waiting = `${requests.filter((request) => request.state !== "resolved").length} waiting`;
+  const item = (request: ApprovalRequest) => (
+    <ApprovalQueueItem
+      key={request.id}
+      request={request}
+      onApprove={approve}
+      onUndo={final.has(request.id) ? undefined : undo}
+      onRetry={approve}
+    />
+  );
+  return { requests, waiting, item };
+}
+
+const today = new Set(["stripe", "db", "sync"]);
+
+export default function Example() {
+  const { requests, waiting, item } = useRequests();
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <ApprovalQueue variant="segmented">
+          <ApprovalQueueHeader
+            title="Needs you"
+            count={waiting}
+            actions={
+              <Button variant="link" size="sm" asChild>
+                <a href="#approval-queue">View history</a>
+              </Button>
+            }
+          />
+          <ApprovalQueueList>
+            <ApprovalQueueGroup label="Today">
+              {requests.filter((request) => today.has(request.id)).map(item)}
+            </ApprovalQueueGroup>
+            <ApprovalQueueGroup label="November 3, 2026">
+              {requests.filter((request) => !today.has(request.id)).map(item)}
+            </ApprovalQueueGroup>
+          </ApprovalQueueList>
+        </ApprovalQueue>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {"Segmented, grouped by day, with a header action"}
       </figcaption>
     </figure>
   );

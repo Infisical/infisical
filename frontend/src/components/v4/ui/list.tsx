@@ -162,7 +162,7 @@ export interface ListProps {
   title?: React.ReactNode;
   action?: React.ReactNode;
   label: string;
-  variant?: "framed" | "plain" | "bare";
+  variant?: "framed" | "plain" | "bare" | "segmented" | "divided";
   size?: "md" | "sm";
   actionsPlacement?: "end" | "below";
   selection?: "none" | "multiple";

@@ -87,7 +87,7 @@ Exports: List, ListRow, ListSection, DataList. Source TypeScript defines the API
 ## Behavior
 
 - Interactive rows use a translucent ink overlay on hover and press (opacity-hover and opacity-press tokens), so tinted surfaces behind the list show through.
-- Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface) or bare; md/sm, static/link/button rows and actions below.
+- Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface), bare, segmented (no container, each row a borderless tint card with a gap between) or divided (no container, rows split by line-soft rules); md/sm, static/link/button rows and actions below.
 - Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.
 - Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.
 - Selection skips disabled and locked rows. Current details and bulk selection remain independent.
@@ -125,6 +125,8 @@ Source declarations and review criteria only. Generation checks references and c
 - framed: example `default`, visible label "framed".
 - plain: example `variants`, visible label "plain".
 - bare: omitted. bare drops the border and the row rules and keeps the inset; the list fixture test renders it.
+- segmented: omitted. segmented makes each row a borderless tint card with a gap between; the approval-queue variants example renders it.
+- divided: omitted. divided keeps the row rules and drops the container; the approval-queue variants example renders it.
 
 ### size
 
