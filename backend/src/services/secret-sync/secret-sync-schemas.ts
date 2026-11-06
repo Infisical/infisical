@@ -164,6 +164,11 @@ export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .describe(SecretSyncs.UPDATE(destination).secretPath),
     includeAllSubFolders: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).includeAllSubFolders),
     isAutoSyncEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isAutoSyncEnabled),
-    // Method calls resolve the still-generic conditional type to ZodObject<any>; z.optional() keeps it intact.
-    syncOptions: z.optional(BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge, isUpdateSchema: true }))
+    // Spelled out because inference widens the still-generic conditional type to ZodObject<any> here.
+    syncOptions: BaseSyncOptionsSchema({
+      destination,
+      syncOptionsConfig,
+      merge,
+      isUpdateSchema: true
+    }).optional() as z.ZodOptional<ReturnType<typeof BaseSyncOptionsSchema<T>>>
   });
