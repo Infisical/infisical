@@ -263,9 +263,7 @@ const outcome = (parse: () => { success: boolean; data?: unknown }, pick: (data:
 // Routes share field schemas (every generated row schema, for one), so each field is judged once.
 const absentKeyChangeByField = new WeakMap<object, boolean>();
 
-const treatsAbsentKeyDifferently = (field: any) => {
-  const cached = absentKeyChangeByField.get(field);
-  if (cached !== undefined) return cached;
+const compareAbsentKeyOutcomes = (field: any) => {
   const zod3 = outcome(
     () => field.safeParse(undefined),
     (data) => data
@@ -274,7 +272,23 @@ const treatsAbsentKeyDifferently = (field: any) => {
     () => z.object({ key: field }).safeParse({}),
     (data) => data.key
   );
-  const changed = !(zod3 === undefined && zod4 === undefined) && !isDeepStrictEqual(zod3, zod4);
+  return !(zod3 === undefined && zod4 === undefined) && !isDeepStrictEqual(zod3, zod4);
+};
+
+const treatsAbsentKeyDifferently = (field: any) => {
+  const cached = absentKeyChangeByField.get(field);
+  if (cached !== undefined) return cached;
+  let changed = compareAbsentKeyOutcomes(field);
+  if (changed) {
+    // A default such as () => new Date().toISOString() differs between the two parses whenever the clock
+    // ticks between them, so confirm with time frozen.
+    vi.useFakeTimers({ toFake: ["Date"], now: 0 });
+    try {
+      changed = compareAbsentKeyOutcomes(field);
+    } finally {
+      vi.useRealTimers();
+    }
+  }
   absentKeyChangeByField.set(field, changed);
   return changed;
 };
@@ -727,6 +741,20 @@ describe("each guard flags the shape it exists for", () => {
     });
     expect(findAbsentKeyChanges(body).sort()).toEqual(["blob", "flag", "label", "meta", "note", "settings.data"]);
     expect(z.safeEncode(z.object({ value: z.unknown() }), {} as never).success).toBe(false);
+  });
+
+  test("the absent-key check does not flag a default that reads the clock", () => {
+    let tick = 0;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => {
+      tick += 1;
+      return tick;
+    });
+    try {
+      const event = z.object({ time: z.string().default(() => String(Date.now())) });
+      expect(findAbsentKeyChanges(event)).toEqual([]);
+    } finally {
+      now.mockRestore();
+    }
   });
 
   test("the throw check flags a refine that re-parses a failed format, and an object refine over a failed transform", () => {
