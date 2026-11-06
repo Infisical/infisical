@@ -195,6 +195,34 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, 'const removed = { label: "Remove user", icon: "trash" };']
     ]
   },
+  "disabled-in-tooltip": {
+    bad: [
+      [
+        example,
+        '<Tooltip content="Export CSV">\n  <Button disabled={!rows.length}>Export</Button>\n</Tooltip>'
+      ],
+      [
+        example,
+        "<Tooltip content={reason}>\n  <span>\n    <Button\n      onClick={() => run(a > b)}\n      disabled\n    >\n      Run\n    </Button>\n  </span>\n</Tooltip>"
+      ],
+      [
+        example,
+        '<TooltipTrigger asChild>\n  <Button variant="outline" disabled={locked}>Edit</Button>\n</TooltipTrigger>'
+      ]
+    ],
+    good: [
+      [example, '<Button disabledReason="Only admins can export.">Export</Button>'],
+      [
+        example,
+        '<Tooltip content={reason ? undefined : "Export CSV"}>\n  <Button disabledReason={reason}>Export</Button>\n</Tooltip>'
+      ],
+      [
+        example,
+        '<Tooltip content="Export CSV">\n  <Button onClick={run}>Export</Button>\n</Tooltip>'
+      ],
+      [example, '<Button disabled>Save</Button>\n<Tooltip content="Help" />']
+    ]
+  },
   "dot-separator": {
     bad: [[example, "<span>Primary · alias of default</span>"]],
     good: [[example, "<span>Primary, alias of default</span>"]]

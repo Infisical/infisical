@@ -86,6 +86,7 @@ Exports: Tooltip, TooltipContent, TooltipProvider, TooltipText, TooltipTrigger. 
 ## Limits
 
 - Tooltip content is supplementary text, not a place for focusable actions. A displayed shortcut does not register its binding.
+- A natively disabled Button takes no pointer or focus events, so a Tooltip around it never opens, and a span anchor around it opens on hover but never on keyboard focus. Explain a blocked Button with its disabledReason, which renders this Tooltip itself; ui:lint fails a natively disabled Button written inside Tooltip or TooltipTrigger (rule/disabled-reason-tooltip).
 
 ## Declared example coverage
 
@@ -319,6 +320,60 @@ export default function Example() {
           </div>
           <figcaption className="text-muted-foreground text-xs">
             {"StatusText through asChild"}
+          </figcaption>
+        </figure>
+      </div>
+    </TooltipProvider>
+  );
+}
+```
+
+### Blocked actions
+
+Save this example at `src/pages/design-system/examples/tooltip/disabled.tsx`; its relative imports are generated for that exact path. States: disabled, keyboard, loading.
+
+Registry items used: @infisical/button, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Button } from "../../../../components/v4/ui/button";
+import { Tooltip, TooltipProvider } from "../../../../components/v4/ui/tooltip";
+
+const reason = "Only project admins can export secrets.";
+
+export default function Example() {
+  return (
+    <TooltipProvider>
+      <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+        <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Button variant="outline" icon="download" disabledReason={reason}>
+              Export
+            </Button>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">
+            {"Blocked: hover or Tab shows why"}
+          </figcaption>
+        </figure>
+        <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Tooltip content="Export secrets">
+              <Button variant="outline" icon="download">
+                Export
+              </Button>
+            </Tooltip>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">
+            {"Enabled: the label tooltip"}
+          </figcaption>
+        </figure>
+        <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Button variant="outline" icon="download" loading>
+              Export
+            </Button>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">
+            {"Pending: loading, no tooltip"}
           </figcaption>
         </figure>
       </div>

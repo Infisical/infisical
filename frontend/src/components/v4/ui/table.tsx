@@ -120,10 +120,13 @@ TableRow.displayName = "TableRow";
 type SelectionProps = {
   /** Draws the selection column: size-row wide, a centered Checkbox and a persistent line-soft divider on its right. */
   selection?: boolean;
+  /** With selection, false drops the divider, for an icon or expand column that doubles as selection. */
+  divider?: boolean;
 };
 
 function TableHead({
   selection,
+  divider = true,
   className,
   ref,
   ...props
@@ -132,6 +135,7 @@ function TableHead({
     <th
       ref={ref}
       data-slot={selection ? "table-selection" : "table-head"}
+      data-divider={selection && !divider ? "false" : undefined}
       className={cn(styles.nativeTableHead, selection && styles.tableSelectionCell, className)}
       {...props}
     />
@@ -141,6 +145,7 @@ TableHead.displayName = "TableHead";
 
 function TableCell({
   selection,
+  divider = true,
   className,
   ref,
   ...props
@@ -149,6 +154,7 @@ function TableCell({
     <td
       ref={ref}
       data-slot={selection ? "table-selection" : "table-cell"}
+      data-divider={selection && !divider ? "false" : undefined}
       data-row-interactive={selection || undefined}
       className={cn(styles.nativeTableCell, selection && styles.tableSelectionCell, className)}
       {...props}
@@ -254,14 +260,13 @@ const stop = (event: React.MouseEvent) => event.stopPropagation();
 function RowActionButton({ action, label }: { action: RowAction; label: string }) {
   const reason = action.disabledReason;
   return (
-    <Tooltip content={reason ?? action.label}>
+    <Tooltip content={reason ? undefined : action.label}>
       <span className={styles.tableRowActionSlot}>
         <Button
           variant="ghost"
           size="icon-row"
           iconOnly
-          disabled={Boolean(reason)}
-          aria-description={reason}
+          disabledReason={reason}
           onClick={(event) => {
             stop(event);
             action.onSelect();

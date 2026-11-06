@@ -1035,6 +1035,19 @@
       "category": "Interaction"
     },
     {
+      "id": "disabled-reason-tooltip",
+      "title": "A disabled Button says why through disabledReason",
+      "instruction": "To explain why a Button is unavailable, pass the reason as disabledReason. It keeps the Button focusable with aria-disabled, shows the reason in its own tooltip on hover and keyboard focus and carries it as the accessible description. Never put a natively disabled Button inside a Tooltip or TooltipTrigger, and never wrap it in a span to catch the pointer: a natively disabled button takes no pointer or focus events, so without the span hover never opens the tooltip, and with it keyboard users still never reach the reason.",
+      "good": "Tooltip content={reason ? undefined : \"Export CSV\"} around Button disabledReason={reason}, which shows the label while the action is enabled and the reason while it is blocked.",
+      "avoid": "A Tooltip saying Only admins can export around a span holding Button disabled, which hover can open but Tab never reaches.",
+      "detect": {
+        "by": "lint",
+        "check": "disabled-in-tooltip"
+      },
+      "category": "Interaction",
+      "exceptions": "A Button disabled only while its own request is pending uses loading instead. The check reads Buttons written directly inside a Tooltip or TooltipTrigger; a Button rendered by a child component is reviewed by hand."
+    },
+    {
       "id": "selection-floating-action-bar",
       "title": "Bulk selection uses the floating action bar",
       "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content.",

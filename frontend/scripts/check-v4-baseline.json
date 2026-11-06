@@ -24,5 +24,13 @@
     "src/pages/v4/access/roles/rule-table.tsx": 1,
     "src/pages/v4/organization/ProjectsPage/ProjectTypePage/ProjectTypePage.tsx": 1,
     "src/pages/v4/organization/SettingsPage/SettingsPage.tsx": 1
+  },
+  "disabled-in-tooltip": {
+    "src/pages/v4/access/project/temporary-access.tsx": 1,
+    "src/pages/v4/access/roles/conditions.tsx": 1,
+    "src/pages/v4/access/ui.tsx": 1,
+    "src/pages/v4/cert-manager/InventoryPage/InventoryPage.tsx": 1,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/overview-cells.tsx": 1,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/toolbar.tsx": 3
   }
 }

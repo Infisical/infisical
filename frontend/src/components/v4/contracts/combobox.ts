@@ -10,7 +10,13 @@ export const comboboxDefinition = {
     "src/components/v4/ui/picker.module.css",
     "src/components/v4/lib/use-option-creation.ts"
   ],
-  exports: ["Combobox", "ComboboxOption", "ComboboxProps"],
+  exports: [
+    "Combobox",
+    "ComboboxCreation",
+    "ComboboxCreationFormProps",
+    "ComboboxOption",
+    "ComboboxProps"
+  ],
   referenceNames: ["Combobox"],
   behavior: [
     "Single selection uses Radix Popover and cmdk; multiple selection composes the shared ARIA listbox with removable chips and empty-query Backspace. Chips sit on a tint; a chip that cannot be removed (locked, for example required by policy) drops the tint and its text goes muted so the whole chip reads as disabled, and its remove button stays visible but disabled.",
@@ -21,7 +27,11 @@ export const comboboxDefinition = {
     "onSearch(query) turns on async search for single selection: the Combobox stops filtering and renders options as the host passes them, calls onSearch on every query change and with an empty string when it closes with a query, and keeps the label of the chosen option on the trigger after the results move on. Debouncing and request cancellation stay with the host. loading shows the pixel Spinner in the search row and disables the creation row until results settle. With no results, a status line reads Searching… while loading and emptyText after, above the creation row when there is one. The creation row works the same in async mode.",
     "defaultOpen opens the list on mount, for a picker that is the first step of a flow. Focus moving outside the list closes it unless closeOnFocusOutside is false, which is the default when defaultOpen is set, so a Dialog or Sheet taking focus on mount does not close a list that opened with it; outside pointer presses and Escape still close it. Multiple mode with clearable adds a Clear all button after the chips; it removes every removable chip, keeps locked ones and returns focus to the trigger.",
     "Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.",
-    "A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable."
+    "A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable.",
+    "creation picks how the Create row works for single selection. mode inline takes onCreate and behaves exactly like the onCreate prop, which stays as its shorthand. mode dialog always ends the list with a plus row named by label, after a separator when options are listed, so an empty list still offers it. Choosing it closes the list and opens a Dialog titled title with description, the form from renderForm and a footer with Cancel and submitLabel (default Create), which submits the form whose id is formId.",
+    "renderForm receives query (the trimmed search text), formId, complete, dismiss, onDirtyChange and onPendingChange, and remounts on every open. complete(option) selects the option (its label shows on the trigger even before the host adds it to options), closes the Dialog and returns focus to the trigger; a complete that arrives after the Dialog was dismissed is ignored. onPendingChange(true) makes the Dialog pending, which blocks Escape, outside clicks and the corner close, disables Cancel and shows the submit Button loading.",
+    "Escape, an outside click, the corner close, Cancel and dismiss all go through useDiscardChangesGuard: with the form dirty (onDirtyChange(true)) they open DiscardChangesAlertDialog with discardTitle and discardDescription, and only Discard closes; a clean form closes at once. A submit inside the Dialog never reaches a form around the Combobox.",
+    "disabledReason on either mode keeps the Create row visible but disabled, with the reason beside its label (disable, do not hide). Gate it on the create permission."
   ],
   accessibility: [
     "Caller supplies a visible or programmatic label.",
@@ -30,7 +40,8 @@ export const comboboxDefinition = {
   limitations: [
     "Without onSearch, filtering is in memory. Async search does not virtualize results; keep the host's result page short.",
     "onSearch and loading are single-selection props. Multiple mode filters its options in memory and orders the value by them, so it needs every selectable option up front.",
-    "Creation persistence belongs to the host. Aborting suppresses obsolete UI results and asks the host to cancel; it cannot undo an already committed server write."
+    "Creation persistence belongs to the host. Aborting suppresses obsolete UI results and asks the host to cancel; it cannot undo an already committed server write.",
+    "Dialog creation is single selection only, in a fixed-width Dialog. A multi-step creation belongs in a Sheet the host opens from a mode inline onCreate."
   ],
   examples: [
     {
@@ -56,6 +67,12 @@ export const comboboxDefinition = {
       title: "Async search",
       module: "./examples/combobox/async.tsx",
       states: ["controlled", "loading", "empty"]
+    },
+    {
+      id: "dialog-creation",
+      title: "Create in a dialog",
+      module: "./examples/app-connection-form/default.tsx",
+      states: ["controlled", "loading", "disabled"]
     }
   ],
   coverage: [
@@ -87,9 +104,21 @@ export const comboboxDefinition = {
         "pending creation",
         "failed creation and retry",
         "AbortError cancellation",
-        "abort on close/query"
+        "abort on close/query",
+        "dialog creation",
+        "creation disabled with reason"
       ],
       shown: [
+        {
+          value: "dialog creation",
+          exampleId: "dialog-creation",
+          label: "AWS connection"
+        },
+        {
+          value: "creation disabled with reason",
+          exampleId: "dialog-creation",
+          label: "Without permission to create connections"
+        },
         {
           value: "disabled selected",
           exampleId: "multiple",
@@ -184,6 +213,24 @@ export const comboboxDefinition = {
         detect: {
           by: "review",
           how: "Filter similar options, highlight one and cancel. Query/highlight do not change the committed value until selection, and distinct stable option ids survive reordered results."
+        }
+      },
+      {
+        id: "combobox-dialog-creation",
+        when: "People may need to create the entity they are picking first, such as an app connection or a gateway.",
+        do: "Pass creation with mode dialog and a renderForm that reports dirty and pending and calls complete with the created option, and set disabledReason when the person may not create one.",
+        avoid:
+          "Send people to another page to create the entity, hide the Create row without the permission, or close the Dialog from the form without the discard guard.",
+        reason:
+          "Creating in place keeps the flow and its draft, and routing every close through one guard means a dirty form is never lost by accident.",
+        evidence: [
+          "src/components/v4/ui/combobox.tsx",
+          "src/pages/design-system/examples/app-connection-form/default.tsx"
+        ],
+        detect: {
+          by: "test",
+          test: "src/components/v4/ui/combobox.test.tsx",
+          how: "Opens the dialog row, edits the form and cancels: the discard prompt opens and Keep editing keeps the Dialog. Submitting calls complete, which selects the new option on the trigger and closes the Dialog."
         }
       },
       {
