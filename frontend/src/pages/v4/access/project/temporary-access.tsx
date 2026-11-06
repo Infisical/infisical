@@ -147,13 +147,13 @@ export const TimedAccessPanel = ({
 
 export const DurationPicker = ({
   grant,
-  disabled,
+  disabledReason,
   label,
   defaultOpen = false,
   onChange
 }: {
   grant: GrantDraft;
-  disabled?: boolean;
+  disabledReason?: string;
   label: string;
   defaultOpen?: boolean;
   onChange: (next: GrantDraft) => void;
@@ -165,18 +165,18 @@ export const DurationPicker = ({
     return () => window.clearTimeout(timer);
   }, [defaultOpen]);
   const { text, tooltip, expired } = durationOf(grant);
+  const trigger = (
+    <PopoverTrigger asChild>
+      <Button variant="outline" disabledReason={disabledReason} aria-label={`${label}: ${text}`}>
+        {grant.isTemporary && (expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />)}
+        <span className={styles.grow}>{text}</span>
+        <Icon name="chev-down" />
+      </Button>
+    </PopoverTrigger>
+  );
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <Tooltip content={tooltip}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" disabled={disabled} aria-label={`${label}: ${text}`}>
-            {grant.isTemporary &&
-              (expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />)}
-            <span className={styles.grow}>{text}</span>
-            <Icon name="chev-down" />
-          </Button>
-        </PopoverTrigger>
-      </Tooltip>
+      {disabledReason ? trigger : <Tooltip content={tooltip}>{trigger}</Tooltip>}
       <PopoverContent side="right" align="start" className={styles.panel}>
         <TimedAccessPanel
           key={String(open)}

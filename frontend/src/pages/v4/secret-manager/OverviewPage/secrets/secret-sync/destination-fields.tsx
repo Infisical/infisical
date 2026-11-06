@@ -35,6 +35,7 @@ import {
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 import { useV4Adapter } from "../../../../data/adapters";
+import { useConnectionCreation } from "../flows/connection-creation";
 import {
   RotationField as SyncField,
   SwitchField,
@@ -47,38 +48,47 @@ import { type LocalSyncConnection } from "./sync-model";
 import styles from "./secret-sync.module.css";
 
 export type SyncConnectionsContext = {
+  projectId: string;
   connections: LocalSyncConnection[];
-  addConnection?: (connection: LocalSyncConnection) => void;
+  addConnection: (connection: LocalSyncConnection) => void;
 };
 
 export const SyncConnections = createContext<SyncConnectionsContext>({
-  connections: []
+  projectId: "",
+  connections: [],
+  addConnection: () => undefined
 });
 
 export const appNameOf = (destination: SecretSync) =>
   APP_CONNECTION_MAP[SECRET_SYNC_CONNECTION_MAP[destination]].name;
 
 function ConnectionField({ onChange }: { onChange?: () => void }) {
-  const { control, setValue } = useSyncForm();
-  const { connections, addConnection } = use(SyncConnections);
+  const { control, getValues, setValue } = useSyncForm();
+  const { projectId, connections, addConnection } = use(SyncConnections);
   const destination = useWatch({ control, name: "destination" }) as SecretSync;
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
   const label = `${appNameOf(destination)} connection`;
-  const available = connections.filter((connection) => connection.app === app);
+  const available = connections.filter(
+    (connection, index) =>
+      connection.app === app &&
+      connections.findIndex((entry) => entry.id === connection.id) === index
+  );
+  const creation = useConnectionCreation(app, projectId, (connection) => {
+    addConnection(connection);
+    setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
+    onChange?.();
+  });
   return (
     <Controller
       control={control}
       name="connection"
       render={({ field, fieldState: { error } }) => (
-        <SyncField
-          label={label}
-          tooltip="App Connections can be created from the Organization Settings page."
-          error={error?.message ?? error?.root?.message}
-        >
+        <SyncField label={label} error={error?.message ?? error?.root?.message}>
           <Combobox
             label={label}
             value={field.value?.id ?? ""}
             onValueChange={(id) => {
+              if (id === getValues("connection")?.id) return;
               field.onChange(available.find((connection) => connection.id === id) ?? null);
               onChange?.();
             }}
@@ -87,17 +97,9 @@ function ConnectionField({ onChange }: { onChange?: () => void }) {
               label: connection.name
             }))}
             placeholder="Select connection..."
-            emptyText={`No ${appNameOf(destination)} connections yet. Create one in App Connections.`}
+            emptyText={`No ${appNameOf(destination)} connections yet.`}
             invalid={Boolean(error)}
-            onCreate={
-              addConnection &&
-              ((name) => {
-                const connection = { id: crypto.randomUUID(), name, app };
-                addConnection(connection);
-                setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
-                onChange?.();
-              })
-            }
+            creation={creation}
           />
         </SyncField>
       )}

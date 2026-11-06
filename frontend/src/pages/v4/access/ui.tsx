@@ -63,7 +63,7 @@ export const ListToolbar = ({
     options: readonly { value: string; label: string }[];
     selected: readonly string[];
     onToggle: (value: string) => void;
-    disabled?: boolean;
+    disabledReason?: string;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
   };
@@ -80,14 +80,24 @@ export const ListToolbar = ({
     </div>
     {filter && (
       <DropdownMenu open={filter.open} onOpenChange={filter.onOpenChange}>
-        <Tooltip content={filter.label}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" aria-label={filter.label} disabled={filter.disabled}>
-              <Icon icon={FilterIcon} />
-              {filter.selected.length > 0 && <Count tone="ink">{filter.selected.length}</Count>}
-            </Button>
-          </DropdownMenuTrigger>
-        </Tooltip>
+        {filter.disabledReason ? (
+          <Button
+            variant="outline"
+            aria-label={filter.label}
+            disabledReason={filter.disabledReason}
+          >
+            <Icon icon={FilterIcon} />
+          </Button>
+        ) : (
+          <Tooltip content={filter.label}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" aria-label={filter.label}>
+                <Icon icon={FilterIcon} />
+                {filter.selected.length > 0 && <Count tone="ink">{filter.selected.length}</Count>}
+              </Button>
+            </DropdownMenuTrigger>
+          </Tooltip>
+        )}
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>{filter.label}</DropdownMenuLabel>
           {filter.options.map((option) => (

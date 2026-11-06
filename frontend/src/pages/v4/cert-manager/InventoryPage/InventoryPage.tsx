@@ -422,17 +422,23 @@ export const InventoryPage = () => {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Tooltip content="Export CSV" side="bottom">
+              {rows.length ? (
+                <Tooltip content="Export CSV" side="bottom">
+                  <Button variant="outline" size="icon" icon="download" iconOnly>
+                    Export CSV
+                  </Button>
+                </Tooltip>
+              ) : (
                 <Button
                   variant="outline"
                   size="icon"
                   icon="download"
                   iconOnly
-                  disabled={!rows.length}
+                  disabledReason="No certificates to export"
                 >
                   Export CSV
                 </Button>
-              </Tooltip>
+              )}
             </>
           }
         />

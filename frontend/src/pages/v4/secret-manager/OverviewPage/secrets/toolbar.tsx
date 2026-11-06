@@ -124,21 +124,27 @@ export function ExportMenu({
 }) {
   return (
     <DropdownMenu>
-      <Tooltip content={disabledReason ?? "Export secrets"}>
-        <span className={styles.actionSlot}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              icon="download"
-              iconOnly
-              aria-label="Export secrets"
-              disabled={Boolean(disabledReason)}
-            >
-              Export secrets
-            </Button>
-          </DropdownMenuTrigger>
-        </span>
-      </Tooltip>
+      {disabledReason ? (
+        <Button
+          variant="outline"
+          icon="download"
+          iconOnly
+          aria-label="Export secrets"
+          disabledReason={disabledReason}
+        >
+          Export secrets
+        </Button>
+      ) : (
+        <Tooltip content="Export secrets">
+          <span className={styles.actionSlot}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" icon="download" iconOnly aria-label="Export secrets">
+                Export secrets
+              </Button>
+            </DropdownMenuTrigger>
+          </span>
+        </Tooltip>
+      )}
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>
           {secretCount} {secretCount === 1 ? "secret" : "secrets"}
@@ -312,13 +318,9 @@ export function FolderBreadcrumbBar({
           </span>
         </Tooltip>
         {single && (
-          <Tooltip content={NEXT_PHASE}>
-            <span className={styles.actionSlot}>
-              <Button variant="ghost" size="xs" icon="user" disabled>
-                Manage access
-              </Button>
-            </span>
-          </Tooltip>
+          <Button variant="ghost" size="xs" icon="user" disabledReason={NEXT_PHASE}>
+            Manage access
+          </Button>
         )}
       </span>
     </div>
@@ -379,13 +381,9 @@ export function QuickAddRow({
     >
       <TableCell selection divider={false}>
         <span className={styles.iconSlot}>
-          <Tooltip content={NEXT_PHASE}>
-            <span className={styles.actionSlot}>
-              <Button variant="ghost" size="icon-row" iconOnly icon="plus" disabled>
-                Add another resource type
-              </Button>
-            </span>
-          </Tooltip>
+          <Button variant="ghost" size="icon-row" iconOnly icon="plus" disabledReason={NEXT_PHASE}>
+            Add another resource type
+          </Button>
         </span>
       </TableCell>
       <TableCell className={styles.nameCell}>

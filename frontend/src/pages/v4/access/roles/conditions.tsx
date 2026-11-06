@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/p
 import { Select } from "@app/components/v4/ui/select";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import { Gate } from "../ui";
+import { Gate, RESTRICTED } from "../ui";
 import {
   actionLabel,
   allowedConditions,
@@ -427,7 +427,18 @@ export const ConditionsFields = ({
                       onChange={(event) => patch(index, { rhs: event.target.value })}
                     />
                   </div>
-                  <Gate allowed={!disabled} reason={reason}>
+                  {disabled ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      icon="trash"
+                      iconOnly
+                      disabledReason={reason ?? RESTRICTED}
+                    >
+                      Remove condition
+                    </Button>
+                  ) : (
                     <Tooltip content="Remove condition">
                       <Button
                         type="button"
@@ -435,13 +446,12 @@ export const ConditionsFields = ({
                         size="icon-sm"
                         icon="trash"
                         iconOnly
-                        disabled={disabled}
                         onClick={() => onChange(conditions.filter((_, i) => i !== index))}
                       >
                         Remove condition
                       </Button>
                     </Tooltip>
-                  </Gate>
+                  )}
                 </div>
                 {(error?.lhs || error?.rhs) && (
                   <p className={styles.error} role="alert">

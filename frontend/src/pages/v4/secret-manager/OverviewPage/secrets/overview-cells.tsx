@@ -127,24 +127,25 @@ export function ActionButton({
   disabledReason?: string;
   onClick?: () => void;
 }) {
+  const button = (
+    <Button
+      variant="ghost"
+      size="icon-row"
+      iconOnly
+      disabledReason={disabledReason}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick?.();
+      }}
+    >
+      <Icon name={name} icon={icon} />
+      <span className="sr-only">{label}</span>
+    </Button>
+  );
   return (
-    <Tooltip content={disabledReason ?? label}>
-      <span className={styles.actionSlot}>
-        <Button
-          variant="ghost"
-          size="icon-row"
-          iconOnly
-          disabled={Boolean(disabledReason)}
-          onClick={(event) => {
-            event.stopPropagation();
-            onClick?.();
-          }}
-        >
-          <Icon name={name} icon={icon} />
-          <span className="sr-only">{label}</span>
-        </Button>
-      </span>
-    </Tooltip>
+    <span className={styles.actionSlot}>
+      {disabledReason ? button : <Tooltip content={label}>{button}</Tooltip>}
+    </span>
   );
 }
 
