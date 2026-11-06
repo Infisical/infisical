@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  BotIcon,
-  ChevronDownIcon,
-  ClockIcon,
-  CornerLeftUpIcon,
-  FolderTreeIcon,
-  ShieldIcon
-} from "lucide-react";
+import { BotIcon, ChevronDownIcon, CornerDownRightIcon, LockIcon, ShieldIcon } from "lucide-react";
 
 import {
   Badge,
@@ -20,10 +13,7 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuTrigger,
-  Input,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Input
 } from "@app/components/v3";
 import { SecretFolderRole, TFolderAccess } from "@app/hooks/api/folderAccess";
 
@@ -43,8 +33,6 @@ import { TierDropdown } from "./TierDropdown";
 
 const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
 
-const recursiveTitle = (path: string) => `Applies to ${path} and all of its subfolders`;
-
 const remainingTimeOf = (grant: TFolderAccess | null) =>
   grant?.isTemporary && grant.temporaryAccessEndTime
     ? formatExpirationTime(grant.temporaryAccessEndTime, Date.now())
@@ -55,37 +43,72 @@ type TRemainingTime = NonNullable<ReturnType<typeof remainingTimeOf>>;
 const expiryNoteOf = (remainingTime: TRemainingTime) =>
   `${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`;
 
-// the menu repeats the time left, so narrow sheets drop this badge to keep the member name visible
-const ExpiryBadge = ({
-  remainingTime,
-  hasTitle = true
-}: {
-  remainingTime: TRemainingTime;
-  hasTitle?: boolean;
-}) => (
-  <span className="hidden sm:contents">
-    <Badge
-      variant={remainingTime.isExpired ? "danger" : "neutral"}
-      iconPosition="left"
-      title={hasTitle ? `Access ${expiryNoteOf(remainingTime)}` : undefined}
-    >
-      <ClockIcon />
-      {remainingTime.isExpired ? "Expired" : remainingTime.value}
-    </Badge>
-  </span>
-);
+type TCaptionPart = { text: string; tone?: "muted" | "warning" | "danger"; title?: string };
 
-const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
-  <>
-    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
-      {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
-    </div>
-    <div className="min-w-0 flex-1">
-      <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
-      <p className="truncate text-xs text-muted">{actor.subtitle}</p>
-    </div>
-  </>
-);
+const CAPTION_TONE_CLASS_NAMES = {
+  muted: "text-muted",
+  warning: "text-warning",
+  danger: "text-danger"
+};
+
+const expiryCaptionOf = (remainingTime: TRemainingTime | null): TCaptionPart[] => {
+  if (!remainingTime) return [];
+  return [
+    {
+      text: remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`,
+      tone: remainingTime.isExpired ? "danger" : "muted",
+      title: `Access ${expiryNoteOf(remainingTime)}`
+    }
+  ];
+};
+
+const RowCaption = ({ parts }: { parts: TCaptionPart[] }) => {
+  if (!parts.length) return null;
+  return (
+    <p className="text-right text-xs whitespace-nowrap">
+      {parts.map((part, index) => (
+        <span key={part.text} title={part.title}>
+          {index > 0 && <span className="text-muted"> · </span>}
+          <span className={CAPTION_TONE_CLASS_NAMES[part.tone ?? "muted"]}>{part.text}</span>
+        </span>
+      ))}
+    </p>
+  );
+};
+
+const roleBadgeLabelOf = (actor: TFolderAccessActor) => {
+  if (actor.isProjectAdmin) return "Admin";
+  const [first, ...rest] = actor.roles;
+  if (!first) return null;
+  return rest.length ? `${first.name} +${rest.length}` : first.name;
+};
+
+const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => {
+  const roleBadgeLabel = roleBadgeLabelOf(actor);
+  return (
+    <>
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-neutral/10 text-xs font-semibold text-accent">
+        {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
+          {roleBadgeLabel && (
+            <Badge
+              variant="outline"
+              iconPosition="left"
+              title={actor.roles.map((role) => role.name).join(", ") || undefined}
+            >
+              <ShieldIcon />
+              {roleBadgeLabel}
+            </Badge>
+          )}
+        </div>
+        <p className="truncate text-xs text-muted">{actor.subtitle}</p>
+      </div>
+    </>
+  );
+};
 
 type Props = {
   actor: TFolderAccessActor;
@@ -184,13 +207,13 @@ export const FolderAccessRow = ({
     return (
       <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
-        <Button variant="ghost" size="sm" className="shrink-0" isDisabled>
-          Full Access on All Folders
-          <Badge variant="neutral" iconPosition="left">
-            <ShieldIcon />
-            Admin
-          </Badge>
-        </Button>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <span className="flex items-center gap-1.5 text-sm text-foreground">
+            <LockIcon className="size-3.5 text-muted" />
+            Full Access
+          </span>
+          <RowCaption parts={[{ text: "All folders, via Admin role" }]} />
+        </div>
       </div>
     );
   }
@@ -198,9 +221,6 @@ export const FolderAccessRow = ({
   const inheritedTierLabel = inheritedAccess
     ? FOLDER_ROLE_TIER_LABELS[inheritedAccess.permission]
     : null;
-  const inheritedExpiryNote = inheritedRemainingTime
-    ? `, ${expiryNoteOf(inheritedRemainingTime)}`
-    : "";
   const inheritedExpiryLabel = (() => {
     if (!inheritedRemainingTime) return undefined;
     return inheritedRemainingTime.isExpired ? "Expired" : `${inheritedRemainingTime.value} left`;
@@ -213,126 +233,98 @@ export const FolderAccessRow = ({
     return undefined;
   })();
 
-  const trigger = (() => {
+  const captionParts = ((): TCaptionPart[] => {
     if (access) {
-      return (
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" isDisabled={isDisabled}>
-            {FOLDER_ROLE_TIER_LABELS[access.permission]}
-            {access.isPermissionRecursive && (
-              <Badge
-                variant="neutral"
-                iconPosition="left"
-                title={recursiveTitle(access.secretPath)}
-              >
-                <FolderTreeIcon />
-                Recursive
-              </Badge>
-            )}
-            {isOverride && <Badge variant="warning">Override</Badge>}
-            {remainingTime && <ExpiryBadge remainingTime={remainingTime} />}
-            <ChevronDownIcon />
-          </Button>
-        </DropdownMenuTrigger>
-      );
+      const scope = access.isPermissionRecursive ? "this folder and subfolders" : "this folder";
+      const source: TCaptionPart = isOverride
+        ? {
+            text: `Overrides ${roleNames} role${actor.roles.length > 1 ? "s" : ""}`,
+            tone: "warning"
+          }
+        : { text: `Granted in ${scope}` };
+      const recursive: TCaptionPart[] =
+        isOverride && access.isPermissionRecursive ? [{ text: "Includes subfolders" }] : [];
+      return [source, ...recursive, ...expiryCaptionOf(remainingTime)];
     }
     if (inheritedAccess) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                isDisabled={isDisabled}
-                aria-label={`${inheritedTierLabel} for ${actor.name}, inherited from ${inheritedAccess.secretPath}${inheritedExpiryNote}`}
-              >
-                {inheritedTierLabel}
-                <Badge variant="neutral" iconPosition="left" className="font-mono">
-                  <CornerLeftUpIcon />
-                  {inheritedAccess.secretPath}
-                </Badge>
-                {inheritedRemainingTime && (
-                  <ExpiryBadge remainingTime={inheritedRemainingTime} hasTitle={false} />
-                )}
-                <ChevronDownIcon />
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent>
-            Inherited from {inheritedAccess.secretPath} (applied to subfolders)
-            {inheritedExpiryNote}
-          </TooltipContent>
-        </Tooltip>
-      );
+      return [
+        { text: `Inherited from ${inheritedAccess.secretPath}` },
+        ...expiryCaptionOf(inheritedRemainingTime)
+      ];
     }
-    return (
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="max-w-48"
-          title={roleNames || undefined}
-          isDisabled={isDisabled}
-        >
-          <span className="truncate">{roleNames || "Role"}</span>
-          <Badge variant="project">Project</Badge>
-          <ChevronDownIcon />
-        </Button>
-      </DropdownMenuTrigger>
-    );
+    return [];
+  })();
+
+  const triggerLabel = (() => {
+    if (access) return FOLDER_ROLE_TIER_LABELS[access.permission];
+    if (inheritedTierLabel) return inheritedTierLabel;
+    return "Set Access";
   })();
 
   return (
     <div className={ROW_CLASS_NAME}>
       <ActorIdentity actor={actor} />
 
-      <div className="shrink-0">
-        <DropdownMenu>
-          {trigger}
-          <TierDropdown
-            activeTier={access?.permission ?? null}
-            footerNote={grantedFooterNote}
-            inherited={
-              !access && inheritedAccess
-                ? {
-                    tier: inheritedAccess.permission,
-                    sourcePath: inheritedAccess.secretPath,
-                    expiryLabel: inheritedExpiryLabel,
-                    onManage: onManageInheritedAccess
-                  }
-                : undefined
-            }
-            recursive={
-              access && canApplyToSubfolders
-                ? { checked: access.isPermissionRecursive, onCheckedChange: onSetRecursive }
-                : undefined
-            }
-            temporaryLabel={
-              remainingTime && remainingTime?.expiresAt ? (
-                <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
-                  Edit Temporary Access
-                  <span className="text-xs text-muted">
-                    {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex items-center gap-2">
+          {!access && !inheritedAccess && (
+            <span className="flex items-center gap-1 text-xs text-muted">
+              <CornerDownRightIcon className="size-3.5" />
+              Via project role
+            </span>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" isDisabled={isDisabled}>
+                {triggerLabel}
+                <ChevronDownIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <TierDropdown
+              activeTier={access?.permission ?? null}
+              footerNote={grantedFooterNote}
+              inherited={
+                !access && inheritedAccess
+                  ? {
+                      tier: inheritedAccess.permission,
+                      sourcePath: inheritedAccess.secretPath,
+                      expiryLabel: inheritedExpiryLabel,
+                      onManage: onManageInheritedAccess
+                    }
+                  : undefined
+              }
+              recursive={
+                access && canApplyToSubfolders
+                  ? { checked: access.isPermissionRecursive, onCheckedChange: onSetRecursive }
+                  : undefined
+              }
+              temporaryLabel={
+                remainingTime && remainingTime?.expiresAt ? (
+                  <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
+                    Edit Temporary Access
+                    <span className="text-xs text-muted">
+                      {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
+                    </span>
                   </span>
-                </span>
-              ) : (
-                "Add Temporary Access"
-              )
-            }
-            onSelectTier={onSetTier}
-            onEditTemporaryAccess={access ? openTemporary : undefined}
-            onRemove={access ? onRemove : undefined}
-            removeLabel={
-              {
-                expired: "Clear Expired Access",
-                temporary: isOverride ? "End Temporary Override" : "End Temporary Access",
-                permanent: isOverride ? "Remove Access Override" : "Remove Folder Access"
-              }[grantState]
-            }
-            removeVariant={grantState === "expired" ? "default" : removeTone}
-          />
-        </DropdownMenu>
+                ) : (
+                  "Add Temporary Access"
+                )
+              }
+              onSelectTier={onSetTier}
+              onEditTemporaryAccess={access ? openTemporary : undefined}
+              onRemove={access ? onRemove : undefined}
+              removeLabel={
+                {
+                  expired: "Clear Expired Access",
+                  temporary: isOverride ? "End Temporary Override" : "End Temporary Access",
+                  permanent: isOverride ? "Remove Access Override" : "Remove Folder Access"
+                }[grantState]
+              }
+              removeVariant={grantState === "expired" ? "default" : removeTone}
+            />
+          </DropdownMenu>
+        </div>
+        <RowCaption parts={captionParts} />
       </div>
 
       <Dialog open={isTemporaryOpen} onOpenChange={setIsTemporaryOpen}>
