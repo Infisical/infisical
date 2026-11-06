@@ -1,34 +1,34 @@
 ---
 title: "Agent Vault projects"
 sidebarTitle: "Projects"
-description: "Keep each agentic system's credentials, members, and proxies in its own Agent Vault project."
+description: "Keep each agentic system's credentials and members in a separate Agent Vault project."
 ---
 
-An Agent Vault project holds everything that one agentic system or team uses: its [access bundles](/documentation/platform/agent-vault/access-bundles), [services](/documentation/platform/agent-vault/services), [variables](/documentation/platform/agent-vault/variables), [skills](/documentation/platform/agent-vault/skills), [sessions](/documentation/platform/agent-vault/sessions), and [proxies](/documentation/platform/agent-vault/proxies). Each project has its own admins and members, so the people who run one system can't see or change the credentials of another.
+An Agent Vault project holds the credentials and settings that one agentic system or team uses. Each project has its own admins and members, so the people who run one system can't see or change the credentials of another.
 
 To open a project, select **Agent Vault** on your organization's overview, then select the project.
 
-## When to create another project
+## Project and organization scope
 
-Create a project for each agentic system or team that should manage its own credentials. For example, if one team runs a support bot and another team runs coding agents, give each team a project, so each team's admins manage only their own access bundles and variables.
+Some things in Agent Vault belong to a single project, and others belong to your whole organization:
 
-Keep agents in the same project if the same people manage them and the agents share credentials, such as a set of agents that all call the same GitHub organization.
+| Belongs to each project | Belongs to your organization |
+| --- | --- |
+| Members and their [roles](/documentation/platform/agent-vault/access-control) | Users, groups, and machine identities, which you [add to each project they need](/documentation/platform/agent-vault/access-control#adding-members) |
+| [Access bundles](/documentation/platform/agent-vault/access-bundles), [services](/documentation/platform/agent-vault/services), and [variables](/documentation/platform/agent-vault/variables) | Organization roles, which control who can [create projects](#create-a-project) and who can [join any project as an admin](#join-as-an-organization-admin) |
+| [Personal variables](/documentation/platform/agent-vault/variables#personal-variables) and [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), which each member sets up separately in each project | |
+| [Skills](/documentation/platform/agent-vault/skills) | |
+| [Sessions](/documentation/platform/agent-vault/sessions) and [proxies](/documentation/platform/agent-vault/proxies) (a session only works through a proxy in the same project) | |
+| [Session log](/documentation/platform/agent-vault/session-logs) settings, including where the logs are stored | |
+| [Audit logs](/documentation/platform/audit-logs) | |
 
-## What stays inside a project
-
-Nothing in this list is shared between projects:
-
-- Members and their roles (see [Access control](/documentation/platform/agent-vault/access-control))
-- Access bundles, services, and global variables
-- Personal variables and personal values, which each member sets up separately in each project
-- Skills
-- Sessions and proxies (a session only works through a proxy in the same project)
-- Session log settings, including where the logs are stored
-- Audit logs
-
-If two projects need the same credential, add it to each project.
+If two projects need the same credential, add the credential to each project.
 
 ## Create a project
+
+<Tip>
+  Create a project for each agentic system or team that should manage its own credentials. For example, if one team runs a support bot and another team runs coding agents, give each team a project. If the same people manage several agents and the agents share credentials, keep the agents in one project.
+</Tip>
 
 Organization admins and members can create projects by default.
 
@@ -43,13 +43,27 @@ Organization admins and members can create projects by default.
 
 You become the project's admin. To give other people access, [add them to the project](/documentation/platform/agent-vault/access-control#adding-members).
 
-## Your first project
+## Join a project
 
-If you pick Agent Vault when you sign up, Infisical creates a project named **My first project** for you. If your organization used Agent Vault before it had projects, everything you'd set up is in a project with the same name. Otherwise, your organization has no Agent Vault project until someone [creates one](#create-a-project).
+A project admin can [add you to the project](/documentation/platform/agent-vault/access-control#adding-members). If no one has added you, you can request access, or join on your own if you're an organization admin.
 
-You can rename any project, including **My first project**, in the project's **Administration** > **Settings** > **General**.
+### Request access
 
-## Join a project as an organization admin
+<Steps>
+  <Step>
+    On your organization's overview, select **Agent Vault**, then select the **All Projects** tab.
+  </Step>
+  <Step>
+    On the project's row, select **Request Access**.
+  </Step>
+  <Step>
+    Optionally, enter a **Note** for the project's admins, then select **Submit Request**.
+  </Step>
+</Steps>
+
+Infisical emails your request to the project's admins, who can then add you to the project.
+
+### Join as an organization admin
 
 Organization admins aren't automatically members of every Agent Vault project. To join a project you aren't a member of:
 
@@ -58,11 +72,11 @@ Organization admins aren't automatically members of every Agent Vault project. T
     On your organization's overview, select **Agent Vault**, then select the **All Projects** tab.
   </Step>
   <Step>
-    On the project's row, select **Join as Admin**.
+    On the project's row, select **Join as Admin**. If you're already a member through a group, the button is **Become Admin**.
   </Step>
 </Steps>
 
-Infisical adds you to the project with the **Admin** role, records the change in the [audit log](/documentation/platform/audit-logs), and emails the project's admins.
+Infisical adds you to the project with the **Admin** role, records the change in the audit log, and emails the project's admins.
 
 ## Find the project ID
 
@@ -70,7 +84,21 @@ The [API](/api-reference/overview/introduction) and the [Infisical CLI](/cli/ove
 
 ## Delete a project
 
-An admin of the project can delete it in the project's **Administration** > **Settings** > **General**. You can't undo deleting a project. When you delete a project:
+Only an admin of the project can delete it. You can't undo deleting a project.
+
+<Steps>
+  <Step>
+    In the project, go to **Administration** > **Settings**.
+  </Step>
+  <Step>
+    If **Delete Protection** is on, turn it off.
+  </Step>
+  <Step>
+    Select **Delete** followed by the project's name, type `confirm`, then select **Delete Project**.
+  </Step>
+</Steps>
+
+When you delete a project:
 
 - Agents that use the project's sessions stop getting credentials, and the project's proxies stop working
 - You can no longer view the project's session logs
