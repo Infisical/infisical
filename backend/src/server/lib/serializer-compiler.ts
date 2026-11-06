@@ -1,7 +1,9 @@
 import { InvalidSchemaError, ResponseSerializationError } from "@fastify/type-provider-zod";
+import fastJsonStringify, { type Schema as FastJsonSchema } from "fast-json-stringify";
 import { FastifySerializerCompiler } from "fastify/types/schema";
 import { z } from "zod";
 
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { recordResponseSerializationFallbackMetric } from "@app/lib/telemetry/metrics";
 
@@ -41,3 +43,28 @@ export const createSerializerCompiler =
       throw new ResponseSerializationError(method, url, { cause: encoded.error });
     };
   };
+
+const fastJsonOverride = (ctx: { zodSchema: z.core.$ZodType; jsonSchema: Record<string, unknown> }) => {
+  if (ctx.zodSchema instanceof z.core.$ZodDate) Object.assign(ctx.jsonSchema, { type: "string", format: "date-time" });
+  if (ctx.zodSchema instanceof z.core.$ZodBigInt) Object.assign(ctx.jsonSchema, { type: "integer" });
+};
+
+// For large responses: compiles the schema once instead of running Zod over every response.
+// fast-json-stringify writes only the properties the schema lists, so unlisted fields are still dropped.
+// Fastify types a route-level compiler with the whole route schema, but calls it with each status's response schema.
+export const fastJsonSerializerCompiler: FastifySerializerCompiler<unknown> = (routeSchema) => {
+  const responseRouteSchema = routeSchema as Parameters<ReturnType<typeof createSerializerCompiler>>[0];
+  if (!routeSchema.httpStatus?.startsWith("2")) {
+    return createSerializerCompiler({ legacyParseFallback: Boolean(getConfig()?.isProductionMode) })(
+      responseRouteSchema
+    );
+  }
+
+  const jsonSchema = z.toJSONSchema(resolveResponseSchema(responseRouteSchema.schema), {
+    target: "draft-7",
+    io: "input",
+    unrepresentable: "any",
+    override: fastJsonOverride
+  });
+  return fastJsonStringify(jsonSchema as FastJsonSchema);
+};

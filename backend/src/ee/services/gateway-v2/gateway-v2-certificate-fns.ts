@@ -3,13 +3,13 @@ import net from "node:net";
 import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
   getNotAfterWithClockSkew,
   getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
 import { GATEWAY_IDENTITY_URI_PREFIX } from "./gateway-v2-constants";
 import { parseDirectAddress } from "./gateway-v2-transport-fns";

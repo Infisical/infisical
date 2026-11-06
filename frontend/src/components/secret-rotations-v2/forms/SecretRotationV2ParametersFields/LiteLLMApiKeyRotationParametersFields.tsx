@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Combobox,
   Field,
   FieldError,
-  FilterableSelect,
   Input,
   Tabs,
   TabsContent,
@@ -21,11 +20,7 @@ import {
   useListLiteLLMConnectionTeams,
   useListLiteLLMConnectionUsers
 } from "@app/hooks/api/appConnections/litellm";
-import {
-  TLiteLLMModel,
-  TLiteLLMTeam,
-  TLiteLLMUser
-} from "@app/hooks/api/appConnections/litellm/types";
+import { TLiteLLMTeam, TLiteLLMUser } from "@app/hooks/api/appConnections/litellm/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 /** Max length for the key name (matches backend schema). */
@@ -176,25 +171,20 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
                 >
                   User <span className="font-normal text-muted">(optional)</span>
                 </FieldLabelWithTooltip>
-                <FilterableSelect
-                  inputId="litellm-user"
-                  isClearable
+                <Combobox
+                  id="litellm-user"
                   isLoading={
                     (userSearch !== debouncedUserSearch || isUsersFetching) && Boolean(connectionId)
                   }
                   isDisabled={!connectionId}
                   value={selectedValue}
                   onBlur={onBlur}
-                  onChange={(option) => {
-                    const newValue = (option as SingleValue<TLiteLLMUser>) ?? null;
+                  onValueChange={(newValue) => {
                     setSelectedUser(newValue);
                     onChange(newValue?.id);
                   }}
                   options={withSelectedOption(users, selectedValue)}
-                  filterOption={() => true}
-                  onInputChange={(newSearch, meta) => {
-                    if (meta.action === "input-change") setUserSearch(newSearch);
-                  }}
+                  onSearchChange={setUserSearch}
                   placeholder="Search for a user..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id}
@@ -218,25 +208,20 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
                 >
                   Team <span className="font-normal text-muted">(optional)</span>
                 </FieldLabelWithTooltip>
-                <FilterableSelect
-                  inputId="litellm-team"
-                  isClearable
+                <Combobox
+                  id="litellm-team"
                   isLoading={
                     (teamSearch !== debouncedTeamSearch || isTeamsFetching) && Boolean(connectionId)
                   }
                   isDisabled={!connectionId}
                   value={selectedValue}
                   onBlur={onBlur}
-                  onChange={(option) => {
-                    const newValue = (option as SingleValue<TLiteLLMTeam>) ?? null;
+                  onValueChange={(newValue) => {
                     setSelectedTeam(newValue);
                     onChange(newValue?.id);
                   }}
                   options={withSelectedOption(teams, selectedValue)}
-                  filterOption={() => true}
-                  onInputChange={(newSearch, meta) => {
-                    if (meta.action === "input-change") setTeamSearch(newSearch);
-                  }}
+                  onSearchChange={setTeamSearch}
                   placeholder="Search for a team..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id}
@@ -258,20 +243,19 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
               >
                 Models <span className="font-normal text-muted">(optional)</span>
               </FieldLabelWithTooltip>
-              <FilterableSelect
-                inputId="litellm-models"
-                isMulti
+              <Combobox
+                id="litellm-models"
+                multiple
                 isLoading={isModelsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={models?.filter((model) => (value ?? []).includes(model.id)) ?? []}
                 onBlur={onBlur}
-                onChange={(option) => {
-                  onChange((option as MultiValue<TLiteLLMModel>).map((model) => model.id));
-                }}
+                onValueChange={(option) => onChange(option.map((model) => model.id))}
                 options={models}
                 placeholder="Select models..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 isError={Boolean(error)}
               />
               <FieldError>{error?.message}</FieldError>

@@ -17,15 +17,20 @@ import {
 import {
   OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
+  SecretReadActivitySchema,
   SecretsProjectsSchema,
   SecretsSummarySchema,
-  StaticSecretsUsageSchema
+  StaticSecretsUsageSchema,
+  UnusedAccessActorSchema,
+  UnusedAccessSchema
 } from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { withoutDefault } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { BaseSecretNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 // Each report type declares exactly which inputs it accepts. The `inputs` schemas are the same consts
 // the generators use, so request validation and generation never drift.
@@ -297,6 +302,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "createOrgSecretsAuditReport",
       body: z.object({
         reports: OrgAuditReportRequestConfigSchema.array().min(1).max(5),
         emailRecipients: z.array(z.string().trim().email().max(255)).max(20).optional()
@@ -330,6 +336,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
+      operationId: "listOrgSecretsAuditReports",
       querystring: z.object({
         offset: z.coerce.number().int().min(0).max(10000).default(0),
         limit: z.coerce.number().int().min(1).max(100).default(10)
@@ -363,6 +370,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "deleteOrgSecretsAuditReport",
       params: z.object({ reportId: z.string().guid() }),
       response: {
         200: OrgAuditReportSchema
@@ -481,6 +489,129 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:projectId/secrets/unused-access",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsUnusedAccess",
+      description:
+        "List the users and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS.projectId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(INSIGHTS.GET_UNUSED_ACCESS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(20).describe(INSIGHTS.GET_UNUSED_ACCESS.limit),
+        search: z.string().trim().max(255).optional().describe(INSIGHTS.GET_UNUSED_ACCESS.search)
+      }),
+      response: {
+        200: UnusedAccessSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { projectId } = req.params;
+      const { result, remainingTTL } = await server.services.secretReadActivity.listUnusedAccess(
+        { projectId, ...req.query },
+        req.permission
+      );
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS, metadata: { projectId } },
+        ...req.auditLogInfo
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/unused-access/:actorType/:actorId",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsUnusedAccessActor",
+      description: "List the secrets one user or machine identity can read but has not read in the last 30 days",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.projectId),
+        actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorType),
+        actorId: z.string().guid().describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorId)
+      }),
+      response: {
+        200: UnusedAccessActorSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { projectId, actorType, actorId } = req.params;
+      const { result, remainingTTL } = await server.services.secretReadActivity.getUnusedAccessActor(
+        { projectId, actorType, actorId },
+        req.permission
+      );
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS,
+          metadata: { projectId, principalType: actorType, principalId: actorId, principalName: result.actor.name }
+        },
+        ...req.auditLogInfo
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return result;
+    }
+  });
+
+  // The fixed segment comes before the secret name, so a secret named like another route here (reports, summary)
+  // cannot be routed to it.
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/read-activity/:secretName",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsSecretReadActivity",
+      description:
+        "List the users and machine identities that can read a secret's value, with each one's latest read and whether it counts as unused access",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.projectId),
+        secretName: BaseSecretNameSchema.max(500).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.secretName)
+      }),
+      querystring: z.object({
+        environment: z.string().trim().min(1).max(255).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .max(1024)
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.secretPath)
+      }),
+      response: {
+        200: z.object({ readActivity: SecretReadActivitySchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const readActivity = await server.services.secretReadActivity.getSecretReadActivity(
+        { projectId: req.params.projectId, secretName: req.params.secretName, ...req.query },
+        req.permission
+      );
+      return { readActivity };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:projectId/usage/auth-methods",
     config: { rateLimit: readLimit },
     schema: {
@@ -510,6 +641,114 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo
       });
       return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/secrets-duplication",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getOrgInsightsSecretsDuplication",
+      description: "Get groups of secrets that share a value anywhere in the organization",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          orgWideSecretValueTrackingEnabled: z.boolean(),
+          groups: z.array(
+            z.object({
+              projectCount: z.number(),
+              locationCount: z.number(),
+              secrets: z.array(
+                z.object({
+                  key: z.string(),
+                  projectId: z.string(),
+                  projectName: z.string(),
+                  environment: z.object({ name: z.string(), slug: z.string() }),
+                  secretPath: z.string()
+                })
+              )
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { result, remainingTTL } = await server.services.insights.getOrgSecretsDuplication({
+        orgId: req.permission.orgId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION,
+          metadata: { groupCount: result.groups.length }
+        }
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return result;
+    }
+  });
+
+  // POST rather than GET because the secret value goes in the body. A GET would put it in the URL,
+  // where it lands in access logs, proxy logs and browser history.
+  server.route({
+    method: "POST",
+    url: "/secrets/search-by-value",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "searchOrgInsightsSecretsByValue",
+      description:
+        "Locate every secret in the organization holding the supplied value, including secrets in projects the caller is not a member of",
+      security: [{ bearerAuth: [] }],
+      body: z.object({
+        secretValue: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              key: z.string(),
+              projectId: z.string(),
+              projectName: z.string(),
+              environment: z.object({ name: z.string(), slug: z.string() }),
+              secretPath: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secrets = await server.services.insights.searchOrgSecretsByValue({
+        secretValue: req.body.secretValue,
+        orgId: req.permission.orgId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.SEARCH_SECRETS_BY_VALUE,
+          metadata: { matchCount: secrets.length }
+        }
+      });
+
+      return { secrets };
     }
   });
 
@@ -681,6 +920,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "createProjectSecretsAuditReport",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -721,6 +961,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
+      operationId: "listProjectSecretsAuditReports",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -755,6 +996,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
+      operationId: "getProjectSecretsAuditReport",
       params: z.object({ projectId: z.string().trim(), reportId: z.string().guid() }),
       response: {
         200: AuditReportSchema
@@ -785,6 +1027,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "deleteProjectSecretsAuditReport",
       params: z.object({ projectId: z.string().trim(), reportId: z.string().guid() }),
       response: {
         200: AuditReportSchema

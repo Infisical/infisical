@@ -22,7 +22,22 @@ import {
   TAdditionalPrivilegesUpdate,
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundleSkills,
+  TAgentVaultAccessBundleSkillsInsert,
+  TAgentVaultAccessBundleSkillsUpdate,
   TAgentVaultAccessBundlesUpdate,
+  TAgentVaultDelegations,
+  TAgentVaultDelegationsInsert,
+  TAgentVaultDelegationSubjects,
+  TAgentVaultDelegationSubjectsInsert,
+  TAgentVaultDelegationSubjectsUpdate,
+  TAgentVaultDelegationsUpdate,
+  TAgentVaultPersonalValueReferences,
+  TAgentVaultPersonalValueReferencesInsert,
+  TAgentVaultPersonalValueReferencesUpdate,
+  TAgentVaultPersonalValues,
+  TAgentVaultPersonalValuesInsert,
+  TAgentVaultPersonalValuesUpdate,
   TAgentVaultProxies,
   TAgentVaultProxiesInsert,
   TAgentVaultProxiesUpdate,
@@ -41,15 +56,21 @@ import {
   TAgentVaultSessionAccessBundles,
   TAgentVaultSessionAccessBundlesInsert,
   TAgentVaultSessionAccessBundlesUpdate,
-  TAgentVaultSessionLogChunks,
-  TAgentVaultSessionLogChunksInsert,
-  TAgentVaultSessionLogChunksUpdate,
+  TAgentVaultSessionInlineServices,
+  TAgentVaultSessionInlineServicesInsert,
+  TAgentVaultSessionInlineServicesUpdate,
   TAgentVaultSessionLogConfigs,
   TAgentVaultSessionLogConfigsInsert,
   TAgentVaultSessionLogConfigsUpdate,
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
+  TAgentVaultSkills,
+  TAgentVaultSkillsInsert,
+  TAgentVaultSkillsUpdate,
+  TAgentVaultSkillVersions,
+  TAgentVaultSkillVersionsInsert,
+  TAgentVaultSkillVersionsUpdate,
   TAgentVaultVariables,
   TAgentVaultVariablesInsert,
   TAgentVaultVariablesUpdate,
@@ -80,9 +101,21 @@ import {
   TApprovalPolicies,
   TApprovalPoliciesInsert,
   TApprovalPoliciesUpdate,
+  TApprovalPolicyAutoApprovalConditions,
+  TApprovalPolicyAutoApprovalConditionsInsert,
+  TApprovalPolicyAutoApprovalConditionsUpdate,
+  TApprovalPolicyAutoApprovalInputs,
+  TApprovalPolicyAutoApprovalInputsInsert,
+  TApprovalPolicyAutoApprovalInputsUpdate,
+  TApprovalPolicyAutoApprovalRules,
+  TApprovalPolicyAutoApprovalRulesInsert,
+  TApprovalPolicyAutoApprovalRulesUpdate,
   TApprovalPolicyBypassers,
   TApprovalPolicyBypassersInsert,
   TApprovalPolicyBypassersUpdate,
+  TApprovalPolicySecretEnvironments,
+  TApprovalPolicySecretEnvironmentsInsert,
+  TApprovalPolicySecretEnvironmentsUpdate,
   TApprovalPolicyStepApprovers,
   TApprovalPolicyStepApproversInsert,
   TApprovalPolicyStepApproversUpdate,
@@ -105,6 +138,9 @@ import {
   TApprovalRequestStepsUpdate,
   TApprovalRequestsUpdate,
   TAuditLogs,
+  TAuditLogSettings,
+  TAuditLogSettingsInsert,
+  TAuditLogSettingsUpdate,
   TAuditLogsInsert,
   TAuditLogStreams,
   TAuditLogStreamsInsert,
@@ -134,6 +170,9 @@ import {
   TCertificateAuthorityCrl,
   TCertificateAuthorityCrlInsert,
   TCertificateAuthorityCrlUpdate,
+  TCertificateAuthorityCrossSignedCerts,
+  TCertificateAuthorityCrossSignedCertsInsert,
+  TCertificateAuthorityCrossSignedCertsUpdate,
   TCertificateAuthoritySecret,
   TCertificateAuthoritySecretInsert,
   TCertificateAuthoritySecretUpdate,
@@ -161,6 +200,12 @@ import {
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
+  TDelegatedApprovalPolicies,
+  TDelegatedApprovalPoliciesInsert,
+  TDelegatedApprovalPoliciesUpdate,
+  TDelegatedApprovalRequests,
+  TDelegatedApprovalRequestsInsert,
+  TDelegatedApprovalRequestsUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -527,9 +572,6 @@ import {
   TProxiedServices,
   TProxiedServicesInsert,
   TProxiedServicesUpdate,
-  TRateLimit,
-  TRateLimitInsert,
-  TRateLimitUpdate,
   TRelays,
   TRelaysInsert,
   TRelaysUpdate,
@@ -593,6 +635,9 @@ import {
   TSecretBlindIndexes,
   TSecretBlindIndexesInsert,
   TSecretBlindIndexesUpdate,
+  TSecretChangeRequests,
+  TSecretChangeRequestsInsert,
+  TSecretChangeRequestsUpdate,
   TSecretFolders,
   TSecretFoldersInsert,
   TSecretFoldersUpdate,
@@ -602,6 +647,9 @@ import {
   TSecretImports,
   TSecretImportsInsert,
   TSecretImportsUpdate,
+  TSecretReadActivity,
+  TSecretReadActivityInsert,
+  TSecretReadActivityUpdate,
   TSecretReferences,
   TSecretReferencesInsert,
   TSecretReferencesUpdate,
@@ -716,9 +764,6 @@ import {
   TUserSecretActivationUpdate,
   TUsersInsert,
   TUsersUpdate,
-  TVaultExternalMigrationConfigs,
-  TVaultExternalMigrationConfigsInsert,
-  TVaultExternalMigrationConfigsUpdate,
   TWebauthnCredentials,
   TWebauthnCredentialsInsert,
   TWebauthnCredentialsUpdate,
@@ -894,6 +939,11 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrl,
       TCertificateAuthorityCrlInsert,
       TCertificateAuthorityCrlUpdate
+    >;
+    [TableName.CertificateAuthorityCrossSignedCert]: KnexOriginal.CompositeTableType<
+      TCertificateAuthorityCrossSignedCerts,
+      TCertificateAuthorityCrossSignedCertsInsert,
+      TCertificateAuthorityCrossSignedCertsUpdate
     >;
     [TableName.InternalCertificateAuthority]: KnexOriginal.CompositeTableType<
       TInternalCertificateAuthorities,
@@ -1164,7 +1214,6 @@ declare module "knex/types/tables" {
       TSecretSharingInsert,
       TSecretSharingUpdate
     >;
-    [TableName.RateLimit]: KnexOriginal.CompositeTableType<TRateLimit, TRateLimitInsert, TRateLimitUpdate>;
     [TableName.SecretTag]: KnexOriginal.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
     [TableName.SecretImport]: KnexOriginal.CompositeTableType<
       TSecretImports,
@@ -1395,6 +1444,11 @@ declare module "knex/types/tables" {
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
     >;
+    [TableName.AuditLogSettings]: KnexOriginal.CompositeTableType<
+      TAuditLogSettings,
+      TAuditLogSettingsInsert,
+      TAuditLogSettingsUpdate
+    >;
     [TableName.AuditReport]: KnexOriginal.CompositeTableType<TAuditReports, TAuditReportsInsert, TAuditReportsUpdate>;
     [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<
       TGitAppInstallSessions,
@@ -1418,6 +1472,11 @@ declare module "knex/types/tables" {
       TSecretReferencesV2,
       TSecretReferencesV2Insert,
       TSecretReferencesV2Update
+    >;
+    [TableName.SecretReadActivity]: KnexOriginal.CompositeTableType<
+      TSecretReadActivity,
+      TSecretReadActivityInsert,
+      TSecretReadActivityUpdate
     >;
     // Junction tables
     [TableName.SecretV2JnTag]: KnexOriginal.CompositeTableType<
@@ -1826,6 +1885,16 @@ declare module "knex/types/tables" {
       TAgentVaultVariablesInsert,
       TAgentVaultVariablesUpdate
     >;
+    [TableName.AgentVaultPersonalValue]: KnexOriginal.CompositeTableType<
+      TAgentVaultPersonalValues,
+      TAgentVaultPersonalValuesInsert,
+      TAgentVaultPersonalValuesUpdate
+    >;
+    [TableName.AgentVaultPersonalValueReference]: KnexOriginal.CompositeTableType<
+      TAgentVaultPersonalValueReferences,
+      TAgentVaultPersonalValueReferencesInsert,
+      TAgentVaultPersonalValueReferencesUpdate
+    >;
     [TableName.AgentVaultServiceVariableReference]: KnexOriginal.CompositeTableType<
       TAgentVaultServiceVariableReferences,
       TAgentVaultServiceVariableReferencesInsert,
@@ -1841,6 +1910,21 @@ declare module "knex/types/tables" {
       TAgentVaultSessionAccessBundlesInsert,
       TAgentVaultSessionAccessBundlesUpdate
     >;
+    [TableName.AgentVaultSessionInlineService]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionInlineServices,
+      TAgentVaultSessionInlineServicesInsert,
+      TAgentVaultSessionInlineServicesUpdate
+    >;
+    [TableName.AgentVaultDelegation]: KnexOriginal.CompositeTableType<
+      TAgentVaultDelegations,
+      TAgentVaultDelegationsInsert,
+      TAgentVaultDelegationsUpdate
+    >;
+    [TableName.AgentVaultDelegationSubject]: KnexOriginal.CompositeTableType<
+      TAgentVaultDelegationSubjects,
+      TAgentVaultDelegationSubjectsInsert,
+      TAgentVaultDelegationSubjectsUpdate
+    >;
     [TableName.AgentVaultProxy]: KnexOriginal.CompositeTableType<
       TAgentVaultProxies,
       TAgentVaultProxiesInsert,
@@ -1851,10 +1935,20 @@ declare module "knex/types/tables" {
       TAgentVaultSessionLogConfigsInsert,
       TAgentVaultSessionLogConfigsUpdate
     >;
-    [TableName.AgentVaultSessionLogChunk]: KnexOriginal.CompositeTableType<
-      TAgentVaultSessionLogChunks,
-      TAgentVaultSessionLogChunksInsert,
-      TAgentVaultSessionLogChunksUpdate
+    [TableName.AgentVaultSkill]: KnexOriginal.CompositeTableType<
+      TAgentVaultSkills,
+      TAgentVaultSkillsInsert,
+      TAgentVaultSkillsUpdate
+    >;
+    [TableName.AgentVaultSkillVersion]: KnexOriginal.CompositeTableType<
+      TAgentVaultSkillVersions,
+      TAgentVaultSkillVersionsInsert,
+      TAgentVaultSkillVersionsUpdate
+    >;
+    [TableName.AgentVaultAccessBundleSkill]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundleSkills,
+      TAgentVaultAccessBundleSkillsInsert,
+      TAgentVaultAccessBundleSkillsUpdate
     >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,
@@ -1940,6 +2034,26 @@ declare module "knex/types/tables" {
       TApprovalPolicyBypassersInsert,
       TApprovalPolicyBypassersUpdate
     >;
+    [TableName.ApprovalPolicyAutoApprovalInputs]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalInputs,
+      TApprovalPolicyAutoApprovalInputsInsert,
+      TApprovalPolicyAutoApprovalInputsUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalRules]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalRules,
+      TApprovalPolicyAutoApprovalRulesInsert,
+      TApprovalPolicyAutoApprovalRulesUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalConditions]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalConditions,
+      TApprovalPolicyAutoApprovalConditionsInsert,
+      TApprovalPolicyAutoApprovalConditionsUpdate
+    >;
+    [TableName.ApprovalPolicySecretEnvironment]: KnexOriginal.CompositeTableType<
+      TApprovalPolicySecretEnvironments,
+      TApprovalPolicySecretEnvironmentsInsert,
+      TApprovalPolicySecretEnvironmentsUpdate
+    >;
     [TableName.ApprovalPolicyStepApprovers]: KnexOriginal.CompositeTableType<
       TApprovalPolicyStepApprovers,
       TApprovalPolicyStepApproversInsert,
@@ -1974,6 +2088,21 @@ declare module "knex/types/tables" {
       TApprovalRequests,
       TApprovalRequestsInsert,
       TApprovalRequestsUpdate
+    >;
+    [TableName.SecretChangeRequests]: KnexOriginal.CompositeTableType<
+      TSecretChangeRequests,
+      TSecretChangeRequestsInsert,
+      TSecretChangeRequestsUpdate
+    >;
+    [TableName.DelegatedApprovalPolicies]: KnexOriginal.CompositeTableType<
+      TDelegatedApprovalPolicies,
+      TDelegatedApprovalPoliciesInsert,
+      TDelegatedApprovalPoliciesUpdate
+    >;
+    [TableName.DelegatedApprovalRequests]: KnexOriginal.CompositeTableType<
+      TDelegatedApprovalRequests,
+      TDelegatedApprovalRequestsInsert,
+      TDelegatedApprovalRequestsUpdate
     >;
     [TableName.PkiCertificatePolicy]: KnexOriginal.CompositeTableType<
       TPkiCertificatePolicies,
@@ -2010,11 +2139,6 @@ declare module "knex/types/tables" {
       TSecretValidationRules,
       TSecretValidationRulesInsert,
       TSecretValidationRulesUpdate
-    >;
-    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
-      TVaultExternalMigrationConfigs,
-      TVaultExternalMigrationConfigsInsert,
-      TVaultExternalMigrationConfigsUpdate
     >;
   }
 }

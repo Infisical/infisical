@@ -159,7 +159,11 @@ export type TInternalCertificateAuthority = {
     keyAlgorithm: CertKeyAlgorithm;
     keySource?: CertKeySource;
     hsmConnectorId?: string;
-    hsmKeyLabel?: string;
+    hsmConnectorName?: string;
+    appConnectionId?: string;
+    appConnectionName?: string;
+    region?: string;
+    externalKeyId?: string;
     notAfter?: string;
     notBefore?: string;
     dn?: string;
@@ -270,6 +274,26 @@ export type TImportCaCertificateDTO = {
 
 export type TImportCaCertificateResponse = {
   message: string;
+  caId: string;
+};
+
+export type TCaCrossSignedCertificate = {
+  caId: string;
+  certificate: string;
+  certificateChain: string;
+  issuer: string;
+  serialNumber: string;
+  notBefore: string;
+  notAfter: string;
+};
+
+export type TImportCaCrossSignedCertificateDTO = {
+  caId: string;
+  certificate: string;
+  certificateChain: string;
+};
+
+export type TDeleteCaCrossSignedCertificateDTO = {
   caId: string;
 };
 

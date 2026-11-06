@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ClientClosedRequestError } from "@app/lib/errors";
 
-import { expandSecretReferencesFactory } from "./secret-reference-fns";
+import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 
 vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
 vi.mock("../project-folder-grant/project-folder-grant-fns", () => ({ isCrossProjectEnabled: vi.fn() }));
 
 type Args = Parameters<typeof expandSecretReferencesFactory>[0];
 
-const makeDALs = () => {
+const makeDALs = (key = "SOURCE") => {
   const findBySecretPath = vi
     .fn<Args["folderDAL"]["findBySecretPath"]>()
     .mockResolvedValue({ id: "folder" } as Awaited<ReturnType<Args["folderDAL"]["findBySecretPath"]>>);
@@ -17,7 +17,7 @@ const makeDALs = () => {
     {
       id: "secret",
       _id: "secret",
-      key: "SOURCE",
+      key,
       version: 1,
       type: "shared",
       folderId: "folder",
@@ -142,5 +142,135 @@ describe("expandSecretReferencesFactory", () => {
     expect(results.every((r) => r.status === "rejected" && r.reason instanceof ClientClosedRequestError)).toBe(true);
     expect(findByFolderId).toHaveBeenCalledOnce();
     expect(decryptSecretValue).not.toHaveBeenCalled();
+  });
+
+  it("resolves references to a secret whose name contains a space", async () => {
+    const { findBySecretPath, findByFolderId } = makeDALs("My Secret");
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId },
+      decryptSecretValue: (value) => value?.toString(),
+      canExpandValue: vi.fn(() => true)
+    });
+    const expand = (value: string) =>
+      expandSecretReferences({ secretKey: "KEY", value, environment: "prod", secretPath: "/shared" });
+
+    expect(await expand(`\${My Secret}`)).toBe("resolved");
+    expect(await expand(`\${prod.shared.My Secret}`)).toBe("resolved");
+    expect(await expand(`user=\${My Secret};`)).toBe("user=resolved;");
+  });
+
+  it("leaves a reference padded with spaces literal without looking anything up", async () => {
+    const { findBySecretPath, findByFolderId } = makeDALs("My Secret");
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId },
+      decryptSecretValue: (value) => value?.toString(),
+      canExpandValue: vi.fn(() => true)
+    });
+
+    const value = `\${ My Secret }`;
+    expect(await expandSecretReferences({ secretKey: "KEY", value, environment: "prod", secretPath: "/shared" })).toBe(
+      value
+    );
+    expect(findBySecretPath).not.toHaveBeenCalled();
+    expect(findByFolderId).not.toHaveBeenCalled();
+  });
+});
+
+describe("getAllSecretReferences", () => {
+  it("parses the reference forms that predate spaces in secret names the same way", () => {
+    expect(getAllSecretReferences(`\${KEY} \${dev.KEY} \${dev.a.b.KEY} \${@proj.dev.a.KEY}`)).toEqual({
+      localReferences: ["KEY"],
+      nestedReferences: [
+        { environment: "dev", secretPath: "/", secretKey: "KEY" },
+        { environment: "dev", secretPath: "/a/b", secretKey: "KEY" },
+        { targetProjectSlug: "proj", environment: "dev", secretPath: "/a", secretKey: "KEY" }
+      ]
+    });
+  });
+
+  it("accepts spaces inside the secret name of local, nested, and cross-project references", () => {
+    expect(
+      getAllSecretReferences(`\${My Secret} \${My  Secret} \${dev.a.My Secret} \${@proj.dev.My Secret Name}`)
+    ).toEqual({
+      localReferences: ["My Secret", "My  Secret"],
+      nestedReferences: [
+        { environment: "dev", secretPath: "/a", secretKey: "My Secret" },
+        { targetProjectSlug: "proj", environment: "dev", secretPath: "/", secretKey: "My Secret Name" }
+      ]
+    });
+  });
+
+  it.each([
+    [`\${ KEY }`],
+    [`\${ KEY}`],
+    [`\${KEY }`],
+    [`\${my env.KEY}`],
+    [`\${dev.my folder.KEY}`],
+    [`\${@my proj.dev.KEY}`],
+    [`\${{ secrets.KEY }}`],
+    [`\${a + b}`]
+  ])("does not treat %s as a reference", (value) => {
+    expect(getAllSecretReferences(value)).toEqual({ localReferences: [], nestedReferences: [] });
+  });
+});
+
+describe("expandSecretReferencesFactory onSecretExpanded", () => {
+  const row = (id: string, key: string, value: string, userId: string | null = null) => ({
+    id,
+    _id: id,
+    key,
+    version: 1,
+    type: userId ? "personal" : "shared",
+    folderId: "folder",
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    encryptedValue: Buffer.from(value),
+    tags: [],
+    secretMetadata: [],
+    userId
+  });
+  const expand = async (
+    rows: ReturnType<typeof row>[],
+    value: string,
+    {
+      userId,
+      forbidden,
+      reported = []
+    }: { userId?: string; forbidden?: string; reported?: { secretKey: string; referencedSecretIds: string[] }[] } = {}
+  ) => {
+    const { findBySecretPath } = makeDALs();
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId: vi.fn<Args["secretDAL"]["findByFolderId"]>().mockResolvedValue(rows) },
+      decryptSecretValue: (encrypted) => encrypted?.toString(),
+      canExpandValue: vi.fn((_environment: string, _secretPath: string, secretKey: string) => secretKey !== forbidden),
+      userId,
+      onSecretExpanded: ({ secretKey }, referencedSecretIds) => reported.push({ secretKey, referencedSecretIds })
+    });
+    const expanded = await expandSecretReferences({ secretKey: "URL", value, environment: "prod", secretPath: "/" });
+    return { expanded, reported };
+  };
+
+  it("reports the secret each reference resolved to, the reader's own override included", async () => {
+    const rows = [row("shared-db", "DB_PASSWORD", "shared"), row("alice-db", "DB_PASSWORD", "mine", "alice")];
+    const asAlice = await expand(rows, `postgres://\${DB_PASSWORD}@db`, { userId: "alice" });
+    expect(asAlice).toEqual({
+      expanded: "postgres://mine@db",
+      reported: [{ secretKey: "URL", referencedSecretIds: ["alice-db"] }]
+    });
+    const shared = await expand(rows.slice(0, 1), `postgres://\${DB_PASSWORD}@db`);
+    expect(shared.reported).toEqual([{ secretKey: "URL", referencedSecretIds: ["shared-db"] }]);
+  });
+
+  it("reports nothing for an expansion that fails part way", async () => {
+    const rows = [row("readable", "READABLE", "ok"), row("forbidden", "FORBIDDEN", "no")];
+    const reported: { secretKey: string; referencedSecretIds: string[] }[] = [];
+    await expect(expand(rows, `\${READABLE}\${FORBIDDEN}`, { forbidden: "FORBIDDEN", reported })).rejects.toThrow();
+    expect(reported).toEqual([]);
   });
 });

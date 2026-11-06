@@ -1,0 +1,613 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "import",
+    "unicorn"
+  ],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "es6": true,
+    "node": true
+  },
+  "rules": {
+    "eslint/for-direction": "error",
+    "eslint/no-async-promise-executor": "error",
+    "eslint/no-case-declarations": "error",
+    "eslint/no-class-assign": "error",
+    "eslint/no-compare-neg-zero": "error",
+    "eslint/no-cond-assign": [
+      "error",
+      "always"
+    ],
+    "eslint/no-constant-condition": "error",
+    "eslint/no-control-regex": "error",
+    "eslint/no-debugger": "error",
+    "eslint/no-delete-var": "error",
+    "eslint/no-dupe-else-if": "error",
+    "eslint/no-duplicate-case": "error",
+    "eslint/no-empty": "error",
+    "eslint/no-empty-character-class": "error",
+    "eslint/no-empty-pattern": "error",
+    "eslint/no-ex-assign": "error",
+    "eslint/no-extra-boolean-cast": "error",
+    "eslint/no-fallthrough": "error",
+    "eslint/no-global-assign": [
+      "error",
+      {
+        "exceptions": []
+      }
+    ],
+    "eslint/no-inner-declarations": "error",
+    "eslint/no-invalid-regexp": "error",
+    "eslint/no-irregular-whitespace": "error",
+    "eslint/no-loss-of-precision": "error",
+    "eslint/no-misleading-character-class": "error",
+    "eslint/no-nonoctal-decimal-escape": "error",
+    "eslint/no-prototype-builtins": "error",
+    "eslint/no-regex-spaces": "error",
+    "eslint/no-self-assign": [
+      "error",
+      {
+        "props": true
+      }
+    ],
+    "eslint/no-shadow-restricted-names": "error",
+    "eslint/no-sparse-arrays": "error",
+    "eslint/no-unsafe-finally": "error",
+    "eslint/no-unsafe-optional-chaining": [
+      "error",
+      {
+        "disallowArithmeticOperators": true
+      }
+    ],
+    "eslint/no-unused-labels": "error",
+    "eslint/no-useless-backreference": "error",
+    "eslint/no-useless-catch": "error",
+    "eslint/no-useless-escape": "error",
+    "eslint/no-with": "error",
+    "eslint/require-yield": "error",
+    "eslint/use-isnan": "error",
+    "eslint/no-var": "error",
+    "eslint/prefer-const": [
+      "error",
+      {
+        "destructuring": "any",
+        "ignoreReadBeforeAssign": true
+      }
+    ],
+    "eslint/prefer-rest-params": "error",
+    "eslint/prefer-spread": "error",
+    "typescript/ban-ts-comment": "error",
+    "eslint/no-array-constructor": "error",
+    "typescript/no-duplicate-enum-values": "error",
+    "typescript/no-empty-object-type": [
+      "error",
+      {
+        "allowInterfaces": "always"
+      }
+    ],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-extra-non-null-assertion": "error",
+    "typescript/no-misused-new": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-this-alias": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "eslint/no-unused-expressions": [
+      "error",
+      {
+        "allowShortCircuit": false,
+        "allowTernary": false,
+        "allowTaggedTemplates": false
+      }
+    ],
+    "eslint/no-unused-vars": [
+      "error",
+      {
+        "vars": "all",
+        "args": "after-used",
+        "ignoreRestSiblings": true,
+        "caughtErrors": "none"
+      }
+    ],
+    "typescript/no-wrapper-object-types": "error",
+    "typescript/prefer-as-const": "error",
+    "typescript/prefer-namespace-keyword": "error",
+    "typescript/triple-slash-reference": "error",
+    "typescript/no-array-delete": "error",
+    "typescript/no-duplicate-type-constituents": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-for-in-array": "error",
+    "typescript/no-implied-eval": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-redundant-type-constituents": "error",
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "typescript/no-unsafe-unary-minus": "error",
+    "typescript/only-throw-error": "error",
+    "eslint/prefer-promise-reject-errors": [
+      "error",
+      {
+        "allowEmptyReject": true
+      }
+    ],
+    "typescript/restrict-plus-operands": "error",
+    "typescript/restrict-template-expressions": "error",
+    "typescript/unbound-method": "error",
+    "eslint/array-callback-return": [
+      "error",
+      {
+        "allowImplicit": true
+      }
+    ],
+    "eslint/block-scoped-var": "error",
+    "eslint/class-methods-use-this": [
+      "error",
+      {
+        "exceptMethods": []
+      }
+    ],
+    "eslint/default-case": [
+      "error",
+      {
+        "commentPattern": "^no default$"
+      }
+    ],
+    "eslint/default-case-last": "error",
+    "eslint/eqeqeq": [
+      "error",
+      "always",
+      {
+        "null": "ignore"
+      }
+    ],
+    "eslint/grouped-accessor-pairs": "error",
+    "eslint/guard-for-in": "error",
+    "eslint/max-classes-per-file": [
+      "error",
+      1
+    ],
+    "eslint/no-alert": "error",
+    "eslint/no-caller": "error",
+    "eslint/no-constructor-return": "error",
+    "eslint/no-else-return": [
+      "error",
+      {
+        "allowElseIf": false
+      }
+    ],
+    "eslint/no-eval": "error",
+    "eslint/no-extend-native": "error",
+    "eslint/no-extra-bind": "error",
+    "eslint/no-extra-label": "error",
+    "eslint/no-iterator": "error",
+    "eslint/no-labels": [
+      "error",
+      {
+        "allowLoop": false,
+        "allowSwitch": false
+      }
+    ],
+    "eslint/no-lone-blocks": "error",
+    "eslint/no-multi-str": "error",
+    "eslint/no-new": "error",
+    "eslint/no-new-wrappers": "error",
+    "eslint/no-param-reassign": [
+      "error",
+      {
+        "props": true,
+        "ignorePropertyModificationsFor": [
+          "acc",
+          "accumulator",
+          "e",
+          "ctx",
+          "context",
+          "req",
+          "request",
+          "res",
+          "response",
+          "$scope",
+          "staticContext"
+        ]
+      }
+    ],
+    "eslint/no-proto": "error",
+    "eslint/no-restricted-properties": [
+      "error",
+      {
+        "object": "arguments",
+        "property": "callee",
+        "message": "arguments.callee is deprecated"
+      },
+      {
+        "object": "global",
+        "property": "isFinite",
+        "message": "Please use Number.isFinite instead"
+      },
+      {
+        "object": "self",
+        "property": "isFinite",
+        "message": "Please use Number.isFinite instead"
+      },
+      {
+        "object": "window",
+        "property": "isFinite",
+        "message": "Please use Number.isFinite instead"
+      },
+      {
+        "object": "global",
+        "property": "isNaN",
+        "message": "Please use Number.isNaN instead"
+      },
+      {
+        "object": "self",
+        "property": "isNaN",
+        "message": "Please use Number.isNaN instead"
+      },
+      {
+        "object": "window",
+        "property": "isNaN",
+        "message": "Please use Number.isNaN instead"
+      },
+      {
+        "property": "__defineGetter__",
+        "message": "Please use Object.defineProperty instead."
+      },
+      {
+        "property": "__defineSetter__",
+        "message": "Please use Object.defineProperty instead."
+      },
+      {
+        "object": "Math",
+        "property": "pow",
+        "message": "Use the exponentiation operator (**) instead."
+      }
+    ],
+    "eslint/no-return-assign": [
+      "error",
+      "always"
+    ],
+    "eslint/no-script-url": "error",
+    "eslint/no-self-compare": "error",
+    "eslint/no-sequences": "error",
+    "eslint/no-useless-concat": "error",
+    "eslint/no-useless-return": "error",
+    "eslint/prefer-regex-literals": [
+      "error",
+      {
+        "disallowRedundantWrapping": true
+      }
+    ],
+    "eslint/radix": "error",
+    "eslint/vars-on-top": "error",
+    "eslint/yoda": "error",
+    "eslint/no-await-in-loop": "error",
+    "eslint/no-console": "error",
+    "eslint/no-promise-executor-return": "error",
+    "eslint/no-template-curly-in-string": "error",
+    "eslint/no-unreachable-loop": [
+      "error",
+      {
+        "ignore": []
+      }
+    ],
+    "eslint/func-names": "error",
+    "eslint/new-cap": [
+      "error",
+      {
+        "newIsCap": true,
+        "newIsCapExceptions": [],
+        "capIsNew": false,
+        "capIsNewExceptions": [
+          "Immutable.Map",
+          "Immutable.Set",
+          "Immutable.List"
+        ]
+      }
+    ],
+    "eslint/no-bitwise": "error",
+    "eslint/no-lonely-if": "error",
+    "eslint/no-multi-assign": "error",
+    "eslint/no-nested-ternary": "error",
+    "eslint/no-plusplus": "error",
+    "eslint/no-underscore-dangle": [
+      "error",
+      {
+        "allow": [],
+        "allowAfterThis": false,
+        "allowAfterSuper": false,
+        "enforceInMethodNames": true
+      }
+    ],
+    "eslint/no-unneeded-ternary": [
+      "error",
+      {
+        "defaultAssignment": false
+      }
+    ],
+    "eslint/one-var": [
+      "error",
+      "never"
+    ],
+    "eslint/operator-assignment": [
+      "error",
+      "always"
+    ],
+    "eslint/prefer-exponentiation-operator": "error",
+    "eslint/prefer-object-spread": "error",
+    "eslint/unicode-bom": [
+      "error",
+      "never"
+    ],
+    "eslint/no-label-var": "error",
+    "eslint/no-restricted-globals": [
+      "error",
+      {
+        "name": "isFinite",
+        "message": "Use Number.isFinite instead https://github.com/airbnb/javascript#standard-library--isfinite"
+      },
+      {
+        "name": "isNaN",
+        "message": "Use Number.isNaN instead https://github.com/airbnb/javascript#standard-library--isnan"
+      },
+      "addEventListener",
+      "blur",
+      "close",
+      "closed",
+      "confirm",
+      "defaultStatus",
+      "defaultstatus",
+      "event",
+      "external",
+      "find",
+      "focus",
+      "frameElement",
+      "frames",
+      "history",
+      "innerHeight",
+      "innerWidth",
+      "length",
+      "location",
+      "locationbar",
+      "menubar",
+      "moveBy",
+      "moveTo",
+      "name",
+      "onblur",
+      "onerror",
+      "onfocus",
+      "onload",
+      "onresize",
+      "onunload",
+      "open",
+      "opener",
+      "opera",
+      "outerHeight",
+      "outerWidth",
+      "pageXOffset",
+      "pageYOffset",
+      "parent",
+      "print",
+      "removeEventListener",
+      "resizeBy",
+      "resizeTo",
+      "screen",
+      "screenLeft",
+      "screenTop",
+      "screenX",
+      "screenY",
+      "scroll",
+      "scrollbars",
+      "scrollBy",
+      "scrollTo",
+      "scrollX",
+      "scrollY",
+      "self",
+      "status",
+      "statusbar",
+      "stop",
+      "toolbar",
+      "top"
+    ],
+    "eslint/no-restricted-exports": [
+      "error",
+      {
+        "restrictedNamedExports": [
+          "default",
+          "then"
+        ]
+      }
+    ],
+    "eslint/no-useless-computed-key": "error",
+    "eslint/no-useless-rename": [
+      "error",
+      {
+        "ignoreDestructuring": false,
+        "ignoreImport": false,
+        "ignoreExport": false
+      }
+    ],
+    "eslint/object-shorthand": [
+      "error",
+      "always",
+      {
+        "ignoreConstructors": false,
+        "avoidQuotes": true
+      }
+    ],
+    "eslint/prefer-destructuring": [
+      "error",
+      {
+        "VariableDeclarator": {
+          "array": false,
+          "object": true
+        },
+        "AssignmentExpression": {
+          "array": true,
+          "object": false
+        }
+      },
+      {
+        "enforceForRenamedProperties": false
+      }
+    ],
+    "eslint/prefer-numeric-literals": "error",
+    "eslint/prefer-template": "error",
+    "eslint/symbol-description": "error",
+    "import/export": "error",
+    "import/no-named-as-default": "off",
+    "import/no-mutable-exports": "error",
+    "import/no-amd": "error",
+    "import/first": "error",
+    "import/no-duplicates": "error",
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        "": "never",
+        "ts": "never",
+        "tsx": "never"
+      }
+    ],
+    "import/newline-after-import": "error",
+    "import/no-absolute-path": "error",
+    "import/no-dynamic-require": "error",
+    "import/no-webpack-loader-syntax": "error",
+    "import/no-named-default": "error",
+    "import/no-self-import": "error",
+    "import/no-cycle": "off",
+    "eslint/default-param-last": "error",
+    "typescript/dot-notation": [
+      "error",
+      {
+        "allowKeywords": true
+      }
+    ],
+    "eslint/no-dupe-class-members": "error",
+    "eslint/no-loop-func": "error",
+    "eslint/no-redeclare": "off",
+    "eslint/no-shadow": "error",
+    "eslint/no-use-before-define": [
+      "error",
+      {
+        "functions": true,
+        "classes": true,
+        "variables": true
+      }
+    ],
+    "eslint/no-useless-constructor": "error",
+    "eslint/no-object-constructor": "error",
+    "unicorn/no-new-buffer": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {
+            "property": "getMeter",
+            "message": "Do not acquire an OpenTelemetry meter directly. Use highCardinalityMeter (per-actor labels) or resolveCoreMeter (observable gauges) from @app/lib/telemetry/metrics."
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/lib/telemetry/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": "off",
+        "eslint/no-restricted-properties": "off"
+      }
+    },
+    {
+      "files": [
+        "e2e-test/**",
+        "src/db/migrations/**"
+      ],
+      "rules": {
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-argument": "off",
+        "typescript/no-unsafe-return": "off",
+        "typescript/no-unsafe-call": "off"
+      }
+    },
+    {
+      "files": [
+        "src/db/migrations/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/lib/crypto",
+                "importNames": [
+                  "buildSecretBlindIndexFromName"
+                ],
+                "message": "A migration cannot use the instance root encryption key: it runs before the key is loaded and would fall back to process.env, which is the wrong key on any instance that has rotated ENCRYPTION_KEY. Do this work in a post-boot background job instead."
+              },
+              {
+                "name": "@app/lib/crypto/encryption",
+                "importNames": [
+                  "buildSecretBlindIndexFromName"
+                ],
+                "message": "A migration cannot use the instance root encryption key: it runs before the key is loaded and would fall back to process.env, which is the wrong key on any instance that has rotated ENCRYPTION_KEY. Do this work in a post-boot background job instead."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {
+            "property": "getMeter",
+            "message": "Do not acquire an OpenTelemetry meter directly. Use highCardinalityMeter (per-actor labels) or resolveCoreMeter (observable gauges) from @app/lib/telemetry/metrics."
+          },
+          {
+            "property": "encryptWithRootEncryptionKey",
+            "message": "A migration cannot use the instance root encryption key: it runs before the key is loaded and would fall back to process.env, which is the wrong key on any instance that has rotated ENCRYPTION_KEY. Do this work in a post-boot background job instead."
+          },
+          {
+            "property": "decryptWithRootEncryptionKey",
+            "message": "A migration cannot use the instance root encryption key: it runs before the key is loaded and would fall back to process.env, which is the wrong key on any instance that has rotated ENCRYPTION_KEY. Do this work in a post-boot background job instead."
+          }
+        ]
+      }
+    }
+  ]
+}

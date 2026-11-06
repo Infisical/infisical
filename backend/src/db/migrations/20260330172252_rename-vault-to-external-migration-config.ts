@@ -1,7 +1,6 @@
 import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
-import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
 import { ExternalMigrationProviders } from "@app/services/external-migration/external-migration-schemas";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
@@ -12,6 +11,9 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
 import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+
+// Dropped by the 20260910093000 migration, so it no longer has a TableName entry.
+const VAULT_EXTERNAL_MIGRATION_CONFIGS = "vault_external_migration_configs";
 
 export async function up(knex: Knex): Promise<void> {
   initLogger();
@@ -36,10 +38,10 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.ExternalMigrationConfig);
 
-    if (await knex.schema.hasTable(TableName.VaultExternalMigrationConfig)) {
-      const existingVaultConfigs = await knex(TableName.VaultExternalMigrationConfig).select(
-        selectAllTableCols(TableName.VaultExternalMigrationConfig)
-      );
+    if (await knex.schema.hasTable(VAULT_EXTERNAL_MIGRATION_CONFIGS)) {
+      const existingVaultConfigs = await knex
+        .select<{ orgId: string; namespace: string; connectionId?: string | null }[]>("*")
+        .from(VAULT_EXTERNAL_MIGRATION_CONFIGS);
 
       await Promise.all(
         existingVaultConfigs.map(async (vaultConfig) => {

@@ -8,6 +8,7 @@ export type TInteractiveShellStream = {
   on(event: "data", listener: (chunk: Buffer) => void): void;
   on(event: "close", listener: () => void): void;
   on(event: "error", listener: (err: Error) => void): void;
+  on(event: "exit", listener: (code: number | null) => void): void;
   write(data: string): void;
   end(): void;
 };

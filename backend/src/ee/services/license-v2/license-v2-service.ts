@@ -25,6 +25,7 @@ import {
   BillingV2BreakdownDimension,
   BillingV2BreakdownProject,
   BillingV2BreakdownScope,
+  BillingV2Bands,
   BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2CompareRow,
@@ -43,6 +44,7 @@ import {
   TBuyBillingV2ProductDTO,
   TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
+  TConfirmBillingV2TrialPaymentDTO,
   TCreateBillingV2PortalSessionDTO,
   TGetBillingV2CatalogDTO,
   TGetBillingV2OverviewDTO,
@@ -89,6 +91,7 @@ type TLicenseV2ServiceFactoryDep = {
     | "changeCommitments"
     | "startTrial"
     | "cancelTrial"
+    | "confirmTrialPayment"
     | "getTrials"
     | "cancelSubscription"
     | "resumeSubscription"
@@ -115,6 +118,38 @@ const centsToDollars = (cents: number | null | undefined): number => {
   return cents / 100;
 };
 
+type TCatalogPrice = TCatalogProduct["plans"][number]["prices"][number];
+
+// The License Server classifies a price by its dimension's billing type and does not send a kind, so a
+// metered dimension's price would otherwise default to per_unit and be offered as a buyer-set quantity.
+const effectivePriceKind = (product: TCatalogProduct, price: TCatalogPrice): string => {
+  if (price.kind && price.kind !== PER_UNIT_KIND) {
+    return price.kind;
+  }
+  const dimension = product.dimensions.find((candidate) => candidate.key === price.dimensionKey);
+  return dimension?.billingType === METERED_KIND ? METERED_KIND : PER_UNIT_KIND;
+};
+
+type TPriceTier = { upTo: number | null; unitAmountDecimal: string; flatAmountCents?: number };
+
+// Bands arrive in cents (unitAmountDecimal keeps sub-cent rates); the client works in dollars.
+const toBands = (
+  mode: string | null | undefined,
+  tiers: TPriceTier[] | null | undefined
+): BillingV2Bands | undefined => {
+  if (!tiers || tiers.length === 0) {
+    return undefined;
+  }
+  return {
+    mode: mode === "volume" ? "volume" : "graduated",
+    tiers: tiers.map((tier) => ({
+      upTo: tier.upTo,
+      unitPrice: Number(tier.unitAmountDecimal) / 100,
+      flatFee: centsToDollars(tier.flatAmountCents)
+    }))
+  };
+};
+
 const formatDate = (unixSeconds: number | null | undefined): string | null => {
   if (!unixSeconds) {
     return null;
@@ -124,6 +159,27 @@ const formatDate = (unixSeconds: number | null | undefined): string | null => {
     month: "long",
     day: "numeric"
   });
+};
+
+// Payment URLs from the license server are handed to the browser as links, so anything but a
+// well-formed https URL is dropped rather than shown.
+const toHttpsUrl = (value: string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+  try {
+    return new URL(value).protocol === "https:" ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const toPaymentAlert = (payment: TSubscriptionResponse["payment"]): BillingV2Overview["paymentAlert"] => {
+  if (!payment || (payment.state !== "needs_action" && payment.state !== "failed")) {
+    return null;
+  }
+  const actionUrl = toHttpsUrl(payment.actionUrl);
+  return actionUrl ? { state: payment.state, actionUrl } : null;
 };
 
 // Entitlement product dates (trial_ends_at, current_period_end) are ISO strings, not unix seconds.
@@ -254,7 +310,8 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     { monthly: number; annual: number; included: number; meteredMonthly: boolean; meteredAnnual: boolean }
   >();
   plan.prices.forEach((price) => {
-    if (!isKnownPriceKind(price.kind)) {
+    const kind = effectivePriceKind(product, price);
+    if (!isKnownPriceKind(kind)) {
       return;
     }
     const entry = priceByDim.get(price.dimensionKey) ?? {
@@ -266,15 +323,22 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     };
     if (price.cadence === "annual") {
       entry.annual = centsToDollars(price.unitAmountCents);
-      entry.meteredAnnual = price.kind === METERED_KIND;
+      entry.meteredAnnual = kind === METERED_KIND;
     } else {
       entry.monthly = centsToDollars(price.unitAmountCents);
-      entry.meteredMonthly = price.kind === METERED_KIND;
+      entry.meteredMonthly = kind === METERED_KIND;
     }
     if (price.includedQuantity !== null && price.includedQuantity !== undefined) {
       entry.included = price.includedQuantity;
     }
     priceByDim.set(price.dimensionKey, entry);
+  });
+  const bandsByDim = new Map<string, BillingV2Bands>();
+  plan.prices.forEach((price) => {
+    const bands = toBands(price.tiersMode, price.tiers);
+    if (bands && price.cadence === "monthly") {
+      bandsByDim.set(price.dimensionKey, bands);
+    }
   });
 
   const dims: BillingV2Dim[] = [];
@@ -291,7 +355,9 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
       annual: priced.annual,
       included: priced.included,
       meteredMonthly: priced.meteredMonthly,
-      meteredAnnual: priced.meteredAnnual
+      meteredAnnual: priced.meteredAnnual,
+      ...(dimension.aggregation ? { aggregation: dimension.aggregation } : {}),
+      ...(bandsByDim.has(dimension.key) ? { bands: bandsByDim.get(dimension.key) } : {})
     });
   });
 
@@ -404,7 +470,9 @@ export const licenseV2ServiceFactory = ({
       return null;
     }
 
-    const perUnitPrices = plan.prices.filter((price) => price.cadence === cadence && price.kind === PER_UNIT_KIND);
+    const perUnitPrices = plan.prices.filter(
+      (price) => price.cadence === cadence && effectivePriceKind(product, price) === PER_UNIT_KIND
+    );
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
@@ -550,6 +618,35 @@ export const licenseV2ServiceFactory = ({
             ...(onDemandRate !== undefined ? { onDemandRate } : {}),
             ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {}),
             ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {}),
+            ...(metered && dimension.usage
+              ? {
+                  usage: {
+                    periodStart: formatDate(dimension.usage.periodStart),
+                    periodEnd: formatDate(dimension.usage.periodEnd - 1),
+                    asOf: dimension.usage.asOf ? new Date(dimension.usage.asOf * 1000).toISOString() : null,
+                    estimatedAmount:
+                      dimension.usage.estimatedAmountCents === null ||
+                      dimension.usage.estimatedAmountCents === undefined
+                        ? null
+                        : centsToDollars(dimension.usage.estimatedAmountCents),
+                    currentTier: dimension.usage.currentTier,
+                    nextTierAt: dimension.usage.nextTierAt ?? null,
+                    earlierInPeriod: dimension.usage.earlierInPeriod.map((segment) => ({
+                      periodStart: formatDate(segment.periodStart),
+                      periodEnd: formatDate(segment.periodEnd - 1),
+                      used: segment.used,
+                      estimatedAmount:
+                        segment.estimatedAmountCents === null || segment.estimatedAmountCents === undefined
+                          ? null
+                          : centsToDollars(segment.estimatedAmountCents)
+                    })),
+                    trial: dimension.usage.trial
+                  }
+                }
+              : {}),
+            ...(metered && dimension.pricing
+              ? { bands: toBands(dimension.pricing.tiersMode, dimension.pricing.tiers) }
+              : {}),
             // Commitment-decrease window: the UI locks the stepper's floor to the current committed
             // quantity unless canDecreaseNow, and shows when a decrease opens (decreaseAllowedFrom).
             ...(dimension.canDecreaseNow !== null && dimension.canDecreaseNow !== undefined
@@ -660,9 +757,11 @@ export const licenseV2ServiceFactory = ({
                 trialPlanName:
                   catalogProduct?.plans.find((candidate) => candidate.tier === item.trialPlan)?.name ?? item.trialPlan,
                 trialPlanEndsAt: formatDate(item.trialPlanEndsAt),
-                trialPlanDaysLeft: daysUntil(item.trialPlanEndsAt)
+                trialPlanDaysLeft: item.trialPlanPaymentDueAt ? null : daysUntil(item.trialPlanEndsAt),
+                trialPlanPaymentDueAt: formatDate(item.trialPlanPaymentDueAt)
               }
             : {}),
+          trialPaymentDueAt: formatDate(item.trialPaymentDueAt),
           renewsOn,
           ...(deprecation ? { deprecation } : {}),
           used,
@@ -799,6 +898,7 @@ export const licenseV2ServiceFactory = ({
           planTier: trial.plan_key ?? null,
           basePlanTier: trial.base_plan_key ?? null,
           outcome: trial.outcome,
+          endedReason: trial.ended_reason ?? null,
           endedDetail: trial.ended_detail ?? null,
           endedAt: formatDate(trial.ended_at),
           endedDaysAgo: daysSince(trial.ended_at)
@@ -811,11 +911,22 @@ export const licenseV2ServiceFactory = ({
     // Header billing summary. Monthly-recurring and annual-committed are two independent clocks and are
     // never summed. The next charge is the soonest line to close: derive its amount/product(s)/cadence
     // from the lines whose currentPeriodEnd matches nextChargeAt (usage-based lines make the total an
-    // estimate, so flag hasUsage). activeProductCount is the number of entitled products.
+    // estimate, so flag hasUsage; the usage estimate is also only theirs). activeProductCount is the number of
+    // entitled products.
     const subBilling = subscription?.billing;
     const closingLines = subBilling?.nextChargeAt
       ? (subBilling.lines ?? []).filter((line) => line.currentPeriodEnd === subBilling.nextChargeAt)
       : [];
+    // A trialing product's usage is rated but never billed, so it adds nothing to the next charge.
+    const trialingProductKeys = new Set(
+      (subscription?.items ?? []).filter((item) => item.isTrialing).map((item) => item.productId)
+    );
+    const billedClosingLines = closingLines.filter((line) => !trialingProductKeys.has(line.productKey));
+    const closingEstimates = billedClosingLines.flatMap((line) =>
+      line.estimatedAmountCents === null || line.estimatedAmountCents === undefined ? [] : [line.estimatedAmountCents]
+    );
+    const closingUsageCents =
+      closingEstimates.length > 0 ? closingEstimates.reduce((sum, cents) => sum + cents, 0) : null;
     const closingCadences = new Set(closingLines.map((line) => normalizeCadence(line.cadence ?? undefined)));
     const nextCharge =
       subBilling?.nextChargeAt && closingLines.length > 0
@@ -824,7 +935,8 @@ export const licenseV2ServiceFactory = ({
             at: formatShortDate(subBilling.nextChargeAt) ?? "",
             productKeys: [...new Set(closingLines.map((line) => line.productKey))],
             cadence: closingCadences.size === 1 ? [...closingCadences][0] : null,
-            hasUsage: closingLines.some((line) => line.usageBased)
+            hasUsage: billedClosingLines.some((line) => line.usageBased),
+            estimatedUsage: closingUsageCents === null ? null : centsToDollars(closingUsageCents)
           }
         : null;
     const activeProductCount = Object.values(entitlements).filter(
@@ -836,6 +948,20 @@ export const licenseV2ServiceFactory = ({
       activeProductCount,
       nextCharge
     };
+
+    const itemsAwaitingPayment = (subscription?.items ?? []).flatMap((item) => {
+      const dueAt = item.trialPaymentDueAt ?? item.trialPlanPaymentDueAt;
+      return dueAt ? [{ productId: item.productId, dueAt }] : [];
+    });
+    const trialPaymentDue =
+      itemsAwaitingPayment.length > 0
+        ? {
+            dueAt: formatDate(Math.min(...itemsAwaitingPayment.map((item) => item.dueAt))) ?? "",
+            productKeys: [...new Set(itemsAwaitingPayment.map((item) => item.productId))]
+          }
+        : null;
+
+    const paymentAlert = toPaymentAlert(subscription?.payment);
 
     const overview: BillingV2Overview = {
       // Self-hosted is a read-only, managed view: the UI hides payment/invoices/details and shows the
@@ -852,6 +978,8 @@ export const licenseV2ServiceFactory = ({
       trialedProductKeys: [...new Set(trialHistory.map((trial) => trial.productKey))],
       trials: trialHistory,
       onDemandAmount,
+      trialPaymentDue,
+      paymentAlert,
       checkoutFrozen: subscription?.capabilities?.checkoutFrozen ?? false,
       // false for an enterprise-managed org (self-serve mutations 403); default true keeps paygo and
       // older servers unchanged.
@@ -1112,13 +1240,35 @@ export const licenseV2ServiceFactory = ({
     return { products };
   };
 
+  // The bank wants the customer to approve the charge on the Stripe invoice; the change settles by webhook
+  // once they do. Without a usable link there is nothing to send them to, so it degrades to the same
+  // coded error as a declined charge, which points them at the billing portal.
+  const paymentActionRequired = async (orgId: string, paymentUrl: string | undefined) => {
+    const url = toHttpsUrl(paymentUrl);
+    if (!url) {
+      logger.error(`billing-v2: payment_action_required without a usable paymentUrl [orgId=${orgId}]`);
+      throw new BadRequestError({
+        message:
+          "Your bank needs you to approve this payment, but we couldn't get the approval link. Open the billing portal to complete it.",
+        details: { code: "payment_action_required" }
+      });
+    }
+    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    return { outcome: "payment_action_required" as const, paymentUrl: url };
+  };
+
   const buildReturnUrl = (orgId: string, returnPath?: string): string => {
     if (!envConfig.SITE_URL) {
       throw new InternalServerError({ message: "Failed to build a billing return URL" });
     }
     const path = returnPath && returnPath.startsWith("/") ? returnPath : `/organizations/${orgId}/billing`;
     try {
-      return new URL(path, envConfig.SITE_URL).toString();
+      const siteUrl = new URL(envConfig.SITE_URL);
+      const returnUrl = new URL(path, siteUrl);
+      if (returnUrl.origin !== siteUrl.origin) {
+        throw new Error("Return URL must use the application origin");
+      }
+      return returnUrl.toString();
     } catch {
       throw new InternalServerError({ message: "Failed to build a billing return URL" });
     }
@@ -1171,6 +1321,14 @@ export const licenseV2ServiceFactory = ({
       email,
       returnUrl: buildReturnUrl(orgId, returnPath)
     });
+
+    if (result.outcome === "payment_action_required") {
+      return {
+        ...(await paymentActionRequired(orgId, result.paymentUrl)),
+        plan: resolved.planTier,
+        cadence: normalizedCadence
+      };
+    }
 
     if (result.outcome === "subscription_updated") {
       await licenseClient.markEntitlementsStale(orgId);
@@ -1312,6 +1470,9 @@ export const licenseV2ServiceFactory = ({
       expectedPlanVersionId,
       prorationDate
     });
+    if (result.outcome === "payment_action_required") {
+      return paymentActionRequired(orgId, result.paymentUrl);
+    }
     await licenseClient.markEntitlementsStale(orgId);
     return {
       outcome: result.outcome,
@@ -1330,6 +1491,9 @@ export const licenseV2ServiceFactory = ({
       productId,
       dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity }))
     });
+    if (result.outcome === "payment_action_required") {
+      return paymentActionRequired(orgId, result.paymentUrl);
+    }
     if (result.outcome === "checkout_created") {
       if (!result.checkoutUrl) {
         throw new InternalServerError({ message: "Checkout session did not return a URL" });
@@ -1342,9 +1506,9 @@ export const licenseV2ServiceFactory = ({
     return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
-  // Start a plan-scoped self-serve trial. The trial is granted immediately (no upfront charge);
-  // cardSetupUrl, when present, is a best-effort card-setup checkout the client redirects to.
-  const startTrial = async ({ orgId, actor, productId, plan, email }: TStartBillingV2TrialDTO) => {
+  // Start a plan-scoped self-serve trial. Existing-card customers are granted immediately; others
+  // must complete the returned card-setup checkout before the license server grants the trial.
+  const startTrial = async ({ orgId, actor, productId, plan, email, returnPath }: TStartBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
     // The trial has no Stripe customer yet, so the server creates one from the org's own name + the
     // authenticated user's email; neither is client-supplied.
@@ -1364,7 +1528,7 @@ export const licenseV2ServiceFactory = ({
       name: organization?.name,
       declaredUsage: resolved?.declaredUsage,
       // The trial's card-setup checkout redirects here; built server-side from SITE_URL like checkout.
-      returnUrl: buildReturnUrl(orgId)
+      returnUrl: buildReturnUrl(orgId, returnPath)
     });
     // awaiting_card redirects to a Stripe card-setup checkout; the trial is granted by webhook only
     // after it's completed, so hold the revalidation window open longer than an immediate trial_started.
@@ -1379,6 +1543,29 @@ export const licenseV2ServiceFactory = ({
     const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
     await licenseClient.markEntitlementsStale(orgId);
     return { outcome: result.outcome };
+  };
+
+  // The trial converts via webhook once the customer approves, so the revalidation window is held open
+  // like checkout.
+  const confirmTrialPayment = async ({ orgId, actor, returnPath }: TConfirmBillingV2TrialPaymentDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.confirmTrialPayment(orgId, { returnUrl: buildReturnUrl(orgId, returnPath) });
+    if (result.outcome === "payment_action_required") {
+      const { paymentUrl } = await paymentActionRequired(orgId, result.paymentUrl);
+      return { outcome: result.outcome, redirectUrl: paymentUrl };
+    }
+    if (result.outcome === "upgraded") {
+      await licenseClient.markEntitlementsStale(orgId);
+      return { outcome: result.outcome };
+    }
+    const checkoutUrl = toHttpsUrl(result.checkoutUrl);
+    if (!checkoutUrl) {
+      throw new BadRequestError({
+        message: "We couldn't get a secure checkout link. Please try again or contact support."
+      });
+    }
+    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    return { outcome: result.outcome, redirectUrl: checkoutUrl };
   };
 
   // Remove a single product from a multi-product subscription, the operation the Stripe Customer
@@ -1419,6 +1606,7 @@ export const licenseV2ServiceFactory = ({
     changeCommitments,
     startTrial,
     cancelTrial,
+    confirmTrialPayment,
     cancelSubscription,
     resumeSubscription
   };

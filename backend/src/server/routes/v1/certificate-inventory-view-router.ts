@@ -30,7 +30,8 @@ const InventoryViewFiltersSchema = z
         })
       )
       .max(20)
-      .optional()
+      .optional(),
+    includeDeleted: z.boolean().optional()
   })
   .strict();
 
@@ -62,7 +63,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       hide: true,
       operationId: "listCertificateInventoryViews",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "List system and custom certificate inventory views for a project.",
+      description: "List system and custom certificate inventory views.",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
         applicationId: z.string().guid().optional()
@@ -75,6 +76,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
               name: z.string(),
               filters: z.object({
                 status: z.array(z.string()).optional(),
+                includeDeleted: z.boolean().optional(),
                 notAfterTo: z.string().optional()
               }),
               columns: z.null(),

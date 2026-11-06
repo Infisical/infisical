@@ -88,7 +88,7 @@ export const createRelayConnection = async ({
   const serverCAs = splitPemChain(serverCertificateChain);
   const tlsOptions: tls.ConnectionOptions = {
     host: targetHost,
-    servername: relayHost,
+    servername: net.isIP(relayHost) ? undefined : relayHost,
     port,
     cert: clientCertificate,
     key: clientPrivateKey,
@@ -578,8 +578,11 @@ export const withGatewayV2Proxy = async <T>(
     }
     logger.error("Gateway error:", err instanceof Error ? err.message : String(err));
     let errorMessage = transportErrorMessage || (err instanceof Error ? err.message : String(err));
-    if (isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
-      errorMessage = (err.response?.data as { message: string }).message;
+    const responseMessage = isAxiosError(err)
+      ? (err.response?.data as { message?: string } | undefined)?.message
+      : undefined;
+    if (responseMessage) {
+      errorMessage = responseMessage;
     }
 
     if (

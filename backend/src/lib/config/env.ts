@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
@@ -5,6 +6,11 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
 import { RunMode } from "@app/lib/types";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import {
+  isS3DirectoryBucket,
+  keyPrefixSchema,
+  s3BucketNameSchema
+} from "@app/services/object-storage/object-storage-path-fns";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { BadRequestError } from "../errors";
@@ -152,6 +158,46 @@ export const secretScanningTimeoutsSchema = z.object({
 
 export const getSecretScanningStuckScanTimeout = (data: z.infer<typeof secretScanningTimeoutsSchema>) =>
   getSecretScanningScanBudgetMs(data);
+
+// The instance's own bucket for default storage. All optional: without a bucket, the instance offers none.
+export const objectStorageEnvSchema = z.object({
+  OBJECT_STORAGE_S3_BUCKET: zpStr(
+    s3BucketNameSchema
+      .refine((bucket) => !isS3DirectoryBucket(bucket), "Must be a general purpose bucket, not a directory bucket")
+      .optional()
+  ),
+  OBJECT_STORAGE_S3_PREFIX: zpStr(keyPrefixSchema(256).optional()),
+  // Any region-shaped name, so regions newer than the app connection list work. A region that doesn't exist fails the
+  // startup bucket check, which logs it.
+  OBJECT_STORAGE_S3_REGION: zpStr(
+    z
+      .string()
+      .regex(new RE2(/^[a-z]{2}(-gov)?-[a-z]+-\d+$/), "Must be an AWS region, like us-east-1")
+      .optional()
+  ),
+  OBJECT_STORAGE_S3_ACCESS_KEY_ID: zpStr(z.string().max(128).optional()),
+  OBJECT_STORAGE_S3_SECRET_ACCESS_KEY: zpStr(z.string().max(256).optional())
+});
+
+// A half-set group stops the backend at startup, so a typo shows at deploy time rather than as uploads that never land.
+export const checkObjectStorageEnv = (data: z.infer<typeof objectStorageEnvSchema>, ctx: z.RefinementCtx) => {
+  const requireWith = (
+    present: keyof z.infer<typeof objectStorageEnvSchema>,
+    missing: keyof z.infer<typeof objectStorageEnvSchema>
+  ) => {
+    if (data[present] && !data[missing]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [missing],
+        message: `${missing} must be set when ${present} is set.`
+      });
+    }
+  };
+  requireWith("OBJECT_STORAGE_S3_BUCKET", "OBJECT_STORAGE_S3_REGION");
+  requireWith("OBJECT_STORAGE_S3_REGION", "OBJECT_STORAGE_S3_BUCKET");
+  requireWith("OBJECT_STORAGE_S3_ACCESS_KEY_ID", "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY");
+  requireWith("OBJECT_STORAGE_S3_SECRET_ACCESS_KEY", "OBJECT_STORAGE_S3_ACCESS_KEY_ID");
+};
 
 const databaseReadReplicaSchema = z
   .object({
@@ -318,6 +364,8 @@ const envSchema = z
     ROTATION_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
     BDD_NOCK_API_ENABLED: zodStrBool.prefault("false").optional(),
+
+    OPENAPI_FULL_SPEC: zodStrBool.prefault("false").optional(),
     ACME_DEVELOPMENT_MODE: zodStrBool.prefault("false").optional(),
     ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.prefault("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
@@ -462,6 +510,7 @@ const envSchema = z
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
     ...secretScanningTimeoutsSchema.shape,
+    ...objectStorageEnvSchema.shape,
     SECRET_SCANNING_MEMORY_LIMIT_MB: z.coerce
       .number()
       .int()
@@ -559,6 +608,7 @@ const envSchema = z
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.prefault("false"),
     AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.prefault("false"),
+    S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP: zodStrBool.prefault("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).prefault(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
     ),
@@ -569,6 +619,32 @@ const envSchema = z
     // PAM AWS credentials (for AWS IAM PAM resource type)
     PAM_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     PAM_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
+
+    // Infisical-managed honey tokens: decoy IAM users live in one AWS account the operator runs,
+    // and its CloudFormation stack signs trigger webhooks with this instance-wide key.
+    HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY: zpStr(
+      z
+        .string()
+        .regex(
+          /^[a-fA-F0-9]{64}$/,
+          "HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY must be 64 hex characters (32 random bytes), e.g. from `openssl rand -hex 32`"
+        )
+        .optional()
+    ),
+    HONEY_TOKEN_MANAGED_AWS_ROLE_ARN: zpStr(z.string().optional()),
+    // Fall back to the identity Infisical already uses to assume roles in other AWS accounts.
+    HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).prefault(
+      process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
+    ),
+    HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).prefault(
+      process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+    ),
+    HONEY_TOKEN_MANAGED_AWS_IAM_PATH: zpStr(
+      z
+        .string()
+        .regex(/^\/([\w+=,.@-]+\/)*$/, "HONEY_TOKEN_MANAGED_AWS_IAM_PATH must start and end with '/'")
+        .default("/infisical-honey-tokens/")
+    ),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
@@ -689,16 +765,14 @@ const envSchema = z
     GO_SIDECAR_SPAWN_ENABLED: zodStrBool.prefault("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
-    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
-
-    /* Temporary Stripe Whitelisting ----------------------------------------------------------------------------- */
-    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: zpStr(z.string().optional())
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
   .refine(
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
     "Either REDIS_URL, REDIS_SENTINEL_HOSTS or REDIS_CLUSTER_HOSTS  must be defined."
   )
   .superRefine((data, ctx) => {
+    checkObjectStorageEnv(data, ctx);
     (
       [
         ["DB_POOL_MIN", "DB_POOL_MAX"],
@@ -742,6 +816,7 @@ const envSchema = z
     isSecretScanningRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.SecretScanning),
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
+    isOpenApiFullSpec: data.NODE_ENV !== "production" && data.OPENAPI_FULL_SPEC,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
       ?.split(",")
       .map((el) => {
@@ -795,10 +870,7 @@ const envSchema = z
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU,
-    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: data.WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.split(",").map((id) =>
-      id.trim()
-    )
+      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
@@ -1244,7 +1316,7 @@ export const formatSmtpConfig = () => {
     secure: envCfg.SMTP_PORT === 465,
     from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
     ignoreTLS: envCfg.SMTP_IGNORE_TLS,
-    requireTLS: envCfg.SMTP_REQUIRE_TLS,
+    requireTLS: envCfg.SMTP_REQUIRE_TLS && !envCfg.SMTP_IGNORE_TLS,
     tls: tlsOptions
   };
 };

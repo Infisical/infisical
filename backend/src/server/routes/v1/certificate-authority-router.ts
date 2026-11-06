@@ -9,17 +9,18 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   CaRenewalType,
   CaStatus,
   InternalCaType
 } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
 import { subjectAttributeSchema } from "@app/services/certificate-common/certificate-constants";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { InternalCertificateAuthorityResponseSchema } from "../sanitizedSchemas";
@@ -281,7 +282,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const ca = await server.services.internalCertificateAuthority.deleteCaById({
+      const { ca, keyDetails } = await server.services.internalCertificateAuthority.deleteCaById({
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -297,7 +298,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           metadata: {
             name: ca.name,
             caId: ca.id,
-            dn: ca.dn
+            dn: ca.dn,
+            ...getCaKeySourceAuditMetadata(keyDetails)
           }
         }
       });

@@ -15,9 +15,9 @@ export const AgentVaultSessionLogConfigsSchema = z.object({
   bucket: z.string().nullable().optional(),
   region: z.string().nullable().optional(),
   keyPrefix: z.string().nullable().optional(),
-  storedChunkCount: z.coerce.number().default(0),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  storageType: z.string().default("default")
 });
 
 export type TAgentVaultSessionLogConfigs = z.infer<typeof AgentVaultSessionLogConfigsSchema>;

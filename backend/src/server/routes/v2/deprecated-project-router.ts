@@ -9,9 +9,9 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType } from "@app/services/project/project-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -20,8 +20,7 @@ import { InternalCertificateAuthorityResponseSchema, SanitizedProjectSchema } fr
 
 const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
-  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array(),
-  kmsSecretManagerKeyId: z.string().nullable().optional()
+  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
 });
 
 export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {

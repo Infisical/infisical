@@ -4,6 +4,10 @@ sidebarTitle: "Local proxy"
 description: "Run an agent on your own computer, sandboxed, with a proxy that starts and stops alongside it."
 ---
 
+import AgentProxyMovedCallout from "/snippets/agent-proxy-moved-callout.mdx";
+
+<AgentProxyMovedCallout />
+
 With a local proxy, everything happens on the computer you're already working on. The proxy starts alongside your agent, hands it placeholder credentials, swaps in the real ones as its requests leave, and stops when the agent exits. There is nothing to deploy and no machine identity to create: the proxy brokers as your logged-in user, against secrets you can already read.
 
 Because the proxy and the agent share a machine, an **OS sandbox** is what keeps them apart. The agent can't read your keyring or your credential files, and its only route to the network is the proxy.
@@ -74,13 +78,13 @@ infisical login
 Everything after `--` is your agent's own command. Run it from the directory you want the agent to work in:
 
 ```bash
-infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+infisical secrets-manager agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 ```
 
 This one command starts the proxy and your agent together, and shuts the proxy down when the agent exits. The agent behaves exactly as if you had launched it directly. In its environment it finds `GITHUB_TOKEN`, set to the fake `ghp_…` placeholder, and uses it like a normal token. Calls to `api.github.com` get the real token swapped in as they pass through; everything else goes out untouched. Meanwhile the agent is sandboxed: it can't read your keyring, your `~/.aws` or `~/.ssh`, or your Infisical token.
 
 <Note>
-  In a directory with an `.infisical.json` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
+  In a directory with an `.infisical.yaml` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
 </Note>
 
 <Note>
@@ -103,7 +107,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
     Not driving an interactive agent? Run the check in place of the agent command:
 
     ```bash
-    infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- gh api user
+    infisical secrets-manager agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- gh api user
     ```
 
     `gh` reads `GITHUB_TOKEN` automatically, so there is nothing else to pass.
@@ -112,7 +116,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
     No `gh`? Any HTTP client works the same way. `curl` sends the placeholder in the header and the proxy swaps it:
 
     ```bash
-    infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- \
+    infisical secrets-manager agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- \
       sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
     ```
   </Tab>

@@ -1,81 +1,88 @@
 ---
 title: "PostgreSQL accounts"
 sidebarTitle: "PostgreSQL"
-description: "Add and connect to PostgreSQL databases."
+description: "Give people and agents access to a PostgreSQL database without sharing its credentials."
 ---
 
-PostgreSQL accounts let you manage access to your PostgreSQL databases. Users connect through Web Access (a browser-based interface) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) can be recorded.
+A PostgreSQL [account](/documentation/platform/pam/accounts/overview) stores the credentials for one PostgreSQL database user. Members connect to the database in the browser or through the Infisical CLI, and Infisical records every query they run.
 
-## Creating an account
+The account can sign in with a password, or with [AWS IAM authentication](#aws-iam-authentication) if the database runs on Amazon RDS or Aurora.
+
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [gateway](/documentation/platform/gateways/overview) that can reach the database
+- A PostgreSQL [account template](/documentation/platform/pam/templates/overview)
+
+## Create the account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a PostgreSQL [template](/documentation/platform/pam/templates/overview) (e.g., the default `postgres` or a custom one).
+  <Step>
+    Select the **Folder** and a PostgreSQL **Account Template**, then select **Next**.
   </Step>
-  <Step title="Enter connection details">
-    <Tip>
-      Already have a connection string? Paste it into the **Host** field and the remaining fields are filled in for you, credentials included. Both `postgresql://user:password@host:5432/database` and `host=... port=... dbname=...` forms work.
-    </Tip>
+  <Step>
+    Enter a **Name** and the connection details:
 
     | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `orders-db-readonly`) |
-    | **Host** | Database hostname or IP |
-    | **Port** | PostgreSQL port (default: 5432) |
-    | **Database** | Database name |
-    | **SSL Enabled** | Enable SSL for the connection |
-    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
-    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+    | --- | --- |
+    | **Host** | The database's hostname or IP address |
+    | **Port** | The database's port (defaults to `5432`) |
+    | **Database** | The database that sessions connect to |
+    | **SSL Enabled** | Whether to connect over TLS |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (shown when **SSL Enabled** is on) |
+    | **SSL Certificate** | The CA certificate that signed the server's certificate (shown when **SSL Enabled** is on) |
+
+    If you have a connection string, such as `postgresql://user:password@host:5432/database`, paste it into **Host**. Infisical fills in the other fields from the connection string, including the credentials.
   </Step>
-  <Step title="Choose authentication method">
-    PostgreSQL supports two authentication methods:
+  <Step>
+    Select the **Auth Method** and enter the credentials:
 
     <Tabs>
       <Tab title="Password">
-        Standard PostgreSQL login with username and password.
-
         | Field | Description |
-        |-------|-------------|
-        | **Username** | PostgreSQL username |
-        | **Password** | PostgreSQL password |
+        | --- | --- |
+        | **Username** | The PostgreSQL user |
+        | **Password** | The user's password |
       </Tab>
-      <Tab title="AWS IAM">
-        [IAM database authentication](#aws-iam-authentication) for RDS and Aurora. No password is stored.
+      <Tab title="AWS IAM (RDS / Aurora)">
+        Set up [AWS IAM authentication](#aws-iam-authentication) first.
 
         | Field | Description |
-        |-------|-------------|
-        | **Username** | Database user granted the `rds_iam` role |
-        | **AWS Region** | Region of the RDS or Aurora instance |
-        | **Role ARN** | IAM role Infisical assumes to generate a token |
+        | --- | --- |
+        | **Username** | The database user that has the `rds_iam` role |
+        | **AWS Region** | The region of the RDS instance or Aurora cluster, such as `us-east-1` |
+        | **Role ARN** | The IAM role that Infisical assumes to generate an authentication token |
       </Tab>
     </Tabs>
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
 ## AWS IAM authentication
 
-RDS and Aurora instances that require IAM database authentication use the **AWS IAM** auth method. No password is stored: Infisical generates a short-lived authentication token for each connection.
+With AWS IAM authentication, Infisical doesn't store a password for the database user. Instead, Infisical assumes an IAM role in your AWS account and uses it to generate a short-lived authentication token for each connection.
 
-Set the following up before creating the account.
+Set up the database and the IAM role before you create the account:
 
 <Steps>
-  <Step title="Enable IAM authentication on the instance">
-    Turn on **IAM database authentication** for the RDS instance or Aurora cluster.
+  <Step>
+    In the RDS console, turn on **IAM database authentication** for the RDS instance or Aurora cluster.
   </Step>
-  <Step title="Grant the database user IAM access">
+  <Step>
+    Create the database user and grant it the `rds_iam` role:
+
     ```sql
     CREATE USER app_user WITH LOGIN;
     GRANT rds_iam TO app_user;
     ```
   </Step>
-  <Step title="Create the role with a trust policy">
-    Create the IAM role you'll set as **Role ARN**. Replace `<INFISICAL_AWS_ACCOUNT_ID>` with the Infisical account ID for your region (US `381492033652`, EU `345594589636`) and `<YOUR_INFISICAL_ORG_ID>` with your Infisical Organization ID, found under **Organization Settings**.
+  <Step>
+    Create an IAM role with the following trust policy:
 
     ```json
     {
@@ -91,16 +98,15 @@ Set the following up before creating the account.
     }
     ```
 
-    <Warning>
-      Always include the External ID condition. Without it, another Infisical customer could potentially trick Infisical into assuming your role.
-    </Warning>
+    Replace the placeholders:
 
-    <Note>
-      **For Self-Hosted Instances**: use the AWS account ID where your Infisical instance is deployed, since that is the account assuming the role.
-    </Note>
+    - `<INFISICAL_AWS_ACCOUNT_ID>`: `381492033652` for Infisical Cloud (US), `345594589636` for Infisical Cloud (EU), or the ID of the AWS account that runs your instance if you self-host Infisical
+    - `<YOUR_INFISICAL_ORG_ID>`: your organization ID, which the tooltip on the **Role ARN** field shows
+
+    The `sts:ExternalId` condition stops other Infisical organizations from using your role, so don't remove it.
   </Step>
-  <Step title="Attach permission to connect">
-    Attach a policy allowing the role to connect as that database user:
+  <Step>
+    Attach a policy to the role that lets it connect as the database user:
 
     ```json
     {
@@ -113,66 +119,52 @@ Set the following up before creating the account.
     }
     ```
 
-    The resource ARN uses the instance's **resource ID** (`db-...`), not its name. Find it under **Configuration** on the instance in the RDS console.
+    `<DB_RESOURCE_ID>` is the instance's resource ID, which starts with `db-`, not the instance's name. The RDS console shows the resource ID on the instance's **Configuration** tab.
   </Step>
 </Steps>
 
-<Note>
-  Set **Host** to the instance's RDS or Aurora endpoint. Tokens are signed for that exact endpoint, so a CNAME or other alias is rejected.
-</Note>
+When you create the account, set the following fields:
 
-<Note>
-  IAM authentication requires an encrypted connection, so **SSL Enabled** is turned on and can't be disabled. To verify the server certificate, turn on **Reject Unauthorized** and paste your region's RDS root certificate into **SSL Certificate**, for example `https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem`.
-</Note>
+- **Host**: the endpoint of the RDS instance or Aurora cluster, not a CNAME or other alias, because AWS signs each token for that exact endpoint
+- **SSL Enabled**: always on, because IAM authentication requires TLS
+- **SSL Certificate**: to verify the server, turn on **Reject Unauthorized** and paste the RDS certificate bundle for your region, such as `https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem`
 
-<Warning>
-  `PAM authentication failed for user` means AWS rejected the token rather than the database being unreachable. Check that the role's `rds-db:connect` resource ARN uses the instance's current resource ID, region, and the same database user the account connects as.
-</Warning>
+Accounts that use AWS IAM have no stored password, so [credential rotation](/documentation/platform/pam/credential-rotation/overview) doesn't apply to them.
 
-[Credential rotation](/documentation/platform/pam/product-reference/credential-rotation/overview) doesn't apply to these accounts, since there is no stored password.
+If a session fails with `PAM authentication failed for user`, AWS rejected the token. Check that the `rds-db:connect` resource ARN uses the instance's current resource ID, the right region, and the same database user as the account.
 
-## Connecting
+## Connect
+
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect).
 
 <Tabs>
-  <Tab title="Web Access">
-    Web Access provides a browser-based interface with two tools:
-
-    - **Data Explorer** — browse tables, view data, filter and sort, edit rows, export to CSV/JSON
-    - **SQL Editor** — write and run SQL queries, use transactions
-
-    To connect:
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
-    3. Click **Connect in Browser**
-
+  <Tab title="Browser">
+    The browser session has a table browser, where you can view, filter, edit, and export rows, and a SQL editor for running queries.
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy that you connect to with your preferred PostgreSQL client.
+    Start the local proxy:
 
     ```bash
     infisical pam access backend-team/orders-db
     ```
 
-    The command outputs the local port to connect to. Then use your PostgreSQL client:
+    The proxy keeps running in that terminal and prints its port. In a second terminal, connect your PostgreSQL client to that port:
+
     ```bash
     psql "postgresql://localhost:<port>/orders"
     ```
 
-    No password needed since the proxy handles authentication.
-
-    **Flags:**
-    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
-    - `--reason <reason>` — provide an access reason (if required by template)
+    The proxy signs in for you, so `psql` doesn't need a password.
   </Tab>
 </Tabs>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="SSH Accounts" icon="terminal" href="/documentation/platform/pam/accounts/ssh">
-    Add SSH server accounts.
+  <Card title="PostgreSQL credential rotation" icon="refresh-cw" href="/documentation/platform/pam/credential-rotation/postgresql">
+    Rotate the passwords of PostgreSQL accounts.
   </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
+    Review and end the connections that people and agents make to your accounts.
   </Card>
 </CardGroup>

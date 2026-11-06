@@ -51,7 +51,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import {
@@ -60,6 +60,7 @@ import {
   isValidOauthScope,
   OauthScope
 } from "@app/services/oauth-client/oauth-scope";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -80,6 +81,7 @@ import {
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
+  fetchProjectFolderScopedPrivileges,
   getProjectPermissionFingerprint,
   interpolatePermissionRules,
   interpolateStoredIdentityRules,
@@ -111,6 +113,13 @@ const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
   if (!raw) return undefined;
   // The scopes were validated at consent time, but re-coerce defensively against the catalog.
   return raw.filter(isValidOauthScope);
+};
+
+// The issuing org belongs to the request's own session, so it only applies when the permission
+// being resolved is the requester's; a check made on another user's behalf has no session of its own.
+const getSessionIssuingRootOrgId = (actorId: string) => {
+  const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
+  return userAuthInfo?.userId === actorId ? userAuthInfo.issuingRootOrgId : undefined;
 };
 
 const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
@@ -320,6 +329,44 @@ const hasActiveProjectAdminRole = (
   memberships: Array<{ roles: Array<{ role: string; isTemporary?: boolean; temporaryAccessEndTime?: Date | null }> }>
 ): boolean => memberships.some((m) => m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r)));
 
+type TGetProjectPermissionsResult = Awaited<ReturnType<TPermissionServiceFactory["getProjectPermissions"]>>;
+
+// One person's project permission from all of their memberships, built with the steps getProjectPermission takes:
+// the active roles and privileges of every membership, their folder grants unless one of those roles is Admin, and
+// placeholders filled from their own details. For a caller that holds the project's memberships in bulk.
+export const buildMergedProjectPermissionRules = ({
+  memberships,
+  folderGrants,
+  projectType,
+  identity
+}: {
+  memberships: MembershipWithRoles[];
+  folderGrants?: TProjectFolderScopedPrivilege[];
+  projectType?: string;
+  identity: { id: string; username: string; metadata: { key: string; value: string }[] };
+}) =>
+  interpolatePermissionRules(
+    buildProjectPermissionRules(
+      flattenActiveRolesFromMemberships(memberships, ProjectMembershipRole.Custom),
+      projectType,
+      hasActiveProjectAdminRole(memberships.map(({ roles }) => ({ roles: roles ?? [] }))) ? undefined : folderGrants
+    ),
+    {
+      identity: {
+        id: identity.id,
+        username: identity.username,
+        metadata: escapeHandlebarsMissingDict(
+          objectify(
+            identity.metadata,
+            (item) => item.key,
+            (item) => item.value
+          ),
+          "identity.metadata"
+        )
+      }
+    }
+  );
+
 type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -331,6 +378,7 @@ type TPermissionServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find" | "findFolderScopedPrivileges">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export const permissionServiceFactory = ({
@@ -343,8 +391,60 @@ export const permissionServiceFactory = ({
   roleDAL,
   additionalPrivilegeDAL,
   groupDAL,
-  secretFolderDAL
+  secretFolderDAL,
+  orgDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
+  const getOrgSsoPolicy = async (rootOrgId: string) => {
+    const rootOrg = await requestMemoize(requestMemoKeys.orgFindById(rootOrgId), () => orgDAL.findById(rootOrgId));
+    return {
+      isOrgSsoEnforced: Boolean(rootOrg?.authEnforced),
+      isOrgGoogleSsoEnforced: Boolean(rootOrg?.googleSsoAuthEnforced),
+      isOrgSsoBypassEnabled: Boolean(rootOrg?.bypassOrgAuthEnabled)
+    };
+  };
+
+  const canBypassRootOrgSso = async (actorId: string, rootOrgId: string) => {
+    const rootPermissionData = await permissionDAL.getPermission({
+      scopeData: { scope: AccessScope.Organization, orgId: rootOrgId },
+      actorId,
+      actorType: ActorType.USER
+    });
+    if (!rootPermissionData?.length) return false;
+    return createMongoAbility<OrgPermissionSet>(
+      buildOrgPermissionRules(flattenActiveRolesFromMemberships(rootPermissionData, OrgMembershipRole.Custom)),
+      { conditionsMatcher }
+    ).can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+  };
+
+  // Bypass is looked up only when enforcement would refuse the session, and never cached, so revoking it
+  // applies on the next request and a request enforcement admits pays nothing for it.
+  const assertOrgSso = async ({
+    actorId,
+    actorAuthMethod,
+    rootOrgId,
+    canBypassSso
+  }: {
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    rootOrgId: string;
+    canBypassSso: () => boolean | Promise<boolean>;
+  }) => {
+    const ssoPolicy = await getOrgSsoPolicy(rootOrgId);
+    try {
+      validateOrgSSO({
+        actorAuthMethod,
+        ...ssoPolicy,
+        isAdmin: false,
+        issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
+        rootOrgId
+      });
+    } catch (error) {
+      if (!(error instanceof ForbiddenRequestError) || !ssoPolicy.isOrgSsoBypassEnabled || !(await canBypassSso())) {
+        throw error;
+      }
+    }
+  };
+
   const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async ({
     actor,
     actorId,
@@ -404,18 +504,18 @@ export const permissionServiceFactory = ({
         conditionsMatcher
       });
 
-      const canBypassSso = fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-
       // SSO enforcement applies only to users. Evaluate it against the full ability — SSO bypass is a
       // property of the user's roles, not of what an OAuth client was delegated.
       if (actor === ActorType.USER) {
-        validateOrgSSO(
+        await assertOrgSso({
+          actorId,
           actorAuthMethod,
-          permissionData?.[0].orgAuthEnforced,
-          Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-          Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-          canBypassSso
-        );
+          rootOrgId: rootOrgId ?? orgId,
+          canBypassSso: () =>
+            rootOrgId
+              ? canBypassRootOrgSso(actorId, rootOrgId)
+              : fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso)
+        });
       }
 
       // Delegated OAuth tokens get a scope-narrowed ability; first-party sessions get the full one.
@@ -520,7 +620,6 @@ export const permissionServiceFactory = ({
     permissionData: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>;
     projectDetails: TProjects;
     username: string;
-    canBypassSso: boolean;
     folderScopedPrivileges: TCachedFolderScopedPrivileges["privileges"];
   };
 
@@ -594,30 +693,6 @@ export const permissionServiceFactory = ({
       username = identityDetails?.name ?? "";
     }
 
-    // SSO bypass check (for USER actors) — pre-compute and cache the boolean
-    let canBypassSso = false;
-    if (actor === ActorType.USER) {
-      const enforceSsoAndBypassEnabled =
-        permissionData?.[0].orgAuthEnforced ||
-        (permissionData?.[0].orgGoogleSsoAuthEnforced && permissionData?.[0].bypassOrgAuthEnabled);
-
-      if (enforceSsoAndBypassEnabled) {
-        const orgIdForBypass = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
-        const orgPermissionData = await permissionDAL.getPermission({
-          scopeData: { scope: AccessScope.Organization, orgId: orgIdForBypass },
-          actorId,
-          actorType: ActorType.USER
-        });
-        if (orgPermissionData?.length) {
-          const orgPermissionFromRoles = flattenActiveRolesFromMemberships(orgPermissionData, OrgMembershipRole.Custom);
-          const orgPermission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(orgPermissionFromRoles), {
-            conditionsMatcher
-          });
-          canBypassSso = orgPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-        }
-      }
-    }
-
     // Folder-scoped grants ride in the same cached blob, behind the same fingerprint. Admins cannot
     // receive folder grants, but a grant can predate a promotion to admin; skip the fetch so such a
     // stale grant never restricts an admin.
@@ -627,7 +702,7 @@ export const permissionServiceFactory = ({
             .privileges
         : [];
 
-    return { permissionData, projectDetails, username, canBypassSso, folderScopedPrivileges };
+    return { permissionData, projectDetails, username, folderScopedPrivileges };
   };
 
   const getProjectPermission: TPermissionServiceFactory["getProjectPermission"] = async ({
@@ -713,7 +788,7 @@ export const permissionServiceFactory = ({
         }
       });
 
-      const { permissionData, projectDetails, username, canBypassSso } = cached;
+      const { permissionData, projectDetails, username } = cached;
 
       if (projectDetails.orgId !== actorOrgId) {
         throw new ForbiddenRequestError({ message: "This project does not belong to your selected organization." });
@@ -748,13 +823,13 @@ export const permissionServiceFactory = ({
 
       // SSO enforcement runs on every request (uses per-request actorAuthMethod, not cached)
       if (actor === ActorType.USER) {
-        validateOrgSSO(
+        const rootOrgId = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
+        await assertOrgSso({
+          actorId,
           actorAuthMethod,
-          permissionData?.[0].orgAuthEnforced,
-          Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-          Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-          canBypassSso
-        );
+          rootOrgId,
+          canBypassSso: () => canBypassRootOrgSso(actorId, rootOrgId)
+        });
       }
 
       const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type, folderScopedPrivileges);
@@ -942,6 +1017,53 @@ export const permissionServiceFactory = ({
   };
 
   const getProjectPermissions: TPermissionServiceFactory["getProjectPermissions"] = async (projectId, orgId) => {
+    // The project-wide listings below leave folder grants out, so they are loaded once for the whole project and
+    // applied per actor the way getProjectPermission applies them: Secret Manager projects only, never to admins.
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    const folderScopedPrivilegesByActorId =
+      project?.type === ProjectType.SecretManager
+        ? await fetchProjectFolderScopedPrivileges(projectId, { additionalPrivilegeDAL, secretFolderDAL })
+        : new Map<string, TCachedFolderScopedPrivileges["privileges"]>();
+    const folderScopedPrivilegesOf = (actorId: string, roles: { role: string }[] = []) =>
+      roles.some(({ role }) => role === ProjectMembershipRole.Admin)
+        ? undefined
+        : folderScopedPrivilegesByActorId.get(actorId)?.filter(isActiveRole);
+
+    // Each of a member's roles and project-wide privileges as a permission of its own, for a caller that needs to
+    // know which of them grants something. Built on first use, and members whose source has the same rules share one.
+    const sourceAbilities = new Map<string, MongoAbility<ProjectPermissionSet>>();
+    const accessSourcesOf = (
+      roles: { id: string; role: string; permissions?: unknown }[],
+      privileges: { id: string; permissions?: unknown }[],
+      identityContext: Record<string, unknown>
+    ) => {
+      let sources: { key: string; permission: MongoAbility<ProjectPermissionSet> }[] | undefined;
+      return () => {
+        sources ??= [
+          ...roles.map(({ id, role, permissions }) => ({
+            key: `role:${id}`,
+            rules: buildProjectPermissionRules([{ role, permissions }])
+          })),
+          ...privileges.map(({ id, permissions }) => ({
+            key: `privilege:${id}`,
+            rules: buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions }])
+          }))
+        ].map(({ key, rules }) => {
+          const interpolated = interpolatePermissionRules(rules, identityContext);
+          const rulesKey = JSON.stringify(interpolated);
+          let permission = sourceAbilities.get(rulesKey);
+          if (!permission) {
+            permission = createMongoAbility<ProjectPermissionSet>(interpolated, { conditionsMatcher });
+            sourceAbilities.set(rulesKey, permission);
+          }
+          return { key, permission };
+        });
+        return sources;
+      };
+    };
+
     // fetch user permissions
     const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId, orgId);
     const userPermissions = rawUserProjectPermissions.map((userProjectPermission) => {
@@ -953,7 +1075,11 @@ export const permissionServiceFactory = ({
           permissions
         })) || [];
 
-      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const rules = buildProjectPermissionRules(
+        rolePermissions.concat(additionalPrivileges),
+        undefined,
+        folderScopedPrivilegesOf(userProjectPermission.userId, userProjectPermission.roles)
+      );
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           userProjectPermission.metadata,
@@ -962,13 +1088,14 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const interpolatedRules = interpolatePermissionRules(rules, {
+      const identityContext = {
         identity: {
           id: userProjectPermission.userId,
           username: userProjectPermission.username,
           metadata: metadataKeyValuePair
         }
-      });
+      };
+      const interpolatedRules = interpolatePermissionRules(rules, identityContext);
       const permission = createMongoAbility<ProjectPermissionSet>(interpolatedRules, {
         conditionsMatcher
       });
@@ -977,7 +1104,22 @@ export const permissionServiceFactory = ({
         permission,
         id: userProjectPermission.userId,
         membershipId: userProjectPermission.id,
-        name: userProjectPermission.username
+        name: userProjectPermission.username,
+        roles: (userProjectPermission.roles ?? []).map(
+          ({ id, role, customRoleSlug, customRoleId, customRoleName }) => ({
+            id,
+            role,
+            customRoleSlug,
+            customRoleId,
+            customRoleName
+          })
+        ),
+        additionalPrivileges: (userProjectPermission.additionalPrivileges ?? []).map(({ id, name }) => ({ id, name })),
+        accessSources: accessSourcesOf(
+          userProjectPermission.roles ?? [],
+          userProjectPermission.additionalPrivileges ?? [],
+          identityContext
+        )
       };
     });
 
@@ -992,7 +1134,11 @@ export const permissionServiceFactory = ({
           permissions
         })) || [];
 
-      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const rules = buildProjectPermissionRules(
+        rolePermissions.concat(additionalPrivileges),
+        undefined,
+        folderScopedPrivilegesOf(identityProjectPermission.identityId, identityProjectPermission.roles)
+      );
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           identityProjectPermission.metadata,
@@ -1001,13 +1147,14 @@ export const permissionServiceFactory = ({
         ),
         "identity.metadata"
       );
-      const interpolatedRules = interpolatePermissionRules(rules, {
+      const identityContext = {
         identity: {
           id: identityProjectPermission.identityId,
           username: identityProjectPermission.username,
           metadata: metadataKeyValuePair
         }
-      });
+      };
+      const interpolatedRules = interpolatePermissionRules(rules, identityContext);
       const permission = createMongoAbility<ProjectPermissionSet>(interpolatedRules, {
         conditionsMatcher
       });
@@ -1016,7 +1163,25 @@ export const permissionServiceFactory = ({
         permission,
         id: identityProjectPermission.identityId,
         membershipId: identityProjectPermission.id,
-        name: identityProjectPermission.username
+        name: identityProjectPermission.username,
+        roles: (identityProjectPermission.roles ?? []).map(
+          ({ id, role, customRoleSlug, customRoleId, customRoleName }) => ({
+            id,
+            role,
+            customRoleSlug,
+            customRoleId,
+            customRoleName
+          })
+        ),
+        additionalPrivileges: (identityProjectPermission.additionalPrivileges ?? []).map(({ id, name }) => ({
+          id,
+          name
+        })),
+        accessSources: accessSourcesOf(
+          identityProjectPermission.roles ?? [],
+          identityProjectPermission.additionalPrivileges ?? [],
+          identityContext
+        )
       };
     });
 
@@ -1034,14 +1199,79 @@ export const permissionServiceFactory = ({
         permission,
         id: groupProjectPermission.groupId,
         membershipId: groupProjectPermission.id,
-        name: groupProjectPermission.username
+        name: groupProjectPermission.username,
+        roles: (groupProjectPermission.roles ?? []).map(({ role, customRoleSlug, customRoleId, customRoleName }) => ({
+          role,
+          customRoleSlug,
+          customRoleId,
+          customRoleName
+        }))
       };
     });
+
+    const folderAccessByActorId = new Map(
+      [...folderScopedPrivilegesByActorId].map(([actorId, privileges]) => [
+        actorId,
+        privileges.filter(isActiveRole).map(({ id, folderId, role, environmentSlug, secretPath }) => ({
+          id,
+          folderId,
+          role,
+          environmentSlug,
+          secretPath
+        }))
+      ])
+    );
+
+    const directMembershipByActorId = new Map<
+      string,
+      (typeof rawUserProjectPermissions)[number] | (typeof rawIdentityProjectPermissions)[number]
+    >([
+      ...rawUserProjectPermissions.map((membership) => [membership.userId, membership] as const),
+      ...rawIdentityProjectPermissions.map((membership) => [membership.identityId, membership] as const)
+    ]);
+    const groupMembershipById = new Map(
+      rawGroupProjectPermissions.map((membership) => [membership.groupId, membership])
+    );
+    const mergedAbilities = new Map<string, MongoAbility<ProjectPermissionSet>>();
+    const permissionForActor: TGetProjectPermissionsResult["permissionForActor"] = ({
+      actorId,
+      groupIds,
+      username,
+      metadata,
+      groupsOnly = false
+    }) => {
+      const direct = directMembershipByActorId.get(actorId);
+      const rules = buildMergedProjectPermissionRules({
+        memberships: [
+          ...(direct && !groupsOnly ? [direct] : []),
+          ...groupIds.flatMap((groupId) => groupMembershipById.get(groupId) ?? [])
+        ],
+        folderGrants: groupsOnly ? undefined : folderScopedPrivilegesByActorId.get(actorId)?.filter(isActiveRole),
+        projectType: project?.type,
+        identity: {
+          id: actorId,
+          username: direct?.username ?? username ?? "",
+          metadata: direct?.metadata ?? metadata ?? []
+        }
+      });
+      const rulesKey = JSON.stringify(rules);
+      let permission = mergedAbilities.get(rulesKey);
+      if (!permission) {
+        permission = createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
+        mergedAbilities.set(rulesKey, permission);
+      }
+      return permission;
+    };
 
     return {
       userPermissions,
       identityPermissions,
-      groupPermissions
+      groupPermissions,
+      folderAccessByActorId,
+      permissionForActor,
+      groupRulesHavePlaceholders: rawGroupProjectPermissions.some((membership) =>
+        JSON.stringify(membership.roles ?? []).includes("{{")
+      )
     };
   };
 

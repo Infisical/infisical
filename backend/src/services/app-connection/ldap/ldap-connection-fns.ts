@@ -9,6 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -264,7 +265,7 @@ export const executeWithPotentialGateway = async <T>(
             ? {
                 rejectUnauthorized: config.credentials.sslRejectUnauthorized,
                 ca: config.credentials.sslCertificate ? [config.credentials.sslCertificate] : undefined,
-                servername: host,
+                ...getTlsServerNameOptions(host),
                 // bypass hostname verification for development
                 ...(appCfg.isDevelopmentMode ? { checkServerIdentity: () => undefined } : {})
               }

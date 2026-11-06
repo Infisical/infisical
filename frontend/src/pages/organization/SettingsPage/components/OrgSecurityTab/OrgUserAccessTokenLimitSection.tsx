@@ -1,6 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Clock } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -10,6 +9,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -22,7 +22,12 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission
+} from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -55,6 +60,8 @@ const formatDuration = (value: number, unit: string): string => {
 export const OrgUserAccessTokenLimitSection = () => {
   const { mutateAsync: updateUserTokenExpiration } = useUpdateOrg();
   const { currentOrg } = useOrganization();
+  const { permission } = useOrgPermission();
+  const isAllowed = permission.can(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
   // Parse the current duration or use default
   const currentDuration = parseDuration(currentOrg?.userTokenExpiration || "30d");
@@ -62,7 +69,8 @@ export const OrgUserAccessTokenLimitSection = () => {
   const {
     control,
     formState: { isSubmitting, isDirty },
-    handleSubmit
+    handleSubmit,
+    reset
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -85,6 +93,7 @@ export const OrgUserAccessTokenLimitSection = () => {
       text: "Successfully updated user token expiration",
       type: "success"
     });
+    reset(formData, { keepDirtyValues: true });
   };
 
   // Units for the dropdown with readable labels
@@ -96,87 +105,78 @@ export const OrgUserAccessTokenLimitSection = () => {
   ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <Clock className="size-4 text-accent" />
-          Session Length
-        </CardTitle>
-        <CardDescription>
-          Specify the duration of each login session for users in this organization.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-          {(isAllowed) => (
-            <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
-              <div className="flex max-w-sm gap-4">
-                <Controller
-                  control={control}
-                  name="expirationValue"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field className="flex-1">
-                      <FieldLabel htmlFor="expiration-value">Expiration Value</FieldLabel>
-                      <Input
-                        {...field}
-                        id="expiration-value"
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={field.value}
-                        onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
-                        isError={Boolean(error)}
-                        disabled={!isAllowed}
-                      />
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
+    <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle>Session Length</CardTitle>
+          <CardDescription>
+            Specify the duration of each login session for users in this organization.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="max-w-md px-6 pb-6">
+          <div className="flex gap-4">
+            <Controller
+              control={control}
+              name="expirationValue"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="flex-1">
+                  <FieldLabel htmlFor="expiration-value">Expiration Value</FieldLabel>
+                  <Input
+                    {...field}
+                    id="expiration-value"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={field.value}
+                    onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                    isError={Boolean(error)}
+                    disabled={!isAllowed}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
 
-                <Controller
-                  control={control}
-                  name="expirationUnit"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field className="flex-1">
-                      <FieldLabel htmlFor="expiration-unit">Time Unit</FieldLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={!isAllowed}
-                      >
-                        <SelectTrigger
-                          id="expiration-unit"
-                          className="w-full"
-                          isError={Boolean(error)}
-                        >
-                          <SelectValue placeholder="Select time unit" />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          {timeUnits.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-              </div>
+            <Controller
+              control={control}
+              name="expirationUnit"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="flex-1">
+                  <FieldLabel htmlFor="expiration-unit">Time Unit</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={!isAllowed}>
+                    <SelectTrigger id="expiration-unit" className="w-full" isError={Boolean(error)}>
+                      <SelectValue placeholder="Select time unit" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {timeUnits.map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </div>
+        </CardContent>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+            {(canEdit) => (
               <Button
                 variant="org"
+                size="sm"
                 type="submit"
                 isPending={isSubmitting}
-                isDisabled={!isAllowed || !isDirty}
-                className="mt-4"
+                isDisabled={!canEdit || !isDirty}
               >
-                Save
+                Save Changes
               </Button>
-            </form>
-          )}
-        </OrgPermissionCan>
-      </CardContent>
-    </Card>
+            )}
+          </OrgPermissionCan>
+        </CardFooter>
+      </Card>
+    </form>
   );
 };

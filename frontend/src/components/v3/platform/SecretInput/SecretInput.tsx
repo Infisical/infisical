@@ -1,4 +1,3 @@
-/* eslint-disable react/no-danger */
 import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 
@@ -35,6 +34,13 @@ const markInvisibleChars = (text: string, chunkKey: number) => {
   return nodes;
 };
 
+// One dot per character, keeping line breaks, so a value being typed shows its length and shape the
+// way a password field does.
+const maskPerCharacter = (content: string) => [
+  Array.from(content, (char) => (char === "\n" ? "\n" : "\u2022")).join(""),
+  <br key="secret-value-mask-linebreak" />
+];
+
 const syntaxHighlight = (
   content?: string | null,
   isVisible?: boolean,
@@ -45,7 +51,8 @@ const syntaxHighlight = (
   hoveredPart?: string,
   isCmdOrCtrlPressed?: boolean,
   onClickSegment?: (segment: string, allSegments: string[]) => void,
-  placeholder?: string
+  placeholder?: string,
+  isMaskedPerCharacter?: boolean
 ) => {
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
@@ -54,7 +61,7 @@ const syntaxHighlight = (
   if (placeholder && (content === "" || !content)) return placeholder;
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
-  if (!isVisible) return HIDDEN_SECRET_VALUE;
+  if (!isVisible) return isMaskedPerCharacter ? maskPerCharacter(content) : HIDDEN_SECRET_VALUE;
 
   let skipNext = false;
   const formattedContent = content.split(REGEX).flatMap((el, i) => {
@@ -141,10 +148,15 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   variant?: SecretInputVariant;
   isVisible?: boolean;
   valueAlwaysHidden?: boolean;
+  // Masks with one dot per character instead of a fixed-length mask, which reveals the value's
+  // length. Meant for a value the user is typing, not a stored one.
+  maskEachCharacter?: boolean;
   isImport?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
   containerClassName?: string;
+  // Grows from a textarea-height box with the value top-aligned, for standalone form fields.
+  isMultiline?: boolean;
   canEditButNotView?: boolean;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
@@ -163,10 +175,13 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isVisible,
       isImport,
       valueAlwaysHidden,
+      maskEachCharacter,
       containerClassName,
+      isMultiline,
       onBlur,
       isDisabled,
       isReadOnly,
+      readOnly,
       onFocus,
       canEditButNotView,
       isLoadingValue,
@@ -229,8 +244,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         className={cn(
           "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
           variant === "default" &&
-            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+            "flex min-h-9 items-center-safe rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           variant === "plain" && invisibleChars.length > 0 && "flex",
+          variant === "default" && isMultiline && "min-h-16 items-start py-1",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
@@ -246,6 +262,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             className={cn(
               "pointer-events-none whitespace-break-spaces",
               commonClassName,
+              maskEachCharacter && "font-mono",
               !value && "text-muted",
               shouldShowMask && "tracking-normal"
             )}
@@ -262,7 +279,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               hoveredPart,
               isCmdOrCtrlPressed,
               onClickSegment,
-              placeholder
+              placeholder,
+              maskEachCharacter
             )}
           </div>
           <textarea
@@ -273,7 +291,10 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             className={cn(
               "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0",
               variant === "default" && "px-2.5 py-1",
-              commonClassName
+              commonClassName,
+              // Monospaced in both layers, so each dot sits over the character it hides and the caret
+              // in the transparent textarea lines up with them.
+              maskEachCharacter && "font-mono"
             )}
             onFocus={(evt) => {
               onFocus?.(evt);
@@ -300,7 +321,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
             aria-invalid={isError || props["aria-invalid"]}
-            readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
+            readOnly={readOnly || isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
         {invisibleChars.length > 0 && (

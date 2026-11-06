@@ -3,16 +3,17 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { DelegatedApprovalRequestStatus } from "../delegatedApprovals/enums";
 import { ApiErrorTypes } from "../types";
 import { accessApprovalKeys } from "./queries";
+import { markDelegatedDispatchRetry } from "./retrying-delegated-dispatch";
 import {
   TAccessApproval,
   TAccessApprovalRequest,
   TCreateAccessPolicyDTO,
   TCreateAccessRequestDTO,
   TDeleteSecretPolicyDTO,
-  TUpdateAccessPolicyDTO,
-  TUpdateAccessRequestDTO
+  TUpdateAccessPolicyDTO
 } from "./types";
 
 export const useCreateAccessApprovalPolicy = () => {
@@ -32,7 +33,8 @@ export const useCreateAccessApprovalPolicy = () => {
       allowedSelfApprovals,
       approvalsRequired,
       maxTimePeriod,
-      requestExpirationTime
+      requestExpirationTime,
+      delegatedApproval
     }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
         environments,
@@ -46,7 +48,8 @@ export const useCreateAccessApprovalPolicy = () => {
         allowedSelfApprovals,
         approvalsRequired,
         maxTimePeriod,
-        requestExpirationTime
+        requestExpirationTime,
+        delegatedApproval
       });
       return data;
     },
@@ -81,7 +84,8 @@ export const useUpdateAccessApprovalPolicy = () => {
       approvalsRequired,
       environments,
       maxTimePeriod,
-      requestExpirationTime
+      requestExpirationTime,
+      delegatedApproval
     }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
@@ -94,7 +98,8 @@ export const useUpdateAccessApprovalPolicy = () => {
         approvalsRequired,
         environments,
         maxTimePeriod,
-        requestExpirationTime
+        requestExpirationTime,
+        delegatedApproval
       });
       return data;
     },
@@ -164,25 +169,6 @@ export const useCreateAccessRequest = () => {
   });
 };
 
-export const useUpdateAccessRequest = () => {
-  const queryClient = useQueryClient();
-  return useMutation<TAccessApprovalRequest, object, TUpdateAccessRequestDTO>({
-    mutationFn: async ({ requestId, ...payload }) => {
-      const { data } = await apiRequest.patch<{ approval: TAccessApprovalRequest }>(
-        `/api/v1/access-approvals/requests/${requestId}`,
-        payload
-      );
-
-      return data.approval;
-    },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
-      });
-    }
-  });
-};
-
 export const useRevokeAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<
@@ -196,6 +182,71 @@ export const useRevokeAccessRequest = () => {
     mutationFn: async ({ requestId }) => {
       const { data } = await apiRequest.post(
         `/api/v1/access-approvals/requests/${requestId}/revoke`
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
+    }
+  });
+};
+
+export const useRetryDelegatedApprovalDispatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    object,
+    object,
+    {
+      requestId: string;
+      projectSlug: string;
+    }
+  >({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/access-approvals/requests/${requestId}/retry-delegated-dispatch`
+      );
+      return data;
+    },
+    onSuccess: (_, { requestId, projectSlug }) => {
+      markDelegatedDispatchRetry(requestId);
+      queryClient.setQueriesData<TAccessApprovalRequest[]>(
+        { queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug) },
+        (requests) =>
+          requests?.map((request) =>
+            request.id === requestId && request.delegatedApproval
+              ? {
+                  ...request,
+                  delegatedApproval: {
+                    status: DelegatedApprovalRequestStatus.PendingDispatch,
+                    statusReason: null,
+                    provider: request.delegatedApproval.provider ?? null
+                  }
+                }
+              : request
+          )
+      );
+    }
+  });
+};
+
+export const useCancelAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    object,
+    object,
+    {
+      requestId: string;
+      projectSlug: string;
+    }
+  >({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/access-approvals/requests/${requestId}/cancel-delegated-dispatch`
       );
       return data;
     },

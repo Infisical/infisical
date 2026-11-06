@@ -1,19 +1,33 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { DownloadIcon } from "lucide-react";
 import { z } from "zod";
 
+import { PasswordField } from "@app/components/auth/PasswordField";
+import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   Button,
-  FormControl,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
+import { useServerConfig } from "@app/context";
+import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -44,62 +58,45 @@ export type ExportOptions = {
   };
 };
 
-const exportFormSchema = z
-  .object({
-    format: z.enum(["pem", "pkcs12"]),
-    pkcs12Password: z.string().optional(),
-    pkcs12Alias: z.string().optional()
-  })
-  .refine(
-    (data) => {
-      if (data.format === "pkcs12") {
-        return data.pkcs12Password && data.pkcs12Alias && data.pkcs12Alias.trim() !== "";
-      }
-      return true;
-    },
-    {
-      message: "PKCS12 password and alias are required when using PKCS12 format",
-      path: ["pkcs12Password"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.format === "pkcs12") {
-        return data.pkcs12Password && data.pkcs12Password.length >= 6;
-      }
-      return true;
-    },
-    {
-      message: "PKCS12 password must be 6 characters or longer",
-      path: ["pkcs12Password"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.format === "pkcs12" && data.pkcs12Password) {
-        return data.pkcs12Password.length >= 6;
-      }
-      return true;
-    },
-    {
-      message: "Password must be at least 6 characters long",
-      path: ["pkcs12Password"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.format === "pkcs12") {
-        return data.pkcs12Alias && data.pkcs12Alias.trim() !== "";
-      }
-      return true;
-    },
-    {
-      message: "Certificate alias is required",
-      path: ["pkcs12Alias"]
-    }
-  );
+const createExportFormSchema = (pkcs12PasswordPolicy: TPasswordPolicy) => {
+  const pkcs12PasswordSchema = createPasswordSchema(pkcs12PasswordPolicy);
 
-type ExportFormData = z.infer<typeof exportFormSchema>;
+  return z
+    .object({
+      format: z.enum(["pem", "pkcs12"]),
+      pkcs12Password: z.string().optional(),
+      pkcs12Alias: z.string().optional()
+    })
+    .superRefine((data, context) => {
+      if (data.format !== "pkcs12") return;
+
+      const passwordCheck = pkcs12PasswordSchema.safeParse(data.pkcs12Password ?? "");
+      if (!passwordCheck.success) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: passwordCheck.error.issues[0]?.message ?? "Invalid keystore password",
+          path: ["pkcs12Password"]
+        });
+      }
+
+      const alias = data.pkcs12Alias?.trim() ?? "";
+      if (!alias) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Certificate alias is required",
+          path: ["pkcs12Alias"]
+        });
+      } else if (alias.length > 255) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Certificate alias must be at most 255 characters",
+          path: ["pkcs12Alias"]
+        });
+      }
+    });
+};
+
+type ExportFormData = z.infer<ReturnType<typeof createExportFormSchema>>;
 
 export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelected }: Props) => {
   const { certificateId, serialNumber } =
@@ -108,12 +105,19 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
       serialNumber: string;
     }) || {};
 
+  const { config } = useServerConfig();
+  const exportFormSchema = useMemo(
+    () => createExportFormSchema(config.pkcs12PasswordPolicy),
+    [config.pkcs12PasswordPolicy]
+  );
+
   const {
     control,
+    register,
     handleSubmit,
     reset,
     watch,
-    formState: { isSubmitting }
+    formState: { isSubmitting, errors, submitCount }
   } = useForm<ExportFormData>({
     resolver: zodResolver(exportFormSchema),
     defaultValues: {
@@ -124,6 +128,7 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
   });
 
   const selectedFormat = watch("format");
+  const pkcs12Password = watch("pkcs12Password") ?? "";
 
   // Reset form whenever the modal opens
   useEffect(() => {
@@ -160,97 +165,108 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
   };
 
   return (
-    <Modal
-      isOpen={popUp?.certificateExport?.isOpen}
+    <Dialog
+      open={popUp?.certificateExport?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("certificateExport", isOpen);
       }}
     >
-      <ModalContent title="Export Certificate">
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-cool">
-              Choose the format for exporting your certificate
-            </p>
-
-            <Controller
-              control={control}
-              name="format"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Export Format"
-                  helperText={
-                    field.value === "pem"
-                      ? "Privacy Enhanced Mail - Text-based certificate format"
-                      : "PKCS12 format - Binary keystore format compatible with Java applications"
-                  }
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Select className="w-full" value={field.value} onValueChange={field.onChange}>
-                    <SelectItem value="pem">PEM Format</SelectItem>
-                    <SelectItem value="pkcs12">PKCS12 Format</SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-
-            {selectedFormat === "pkcs12" && (
-              <>
-                <Controller
-                  control={control}
-                  name="pkcs12Password"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Keystore Password"
-                      helperText="Password to protect the PKCS12 keystore (minimum 6 characters)"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      isRequired
-                    >
-                      <Input {...field} placeholder="Enter keystore password" type="password" />
-                    </FormControl>
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="pkcs12Alias"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Certificate Alias"
-                      helperText="Friendly name for the certificate in the keystore"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      isRequired
-                    >
-                      <Input {...field} placeholder="Enter certificate alias" />
-                    </FormControl>
-                  )}
-                />
-              </>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Export Certificate</DialogTitle>
+          <DialogDescription>Choose the format for exporting your certificate.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
+          <Controller
+            control={control}
+            name="format"
+            render={({ field, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="certificate-export-format">Export Format</FieldLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger
+                    id="certificate-export-format"
+                    isError={Boolean(error)}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value="pem">PEM</SelectItem>
+                    <SelectItem value="pkcs12">PKCS12</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  {field.value === "pem"
+                    ? "Privacy Enhanced Mail - Text-based certificate format"
+                    : "PKCS12 format - Binary keystore format compatible with Java applications"}
+                </FieldDescription>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
+          />
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                variant="outline_bg"
-                onClick={() => handlePopUpToggle("certificateExport", false)}
-              >
+          {selectedFormat === "pkcs12" && (
+            <>
+              <PasswordField
+                id="certificate-export-pkcs12-password"
+                label="Keystore Password"
+                placeholder="Enter keystore password"
+                value={pkcs12Password}
+                policy={config.pkcs12PasswordPolicy}
+                breachStatus="idle"
+                registration={register("pkcs12Password")}
+                error={errors.pkcs12Password}
+                submitCount={submitCount}
+                isRequired
+              />
+              <Controller
+                control={control}
+                name="pkcs12Alias"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="certificate-export-pkcs12-alias">
+                      Certificate Alias
+                      <span aria-hidden className="text-danger">
+                        *
+                      </span>
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="certificate-export-pkcs12-alias"
+                      placeholder="Enter certificate alias"
+                      autoComplete="off"
+                      aria-required
+                      isError={Boolean(error)}
+                    />
+                    <FieldDescription>
+                      Friendly name for the certificate in the keystore
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            </>
+          )}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost" type="button">
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                colorSchema="primary"
-                leftIcon={<FontAwesomeIcon icon={faDownload} />}
-                disabled={!(certificateId || serialNumber)}
-                isLoading={isSubmitting}
-              >
-                Export {selectedFormat.toUpperCase()}
-              </Button>
-            </div>
-          </div>
+            </DialogClose>
+            <Button
+              variant="project"
+              type="submit"
+              isPending={isSubmitting}
+              isDisabled={!(certificateId || serialNumber) || isSubmitting}
+            >
+              <DownloadIcon />
+              Export {selectedFormat.toUpperCase()}
+            </Button>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

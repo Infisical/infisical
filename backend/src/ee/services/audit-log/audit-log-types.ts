@@ -1,7 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
-import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
@@ -39,24 +39,33 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import {
+  CertificateRenewalKeySource,
+  TRenewalAuditChange,
+  TRenewCertificateDTO
+} from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
-  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
+  CertStatus,
   CrlReason
 } from "@app/services/certificate/certificate-types";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
-import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
-import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
   TKubernetesAuthDetails,
   TOidcAuthDetails
 } from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
+import { OrgAccessRemovalCause } from "@app/services/org/org-membership-events";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
@@ -77,11 +86,13 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import type { AuditLogEventClass } from "./audit-log-event-classes";
 
 export type TListProjectAuditLogDTO = {
   filter: {
     userAgentType?: UserAgentType;
     eventType?: EventType[];
+    eventClass?: AuditLogEventClass[];
     offset?: number;
     limit: number;
     endDate: string;
@@ -120,6 +131,32 @@ export type TCreateAuditLogDTO = {
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
+// Lands in the summary event's metadata when a collapse window closes. Add it to the metadata
+// type of any event you pass to createCollapsedAuditLog.
+export type TAuditLogCollapseSummary = {
+  suppressedRepeats?: number;
+  suppressedFrom?: string;
+  suppressedUntil?: string;
+};
+
+export type TCreateCollapsedAuditLogDTO = TCreateAuditLogDTO & {
+  // Same event type + same parts inside the window = repeat.
+  collapseKeyParts: unknown[];
+  collapseWindowSeconds?: number;
+};
+
+export type TAuditLogCollapsedFlushJobData = TCreateAuditLogDTO & {
+  collapseKey: string;
+  windowStart: string;
+  windowEnd: string;
+};
+
+export type TRecordPermissionDeniedDTO = AuditLogInfo & {
+  orgId: string;
+  projectId?: string;
+  metadata: Omit<PermissionDeniedEvent["metadata"], keyof TAuditLogCollapseSummary>;
+};
+
 // What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
 // push time so a consumer retry (reprocessing the same batch after a failed insert)
 // re-inserts byte-identical rows instead of regenerating ids and creating duplicates.
@@ -139,10 +176,13 @@ export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
 
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  createCollapsedAuditLog: (data: TCreateCollapsedAuditLogDTO) => Promise<void>;
+  recordPermissionDenied: (data: TRecordPermissionDeniedDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
     {
       event: {
         type: string;
+        class: AuditLogEventClass;
         metadata: unknown;
       };
       actor: {
@@ -182,7 +222,8 @@ export enum SecretApprovalEvent {
   Delete = "delete",
   CreateMany = "create-many",
   UpdateMany = "update-many",
-  DeleteMany = "delete-many"
+  DeleteMany = "delete-many",
+  Commit = "commit"
 }
 
 export enum UserAgentType {
@@ -204,6 +245,7 @@ export enum EventType {
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
   MOVE_SECRETS = "move-secrets",
+  SEARCH_SECRETS_BY_VALUE = "search-secrets-by-value",
   DUPLICATE_SECRET = "duplicate-secret",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
@@ -232,6 +274,7 @@ export enum EventType {
 
   UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
   DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+  INVITE_ORG_MEMBERS = "invite-org-members",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
@@ -393,6 +436,8 @@ export enum EventType {
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
+  IMPORT_CA_CROSS_SIGNED_CERT = "import-ca-cross-signed-cert",
+  DELETE_CA_CROSS_SIGNED_CERT = "delete-ca-cross-signed-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
@@ -437,6 +482,7 @@ export enum EventType {
   AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
   AUTOMATED_RENEW_CERTIFICATE = "automated-renew-certificate",
   AUTOMATED_RENEW_CERTIFICATE_FAILED = "automated-renew-certificate-failed",
+  CERTIFICATE_ISSUANCE_FAILED = "certificate-issuance-failed",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE = "get-subscriber-active-cert-bundle",
   CREATE_KMS = "create-kms",
@@ -450,6 +496,7 @@ export enum EventType {
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   USER_LOGIN = "user-login",
   SELECT_ORGANIZATION = "select-organization",
+  SELECT_ORGANIZATION_REFUSED = "select-organization-refused",
   SELECT_SUB_ORGANIZATION = "select-sub-organization",
   CREATE_CERTIFICATE_POLICY = "create-certificate-policy",
   UPDATE_CERTIFICATE_POLICY = "update-certificate-policy",
@@ -558,6 +605,7 @@ export enum EventType {
   ADD_GROUP_TO_PROJECT = "add-group-to-project",
   UPDATE_GROUP_PROJECT_MEMBERSHIP = "update-group-project-membership",
   REMOVE_GROUP_FROM_PROJECT = "remove-group-from-project",
+  REVOKE_ORG_PROJECT_ACCESS = "revoke-org-project-access",
 
   GET_PROJECT_TEMPLATES = "get-project-templates",
   GET_PROJECT_TEMPLATE = "get-project-template",
@@ -674,6 +722,8 @@ export enum EventType {
   SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN = "secret-scanning-data-source-trigger-scan",
   SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
   SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
+  SECRET_SCANNING_RESOURCE_ADD = "secret-scanning-resource-add",
+  SECRET_SCANNING_RESOURCE_REMOVE = "secret-scanning-resource-remove",
   SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
   SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
   SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update",
@@ -681,10 +731,12 @@ export enum EventType {
   SECRET_SCANNING_CONFIG_UPDATE = "secret-scanning-config-update",
 
   UPDATE_ORG = "update-org",
+  ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
+  RESTORE_PROJECT = "restore-project",
 
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
@@ -708,10 +760,12 @@ export enum EventType {
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS = "view-insights-secrets-management-unused-access",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION = "view-insights-secrets-management-org-auth-method-distribution",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION = "view-insights-org-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
@@ -743,6 +797,7 @@ export enum EventType {
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
+  ORG_ADMIN_ACCESS_PAM_FOLDER = "org-admin-accessed-pam-folder",
   PAM_PRODUCT_MEMBER_ADD = "pam-product-member-add",
   PAM_PRODUCT_MEMBER_UPDATE = "pam-product-member-update",
   PAM_PRODUCT_MEMBER_REMOVE = "pam-product-member-remove",
@@ -781,15 +836,30 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
+  AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
+  AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
+  AGENT_VAULT_SKILL_CREATE = "agent-vault-skill-create",
+  AGENT_VAULT_SKILL_VERSION_CREATE = "agent-vault-skill-version-create",
+  AGENT_VAULT_SKILL_RENAME = "agent-vault-skill-rename",
+  AGENT_VAULT_SKILL_VERSION_RESTORE = "agent-vault-skill-version-restore",
+  AGENT_VAULT_SKILL_VERSION_VIEW = "agent-vault-skill-version-view",
+  AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
+  AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
+  AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
+  AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
   AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD = "agent-vault-access-bundle-member-add",
   AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE = "agent-vault-access-bundle-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
+  AGENT_VAULT_SESSION_UPDATE = "agent-vault-session-update",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_DELEGATION_SET = "agent-vault-delegation-set",
+  AGENT_VAULT_DELEGATION_DELETE = "agent-vault-delegation-delete",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_TOKEN_ROTATE = "agent-vault-proxy-token-rotate",
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
@@ -804,15 +874,20 @@ export enum EventType {
   APPROVAL_REQUEST_LIST = "approval-request-list",
   APPROVAL_REQUEST_CREATE = "approval-request-create",
   APPROVAL_REQUEST_APPROVE = "approval-request-approve",
+  APPROVAL_REQUEST_AUTO_APPROVE = "approval-request-auto-approve",
   APPROVAL_REQUEST_REJECT = "approval-request-reject",
   APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
   PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
+  PAM_ACCESS_REQUEST_AUTO_APPROVED = "pam-access-request-auto-approved",
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
+  ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY = "access-approval-request-delegated-dispatch-retry",
+  ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION = "access-approval-request-delegated-decision",
+  ACCESS_APPROVAL_REQUEST_CANCEL = "access-approval-request-cancel",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
   VIEW_AUDIT_LOGS = "view-audit-logs",
 
@@ -872,6 +947,7 @@ export enum EventType {
   ENABLE_PKI_SIGNER = "enable-pki-signer",
   DISABLE_PKI_SIGNER = "disable-pki-signer",
   REISSUE_PKI_SIGNER_CERTIFICATE = "reissue-pki-signer-certificate",
+  IMPORT_PKI_SIGNER_CERTIFICATE = "import-pki-signer-certificate",
   EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
   UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
   PKI_SIGNER_REQUEST_TO_SIGN = "pki-signer-request-to-sign",
@@ -902,6 +978,9 @@ export enum EventType {
   ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
   OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
   OAUTH_CLIENT_TOKEN_EXCHANGE = "oauth-client-token-exchange",
+
+  // OIDC Issuer
+  ISSUE_OIDC_TOKEN = "issue-oidc-token",
 
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
@@ -958,7 +1037,13 @@ export enum EventType {
   CREATE_ALERT = "create-alert",
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
-  TEST_ALERT_CHANNEL = "test-alert-channel"
+  TEST_ALERT_CHANNEL = "test-alert-channel",
+
+  // Authorization
+  PERMISSION_DENIED = "permission-denied",
+
+  // Audit Log Settings
+  UPDATE_AUDIT_LOG_SETTINGS = "update-audit-log-settings"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -1274,6 +1359,22 @@ interface MoveSecretsEvent {
     destinationEnvironment: string;
     destinationSecretPath: string;
     secretIds: string[];
+  };
+}
+
+// The searched value is never recorded, only how many places it was found in. An audit log is read by
+// more people than the search itself is run by, so logging the value would widen who learns it.
+interface SearchSecretsByValueEvent {
+  type: EventType.SEARCH_SECRETS_BY_VALUE;
+  metadata: {
+    matchCount: number;
+  };
+}
+
+interface EnableOrgWideSecretValueTrackingEvent {
+  type: EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING;
+  metadata: {
+    projectsTotal: number;
   };
 }
 
@@ -1961,6 +2062,7 @@ interface AddIdentityTlsCertAuthEvent {
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
     verifyClientCertificateChain: boolean;
+    bindAccessTokenToCertificate: boolean;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -1982,6 +2084,7 @@ interface UpdateIdentityTlsCertAuthEvent {
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
     verifyClientCertificateChain?: boolean;
+    bindAccessTokenToCertificate?: boolean;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -2205,6 +2308,15 @@ interface DeleteUserOrgMembershipEvent {
   metadata: {
     membershipId: string;
     userId: string;
+  };
+}
+
+interface InviteOrgMembersEvent {
+  type: EventType.INVITE_ORG_MEMBERS;
+  metadata: {
+    inviteeEmails: string[];
+    organizationRoleSlug: string;
+    projects?: { id: string; name: string }[];
   };
 }
 
@@ -2871,6 +2983,22 @@ interface UnlinkGroupFromSubOrgEvent {
   };
 }
 
+// Written by the reconcile consumer and by direct org removals, so the actor is the platform and `reason` /
+// `groupId` say why.
+// `resources` are resource-level grants (PAM, Agent Vault, PKI apps, signers), including ones in projects
+// only reached through a group.
+interface RevokeOrgProjectAccessEvent {
+  type: EventType.REVOKE_ORG_PROJECT_ACCESS;
+  metadata: {
+    userId?: string;
+    identityId?: string;
+    projectIds: string[];
+    resources: { projectId: string; resourceType: string; resourceId: string }[];
+    reason: OrgAccessRemovalCause;
+    groupId?: string;
+  };
+}
+
 interface AddUserToGroupEvent {
   type: EventType.ADD_USER_TO_GROUP;
   metadata: {
@@ -2953,14 +3081,22 @@ interface RemoveGroupFromProjectEvent {
   };
 }
 
+type TCaKeySourceAuditMetadata = {
+  keySource?: string;
+  hsmConnectorId?: string;
+  hsmConnectorName?: string;
+  appConnectionId?: string;
+  appConnectionName?: string;
+  externalKeyId?: string;
+  region?: string;
+};
+
 interface CreateCa {
   type: EventType.CREATE_CA;
-  metadata: {
+  metadata: TCaKeySourceAuditMetadata & {
     caId: string;
     name: string;
     dn?: string;
-    keySource?: string;
-    hsmConnectorId?: string;
     isOcspEnabled?: boolean;
   };
 }
@@ -2994,7 +3130,7 @@ interface UpdateCa {
 
 interface DeleteCa {
   type: EventType.DELETE_CA;
-  metadata: {
+  metadata: TCaKeySourceAuditMetadata & {
     caId: string;
     name: string;
     dn?: string;
@@ -3029,6 +3165,7 @@ interface GetCaCsr {
   metadata: {
     caId: string;
     dn: string;
+    maxPathLength?: number;
   };
 }
 
@@ -3062,6 +3199,29 @@ interface ImportCaCert {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ImportCaCrossSignedCert {
+  type: EventType.IMPORT_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
+    replacedSerialNumber?: string;
+  };
+}
+
+interface DeleteCaCrossSignedCert {
+  type: EventType.DELETE_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
   };
 }
 
@@ -3203,7 +3363,7 @@ interface DeleteCert {
     serialNumber: string;
     notAfter: string;
     source: CertificateSource;
-    deletionAllowedReason: CertificateDeletionEligibility;
+    statusAtDeletion: CertStatus;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -3502,6 +3662,25 @@ interface AutomatedRenewCertificateFailed {
   };
 }
 
+interface CertificateIssuanceFailedEvent {
+  type: EventType.CERTIFICATE_ISSUANCE_FAILED;
+  metadata: TAuditLogCollapseSummary & {
+    operation: CertificateIssuanceOperation;
+    enrollmentType?: EnrollmentType;
+    certificateProfileId?: string;
+    profileName?: string;
+    caId?: string;
+    caName?: string;
+    certificateRequestId?: string;
+    originalCertificateId?: string;
+    commonName?: string;
+    applicationId?: string;
+    applicationName?: string;
+    errorName: string;
+    error: string;
+  };
+}
+
 interface SignPkiSubscriberCert {
   type: EventType.SIGN_PKI_SUBSCRIBER_CERT;
   metadata: {
@@ -3601,16 +3780,29 @@ interface OrgAdminBypassSSOEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
+export type TMfaSatisfiedBy = "not-required" | "infisical" | "idp";
+
 interface UserLoginEvent {
   type: EventType.USER_LOGIN;
   metadata: {
     organizationId?: string;
     authProvider?: string;
+    idpMfa?: TIdpMfaSignal;
   };
 }
 
 interface SelectOrganizationEvent {
   type: EventType.SELECT_ORGANIZATION;
+  metadata: {
+    organizationId: string;
+    organizationName: string;
+    mfaSatisfiedBy?: TMfaSatisfiedBy;
+  };
+}
+
+// The session was issued by another root org's IdP, which does not satisfy this org's enforcement.
+interface SelectOrganizationRefusedEvent {
+  type: EventType.SELECT_ORGANIZATION_REFUSED;
   metadata: {
     organizationId: string;
     organizationName: string;
@@ -3623,6 +3815,7 @@ interface SelectSubOrganizationEvent {
     organizationId: string;
     organizationName: string;
     rootOrganizationId: string;
+    mfaSatisfiedBy?: TMfaSatisfiedBy;
   };
 }
 
@@ -4166,6 +4359,7 @@ interface RenewCertificate {
     applicationName?: string | null;
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
+    externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
     changedAttributes: TRenewalAuditChange[];
   };
 }
@@ -4925,6 +5119,7 @@ interface UpdatePkiInstallationEvent {
     installationId: string;
     name?: string;
     type?: string;
+    keystorePasswordChange?: PkiKeystorePasswordChange;
   };
 }
 
@@ -4947,6 +5142,8 @@ interface CreatePkiSignerEvent {
     approvalPolicyId?: string | null;
     keySource?: CertKeySource;
     hsmConnectorId?: string | null;
+    hsmKeyLabel?: string;
+    hsmKeyId?: string;
     externalConfiguration?: TSignerExternalConfigurationInput;
   };
 }
@@ -5047,6 +5244,25 @@ interface ReissuePkiSignerCertificateEvent {
     hsmConnectorId?: string;
     hsmKeyAlgorithm?: string;
     externalConfiguration?: TSignerExternalConfigurationInput;
+  };
+}
+
+interface ImportPkiSignerCertificateEvent {
+  type: EventType.IMPORT_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    caId: string;
+    caName: string;
+    externalOrderId: string;
+    certificateId?: string | null;
+    commonName?: string;
+    keyAlgorithm?: string;
+    hsmConnectorId: string;
+    hsmConnectorName: string;
+    hsmKeyLabel: string;
+    hsmKeyId?: string;
+    certificateRenewBeforeDays?: number | null;
   };
 }
 
@@ -5608,6 +5824,7 @@ interface PitProcessNewCommitRawEvent {
     secretPath: string;
     message: string;
     approvalId?: string;
+    approvalSlug?: string;
     commitId?: string;
   };
 }
@@ -5654,8 +5871,9 @@ interface SecretScanningDataSourceScanEvent {
   metadata: {
     scanId: string;
     resourceId: string;
-    resourceType: string;
+    resourceName: string;
     dataSourceId: string;
+    dataSourceName: string;
     dataSourceType: string;
     scanStatus: SecretScanningScanStatus;
     scanType: SecretScanningScanType;
@@ -5670,6 +5888,27 @@ interface SecretScanningResourceListEvent {
     dataSourceId: string;
     resourceIds: string[];
     count: number;
+  };
+}
+
+interface SecretScanningResourceAddEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_ADD;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    dataSourceName: string;
+    resources: { resourceId: string; resourceName: string }[];
+  };
+}
+
+interface SecretScanningResourceRemoveEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_REMOVE;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    dataSourceName: string;
+    resourceId: string;
+    resourceName: string;
   };
 }
 
@@ -5784,6 +6023,18 @@ interface ProjectDeleteEvent {
     // true: actor soft-deleted the project (marked for deletion).
     // false: the async cleanup worker hard-deleted an expired soft-deleted project.
     softDelete?: boolean;
+    // true: deleted without a restore window (Delete Now, or a project type that has none).
+    hardDelete?: boolean;
+    deleteAfter?: Date | null;
+  };
+}
+
+interface ProjectRestoreEvent {
+  type: EventType.RESTORE_PROJECT;
+  metadata: {
+    id: string;
+    name: string;
+    slug: string;
   };
 }
 
@@ -5842,6 +6093,17 @@ interface ViewSecretManagementInsightsAccessVolumeEvent {
   };
 }
 
+interface ViewSecretManagementInsightsUnusedAccessEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS;
+  metadata: {
+    projectId: string;
+    // Set when one principal's unused secrets were viewed rather than the project list.
+    principalType?: string;
+    principalId?: string;
+    principalName?: string;
+  };
+}
+
 interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION;
   metadata: {
@@ -5869,6 +6131,13 @@ interface ViewSecretManagementInsightsSummaryEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY;
   metadata: {
     projectId: string;
+  };
+}
+
+interface ViewInsightsOrgSecretsDuplicationEvent {
+  type: EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION;
+  metadata: {
+    groupCount: number;
   };
 }
 
@@ -5966,6 +6235,27 @@ interface DeleteOrgAuditReportEvent {
 interface ViewAuditLogsEvent {
   type: EventType.VIEW_AUDIT_LOGS;
   metadata?: Record<string, unknown>;
+}
+
+interface PermissionDeniedEvent {
+  type: EventType.PERMISSION_DENIED;
+  metadata: TAuditLogCollapseSummary & {
+    permissionAction?: string;
+    permissionSubject?: string;
+    permissionSubjectDetails?: Record<string, unknown>;
+    errorName: string;
+    route?: string;
+    method: string;
+  };
+}
+
+interface UpdateAuditLogSettingsEvent {
+  type: EventType.UPDATE_AUDIT_LOG_SETTINGS;
+  metadata: {
+    scope: "organization" | "project";
+    eventClasses?: { eventClass: string; isEnabled: boolean }[];
+    auditLogsRetentionDays?: number;
+  };
 }
 
 interface ProjectRoleCreateEvent {
@@ -6143,6 +6433,16 @@ interface PamFolderDeleteEvent {
   };
 }
 
+interface OrgAdminAccessPamFolderEvent {
+  type: EventType.ORG_ADMIN_ACCESS_PAM_FOLDER;
+  metadata: {
+    folderId: string;
+    folderName: string;
+    // The role the admin held on the folder before granting themselves admin, or null if they held none.
+    previousRole: string | null;
+  };
+}
+
 interface PamProductMemberAddEvent {
   type: EventType.PAM_PRODUCT_MEMBER_ADD;
   metadata: {
@@ -6261,11 +6561,20 @@ interface AgentVaultProxyRegisterEvent {
   metadata: {
     proxyId: string;
     name: string;
+    description: string | null;
   };
 }
 
 interface AgentVaultProxyTokenReissueEvent {
   type: EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyTokenRotateEvent {
+  type: EventType.AGENT_VAULT_PROXY_TOKEN_ROTATE;
   metadata: {
     proxyId: string;
     name: string;
@@ -6286,7 +6595,8 @@ interface AgentVaultProxyUpdateEvent {
   type: EventType.AGENT_VAULT_PROXY_UPDATE;
   metadata: {
     proxyId: string;
-    name?: string;
+    name: string;
+    description?: string | null;
     trafficPolicy?: string;
     allowedHosts?: string | null;
     pollInterval?: number;
@@ -6313,11 +6623,20 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
   type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
   metadata: {
     enabled: boolean;
+    // Null when session logs are off.
+    storageType: ObjectStorageType | null;
     appConnectionId: string | null;
     appConnectionName: string | null;
     bucket: string | null;
     region: string | null;
     keyPrefix: string | null;
+    // The storage that was recording before this change, when it changed the storage or turned session logs off.
+    previousStorageType?: ObjectStorageType | null;
+    previousAppConnectionId?: string | null;
+    previousAppConnectionName?: string | null;
+    previousBucket?: string | null;
+    previousRegion?: string | null;
+    previousKeyPrefix?: string | null;
   };
 }
 
@@ -6334,7 +6653,7 @@ interface AgentVaultAccessBundleUpdateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE;
   metadata: {
     accessBundleId: string;
-    name?: string;
+    name: string;
     description?: string | null;
   };
 }
@@ -6354,12 +6673,22 @@ interface AgentVaultServiceCreateEvent {
     accessBundleName: string;
     serviceId: string;
     name: string;
+    serviceType: string;
+    // MCP services only.
+    serverUrl?: string;
+    transport?: string;
     hostPattern: string;
     credentialType: string;
+    // OAuth credentials only.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    allowedTools?: string[] | null;
+    // The fields each member sets for themselves, such as credential-value or credential-username.
+    memberProvidedFields?: string[];
     // Names and placeholders only. A sealed value must never reach an audit row.
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
@@ -6374,12 +6703,22 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleName: string;
     serviceId: string;
     name?: string;
+    // The service's type, which never changes, so present on every update.
+    serviceType: string;
+    serverUrl?: string;
+    transport?: string;
     hostPattern?: string;
     credentialType?: string;
+    // Present when the update connected or reauthorized an OAuth credential.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    allowedTools?: string[] | null;
+    // The fields each member sets for themselves after the update, present when it touched the credential.
+    memberProvidedFields?: string[];
     customHeaderNames?: string[];
     customHeadersReplaced?: string[];
     substitutionPlaceholders?: string[];
@@ -6400,29 +6739,31 @@ interface AgentVaultServiceDeleteEvent {
   };
 }
 
-// Keys and flags only. A variable's value never reaches an audit row, secret or not.
+// Keys only. A variable's value never reaches an audit row. Variables belonged to an access bundle until they moved to
+// Agent Vault as a whole, so accessBundleId and accessBundleName are present only on events recorded before that.
 interface AgentVaultVariableCreateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_CREATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
-    isSecret: boolean;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
   };
 }
 
 interface AgentVaultVariableUpdateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_UPDATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
-    // The previous* fields are present only when the update changed them.
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
+    // Present only when the update changed the key.
     previousKey?: string;
-    isSecret: boolean;
-    previousIsSecret?: boolean;
     valueReplaced: boolean;
   };
 }
@@ -6430,20 +6771,145 @@ interface AgentVaultVariableUpdateEvent {
 interface AgentVaultVariableDeleteEvent {
   type: EventType.AGENT_VAULT_VARIABLE_DELETE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
   };
 }
 
 interface AgentVaultVariableValueViewEvent {
   type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
+  };
+}
+
+// The personal values the actor set for a service that leaves some fields to each member. Field names only, never a value.
+interface AgentVaultPersonalValuesSetEvent {
+  type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    serviceId: string;
+    serviceName: string;
+    // Which credential the fields belong to: credential-value is a token for bearer and a password for basic.
+    credentialType: string;
+    // The fields this update set. A field it left out kept its saved value.
+    fields: string[];
+    variableKeys: string[];
+  };
+}
+
+interface AgentVaultPersonalValuesDeleteEvent {
+  type: EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    serviceId: string;
+    serviceName: string;
+    credentialType: string;
+  };
+}
+
+interface AgentVaultSkillCreateEvent {
+  type: EventType.AGENT_VAULT_SKILL_CREATE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillVersionCreateEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_CREATE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillRenameEvent {
+  type: EventType.AGENT_VAULT_SKILL_RENAME;
+  metadata: {
+    skillId: string;
+    oldName: string;
+    newName: string;
+  };
+}
+
+interface AgentVaultSkillVersionRestoreEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_RESTORE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    restoredFromVersion: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillVersionViewEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_VIEW;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+  };
+}
+
+interface AgentVaultSkillDeleteEvent {
+  type: EventType.AGENT_VAULT_SKILL_DELETE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    // The access bundles the skill was in when it was deleted.
+    removedFromBundles: { id: string; name: string }[];
+  };
+}
+
+interface AgentVaultAccessBundleSkillAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+interface AgentVaultAccessBundleSkillRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+// Recorded once per fetch when the CLI gets a session's skills at agent start, not when the agent reads them.
+interface AgentVaultSkillsDeliveredEvent {
+  type: EventType.AGENT_VAULT_SKILLS_DELIVERED;
+  metadata: {
+    sessionId: string;
+    accessBundleId: string;
+    accessBundleName: string;
+    skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+    // Set when the machine identity in the actor started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6452,6 +6918,7 @@ interface AgentVaultProductMemberAddEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6465,6 +6932,7 @@ interface AgentVaultProductMemberUpdateEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6478,6 +6946,7 @@ interface AgentVaultProductMemberRemoveEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6490,10 +6959,13 @@ interface AgentVaultAccessBundleMemberAddEvent {
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
-    memberId: string;
     userId?: string;
-    machineIdentityId?: string;
+    userName?: string;
+    userEmail?: string;
     groupId?: string;
+    groupName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
@@ -6502,10 +6974,13 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
-    memberId: string;
     userId?: string;
-    machineIdentityId?: string;
+    userName?: string;
+    userEmail?: string;
     groupId?: string;
+    groupName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
@@ -6513,9 +6988,45 @@ interface AgentVaultSessionMintEvent {
   type: EventType.AGENT_VAULT_SESSION_MINT;
   metadata: {
     sessionId: string;
-    accessBundleId: string;
-    accessBundleName: string;
+    label: string | null;
+    // Null for a session started with inline services only.
+    accessBundleId: string | null;
+    accessBundleName: string | null;
     expiresAt: string | null;
+    // Set when an admin sent services with the session. Never their values.
+    services?: {
+      serviceId: string;
+      // The name it was sent with, or its first host when it was sent without one.
+      name: string;
+      serviceType: string;
+      serverUrl?: string;
+      hostPattern: string;
+      credentialType: string;
+      headerName?: string;
+      allowedMethods: string[] | null;
+      allowedPathPrefixes: string[] | null;
+      customHeaderNames: string[];
+      substitutionPlaceholders: string[];
+    }[];
+    // Set when a machine identity started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
+  };
+}
+
+interface AgentVaultSessionUpdateEvent {
+  type: EventType.AGENT_VAULT_SESSION_UPDATE;
+  metadata: {
+    sessionId: string;
+    label: string | null;
+    previousLabel: string | null;
+    sessionOwner: string;
+    accessBundleName: string | null;
+    // Set when the machine identity in sessionOwner started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6523,6 +7034,37 @@ interface AgentVaultSessionRevokeEvent {
   type: EventType.AGENT_VAULT_SESSION_REVOKE;
   metadata: {
     sessionId: string;
+    label: string | null;
+    sessionOwner: string;
+    accessBundleName: string | null;
+    // Set when the session was ended with its own token rather than by a signed-in user or identity.
+    revokedWithToken?: boolean;
+    // Set when the machine identity in sessionOwner started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
+  };
+}
+
+interface AgentVaultDelegationSetEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_SET;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
+  };
+}
+
+interface AgentVaultDelegationDeleteEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_DELETE;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
   };
 }
 
@@ -6639,10 +7181,12 @@ interface PamAccountRotateCredentialsEvent {
   type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
   metadata: {
     accountId: string;
+    accountName: string;
     accountType: string;
     rotationStatus: string;
     manual: boolean;
     rotationAccountId?: string | null;
+    rotationAccountName?: string | null;
     message?: string;
   };
 }
@@ -6651,7 +7195,9 @@ interface PamAccountSetRotationAccountEvent {
   type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT;
   metadata: {
     accountId: string;
+    accountName: string;
     rotationAccountId: string | null;
+    rotationAccountName: string | null;
   };
 }
 
@@ -6708,6 +7254,7 @@ interface PamApprovalConfigUpdateEvent {
     stepCount: number;
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
+    autoApprovalRuleCount?: number;
   };
 }
 
@@ -6911,6 +7458,25 @@ interface ApprovalRequestApproveEvent {
   } & TApprovalRequestSubjectMetadata;
 }
 
+// The rule that approved the request and what it checked, so an admin can see why access was granted
+type TAutoApprovalAuditMetadata = {
+  ruleId: string | null;
+  ruleName?: string;
+  linkedRecords: { label: string; value: string }[];
+  conditions: string[];
+};
+
+interface ApprovalRequestAutoApproveEvent {
+  type: EventType.APPROVAL_REQUEST_AUTO_APPROVE;
+  metadata: {
+    policyType: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+  } & TAutoApprovalAuditMetadata &
+    TApprovalRequestSubjectMetadata;
+}
+
 interface ApprovalRequestRejectEvent {
   type: EventType.APPROVAL_REQUEST_REJECT;
   metadata: {
@@ -6980,6 +7546,22 @@ interface PamAccessPolicyBypassedEvent {
   };
 }
 
+interface PamAccessRequestAutoApprovedEvent {
+  type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
+  metadata: {
+    approvalRequestId: string;
+    grantId?: string;
+    accountId?: string;
+    accountName?: string;
+    folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    duration?: string;
+    accessType: string;
+  } & TAutoApprovalAuditMetadata;
+}
+
 interface AccessApprovalRequestCreateEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_CREATE;
   metadata: {
@@ -7009,6 +7591,54 @@ interface AccessApprovalRequestRevokeEvent {
     requestId: string;
     requestedByUserId: string;
     policyId: string;
+  };
+}
+
+interface AccessApprovalRequestDelegatedDispatchRetryEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    requestedByUserName: string;
+    requestedByUserEmail: string;
+    policyId: string;
+    policyName: string;
+    environment: string;
+    secretPath: string;
+    delegatedApprovalType: string;
+  };
+}
+
+interface AccessApprovalRequestDelegatedDecisionEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    policyName?: string;
+    delegatedApprovalType: string;
+    delegatedProviderRequestId: string;
+    providerRecordNumber?: string;
+    permissions?: string[];
+    outcome: string;
+    decision?: string;
+    decidedBy?: string;
+    decidedAt?: string;
+    decisionNotes?: string;
+    reason?: string;
+  };
+}
+
+interface AccessApprovalRequestCancelEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_CANCEL;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    requestedByUserName: string;
+    requestedByUserEmail: string;
+    policyId: string;
+    policyName: string;
+    environment: string;
+    secretPath: string;
   };
 }
 
@@ -7486,6 +8116,15 @@ interface OauthClientTokenExchangeEvent {
   };
 }
 
+interface IssueOidcTokenEvent {
+  type: EventType.ISSUE_OIDC_TOKEN;
+  metadata: {
+    connectionId: string;
+    connectionName: string;
+    audience: string;
+  };
+}
+
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -7756,6 +8395,7 @@ interface CreateHoneyTokenEvent {
     honeyTokenId: string;
     name: string;
     type: HoneyTokenType;
+    managedBy: HoneyTokenManagedBy;
     environment: string;
     secretPath: string;
   };
@@ -7856,6 +8496,7 @@ interface CreateAlertEvent {
     name: string;
     resourceType: string;
     resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
@@ -7866,6 +8507,8 @@ interface UpdateAlertEvent {
     alertId: string;
     name: string;
     resourceType: string;
+    resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
@@ -7876,6 +8519,8 @@ interface DeleteAlertEvent {
     alertId: string;
     name: string;
     resourceType: string;
+    resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
@@ -7887,6 +8532,7 @@ interface TestAlertChannelEvent {
     channelType: string;
     resourceType: string;
     resourceId?: string | null;
+    resourceName?: string | null;
     success: boolean;
     deliveredTo?: number;
     error?: string;
@@ -7909,6 +8555,8 @@ export type Event =
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
   | MoveSecretsEvent
+  | SearchSecretsByValueEvent
+  | EnableOrgWideSecretValueTrackingEvent
   | DuplicateSecretEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
@@ -8020,6 +8668,7 @@ export type Event =
   | ClearIdentityLdapAuthLockoutsEvent
   | UpdateUserOrgMembershipEvent
   | DeleteUserOrgMembershipEvent
+  | InviteOrgMembersEvent
   | CreateIdentityOrgMembershipEvent
   | UpdateIdentityOrgMembershipEvent
   | DeleteIdentityOrgMembershipEvent
@@ -8070,6 +8719,8 @@ export type Event =
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
+  | ImportCaCrossSignedCert
+  | DeleteCaCrossSignedCert
   | GetCaCrls
   | GenerateCaCertificate
   | InstallCaCertVenafi
@@ -8273,6 +8924,7 @@ export type Event =
   | EnablePkiSignerEvent
   | DisablePkiSignerEvent
   | ReissuePkiSignerCertificateEvent
+  | ImportPkiSignerCertificateEvent
   | ExportPkiSignerCertificateEvent
   | UpdatePkiSignerApprovalPolicyEvent
   | PkiSignerRequestToSignEvent
@@ -8343,6 +8995,8 @@ export type Event =
   | SecretScanningDataSourceTriggerScanEvent
   | SecretScanningDataSourceScanEvent
   | SecretScanningResourceListEvent
+  | SecretScanningResourceAddEvent
+  | SecretScanningResourceRemoveEvent
   | SecretScanningScanListEvent
   | SecretScanningFindingListEvent
   | SecretScanningFindingUpdateEvent
@@ -8352,6 +9006,7 @@ export type Event =
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent
+  | ProjectRestoreEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent
@@ -8361,11 +9016,13 @@ export type Event =
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent
   | ViewSecretManagementInsightsAccessVolumeEvent
+  | ViewSecretManagementInsightsUnusedAccessEvent
   | ViewSecretManagementInsightsOrgAuthMethodDistributionEvent
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
+  | ViewInsightsOrgSecretsDuplicationEvent
   | ViewSecretManagementInsightsCountsEvent
   | ViewSecretManagementInsightsUsageEvent
   | ViewSecretManagementInsightsProjectWarningsEvent
@@ -8377,6 +9034,8 @@ export type Event =
   | GetOrgAuditReportsEvent
   | DeleteOrgAuditReportEvent
   | ViewAuditLogsEvent
+  | PermissionDeniedEvent
+  | UpdateAuditLogSettingsEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
@@ -8396,6 +9055,7 @@ export type Event =
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
+  | OrgAdminAccessPamFolderEvent
   | PamProductMemberAddEvent
   | PamProductMemberUpdateEvent
   | PamProductMemberRemoveEvent
@@ -8417,15 +9077,30 @@ export type Event =
   | AgentVaultVariableUpdateEvent
   | AgentVaultVariableDeleteEvent
   | AgentVaultVariableValueViewEvent
+  | AgentVaultPersonalValuesSetEvent
+  | AgentVaultPersonalValuesDeleteEvent
+  | AgentVaultSkillCreateEvent
+  | AgentVaultSkillVersionCreateEvent
+  | AgentVaultSkillVersionRestoreEvent
+  | AgentVaultSkillVersionViewEvent
+  | AgentVaultSkillRenameEvent
+  | AgentVaultSkillDeleteEvent
+  | AgentVaultAccessBundleSkillAddEvent
+  | AgentVaultAccessBundleSkillRemoveEvent
+  | AgentVaultSkillsDeliveredEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent
   | AgentVaultAccessBundleMemberAddEvent
   | AgentVaultAccessBundleMemberRemoveEvent
   | AgentVaultSessionMintEvent
+  | AgentVaultDelegationSetEvent
+  | AgentVaultDelegationDeleteEvent
+  | AgentVaultSessionUpdateEvent
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent
+  | AgentVaultProxyTokenRotateEvent
   | AgentVaultProxyEnrollEvent
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
@@ -8459,8 +9134,10 @@ export type Event =
   | CancelCertificateRequestEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
+  | CertificateIssuanceFailedEvent
   | UserLoginEvent
   | SelectOrganizationEvent
+  | SelectOrganizationRefusedEvent
   | SelectSubOrganizationEvent
   | ApprovalPolicyCreateEvent
   | ApprovalPolicyUpdateEvent
@@ -8471,15 +9148,20 @@ export type Event =
   | ApprovalRequestListEvent
   | ApprovalRequestCreateEvent
   | ApprovalRequestApproveEvent
+  | ApprovalRequestAutoApproveEvent
   | ApprovalRequestRejectEvent
   | ApprovalRequestCancelEvent
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
   | PamAccessPolicyBypassedEvent
+  | PamAccessRequestAutoApprovedEvent
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent
+  | AccessApprovalRequestDelegatedDispatchRetryEvent
+  | AccessApprovalRequestDelegatedDecisionEvent
+  | AccessApprovalRequestCancelEvent
   | AccessApprovalRequestUpdateEvent
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent
@@ -8522,6 +9204,7 @@ export type Event =
   | RotateOauthClientSecretEvent
   | OauthClientAuthorizeEvent
   | OauthClientTokenExchangeEvent
+  | IssueOidcTokenEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent
@@ -8559,6 +9242,7 @@ export type Event =
   | LinkGroupToSubOrgEvent
   | UpdateGroupOrgMembershipEvent
   | UnlinkGroupFromSubOrgEvent
+  | RevokeOrgProjectAccessEvent
   | AddUserToGroupEvent
   | RemoveUserFromGroupEvent
   | AddIdentityToGroupEvent

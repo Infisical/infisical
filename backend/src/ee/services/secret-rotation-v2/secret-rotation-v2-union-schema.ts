@@ -21,11 +21,13 @@ import { SalesforceOauthCredentialsRotationSchema } from "@app/ee/services/secre
 import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 
+import { ClickHouseCredentialsRotationSchema } from "./clickhouse-credentials";
 import { CloudflareApiTokenRotationSchema } from "./cloudflare-api-token";
 import { CloudflareR2AccessKeyRotationSchema } from "./cloudflare-r2-access-key";
 import { ConvexAccessKeyRotationSchema } from "./convex-access-key";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key";
+import { GcpServiceAccountKeyRotationSchema } from "./gcp-service-account-key";
 import { HpIloRotationSchema } from "./hp-ilo-rotation";
 import { SnowflakeUserKeyPairRotationSchema } from "./snowflake-user-key-pair";
 import { StripeApiKeyRotationSchema } from "./stripe-api-key";
@@ -60,5 +62,7 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   SnowflakeUserKeyPairRotationSchema,
   CloudflareApiTokenRotationSchema,
   CloudflareR2AccessKeyRotationSchema,
-  StripeApiKeyRotationSchema
+  StripeApiKeyRotationSchema,
+  GcpServiceAccountKeyRotationSchema,
+  ClickHouseCredentialsRotationSchema
 ]);

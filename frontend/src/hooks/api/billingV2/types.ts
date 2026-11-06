@@ -10,6 +10,41 @@ export type BillingV2Dim = {
   // When true, the matching cadence's price is a usage overage rate, not a buyer-selected quantity.
   meteredMonthly?: boolean;
   meteredAnnual?: boolean;
+  // How a metered dimension's period total adds up ("sum" | "count" | "last") and its price bands.
+  aggregation?: string;
+  bands?: BillingV2Bands;
+};
+
+// One band of a metered price, in dollars. upTo is inclusive and null on the last band; unitPrice is
+// dollars per unit (fractions of a cent are kept); flatFee is charged once usage reaches the band.
+export type BillingV2Band = {
+  upTo: number | null;
+  unitPrice: number;
+  flatFee: number;
+};
+
+export type BillingV2Bands = {
+  mode: "graduated" | "volume";
+  tiers: BillingV2Band[];
+};
+
+// A metered dimension's current billing period as the License Server rated it, priced through the
+// org's pinned bands. estimatedAmount is null when the plan has no metered price for it.
+export type BillingV2MeteredUsage = {
+  periodStart: string | null;
+  periodEnd: string | null;
+  asOf: string | null;
+  estimatedAmount: number | null;
+  currentTier: number;
+  nextTierAt: number | null;
+  earlierInPeriod: {
+    periodStart: string | null;
+    periodEnd: string | null;
+    used: number;
+    estimatedAmount: number | null;
+  }[];
+  // A free trial's usage: shown, never billed, so the UI shows no amount for it.
+  trial: boolean;
 };
 
 // A comparison row's cells are keyed by plan tier ("pro" | "advanced" | "enterprise" | ...) so the
@@ -28,7 +63,8 @@ export type BillingV2Deprecation = {
   daysLeft: number | null;
 };
 
-// A single purchasable (or sales-led) plan of a product. The free tier is implicit and never listed.
+// A single product plan. Purchasable and sales-led plans are listed in product.plans; an optional
+// free plan is exposed separately as product.baselinePlan for comparison only.
 export type BillingV2Plan = {
   tier: string;
   name: string;
@@ -62,6 +98,7 @@ export type BillingV2CatalogProduct = {
   deprecation?: BillingV2Deprecation;
   // Sort key across products; the product list renders in this order.
   displayOrder?: number;
+  baselinePlan?: BillingV2Plan;
   plans: BillingV2Plan[];
   includes?: string[];
   compare?: BillingV2CompareRow[];
@@ -112,6 +149,9 @@ export type BillingV2EntitlementDim = {
   onDemandRate?: number;
   rate?: number;
   freeBand?: number;
+  // Metered only: this period's rated usage and the bands it is priced with.
+  usage?: BillingV2MeteredUsage;
+  bands?: BillingV2Bands;
   onDemandAmount: number;
   // Annual-commitment lifecycle. canDecreaseNow is false until the final window before renewal, so the
   // UI locks the commitment stepper's floor to the current committed quantity until then. renewalDate
@@ -143,6 +183,10 @@ export type BillingV2Entitlement = {
   trialPlanName?: string;
   trialPlanEndsAt?: string | null;
   trialPlanDaysLeft?: number | null;
+  // Formatted grace deadline while the trial's conversion charge waits on the customer's bank. The
+  // product stays trialing and usable until then, even though trialEndsAt has passed.
+  trialPaymentDueAt?: string | null;
+  trialPlanPaymentDueAt?: string | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line.
   renewsOn?: string | null;
@@ -168,6 +212,9 @@ export type BillingV2Trial = {
   planTier: string | null;
   basePlanTier: string | null;
   outcome: BillingV2TrialOutcome | string;
+  // Why the trial ended (e.g. payment_not_completed). endedDetail is a machine code only when outcome
+  // is "reverted"; on "canceled" it is free text, so never map it outside that case.
+  endedReason: string | null;
   endedDetail: string | null;
   endedAt: string | null;
   endedDaysAgo: number | null;
@@ -191,6 +238,8 @@ export type BillingV2Overview = {
       productKeys: string[];
       cadence: BillingV2Cadence | null;
       hasUsage: boolean;
+      // What metered usage so far this period prices to (dollars); null when nothing metered is rated.
+      estimatedUsage?: number | null;
     } | null;
   };
   // Total monthly on-demand overage across all products (dollars).
@@ -213,6 +262,8 @@ export type BillingV2Overview = {
   entitlements: Record<string, BillingV2Entitlement>;
   trialedProductKeys: string[];
   trials: BillingV2Trial[];
+  trialPaymentDue: { dueAt: string; productKeys: string[] } | null;
+  paymentAlert: { state: "needs_action" | "failed"; actionUrl: string } | null;
   // Mutating billing actions are frozen server-side; the UI disables purchase/commit/remove controls.
   checkoutFrozen: boolean;
   // false for an enterprise-managed org: render the self-serve billing UI but disable its controls
@@ -220,9 +271,12 @@ export type BillingV2Overview = {
   selfServe: boolean;
 };
 
+// payment_action_required: the bank wants the customer to approve the charge on the Stripe invoice at
+// paymentUrl, which has no return URL, so open it in a new tab rather than redirecting.
 export type BillingV2CheckoutResult = {
-  outcome: "checkout_created" | "subscription_updated";
+  outcome: "checkout_created" | "subscription_updated" | "payment_action_required";
   checkoutUrl?: string;
+  paymentUrl?: string;
   subscriptionId?: string;
 };
 
@@ -272,10 +326,9 @@ export type BillingV2Preview = {
 };
 
 export type BillingV2MutationResult = {
-  // checkout_created is returned when committing on a trialing org with no card created the
-  // subscription and it needs hosted checkout (checkoutUrl); otherwise subscription_updated.
-  outcome?: "checkout_created" | "subscription_updated";
+  outcome?: "checkout_created" | "subscription_updated" | "payment_action_required";
   checkoutUrl?: string;
+  paymentUrl?: string;
   subscriptionId?: string;
 };
 
@@ -311,7 +364,8 @@ export type TUpgradeBillingV2ProductDTO = {
 };
 
 export type BillingV2UpgradeResult = {
-  outcome: "upgraded";
+  outcome: "upgraded" | "payment_action_required";
+  paymentUrl?: string;
   subscriptionId?: string;
   fromPlanKey?: string;
   toPlanKey?: string;
@@ -336,6 +390,7 @@ export type TStartBillingV2TrialDTO = {
   orgId: string;
   productId: string;
   plan: string;
+  returnPath?: string;
 };
 
 export type TCancelBillingV2TrialDTO = {
@@ -354,6 +409,21 @@ export type BillingV2TrialResult = {
 export type BillingV2TrialCancelResult = {
   outcome: "trial_completed";
 };
+
+export type TConfirmBillingV2TrialPaymentDTO = {
+  orgId: string;
+  returnPath?: string;
+};
+
+export type BillingV2ConfirmTrialPaymentResult =
+  | { outcome: "checkout_created" | "payment_action_required"; redirectUrl: string }
+  | { outcome: "upgraded" };
+
+// License-server machine codes the billing UI branches on (read from the error's details.code).
+export const BillingV2ErrorCode = {
+  PaymentActionRequired: "payment_action_required",
+  NoTrialAwaitingPayment: "no_trial_awaiting_payment"
+} as const;
 
 export type TBillingV2LifecycleDTO = {
   orgId: string;

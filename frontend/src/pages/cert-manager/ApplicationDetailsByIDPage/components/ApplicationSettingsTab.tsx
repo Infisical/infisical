@@ -1,25 +1,25 @@
-import { ReactNode, useCallback, useMemo, useState } from "react";
-import { components, MenuListProps } from "react-select";
+import { ReactNode, useId, useMemo, useState } from "react";
+import { subject } from "@casl/ability";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import {
-  CircleStopIcon,
-  EyeIcon,
-  InfoIcon,
+  CheckIcon,
+  CopyIcon,
   MoreHorizontalIcon,
   PencilIcon,
-  PlayIcon,
   PlusIcon,
   Settings2Icon,
   Trash2Icon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateApprovalPoliciesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -29,12 +29,16 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
+  ConfirmationAlertDialog,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +48,8 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  FilterableSelect,
+  Field,
+  FieldLabel,
   IconButton,
   Skeleton,
   Table,
@@ -62,7 +67,7 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
@@ -73,13 +78,6 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
-  PkiAlertEventTypeV2,
-  TPkiAlertV2,
-  useDeletePkiAlertV2,
-  useGetPkiAlertsV2,
-  useUpdatePkiAlertV2
-} from "@app/hooks/api/pkiAlertsV2";
-import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
   TPkiApplication,
@@ -88,14 +86,12 @@ import {
   useDetachPkiApplicationProfile,
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
+import { CertificateAlertsCard } from "@app/pages/cert-manager/components/CertificateAlerts/CertificateAlertsCard";
+import { CertificateAlertScopeKind } from "@app/pages/cert-manager/components/CertificateAlerts/types";
 import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
-import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
-import { ViewPkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal";
-import {
-  formatAlertBefore,
-  formatEventType
-} from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
+import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import {
@@ -103,6 +99,7 @@ import {
   EnrollmentMethod,
   METHOD_LABELS
 } from "./ConfigureEnrollmentModal";
+import { LegacyApplicationAlertsCard } from "./LegacyApplicationAlertsCard";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
 
@@ -120,6 +117,59 @@ const methodBadges = (p: TPkiApplicationProfile) => {
 const getPolicyProfileNames = (policy: TApprovalPolicy): string[] => {
   const conditions = policy.conditions.conditions as CertRequestPolicyConditions;
   return conditions.flatMap((c: { profileNames: string[] }) => c.profileNames);
+};
+
+type ApplicationPolicyActionsMenuProps = {
+  policy: TApprovalPolicy;
+  onEdit: (policy: TApprovalPolicy) => void;
+  onDelete: (policy: TApprovalPolicy) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+};
+
+const ApplicationPolicyActionsMenu = ({
+  policy,
+  onEdit,
+  onDelete,
+  canEdit,
+  canDelete
+}: ApplicationPolicyActionsMenuProps) => {
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(policy.id);
+      setIsIdCopied.on();
+      createNotification({ type: "info", text: "Approval policy ID copied to clipboard" });
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    } catch {
+      createNotification({ type: "error", text: "Could not copy to clipboard" });
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton variant="ghost" size="xs" aria-label="Policy actions">
+          <MoreHorizontalIcon />
+        </IconButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+        <DropdownMenuItem onClick={handleCopyId}>
+          {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+          Copy ID
+        </DropdownMenuItem>
+        <DropdownMenuItem isDisabled={!canEdit} onClick={() => onEdit(policy)}>
+          <PencilIcon />
+          Edit Policy
+        </DropdownMenuItem>
+        <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={() => onDelete(policy)}>
+          <Trash2Icon />
+          Delete Policy
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 };
 
 type ApplicationPoliciesTableProps = {
@@ -222,27 +272,13 @@ const ApplicationPoliciesTable = ({
                   {formatDistance(new Date(policy.createdAt), new Date(), { addSuffix: true })}
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton variant="ghost" size="xs" aria-label="Policy actions">
-                        <MoreHorizontalIcon />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
-                      <DropdownMenuItem isDisabled={!canEdit} onClick={() => onEdit(policy)}>
-                        <PencilIcon />
-                        Edit Policy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="danger"
-                        isDisabled={!canDelete}
-                        onClick={() => onDelete(policy)}
-                      >
-                        <Trash2Icon />
-                        Delete Policy
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <ApplicationPolicyActionsMenu
+                    policy={policy}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                  />
                 </TableCell>
               </TableRow>
             );
@@ -252,124 +288,8 @@ const ApplicationPoliciesTable = ({
   );
 };
 
-type AlertRowProps = {
-  alert: TPkiAlertV2;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  canEdit: boolean;
-  canDelete: boolean;
-};
-
-const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: AlertRowProps) => {
-  const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
-
-  const handleToggleAlert = async () => {
-    try {
-      await updateAlert({ alertId: alert.id, enabled: !alert.enabled });
-      createNotification({
-        text: `Alert ${!alert.enabled ? "enabled" : "disabled"} successfully`,
-        type: "success"
-      });
-    } catch {
-      createNotification({ text: "Failed to update alert status", type: "error" });
-    }
-  };
-
-  return (
-    <TableRow>
-      <TableCell isTruncatable>
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-foreground">{alert.name}</span>
-          {alert.description ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="size-3.5 shrink-0 text-accent" />
-              </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-xs">
-                {alert.description}
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
-        </div>
-      </TableCell>
-      <TableCell className="whitespace-nowrap text-accent">
-        {formatEventType(alert.eventType)}
-      </TableCell>
-      <TableCell className="whitespace-nowrap">
-        <Badge variant={alert.enabled ? "success" : "neutral"}>
-          {alert.enabled ? "Enabled" : "Disabled"}
-        </Badge>
-      </TableCell>
-      <TableCell className="whitespace-nowrap text-accent">
-        {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
-          formatAlertBefore(alert.alertBefore)
-        ) : (
-          <span className="text-surface-selected">—</span>
-        )}
-      </TableCell>
-      <TableCell className="whitespace-nowrap">
-        {alert.lastRun ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant={alert.lastRun.status === "success" ? "success" : "danger"}>
-                {alert.lastRun.status === "success" ? "Success" : "Failed"}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-sm">
-              <div className="text-xs text-label">
-                {new Date(alert.lastRun.timestamp)
-                  .toISOString()
-                  .replace("T", " ")
-                  .replace("Z", " UTC")}
-              </div>
-              {alert.lastRun.error ? (
-                <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-danger">
-                  {alert.lastRun.error}
-                </div>
-              ) : null}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <span className="text-surface-selected">—</span>
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton variant="ghost" size="xs" aria-label="Alert actions">
-              <MoreHorizontalIcon />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
-            <DropdownMenuItem onClick={onView}>
-              <EyeIcon />
-              View details
-            </DropdownMenuItem>
-            <DropdownMenuItem isDisabled={!canEdit} onClick={onEdit}>
-              <PencilIcon />
-              Edit alert
-            </DropdownMenuItem>
-            <DropdownMenuItem isDisabled={!canEdit} onClick={handleToggleAlert}>
-              {alert.enabled ? <CircleStopIcon /> : <PlayIcon />}
-              {alert.enabled ? "Disable" : "Enable"} alert
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
-              <Trash2Icon />
-              Delete alert
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TableCell>
-    </TableRow>
-  );
-};
-
 export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
-  const { orgId, projectId } = useParams({ strict: false }) as {
-    orgId?: string;
-    projectId?: string;
-  };
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
   const { data: permissionData } = useGetPkiApplicationPermissions(application.id);
   const appAbility = permissionData?.permission;
   const canManageProfileAttachments = Boolean(
@@ -399,7 +319,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const canEditPolicies = Boolean(
     appAbility?.can(PkiApplicationResourceActions.Edit, PkiApplicationResourceSub.ApprovalPolicies)
   );
-  const canManageAlerts = Boolean(
+  const canCreateAlerts = Boolean(
     appAbility?.can(PkiApplicationResourceActions.Create, PkiApplicationResourceSub.PkiAlerts)
   );
   const canEditAlerts = Boolean(
@@ -411,6 +331,19 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
   const [profilesToAttach, setProfilesToAttach] = useState<TProfileOption[]>([]);
+  const profileInputId = useId();
+  const closeAttach = () => {
+    setIsAttachOpen(false);
+    setProfilesToAttach([]);
+  };
+  const { requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty: profilesToAttach.length > 0, onDiscard: closeAttach });
+  const profileCreation = useProfileCreation((createdProfile) =>
+    setProfilesToAttach((previous) => [
+      ...previous,
+      { value: createdProfile.id, label: createdProfile.slug }
+    ])
+  );
   const [profileToDetach, setProfileToDetach] = useState<TPkiApplicationProfile | null>(null);
   const [profileToConfigure, setProfileToConfigure] = useState<TPkiApplicationProfile | null>(null);
   const [enrollmentMethodToOpen, setEnrollmentMethodToOpen] = useState<EnrollmentMethod>();
@@ -421,10 +354,26 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   };
 
   const { permission } = useProjectPermission();
-  const canCreateProfile = permission.can(
-    ProjectPermissionCertificateProfileActions.Create,
-    ProjectPermissionSub.CertificateProfiles
-  );
+  const canCreateAndAttachProfile =
+    permission.can(
+      ProjectPermissionCertificateProfileActions.Create,
+      ProjectPermissionSub.CertificateProfiles
+    ) &&
+    permission.can(
+      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+      ProjectPermissionSub.CertificateProfiles
+    );
+  const validateCreatedProfileSlug = (slug: string) => {
+    const profileSubject = subject(ProjectPermissionSub.CertificateProfiles, { slug });
+    return canManageProfileAttachments &&
+      permission.can(ProjectPermissionCertificateProfileActions.Create, profileSubject) &&
+      permission.can(
+        ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+        profileSubject
+      )
+      ? undefined
+      : "You don't have permission to create and attach a profile with this name. Choose an allowed name.";
+  };
 
   const { data: profileList } = useListCertificateProfiles({ limit: 100 });
   const attachMutation = useAttachPkiApplicationProfiles();
@@ -434,57 +383,22 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "policy",
-    "deletePolicy",
-    "upgradePlan"
+    "deletePolicy"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   // Creation only; existing policies keep enforcing and their requests can still be approved.
   const handleCreatePolicy = () => {
     if (!subscription.pkiApprovals) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Certificate approval policies are available on Infisical's Enterprise plan."
+      openUpgradeGate({
+        intent: CertificateApprovalPoliciesUpgradeIntent,
+        paywallKey: "cert-manager.application-settings"
       });
       return;
     }
     handlePopUpOpen("policy");
   };
   const deletePolicy = useDeleteApprovalPolicy();
-
-  const { data: alertsData, isLoading: isAlertsLoading } = useGetPkiAlertsV2({
-    applicationId: application.id,
-    limit: 100
-  });
-  const alerts = alertsData?.alerts ?? [];
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
-    isOpen: false
-  });
-  const [viewAlertModal, setViewAlertModal] = useState<{ isOpen: boolean; alertId?: string }>({
-    isOpen: false
-  });
-  const [deleteAlertModal, setDeleteAlertModal] = useState<{
-    isOpen: boolean;
-    alertId?: string;
-    name?: string;
-  }>({ isOpen: false });
-  const { mutateAsync: deleteAlert } = useDeletePkiAlertV2();
-
-  const handleDeleteAlert = async () => {
-    if (!deleteAlertModal.alertId) return;
-    try {
-      await deleteAlert({
-        alertId: deleteAlertModal.alertId,
-        applicationId: application.id
-      });
-      setDeleteAlertModal({ isOpen: false });
-      createNotification({ type: "success", text: "Alert deleted" });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to delete alert"
-      });
-    }
-  };
 
   const handleDeletePolicy = async () => {
     const p = popUp.deletePolicy.data as { policyId: string } | undefined;
@@ -517,36 +431,12 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const totalProfileCount = profileList?.totalCount ?? 0;
   const hasAttachableProfiles = totalProfileCount > profiles.length;
   let attachDisabledReason: ReactNode | null = null;
-  if (!hasAttachableProfiles && !canCreateProfile) {
+  if (!hasAttachableProfiles && !canCreateAndAttachProfile) {
     attachDisabledReason =
       totalProfileCount === 0
-        ? "No certificate profiles exist yet, and you do not have permission to create one."
+        ? "No certificate profiles exist yet, and you do not have permission to create and attach one."
         : "All certificate profiles are already attached.";
   }
-
-  // Pinned above the scrolling option list, so creating a profile is not a selectable option
-  // masquerading as one.
-  const ProfileMenuList = useCallback(
-    (menuProps: MenuListProps<TProfileOption, true>) => (
-      <>
-        {canCreateProfile ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            isFullWidth
-            className="justify-start"
-            onClick={() => setIsCreateProfileOpen(true)}
-          >
-            <PlusIcon />
-            Add Certificate Profile
-          </Button>
-        ) : null}
-        <components.MenuList {...menuProps} />
-      </>
-    ),
-    [canCreateProfile]
-  );
 
   const handleAttach = async () => {
     if (profilesToAttach.length === 0) return;
@@ -655,10 +545,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                     <TableRow key={p.profileId}>
                       <TableCell className="font-mono">
                         <Link
-                          to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                          to="/organizations/$orgId/cert-manager/certificate-profiles/$profileId"
                           params={{
                             orgId: orgId ?? "",
-                            projectId: projectId ?? "",
                             profileId: p.profileId
                           }}
                           search={{ from: "application", applicationName: application.name }}
@@ -787,193 +676,129 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Alerting
-            <DocumentationLinkBadge href={PkiDocsUrls.applications.alerting.overview} />
-          </CardTitle>
-          <CardDescription>Get notified about certificate events.</CardDescription>
-          <CardAction>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip surfaces on keyboard focus despite the inner button being disabled */}
-                <span tabIndex={0}>
-                  <Button
-                    variant="outline"
-                    onClick={() => setAlertModal({ isOpen: true })}
-                    isDisabled={!canManageAlerts}
-                  >
-                    <FontAwesomeIcon icon={faPlus} />
-                    Create Alert
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!canManageAlerts && (
-                <TooltipContent side="left">
-                  You don&apos;t have permission to create alerts
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          {!isAlertsLoading && alerts.length === 0 ? (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>No alerts configured</EmptyTitle>
-                <EmptyDescription>
-                  Create one to get notified about certificate events for this application.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-1/3">Name</TableHead>
-                  <TableHead className="whitespace-nowrap">Event Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Alert Before</TableHead>
-                  <TableHead className="whitespace-nowrap">Last Run</TableHead>
-                  <TableHead className="w-5 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isAlertsLoading &&
-                  Array.from({ length: 3 }, (_, idx) => (
-                    <TableRow key={`alert-skeleton-${idx + 1}`}>
-                      {Array.from({ length: 6 }, (__, cellIdx) => (
-                        <TableCell key={`alert-skeleton-cell-${cellIdx + 1}`}>
-                          <Skeleton className="h-4 w-24" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                {!isAlertsLoading &&
-                  alerts.map((a: TPkiAlertV2) => (
-                    <AlertRow
-                      key={a.id}
-                      alert={a}
-                      onView={() => setViewAlertModal({ isOpen: true, alertId: a.id })}
-                      onEdit={() => setAlertModal({ isOpen: true, alertId: a.id })}
-                      onDelete={() =>
-                        setDeleteAlertModal({ isOpen: true, alertId: a.id, name: a.name })
-                      }
-                      canEdit={canEditAlerts}
-                      canDelete={canDeleteAlerts}
-                    />
-                  ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <CertificateAlertsCard
+        projectId={application.projectId}
+        scope={{
+          kind: CertificateAlertScopeKind.Application,
+          applicationId: application.id,
+          applicationName: application.name
+        }}
+        canCreate={canCreateAlerts}
+        canEdit={canEditAlerts}
+        canDelete={canDeleteAlerts}
+      />
+      <LegacyApplicationAlertsCard applicationId={application.id} canDelete={canDeleteAlerts} />
 
       <PolicyModal
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
         applicationId={application.id}
       />
-      <UpgradePlanModal
-        paywallKey="cert-manager.application-settings"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
-      <DeleteActionModal
+      {upgradeGate}
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePolicy.isOpen}
-        deleteKey="delete"
+        description="This action is irreversible."
+        confirmKey="delete"
         title={`Delete approval policy ${(popUp.deletePolicy.data as TApprovalPolicy | undefined)?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
-        onDeleteApproved={handleDeletePolicy}
-      />
-      <CreatePkiAlertV2Modal
-        isOpen={alertModal.isOpen}
-        onOpenChange={(isOpen) => setAlertModal({ isOpen, alertId: undefined })}
-        applicationId={application.id}
-        alertId={alertModal.alertId}
-      />
-      <ViewPkiAlertV2Modal
-        isOpen={viewAlertModal.isOpen}
-        onOpenChange={(isOpen) => setViewAlertModal({ isOpen, alertId: undefined })}
-        alertId={viewAlertModal.alertId}
-      />
-      <DeleteActionModal
-        isOpen={deleteAlertModal.isOpen}
-        deleteKey="delete"
-        title={`Delete PKI Alert "${deleteAlertModal.name ?? ""}"`}
-        onChange={(isOpen) => setDeleteAlertModal({ isOpen, alertId: undefined, name: undefined })}
-        onDeleteApproved={handleDeleteAlert}
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
+        onConfirm={handleDeletePolicy}
       />
 
       <Dialog
         open={isAttachOpen}
         onOpenChange={(open) => {
-          setIsAttachOpen(open);
-          if (!open) setProfilesToAttach([]);
+          if (open) setIsAttachOpen(true);
+          else requestDiscard();
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent isPending={attachMutation.isPending}>
           <DialogHeader>
             <DialogTitle>Attach Profiles</DialogTitle>
             <DialogDescription>
               Select one or more profiles to attach to this application.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
-            <FilterableSelect
-              isMulti
-              value={profilesToAttach}
-              onChange={(val) => setProfilesToAttach((val ?? []) as TProfileOption[])}
-              options={availableProfiles}
-              components={{ MenuList: ProfileMenuList }}
-              placeholder="Select profiles..."
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAttachOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="project"
-              onClick={handleAttach}
-              isDisabled={profilesToAttach.length === 0 || attachMutation.isPending}
-              isPending={attachMutation.isPending}
-            >
-              Attach
-            </Button>
-          </DialogFooter>
+          <form
+            className="flex min-h-0 flex-1 flex-col gap-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (profilesToAttach.length && !attachMutation.isPending) handleAttach();
+            }}
+          >
+            <DialogBody>
+              <fieldset disabled={attachMutation.isPending} className="min-w-0">
+                <Field>
+                  <FieldLabel htmlFor={profileInputId}>Certificate Profiles</FieldLabel>
+                  <Combobox
+                    id={profileInputId}
+                    multiple
+                    value={profilesToAttach}
+                    onValueChange={setProfilesToAttach}
+                    getOptionValue={(option) => option.value}
+                    getOptionLabel={(option) => option.label}
+                    options={availableProfiles}
+                    creation={profileCreation}
+                    placeholder="Select profiles..."
+                  />
+                </Field>
+              </fieldset>
+            </DialogBody>
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                isDisabled={attachMutation.isPending}
+                onClick={requestDiscard}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="project"
+                type="submit"
+                isDisabled={profilesToAttach.length === 0 || attachMutation.isPending}
+                isPending={attachMutation.isPending}
+              >
+                Attach
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Profile Selection?"
+        description="Your pending profile attachments will be lost."
+      />
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={Boolean(profileToDetach)}
         title={`Detach profile ${profileToDetach?.profileSlug ?? ""}?`}
-        subTitle="This application will no longer be able to issue from this Profile. Existing certificates remain."
-        deleteKey="confirm"
-        onChange={(open) => {
+        description="This application will no longer be able to issue from this Profile. Existing certificates remain."
+        confirmKey="confirm"
+        onOpenChange={(open) => {
           if (!open) setProfileToDetach(null);
         }}
-        onDeleteApproved={handleDetach}
+        onConfirm={handleDetach}
       />
 
       <CreateProfileModal
         isOpen={isCreateProfileOpen}
         onClose={() => setIsCreateProfileOpen(false)}
-        onComplete={(createdProfile) => {
-          setIsCreateProfileOpen(false);
-          // Created from inside the attach dialog: add it to the pending selection so it is
-          // attached alongside whatever else was picked. Created straight from the card, there is
-          // no selection to submit, so attach it now.
-          if (isAttachOpen) {
-            setProfilesToAttach((prev) => [
-              ...prev,
-              { value: createdProfile.id, label: createdProfile.slug }
-            ]);
-            return;
+        validateSlug={validateCreatedProfileSlug}
+        onComplete={async (createdProfile) => {
+          if (
+            !canManageProfileAttachments ||
+            !permission.can(
+              ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+              subject(ProjectPermissionSub.CertificateProfiles, { slug: createdProfile.slug })
+            )
+          ) {
+            throw new Error(
+              "The profile was created, but you no longer have permission to attach it to this application."
+            );
           }
-          attachMutation.mutate({
+          await attachMutation.mutateAsync({
             applicationId: application.id,
             profileIds: [createdProfile.id]
           });

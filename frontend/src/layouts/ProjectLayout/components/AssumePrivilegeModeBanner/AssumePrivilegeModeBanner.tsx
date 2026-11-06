@@ -15,17 +15,22 @@ export const AssumePrivilegeModeBanner = () => {
   if (!assumedPrivilegeDetails) return null;
 
   return (
-    <div className="flex w-full items-center border-b border-info/20 bg-info/5 px-4 py-2 text-sm text-foreground">
-      <Info className="mr-2.5 size-4 text-info" />
-      You are currently viewing the project with privileges of&nbsp;
-      <b>
-        {assumedPrivilegeDetails.actorType === ActorType.IDENTITY ? "identity" : "user"}{" "}
-        {assumedPrivilegeDetails.actorName || assumedPrivilegeDetails.actorEmail}
-      </b>
+    <div className="flex w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-l-2 border-info/20 border-l-info bg-info/5 px-4 py-2 text-foreground">
+      <Info className="mt-1 size-4 shrink-0 self-start text-info" />
+      <div className="min-w-0 flex-1 basis-64">
+        <div className="mb-0.5 text-xs font-medium text-info">Assumed privileges</div>
+        <span className="min-w-0 text-sm [overflow-wrap:anywhere]">
+          You are currently viewing the project with privileges of{" "}
+          <b>
+            {assumedPrivilegeDetails.actorType === ActorType.IDENTITY ? "identity" : "user"}{" "}
+            {assumedPrivilegeDetails.actorName || assumedPrivilegeDetails.actorEmail}
+          </b>
+        </span>
+      </div>
       <Button
         size="xs"
         variant="outline"
-        className="ml-auto"
+        className="shrink-0"
         isPending={exitAssumePrivilegeMode.isPending}
         isDisabled={exitAssumePrivilegeMode.isPending}
         onClick={() => {

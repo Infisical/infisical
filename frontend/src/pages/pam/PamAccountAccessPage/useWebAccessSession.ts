@@ -142,7 +142,7 @@ export const useWebAccessSession = ({
 
       if (longestLine <= terminal.cols) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-underscore-dangle
+      // eslint-disable-next-line no-underscore-dangle
       const cellWidth = (terminal as any)._core._renderService.dimensions.css.cell.width as number;
       if (!cellWidth) return;
 
@@ -482,7 +482,7 @@ export const useWebAccessSession = ({
     const terminal = new Terminal({
       cursorBlink: true,
       fontSize: 14,
-      fontFamily: '"JetBrains Mono", "Fira Code", Menlo, Monaco, "Courier New", monospace',
+      fontFamily: getComputedStyle(containerEl).getPropertyValue("--font-mono").trim(),
       theme: getTerminalTheme(resolvedThemeRef.current),
       scrollback: 10000,
       allowProposedApi: true

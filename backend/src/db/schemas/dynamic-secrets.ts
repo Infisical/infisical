@@ -31,7 +31,8 @@ export const DynamicSecretsSchema = z.object({
   gatewayId: z.string().guid().nullable().optional(),
   usernameTemplate: z.string().nullable().optional(),
   gatewayV2Id: z.string().guid().nullable().optional(),
-  gatewayPoolId: z.string().guid().nullable().optional()
+  gatewayPoolId: z.string().guid().nullable().optional(),
+  revocationFailing: z.boolean().default(false)
 });
 
 export type TDynamicSecrets = z.infer<typeof DynamicSecretsSchema>;

@@ -47,12 +47,13 @@ Next, create the app connection in Infisical.
 <View title="Organization-level">
     <Steps>
         <Step>
-            In the sidebar, select **Organization Settings**, then open the **App Connections** tab.
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
 
             ![App Connections Tab](/images/app-connections/general/add-connection.png)
         </Step>
         <Step>
-            Select **+ Add Connection** and choose **{Product} Connection**.
+            {/* NOTE: The app picker labels each card with the product's name alone, from APP_CONNECTION_MAP in frontend/src/helpers/appConnections.ts. */}
+            Select **Add Connection** and choose **{Product}**.
 
             ![Select {Product} Connection](/images/app-connections/{product-slug}/{image-file}.png)
         </Step>
@@ -79,7 +80,7 @@ Next, create the app connection in Infisical.
             In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
         </Step>
         <Step>
-            Select **Add Connection** and choose **{Product} Connection**.
+            Select **Add Connection** and choose **{Product}**.
 
             ![Select {Product} Connection](/images/app-connections/{product-slug}/{image-file}-project.png)
         </Step>

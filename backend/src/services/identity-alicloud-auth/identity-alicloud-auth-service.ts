@@ -30,10 +30,10 @@ import {
 } from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
-import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
-import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -288,35 +288,6 @@ export const identityAliCloudAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -420,35 +391,6 @@ export const identityAliCloudAuthServiceFactory = ({
         (accessTokenMaxTTL || identityAliCloudAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
-    }
-
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
     }
 
     await assertIdentityAuthAccessAllowed(
@@ -591,32 +533,6 @@ export const identityAliCloudAuthServiceFactory = ({
         message: "The identity does not have Alibaba Cloud auth"
       });
     }
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {

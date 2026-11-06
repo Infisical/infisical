@@ -28,20 +28,31 @@ import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-app
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { CertStatus } from "../certificate/certificate-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { getCertificateDisplayName } from "../certificate/certificate-fns";
+import { CertStatus } from "../certificate/certificate-types";
 import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
-import { PkiSyncExportFormat } from "./pki-sync-export-fns";
+import {
+  EXPORT_PASSWORD_BLANK_MESSAGE,
+  getUnusedKeystoreOptionMessage,
+  isBlankExportPassword,
+  isExportFormatBlockedByFips,
+  isKeystoreExportFormat,
+  JKS_FIPS_UNSUPPORTED_MESSAGE,
+  KEYSTORE_PASSWORD_REQUIRED_MESSAGE
+} from "./pki-sync-export-fns";
 import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, PKI_SYNC_PREVIEW_PAGE_SIZE } from "./pki-sync-filter-fns";
 import {
   applyPkiSyncCertificateDiff,
   assertPkiSyncCanHoldMatchedCertificates,
+  assertPkiSyncUnlinkAllowed,
   computePkiSyncCertificateDiff,
+  findPkiSyncUnlinkIdsAtDestination,
   TPkiSyncReconcileTarget,
   withPkiSyncFilterLock
 } from "./pki-sync-filter-reconcile-fns";
@@ -50,6 +61,7 @@ import {
   assertPkiSyncCertificateCapsAllowCount,
   assertPkiSyncLicense,
   getPkiSyncProviderCapabilities,
+  getPkiSyncUnlinkAssertion,
   listPkiSyncOptions,
   resolvePkiSyncDestinationConfigUpdate
 } from "./pki-sync-fns";
@@ -88,6 +100,7 @@ import {
   TPkiSyncFilterPreview,
   TPkiSyncFilters,
   TPkiSyncRaw,
+  TPkiSyncRemovalOptions,
   TPreviewPkiSyncFiltersDTO,
   TRemoveCertificatesFromPkiSyncDTO,
   TSearchPkiSyncCertificateOrdersDTO,
@@ -330,8 +343,8 @@ export const pkiSyncServiceFactory = ({
     connection: { id: string; app: AppConnection };
     destinationConfig: Record<string, unknown> | null | undefined;
   }) => {
-    if (connection.app !== AppConnection.LDAP) return;
-    if (!getPkiSyncTargetHost(destinationConfig)) return;
+    if (connection.app !== AppConnection.LDAP && connection.app !== AppConnection.PaloAltoNetworks) return;
+    if (connection.app === AppConnection.LDAP && !getPkiSyncTargetHost(destinationConfig)) return;
 
     await pkiSyncHealthCheckQueue.testTargetHostReachable({
       destination,
@@ -527,6 +540,15 @@ export const pkiSyncServiceFactory = ({
 
     const orderIds = [...new Set(certificates.map((cert) => cert.orderId))];
 
+    if (requireSyncable) {
+      const deleted = certificates.filter((cert) => cert.deletedAt);
+      if (deleted.length > 0) {
+        throw new BadRequestError({
+          message: `Deleted certificates can't be synced: ${deleted.map((cert) => `'${getCertificateDisplayName(cert)}'`).join(", ")}. Remove them and try again.`
+        });
+      }
+    }
+
     if (requireSyncable && expectedApplicationId) {
       const syncable = await certificateDAL.findCertificatesMatchingSyncFilters(
         { certificateOrderIds: orderIds },
@@ -564,9 +586,14 @@ export const pkiSyncServiceFactory = ({
     const now = new Date();
     const ineligibleReasons = certificates
       .filter(
-        (cert) => cert.status !== CertStatus.ACTIVE || cert.notAfter <= now || Boolean(cert.renewedByCertificateId)
+        (cert) =>
+          Boolean(cert.deletedAt) ||
+          cert.status !== CertStatus.ACTIVE ||
+          cert.notAfter <= now ||
+          Boolean(cert.renewedByCertificateId)
       )
       .map((cert) => {
+        if (cert.deletedAt) return `'${cert.commonName}' was deleted`;
         if (cert.status === CertStatus.REVOKED) return `'${cert.commonName}' is revoked`;
         if (cert.renewedByCertificateId)
           return `'${cert.commonName}' has been renewed, so link the certificate that replaced it instead`;
@@ -599,22 +626,36 @@ export const pkiSyncServiceFactory = ({
     }
   };
 
+  const $assertExportOptionsAllowed = (syncOptions: Record<string, unknown>) => {
+    const unusedOptionMessage = getUnusedKeystoreOptionMessage(syncOptions);
+    if (unusedOptionMessage) throw new BadRequestError({ message: unusedOptionMessage });
+    if (isExportFormatBlockedByFips(syncOptions.exportFormat)) {
+      throw new BadRequestError({ message: JKS_FIPS_UNSUPPORTED_MESSAGE });
+    }
+  };
+
   const $withFilterLock = <T>(syncId: string, run: () => Promise<T>): Promise<T> =>
     withPkiSyncFilterLock(keyStore, syncId, run);
 
   const $reconcileFilters = async (
     pkiSync: TPkiSyncReconcileTarget,
     filters: TPkiSyncFilters | null | undefined,
-    opts: { auditLogInfo?: AuditLogInfo; writeFilters?: (tx: Knex) => Promise<void> } = {}
+    opts: {
+      auditLogInfo?: AuditLogInfo;
+      writeFilters?: (tx: Knex) => Promise<void>;
+      removalOptions?: TPkiSyncRemovalOptions;
+    } = {}
   ): Promise<{ linked: TPkiSyncCertificateRef[]; unlinked: TPkiSyncCertificateRef[] }> => {
     const diff = await computePkiSyncCertificateDiff(pkiSync, filters, { certificateDAL, certificateSyncDAL });
     assertPkiSyncCanHoldMatchedCertificates(pkiSync, diff.matched.length);
+    await assertPkiSyncUnlinkAllowed(pkiSync, diff, certificateSyncDAL, opts.removalOptions);
     return applyPkiSyncCertificateDiff(
       pkiSync,
       diff,
       { certificateDAL, certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL },
       opts.auditLogInfo,
-      opts.writeFilters
+      opts.writeFilters,
+      opts.removalOptions
     );
   };
 
@@ -690,6 +731,7 @@ export const pkiSyncServiceFactory = ({
         ...syncOptions
       })
     );
+    $assertExportOptionsAllowed(resolvedSyncOptions);
 
     await $assertHostCommandWrite({
       destination,
@@ -734,9 +776,10 @@ export const pkiSyncServiceFactory = ({
 
     await $assertTargetHostReachable({ destination, connection, destinationConfig });
 
-    const encryptedCredentials = credentials?.exportPassword
-      ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsService })
-      : undefined;
+    const encryptedCredentials =
+      credentials?.exportPassword && !isBlankExportPassword(credentials.exportPassword)
+        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsService })
+        : undefined;
 
     try {
       const pkiSync = await pkiSyncDAL.create({
@@ -791,6 +834,7 @@ export const pkiSyncServiceFactory = ({
       connectionId,
       filters,
       credentials,
+      removalOptions,
       auditLogInfo
     }: Omit<TUpdatePkiSyncDTO, "projectId">,
     actor: OrgServiceActor
@@ -925,6 +969,7 @@ export const pkiSyncServiceFactory = ({
         applyPostSyncCommandUpdate({ ...providerCapabilities, ...syncOptions }, storedSyncOptions?.postSyncCommand),
         storedSyncOptions?.healthCheckCommand
       );
+      $assertExportOptionsAllowed(resolvedSyncOptions);
     }
 
     if (isConnectionChanging || isDestinationConfigChanging) {
@@ -970,16 +1015,24 @@ export const pkiSyncServiceFactory = ({
     }
 
     if (
-      effectiveSyncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+      isKeystoreExportFormat(effectiveSyncOptions?.exportFormat) &&
       !credentials?.exportPassword &&
       !pkiSync.encryptedCredentials
     ) {
-      throw new BadRequestError({ message: "A password is required when the export format is PKCS#12" });
+      throw new BadRequestError({ message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE });
     }
 
-    const encryptedCredentials = credentials?.exportPassword
-      ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId: pkiSync.projectId, credentials, kmsService })
-      : undefined;
+    if (
+      isKeystoreExportFormat(effectiveSyncOptions?.exportFormat) &&
+      isBlankExportPassword(credentials?.exportPassword)
+    ) {
+      throw new BadRequestError({ message: EXPORT_PASSWORD_BLANK_MESSAGE });
+    }
+
+    const encryptedCredentials =
+      credentials?.exportPassword && !isBlankExportPassword(credentials.exportPassword)
+        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId: pkiSync.projectId, credentials, kmsService })
+        : undefined;
 
     const isHealthCheckBeingCleared =
       resolvedSyncOptions !== undefined &&
@@ -1031,6 +1084,7 @@ export const pkiSyncServiceFactory = ({
 
       await $reconcileFilters(target, filters, {
         auditLogInfo,
+        removalOptions,
         writeFilters: async (tx) => {
           await pkiSyncDAL.updateById(id, update, tx);
         }
@@ -1423,7 +1477,7 @@ export const pkiSyncServiceFactory = ({
   };
 
   const triggerPkiSyncRemoveCertificatesById = async (
-    { id }: Omit<TTriggerPkiSyncRemoveCertificatesByIdDTO, "auditLogInfo" | "projectId">,
+    { id, removalOptions }: Omit<TTriggerPkiSyncRemoveCertificatesByIdDTO, "auditLogInfo" | "projectId">,
     actor: OrgServiceActor
   ) => {
     const pkiSync = await pkiSyncDAL.findById(id);
@@ -1450,7 +1504,7 @@ export const pkiSyncServiceFactory = ({
       actor
     );
 
-    await pkiSyncQueue.queuePkiSyncRemoveCertificatesById({ syncId: id });
+    await pkiSyncQueue.queuePkiSyncRemoveCertificatesById({ syncId: id, removalOptions });
 
     return { message: "PKI sync remove job added to queue successfully" };
   };
@@ -1551,6 +1605,15 @@ export const pkiSyncServiceFactory = ({
       const canRemoveCertificates = Boolean(
         (pkiSync.syncOptions as { canRemoveCertificates?: boolean } | null)?.canRemoveCertificates
       );
+      const toUnlinkAtDestinationCount = getPkiSyncUnlinkAssertion(pkiSync.destination as PkiSync)
+        ? (
+            await findPkiSyncUnlinkIdsAtDestination(
+              pkiSync.id,
+              new Set(diff.toUnlink.map((certificate) => certificate.id)),
+              certificateSyncDAL
+            )
+          ).length
+        : 0;
 
       const permissionFilters = pkiSync.applicationId
         ? await $certificateReadFilters(pkiSync.projectId, pkiSync.applicationId, actor)
@@ -1561,6 +1624,7 @@ export const pkiSyncServiceFactory = ({
           matchedCount: diff.matched.length,
           certificates: diff.matched.slice(offset, offset + limit),
           toUnlink: diff.toUnlink,
+          toUnlinkAtDestinationCount,
           willRemoveFromDestination: canRemoveCertificates && diff.toUnlink.length > 0
         };
       }
@@ -1583,6 +1647,7 @@ export const pkiSyncServiceFactory = ({
         matchedCount,
         certificates,
         toUnlink: diff.toUnlink.filter((certificate) => readableUnlinkIdSet.has(certificate.id)),
+        toUnlinkAtDestinationCount,
         willRemoveFromDestination: canRemoveCertificates && diff.toUnlink.length > 0
       };
     }
@@ -1607,7 +1672,13 @@ export const pkiSyncServiceFactory = ({
     await $assertFilterProfilesInApplication(filters, applicationId);
 
     if (!hasAnyPkiSyncFilter(filters)) {
-      return { matchedCount: 0, certificates: [], toUnlink: [], willRemoveFromDestination: false };
+      return {
+        matchedCount: 0,
+        certificates: [],
+        toUnlink: [],
+        toUnlinkAtDestinationCount: 0,
+        willRemoveFromDestination: false
+      };
     }
 
     const scope = { projectId: application.projectId, applicationId };
@@ -1622,6 +1693,7 @@ export const pkiSyncServiceFactory = ({
       matchedCount,
       certificates,
       toUnlink: [],
+      toUnlinkAtDestinationCount: 0,
       willRemoveFromDestination: false
     };
   };

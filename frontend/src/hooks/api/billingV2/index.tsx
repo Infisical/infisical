@@ -4,6 +4,7 @@ export {
   useCancelBillingV2Subscription,
   useCancelBillingV2Trial,
   useChangeBillingV2Commitment,
+  useConfirmBillingV2TrialPayment,
   useCreateBillingV2PortalSession,
   usePreviewBillingV2Change,
   useRefreshBillingV2Entitlements,
@@ -23,6 +24,8 @@ export type {
   BillingV2BreakdownProject,
   BillingV2BreakdownScope,
   BillingV2BreakdownScopeKind,
+  BillingV2Band,
+  BillingV2Bands,
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2CommitmentChange,
@@ -32,6 +35,7 @@ export type {
   BillingV2Entitlement,
   BillingV2EntitlementDim,
   BillingV2Invoice,
+  BillingV2MeteredUsage,
   BillingV2Organization,
   BillingV2Overview,
   BillingV2PaymentMethod,
@@ -45,4 +49,4 @@ export type {
   BillingV2UpgradeResult,
   BillingV2UsageBreakdown
 } from "./types";
-export { BillingV2BreakdownDimension } from "./types";
+export { BillingV2BreakdownDimension, BillingV2ErrorCode } from "./types";

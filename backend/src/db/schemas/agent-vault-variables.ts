@@ -11,12 +11,14 @@ import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultVariablesSchema = z.object({
   id: z.string().guid(),
-  accessBundleId: z.string().guid(),
+  accessBundleId: z.string().guid().nullable().optional(),
   key: z.string(),
   encryptedValue: zodBuffer,
-  isSecret: z.boolean().default(true),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  projectId: z.string(),
+  userId: z.string().guid().nullable().optional(),
+  identityId: z.string().guid().nullable().optional()
 });
 
 export type TAgentVaultVariables = z.infer<typeof AgentVaultVariablesSchema>;

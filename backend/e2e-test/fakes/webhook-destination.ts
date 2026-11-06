@@ -20,6 +20,8 @@ export type TFakeWebhookServer = {
   // messages then arrive interleaved and out of any one test's control. Rejects if none arrives
   // within timeoutMs.
   waitForMessage: (predicate?: TMessagePredicate, timeoutMs?: number) => Promise<TFakeWebhookMessage>;
+  // Status the fake answers with from now on (default 200), for exercising a destination that fails.
+  setStatusCode: (statusCode: number) => void;
   reset: () => void;
   stop: () => Promise<void>;
 };
@@ -33,6 +35,7 @@ const matchAny: TMessagePredicate = () => true;
 export const createFakeWebhookServer = async (): Promise<TFakeWebhookServer> => {
   const messages: TFakeWebhookMessage[] = [];
   const claimed = new Set<TFakeWebhookMessage>();
+  let statusCode = 200;
   const waiters: { predicate: TMessagePredicate; resolve: (message: TFakeWebhookMessage) => void }[] = [];
 
   const server = http.createServer((req, res) => {
@@ -65,8 +68,8 @@ export const createFakeWebhookServer = async (): Promise<TFakeWebhookServer> => 
         waiter.resolve(message);
       }
 
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ ok: true }));
+      res.writeHead(statusCode, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: statusCode < 400 }));
     });
   });
 
@@ -107,9 +110,13 @@ export const createFakeWebhookServer = async (): Promise<TFakeWebhookServer> => 
     url: `http://127.0.0.1:${port}/`,
     messages: () => messages,
     waitForMessage,
+    setStatusCode: (code: number) => {
+      statusCode = code;
+    },
     reset: () => {
       messages.length = 0;
       claimed.clear();
+      statusCode = 200;
     },
     stop: () =>
       new Promise<void>((resolve, reject) => {

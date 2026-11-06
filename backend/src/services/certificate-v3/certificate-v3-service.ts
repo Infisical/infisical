@@ -1,7 +1,9 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
+import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -28,12 +30,9 @@ import {
   TCertRequestRequestData
 } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -43,10 +42,24 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import {
+  recordCertificateIssuanceFailure,
+  tagErrorWithCertificateRequest
+} from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  CertificateApplicationAlertEvent,
+  TCertificateAlertEventEmitter,
+  TCertificateAlertEventInput
+} from "@app/services/certificate/certificate-alert-events";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -128,6 +141,8 @@ type TCertificateV3ServiceFactoryDep = {
     TCertificateDALFactory,
     | "findOne"
     | "findById"
+    | "findByIdForUpdate"
+    | "findByIdForShare"
     | "updateById"
     | "transaction"
     | "create"
@@ -148,6 +163,7 @@ type TCertificateV3ServiceFactoryDep = {
     "validateCertificateRequest" | "validateRequestAgainstPolicy" | "getPolicyById"
   >;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "resolveCsrSignatureAlgorithm">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
@@ -179,19 +195,21 @@ type TCertificateV3ServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy" | "matchPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -333,6 +351,7 @@ export const certificateV3ServiceFactory = ({
   acmeAccountDAL,
   certificatePolicyService,
   internalCaService,
+  caKeySourceService,
   permissionService,
   certificateSyncDAL,
   pkiSyncDAL,
@@ -348,15 +367,20 @@ export const certificateV3ServiceFactory = ({
   approvalPolicyService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
   apiEnrollmentConfigDAL,
   licenseService,
   usageCounterDAL,
   keyStore,
-  telemetryService
+  telemetryService,
+  auditLogService
 }: TCertificateV3ServiceFactoryDep) => {
   const $quotaDeps = { projectDAL, licenseService, usageCounterDAL, keyStore };
+
+  const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
+    certificateAlertEventEmitter.emit({ ...input, eventType: CertificateApplicationAlertEvent.Issuance }, tx);
 
   // Called once the certificate row exists, never at the check.
   const $recordQuotaUsage = async (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => {
@@ -540,7 +564,63 @@ export const certificateV3ServiceFactory = ({
     return application?.name ?? null;
   };
 
-  const issueCertificateFromProfile = async ({
+  const $recordIssuanceFailure = async ({
+    auditLogInfo,
+    actorOrgId,
+    projectId,
+    profileId,
+    error,
+    metadata
+  }: {
+    auditLogInfo?: AuditLogInfo;
+    actorOrgId: string;
+    projectId?: string;
+    profileId?: string | null;
+    error: unknown;
+    metadata: Omit<
+      Parameters<typeof recordCertificateIssuanceFailure>[1]["metadata"],
+      "certificateProfileId" | "profileName" | "applicationName" | "caName"
+    >;
+  }) => {
+    if (!auditLogInfo) return;
+    try {
+      const profile = profileId ? await certificateProfileDAL.findById(profileId) : undefined;
+      const resolvedProjectId = projectId ?? profile?.projectId;
+      if (!resolvedProjectId) return;
+
+      // The ids come from the caller, so never write into another org's audit log.
+      const project = await projectDAL.findById(resolvedProjectId);
+      if (project?.orgId !== actorOrgId) return;
+
+      await recordCertificateIssuanceFailure(
+        { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
+        {
+          auditLogInfo,
+          projectId: resolvedProjectId,
+          error,
+          metadata: {
+            ...metadata,
+            certificateProfileId: profile?.id,
+            profileName: profile?.slug,
+            caId: metadata.caId ?? profile?.caId
+          }
+        }
+      );
+    } catch (lookupError) {
+      logger.warn(lookupError, `Failed to record certificate issuance failure [operation=${metadata.operation}]`);
+    }
+  };
+
+  const $commonNameFromCsr = (csr?: string) => {
+    if (!csr) return undefined;
+    try {
+      return extractCertificateRequestFromCSR(csr).commonName || undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const $issueCertificateFromProfile = async ({
     profileId,
     certificateRequest,
     metadata,
@@ -924,6 +1004,16 @@ export const certificateV3ServiceFactory = ({
           await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
         }
 
+        await $emitIssuanceAlert(
+          {
+            certificateId: processResult.certificateData.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            applicationId
+          },
+          tx
+        );
+
         return { ...processResult, certificateRequestId: certRequestResult.id };
       });
 
@@ -1168,6 +1258,16 @@ export const certificateV3ServiceFactory = ({
         });
       }
 
+      await $emitIssuanceAlert(
+        {
+          certificateId: certResult.certificateId,
+          projectId: profile.projectId,
+          orgId: profile.project?.orgId,
+          applicationId
+        },
+        tx
+      );
+
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
     });
 
@@ -1255,7 +1355,7 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const signCertificateFromProfile = async ({
+  const $signCertificateFromProfile = async ({
     profileId,
     csr,
     validity,
@@ -1325,8 +1425,17 @@ export const certificateV3ServiceFactory = ({
     const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
 
-    const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
+    const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: csrSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
+    const extractedSignatureAlgorithm = (
+      ca.internalCa
+        ? await caKeySourceService.resolveCsrSignatureAlgorithm({
+            caId: ca.id,
+            keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,
+            csrSignatureAlgorithm
+          })
+        : csrSignatureAlgorithm
+    ) as typeof csrSignatureAlgorithm;
 
     mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
@@ -1660,6 +1769,16 @@ export const certificateV3ServiceFactory = ({
             tx
           );
 
+          await $emitIssuanceAlert(
+            {
+              certificateId: newCert.id,
+              projectId: profile.projectId,
+              orgId: profile.project?.orgId,
+              applicationId
+            },
+            tx
+          );
+
           if (metadata && metadata.length > 0) {
             await insertMetadataForCertificate(resourceMetadataDAL, {
               metadata,
@@ -1683,6 +1802,7 @@ export const certificateV3ServiceFactory = ({
         error: err,
         fallbackMessage: "Certificate issuance failed"
       });
+      tagErrorWithCertificateRequest(err, pendingRequest.id);
       throw err;
     }
 
@@ -1738,7 +1858,7 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const orderCertificate = async ({
+  const $orderCertificate = async ({
     profileId,
     certificateOrder,
     metadata,
@@ -2205,6 +2325,8 @@ export const certificateV3ServiceFactory = ({
       resourceMetadataDAL
     });
 
+    assertCertificateNotDeleted(certificate);
+
     if (metadata && projectPermission) {
       assertCanEditCertificateResult({
         projectPermission,
@@ -2219,6 +2341,11 @@ export const certificateV3ServiceFactory = ({
 
     if (metadata) {
       await certificateDAL.transaction(async (tx) => {
+        const lockedCertificate = await certificateDAL.findByIdForShare(certificateId, tx);
+        if (!lockedCertificate) {
+          throw new NotFoundError({ message: "Certificate not found" });
+        }
+        assertCertificateNotDeleted(lockedCertificate);
         await resourceMetadataDAL.delete({ certificateId }, tx);
         await insertMetadataForCertificate(resourceMetadataDAL, {
           metadata,
@@ -2264,6 +2391,7 @@ export const certificateV3ServiceFactory = ({
     certificateRequestDAL,
     resourceMetadataDAL,
     pkiAlertV2Queue,
+    certificateAlertEventEmitter,
     pkiApplicationProfileDAL,
     pkiApplicationDAL,
     apiEnrollmentConfigDAL,
@@ -2274,8 +2402,98 @@ export const certificateV3ServiceFactory = ({
     reportCertificateIssued: $reportCertificateIssued
   });
 
+  const issueCertificateFromProfile = async (dto: TIssueCertificateFromProfileDTO) => {
+    try {
+      return await $issueCertificateFromProfile(dto);
+    } catch (error) {
+      await $recordIssuanceFailure({
+        auditLogInfo: dto.auditLogInfo,
+        actorOrgId: dto.actorOrgId,
+        profileId: dto.profileId,
+        error,
+        metadata: {
+          operation: CertificateIssuanceOperation.ISSUE,
+          enrollmentType: EnrollmentType.API,
+          commonName: dto.certificateRequest.commonName,
+          applicationId: dto.applicationId
+        }
+      });
+      throw error;
+    }
+  };
+
+  const signCertificateFromProfile = async (dto: TSignCertificateFromProfileDTO) => {
+    try {
+      return await $signCertificateFromProfile(dto);
+    } catch (error) {
+      await $recordIssuanceFailure({
+        auditLogInfo: dto.auditLogInfo,
+        actorOrgId: dto.actorOrgId,
+        profileId: dto.profileId,
+        error,
+        metadata: {
+          operation: dto.issuanceOperation ?? CertificateIssuanceOperation.SIGN,
+          enrollmentType: dto.enrollmentType,
+          originalCertificateId: dto.originalCertificateId,
+          commonName: $commonNameFromCsr(dto.csr),
+          applicationId: dto.applicationId
+        }
+      });
+      throw error;
+    }
+  };
+
+  const orderCertificate = async (dto: TOrderCertificateFromProfileDTO) => {
+    try {
+      return await $orderCertificate(dto);
+    } catch (error) {
+      await $recordIssuanceFailure({
+        auditLogInfo: dto.auditLogInfo,
+        actorOrgId: dto.actorOrgId,
+        profileId: dto.profileId,
+        error,
+        metadata: {
+          operation: CertificateIssuanceOperation.ORDER,
+          enrollmentType: EnrollmentType.API,
+          commonName: dto.certificateOrder.commonName || $commonNameFromCsr(dto.certificateOrder.csr),
+          applicationId: dto.applicationId
+        }
+      });
+      throw error;
+    }
+  };
+
+  const renewCertificate = async (dto: Parameters<typeof renewalService.renewCertificate>[0]) => {
+    try {
+      return await renewalService.renewCertificate(dto);
+    } catch (error) {
+      const certificate = dto.auditLogInfo
+        ? await certificateDAL.findById(dto.certificateId).catch(() => undefined)
+        : undefined;
+      if (certificate) {
+        await $recordIssuanceFailure({
+          auditLogInfo: dto.auditLogInfo,
+          actorOrgId: dto.actorOrgId,
+          projectId: certificate.projectId,
+          profileId: certificate.profileId,
+          error,
+          metadata: {
+            operation: CertificateIssuanceOperation.RENEW,
+            enrollmentType: EnrollmentType.API,
+            originalCertificateId: certificate.id,
+            commonName: certificate.commonName,
+            caId: certificate.caId,
+            applicationId: certificate.applicationId
+          }
+        });
+      }
+      throw error;
+    }
+  };
+
   return {
     ...renewalService,
+    renewCertificate,
     issueCertificateFromProfile,
     signCertificateFromProfile,
     orderCertificate,

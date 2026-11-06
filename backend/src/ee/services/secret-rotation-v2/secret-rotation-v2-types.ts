@@ -4,8 +4,8 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -30,6 +30,12 @@ import {
   TAzureClientSecretRotationListItem,
   TAzureClientSecretRotationWithConnection
 } from "./azure-client-secret";
+import {
+  TClickHouseCredentialsRotation,
+  TClickHouseCredentialsRotationInput,
+  TClickHouseCredentialsRotationListItem,
+  TClickHouseCredentialsRotationWithConnection
+} from "./clickhouse-credentials";
 import {
   TCloudflareApiTokenRotation,
   TCloudflareApiTokenRotationGeneratedCredentials,
@@ -86,6 +92,13 @@ import {
   TFireworksApiKeyRotationListItem,
   TFireworksApiKeyRotationWithConnection
 } from "./fireworks-api-key";
+import {
+  TGcpServiceAccountKeyRotation,
+  TGcpServiceAccountKeyRotationGeneratedCredentials,
+  TGcpServiceAccountKeyRotationInput,
+  TGcpServiceAccountKeyRotationListItem,
+  TGcpServiceAccountKeyRotationWithConnection
+} from "./gcp-service-account-key";
 import {
   THpIloRotation,
   THpIloRotationGeneratedCredentials,
@@ -239,7 +252,9 @@ export type TSecretRotationV2 =
   | TSnowflakeUserKeyPairRotation
   | TCloudflareApiTokenRotation
   | TCloudflareR2AccessKeyRotation
-  | TStripeApiKeyRotation;
+  | TStripeApiKeyRotation
+  | TGcpServiceAccountKeyRotation
+  | TClickHouseCredentialsRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -270,7 +285,9 @@ export type TSecretRotationV2WithConnection =
   | TSnowflakeUserKeyPairRotationWithConnection
   | TCloudflareApiTokenRotationWithConnection
   | TCloudflareR2AccessKeyRotationWithConnection
-  | TStripeApiKeyRotationWithConnection;
+  | TStripeApiKeyRotationWithConnection
+  | TGcpServiceAccountKeyRotationWithConnection
+  | TClickHouseCredentialsRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -297,7 +314,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TSnowflakeUserKeyPairRotationGeneratedCredentials
   | TCloudflareApiTokenRotationGeneratedCredentials
   | TCloudflareR2AccessKeyRotationGeneratedCredentials
-  | TStripeApiKeyRotationGeneratedCredentials;
+  | TStripeApiKeyRotationGeneratedCredentials
+  | TGcpServiceAccountKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -328,7 +346,9 @@ export type TSecretRotationV2Input =
   | TSnowflakeUserKeyPairRotationInput
   | TCloudflareApiTokenRotationInput
   | TCloudflareR2AccessKeyRotationInput
-  | TStripeApiKeyRotationInput;
+  | TStripeApiKeyRotationInput
+  | TGcpServiceAccountKeyRotationInput
+  | TClickHouseCredentialsRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -359,7 +379,9 @@ export type TSecretRotationV2ListItem =
   | TSnowflakeUserKeyPairRotationListItem
   | TCloudflareApiTokenRotationListItem
   | TCloudflareR2AccessKeyRotationListItem
-  | TStripeApiKeyRotationListItem;
+  | TStripeApiKeyRotationListItem
+  | TGcpServiceAccountKeyRotationListItem
+  | TClickHouseCredentialsRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

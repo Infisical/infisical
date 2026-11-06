@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { type ComponentProps, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
+import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -17,20 +16,35 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { UpgradeGate } from "@app/components/license/UpgradeGate";
+import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   ButtonGroup,
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -38,11 +52,9 @@ import {
   EmptyMedia,
   EmptyTitle,
   IconButton,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
   PageHeader,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -58,13 +70,14 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission,
-  useSubscription
+  useOrgPermission
 } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
-  OrgPermissionProjectActions
+  OrgPermissionProjectActions,
+  OrgPermissionSecretsManagementInsightsActions
 } from "@app/context/OrgPermissionContext/types";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
   getProjectHomePage,
   getProjectLucideIcon,
@@ -72,21 +85,17 @@ import {
   PROJECT_TILE_STYLE,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import {
-  useDebounce,
-  usePagination,
-  usePopUp,
-  useResetPageHelper,
-  useSlashFocusSearch
-} from "@app/hooks";
+import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetMyPendingProjectAccessRequests,
   useGetUserProjects,
+  useLeaveProject,
   useOrgAdminAccessProject,
   useSearchProjects
 } from "@app/hooks/api";
@@ -96,14 +105,40 @@ import {
   Project,
   ProjectEnv,
   ProjectType,
+  ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { useProjectCreationAllowance } from "@app/hooks/useProjectCreationAllowance";
 import {
   ProjectListToggle,
   ProjectListView
 } from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
+import { RecentlyDeletedProjects } from "@app/pages/organization/ProjectsPage/components/RecentlyDeletedProjects";
+
+import { ProjectSearchInput } from "./ProjectSearchInput";
+
+// Single-project products: their one project always exists by the time this list renders, so creating
+// another is refused.
+const PROJECT_TYPES_BLOCKED_CREATION: ProjectType[] = [ProjectType.SecretScanning];
+
+// Agent Vault keeps its own product colour on its project list; the other products here use the project colour.
+const getProductAccent = (projectType: ProjectType) =>
+  projectType === ProjectType.AgentVault
+    ? ({
+        variant: "av",
+        tileHover: "group-hover:border-product-av/20 group-hover:from-product-av/5",
+        iconHover: "group-hover:text-product-av",
+        cardHover: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent"
+      } as const)
+    : ({
+        variant: "project",
+        tileHover: "group-hover:border-project/20 group-hover:from-project/5",
+        iconHover: "group-hover:text-project",
+        cardHover: PROJECT_TILE_STYLE.cardHoverClassName
+      } as const);
 
 enum ProjectsViewMode {
   GRID = "grid",
@@ -233,15 +268,39 @@ export const ProjectTypePage = () => {
   useEffect(() => {
     if (projectType === ProjectType.CertificateManager) {
       if (certManagerInstance?.activeProjectId) {
+        setCertManagerActiveProjectCookie(orgId, certManagerInstance.activeProjectId);
         navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-          params: { orgId, projectId: certManagerInstance.activeProjectId }
+          to: "/organizations/$orgId/cert-manager/overview",
+          params: { orgId }
         });
       } else if (certManagerInstance && !certManagerInstance.activeProjectId) {
         setIsCertManagerSetupOpen(true);
       }
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
+
+  // Resolving also creates the project for older orgs that never opened Secret Scanning. Non-members land
+  // on the product's access page, which offers joining or requesting access.
+  const { data: secretScanningProjectId, isError: isSecretScanningProjectError } =
+    useGetSecretScanningProjectId(orgId, {
+      enabled: projectType === ProjectType.SecretScanning
+    });
+
+  useEffect(() => {
+    if (projectType !== ProjectType.SecretScanning) return;
+
+    if (secretScanningProjectId) {
+      setSecretScanningActiveProjectCookie(orgId, secretScanningProjectId);
+      navigate({
+        to: "/organizations/$orgId/secret-scanning/data-sources",
+        params: { orgId }
+      });
+    } else if (isSecretScanningProjectError) {
+      // Failed queries are not reported globally, so without this the page would stay blank.
+      createNotification({ type: "error", text: "Couldn't open Secret Scanning. Try again." });
+      navigate({ to: "/organizations/$orgId/projects", params: { orgId } });
+    }
+  }, [projectType, secretScanningProjectId, isSecretScanningProjectError, orgId, navigate]);
 
   useEffect(() => {
     if (projectType === ProjectType.PAM) {
@@ -252,35 +311,27 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, orgId, navigate]);
 
-  // An org-scoped product has one implicit project, so listing it here would offer a project view we
-  // hide everywhere else, plus a create button the backend refuses.
-  useEffect(() => {
-    if (projectType === ProjectType.AgentVault) {
-      navigate({
-        to: "/organizations/$orgId/agent-vault/sessions",
-        params: { orgId }
-      });
-    }
-  }, [projectType, orgId, navigate]);
-
   if (projectType === ProjectType.CertificateManager) {
     return (
-      <CertManagerNotConfiguredModal
-        isOpen={isCertManagerSetupOpen}
-        onOpenChange={(open) => {
-          setIsCertManagerSetupOpen(open);
-          if (!open) {
-            navigate({
-              to: "/organizations/$orgId/projects",
-              params: { orgId }
-            });
-          }
-        }}
-      />
+      <>
+        <PageTitle title={getProjectTitle(projectType)} />
+        <CertManagerNotConfiguredModal
+          isOpen={isCertManagerSetupOpen}
+          onOpenChange={(open) => {
+            setIsCertManagerSetupOpen(open);
+            if (!open) {
+              navigate({
+                to: "/organizations/$orgId/projects",
+                params: { orgId }
+              });
+            }
+          }}
+        />
+      </>
     );
   }
 
-  if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
+  if (projectType === ProjectType.PAM || projectType === ProjectType.SecretScanning) {
     return null;
   }
 
@@ -294,15 +345,12 @@ const ProjectTypeContent = ({
   projectType: ProjectType;
   orgId: string;
 }) => {
-  const { subscription } = useSubscription();
   const { permission } = useOrgPermission();
   const canRequestAccess = permission.can(
     OrgPermissionProjectActions.RequestAccess,
     OrgPermissionSubjects.Project
   );
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
+  const { isAddingProjectsAllowed, upgradeIntent } = useProjectCreationAllowance(projectType);
 
   const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
     const storedView = localStorage.getItem("projectListView");
@@ -330,11 +378,9 @@ const ProjectTypeContent = ({
   const typeTitle = getProjectTitle(projectType);
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
-      <Helmet>
-        <title>{typeTitle} Projects</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+    <div className="mx-auto flex max-w-8xl flex-col">
+      <PageTitle title={`${typeTitle} Projects`} />
+      <link rel="icon" href="/infisical.ico" />
       <PageHeader
         title={typeTitle}
         scope={projectType}
@@ -372,11 +418,11 @@ const ProjectTypeContent = ({
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={projectType}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.project-type"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You have reached the maximum number of projects allowed on your current plan. Upgrade to Infisical Pro plan to add more projects."
+        intent={upgradeIntent}
       />
     </div>
   );
@@ -403,6 +449,7 @@ const MyProjectsForType = ({
 }: SubViewProps) => {
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
+  const [isDeletedProjectsExpanded, setIsDeletedProjectsExpanded] = useState(false);
   const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
     (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
   );
@@ -521,53 +568,60 @@ const MyProjectsForType = ({
 
   const renderProjectGridItem = (workspace: Project & { isFavorite: boolean }) => {
     const WorkspaceIcon = getProjectLucideIcon(workspace.type);
-    const tileStyle = PROJECT_TILE_STYLE;
+    const accent = getProductAccent(projectType);
     const environmentCount = workspace.environments?.length ?? 0;
     return (
       <Card
         key={workspace.id}
-        className={`group relative h-full cursor-pointer transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+        linked
+        className={`h-full transition-all duration-200 ease-out ${accent.cardHover}`}
       >
         <CardHeader>
           <div className="flex min-w-0 items-start gap-3">
-            <div className="shrink-0 rounded-sm border border-border bg-muted/10 p-2 transition-colors duration-200 ease-out group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
-              <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
+            <div
+              className={`shrink-0 rounded-sm border border-border bg-muted/10 p-2 transition-colors duration-200 ease-out group-hover:bg-gradient-to-br group-hover:to-transparent ${accent.tileHover}`}
+            >
+              <WorkspaceIcon
+                className={`size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out ${accent.iconHover}`}
+              />
             </div>
             <div className="min-w-0 flex-1">
-              <CardDescription className="text-base font-semibold text-foreground">
+              <CardTitle className="text-base text-foreground">
                 {/* The name is the card's link, so the accessible name comes from visible text
                     rather than a duplicated label, and its stretched pseudo-element covers the
                     card. Siblings raised above it (CardAction) stay outside the anchor. */}
-                <Link
+                <RowLink
                   to={getProjectHomePage(workspace.type, workspace.environments)}
                   params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                  className="block truncate outline-0 after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                  className="after:rounded-lg"
                 >
                   {workspace.name}
-                </Link>
-              </CardDescription>
+                </RowLink>
+              </CardTitle>
               <p className="truncate text-sm leading-5 text-muted">
                 {getProjectTitle(workspace.type)}
               </p>
             </div>
           </div>
-          <CardAction className="relative z-10">{renderFavoriteButton(workspace)}</CardAction>
+          <CardAction data-row-interactive>{renderFavoriteButton(workspace)}</CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="line-clamp-2 text-sm leading-relaxed text-accent">
             {workspace.description || <span className="text-muted italic">No description</span>}
           </p>
           <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-            <span className="flex items-center gap-1.5 text-muted">
-              <LayersIcon className="h-3.5 w-3.5 shrink-0" />
-              <span>
-                <span className="text-xs font-medium text-foreground">{environmentCount}</span>{" "}
-                <span className="text-xs">
-                  {environmentCount === 1 ? "Environment" : "Environments"}
+            {projectType !== ProjectType.AgentVault && (
+              <span className="flex items-center gap-1.5 text-muted">
+                <LayersIcon className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  <span className="text-xs font-medium text-foreground">{environmentCount}</span>{" "}
+                  <span className="text-xs">
+                    {environmentCount === 1 ? "Environment" : "Environments"}
+                  </span>
                 </span>
               </span>
-            </span>
-            <span className="text-muted">
+            )}
+            <span className="ml-auto text-muted">
               <span className="text-xs">Created </span>
               <span className="text-xs font-medium text-foreground">
                 {format(new Date(workspace.createdAt), "MMM d, yyyy")}
@@ -665,20 +719,23 @@ const MyProjectsForType = ({
             {workspacesWithFaveProp.map((workspace) => {
               const WorkspaceIcon = getProjectLucideIcon(workspace.type);
               return (
-                <TableRow key={workspace.id} className="group relative cursor-pointer">
+                <TableRow key={workspace.id} linked>
                   <TableCell className="w-0">
-                    <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
-                      <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
+                    <div
+                      className={`inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:bg-gradient-to-br group-hover:to-transparent ${getProductAccent(projectType).tileHover}`}
+                    >
+                      <WorkspaceIcon
+                        className={`h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 ${getProductAccent(projectType).iconHover}`}
+                      />
                     </div>
                   </TableCell>
                   <TableCell isTruncatable>
-                    <Link
+                    <RowLink
                       to={getProjectHomePage(workspace.type, workspace.environments)}
                       params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                     >
                       {workspace.name}
-                    </Link>
+                    </RowLink>
                   </TableCell>
                   <TableCell isTruncatable>
                     {workspace.description || <span className="text-muted">—</span>}
@@ -686,12 +743,19 @@ const MyProjectsForType = ({
                   <TableCell className="w-0 text-xs whitespace-nowrap">
                     {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                   </TableCell>
-                  <TableCell className="relative z-10 w-0 text-right">
+                  <TableCell data-row-interactive className="w-0 text-right">
                     {renderFavoriteButton(workspace)}
                   </TableCell>
                 </TableRow>
               );
             })}
+            <RecentlyDeletedProjects
+              projectType={projectType}
+              searchFilter={searchFilter}
+              layout="table-rows"
+              isExpanded={isDeletedProjectsExpanded}
+              onExpandedChange={setIsDeletedProjectsExpanded}
+            />
           </TableBody>
         </Table>
       );
@@ -722,6 +786,7 @@ const MyProjectsForType = ({
   return (
     <div className="@container flex flex-col gap-5">
       <Toolbar
+        projectType={projectType}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         projectsViewMode={projectsViewMode}
@@ -737,6 +802,16 @@ const MyProjectsForType = ({
         isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
       {contentBody}
+      {/* In list view the projects table already holds the group, unless there is no table to join. */}
+      {!isProjectViewLoading && (projectsViewMode === ProjectsViewMode.GRID || !hasProjects) && (
+        <RecentlyDeletedProjects
+          projectType={projectType}
+          searchFilter={searchFilter}
+          layout={projectsViewMode === ProjectsViewMode.GRID ? "grid" : "table"}
+          isExpanded={isDeletedProjectsExpanded}
+          onExpandedChange={setIsDeletedProjectsExpanded}
+        />
+      )}
       {hasProjects && (
         <Pagination
           perPage={perPage}
@@ -764,6 +839,7 @@ const AllProjectsForType = ({
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
+  const [isDeletedProjectsExpanded, setIsDeletedProjectsExpanded] = useState(false);
 
   const {
     setPage,
@@ -787,6 +863,7 @@ const AllProjectsForType = ({
   };
 
   const orgAdminAccessProject = useOrgAdminAccessProject();
+  const leaveProject = useLeaveProject();
   const { permission } = useOrgPermission();
   const canAccessAllProjects = permission.can(
     OrgPermissionAdminConsoleAction.AccessAllProjects,
@@ -799,7 +876,8 @@ const AllProjectsForType = ({
   };
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
-    "requestAccessConfirmation"
+    "requestAccessConfirmation",
+    "leaveProjectConfirmation"
   ] as const);
 
   const { data: searchedProjects, isPending: isProjectLoading } = useSearchProjects({
@@ -835,6 +913,20 @@ const AllProjectsForType = ({
   });
 
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Project;
+  const projectToLeave = popUp.leaveProjectConfirmation.data as Project | undefined;
+  const handleLeaveProject = () => {
+    if (!projectToLeave || leaveProject.isPending) return;
+
+    leaveProject.mutate(
+      { projectId: projectToLeave.id },
+      {
+        onSuccess: () => {
+          handlePopUpToggle("leaveProjectConfirmation", false);
+          createNotification({ text: "Removed your direct project membership", type: "success" });
+        }
+      }
+    );
+  };
   const ProductIcon = getProjectLucideIcon(projectType);
 
   const hasProjects = !isProjectLoading && Boolean(searchedProjects?.totalCount);
@@ -890,29 +982,25 @@ const AllProjectsForType = ({
           {searchedProjects?.projects?.map((workspace) => {
             const WorkspaceIcon = getProjectLucideIcon(workspace.type);
             return (
-              <TableRow
-                key={workspace.id}
-                className={twMerge("group relative", workspace.isMember && "cursor-pointer")}
-              >
+              <TableRow key={workspace.id} linked={workspace.isMember} className="group">
                 <TableCell className="w-0">
-                  <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
-                    <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
+                  <div
+                    className={`inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:bg-gradient-to-br group-hover:to-transparent ${getProductAccent(projectType).tileHover}`}
+                  >
+                    <WorkspaceIcon
+                      className={`h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 ${getProductAccent(projectType).iconHover}`}
+                    />
                   </div>
                 </TableCell>
                 <TableCell isTruncatable>
-                  {/* Only members can open the project, so only their rows get the stretched
-                      anchor; everyone else sees plain text with no navigation. */}
-                  {workspace.isMember ? (
-                    <Link
-                      to={getProjectHomePage(workspace.type, workspace.environments)}
-                      params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
-                    >
-                      {workspace.name}
-                    </Link>
-                  ) : (
-                    workspace.name
-                  )}
+                  {/* Only members can open the project, so everyone else sees plain text. */}
+                  <RowLink
+                    to={getProjectHomePage(workspace.type, workspace.environments)}
+                    params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                    disabled={!workspace.isMember}
+                  >
+                    {workspace.name}
+                  </RowLink>
                 </TableCell>
                 <TableCell isTruncatable>
                   {workspace.description || <span className="text-muted">—</span>}
@@ -920,13 +1008,41 @@ const AllProjectsForType = ({
                 <TableCell className="w-0 text-xs whitespace-nowrap">
                   {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                 </TableCell>
-                <TableCell className="relative z-10 w-0 pr-3 text-right">
+                <TableCell data-row-interactive className="w-0 pr-3 text-right">
                   {(() => {
                     const joinedBadge = (
-                      <Badge variant="info">
-                        <CheckIcon />
-                        Joined
-                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Badge variant="info" asChild>
+                            <button
+                              type="button"
+                              aria-label={`Membership options for ${workspace.name}`}
+                              className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            >
+                              <CheckIcon />
+                              Joined
+                              <ChevronDownIcon />
+                            </button>
+                          </Badge>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {workspace.isDirectMember && workspace.version !== ProjectVersion.V1 ? (
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                handlePopUpOpen("leaveProjectConfirmation", workspace)
+                              }
+                            >
+                              Leave Project
+                            </DropdownMenuItem>
+                          ) : (
+                            <div className="max-w-60 px-2 py-2 text-sm text-muted">
+                              {workspace.isDirectMember
+                                ? "Ask a project admin to upgrade this project before you can leave."
+                                : "You have access through a group. Ask a group admin to remove your access."}
+                            </div>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     );
                     const adminAccessButton = (label: string) => (
                       <Button
@@ -1017,6 +1133,13 @@ const AllProjectsForType = ({
               </TableRow>
             );
           })}
+          <RecentlyDeletedProjects
+            projectType={projectType}
+            searchFilter={debouncedSearch}
+            layout="table-rows"
+            isExpanded={isDeletedProjectsExpanded}
+            onExpandedChange={setIsDeletedProjectsExpanded}
+          />
         </TableBody>
       </Table>
     );
@@ -1045,6 +1168,7 @@ const AllProjectsForType = ({
   return (
     <div className="flex flex-col gap-5">
       <Toolbar
+        projectType={projectType}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         projectsViewMode={ProjectsViewMode.LIST}
@@ -1058,6 +1182,15 @@ const AllProjectsForType = ({
         isGridDisabled
       />
       {contentBody}
+      {isEmpty && (
+        <RecentlyDeletedProjects
+          projectType={projectType}
+          searchFilter={debouncedSearch}
+          layout="table"
+          isExpanded={isDeletedProjectsExpanded}
+          onExpandedChange={setIsDeletedProjectsExpanded}
+        />
+      )}
       {hasProjects && (
         <Pagination
           perPage={perPage}
@@ -1073,11 +1206,46 @@ const AllProjectsForType = ({
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccessConfirmation", isOpen)}
         project={requestedWorkspaceDetails}
       />
+      <AlertDialog
+        isPending={leaveProject.isPending}
+        open={popUp.leaveProjectConfirmation.isOpen}
+        confirmationValue="confirm"
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("leaveProjectConfirmation", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave {projectToLeave?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Leaving removes your direct membership in this project. Any access you have through a
+              group will remain.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: "Type confirm here" }}
+            onConfirm={handleLeaveProject}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel variant="outline">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={(event) => {
+                event.preventDefault();
+                handleLeaveProject();
+              }}
+            >
+              Leave Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 const Toolbar = ({
+  projectType,
   searchFilter,
   onSearchChange,
   projectsViewMode,
@@ -1090,6 +1258,7 @@ const Toolbar = ({
   isAddingProjectsAllowed,
   isGridDisabled
 }: {
+  projectType: ProjectType;
   searchFilter: string;
   onSearchChange: (value: string) => void;
   projectsViewMode: ProjectsViewMode;
@@ -1102,23 +1271,22 @@ const Toolbar = ({
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
 }) => {
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useSlashFocusSearch(searchInputRef);
+  const { currentOrg } = useOrganization();
+  const { permission } = useOrgPermission();
+  const canSearchAllSecretValues = permission.can(
+    OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+    OrgPermissionSubjects.SecretsManagementInsights
+  );
 
   return (
     <div className="flex w-full flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-72 flex-1 items-center gap-2">
-        <InputGroup className="min-w-48 flex-1">
-          <InputGroupAddon align="inline-start">
-            <SearchIcon />
-          </InputGroupAddon>
-          <InputGroupInput
-            ref={searchInputRef}
-            placeholder="Search by project name..."
-            value={searchFilter}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-        </InputGroup>
+        <ProjectSearchInput
+          orgId={currentOrg.id}
+          value={searchFilter}
+          onChange={onSearchChange}
+          canSearchByValue={projectType === ProjectType.SecretManager && canSearchAllSecretValues}
+        />
         {!hideProjectListToggle && (
           <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
         )}
@@ -1144,7 +1312,11 @@ const Toolbar = ({
             </Tooltip>
           ) : (
             <IconButton
-              variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
+              variant={
+                projectsViewMode === ProjectsViewMode.GRID
+                  ? getProductAccent(projectType).variant
+                  : "outline"
+              }
               size="sm"
               aria-label="Grid view"
               className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
@@ -1154,7 +1326,11 @@ const Toolbar = ({
             </IconButton>
           )}
           <IconButton
-            variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
+            variant={
+              projectsViewMode === ProjectsViewMode.LIST
+                ? getProductAccent(projectType).variant
+                : "outline"
+            }
             size="sm"
             aria-label="List view"
             onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
@@ -1162,29 +1338,31 @@ const Toolbar = ({
             <ListIcon />
           </IconButton>
         </ButtonGroup>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isOldProjectV1Allowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
-                  size="sm"
-                  variant="project"
-                  onClick={() => {
-                    if (isAddingProjectsAllowed) {
-                      onAddNewProject();
-                    } else {
-                      onUpgradePlan();
-                    }
-                  }}
-                >
-                  <PlusIcon />
-                  New Project
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
-        </OrgPermissionCan>
+        {!PROJECT_TYPES_BLOCKED_CREATION.includes(projectType) && (
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+            {(isOldProjectV1Allowed) => (
+              <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+                {(isAllowed) => (
+                  <Button
+                    isDisabled={!isAllowed && !isOldProjectV1Allowed}
+                    size="sm"
+                    variant={getProductAccent(projectType).variant}
+                    onClick={() => {
+                      if (isAddingProjectsAllowed) {
+                        onAddNewProject();
+                      } else {
+                        onUpgradePlan();
+                      }
+                    }}
+                  >
+                    <PlusIcon />
+                    New Project
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            )}
+          </OrgPermissionCan>
+        )}
       </div>
     </div>
   );
@@ -1204,7 +1382,6 @@ const EmptyState = ({
   isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
-
   return (
     <Empty className="border">
       <EmptyHeader>
@@ -1218,7 +1395,7 @@ const EmptyState = ({
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
           {(isAllowed) => (
             <Button
-              variant="project"
+              variant={getProductAccent(projectType).variant}
               isDisabled={!isAllowed}
               onClick={() => {
                 if (isAddingProjectsAllowed) {

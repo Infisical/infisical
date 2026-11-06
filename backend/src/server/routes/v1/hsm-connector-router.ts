@@ -11,6 +11,8 @@ import { HsmConnectorSanitizedSchema } from "@app/services/hsm-connector/hsm-con
 import {
   CreateHsmConnectorBodySchema,
   HsmConnectorIdParamSchema,
+  HsmConnectorKeysQuerySchema,
+  HsmConnectorKeysResponseSchema,
   HsmConnectorLinkedResourcesQuerySchema,
   HsmConnectorLinkedResourcesResponseSchema,
   HsmConnectorTestResultSchema,
@@ -233,6 +235,28 @@ export const createHsmConnectorRouter =
           },
           req.permission
         );
+      }
+    });
+
+    server.route({
+      method: "GET",
+      url: "/:connectorId/keys",
+      config: { rateLimit: readLimit },
+      schema: {
+        hide: false,
+        operationId: "listHsmConnectorKeys",
+        tags: [ApiDocsTags.HsmConnectors],
+        params: HsmConnectorIdParamSchema,
+        querystring: HsmConnectorKeysQuerySchema,
+        response: { 200: HsmConnectorKeysResponseSchema }
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+      handler: async (req) => {
+        const { keys } = await server.services.hsmConnector.listHsmConnectorKeys(
+          { connectorId: req.params.connectorId, projectId: resolveProjectId(req), keyLabel: req.query.label },
+          req.permission
+        );
+        return { keys };
       }
     });
   };

@@ -28,7 +28,8 @@ const MOVED_SETTINGS_TABS: Record<string, { to: string; selectedTab: string }> =
     selectedTab: "external-migrations"
   },
   "sso-settings": { to: "/organizations/$orgId/sso", selectedTab: "sso" },
-  "provisioning-settings": { to: "/organizations/$orgId/sso", selectedTab: "provisioning" }
+  "provisioning-settings": { to: "/organizations/$orgId/sso", selectedTab: "provisioning" },
+  "project-templates": { to: "/organizations/$orgId/settings", selectedTab: "product-settings" }
 };
 
 export const Route = createFileRoute(
@@ -53,7 +54,6 @@ export const Route = createFileRoute(
         to: moved.to,
         params: { orgId: params.orgId },
         search: { selectedTab: moved.selectedTab }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
     }
   }

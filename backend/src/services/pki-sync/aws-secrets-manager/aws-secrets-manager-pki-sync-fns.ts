@@ -15,9 +15,9 @@ import { logger } from "@app/lib/logger";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
@@ -280,8 +280,9 @@ export const awsSecretsManagerPkiSyncFactory = ({
         continue;
       }
 
-      const syncRecordLookupId = certificate?.renewedFromCertificateId || certificateId;
-      const existingRecord = syncRecordsByCertId.get(syncRecordLookupId);
+      const existingRecord =
+        syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+        (preserveSecretOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
       let shouldProcess = true;
       let isUpdate = false;

@@ -16,7 +16,7 @@ export const HoneyTokensSchema = z.object({
   type: z.string(),
   status: z.string().default("active"),
   projectId: z.string(),
-  folderId: z.string().guid(),
+  folderId: z.string().guid().nullable().optional(),
   encryptedCredentials: zodBuffer,
   secretsMapping: z.unknown(),
   tokenIdentifier: z.string().nullable().optional(),
@@ -27,7 +27,8 @@ export const HoneyTokensSchema = z.object({
   resetByUserId: z.string().guid().nullable().optional(),
   revokedByUserId: z.string().guid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  config: z.unknown()
 });
 
 export type THoneyTokens = z.infer<typeof HoneyTokensSchema>;

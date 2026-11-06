@@ -8,6 +8,7 @@ import {
   BadRequestError,
   ClientClosedRequestError,
   CryptographyError,
+  DailyQuotaExceededError,
   DatabaseError,
   ForbiddenRequestError,
   GatewayTimeoutError,
@@ -67,7 +68,7 @@ export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof UnauthorizedError) return "auth";
   if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError || err instanceof PermissionBoundaryError)
     return "permission";
-  if (err instanceof RateLimitError) return "rate_limit";
+  if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError) return "rate_limit";
   if (err instanceof NotFoundError) return "not_found";
   if (err instanceof BadRequestError) return "validation";
   // A varchar(n) overflow is a rejected input, so it should not inflate the db-error rate.

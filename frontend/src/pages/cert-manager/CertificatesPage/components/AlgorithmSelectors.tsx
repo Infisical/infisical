@@ -2,6 +2,10 @@ import { ReactNode } from "react";
 import { Control, Controller } from "react-hook-form";
 
 import {
+  PostQuantumCertificatesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
+import {
   Badge,
   Field,
   FieldDescription,
@@ -51,7 +55,7 @@ const AlgorithmOptions = ({ options, nonePlaceholder, caKeyAlgorithm }: Algorith
           <SelectItem
             key={algorithm.value}
             value={algorithm.value}
-            disabled={isGated || Boolean(incompatibilityReason)}
+            disabled={Boolean(incompatibilityReason)}
           >
             <span className="flex items-center gap-2">
               {algorithm.label}
@@ -107,38 +111,54 @@ const AlgorithmSelect = ({
   selectPlaceholder,
   children,
   disabledReason
-}: AlgorithmSelectProps) => (
-  <Controller
-    control={control}
-    name={name}
-    shouldUnregister={shouldUnregister}
-    render={({ field: { onChange, value } }) => (
-      <Field>
-        <FieldLabel>
-          {label} {isRequired && <span className="text-danger">*</span>}
-        </FieldLabel>
-        <Select
-          value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
-          onValueChange={(e) => onChange(e === NONE_VALUE ? null : e)}
-          disabled={Boolean(disabledReason)}
-        >
-          <SelectTrigger className="w-full" isError={Boolean(error)}>
-            {value ? (
-              <SelectValue />
-            ) : (
-              <span className="text-muted">
-                {options.length > 0 ? selectPlaceholder : "No algorithms available"}
-              </span>
-            )}
-          </SelectTrigger>
-          <SelectContent position="popper">{children}</SelectContent>
-        </Select>
-        {disabledReason && <FieldDescription>{disabledReason}</FieldDescription>}
-        <FieldError>{error}</FieldError>
-      </Field>
-    )}
-  />
-);
+}: AlgorithmSelectProps) => {
+  const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
+  return (
+    <Controller
+      control={control}
+      name={name}
+      shouldUnregister={shouldUnregister}
+      render={({ field: { onChange, value } }) => (
+        <Field>
+          <FieldLabel>
+            {label} {isRequired && <span className="text-danger">*</span>}
+          </FieldLabel>
+          <Select
+            value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
+            onValueChange={(nextValue) => {
+              const normalizedValue = nextValue === NONE_VALUE ? null : nextValue;
+              if (normalizedValue && isPqcAlgorithm(normalizedValue) && !subscription.pkiPqc) {
+                openUpgradeGate({
+                  intent: PostQuantumCertificatesUpgradeIntent,
+                  paywallKey: "cert-manager.certificate-algorithm"
+                });
+                return;
+              }
+              onChange(normalizedValue);
+            }}
+            disabled={Boolean(disabledReason)}
+          >
+            <SelectTrigger className="w-full" isError={Boolean(error)}>
+              {value ? (
+                <SelectValue />
+              ) : (
+                <span className="text-muted">
+                  {options.length > 0 ? selectPlaceholder : "No algorithms available"}
+                </span>
+              )}
+            </SelectTrigger>
+            <SelectContent position="popper">{children}</SelectContent>
+          </Select>
+          {disabledReason && <FieldDescription>{disabledReason}</FieldDescription>}
+          <FieldError>{error}</FieldError>
+          {upgradeGate}
+        </Field>
+      )}
+    />
+  );
+};
 
 type AlgorithmSelectorsProps = {
   control: Control<any>;

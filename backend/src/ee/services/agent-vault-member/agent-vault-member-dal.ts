@@ -9,7 +9,11 @@ import {
   ResourceType,
   TableName
 } from "@app/db/schemas";
-import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_ACTOR_COLUMN,
+  AgentVaultMemberType,
+  TAgentVaultActorColumn
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 
@@ -35,18 +39,10 @@ export type TAgentVaultProductActor =
     }
   | { type: AgentVaultMemberType.Group; id: string; name: string };
 
-export type TAgentVaultProductMember = {
-  id: string;
+export type TAgentVaultProductMember = TAgentVaultProductActor & {
   role: string;
   isActive: boolean;
-  createdAt: Date;
-  actor: TAgentVaultProductActor;
-};
-
-const ACTOR_COLUMN: Record<AgentVaultMemberType, "actorUserId" | "actorIdentityId" | "actorGroupId"> = {
-  [AgentVaultMemberType.User]: "actorUserId",
-  [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
-  [AgentVaultMemberType.Group]: "actorGroupId"
+  addedAt: Date;
 };
 
 type TActorRow = {
@@ -97,13 +93,24 @@ type TFindProductMembersDTO = {
   offset: number;
   // Set to list the members who could still be granted that bundle.
   excludeAccessBundleId?: string;
+  // Set to list the members who could still be added to that delegation.
+  excludeDelegationId?: string;
 };
 
-type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeAccessBundleId">;
+type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeAccessBundleId" | "excludeDelegationId">;
 
 export const agentVaultMemberDALFactory = (db: TDbClient) => {
   const findProductMembers = async (
-    { projectId, orgId, actorTypes, search, limit, offset, excludeAccessBundleId }: TFindProductMembersDTO,
+    {
+      projectId,
+      orgId,
+      actorTypes,
+      search,
+      limit,
+      offset,
+      excludeAccessBundleId,
+      excludeDelegationId
+    }: TFindProductMembersDTO,
     tx?: Knex
   ): Promise<{ members: TAgentVaultProductMember[]; totalCount: number }> => {
     if (!actorTypes.length) return { members: [], totalCount: 0 };
@@ -111,7 +118,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      const alreadyGranted = (column: (typeof ACTOR_COLUMN)[AgentVaultMemberType]) =>
+      const alreadyGranted = (column: TAgentVaultActorColumn) =>
         conn(TableName.Membership)
           .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -132,7 +139,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
         void query.where((qb) => {
           actorTypes.forEach((type) => {
-            const column = ACTOR_COLUMN[type];
+            const column = AGENT_VAULT_ACTOR_COLUMN[type];
             void qb.orWhere((typeQb) => {
               void typeQb.whereNotNull(`${TableName.Membership}.${column}`);
               // Inside the block, where the column is known non-null: a bare whereNotIn would read
@@ -143,6 +150,21 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
             });
           });
         });
+
+        // A delegation names a member by its membership row, so this needs no per-type column.
+        if (excludeDelegationId) {
+          void query.whereNotExists(
+            conn(TableName.AgentVaultDelegationSubject)
+              .where(`${TableName.AgentVaultDelegationSubject}.delegationId`, excludeDelegationId)
+              .whereRaw(`??.?? = ??.??`, [
+                TableName.AgentVaultDelegationSubject,
+                "membershipId",
+                TableName.Membership,
+                "id"
+              ])
+              .select(conn.raw("1"))
+          );
+        }
 
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
@@ -169,7 +191,6 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
       const rows = (await applyFilters(conn(TableName.Membership))
         .select(
-          db.ref("id").withSchema(TableName.Membership),
           db.ref("createdAt").withSchema(TableName.Membership),
           db.ref("isActive").withSchema(TableName.Membership),
           db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
@@ -202,7 +223,6 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         .orderBy(`${TableName.Membership}.id`, "asc")
         .limit(limit)
         .offset(offset)) as {
-        id: string;
         createdAt: Date;
         isActive: boolean;
         userId: string | null;
@@ -222,11 +242,10 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
       return {
         members: rows.map((row) => ({
-          id: row.id,
+          ...actorOf(row, projectId),
           role: row.role ?? ProjectMembershipRole.Member,
           isActive: row.isActive,
-          createdAt: row.createdAt,
-          actor: actorOf(row, projectId)
+          addedAt: row.createdAt
         })),
         totalCount
       };
@@ -236,7 +255,8 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
   };
 
   // Every rule here mirrors one in assertActorsAreAddable, so the picker cannot offer an actor the add
-  // path would then refuse.
+  // path would then refuse. Group-only users and identities get a synthetic row shaped and aliased like
+  // the memberships table, so the same filters cover them.
   const findAvailableActors = async (
     { projectId, orgId, actorTypes, search, limit, offset }: TFindAvailableActorsDTO,
     tx?: Knex
@@ -246,12 +266,69 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      const alreadyMembers = (column: (typeof ACTOR_COLUMN)[AgentVaultMemberType]) =>
+      const alreadyMembers = (column: TAgentVaultActorColumn) =>
         conn(TableName.Membership)
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
           .whereNotNull(`${TableName.Membership}.${column}`)
           .select(column);
+
+      const m = TableName.Membership;
+      const orgActors = () => {
+        const direct = conn(m)
+          .where(`${m}.scope`, AccessScope.Organization)
+          .where(`${m}.scopeOrgId`, orgId)
+          .select(
+            `${m}.id`,
+            `${m}.scope`,
+            `${m}.scopeOrgId`,
+            `${m}.isActive`,
+            `${m}.status`,
+            `${m}.actorUserId`,
+            `${m}.actorIdentityId`,
+            `${m}.actorGroupId`
+          );
+        const viaGroupOnly = (
+          groupTable: TableName.UserGroupMembership | TableName.IdentityGroupMembership,
+          groupActorColumn: "userId" | "identityId",
+          actorColumn: "actorUserId" | "actorIdentityId"
+        ) =>
+          conn(groupTable)
+            .join(`${m} as groupOrg`, "groupOrg.actorGroupId", `${groupTable}.groupId`)
+            .where("groupOrg.scope", AccessScope.Organization)
+            .where("groupOrg.scopeOrgId", orgId)
+            .where("groupOrg.isActive", true)
+            .whereNotExists(
+              conn(`${m} as directRow`)
+                .select(conn.raw("1"))
+                .where("directRow.scope", AccessScope.Organization)
+                .where("directRow.scopeOrgId", orgId)
+                .whereRaw("?? = ??", [`directRow.${actorColumn}`, `${groupTable}.${groupActorColumn}`])
+            )
+            .distinct(
+              db.ref(groupActorColumn).withSchema(groupTable).as("id"),
+              db.raw("?::text as scope", [AccessScope.Organization]),
+              db.raw(`?::uuid as "scopeOrgId"`, [orgId]),
+              db.raw(`true as "isActive"`),
+              db.raw("null::text as status"),
+              actorColumn === "actorUserId"
+                ? db.ref(groupActorColumn).withSchema(groupTable).as("actorUserId")
+                : db.raw(`null::uuid as "actorUserId"`),
+              actorColumn === "actorIdentityId"
+                ? db.ref(groupActorColumn).withSchema(groupTable).as("actorIdentityId")
+                : db.raw(`null::uuid as "actorIdentityId"`),
+              db.raw(`null::uuid as "actorGroupId"`)
+            );
+
+        return conn.from(
+          direct
+            .unionAll([
+              viaGroupOnly(TableName.UserGroupMembership, "userId", "actorUserId"),
+              viaGroupOnly(TableName.IdentityGroupMembership, "identityId", "actorIdentityId")
+            ])
+            .as(m)
+        );
+      };
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query
@@ -266,7 +343,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         void query.where((qb) => {
           actorTypes.forEach((type) => {
             void qb.orWhere((typeQb) => {
-              const column = ACTOR_COLUMN[type];
+              const column = AGENT_VAULT_ACTOR_COLUMN[type];
               void typeQb
                 .whereNotNull(`${TableName.Membership}.${column}`)
                 .whereNotIn(`${TableName.Membership}.${column}`, alreadyMembers(column));
@@ -304,12 +381,12 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         return query;
       };
 
-      const countResult = (await applyFilters(conn(TableName.Membership))
-        .count(`${TableName.Membership}.id as count`)
-        .first()) as { count: string } | undefined;
+      const countResult = (await applyFilters(orgActors()).count(`${TableName.Membership}.id as count`).first()) as
+        | { count: string }
+        | undefined;
       const totalCount = parseInt(countResult?.count || "0", 10);
 
-      const rows = (await applyFilters(conn(TableName.Membership))
+      const rows = (await applyFilters(orgActors())
         .select(
           db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("machineIdentityId"),

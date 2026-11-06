@@ -69,7 +69,7 @@ export const PkiSyncFilterCountLabel = ({ count, names }: TFilterCountLabelProps
   );
 };
 
-const PkiSyncFilterValueBadges = ({ values }: { values: string[] }) => {
+export const PkiSyncFilterValueBadges = ({ values }: { values: string[] }) => {
   if (values.length === 0) return null;
 
   return (

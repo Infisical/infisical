@@ -1,17 +1,23 @@
 import { Knex } from "knex";
 
+import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-dal";
@@ -119,7 +125,7 @@ export type TAddUsersToGroupByUserIds = {
   userIds: string[];
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "transaction" | "insertMany">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "lockActorsForOrgAccess">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
@@ -136,34 +142,62 @@ export type TAddIdentitiesToGroup = {
   identityDAL: Pick<TIdentityDALFactory, "transaction">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
 };
+
+// Structural instead of Pick<TGroupDALFactory>, since group-dal.ts imports this file.
+type TGroupOrgIdsDAL = { findGroupOrgIds: (groupId: string, tx?: Knex) => Promise<string[]> };
 
 export type TRemoveUsersFromGroupByUserIds = {
   group: { id: string; name: string; slug: string; orgId: string };
   userIds: string[];
-  userDAL: Pick<TUserDALFactory, "find" | "transaction">;
+  // The admin removing them, if any; SCIM and IdP group sync have none.
+  actorId?: string;
+  userDAL: Pick<TUserDALFactory, "find" | "findById" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
+  groupDAL: TGroupOrgIdsDAL;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
+  // Skip the Agent Vault personal value clear and return the group's project ids instead, for a caller that removes
+  // the same user from several groups in one transaction and clears once after every group's rows are locked.
+  deferPersonalValueClear?: boolean;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  eventEmitter: TEventEmitter;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TRemoveIdentitiesFromGroup = {
   group: { id: string; name: string; slug: string; orgId: string };
   identityIds: string[];
+  actorId?: string;
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
-  membershipDAL: Pick<TMembershipDALFactory, "find">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findResourceMembershipsForActors">;
+  groupDAL: TGroupOrgIdsDAL;
   identityGroupMembershipDAL: Pick<
     TIdentityGroupMembershipDALFactory,
     "find" | "delete" | "filterProjectsByIdentityMembership"
   >;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  eventEmitter: TEventEmitter;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {

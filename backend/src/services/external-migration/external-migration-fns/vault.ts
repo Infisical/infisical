@@ -9,6 +9,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { blockLocalAndPrivateIpAddresses, isValidFolderName } from "@app/lib/validator";
 
 import { convertVaultValueToString, JsonValue } from "../../app-connection/hc-vault";
@@ -45,7 +46,7 @@ const vaultFactory = (gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatf
     }
 
     const isHttps = targetProtocol === "https";
-    const httpsAgent = isHttps ? new https.Agent({ servername: targetHostname }) : undefined;
+    const httpsAgent = isHttps ? new https.Agent(getTlsServerNameOptions(targetHostname)) : undefined;
 
     return withGatewayV2Proxy(
       async (port) => gatewayCallback(`${targetProtocol}://localhost`, port, httpsAgent, targetHostname),

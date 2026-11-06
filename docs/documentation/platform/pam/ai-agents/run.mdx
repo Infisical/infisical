@@ -1,0 +1,127 @@
+---
+title: "Run an AI agent"
+sidebarTitle: "Run an agent"
+description: "Start an AI agent with access to the PAM accounts its task needs."
+---
+
+To give an AI agent access to your PAM accounts, start the agent with `infisical pam agentic access`. The CLI opens the accounts the agent can use, gives the agent [instructions](/documentation/platform/pam/ai-agents/instructions) for reaching them, and starts the agent in a [sandbox](#sandbox). To learn how agentic access works, see [AI agents](/documentation/platform/pam/ai-agents/overview).
+
+## Prerequisites
+
+- The [Infisical CLI](/cli/install), logged in with `infisical login` or able to authenticate as a [machine identity](/documentation/platform/pam/ai-agents/unattended)
+- The Connector, Operator, or Admin [role](/documentation/platform/pam/concepts/access-control) on the folders or accounts the agent needs, held by whoever the run authenticates as
+- macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed, for the [sandbox](#sandbox) (on any other host, such as Windows, you must [turn the sandbox off](#turn-the-sandbox-off))
+
+## Start an agent
+
+Everything after `--` is the command that starts your agent. By default, the agent can use every account you can launch a session on. To give the agent only the accounts its task needs, add `--account` once for each account:
+
+```bash
+infisical pam agentic access --account prod/orders-db --account prod/bastion -- claude
+```
+
+Before the agent starts, the CLI prints the accounts the agent can use:
+
+```text
+  Infisical PAM proxies ready for claude
+
+    127.0.0.1:52431  prod/orders-db (PostgreSQL)
+    127.0.0.1:52432  prod/bastion (SSH)
+    127.0.0.1:52433  prod/payments-db (PostgreSQL)  [awaiting approval]
+
+  Not started:
+    prod/legacy-db: you don't have permission to launch sessions for this account
+```
+
+If you don't pass `--account`, the CLI lists each account it left out under **Not started**, with the reason. If you pass `--account` and a named account can't be used, the command stops and prints the reason.
+
+If an account's [template](/documentation/platform/pam/templates/overview) has **Require Reason** turned on, pass the reason with `--reason`. The CLI can't ask for a reason while the agent is running in the terminal.
+
+<Tip>
+For all flags available with the `infisical pam agentic access` command, check out the [CLI reference](/cli/reference#pam-agentic-access).
+</Tip>
+
+### Supported account types
+
+Agents can use the following account types:
+
+- **Databases:** [PostgreSQL](/documentation/platform/pam/accounts/postgresql), [MySQL](/documentation/platform/pam/accounts/mysql), [Microsoft SQL Server](/documentation/platform/pam/accounts/mssql), [MongoDB](/documentation/platform/pam/accounts/mongodb), and [Redis](/documentation/platform/pam/accounts/redis)
+- **Servers:** [SSH](/documentation/platform/pam/accounts/ssh) and [Windows](/documentation/platform/pam/accounts/windows) over RDP
+- **Clusters:** [Kubernetes](/documentation/platform/pam/accounts/kubernetes)
+
+For Kubernetes accounts, the CLI configures `kubectl` inside the run without changing your own kubeconfig.
+
+<Note>
+  Agents can't use accounts whose template has **Require MFA** turned on. To use one of those accounts yourself, run [`infisical pam access`](/cli/reference#pam-access), which asks you to complete MFA in your browser.
+</Note>
+
+## Sandbox
+
+The CLI runs the agent in a sandbox that the operating system enforces. The sandbox stops the agent from reading your Infisical login, so the agent can't open sessions on accounts beyond the ones the run started with. The operating system applies the sandbox to the agent and to every process the agent starts, and the agent can't turn the sandbox off from inside it.
+
+### What the agent can access
+
+| The agent can | The agent can't |
+|---|---|
+| Read and write files in your working directory | Read your Infisical login or credential store |
+| Use its own tools, subprocesses, and state | Open PAM sessions on other accounts |
+| Connect to the accounts the run started with | Use Docker or another container runtime |
+
+The agent can still read common development files such as `~/.aws`, `~/.ssh`, and `~/.kube`, so tasks like `git` over SSH keep working. The sandbox protects your access to PAM, not every secret on the machine.
+
+### Limits of the sandbox
+
+The sandbox adds protection, but it doesn't guarantee that an agent can't reach your secrets:
+
+- No operating system sandbox blocks every way to read files on the host, so an agent that is built or tricked into searching for secrets might find a way past it
+- The agent keeps its network access, so the sandbox doesn't stop the agent from sending data off the machine
+
+Whether or not the sandbox stops an agent, the account credentials never reach the machine. Each connection is a [session](/documentation/platform/pam/sessions/overview) that you can watch and terminate, and the agent's access is limited by role, duration, and [approval](/documentation/platform/pam/access-requests/overview).
+
+For a sensitive task, [run the agent as its own machine identity](/documentation/platform/pam/ai-agents/unattended) on a dedicated machine. The identity's roles then limit what the agent can reach, even if the agent gets past the sandbox.
+
+### Turn the sandbox off
+
+To run the agent without the sandbox, pass `--no-sandbox`:
+
+```bash
+infisical pam agentic access --no-sandbox -- claude
+```
+
+Without the sandbox, the agent can read your Infisical login and every other credential file on the machine. Keep the sandbox on wherever your operating system supports it.
+
+## Accounts that need approval
+
+If an account requires [approval](/documentation/platform/pam/access-requests/overview), the CLI still opens a port for it and marks it `[awaiting approval]`. The agent can't use the account until an approver approves a request.
+
+The first time the agent connects to the account, the CLI files a request and the connection fails. After an approver approves the request, the agent's next connection works without restarting the run. If the approved access expires during the run, the same thing happens again: the CLI files a new request, and the account works after an approver approves it.
+
+To stop the CLI from filing requests, pass `--no-approval-request`. The CLI then leaves accounts that need approval out of the run.
+
+## Frequently asked questions
+
+<AccordionGroup>
+  <Accordion title="Why is an account missing from the list?">
+    Check the **Not started** list that the CLI prints at the start of each run, which gives the reason for each account it left out. If the account isn't there either, whoever the run authenticated as can't launch sessions on it, so check their role on the folder or account.
+  </Accordion>
+  <Accordion title="Why does an account stay on awaiting approval?">
+    The request is waiting for an approver. If the folder has no approvers on its **Approvals** tab, nobody can approve the request.
+  </Accordion>
+  <Accordion title="Can an agent approve an access request?">
+    No. Only users and groups can approve requests, whoever the agent runs as.
+  </Accordion>
+  <Accordion title="Why won't the command start on Linux?">
+    The sandbox isn't available, usually because bubblewrap isn't installed or the host restricts user namespaces. The error message says which. Install bubblewrap or allow user namespaces on the host, then run the command again.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Review and stop an agent" icon="eye" href="/documentation/platform/pam/ai-agents/review">
+    Check what an AI agent did with your accounts and remove its access.
+  </Card>
+  <Card title="Run unattended" icon="clock" href="/documentation/platform/pam/ai-agents/unattended">
+    Run an AI agent as its own machine identity.
+  </Card>
+</CardGroup>

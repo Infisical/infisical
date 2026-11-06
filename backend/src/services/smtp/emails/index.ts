@@ -1,5 +1,6 @@
 export * from "./AccessApprovalRequestTemplate";
 export * from "./AccessApprovalRequestUpdatedTemplate";
+export * from "./AccessPamRequestAutoApprovedTemplate";
 export * from "./AccessPamRequestBypassedTemplate";
 export * from "./AccessPamRequestTemplate";
 export * from "./AccountDeletionConfirmationTemplate";
@@ -27,6 +28,7 @@ export * from "./OrgAdminBreakglassAccessTemplate";
 export * from "./OrgAdminProjectFolderGrantAccessTemplate";
 export * from "./OrganizationAssignmentTemplate";
 export * from "./OrganizationInvitationTemplate";
+export * from "./PamFolderAdminAccessTemplate";
 export * from "./PasswordResetTemplate";
 export * from "./PasswordSetupTemplate";
 export * from "./PkiApprovalRequestNeedsReviewTemplate";

@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-import { Tooltip } from "@app/components/v2";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 interface CertificateNameData {
   altNames?: string | null;
@@ -86,8 +86,11 @@ export const CertificateDisplayName = ({
 
   if (isTruncated) {
     return (
-      <Tooltip content={originalDisplayName} className={tooltipClassName}>
-        <div className={className}>{displayName}</div>
+      <Tooltip hoverable delayDuration={50}>
+        <TooltipTrigger asChild>
+          <div className={className}>{displayName}</div>
+        </TooltipTrigger>
+        <TooltipContent className={tooltipClassName}>{originalDisplayName}</TooltipContent>
       </Tooltip>
     );
   }

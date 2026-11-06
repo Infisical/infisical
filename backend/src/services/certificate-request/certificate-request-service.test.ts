@@ -7,6 +7,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -16,6 +17,9 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 
@@ -61,6 +65,10 @@ describe("CertificateRequestService", () => {
   };
   const mockUserDAL = { findById: vi.fn() };
   const mockIdentityDAL = { findById: vi.fn() };
+  const mockCertificateProfileDAL = { findById: vi.fn() };
+  const mockCertificateAuthorityDAL = { findById: vi.fn(), findByIdWithAssociatedCa: vi.fn() };
+  const mockAuditLogService = { createCollapsedAuditLog: vi.fn() };
+  const mockDigicertFns = { cancelPendingRequest: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -74,7 +82,11 @@ describe("CertificateRequestService", () => {
       resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() },
       queueService: mockQueueService as any,
       userDAL: mockUserDAL as any,
-      identityDAL: mockIdentityDAL as any
+      identityDAL: mockIdentityDAL as any,
+      certificateProfileDAL: mockCertificateProfileDAL as any,
+      certificateAuthorityDAL: mockCertificateAuthorityDAL as any,
+      auditLogService: mockAuditLogService,
+      digicertFns: mockDigicertFns
     });
   });
 
@@ -321,6 +333,44 @@ describe("CertificateRequestService", () => {
       expect(projectId).toEqual("550e8400-e29b-41d4-a716-446655440003");
     });
 
+    it("returns the deleted certificate's id and serial number but no certificate body", async () => {
+      const mockPermission = {
+        permission: createMongoAbility<ProjectPermissionSet>([
+          {
+            action: ProjectPermissionCertificateActions.Read,
+            subject: ProjectPermissionSub.Certificates
+          }
+        ])
+      };
+      const mockRequestWithDeletedCert = {
+        id: "550e8400-e29b-41d4-a716-446655440008",
+        projectId: "550e8400-e29b-41d4-a716-446655440003",
+        status: CertificateRequestStatus.ISSUED,
+        certificate: {
+          id: "550e8400-e29b-41d4-a716-446655440009",
+          serialNumber: "0a1b2c",
+          deletedAt: new Date("2026-10-20T14:38:27.000Z")
+        },
+        errorMessage: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithDeletedCert);
+
+      const { certificateRequest } = await service.getCertificateFromRequest(mockGetData);
+
+      expect(certificateRequest).toMatchObject({
+        status: CertificateRequestStatus.ISSUED,
+        certificateId: "550e8400-e29b-41d4-a716-446655440009",
+        serialNumber: "0a1b2c",
+        certificate: null,
+        privateKey: null
+      });
+      expect(mockCertificateService.getCertBody).not.toHaveBeenCalled();
+    });
+
     it("should get certificate from request successfully when no certificate is attached", async () => {
       const mockPermission = {
         permission: createMongoAbility<ProjectPermissionSet>([
@@ -351,6 +401,7 @@ describe("CertificateRequestService", () => {
         certificate: null,
         privateKey: null,
         serialNumber: null,
+        certificateDeletedAt: null,
         errorMessage: null,
         pendingMessage: null,
         commonName: null,
@@ -546,6 +597,7 @@ describe("CertificateRequestService", () => {
         certificateId: null,
         privateKey: null,
         serialNumber: null,
+        certificateDeletedAt: null,
         errorMessage: "Certificate issuance failed",
         pendingMessage: null,
         commonName: null,
@@ -645,6 +697,108 @@ describe("CertificateRequestService", () => {
           status: CertificateRequestStatus.ISSUED
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it("records a certificate-issuance-failed event when the request moves to failed", async () => {
+      const failedRequest = {
+        id: "550e8400-e29b-41d4-a716-446655440014",
+        projectId: "project-1",
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "Certificate issuance failed: DigiCert rejected the order",
+        enrollmentType: EnrollmentType.API,
+        profileId: "profile-1",
+        caId: "ca-1",
+        commonName: "app.example.com"
+      };
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue({ ...failedRequest, status: "pending" });
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(failedRequest);
+      mockCertificateProfileDAL.findById.mockResolvedValue({ id: "profile-1", slug: "public-web" });
+      mockCertificateAuthorityDAL.findById.mockResolvedValue({ id: "ca-1", name: "digicert-ca" });
+
+      await service.updateCertificateRequestStatus({
+        certificateRequestId: failedRequest.id,
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: failedRequest.errorMessage,
+        operation: CertificateIssuanceOperation.RENEW,
+        originalCertificateId: "cert-0"
+      });
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: "project-1",
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: {
+            type: EventType.CERTIFICATE_ISSUANCE_FAILED,
+            metadata: {
+              operation: CertificateIssuanceOperation.RENEW,
+              enrollmentType: EnrollmentType.API,
+              certificateRequestId: failedRequest.id,
+              certificateProfileId: "profile-1",
+              profileName: "public-web",
+              caId: "ca-1",
+              caName: "digicert-ca",
+              commonName: "app.example.com",
+              originalCertificateId: "cert-0",
+              errorName: "Error",
+              error: "Certificate issuance failed: DigiCert rejected the order"
+            }
+          }
+        })
+      );
+    });
+
+    it("records nothing when the request had already left pending", async () => {
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue({
+        id: "r",
+        status: CertificateRequestStatus.FAILED
+      });
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(null);
+
+      await service.updateCertificateRequestStatus({
+        certificateRequestId: "550e8400-e29b-41d4-a716-446655440015",
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "late failure"
+      });
+
+      expect(mockAuditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { caType: CaType.DIGICERT, csr: null, expected: CertificateIssuanceOperation.ORDER },
+      { caType: undefined, csr: "csr-pem", expected: CertificateIssuanceOperation.SIGN },
+      { caType: undefined, csr: null, expected: CertificateIssuanceOperation.ISSUE }
+    ])("derives $expected from the request when no operation is given", async ({ caType, csr, expected }) => {
+      const failedRequest = {
+        id: "550e8400-e29b-41d4-a716-446655440016",
+        projectId: "project-1",
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "boom",
+        caId: "ca-1",
+        commonName: "app.example.com",
+        csr
+      };
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue({ ...failedRequest, status: "pending" });
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(failedRequest);
+      mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+        id: "ca-1",
+        externalCa: caType ? { type: caType } : undefined
+      });
+      mockCertificateAuthorityDAL.findById.mockResolvedValue({ id: "ca-1", name: "ca" });
+
+      await service.updateCertificateRequestStatus({
+        certificateRequestId: failedRequest.id,
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "boom",
+        error: new TypeError("socket hang up")
+      });
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            metadata: expect.objectContaining({ operation: expected, errorName: "TypeError", error: "socket hang up" })
+          })
+        })
+      );
     });
   });
 
@@ -788,6 +942,59 @@ describe("CertificateRequestService", () => {
         previousPendingMessage: "Performing DNS-01 challenge",
         applicationId: null,
         applicationName: null
+      });
+    });
+
+    describe("a request waiting on CA validation", () => {
+      const caId = "550e8400-e29b-41d4-a716-446655440300";
+      const metadata = JSON.stringify({ digicert: { orderId: 7001, previousCertificateId: 50001 } });
+      const validationRow = {
+        id: requestId,
+        status: CertificateRequestStatus.PENDING_VALIDATION,
+        projectId,
+        applicationId: null,
+        altNames: null,
+        commonName: "test.example.com",
+        pendingMessage: "Awaiting CA validation",
+        caId,
+        metadata
+      };
+
+      const cancelValidationRow = async (externalCaType: CaType) => {
+        (mockCertificateRequestDAL.findById as any).mockResolvedValue(validationRow);
+        (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+        (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue({
+          ...validationRow,
+          status: CertificateRequestStatus.FAILED
+        });
+        (mockUserDAL.findById as any).mockResolvedValue({ username: "john.smith" });
+        (mockCertificateAuthorityDAL.findByIdWithAssociatedCa as any).mockResolvedValue({
+          id: caId,
+          externalCa: { type: externalCaType }
+        });
+
+        return service.cancelCertificateRequest(cancelInput);
+      };
+
+      it("hands the request to DigiCert so a pending reissue is cancelled there", async () => {
+        await cancelValidationRow(CaType.DIGICERT);
+
+        expect(mockDigicertFns.cancelPendingRequest).toHaveBeenCalledWith({ caId, metadata });
+      });
+
+      it("leaves other CAs alone", async () => {
+        await cancelValidationRow(CaType.ACME);
+
+        expect(mockDigicertFns.cancelPendingRequest).not.toHaveBeenCalled();
+      });
+
+      it("keeps the request open when DigiCert does not cancel the reissue", async () => {
+        mockDigicertFns.cancelPendingRequest.mockRejectedValueOnce(
+          new Error("DigiCert didn't cancel the reissue on order 7001, so the request is still open.")
+        );
+
+        await expect(cancelValidationRow(CaType.DIGICERT)).rejects.toThrow("so the request is still open");
+        expect(mockCertificateRequestDAL.transitionFromPending).not.toHaveBeenCalled();
       });
     });
 

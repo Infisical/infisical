@@ -16,11 +16,39 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 const ReturnPathSchema = z
   .string()
   .trim()
+  .max(2048)
   .startsWith("/")
   .refine((path) => !path.startsWith("//") && !path.startsWith("/\\"), {
     message: "must be a relative path"
   })
+  .refine(
+    (path) =>
+      [...path].every((character) => {
+        const codePoint = character.charCodeAt(0);
+        return codePoint > 31 && codePoint !== 127 && character !== "\\";
+      }),
+    { message: "must not contain control characters or backslashes" }
+  )
+  .transform((path) => {
+    const url = new URL(path, "https://infisical.invalid");
+    return `${url.pathname}${url.search}${url.hash}`;
+  })
+  .refine((path) => !path.split(/[?#]/)[0].includes("//"), {
+    message: "must not contain repeated path separators"
+  })
   .optional();
+
+// A metered price's bands in dollars: upTo is inclusive (null on the last band), unitPrice is per unit.
+const BillingV2BandsSchema = z.object({
+  mode: z.enum(["graduated", "volume"]),
+  tiers: z
+    .object({
+      upTo: z.number().nullable(),
+      unitPrice: z.number(),
+      flatFee: z.number()
+    })
+    .array()
+});
 
 const BillingV2DimSchema = z.object({
   key: z.string(),
@@ -30,7 +58,27 @@ const BillingV2DimSchema = z.object({
   annual: z.number(),
   included: z.number(),
   meteredMonthly: z.boolean().optional(),
-  meteredAnnual: z.boolean().optional()
+  meteredAnnual: z.boolean().optional(),
+  aggregation: z.string().optional(),
+  bands: BillingV2BandsSchema.optional()
+});
+
+const BillingV2MeteredUsageSchema = z.object({
+  periodStart: z.string().nullable(),
+  periodEnd: z.string().nullable(),
+  asOf: z.string().nullable(),
+  estimatedAmount: z.number().nullable(),
+  currentTier: z.number(),
+  nextTierAt: z.number().nullable(),
+  earlierInPeriod: z
+    .object({
+      periodStart: z.string().nullable(),
+      periodEnd: z.string().nullable(),
+      used: z.number(),
+      estimatedAmount: z.number().nullable()
+    })
+    .array(),
+  trial: z.boolean()
 });
 
 const BillingV2CompareRowSchema = z.object({
@@ -105,6 +153,9 @@ const BillingV2EntitlementDimSchema = z.object({
   onDemandRate: z.number().optional(),
   rate: z.number().optional(),
   freeBand: z.number().optional(),
+  // Metered dims: this period's rated usage and the pinned bands it is priced with.
+  usage: BillingV2MeteredUsageSchema.optional(),
+  bands: BillingV2BandsSchema.optional(),
   onDemandAmount: z.number(),
   canDecreaseNow: z.boolean().optional(),
   renewalDate: z.string().nullable().optional(),
@@ -127,6 +178,8 @@ const BillingV2EntitlementSchema = z.object({
   trialPlanName: z.string().optional(),
   trialPlanEndsAt: z.string().nullable().optional(),
   trialPlanDaysLeft: z.number().nullable().optional(),
+  trialPaymentDueAt: z.string().nullable().optional(),
+  trialPlanPaymentDueAt: z.string().nullable().optional(),
   renewsOn: z.string().nullable().optional(),
   deprecation: BillingV2DeprecationSchema.extend({
     kind: z.enum(["product", "plan"])
@@ -141,6 +194,7 @@ const BillingV2TrialSchema = z.object({
   planTier: z.string().nullable(),
   basePlanTier: z.string().nullable(),
   outcome: z.string(),
+  endedReason: z.string().nullable(),
   endedDetail: z.string().nullable(),
   endedAt: z.string().nullable(),
   endedDaysAgo: z.number().nullable()
@@ -161,7 +215,8 @@ const BillingV2OverviewSchema = z.object({
         at: z.string(),
         productKeys: z.string().array(),
         cadence: z.enum(["monthly", "annual"]).nullable(),
-        hasUsage: z.boolean()
+        hasUsage: z.boolean(),
+        estimatedUsage: z.number().nullable()
       })
       .nullable()
   }),
@@ -189,6 +244,8 @@ const BillingV2OverviewSchema = z.object({
   trialedProductKeys: z.string().array(),
   trials: BillingV2TrialSchema.array(),
   onDemandAmount: z.number(),
+  trialPaymentDue: z.object({ dueAt: z.string(), productKeys: z.string().array() }).nullable(),
+  paymentAlert: z.object({ state: z.enum(["needs_action", "failed"]), actionUrl: z.string() }).nullable(),
   checkoutFrozen: z.boolean(),
   selfServe: z.boolean()
 });
@@ -247,7 +304,7 @@ const BillingV2PreviewSchema = z.object({
 // subscription id comes back (the DB mirror catches up via webhook, so the UI refetches overview).
 const BillingV2MutationResultSchema = z.object({ subscriptionId: z.string().optional() });
 
-// Product and plan keys are short catalog identifiers (e.g. "secrets_management", "advanced").
+// Product and plan keys are short catalog identifiers (e.g. "secrets_manager", "advanced").
 const BillingV2KeySchema = z.string().trim().min(1).max(64);
 
 const BillingV2QuantitiesSchema = z.record(z.string().trim(), z.number().int().min(0));
@@ -530,8 +587,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          outcome: z.enum(["checkout_created", "subscription_updated"]),
+          outcome: z.enum(["checkout_created", "subscription_updated", "payment_action_required"]),
           checkoutUrl: z.string().optional(),
+          paymentUrl: z.string().optional(),
           subscriptionId: z.string().optional()
         })
       }
@@ -551,6 +609,10 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         email,
         returnPath: req.body.returnPath
       });
+
+      if (result.outcome === "payment_action_required") {
+        return { outcome: result.outcome, paymentUrl: result.paymentUrl };
+      }
 
       void server.services.telemetry
         .sendPostHogEvents({
@@ -591,7 +653,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          outcome: z.literal("upgraded"),
+          outcome: z.enum(["upgraded", "payment_action_required"]),
+          paymentUrl: z.string().optional(),
           subscriptionId: z.string().optional(),
           fromPlanKey: z.string().optional(),
           toPlanKey: z.string().optional()
@@ -608,6 +671,11 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         expectedPlanVersionId: req.body.expectedPlanVersionId,
         prorationDate: req.body.prorationDate
       });
+
+      // Nothing is upgraded until the bank approves the charge.
+      if (result.outcome === "payment_action_required") {
+        return result;
+      }
 
       void server.services.telemetry
         .sendPostHogEvents({
@@ -665,8 +733,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          outcome: z.enum(["checkout_created", "subscription_updated"]),
+          outcome: z.enum(["checkout_created", "subscription_updated", "payment_action_required"]),
           checkoutUrl: z.string().optional(),
+          paymentUrl: z.string().optional(),
           subscriptionId: z.string().optional()
         })
       }
@@ -691,8 +760,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        productId: z.string().trim(),
-        plan: z.string().trim()
+        productId: z.string().trim().min(1).max(255),
+        plan: z.string().trim().min(1).max(255),
+        returnPath: ReturnPathSchema
       }),
       response: {
         200: z.object({
@@ -711,6 +781,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         actor: buildActor(req.permission),
         productId: req.body.productId,
         plan: req.body.plan,
+        returnPath: req.body.returnPath,
         email
       });
 
@@ -758,6 +829,35 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/trial/confirm-payment",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "confirmBillingTrialPayment",
+      description:
+        "Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.",
+      params: z.object({ organizationId: z.string().trim().guid() }),
+      body: z.object({ returnPath: ReturnPathSchema }),
+      response: {
+        200: z.object({
+          outcome: z.enum(["checkout_created", "payment_action_required", "upgraded"]),
+          redirectUrl: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.confirmTrialPayment({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        returnPath: req.body.returnPath
       });
     }
   });

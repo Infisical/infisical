@@ -337,7 +337,7 @@ export const IsPending: Story = {
     docs: {
       description: {
         story:
-          "Use `isPending` to show a loading animation inside the button and disable interaction. The `Loader` swaps to its `inverse` tint automatically for the filled `default` variant."
+          "Use `isPending` to show a loading animation inside the button and disable interaction. The filled `default` variant uses the background token so its loader stays legible in both themes. Other variants follow their scope or semantic token, with neutral loaders for danger and uncolored controls."
       }
     }
   }

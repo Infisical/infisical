@@ -131,6 +131,7 @@ const entryLabel = (entry: TPkcs12Entry) =>
   entry.altNames || entry.commonName || entry.alias || entry.subject;
 
 type EntryRowProps = {
+  applicationId?: string;
   entry: TPkcs12Entry;
   isImported: boolean;
   isSelected: boolean;
@@ -147,6 +148,7 @@ type EntryRowProps = {
 };
 
 const KeystoreEntryRow = ({
+  applicationId,
   entry,
   isImported,
   isSelected,
@@ -224,6 +226,7 @@ const KeystoreEntryRow = ({
         <TableCell onClick={stopRowToggle}>
           {isSelected ? (
             <CertificateProfileSelect
+              applicationId={applicationId}
               options={profileOptions}
               isLoading={isProfilesLoading}
               value={profileId}
@@ -482,8 +485,8 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
 
       if (currentOrg && currentProject) {
         await navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
-          params: { orgId: currentOrg.id, projectId: currentProject.id, certificateId }
+          to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
+          params: { orgId: currentOrg.id, certificateId }
         });
       }
     } catch (error) {
@@ -685,6 +688,7 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
       <TableBody>
         {selectableEntries.map((entry) => (
           <KeystoreEntryRow
+            applicationId={applicationId}
             key={entry.fingerprintSha256}
             entry={entry}
             isImported={importedFingerprints.has(entry.fingerprintSha256)}
@@ -722,6 +726,7 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
           <FieldLabel>Certificate Profile (optional)</FieldLabel>
           <FieldContent>
             <CertificateProfileSelect
+              applicationId={applicationId}
               options={profileOptions}
               isLoading={isProfilesLoading}
               value={selectedProfileId}

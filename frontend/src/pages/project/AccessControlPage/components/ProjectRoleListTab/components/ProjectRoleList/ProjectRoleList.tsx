@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -39,6 +39,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -48,15 +49,20 @@ import {
   TableRow,
   type TableSortDirection
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
+import { getInstancePinningLink, getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -77,15 +83,17 @@ type RoleSortState = {
 };
 
 export const ProjectRoleList = () => {
-  const navigate = useNavigate();
+  const scopeVariant = useScopeVariant();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
     "deleteRole",
     "duplicateRole"
   ] as const);
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const projectId = currentProject?.id || "";
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(
     projectId,
@@ -95,13 +103,16 @@ export const ProjectRoleList = () => {
   const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteProjectRole();
 
   const handleRoleDelete = async () => {
-    const { id, name } = popUp?.deleteRole?.data as TProjectRole;
+    const { id, name } = popUp.deleteRole.data as TProjectRole;
     await deleteRole({
       projectId,
       projectType: currentProject?.type,
       id
     });
-    createNotification({ type: "success", text: `Project role "${name}" deleted` });
+    createNotification({
+      type: "success",
+      text: `${isCertManager ? "Role" : "Project role"} "${name}" deleted`
+    });
     handlePopUpClose("deleteRole");
   };
 
@@ -174,7 +185,7 @@ export const ProjectRoleList = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager ? "Roles" : "Project Roles"}
+            {projectsHidden ? "Roles" : "Project Roles"}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls" />
           </CardTitle>
           <CardDescription>
@@ -190,12 +201,12 @@ export const ProjectRoleList = () => {
               >
                 {(isAllowed) => (
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     onClick={() => handlePopUpOpen("role")}
                     isDisabled={!isAllowed}
                   >
                     <PlusIcon />
-                    Add Project Role
+                    {projectsHidden ? "Add Role" : "Add Project Role"}
                   </Button>
                 )}
               </ProjectPermissionCan>
@@ -211,7 +222,7 @@ export const ProjectRoleList = () => {
               <InputGroupInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={isCertManager ? "Search roles..." : "Search project roles..."}
+                placeholder={projectsHidden ? "Search roles..." : "Search project roles..."}
               />
             </InputGroup>
           </div>
@@ -221,10 +232,10 @@ export const ProjectRoleList = () => {
                 <EmptyTitle>
                   {/* eslint-disable-next-line no-nested-ternary */}
                   {roles?.length
-                    ? isCertManager
+                    ? projectsHidden
                       ? "No roles match search"
                       : "No project roles match search"
-                    : isCertManager
+                    : projectsHidden
                       ? "No roles available"
                       : "This project does not have any roles"}
                 </EmptyTitle>
@@ -319,27 +330,22 @@ export const ProjectRoleList = () => {
                       slug as ProjectMembershipRole
                     );
 
-                    const navigateToRole = () =>
-                      navigate({
+                    const roleLink =
+                      getInstancePinningLink(currentOrg.id, currentProject, `roles/${slug}`) ??
+                      ({
                         to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
                         params: {
+                          orgId: currentOrg.id,
                           projectId: currentProject.id,
                           roleSlug: slug
                         }
-                      });
+                      } as const);
 
                     return (
-                      <TableRow
-                        key={`role-list-${id}`}
-                        tabIndex={0}
-                        aria-label={`View ${name}`}
-                        onClick={navigateToRole}
-                        onKeyDown={(event) => {
-                          if (event.target !== event.currentTarget || event.key !== "Enter") return;
-                          navigateToRole();
-                        }}
-                      >
-                        <TableCell isTruncatable>{name}</TableCell>
+                      <TableRow key={`role-list-${id}`} linked>
+                        <TableCell isTruncatable>
+                          <RowLink {...roleLink}>{name}</RowLink>
+                        </TableCell>
                         <TableCell isTruncatable>{slug}</TableCell>
                         <TableCell>
                           <Badge variant="ghost">
@@ -374,15 +380,11 @@ export const ProjectRoleList = () => {
                                 a={ProjectPermissionSub.Role}
                               >
                                 {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      navigateToRole();
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
-                                    {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                  <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                    <Link {...roleLink}>
+                                      {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
+                                      {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                    </Link>
                                   </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
@@ -449,7 +451,10 @@ export const ProjectRoleList = () => {
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteProjectRoleDialog
         isOpen={popUp.deleteRole.isOpen}
-        roleName={(popUp?.deleteRole?.data as TProjectRole)?.name || "project role"}
+        roleName={
+          (popUp?.deleteRole?.data as TProjectRole)?.name ||
+          (isCertManager ? "role" : "project role")
+        }
         confirmationKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
         isPending={isDeletingRole}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}

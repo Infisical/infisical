@@ -1,5 +1,8 @@
 import { BadRequestError } from "@app/lib/errors";
 
+import { AGENT_VAULT_OAUTH_HEADER_NAME } from "../agent-vault-oauth/agent-vault-oauth-types";
+import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
+
 type TStoredRow = { id: string; encryptedValue: Buffer };
 
 /** `encryptedValue` is undefined when the caller omitted the value, which means "keep whatever is stored". */
@@ -34,17 +37,17 @@ const isUnchanged = (stored: Record<string, unknown>, columns: Record<string, un
  * hand-written call edit one row without first fetching the service for its ids. Ids are claimed in a first
  * pass, or swapping two rows' names would let the second claim the row the first was already given.
  */
-export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
+export const matchTransformationRows = <TRow extends TStoredRow>({
   existing,
   incoming,
   naturalKeyOfRow,
   subject
 }: {
   existing: TRow[];
-  incoming: TTransformationWrite<TColumns>[];
+  incoming: { id?: string; naturalKey: string }[];
   naturalKeyOfRow: (row: TRow) => string;
   subject: string;
-}): TTransformationPlan<TColumns> => {
+}): (TRow | undefined)[] => {
   const byId = new Map(existing.map((row) => [row.id, row]));
   const claimed = new Set<string>();
   const resolved = new Array<TRow | undefined>(incoming.length);
@@ -73,9 +76,25 @@ export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
     const stored = byKey.get(row.naturalKey);
     if (!stored) return;
     byKey.delete(row.naturalKey);
-    claimed.add(stored.id);
     resolved[index] = stored;
   });
+
+  return resolved;
+};
+
+export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
+  existing,
+  incoming,
+  naturalKeyOfRow,
+  subject
+}: {
+  existing: TRow[];
+  incoming: TTransformationWrite<TColumns>[];
+  naturalKeyOfRow: (row: TRow) => string;
+  subject: string;
+}): TTransformationPlan<TColumns> => {
+  const resolved = matchTransformationRows({ existing, incoming, naturalKeyOfRow, subject });
+  const claimed = new Set(resolved.flatMap((row) => (row ? [row.id] : [])));
 
   const plan: TTransformationPlan<TColumns> = { creates: [], updates: [], deleteIds: [] };
 
@@ -101,4 +120,36 @@ export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
   plan.deleteIds = existing.filter((row) => !claimed.has(row.id)).map((row) => row.id);
 
   return plan;
+};
+
+// Basic and OAuth have no header name in their config, but the proxy always writes Authorization for both.
+const credentialHeaderName = (credentialType: AgentVaultCredentialType, headerName?: string): string | null => {
+  switch (credentialType) {
+    case AgentVaultCredentialType.Bearer:
+      return headerName || "Authorization";
+    case AgentVaultCredentialType.OAuth:
+      return AGENT_VAULT_OAUTH_HEADER_NAME;
+    case AgentVaultCredentialType.Basic:
+      return "Authorization";
+    default:
+      return null;
+  }
+};
+
+// The proxy writes the credential last, so a collision costs the header rather than the token; refusing it
+// on write is what tells the author. Either half of a PATCH can introduce one, which is why both are read.
+export const assertCustomHeadersDoNotShadowCredential = (
+  config: { type: AgentVaultCredentialType; headerName?: string },
+  customHeaders: { name: string }[] | undefined
+) => {
+  if (!customHeaders?.length) return;
+  const credentialHeader = credentialHeaderName(config.type, config.headerName);
+  if (!credentialHeader) return;
+
+  const clash = customHeaders.find((header) => header.name.toLowerCase() === credentialHeader.toLowerCase());
+  if (clash) {
+    throw new BadRequestError({
+      message: `The ${credentialHeader} header is already set by the credential. Rename the custom header or change the credential.`
+    });
+  }
 };

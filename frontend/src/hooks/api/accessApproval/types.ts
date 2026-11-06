@@ -1,3 +1,8 @@
+import { DelegatedApprovalPolicyType } from "../delegatedApprovals/enums";
+import {
+  TDelegatedApprovalPolicyInput,
+  TDelegatedApprovalRequest
+} from "../delegatedApprovals/types";
 import { EnforcementLevel, PolicyType } from "../policies/enums";
 import { ProjectEnv } from "../projects/types";
 import { TProjectPermission } from "../roles/types";
@@ -21,6 +26,7 @@ export type TAccessApprovalPolicy = {
   bypassForMachineIdentities?: boolean;
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  delegatedApproval?: TDelegatedApprovalPolicyInput | null;
 };
 
 export enum ApproverType {
@@ -73,7 +79,7 @@ export type TApprovalPolicyBypasserInput =
 
 export type TAccessApprovalRequest = {
   id: string;
-  policyId: string;
+  policyId: string | null;
   privilegeId: string | null;
   requestedByUserId: string;
   requestedByUser: {
@@ -108,7 +114,7 @@ export type TAccessApprovalRequest = {
   // Set when the request was approved via break-glass without the required reviews.
   bypassReason?: string | null;
   policy: {
-    id: string;
+    id: string | null;
     name: string;
     approvals: number;
     approvers: {
@@ -127,7 +133,10 @@ export type TAccessApprovalRequest = {
     allowedSelfApprovals: boolean;
     maxTimePeriod?: string | null;
     requestExpirationTime?: string | null;
+    delegatedApproval?: { type: DelegatedApprovalPolicyType } | null;
   };
+
+  delegatedApproval?: TDelegatedApprovalRequest | null;
 
   reviewers: {
     isOrgMembershipActive: boolean;
@@ -200,13 +209,6 @@ export type TCreateAccessRequestDTO = {
   note?: string;
 } & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
 
-export type TUpdateAccessRequestDTO = {
-  requestId: string;
-  editNote: string;
-  temporaryRange: string;
-  projectSlug: string;
-};
-
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
   policyId?: string;
@@ -238,6 +240,7 @@ export type TCreateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  delegatedApproval?: TDelegatedApprovalPolicyInput;
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -255,6 +258,7 @@ export type TUpdateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  delegatedApproval?: TDelegatedApprovalPolicyInput | null;
 };
 
 export type TDeleteSecretPolicyDTO = {

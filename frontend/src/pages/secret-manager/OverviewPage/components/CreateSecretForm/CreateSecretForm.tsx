@@ -1,4 +1,4 @@
-import { ClipboardEvent, KeyboardEvent, useMemo, useRef, useState } from "react";
+import { ClipboardEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,6 +42,7 @@ import {
   FieldGroup,
   FieldLabel
 } from "@app/components/v3/generic/Field";
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -56,10 +57,25 @@ import {
   useGetOrCreateFolder,
   useGetWsTags
 } from "@app/hooks/api";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
+import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
+import {
+  overviewCountBucket,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
+import {
+  notifySecretsCreatedWithoutShare,
+  TNotifySecretsCreated
+} from "../../useNotifySecretsCreated";
 import { didAllSecretCreationsSucceed } from "./createSecretFormState";
+
+const MAX_SECRETS_PER_COMMIT = 1000;
+const MAX_TAGS_PER_COMMITTED_SECRET = 100;
 
 const formSchema = (enforceEncryptedMetadata: boolean) =>
   z
@@ -113,23 +129,35 @@ type TFormSchema = z.infer<ReturnType<typeof formSchema>>;
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
+export type TSecretEditChanges = {
+  value?: string;
+  secretComment?: string;
+  tags?: { id: string; slug: string }[];
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+  skipMultilineEncoding?: boolean;
+};
+
 type Props = {
   secretPath?: string;
   defaultSelectedEnvs?: { name: string; slug: string }[];
   onClose: () => void;
   isBatchMode?: boolean;
-  onBatchSecretCreate?: (params: {
-    env: string;
+  editSecret?: {
     key: string;
     value: string;
     comment?: string;
-    skipMultilineEncoding?: boolean;
     tags?: { id: string; slug: string }[];
     metadata?: { key: string; value: string; isEncrypted?: boolean }[];
-  }) => void;
+    skipMultilineEncoding?: boolean | null;
+    canEditButNotView: boolean;
+    isReadOnly: boolean;
+    onDirtyChange: (isDirty: boolean) => void;
+    onSubmit: (changes: TSecretEditChanges) => Promise<void>;
+  };
   // Called after the user actually creates a secret (non-batch path) so the parent can run the
   // activation nudge. The parent owns the nudge hook + modal state, so this stays a callback.
   onSecretCreated?: () => void;
+  notifySecretsCreated?: TNotifySecretsCreated;
   // Called when the user opts to bulk-upload secrets instead. The parent owns the import modal,
   // so it swaps popups; when the user pasted multiple KEY=VALUE pairs, the parsed set is passed
   // along so the modal can skip its upload step.
@@ -140,11 +168,21 @@ export const CreateSecretForm = ({
   secretPath = "/",
   defaultSelectedEnvs,
   onClose,
-  isBatchMode,
-  onBatchSecretCreate,
+  editSecret,
   onSecretCreated,
+  notifySecretsCreated = notifySecretsCreatedWithoutShare,
   onUploadSecrets
 }: Props) => {
+  const overviewTelemetry = useOverviewTelemetry();
+  const formOwner = useRef({ telemetry: overviewTelemetry, invocation: {} });
+  if (formOwner.current.telemetry !== overviewTelemetry)
+    formOwner.current = { telemetry: overviewTelemetry, invocation: {} };
+  useEffect(
+    () => () => {
+      formOwner.current.invocation = {};
+    },
+    []
+  );
   const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -167,6 +205,37 @@ export const CreateSecretForm = ({
     );
   }, [defaultSelectedEnvs, environments, permission, secretPath]);
 
+  const editValuesJson =
+    editSecret &&
+    JSON.stringify({
+      environments: defaultEnvs,
+      secrets: [
+        {
+          key: editSecret.key,
+          value: editSecret.value,
+          comment: editSecret.comment ?? "",
+          skipMultilineEncoding: editSecret.skipMultilineEncoding ?? false,
+          tags: editSecret.tags?.map((tag) => ({ label: tag.slug, value: tag.id })) ?? [],
+          metadata:
+            editSecret.metadata?.map((entry) => ({
+              ...entry,
+              isEncrypted: currentProject?.enforceEncryptedSecretManagerSecretMetadata
+                ? true
+                : (entry.isEncrypted ?? false)
+            })) ?? []
+        }
+      ]
+    });
+  const editValues = useMemo(() => {
+    if (!editValuesJson) return undefined;
+    const values = JSON.parse(editValuesJson) as TFormSchema;
+    values.secrets[0].metadata = values.secrets[0].metadata?.map((entry) => ({
+      ...entry,
+      id: crypto.randomUUID()
+    }));
+    return values;
+  }, [editValuesJson]);
+
   const {
     handleSubmit,
     control,
@@ -174,14 +243,25 @@ export const CreateSecretForm = ({
     setValue,
     getValues,
     watch,
-    formState: { isSubmitting, errors }
+    formState: { isSubmitting, errors, dirtyFields }
   } = useForm<TFormSchema>({
     resolver: zodResolver(
       formSchema(Boolean(currentProject?.enforceEncryptedSecretManagerSecretMetadata))
     ),
-    defaultValues: {
+    values: editValues,
+    resetOptions: { keepDirtyValues: true },
+    defaultValues: editValues ?? {
       environments: defaultEnvs,
-      secrets: [{ key: "", value: "", skipMultilineEncoding: false, metadata: [], tags: [] }]
+      secrets: [
+        {
+          key: "",
+          value: "",
+          comment: "",
+          skipMultilineEncoding: false,
+          metadata: [],
+          tags: []
+        }
+      ]
     }
   });
 
@@ -192,6 +272,8 @@ export const CreateSecretForm = ({
   } = useFieldArray({ control, name: "secrets" });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
+  const { mutateAsync: createCommit } = useCreateCommit();
+  const batchStore = useBatchStoreApi();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
     canReadTags ? projectId : ""
@@ -206,30 +288,97 @@ export const CreateSecretForm = ({
   const secretKeyInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const generateButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedEnvironments = watch("environments");
+  const isEditReadOnly = Boolean(editSecret?.isReadOnly);
+  const [hasEditedHiddenValue, setHasEditedHiddenValue] = useState(false);
+  const watchedValue = watch("secrets.0.value");
+  const hasValueChanges = Boolean(dirtyFields.secrets?.[0]?.value || hasEditedHiddenValue);
+  const hasEditChanges = Boolean(
+    hasValueChanges ||
+    Object.keys(dirtyFields.secrets?.[0] ?? {}).some((field) => field !== "value")
+  );
+  const onEditDirtyChange = editSecret?.onDirtyChange;
 
-  const handleFormSubmit = async ({ environments: selectedEnv, secrets }: TFormSchema) => {
-    if (isBatchMode && onBatchSecretCreate) {
-      secrets.forEach((secret) => {
-        const filteredMetadata = secret.metadata
-          ?.filter((metadata) => metadata.key && metadata.value)
-          .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
-        selectedEnv.forEach((env) => {
-          onBatchSecretCreate({
-            env: env.slug,
-            key: secret.key,
-            value: secret.value || "",
-            comment: secret.comment || undefined,
-            skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
-            tags: secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })),
-            metadata: filteredMetadata?.length ? filteredMetadata : undefined
-          });
-        });
-      });
-      onClose();
-      reset();
+  const handleValueChange = (value: string, onChange: (value: string) => void) => {
+    if (editSecret?.canEditButNotView && value === HIDDEN_SECRET_VALUE) {
+      setHasEditedHiddenValue(false);
+      onChange(editSecret.value);
       return;
     }
+    if (editSecret?.canEditButNotView) setHasEditedHiddenValue(true);
+    onChange(value);
+  };
+  useEffect(() => {
+    onEditDirtyChange?.(hasEditChanges);
+  }, [hasEditChanges, onEditDirtyChange]);
 
+  const handleFormSubmit = async ({ environments: selectedEnv, secrets }: TFormSchema) => {
+    const { invocation } = formOwner.current;
+    if (editSecret) {
+      if (isEditReadOnly || !hasEditChanges) return;
+      const secret = secrets[0];
+      const dirtySecret = dirtyFields.secrets?.[0];
+      await editSecret.onSubmit({
+        value: hasValueChanges ? (secret.value ?? "") : undefined,
+        secretComment: dirtySecret?.comment ? (secret.comment ?? "") : undefined,
+        tags: dirtySecret?.tags
+          ? (secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })) ?? [])
+          : undefined,
+        secretMetadata: dirtySecret?.metadata
+          ? (secret.metadata?.map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted })) ??
+            [])
+          : undefined,
+        skipMultilineEncoding: dirtySecret?.skipMultilineEncoding
+          ? secret.skipMultilineEncoding
+          : undefined
+      });
+      return;
+    }
+    const telemetry = overviewTelemetry;
+    const flow = {
+      action: "create" as const,
+      resourceType: "secret" as const,
+      source: "form" as const,
+      countBucket: overviewCountBucket(secrets.length * selectedEnv.length)
+    };
+    const attempt = telemetry.startFlow(flow);
+    const { currentContext, pendingChanges: storedPendingChanges } = batchStore.getState();
+    const isPendingContextTargeted =
+      currentContext?.secretPath === secretPath &&
+      selectedEnv.some((env) => env.slug === currentContext?.environment);
+    const reservedByPendingChange = new Set(
+      (isPendingContextTargeted ? storedPendingChanges.secrets : []).flatMap((change) => {
+        if (change.type === PendingAction.Create) return [change.secretKey];
+        return change.type === PendingAction.Update && change.newSecretName
+          ? [change.newSecretName]
+          : [];
+      })
+    );
+    const conflictingKeys = secrets
+      .map((secret) => secret.key)
+      .filter((key) => reservedByPendingChange.has(key));
+    if (conflictingKeys.length) {
+      attempt.flow({ ...flow, phase: "failed" });
+      createNotification({
+        type: "error",
+        text: `A pending change already uses ${conflictingKeys.map((key) => `"${key}"`).join(", ")}. Save or discard that change first.`
+      });
+      return;
+    }
+    if (selectedEnv.length === 1 && secrets.length > 1) {
+      const overTagLimitKeys = secrets
+        .filter((secret) => (secret.tags?.length ?? 0) > MAX_TAGS_PER_COMMITTED_SECRET)
+        .map((secret) => secret.key);
+      let limitError: string | undefined;
+      if (secrets.length > MAX_SECRETS_PER_COMMIT)
+        limitError = `You can create up to ${MAX_SECRETS_PER_COMMIT} secrets at once, and this has ${secrets.length}. Split them into smaller batches.`;
+      else if (overTagLimitKeys.length)
+        limitError = `A secret can have up to ${MAX_TAGS_PER_COMMITTED_SECRET} tags. Remove tags from ${overTagLimitKeys.map((key) => `"${key}"`).join(", ")}.`;
+      if (limitError) {
+        attempt.flow({ ...flow, phase: "failed" });
+        createNotification({ type: "error", text: limitError });
+        return;
+      }
+    }
     await Promise.all(
       selectedEnv.map(async (env) => {
         if (secretPath !== "/") {
@@ -254,7 +403,69 @@ export const CreateSecretForm = ({
           }
         }
       })
-    );
+    ).catch((error) => {
+      attempt.flow({ ...flow, phase: "failed" });
+      throw error;
+    });
+
+    if (selectedEnv.length === 1 && secrets.length > 1) {
+      const result = await createCommit({
+        projectId,
+        environment: selectedEnv[0].slug,
+        secretPath,
+        message: "",
+        pendingChanges: {
+          folders: [],
+          secrets: secrets.map((secret) => {
+            const filteredMetadata = secret.metadata
+              ?.filter((metadata) => metadata.key && metadata.value)
+              .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
+            return {
+              id: crypto.randomUUID(),
+              resourceType: "secret" as const,
+              type: PendingAction.Create as const,
+              secretKey: secret.key,
+              secretValue: secret.value || "",
+              secretComment: secret.comment || undefined,
+              skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
+              tags: secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })),
+              secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined,
+              timestamp: Date.now()
+            };
+          })
+        }
+      }).catch((error) => {
+        attempt.flow({ ...flow, commitKind: "batch", phase: "failed" });
+        throw error;
+      });
+      attempt.flow({
+        ...flow,
+        commitKind: "batch",
+        phase: result.approval ? "approval-requested" : "response-received"
+      });
+      if (result.approval) {
+        createNotification({
+          type: "info",
+          text: "Requested changes have been sent for review"
+        });
+      } else {
+        notifySecretsCreated(
+          result.secrets.created.length,
+          secrets.map((secret) => ({
+            environment: selectedEnv[0].slug,
+            key: secret.key,
+            value: secret.value,
+            tags: secret.tags?.map((tag) => tag.label)
+          }))
+        );
+        onSecretCreated?.();
+      }
+      if (attempt.isCurrent() && formOwner.current.invocation === invocation) {
+        onClose();
+        reset();
+      }
+      return;
+    }
 
     const promises = selectedEnv.flatMap((env) =>
       secrets.map(async (secret) => {
@@ -275,7 +486,8 @@ export const CreateSecretForm = ({
             tagIds: secret.tags?.map((tag) => tag.value),
             secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
           })),
-          environment
+          environment,
+          secret
         };
       })
     );
@@ -305,6 +517,20 @@ export const CreateSecretForm = ({
           .filter(Boolean) as string[]
       )
     ];
+    const responseCount = results.filter(
+      (result) => result.status === "fulfilled" && !("approval" in result.value)
+    ).length;
+    const approvalCount = results.filter(
+      (result) => result.status === "fulfilled" && "approval" in result.value
+    ).length;
+    const failureCount = results.filter((result) => result.status === "rejected").length;
+    attempt.flow({
+      ...flow,
+      phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
+      responseCountBucket: overviewCountBucket(responseCount),
+      approvalCountBucket: overviewCountBucket(approvalCount),
+      failureCountBucket: overviewCountBucket(failureCount)
+    });
 
     if (forApprovalEnvs.length) {
       createNotification({
@@ -316,12 +542,23 @@ export const CreateSecretForm = ({
     }
 
     if (updatedEnvs.length) {
-      createNotification({
-        type: "success",
-        text: `Secrets created in ${
-          updatedEnvs.length > 1 ? "environments" : "environment"
-        }: ${updatedEnvs.join(", ")}`
-      });
+      const createdSecrets = results.flatMap((result) =>
+        result.status === "fulfilled" && !("approval" in result.value)
+          ? [
+              {
+                environment: result.value.environment,
+                key: result.value.secret.key,
+                value: result.value.secret.value,
+                tags: result.value.secret.tags?.map((tag) => tag.label)
+              }
+            ]
+          : []
+      );
+      notifySecretsCreated(
+        new Set(createdSecrets.map(({ key }) => key)).size,
+        createdSecrets,
+        updatedEnvs.length > 1 ? `Added to ${updatedEnvs.length} environments` : undefined
+      );
 
       // The user just created a secret: let the parent check whether to surface the nudge.
       onSecretCreated?.();
@@ -332,13 +569,18 @@ export const CreateSecretForm = ({
       console.warn("failed to create secrets");
     }
 
-    if (allRequestsSucceeded) {
+    if (
+      allRequestsSucceeded &&
+      attempt.isCurrent() &&
+      formOwner.current.invocation === invocation
+    ) {
       onClose();
       reset();
     }
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>, index: number) => {
+    if (editSecret) return;
     const delimitters = [":", "="];
     const pastedContent = e.clipboardData.getData("text");
     const { key, value } = getKeyValue(pastedContent, delimitters);
@@ -393,6 +635,7 @@ export const CreateSecretForm = ({
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
+  const editSubmitLabel = "Save Changes";
 
   const handleFormKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
     // Allow Cmd+Enter (macOS) / Ctrl+Enter (other OSes) to submit the form.
@@ -418,11 +661,15 @@ export const CreateSecretForm = ({
           name="environments"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel htmlFor="create-secret-environments">Environments</FieldLabel>
+              <FieldLabel htmlFor="create-secret-environments">
+                {editSecret ? "Environment" : "Environments"}
+              </FieldLabel>
               <FieldContent>
                 <Combobox
                   id="create-secret-environments"
                   multiple
+                  isClearable={!editSecret}
+                  isDisabled={Boolean(editSecret)}
                   options={environments.filter((environment) =>
                     permission.can(
                       ProjectPermissionSecretActions.Create,
@@ -461,7 +708,7 @@ export const CreateSecretForm = ({
 
           return (
             <div
-              key={secretField.id}
+              key={editSecret ? "edit-secret" : secretField.id}
               className={twMerge(
                 "relative flex flex-col gap-4 rounded-md border border-transparent bg-transparent p-0 transition-[padding,background-color,border-color] duration-200 ease-out motion-reduce:transition-none",
                 secretFields.length > 1 && "border-border bg-container/50 p-4"
@@ -482,6 +729,7 @@ export const CreateSecretForm = ({
                             }}
                             id={`create-secret-${index}-key`}
                             value={field.value ?? ""}
+                            readOnly={Boolean(editSecret)}
                             onChange={(e) => {
                               const val = currentProject?.autoCapitalization
                                 ? e.target.value.toUpperCase()
@@ -554,8 +802,17 @@ export const CreateSecretForm = ({
                     <FieldContent className="col-span-2 row-start-2">
                       <InfisicalSecretInput
                         id={`create-secret-${index}-value`}
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
+                        autoFocus={Boolean(editSecret)}
+                        value={
+                          editSecret?.canEditButNotView && !hasValueChanges
+                            ? HIDDEN_SECRET_VALUE
+                            : (field.value ?? "")
+                        }
+                        onChange={(value) => handleValueChange(value, field.onChange)}
+                        isReadOnly={editSecret ? isEditReadOnly : undefined}
+                        canEditButNotView={editSecret?.canEditButNotView}
+                        secretPath={editSecret ? secretPath : undefined}
+                        environment={editSecret ? selectedEnvironments[0]?.slug : undefined}
                         onKeyDown={(event) => {
                           if (event.key === "Tab" && !event.shiftKey && !event.defaultPrevented) {
                             event.preventDefault();
@@ -564,10 +821,16 @@ export const CreateSecretForm = ({
                         }}
                         placeholder="Enter secret value..."
                       />
+                      {editSecret && hasValueChanges && !watchedValue && (
+                        <FieldDescription>
+                          Saving removes the value, not the secret.
+                        </FieldDescription>
+                      )}
                       <FieldError errors={[errors.secrets?.[index]?.value]} />
                     </FieldContent>
                     <div className="col-start-2 row-start-1 flex items-center">
                       <PasswordGenerator
+                        isDisabled={Boolean(editSecret && isEditReadOnly)}
                         trigger={
                           <Button
                             ref={(element) => {
@@ -580,7 +843,7 @@ export const CreateSecretForm = ({
                           </Button>
                         }
                         selectedEnvironments={selectedEnvironments}
-                        onUsePassword={field.onChange}
+                        onUsePassword={(value) => handleValueChange(value, field.onChange)}
                         projectId={projectId}
                         secretPath={secretPath}
                       />
@@ -601,6 +864,7 @@ export const CreateSecretForm = ({
                         id={`create-secret-${index}-comment`}
                         placeholder="Add a comment for this secret..."
                         className="max-h-32 min-h-[60px] resize-y"
+                        readOnly={editSecret ? isEditReadOnly : undefined}
                       />
                     </FieldContent>
                   </Field>
@@ -628,10 +892,11 @@ export const CreateSecretForm = ({
                                 </FieldDescription>
                               ) : (
                                 <Combobox
-                                  key={`${secretField.id}-${tagOptions.length}`}
+                                  key={`${editSecret ? "edit-secret" : secretField.id}-${tagOptions.length}`}
                                   id={`create-secret-${index}-tags`}
                                   multiple
                                   modal
+                                  isClearable={!editSecret}
                                   options={tagOptions}
                                   value={field.value ?? []}
                                   onValueChange={field.onChange}
@@ -648,6 +913,7 @@ export const CreateSecretForm = ({
                                   searchAriaLabel="Search tags"
                                   emptyMessage="No tags found."
                                   isLoading={isTagsLoading && canReadTags}
+                                  isDisabled={Boolean(editSecret && isEditReadOnly)}
                                   listFooter={
                                     canCreateTag && (
                                       <Button
@@ -700,6 +966,7 @@ export const CreateSecretForm = ({
                               id={`create-secret-${index}-multiline-encoding`}
                               variant="project"
                               checked={field.value}
+                              disabled={Boolean(editSecret && isEditReadOnly)}
                               onCheckedChange={field.onChange}
                             />
                           </Field>
@@ -735,6 +1002,7 @@ export const CreateSecretForm = ({
                                               {...inputField}
                                               id={`create-secret-${index}-metadata-${metadataIndex}-key`}
                                               placeholder="Enter key"
+                                              readOnly={Boolean(editSecret && isEditReadOnly)}
                                               className="h-8"
                                             />
                                             <FieldError errors={[error]} />
@@ -761,6 +1029,7 @@ export const CreateSecretForm = ({
                                               {...inputField}
                                               id={`create-secret-${index}-metadata-${metadataIndex}-value`}
                                               placeholder="Enter value"
+                                              readOnly={Boolean(editSecret && isEditReadOnly)}
                                               className="h-8"
                                             />
                                             <FieldError errors={[error]} />
@@ -789,7 +1058,8 @@ export const CreateSecretForm = ({
                                             size="default"
                                             checked={switchField.value}
                                             disabled={Boolean(
-                                              currentProject?.enforceEncryptedSecretManagerSecretMetadata
+                                              currentProject?.enforceEncryptedSecretManagerSecretMetadata ||
+                                              (editSecret && isEditReadOnly)
                                             )}
                                             onCheckedChange={switchField.onChange}
                                           />
@@ -809,6 +1079,7 @@ export const CreateSecretForm = ({
                                     size="xs"
                                     type="button"
                                     aria-label={`Remove metadata entry ${metadataIndex + 1}`}
+                                    isDisabled={Boolean(editSecret && isEditReadOnly)}
                                     className={twMerge(
                                       metadataIndex === 0 ? "mt-6.5" : "mt-0.5",
                                       "transition-transform hover:text-danger"
@@ -832,6 +1103,7 @@ export const CreateSecretForm = ({
                                 size="xs"
                                 type="button"
                                 className={metadata.length === 0 ? "mx-auto" : ""}
+                                isDisabled={Boolean(editSecret && isEditReadOnly)}
                                 onClick={() =>
                                   setValue(
                                     `secrets.${index}.metadata`,
@@ -870,6 +1142,7 @@ export const CreateSecretForm = ({
         <Button
           type="button"
           variant="outline"
+          className={editSecret ? "hidden" : undefined}
           onClick={() => {
             appendSecret({
               key: "",
@@ -894,16 +1167,30 @@ export const CreateSecretForm = ({
           </Button>
         )}
         <div className="ml-auto flex gap-2">
-          <Button onClick={onClose} variant="ghost" type="button">
+          <Button
+            onClick={() => {
+              formOwner.current.invocation = {};
+              if (!editSecret)
+                overviewTelemetry.flow({
+                  action: "create",
+                  resourceType: "secret",
+                  source: "form",
+                  phase: "canceled"
+                });
+              onClose();
+            }}
+            variant="ghost"
+            type="button"
+          >
             Cancel
           </Button>
           <Button
             isPending={isSubmitting}
-            isDisabled={isSubmitting}
+            isDisabled={isSubmitting || Boolean(editSecret && (isEditReadOnly || !hasEditChanges))}
             variant="project"
             type="submit"
           >
-            Create
+            {editSecret ? editSubmitLabel : "Create"}
           </Button>
         </div>
       </SheetFooter>

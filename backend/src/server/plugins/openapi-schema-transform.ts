@@ -69,11 +69,14 @@ const overrideJsonSchema = (ctx: { zodSchema: { _zod: { def: FreeformRecord } };
 };
 
 /**
- * Recursively removes properties marked with "x-hidden": true from the JSON schema.
- * This allows fields to be hidden from OpenAPI docs while still being validated.
- * Usage: .describe(JSON.stringify({ "x-hidden": true }))
+ * Removes properties and union variants marked with "x-hidden": true, so a field or variant can be
+ * hidden from the docs while still being validated. Usage: .describe(JSON.stringify({ "x-hidden": true }))
+ *
+ * It also flattens JSON Schema tuple form: OpenAPI 3.0 has no tuple type and requires `items` to be a
+ * single schema. keepHidden suppresses only the hiding, because the flattening is about producing valid
+ * OpenAPI rather than about hiding anything.
  */
-const removeHiddenProperties = (schema: FreeformRecord): FreeformRecord => {
+const removeHiddenProperties = (schema: FreeformRecord, keepHidden = false): FreeformRecord => {
   if (!schema || typeof schema !== "object") {
     return schema;
   }
@@ -86,10 +89,10 @@ const removeHiddenProperties = (schema: FreeformRecord): FreeformRecord => {
 
     for (const key of Object.keys(result.properties)) {
       const prop = result.properties[key];
-      if (prop?.["x-hidden"]) {
+      if (!keepHidden && prop?.["x-hidden"]) {
         hiddenKeys.push(key);
       } else {
-        filteredProperties[key] = removeHiddenProperties(prop);
+        filteredProperties[key] = removeHiddenProperties(prop, keepHidden);
       }
     }
 
@@ -104,28 +107,33 @@ const removeHiddenProperties = (schema: FreeformRecord): FreeformRecord => {
   }
 
   if (Array.isArray(result.items)) {
-    const variants = (result.items as FreeformRecord[]).map((v) => removeHiddenProperties(v));
+    const variants = (result.items as FreeformRecord[]).map((v) => removeHiddenProperties(v, keepHidden));
     if (result.additionalItems && typeof result.additionalItems === "object") {
-      const rest = removeHiddenProperties(result.additionalItems);
+      const rest = removeHiddenProperties(result.additionalItems, keepHidden);
       if (Object.keys(rest).length > 0) variants.push(rest);
     }
     delete result.additionalItems;
     const unique = variants.filter((v, i, arr) => arr.findIndex((x) => JSON.stringify(x) === JSON.stringify(v)) === i);
     result.items = unique.length === 1 ? unique[0] : { oneOf: unique };
   } else if (result.items) {
-    result.items = removeHiddenProperties(result.items);
+    result.items = removeHiddenProperties(result.items, keepHidden);
   }
 
   if (result.allOf && Array.isArray(result.allOf)) {
-    result.allOf = result.allOf.map(removeHiddenProperties);
+    result.allOf = result.allOf.map((v: FreeformRecord) => removeHiddenProperties(v, keepHidden));
   }
 
+  const visibleVariants = (variants: FreeformRecord[]) =>
+    variants
+      .filter((v) => keepHidden || !v?.["x-hidden"])
+      .map((v: FreeformRecord) => removeHiddenProperties(v, keepHidden));
+
   if (result.oneOf && Array.isArray(result.oneOf)) {
-    result.oneOf = result.oneOf.map(removeHiddenProperties);
+    result.oneOf = visibleVariants(result.oneOf);
   }
 
   if (result.anyOf && Array.isArray(result.anyOf)) {
-    result.anyOf = result.anyOf.map(removeHiddenProperties);
+    result.anyOf = visibleVariants(result.anyOf);
   }
 
   return result;
@@ -183,25 +191,36 @@ const zodToJsonConfig = { override: overrideJsonSchema as never };
 const upstreamJsonSchemaTransform = createJsonSchemaTransform({ zodToJsonConfig });
 export const jsonSchemaTransformObject = createJsonSchemaTransformObject({ zodToJsonConfig });
 
-export const jsonSchemaTransform: typeof upstreamJsonSchemaTransform = (document) => {
-  const schema = document.schema as (FastifySchema & { hide?: boolean }) | undefined;
-  if (!schema) return { schema: { hide: true }, url: document.url } as ReturnType<typeof upstreamJsonSchemaTransform>;
-  if (typeof schema.hide === "undefined") schema.hide = true;
+type TJsonSchemaTransform = typeof upstreamJsonSchemaTransform;
 
-  const result = upstreamJsonSchemaTransform(document);
-  const transformed = result.schema as FreeformRecord;
-  if (!transformed || transformed.hide) return result;
+// Routes are hidden by default, so the published spec only carries what a route explicitly opted into.
+// `full` lifts every suppression, which is what lets a client be generated for the complete surface
+// outside production.
+const createInfisicalJsonSchemaTransform =
+  ({ full }: { full: boolean }): TJsonSchemaTransform =>
+  (document) => {
+    const schema = document.schema as (FastifySchema & { hide?: boolean }) | undefined;
+    if (!schema) return { schema: { hide: !full }, url: document.url } as ReturnType<TJsonSchemaTransform>;
+    if (typeof schema.hide === "undefined") schema.hide = true;
 
-  for (const part of ["headers", "querystring", "body", "params"]) {
-    if (transformed[part]) transformed[part] = removeHiddenProperties(transformed[part]);
-  }
-  if (transformed.response) {
-    const stripProjectId = isCertManagerUrl(document.url);
-    for (const status of Object.keys(transformed.response)) {
-      let responseSchema = removeHiddenProperties(transformed.response[status]);
-      if (stripProjectId) responseSchema = stripPropertyDeep(responseSchema, "projectId");
-      transformed.response[status] = responseSchema;
+    const result = upstreamJsonSchemaTransform(full ? { ...document, schema: { ...schema, hide: false } } : document);
+    const transformed = result.schema as FreeformRecord;
+    if (!transformed || transformed.hide) return result;
+
+    for (const part of ["headers", "querystring", "body", "params"]) {
+      if (transformed[part]) transformed[part] = removeHiddenProperties(transformed[part], full);
     }
-  }
-  return result;
-};
+    if (transformed.response) {
+      const stripProjectId = !full && isCertManagerUrl(document.url);
+      for (const status of Object.keys(transformed.response)) {
+        let responseSchema = removeHiddenProperties(transformed.response[status], full);
+        if (stripProjectId) responseSchema = stripPropertyDeep(responseSchema, "projectId");
+        transformed.response[status] = responseSchema;
+      }
+    }
+    return result;
+  };
+
+export const jsonSchemaTransform = createInfisicalJsonSchemaTransform({ full: false });
+
+export const fullJsonSchemaTransform = createInfisicalJsonSchemaTransform({ full: true });

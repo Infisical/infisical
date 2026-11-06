@@ -1,6 +1,10 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Field, FieldDescription, FieldError, FieldLabel, Input } from "@app/components/v3";
+import {
+  CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS,
+  INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS
+} from "@app/helpers/pkiSyncs";
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
@@ -15,6 +19,7 @@ import { KempLoadMasterSyncOptions } from "./KempLoadMasterSyncOptions";
 import { LinuxServerSyncOptions } from "./LinuxServerSyncOptions";
 import { NameSchemaHoverCard } from "./NameSchemaHoverCard";
 import { NetScalerSyncOptions } from "./NetScalerSyncOptions";
+import { PaloAltoNetworksSyncOptions } from "./PaloAltoNetworksSyncOptions";
 import { SyncSwitchField } from "./SyncSwitchField";
 import { WindowsServerSyncOptions } from "./WindowsServerSyncOptions";
 
@@ -39,6 +44,9 @@ const renderDestinationOptions = (currentDestination: PkiSync, isUpdate?: boolea
       return <GcpCertificateManagerSyncOptions />;
     case PkiSync.NetScaler:
       return <NetScalerSyncOptions />;
+    case PkiSync.PaloAltoNetworks:
+    case PkiSync.PaloAltoNetworksSslTlsProfile:
+      return <PaloAltoNetworksSyncOptions />;
     case PkiSync.F5BigIp:
       return <F5BigIpSyncOptions />;
     case PkiSync.KempLoadMaster:
@@ -63,7 +71,7 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
         <SyncSwitchField
           name="syncOptions.canRemoveCertificates"
           id="can-remove-certificates"
-          label="Allow to remove certificates from destination"
+          label="Remove certificates from destination"
           description={
             <>
               When enabled, Infisical deletes a certificate from the destination once this sync
@@ -77,19 +85,18 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
         />
       )}
 
-      {currentDestination !== PkiSync.CloudflareCustomCertificate &&
-        currentDestination !== PkiSync.NutanixPrismCentral && (
-          <SyncSwitchField
-            name="syncOptions.includeRootCa"
-            id="include-root-ca"
-            label="Include root CA in certificate chain"
-            description="When enabled, the full certificate chain including the root CA is synced. When disabled, the root CA is excluded to reduce the chain size; most applications validate correctly with intermediate certificates only."
-          />
-        )}
+      {!INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS.includes(currentDestination) && (
+        <SyncSwitchField
+          name="syncOptions.includeRootCa"
+          id="include-root-ca"
+          label="Include root CA in certificate chain"
+          description="When enabled, the full certificate chain including the root CA is synced. When disabled, the root CA is excluded to reduce the chain size; most applications validate correctly with intermediate certificates only."
+        />
+      )}
 
       {renderDestinationOptions(currentDestination, isUpdate)}
 
-      {currentDestination !== PkiSync.NutanixPrismCentral && (
+      {!CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS.includes(currentDestination) && (
         <Controller
           control={control}
           name="syncOptions.certificateNameSchema"

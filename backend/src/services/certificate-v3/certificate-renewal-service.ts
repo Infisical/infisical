@@ -14,17 +14,16 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
-import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  caSupportsCapability,
+  CERTIFICATE_AUTHORITIES_TYPE_MAP
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   TProfileCustomExtension,
@@ -37,6 +36,15 @@ import {
   IssuerType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  CertificateApplicationAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
@@ -63,7 +71,8 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import {
   assertCanEditCertificate,
-  assertCanEditCertificateResult
+  assertCanEditCertificateResult,
+  assertCanRevokeCertificate
 } from "../certificate-common/certificate-permission-fns";
 import { TCertificateQuotaDeps } from "../certificate-common/certificate-quota-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
@@ -75,6 +84,7 @@ import {
   validateCertificateRequestLicense,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
+import { CertificateReissueMap } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import {
@@ -132,6 +142,7 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
     | "findById"
+    | "findByIdForUpdate"
     | "updateById"
     | "transaction"
     | "create"
@@ -162,13 +173,14 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "attachCertificate" | "transitionFromPending">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   quotaDeps: TCertificateQuotaDeps;
   recordQuotaUsage: (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => Promise<void>;
   resolveApplicationIdForProfile: TResolveApplicationIdForProfile;
@@ -230,6 +242,7 @@ export const certificateRenewalServiceFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationDAL,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
@@ -257,8 +270,11 @@ export const certificateRenewalServiceFactory = ({
       certificateRequestCreatedAt: Date;
       orgId: string;
     },
-    tx: Parameters<TCertificateDALFactory["updateById"]>[2]
+    tx: Knex
   ) => {
+    const lockedOriginalCert = await certificateDAL.findByIdForUpdate(originalCert.id, tx);
+    if (lockedOriginalCert) assertCertificateNotDeleted(lockedOriginalCert);
+
     const renewalUpdate: {
       profileId?: string | null;
       renewedFromCertificateId?: string;
@@ -288,6 +304,17 @@ export const certificateRenewalServiceFactory = ({
       orgId,
       tx
     });
+
+    await certificateAlertEventEmitter.emit(
+      {
+        certificateId: newCert.id,
+        projectId: originalCert.projectId,
+        orgId,
+        eventType: CertificateApplicationAlertEvent.Renewal,
+        applicationId: originalCert.applicationId ?? null
+      },
+      tx
+    );
   };
 
   const $finalizeRenewal = async ({
@@ -570,7 +597,7 @@ export const certificateRenewalServiceFactory = ({
     { certificateId, keySource }: { certificateId: string; keySource: CertificateRenewalKeySource },
     tx: Knex
   ) => {
-    const originalCert = await certificateDAL.findById(certificateId, tx);
+    const originalCert = await certificateDAL.findByIdForUpdate(certificateId, tx);
     if (!originalCert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
@@ -602,7 +629,12 @@ export const certificateRenewalServiceFactory = ({
     const originalCsr =
       !certificateSecret && keySource === CertificateRenewalKeySource.Reuse ? originatingRequest.csr : null;
 
-    if (keySource === CertificateRenewalKeySource.Reuse && !certificateSecret && !originalCsr) {
+    if (
+      !originalCert.deletedAt &&
+      keySource === CertificateRenewalKeySource.Reuse &&
+      !certificateSecret &&
+      !originalCsr
+    ) {
       throw new BadRequestError({
         message:
           "This certificate's key pair cannot be reused because Infisical holds neither its private key nor the signing request it was issued from. Renew with a new key pair, or for a CA-issued certificate supply a CSR generated from the existing key."
@@ -725,7 +757,8 @@ export const certificateRenewalServiceFactory = ({
     keySource,
     originalSignatureAlgorithm,
     originalKeyAlgorithm,
-    profileCustomExtensions
+    profileCustomExtensions,
+    maxTtlDays
   }: {
     originalCert: TCertificates;
     policy: Parameters<TCertificatePolicyServiceFactory["validateRequestAgainstPolicy"]>[0];
@@ -736,6 +769,7 @@ export const certificateRenewalServiceFactory = ({
     originalSignatureAlgorithm?: CertSignatureAlgorithm;
     originalKeyAlgorithm?: CertKeyAlgorithm;
     profileCustomExtensions?: TProfileCustomExtension[] | null;
+    maxTtlDays?: number;
   }) => {
     const originalTtl = certificateSpanToTtl(originalCert.notBefore, originalCert.notAfter);
 
@@ -777,7 +811,8 @@ export const certificateRenewalServiceFactory = ({
       });
     }
 
-    const ttl = mergedRequest.validity?.ttl || originalTtl;
+    const requestedTtl = mergedRequest.validity?.ttl || originalTtl;
+    const ttl = maxTtlDays && ms(requestedTtl) > ms(`${maxTtlDays}d`) ? `${maxTtlDays}d` : requestedTtl;
     const certificateRequest = { ...mergedRequest, validity: { ttl } };
 
     const validationResult = certificatePolicyService.validateRequestAgainstPolicy(policy, certificateRequest, {
@@ -1062,7 +1097,8 @@ export const certificateRenewalServiceFactory = ({
     removeRootsFromChain,
     renewalKeySource: requestedKeySource,
     csr,
-    attributes
+    attributes,
+    externalConfiguration
   }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
     internal?: boolean;
   }): Promise<TCertificateIssuanceResponse> => {
@@ -1103,6 +1139,8 @@ export const certificateRenewalServiceFactory = ({
           ? undefined
           : await $authorizeRenewal({ originalCert, profile, actorCtx, isEditingCertificate }, tx);
 
+        assertCertificateNotDeleted(originalCert);
+
         const { issuerType, ca, caType, policy } = await $resolveRenewalIssuer(
           {
             originalCert,
@@ -1114,6 +1152,25 @@ export const certificateRenewalServiceFactory = ({
           tx
         );
 
+        if (externalConfiguration?.reissue) {
+          if (!(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))) {
+            const reissuingCaNames = Object.values(CaType)
+              .filter((type) => caSupportsCapability(type, CaCapability.REISSUE_CERTIFICATES))
+              .map((type) => CERTIFICATE_AUTHORITIES_TYPE_MAP[type]);
+            throw new BadRequestError({
+              message: `Reissue is only available for certificates issued by these CAs: ${reissuingCaNames.join(", ")}.`
+            });
+          }
+          if (attributes?.ttl) {
+            throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
+          }
+          if (!CertificateReissueMap[caType]?.orderSchema.safeParse(originalCert.externalMetadata).success) {
+            throw new BadRequestError({
+              message: "This certificate has no order with its CA to reissue. Place a new order instead."
+            });
+          }
+        }
+
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
           policy,
@@ -1123,10 +1180,35 @@ export const certificateRenewalServiceFactory = ({
           keySource,
           originalSignatureAlgorithm,
           originalKeyAlgorithm,
-          profileCustomExtensions: profile?.defaults?.customExtensions
+          profileCustomExtensions: profile?.defaults?.customExtensions,
+          maxTtlDays:
+            externalConfiguration?.reissue && caType ? CertificateReissueMap[caType]?.maxValidityDays : undefined
         });
 
         changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });
+
+        if (externalConfiguration?.reissue && !internal) {
+          const requestedNames = new Set(
+            [
+              certificateRequest.commonName,
+              ...(certificateRequest.subjectAlternativeNames ?? []).map((san) => san.value)
+            ]
+              .filter(Boolean)
+              .map((name) => (name as string).trim().toLowerCase())
+          );
+          const isRemovingName = [originalCert.commonName, ...(originalCert.altNames?.split(",") ?? [])]
+            .filter(Boolean)
+            .some((name) => !requestedNames.has((name as string).trim().toLowerCase()));
+          if (isRemovingName) {
+            await assertCanRevokeCertificate({
+              certificate: originalCert,
+              ...actorCtx,
+              permissionService,
+              resourceMetadataDAL,
+              tx
+            });
+          }
+        }
 
         if (renewalAuth?.projectPermission) {
           assertCanEditCertificateResult({
@@ -1448,6 +1530,7 @@ export const certificateRenewalServiceFactory = ({
         state: renewalRequest.state,
         locality: renewalRequest.locality,
         isRenewal: true,
+        ...(externalConfiguration && { externalConfiguration }),
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id,
         basicConstraints: renewalBasicConstraints,
@@ -1519,6 +1602,8 @@ export const certificateRenewalServiceFactory = ({
       permissionService,
       resourceMetadataDAL
     });
+
+    assertCertificateNotDeleted(certificate);
 
     if (!certificate.profileId) {
       throw new BadRequestError({

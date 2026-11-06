@@ -908,7 +908,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorType: req.permission.type,
         relayName: req.body.relayName,
-        directAddress: req.body.directAddress
+        directAddress: req.body.directAddress,
+        tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined
       });
 
       await server.services.auditLog.createAuditLog({

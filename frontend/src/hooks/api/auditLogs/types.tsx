@@ -1,5 +1,6 @@
+import { AuditLogEventClass } from "../auditLogSettings/types";
 import { CaStatus } from "../ca";
-import { CrlReason } from "../certificates/enums";
+import { CertStatus, CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -14,6 +15,7 @@ export type AuditLogPostgresStorageStatus = {
 
 export type TGetAuditLogsFilter = {
   eventType?: EventType[];
+  eventClass?: AuditLogEventClass[];
   userAgentType?: UserAgentType;
   eventMetadata?: Record<string, string>;
   actorType?: ActorType;
@@ -629,6 +631,7 @@ interface GetCaCsr {
   metadata: {
     caId: string;
     dn: string;
+    maxPathLength?: number;
   };
 }
 
@@ -654,6 +657,29 @@ interface ImportCaCert {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ImportCaCrossSignedCert {
+  type: EventType.IMPORT_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
+    replacedSerialNumber?: string;
+  };
+}
+
+interface DeleteCaCrossSignedCert {
+  type: EventType.DELETE_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
   };
 }
 
@@ -700,7 +726,8 @@ interface DeleteCert {
     serialNumber: string;
     notAfter: string;
     source: string;
-    deletionAllowedReason: string;
+    statusAtDeletion?: CertStatus;
+    deletionAllowedReason?: string;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -976,6 +1003,26 @@ interface PamAccessPolicyBypassedEvent {
   };
 }
 
+interface PamAccessRequestAutoApprovedEvent {
+  type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
+  metadata: {
+    approvalRequestId: string;
+    grantId?: string;
+    accountId?: string;
+    accountName?: string;
+    folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    duration?: string;
+    accessType: string;
+    ruleId: string | null;
+    ruleName?: string;
+    linkedRecords: { label: string; value: string }[];
+    conditions: string[];
+  };
+}
+
 interface CreateProjectFolderGrantEvent {
   type: EventType.CREATE_PROJECT_FOLDER_GRANT;
   metadata: {
@@ -1082,6 +1129,8 @@ export type Event =
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
+  | ImportCaCrossSignedCert
+  | DeleteCaCrossSignedCert
   | GetCaCrl
   | IssueCert
   | ImportCert
@@ -1116,6 +1165,7 @@ export type Event =
   | IntegrationSyncedEvent
   | ClearIdentityLdapAuthLockoutsEvent
   | PamAccessPolicyBypassedEvent
+  | PamAccessRequestAutoApprovedEvent
   | CreateProjectFolderGrantEvent
   | DeleteProjectFolderGrantEvent
   | CreateSecretFolderAccessEvent
@@ -1128,7 +1178,7 @@ export type AuditLog = {
   organization: string;
   workspace: string;
   ipAddress: string;
-  event: Event;
+  event: Event & { class: AuditLogEventClass };
   userAgent: string;
   userAgentType: UserAgentType;
   createdAt: string;

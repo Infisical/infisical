@@ -1,0 +1,79 @@
+---
+title: "Configure local scans"
+sidebarTitle: "Configuration"
+description: "Add your own detection rules to infisical scan and skip secrets you've decided are safe."
+---
+
+import ExtendFields from "/snippets/documentation/platform/secret-scanning/extend-fields.mdx";
+import RuleFields from "/snippets/documentation/platform/secret-scanning/rule-fields.mdx";
+import AllowlistFields from "/snippets/documentation/platform/secret-scanning/allowlist-fields.mdx";
+
+By default, `infisical scan` uses the scanner's built-in rules, which cover the credential formats of hundreds of services. To add your own rules or skip paths, use a configuration file. The file uses the same format as the [configuration for repository scans](/documentation/platform/secret-scanning/configuration).
+
+## Use a configuration file
+
+Create a file named `.infisical-scan.toml` in the directory you scan. To use a file with a different name or location, pass it with `--config` or set `INFISICAL_SCAN_CONFIG`.
+
+<Info>
+If more than one of these is set, the CLI uses the first one in this order:
+
+1. The `--config` flag
+2. The `INFISICAL_SCAN_CONFIG` environment variable
+3. `.infisical-scan.toml` in the directory you scan
+</Info>
+
+## Configuration format
+
+A configuration replaces the scanner's built-in rules unless it extends them.
+
+### Keep the built-in rules
+
+To keep the built-in rules and add yours to them, set `useDefault = true` in the `[extend]` table:
+
+```toml .infisical-scan.toml
+[extend]
+useDefault = true
+disabledRules = ["generic-api-key"]
+```
+
+<ExtendFields />
+
+<ResponseField name="path" type="string">
+Another configuration file to extend instead of the built-in rules, relative to the directory you run the CLI in. You can't set both `path` and `useDefault`.
+</ResponseField>
+
+### Add a rule
+
+Add a `[[rules]]` table for each kind of secret you want to detect:
+
+```toml .infisical-scan.toml
+[[rules]]
+id = "internal-api-token"
+description = "Internal API token"
+regex = '''itk_[a-z0-9]{32}'''
+keywords = ["itk_"]
+```
+
+<RuleFields />
+
+<ResponseField name="tags" type="string[]">
+Labels that appear on each finding the rule reports, in the `Tags` field of a report.
+</ResponseField>
+
+These are the fields most rules need. The scanner also accepts advanced fields, such as the ones that detect secrets made of several parts.
+
+## Allowlists
+
+To ignore secrets in specific files or commits, or secrets that match a pattern, add an `[[allowlists]]` table to the configuration file:
+
+```toml .infisical-scan.toml
+[[allowlists]]
+description = "Test fixtures and a rotated key"
+paths = ['''(^|/)testdata/''']
+commits = ["bea0ff6e05a4de73a5db625d4ae181a015b50855"]
+stopwords = ["example"]
+```
+
+<AllowlistFields />
+
+To ignore specific findings, or every finding that already exists in a repository, see [Ignore findings](/documentation/platform/secret-scanning/ignore-findings).

@@ -127,6 +127,8 @@ export type TCertificateMap = Record<
     cert: string;
     privateKey: string;
     certificateChain?: string;
+    // The stored chain before includeRootCa is applied.
+    fullCertificateChain?: string;
     caCertificate?: string;
     alternativeNames?: string[];
     certificateId?: string;
@@ -182,6 +184,7 @@ export type TUpdatePkiSyncDTO = {
   connectionId?: string;
   filters?: TPkiSyncFilters | null;
   credentials?: { exportPassword?: string };
+  removalOptions?: TPkiSyncRemovalOptions;
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
 };
@@ -222,6 +225,7 @@ export type TTriggerPkiSyncRemoveCertificatesByIdDTO = {
   id: string;
   projectId?: string;
   auditLogInfo: AuditLogInfo;
+  removalOptions?: TPkiSyncRemovalOptions;
 };
 
 export type TPreviewPkiSyncFiltersDTO = {
@@ -249,6 +253,7 @@ export type TPkiSyncFilterPreview = {
   matchedCount: number;
   certificates: TPkiSyncCertificateRef[];
   toUnlink: TPkiSyncCertificateRef[];
+  toUnlinkAtDestinationCount: number;
   willRemoveFromDestination: boolean;
 };
 
@@ -334,11 +339,14 @@ export type TQueuePkiSyncRunHealthCheckByIdDTO = {
   syncId: string;
 };
 
+export type TPkiSyncRemovalOptions = Record<string, unknown>;
+
 export type TQueuePkiSyncRemoveCertificatesByIdDTO = {
   syncId: string;
   auditLogInfo?: AuditLogInfo;
   deleteSyncOnComplete?: boolean;
   certificateIds?: string[];
+  removalOptions?: TPkiSyncRemovalOptions;
   failedToAcquireLockCount?: number;
 };
 

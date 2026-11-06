@@ -1,9 +1,4 @@
-import {
-  components as ReactSelectComponents,
-  type OptionProps,
-  type SingleValueProps
-} from "react-select";
-import { CheckIcon, KeyIcon } from "lucide-react";
+import { KeyIcon } from "lucide-react";
 
 import { ProviderIcon } from "@app/components/v3";
 
@@ -69,28 +64,3 @@ export const NetworkingAuthMethodLabel = ({
     </span>
   </span>
 );
-
-export const NetworkingAuthMethodOption = (props: OptionProps<NetworkingAuthMethodOption>) => {
-  const { data, isSelected } = props;
-
-  return (
-    <ReactSelectComponents.Option {...props}>
-      <span className="flex items-center justify-between gap-2">
-        <NetworkingAuthMethodLabel method={data.value} label={data.label} />
-        {isSelected && <CheckIcon className="size-4 shrink-0" />}
-      </span>
-    </ReactSelectComponents.Option>
-  );
-};
-
-export const NetworkingAuthMethodSingleValue = (
-  props: SingleValueProps<NetworkingAuthMethodOption>
-) => {
-  const { data } = props;
-
-  return (
-    <ReactSelectComponents.SingleValue {...props}>
-      <NetworkingAuthMethodLabel method={data.value} label={data.label} />
-    </ReactSelectComponents.SingleValue>
-  );
-};

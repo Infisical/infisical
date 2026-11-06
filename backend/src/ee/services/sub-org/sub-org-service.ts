@@ -2,13 +2,13 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
-import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
+import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
-import { AgentVaultIdentities, PamIdentities } from "@app/services/license-client";
+import { PamIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -122,7 +122,7 @@ export const subOrgServiceFactory = ({
         tx
       );
 
-      await bootstrapAgentVaultProject(
+      await bootstrapSecretScanningProject(
         {
           orgId: org.id,
           adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
@@ -136,7 +136,6 @@ export const subOrgServiceFactory = ({
     });
 
     usageMeteringService.emit(organization.id, PamIdentities.key);
-    usageMeteringService.emit(organization.id, AgentVaultIdentities.key);
 
     return {
       organization

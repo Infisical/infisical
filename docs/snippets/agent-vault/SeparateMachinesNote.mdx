@@ -1,0 +1,5 @@
+<Note>
+  Run the proxy on a different machine from the agent, on the same private network. If they run on the same machine, the agent can read the proxy token and the private key of the proxy's certificate authority. If they're on different networks, every request the agent makes takes longer.
+
+  We don't recommend running the agent on your own computer. The agent runs as your user account, so it can read your files and use your Infisical CLI login. Run the agent in a [container, a Kubernetes pod, or a sandbox](/documentation/platform/agent-vault/how-it-works#agent-environment) instead.
+</Note>

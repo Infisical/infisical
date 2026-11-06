@@ -9,11 +9,11 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { PersonalOverridesBehavior, SecretsOrderBy } from "../secret/secret-types";
-import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 
 type TSecretImportSecrets = {
@@ -65,7 +65,7 @@ type TSecretImportSecretsV2 = {
   })[];
 };
 
-const LEVEL_BREAK = 10;
+export const LEVEL_BREAK = 10;
 const getImportUniqKey = (envSlug: string, path: string) => `${envSlug}=${path}`;
 const RESERVED_IMPORT_REGEX = new RE2("/__reserve_replication_([a-f0-9-]{36})");
 
@@ -312,9 +312,8 @@ export const fnSecretsV2FromImports = async ({
 
   const processedImports: TSecretImportSecretsV2[] = [];
 
-  // `find` returns `projectId`, `findByFolderIds` returns `secretReminderRecipients`.
-  // Neither extra field is used downstream for imports, so we define a common base type
-  // by omitting both, allowing either result to be assigned without unsafe casts.
+  // `find` returns `projectId` and `findByFolderIds` does not. Imports never read it, so a common
+  // base type without it lets either result be assigned without unsafe casts.
   type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
   while (stack.length) {

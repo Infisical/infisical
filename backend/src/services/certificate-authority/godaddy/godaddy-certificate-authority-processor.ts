@@ -7,6 +7,10 @@ import { buildGoDaddySsoKeyHeader } from "@app/services/app-connection/godaddy/g
 import { getGoDaddyApiBaseUrl } from "@app/services/app-connection/godaddy/godaddy-connection-fns";
 import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy-connection-types";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -66,6 +70,7 @@ export type TProcessGoDaddyRequestDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TProcessGoDaddyRequestResult =
@@ -140,6 +145,8 @@ export const processGoDaddyPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.godaddy.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.godaddy.originalCertificateId,
       errorMessage: "Validation timed out after 24h"
     });
     logger.info(`GoDaddy validation timed out [certificateRequestId=${request.id}]`);
@@ -209,6 +216,13 @@ export const processGoDaddyPendingValidationRequest = async (
         );
       }
 
+      await deps.certificateAlertEventEmitter.notify({
+        certificateId,
+        projectId: request.projectId,
+        eventType: getIssuanceAlertEvent(parsed.godaddy.isRenewal),
+        applicationId: request.applicationId
+      });
+
       return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
     } catch (error) {
       // A renewal can report ISSUED/CURRENT while GoDaddy is still serving the previous certificate
@@ -226,6 +240,8 @@ export const processGoDaddyPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.godaddy.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.godaddy.originalCertificateId,
       errorMessage: `GoDaddy certificate ${orderStatus}`
     });
     logger.info(`GoDaddy certificate terminal state [certificateRequestId=${request.id}] [status=${orderStatus}]`);

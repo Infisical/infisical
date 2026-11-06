@@ -5,12 +5,12 @@ import { z } from "zod";
 import {
   Alert,
   AlertDescription,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -192,6 +192,19 @@ export const HOST_RANGE_SOURCES = {
     targetsPlaceholder: "192.168.1.10, db-primary.internal",
     targetsDescription:
       "IP addresses or hostnames of the instances to scan, one per line or comma-separated. CIDR ranges are not supported."
+  },
+  [PamDiscoveryType.MsSQL]: {
+    accountType: PamAccountType.MsSQL,
+    placeholder: "Select SQL Server accounts",
+    description:
+      "Accounts must use SQL Server authentication and hold VIEW ANY DEFINITION or ALTER ANY LOGIN to see every login. The account's database and TLS settings are reused for the connection.",
+    warning:
+      "The account password is sent to every instance scanned, including any you don't control. Only list hosts you trust.",
+    configKey: "hosts",
+    allowCidr: false,
+    targetsPlaceholder: "192.168.1.10, sql-primary.internal",
+    targetsDescription:
+      "IP addresses or hostnames of the instances to scan, one per line or comma-separated. CIDR ranges are not supported."
   }
 } as const;
 
@@ -264,14 +277,13 @@ export const CredentialAccountsField = ({
       name="credentialAccountIds"
       render={({ field, fieldState }) => (
         <Field>
-          <FieldLabel>Credential Accounts</FieldLabel>
+          <FieldLabel htmlFor="discovery-credential-accounts">Credential Accounts</FieldLabel>
           <FieldContent>
-            <FilterableSelect
-              isMulti
+            <Combobox
+              id="discovery-credential-accounts"
+              multiple
               value={matchingAccounts.filter((a) => field.value?.includes(a.id))}
-              onChange={(val) =>
-                field.onChange(((val as typeof matchingAccounts | null) ?? []).map((a) => a.id))
-              }
+              onValueChange={(val) => field.onChange(val.map((a) => a.id))}
               options={matchingAccounts}
               getOptionValue={(a) => a.id}
               getOptionLabel={(a) => (a.folderName ? `${a.folderName} / ${a.name}` : a.name)}
@@ -338,13 +350,13 @@ export const CredentialAccountField = ({
       name="credentialAccountId"
       render={({ field, fieldState }) => (
         <Field>
-          <FieldLabel>Credential Account</FieldLabel>
+          <FieldLabel htmlFor="discovery-credential-account">Credential Account</FieldLabel>
           <FieldContent>
-            <FilterableSelect
+            <Combobox
+              id="discovery-credential-account"
+              isClearable={false}
               value={credentialAccounts.find((a) => a.id === field.value) ?? null}
-              onChange={(val) =>
-                field.onChange((val as (typeof credentialAccounts)[number] | null)?.id ?? "")
-              }
+              onValueChange={(val) => field.onChange(val.id)}
               options={credentialAccounts}
               getOptionValue={(a) => a.id}
               getOptionLabel={(a) => (a.folderName ? `${a.folderName} / ${a.name}` : a.name)}

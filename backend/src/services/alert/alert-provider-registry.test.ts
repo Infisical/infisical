@@ -24,7 +24,7 @@ describe("alert provider registry", () => {
   });
 
   // Both guards fail boot in routes/index.ts rather than letting a dispatch silently no-op in prod.
-  test("rejects a scheduled event with no findDueTargets", () => {
+  test("rejects a scheduled event with no findScheduledTargets", () => {
     const registry = alertProviderRegistryFactory();
 
     expect(() =>
@@ -33,10 +33,10 @@ describe("alert provider registry", () => {
           events: [{ key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() }]
         })
       )
-    ).toThrow("does not implement findDueTargets");
+    ).toThrow("does not implement findScheduledTargets");
   });
 
-  test("rejects an event-triggered event with no findTargetsByIds", () => {
+  test("rejects an event-triggered event with no findEventTargets", () => {
     const registry = alertProviderRegistryFactory();
 
     expect(() =>
@@ -45,7 +45,7 @@ describe("alert provider registry", () => {
           events: [{ key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }]
         })
       )
-    ).toThrow("does not implement findTargetsByIds");
+    ).toThrow("does not implement findEventTargets");
   });
 
   test("accepts a provider that implements the method each of its events needs", () => {
@@ -58,8 +58,8 @@ describe("alert provider registry", () => {
             { key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() },
             { key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }
           ],
-          findDueTargets: async () => [],
-          findTargetsByIds: async () => []
+          findScheduledTargets: async () => [],
+          findEventTargets: async () => []
         })
       )
     ).not.toThrow();
@@ -73,8 +73,8 @@ describe("alert provider registry", () => {
           { key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() },
           { key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }
         ],
-        findDueTargets: async () => [],
-        findTargetsByIds: async () => []
+        findScheduledTargets: async () => [],
+        findEventTargets: async () => []
       })
     );
 

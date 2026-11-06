@@ -8,12 +8,12 @@ import { withoutDefault } from "@app/lib/zod";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  csrSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
@@ -24,6 +24,7 @@ import {
   CertificateRenewalKeySource,
   TCertificateIssuedResponse
 } from "@app/services/certificate-v3/certificate-v3-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { booleanSchema } from "../sanitizedSchemas";
 
@@ -138,6 +139,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateRequest: mappedCertificateRequest,
         removeRootsFromChain: req.body.removeRootsFromChain
@@ -219,7 +221,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           profileId: z.string().guid(),
-          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters"),
+          csr: csrSchema,
           ttl: z
             .string()
             .trim()
@@ -254,6 +256,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         csr: req.body.csr,
         validity: {
@@ -402,6 +405,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateOrder: certificateOrderObject,
         removeRootsFromChain: req.body.removeRootsFromChain
@@ -497,6 +501,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         certificateId: req.params.certificateId,
         removeRootsFromChain: req.body?.removeRootsFromChain
       });

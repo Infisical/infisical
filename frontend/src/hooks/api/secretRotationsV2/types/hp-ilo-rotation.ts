@@ -39,6 +39,7 @@ export type THpIloRotationOption = {
   name: string;
   type: SecretRotation.HpIloLocalAccount;
   connection: AppConnection.SSH;
+  additionalConnections?: AppConnection[];
   template: {
     secretsMapping: THpIloRotation["secretsMapping"];
   };

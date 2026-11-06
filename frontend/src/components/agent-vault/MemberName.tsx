@@ -1,11 +1,7 @@
 import { BotIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import {
-  TAgentVaultActor,
-  TAgentVaultMember,
-  TAgentVaultSessionActor
-} from "@app/hooks/api/agentVault/types";
+import { TAgentVaultActor, TAgentVaultSessionActor } from "@app/hooks/api/agentVault/types";
 
 export const MEMBER_KIND: Record<AgentVaultMemberType, { label: string; icon: typeof UserIcon }> = {
   [AgentVaultMemberType.User]: { label: "User", icon: UserIcon },
@@ -25,16 +21,16 @@ export const memberSubtitle = (actor: TAgentVaultActor | TAgentVaultSessionActor
   return actor.email || actor.username;
 };
 
-export const MemberName = ({ member }: { member: TAgentVaultMember }) => {
-  const { label, icon: Icon } = MEMBER_KIND[member.actor.type];
+export const MemberName = ({ member }: { member: TAgentVaultActor }) => {
+  const { label, icon: Icon } = MEMBER_KIND[member.type];
 
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       <Icon className="size-4 shrink-0 text-muted" />
       <span className="sr-only">{label}</span>
       <div className="min-w-0">
-        <div className="truncate">{memberDisplayName(member.actor)}</div>
-        <div className="truncate text-xs leading-4 text-muted">{memberSubtitle(member.actor)}</div>
+        <div className="truncate">{memberDisplayName(member)}</div>
+        <div className="truncate text-xs leading-4 text-muted">{memberSubtitle(member)}</div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-types */
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -125,10 +125,19 @@ export const sqlNestRelationships = <
   type Cm = MappedRecord<(typeof childrenMapper)[number]>;
 
   const recordsGroupedByPk: Record<string, P & Cm> = {};
+  const childLabels = childrenMapper.map(({ label }) => label);
   data.forEach((doc) => {
     const pk = doc[key];
     if (!lookupTable.has(pk)) {
-      recordsGroupedByPk[pk] = parentMapper(doc) as P & Cm;
+      const record = parentMapper(doc) as P & Cm;
+      // Children are added up front: adding them later by computed key switches every record to slow
+      // dictionary-mode objects, which cost several times the memory to hold and to copy.
+      recordsGroupedByPk[pk] = {
+        ...record,
+        ...Object.fromEntries(
+          childLabels.filter((label) => !record[label as keyof typeof record]).map((label) => [label, []])
+        )
+      };
       recordsOrder.push(pk);
       lookupTable.add(pk);
     }

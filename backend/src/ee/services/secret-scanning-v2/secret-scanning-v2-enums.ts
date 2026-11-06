@@ -12,8 +12,15 @@ export enum SecretScanningScanStatus {
 }
 
 export enum SecretScanningScanType {
-  FullScan = "full-scan",
-  DiffScan = "diff-scan"
+  Historical = "historical",
+  Realtime = "realtime"
+}
+
+export enum SecretScanningScanTrigger {
+  Manual = "manual",
+  ResourcesAdded = "resources-added",
+  Push = "push",
+  PullRequest = "pull-request"
 }
 
 export enum SecretScanningFindingStatus {
@@ -23,12 +30,27 @@ export enum SecretScanningFindingStatus {
   Ignore = "ignore"
 }
 
-export enum SecretScanningResource {
-  Repository = "repository",
-  Project = "project"
+export enum SecretScanningFindingOrderBy {
+  CreatedAt = "createdAt",
+  Rule = "rule",
+  ResourceName = "resourceName",
+  Author = "author",
+  Status = "status"
+}
+
+export enum SecretScanningResourceOrderBy {
+  Name = "name",
+  Status = "status",
+  LastScanned = "lastScanned"
 }
 
 export enum SecretScanningFindingSeverity {
+  High = "high",
+  Medium = "medium",
+  Low = "low"
+}
+
+export enum SecretScanningFindingConfidence {
   High = "high",
   Medium = "medium",
   Low = "low"

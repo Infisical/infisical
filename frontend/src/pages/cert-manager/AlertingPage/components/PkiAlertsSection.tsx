@@ -1,5 +1,13 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  ConfirmationAlertDialog
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useDeletePkiAlert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -33,29 +41,29 @@ export const PkiAlertsSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-foreground">Alerts</p>
-          <span className="rounded bg-surface-active px-2 py-0.5 text-xs tracking-wide text-foreground-secondary uppercase">
-            Legacy
-          </span>
-        </div>
-        <p className="text-xs text-label-secondary">Create new alerts inside an Application.</p>
-      </div>
-      <PkiAlertsTable handlePopUpOpen={handlePopUpOpen} />
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          Alerts <Badge variant="neutral">Legacy</Badge>
+        </CardTitle>
+        <CardDescription>Create new alerts inside an Application.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <PkiAlertsTable handlePopUpOpen={handlePopUpOpen} />
+      </CardContent>
       <PkiAlertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiAlert.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to remove the alert ${
           (popUp?.deletePkiAlert?.data as { name: string })?.name || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiAlert", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiAlert", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemoveAlertSubmit((popUp?.deletePkiAlert?.data as { alertId: string })?.alertId)
         }
       />
-    </div>
+    </Card>
   );
 };

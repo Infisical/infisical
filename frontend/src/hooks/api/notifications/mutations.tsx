@@ -68,3 +68,18 @@ export const useDeleteNotification = () => {
     }
   });
 };
+
+export const useDeleteAllNotifications = () => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg.id || "";
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      await apiRequest.delete("/api/v1/notifications/user");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificationKeys.list(orgId) });
+    }
+  });
+};

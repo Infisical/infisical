@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { DiscoveryDetailsByIDPage } from "./DiscoveryDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/$discoveryId"
 )({
   component: DiscoveryDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -13,10 +13,9 @@ export const Route = createFileRoute(
         {
           label: "Discovery",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery",
+            to: "/organizations/$orgId/cert-manager/discovery",
             params: {
-              orgId: params.orgId,
-              projectId: params.projectId
+              orgId: params.orgId
             }
           })
         },

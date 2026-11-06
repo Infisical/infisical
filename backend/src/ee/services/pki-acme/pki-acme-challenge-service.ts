@@ -1,6 +1,5 @@
-import { resolve4, Resolver } from "node:dns/promises";
-
 import { AxiosError, isAxiosError } from "axios";
+import { resolve4, Resolver } from "node:dns/promises";
 
 import { TPkiAcmeChallenges } from "@app/db/schemas/pki-acme-challenges";
 import { getConfig } from "@app/lib/config/env";

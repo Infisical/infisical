@@ -425,9 +425,9 @@ describe("redis cluster compatibility", () => {
     // Drive at least one enqueue tick (enqueueIntervalMs=100 in makeFactory).
     await vi.advanceTimersByTimeAsync(150);
 
-    // ENQUEUE_RUN_LUA is the only multi-key script (KEYS[1]=run, KEYS[2]=pending).
-    // Identify its eval call by numKeys === 2 (RELEASE_SLOT_IF_MINE_LUA uses 1).
-    const multiKeyEvalCalls = redis.eval.mock.calls.filter((c) => c[1] === 2);
+    // ENQUEUE_RUN_LUA is the only multi-key script (KEYS[1]=run, KEYS[2]=pending, KEYS[3]=last).
+    // Identify its eval call by numKeys === 3 (RELEASE_SLOT_IF_MINE_LUA uses 1).
+    const multiKeyEvalCalls = redis.eval.mock.calls.filter((c) => c[1] === 3);
     expect(multiKeyEvalCalls.length).toBeGreaterThan(0);
 
     for (const call of multiKeyEvalCalls) {
@@ -764,16 +764,16 @@ describe("derived jitter", () => {
   const expectedWindowMs = (intervalMs: number, maxJitterMs = MAX_JITTER_MS) =>
     Math.min(intervalMs * FRACTION, maxJitterMs, intervalMs - NEXT_FIRE_BUFFER_MS);
 
-  // ENQUEUE_RUN_LUA is the only two-key script:
-  //   eval(script, 2, runKey, pendingZset, name, scheduledAt, ttl, id, enqueuedAtMs, eligibleAt)
+  // ENQUEUE_RUN_LUA is the only three-key script:
+  //   eval(script, 3, runKey, pendingZset, lastKey, name, scheduledAt, ttl, id, enqueuedAtMs, eligibleAt, justBecameDue)
   const enqueuedRuns = (redis: ReturnType<typeof makeRedis>) =>
     redis.eval.mock.calls
-      .filter((c) => c[1] === 2)
+      .filter((c) => c[1] === 3)
       .map((c) => ({
-        name: String(c[4]),
-        scheduledAt: Number(c[5]),
-        id: String(c[7]),
-        eligibleAt: Number(c[9])
+        name: String(c[5]),
+        scheduledAt: Number(c[6]),
+        id: String(c[8]),
+        eligibleAt: Number(c[10])
       }));
 
   // Boots a manager, drives one enqueue tick, and returns what it wrote.

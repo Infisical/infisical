@@ -20,7 +20,7 @@ export const OvhSyncDestinationConfigSchema = z.object({
   )
     .refine((val) => new RE2("^([a-zA-Z0-9._-]+/)*[a-zA-Z0-9._-]+$").test(val), {
       message:
-        "Invalid OVH OKMS path format. Use alphanumerics, dots, dashes, underscores, and single slashes between segments."
+        "Invalid OVHcloud KMS path format. Use alphanumerics, dots, dashes, underscores, and single slashes between segments."
     })
     .describe(SecretSyncs.DESTINATION_CONFIG.OVH.path)
 });
@@ -44,7 +44,7 @@ export const UpdateOvhSyncSchema = GenericUpdateSecretSyncFieldsSchema(SecretSyn
 
 export const OvhSyncListItemSchema = z
   .object({
-    name: z.literal("OVH"),
+    name: z.literal("OVHcloud"),
     connection: z.literal(AppConnection.OVH),
     destination: z.literal(SecretSync.OVH),
     canImportSecrets: z.literal(true),

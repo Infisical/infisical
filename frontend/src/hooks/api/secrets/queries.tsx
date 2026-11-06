@@ -132,7 +132,6 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       comment: el.secretComment || "",
       reminderRepeatDays: el.secretReminderRepeatDays,
       reminderNote: el.secretReminderNote,
-      secretReminderRecipients: el.secretReminderRecipients,
       createdAt: el.createdAt,
       updatedAt: el.updatedAt,
       version: el.version,
@@ -228,7 +227,7 @@ export const useGetProjectSecretsAllEnv = ({
       enabled: Boolean(projectId && environment),
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
-          const { message, requestId } = error.response?.data as {
+          const { message, requestId } = (error.response?.data ?? {}) as {
             message: string;
             requestId: string;
           };

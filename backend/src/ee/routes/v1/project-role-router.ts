@@ -23,6 +23,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createProjectRoleV1",
       tags: [ApiDocsTags.ProjectRoles],
       description: "Create a project role",
       security: [
@@ -109,6 +110,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateProjectRoleV1",
       tags: [ApiDocsTags.ProjectRoles],
       description: "Update a project role",
       security: [
@@ -203,6 +205,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteProjectRoleV1",
       tags: [ApiDocsTags.ProjectRoles],
       description: "Delete a project role",
       security: [
@@ -272,6 +275,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectRolesV1",
       tags: [ApiDocsTags.ProjectRoles],
       description: "List project role",
       security: [
@@ -311,6 +315,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getProjectRoleBySlugV1",
       tags: [ApiDocsTags.ProjectRoles],
       params: z.object({
         projectId: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.projectId),
@@ -348,6 +353,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getProjectRoleByIdV1",
       tags: [ApiDocsTags.ProjectRoles],
       description: "Get a project role by ID",
       security: [
@@ -384,6 +390,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getProjectPermissionsV1",
       params: z.object({
         projectId: z.string().trim()
       }),

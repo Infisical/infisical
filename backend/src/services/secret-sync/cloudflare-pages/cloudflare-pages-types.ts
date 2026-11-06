@@ -12,7 +12,10 @@ export type TCloudflarePagesSyncListItem = z.infer<typeof CloudflarePagesSyncLis
 
 export type TCloudflarePagesSync = z.infer<typeof CloudflarePagesSyncSchema>;
 
-export type TCloudflarePagesSyncInput = z.infer<typeof CreateCloudflarePagesSyncSchema>;
+// Only a create defaults variableType; an update may leave it unset on syncs created before it existed.
+export type TCloudflarePagesSyncInput = Omit<z.infer<typeof CreateCloudflarePagesSyncSchema>, "destinationConfig"> & {
+  destinationConfig: z.infer<typeof CloudflarePagesSyncSchema>["destinationConfig"];
+};
 
 export type TCloudflarePagesSyncWithCredentials = TCloudflarePagesSync & {
   connection: TCloudflareConnection;

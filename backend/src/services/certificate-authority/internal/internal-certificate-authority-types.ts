@@ -3,8 +3,12 @@ import { z } from "zod";
 
 import { TCertificates } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { TProjectPermission } from "@app/lib/types";
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
+import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
@@ -12,13 +16,11 @@ import {
   CertKeyUsage,
   CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
-import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
-import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
-import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
+import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaRenewalType, CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
@@ -56,6 +58,8 @@ export type TCreateCaDTO =
       keyAlgorithm: CertKeyAlgorithm;
       keySource?: CertKeySource;
       hsmConnectorId?: string;
+      appConnectionId?: string;
+      region?: AWSRegion;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
       isOcspEnabled?: boolean;
@@ -77,8 +81,6 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
-      keySource?: CertKeySource;
-      hsmConnectorId?: string;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
       isOcspEnabled?: boolean;
@@ -358,7 +360,7 @@ export type TGetCaSignerDTO = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
   prefetched?: { kmsKeyId?: string };
 };
@@ -379,6 +381,19 @@ export type TGetCaCertChainDTO = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
 
+export type TBuildIssuedCertificateChainDTO = {
+  caId: string;
+  caCert: string;
+  caCertChain: string;
+  projectId: string;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findValidInCaHierarchy"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+};
+
 export type TRebuildCaCrlDTO = {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
@@ -387,7 +402,7 @@ export type TRebuildCaCrlDTO = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   certificateDAL: Pick<TCertificateDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
-  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
 };
 
 export type TRotateCaCrlTriggerDTO = {

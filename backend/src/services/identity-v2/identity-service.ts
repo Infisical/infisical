@@ -32,6 +32,7 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
@@ -42,12 +43,12 @@ import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "@app/services/super-admin/super-admin-fns";
 
 import { ActorType } from "../auth/auth-type";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
-import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
-import { filterRolesNeedingPrivilegeBoundary } from "../membership/membership-fns";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { assertProductWillRetainAdmin, filterRolesNeedingPrivilegeBoundary } from "../membership/membership-fns";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TIdentityV2DALFactory } from "./identity-dal";
 import { filterIdentitiesByProjectPermission, TProjectPermissionAbility } from "./identity-fns";
 import { TIdentityMembershipV2DALFactory } from "./identity-membership-dal";
@@ -346,6 +347,10 @@ export const identityV2ServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
 
+    if (data.name !== undefined && data.name !== existingIdentity.name && containsLogUnsafeCharacters(data.name)) {
+      throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
+    }
+
     const identity = await identityDAL.transaction(async (tx) => {
       // Compared against undefined: `hasDeleteProtection: false` is a real update, and a truthiness check
       // could never turn the flag off.
@@ -410,6 +415,24 @@ export const identityV2ServiceFactory = ({
     // Set the identity-wide PG revocation epoch atomically with the row delete
     // so any JWT issued for this identity (with iat < now) is rejected.
     const deletedIdentity = await identityDAL.transaction(async (tx) => {
+      if (scopeData.scope === AccessScope.Project) {
+        const project = await projectDAL.findById(scopeData.projectId, tx);
+        if (getAdminMemberOnlyProductLabel(project?.type)) {
+          const memberships = await membershipIdentityDAL.find(
+            {
+              scope: AccessScope.Project,
+              scopeProjectId: scopeData.projectId,
+              actorIdentityId: dto.selector.identityId
+            },
+            { tx }
+          );
+          await assertProductWillRetainAdmin({
+            project,
+            excludeMembershipIds: memberships.map(({ id }) => id),
+            tx
+          });
+        }
+      }
       await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: dto.selector.identityId, tx });
 
       await alertService.deleteAlertsForDeletedResource(

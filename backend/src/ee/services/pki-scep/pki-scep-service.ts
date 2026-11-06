@@ -16,11 +16,10 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -30,10 +29,12 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { assertCaSupportsCustomExtensions } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
+import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -44,6 +45,8 @@ import { TCertificateRequestServiceFactory } from "@app/services/certificate-req
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
@@ -86,7 +89,7 @@ type TPkiScepServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
   scepDynamicChallengeDAL: TScepDynamicChallengeDALFactory;
   scepTransactionDAL: TScepTransactionDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction" | "primaryNode">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find">;
@@ -95,7 +98,7 @@ type TPkiScepServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
@@ -104,7 +107,7 @@ type TPkiScepServiceFactoryDep = {
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog" | "createCollapsedAuditLog">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -281,7 +284,7 @@ export const pkiScepServiceFactory = ({
   type TScepContext = Awaited<ReturnType<typeof loadScepContext>>;
 
   const derToPem = (der: Buffer, label: string): string => {
-    return x509.PemConverter.encode(der, label);
+    return x509.PemConverter.encode(asNonSharedBuffer(der), label);
   };
 
   const $getValidationHandler = (challengeType: string) =>
@@ -417,7 +420,7 @@ export const pkiScepServiceFactory = ({
       throw new BadRequestError({ message: "No CSR found in SCEP enrollment request" });
     }
 
-    const csrObj = new x509.Pkcs10CertificateRequest(parsed.csr);
+    const csrObj = new x509.Pkcs10CertificateRequest(asNonSharedBuffer(parsed.csr));
     const challengePassword = extractScepChallengePassword(csrObj);
 
     const logEnrollmentEvent = (outcome: {
@@ -502,7 +505,6 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    const { ttl } = await resolveIssuanceParams(profile);
     const csrPem = derToPem(csrDer, "CERTIFICATE REQUEST");
 
     let result: TIssuanceResult;
@@ -514,8 +516,9 @@ export const pkiScepServiceFactory = ({
         caType,
         parsed,
         csrPem,
-        ttl,
-        applicationId
+        applicationId,
+        isRenewal: false,
+        clientIp
       });
     } catch (err) {
       // Notify the validator that post-validation issuance failed.
@@ -642,11 +645,11 @@ export const pkiScepServiceFactory = ({
       throw new BadRequestError({ message: "No CSR found in SCEP renewal request" });
     }
 
-    const csrObj = new x509.Pkcs10CertificateRequest(parsed.csr);
+    const csrObj = new x509.Pkcs10CertificateRequest(asNonSharedBuffer(parsed.csr));
 
     let signerCertObj: x509.X509Certificate | null = null;
     try {
-      signerCertObj = new x509.X509Certificate(parsed.signerCertDer);
+      signerCertObj = new x509.X509Certificate(asNonSharedBuffer(parsed.signerCertDer));
     } catch {
       signerCertObj = null;
     }
@@ -666,7 +669,10 @@ export const pkiScepServiceFactory = ({
 
     const storedSignerCert =
       isValidSigner && signerCertObj
-        ? await certificateDAL.findOne({ serialNumber: signerCertObj.serialNumber, caId: profile.caId! })
+        ? await certificateDAL.findOne(
+            { serialNumber: signerCertObj.serialNumber, caId: profile.caId! },
+            certificateDAL.primaryNode()
+          )
         : null;
 
     const certRequests =
@@ -724,6 +730,8 @@ export const pkiScepServiceFactory = ({
       const failReasonByDenyReason: Record<ScepRenewalDenyReason, string> = {
         [ScepRenewalDenyReason.InvalidSigner]:
           "Signer certificate is missing, malformed, expired, revoked, or does not chain to profile CA",
+        [ScepRenewalDenyReason.SignerDeleted]:
+          "Signer certificate was deleted and can no longer be renewed. Enroll a new certificate instead",
         [ScepRenewalDenyReason.WrongProfile]: "Signer certificate does not belong to this profile",
         [ScepRenewalDenyReason.WrongApplication]:
           "Signer certificate was not issued through the application handling this request",
@@ -765,7 +773,6 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    const { ttl } = await resolveIssuanceParams(profile);
     const csrPem = derToPem(Buffer.from(parsed.csr), "CERTIFICATE REQUEST");
 
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -775,8 +782,9 @@ export const pkiScepServiceFactory = ({
       caType,
       parsed,
       csrPem,
-      ttl,
-      applicationId
+      applicationId,
+      isRenewal: true,
+      clientIp
     });
 
     if (result.status === ScepIssuanceStatus.Pending) {
@@ -863,7 +871,7 @@ export const pkiScepServiceFactory = ({
 
   // For internal CAs signs directly via signCertificateFromProfile.
   // For external CAs, creates a cert request and queues async issuance.
-  const issueOrQueueCertificate = async ({
+  const $issueOrQueueCertificate = async ({
     profile,
     project,
     caType,
@@ -1033,6 +1041,50 @@ export const pkiScepServiceFactory = ({
     }
 
     return { status: ScepIssuanceStatus.Pending };
+  };
+
+  const issueOrQueueCertificate = async ({
+    isRenewal,
+    clientIp,
+    ...params
+  }: Omit<Parameters<typeof $issueOrQueueCertificate>[0], "ttl"> & { isRenewal: boolean; clientIp: string }) => {
+    try {
+      const { ttl } = await resolveIssuanceParams(params.profile);
+      return await $issueOrQueueCertificate({ ...params, ttl });
+    } catch (error) {
+      let operation =
+        params.caType === CaType.INTERNAL ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ORDER;
+      if (isRenewal) operation = CertificateIssuanceOperation.RENEW;
+
+      let commonName: string | undefined;
+      try {
+        commonName = extractCertificateRequestFromCSR(params.csrPem).commonName || undefined;
+      } catch {
+        commonName = undefined;
+      }
+
+      await recordCertificateIssuanceFailure(
+        { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
+        {
+          auditLogInfo: {
+            ipAddress: clientIp,
+            actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: params.profile.id } }
+          },
+          projectId: params.profile.projectId,
+          error,
+          metadata: {
+            operation,
+            enrollmentType: EnrollmentType.SCEP,
+            certificateProfileId: params.profile.id,
+            profileName: params.profile.slug,
+            caId: params.profile.caId,
+            commonName,
+            applicationId: params.applicationId
+          }
+        }
+      );
+      throw error;
+    }
   };
 
   const handleGetCertInitial = async ({

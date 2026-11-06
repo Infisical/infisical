@@ -4,19 +4,16 @@ import {
   AgentVaultIntroModal,
   useAgentVaultIntro
 } from "@app/components/agent-vault/AgentVaultIntro";
-import { useProjectPermission } from "@app/context";
-
-import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const AgentVaultLayout = () => {
-  const { assumedPrivilegeDetails } = useProjectPermission();
   const { isOpen, setOpen } = useAgentVaultIntro();
 
   return (
-    <>
-      {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
+    <div className="flex h-full w-full flex-col overflow-x-hidden">
       <AgentVaultIntroModal isOpen={isOpen} onOpenChange={setOpen} />
-      <Outlet />
-    </>
+      <div className="flex-1 overflow-x-hidden overflow-y-auto px-12 pt-10 pb-4">
+        <Outlet />
+      </div>
+    </div>
   );
 };

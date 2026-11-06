@@ -1,55 +1,77 @@
 ---
 title: "GitHub secret scanning"
 sidebarTitle: "GitHub"
-description: "Learn how to configure secret scanning for GitHub."
+icon: "/images/platform/secret-scanning/icons/github.svg"
+description: "Scan the repositories a GitHub Radar connection can access."
 ---
+
+To scan your GitHub repositories for leaked secrets, create a GitHub [data source](/documentation/platform/secret-scanning/scan-repositories) in Infisical.
 
 ## Prerequisites
 
-- Create a [GitHub Radar Connection](/integrations/app-connections/github-radar)
+- A [GitHub Radar Connection](/integrations/app-connections/github-radar)
 
 ## Create a GitHub data source in Infisical
 
 <Steps>
   <Step>
-    Navigate to your Secret Scanning Project's Dashboard and select the **Add Data Source** button.
+    Go to **Secret Scanning** > **Data Sources** and select **Add Data Source**.
     ![Secret Scanning Dashboard](/images/platform/secret-scanning/github/github-data-source-step-1.png)
   </Step>
   <Step>
-    Select the **GitHub** option.
+    Select **GitHub**.
     ![Select GitHub Option](/images/platform/secret-scanning/github/github-data-source-step-2.png)
   </Step>
   <Step>
-    Select the **GitHub Radar Connection** to use and configure which repositories you would like to scan. Then select **Next**.
+    Select the connection to use and the repositories to scan, then select **Next**.
     ![Data Source Configuration](/images/platform/secret-scanning/github/github-data-source-step-3.png)
 
-    - **GitHub Radar Connection** - the connection that has access to the repositories you want to scan.
-    - **Scan Repositories** - select which repositories you would like to scan.
-        - **All Repositories** - Infisical will scan all repositories associated with your connection.
-        - **Select Repositories** - Infisical will scan the selected repositories.
-    - **Auto-Scan Enabled** - whether Infisical should automatically perform a scan when a push is made to configured repositories.
+    - **GitHub Radar Connection**: The connection that can access the repositories you want to scan
+    - **Scan Repositories**: Which repositories Infisical scans
+        - **All Repositories**: Every repository the connection can access
+        - **Select Repositories**: Only the repositories you select in **Include Repositories**
+    - **Auto-Scan Enabled**: Whether Infisical scans each new push to the repositories
   </Step>
   <Step>
-    Give your data source a name and description (optional). Then select **Next**.
+    Enter a name and, optionally, a description for the data source, then select **Next**.
     ![Data Source Details](/images/platform/secret-scanning/github/github-data-source-step-4.png)
 
-    - **Name** - the name of the data source. Must be slug-friendly.
-    - **Description** (optional) - a description of this data source.
+    - **Name**: A name that contains only lowercase letters, numbers, and hyphens
+    - **Description** (optional): A description of the data source
   </Step>
   <Step>
-    Review your data source, then select **Create Data Source**.
+    Review the data source, then select **Create Data Source**.
     ![Data Source Review](/images/platform/secret-scanning/github/github-data-source-step-5.png)
   </Step>
   <Step>
-    Your **GitHub Data Source** is now available and will begin a full scan if **Auto-Scan** is enabled.
+    The data source appears in **Data Sources**. If auto-scan is enabled, Infisical starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of every repository.
     ![Data Source Created](/images/platform/secret-scanning/github/github-data-source-step-6.png)
   </Step>
   <Step>
-    You can view repositories and scan results by selecting your data source.
+    To see the data source's repositories and scan history, select the data source.
     ![Data Source Page](/images/platform/secret-scanning/github/github-data-source-step-7.png)
   </Step>
   <Step>
-    In addition, you can review any findings from the **Findings Page**.
+    To review the secrets the scans found, go to **Findings**. To learn what each finding contains and how to change its status, see [Findings](/documentation/platform/secret-scanning/findings).
     ![Findings Page](/images/platform/secret-scanning/github/github-data-source-step-8.png)
   </Step>
 </Steps>
+
+## Pull request checks
+
+If **Scan New Commits** is on for a GitHub data source, Infisical scans the commits of each pull request opened against a repository in the data source. Infisical reports the result as a check named **Infisical Secret Scanning** on the pull request, and scans the pull request again each time someone pushes to it.
+
+- If Infisical finds a secret in any commit of the pull request, the check fails and marks the file and line of each secret, unless the secret's finding is marked as a false positive or ignored
+- If Infisical can't finish the scan, the check fails, and you can re-run the check from the pull request
+- If Infisical finds no secrets, the check passes
+- If the pull request comes from a fork, Infisical doesn't scan it and marks the check as skipped, which doesn't block merging (Infisical scans its commits after they're merged into the repository)
+
+To stop a pull request that contains a secret from being merged, [require the check in a branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging).
+
+If the secrets on a failed check are false positives or safe to ignore, select **Skip: False positive** or **Skip: Ignore** on the check. Infisical sets that status on every [finding](/documentation/platform/secret-scanning/findings) the check failed on, records the GitHub user who selected it in the finding's comment, and runs the check again. Anyone with write access to the repository can select these.
+
+To stop Infisical from reporting a value in any repository, add it to the allowlist in your [scanning configuration](/documentation/platform/secret-scanning/configuration).
+
+<Note>
+  If your GitHub organization installed the app for your [GitHub Radar Connection](/integrations/app-connections/github-radar) before pull request checks were available, an organization owner has to accept the app's new permissions in GitHub before Infisical can check pull requests.
+</Note>

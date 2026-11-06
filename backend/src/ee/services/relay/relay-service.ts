@@ -13,14 +13,14 @@ import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
   getNotAfterWithClockSkew,
   getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -74,6 +74,9 @@ export const relayServiceFactory = ({
       if (existingInstanceRelayConfig) return existingInstanceRelayConfig;
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.InstanceRelayConfigInit()]);
+      // Re-read under the lock: a request that waited on it must not create a second one.
+      const lockedInstanceRelayConfig = await instanceRelayConfigDAL.findById(INSTANCE_RELAY_CONFIG_UUID, tx);
+      if (lockedInstanceRelayConfig) return lockedInstanceRelayConfig;
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       const rootCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
@@ -428,6 +431,9 @@ export const relayServiceFactory = ({
       }
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgRelayConfigInit(orgId)]);
+      // Re-read under the lock: a request that waited on it must not create a second one.
+      const lockedOrgRelayConfig = await orgRelayConfigDAL.findOne({ orgId }, tx);
+      if (lockedOrgRelayConfig) return lockedOrgRelayConfig;
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       const orgRelayCaCert = new x509.X509Certificate(instanceCAs.orgRelayPkiCaCertificate);
@@ -630,10 +636,10 @@ export const relayServiceFactory = ({
     relaySshServerCaPrivateKey
   }: {
     host: string;
-    relayPkiServerCaCertificate: Buffer;
+    relayPkiServerCaCertificate: Buffer<ArrayBuffer>;
     relayPkiServerCaPrivateKey: Buffer;
     relayPkiClientCaCertificateChain: Buffer;
-    relayPkiClientCaCertificate: Buffer;
+    relayPkiClientCaCertificate: Buffer<ArrayBuffer>;
     relaySshServerCaPrivateKey: Buffer;
     relaySshClientCaPublicKey: Buffer;
     orgId?: string;
@@ -735,9 +741,9 @@ export const relayServiceFactory = ({
     gatewayName: string;
     orgId: string;
     orgName: string;
-    relayPkiClientCaCertificate: Buffer;
+    relayPkiClientCaCertificate: Buffer<ArrayBuffer>;
     relayPkiClientCaPrivateKey: Buffer;
-    relayPkiServerCaCertificate: Buffer;
+    relayPkiServerCaCertificate: Buffer<ArrayBuffer>;
     relayPkiServerCaCertificateChain: Buffer;
     duration?: number;
   }) => {

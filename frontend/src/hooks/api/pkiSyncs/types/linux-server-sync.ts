@@ -14,6 +14,8 @@ export type TLinuxServerPkiSync = TRootPkiSync & {
     exportFormat?: PkiSyncExportFormat;
     pemCertificateExtension?: PemCertificateExtension;
     combineCertificateChain?: boolean;
+    keystoreAlias?: string;
+    includeTruststore?: boolean;
     includePrivateKey?: boolean;
     fileMode?: string;
     privateKeyFileMode?: string;

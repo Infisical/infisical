@@ -9,7 +9,12 @@ import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLim
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 
-import { ensureStepUpMfa, getStepUpSessionId, MfaStepUpResource } from "../mfa-step-up-fns";
+import {
+  ensureFactorEnrollmentStepUpMfa,
+  ensureStepUpMfa,
+  getStepUpSessionId,
+  MfaStepUpResource
+} from "../mfa-step-up-fns";
 
 const SantizedUserSchema = UsersSchema.omit({
   hashedPassword: true
@@ -269,6 +274,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       requireOrg: false
     }),
     handler: async (req) => {
+      await ensureFactorEnrollmentStepUpMfa(server, {
+        userId: req.permission.id,
+        tokenVersionId: getStepUpSessionId(req),
+        enrollingMethod: MfaMethod.TOTP
+      });
       return server.services.totp.registerUserTotp({
         userId: req.permission.id
       });
@@ -296,6 +306,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       requireOrg: false
     }),
     handler: async (req) => {
+      await ensureFactorEnrollmentStepUpMfa(server, {
+        userId: req.permission.id,
+        tokenVersionId: getStepUpSessionId(req),
+        enrollingMethod: MfaMethod.TOTP
+      });
       return server.services.totp.verifyUserTotpConfig({
         userId: req.permission.id,
         totp: req.body.totp
@@ -422,6 +437,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       requireOrg: false
     }),
     handler: async (req) => {
+      await ensureFactorEnrollmentStepUpMfa(server, {
+        userId: req.permission.id,
+        tokenVersionId: getStepUpSessionId(req),
+        enrollingMethod: MfaMethod.WEBAUTHN
+      });
       return server.services.webAuthn.generateRegistrationOptions({
         userId: req.permission.id
       });
@@ -464,6 +484,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       requireOrg: false
     }),
     handler: async (req) => {
+      await ensureFactorEnrollmentStepUpMfa(server, {
+        userId: req.permission.id,
+        tokenVersionId: getStepUpSessionId(req),
+        enrollingMethod: MfaMethod.WEBAUTHN
+      });
       return server.services.webAuthn.verifyRegistrationResponse({
         userId: req.permission.id,
         registrationResponse: req.body.registrationResponse as RegistrationResponseJSON,

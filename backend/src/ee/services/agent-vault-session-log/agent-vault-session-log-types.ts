@@ -1,9 +1,7 @@
 import { z } from "zod";
 
 import { OrgServiceActor, TGenericPermission } from "@app/lib/types";
-import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-enums";
 import type {
   AgentVaultSessionLogChunkCreateSchema,
   AgentVaultSessionLogSettingsUpdateSchema
@@ -13,36 +11,22 @@ export type TAgentVaultSessionLogScoped = { projectId: string; ctx: TGenericPerm
 
 export type TAgentVaultSessionScoped = TAgentVaultSessionLogScoped & { sessionId: string };
 
-export type TRecordChunkDTO = {
+export type TCreateChunkUploadUrlDTO = {
   proxyId: string;
   sessionId: string;
   chunk: z.infer<typeof AgentVaultSessionLogChunkCreateSchema>;
 };
 
 export type TListSessionLogsDTO = TAgentVaultSessionScoped & {
-  limit: number;
-  before?: string;
+  cursor?: string;
   from?: Date;
   to?: Date;
 };
 
 export type TTailSessionLogsDTO = TAgentVaultSessionScoped & {
-  limit: number;
-  receivedAfter?: Date;
+  cursor?: string;
 };
 
 export type TUpdateSessionLogSettingsDTO = TAgentVaultSessionLogScoped & {
   actor: OrgServiceActor;
 } & z.infer<typeof AgentVaultSessionLogSettingsUpdateSchema>;
-
-export type TResolvedSessionLogStorageConfig = {
-  appConnectionId: string;
-  bucket: string;
-  region: AWSRegion;
-  keyPrefix: string | null;
-};
-
-export type TAgentVaultSessionLogStorageUnavailable = {
-  reason: AgentVaultSessionLogStorageUnavailableReason;
-  message: string | null;
-};

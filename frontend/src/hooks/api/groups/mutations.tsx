@@ -78,6 +78,7 @@ export const useUpdateGroup = () => {
         });
       }
       queryClient.invalidateQueries({ queryKey: groupKeys.getGroupById(group.id) });
+      queryClient.invalidateQueries({ queryKey: userKeys.allOrgUserAccess });
     }
   });
 };
@@ -104,6 +105,7 @@ export const useDeleteGroup = () => {
         });
       }
       queryClient.invalidateQueries({ queryKey: groupKeys.getGroupById(group.id) });
+      queryClient.invalidateQueries({ queryKey: userKeys.allOrgUserAccess });
     }
   });
 };
@@ -126,6 +128,7 @@ export const useAddUserToGroup = () => {
     onSuccess: (_, { slug }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+      queryClient.invalidateQueries({ queryKey: userKeys.allOrgUserAccess });
       invalidateAllAudits(queryClient);
     }
   });
@@ -152,6 +155,7 @@ export const useRemoveUserFromGroup = () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+      queryClient.invalidateQueries({ queryKey: userKeys.allOrgUserAccess });
       invalidateAllAudits(queryClient);
     }
   });

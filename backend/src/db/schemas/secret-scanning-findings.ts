@@ -9,20 +9,20 @@ import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningFindingsSchema = z.object({
   id: z.string().guid(),
-  dataSourceName: z.string(),
-  dataSourceType: z.string(),
-  resourceName: z.string(),
-  resourceType: z.string(),
   rule: z.string(),
   severity: z.string(),
   status: z.string().default("unresolved"),
-  remarks: z.string().nullable().optional(),
+  triageComment: z.string().nullable().optional(),
   fingerprint: z.string(),
   details: z.unknown(),
-  projectId: z.string(),
-  scanId: z.string().guid().nullable().optional(),
+  scanId: z.string().guid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  resourceId: z.string().guid(),
+  confidence: z.string().nullable().optional(),
+  triagedByUserId: z.string().guid().nullable().optional(),
+  triagedAt: z.date().nullable().optional(),
+  resolvedAt: z.date().nullable().optional()
 });
 
 export type TSecretScanningFindings = z.infer<typeof SecretScanningFindingsSchema>;

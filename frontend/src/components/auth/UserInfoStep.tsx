@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -195,7 +195,7 @@ export default function UserInfoStep({
             )}
           </CardTitle>
           {isInvite ? (
-            <CardDescription className="ml-0.5 font-alliance text-base break-words text-accent">
+            <CardDescription className="ml-0.5 font-sans text-base break-words text-accent">
               Set up your Infisical account
             </CardDescription>
           ) : null}

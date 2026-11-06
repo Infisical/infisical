@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
+import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 
 import type {
   DataExplorerClientMessage,
@@ -213,7 +214,6 @@ export const useDataExplorerSession = ({
           response?: {
             data?: {
               error?: string;
-              message?: string;
               details?: {
                 mfaSessionId?: string;
                 mfaMethod?: string;
@@ -234,7 +234,7 @@ export const useDataExplorerSession = ({
           return;
         }
 
-        setErrorMessage(axiosErr?.response?.data?.message ?? "Failed to connect to database");
+        setErrorMessage(getAccessErrorMessage(err, "Failed to connect to database"));
         setIsConnecting(false);
         readyRejectRef.current?.(new Error("Failed to connect"));
       }

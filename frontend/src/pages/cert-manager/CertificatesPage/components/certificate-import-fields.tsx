@@ -1,17 +1,22 @@
-import { OptionProps } from "react-select";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
-import {
-  FilterableSelect,
-  Input,
-  ReactSelectOption,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3";
+import { Combobox, Input } from "@app/components/v3";
 import { useDigiCertConnectionListOrders } from "@app/hooks/api/appConnections/digicert";
 import { useListCasByProjectId } from "@app/hooks/api/ca";
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
+import { caKeys } from "@app/hooks/api/ca/queries";
+import { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
+import { TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles/queries";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  useAttachPkiApplicationProfiles,
+  useGetPkiApplicationPermissions
+} from "@app/hooks/api/pkiApplications";
+import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
 import { getCertificateImportReference, isCaTypeLinkable } from "./certificate-import-linkage";
 
@@ -25,25 +30,17 @@ export type ProfileOption = {
 
 type ReferenceOption = { value: string; label: string };
 
-const ProfileOptionRow = (props: OptionProps<ProfileOption>) => {
-  const { data, children } = props;
-
-  if (data.isLinkable) return <ReactSelectOption {...props}>{children}</ReactSelectOption>;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div>
-          <ReactSelectOption {...props}>
-            <span className="cursor-not-allowed opacity-40">{children}</span>
-          </ReactSelectOption>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="max-w-72">
-        Infisical can&apos;t manage the lifecycle of a certificate issued by this authority yet.
-      </TooltipContent>
-    </Tooltip>
-  );
+const toProfileOption = (profile: TCertificateProfile): ProfileOption => {
+  const caType = profile.caId
+    ? ((profile.certificateAuthority?.externalType as CaType) ?? CaType.INTERNAL)
+    : null;
+  return {
+    id: profile.id,
+    slug: profile.slug,
+    caId: profile.caId,
+    caType,
+    isLinkable: profile.caId ? isCaTypeLinkable(caType) : true
+  };
 };
 
 export const useCertificateImportProfiles = (applicationId?: string) => {
@@ -54,48 +51,121 @@ export const useCertificateImportProfiles = (applicationId?: string) => {
   });
 
   const profileOptions: ProfileOption[] = (data?.certificateProfiles ?? [])
-    .map((profile) => {
-      const caType = profile.caId
-        ? ((profile.certificateAuthority?.externalType as CaType) ?? CaType.INTERNAL)
-        : null;
-      return {
-        id: profile.id,
-        slug: profile.slug,
-        caId: profile.caId,
-        caType,
-        isLinkable: profile.caId ? isCaTypeLinkable(caType) : true
-      };
-    })
+    .map(toProfileOption)
     .sort((a, b) => Number(b.isLinkable) - Number(a.isLinkable));
 
   return { profileOptions, isProfilesLoading: isPending };
 };
 
 export const CertificateProfileSelect = ({
+  applicationId,
   options,
   isLoading,
   value,
   onChange
 }: {
+  applicationId?: string;
   options: ProfileOption[];
   isLoading: boolean;
   value?: string;
   onChange: (profileId?: string) => void;
-}) => (
-  <FilterableSelect<ProfileOption>
-    isLoading={isLoading}
-    isClearable
-    options={options}
-    components={{ Option: ProfileOptionRow }}
-    isOptionDisabled={(option) => !option.isLinkable}
-    value={options.find((option) => option.id === value) ?? null}
-    onChange={(selected) => onChange((selected as ProfileOption | null)?.id ?? undefined)}
-    getOptionLabel={(option) => option.slug}
-    getOptionValue={(option) => option.id}
-    placeholder="Select a profile..."
-    noOptionsMessage={() => "This application has no certificate profiles."}
-  />
-);
+}) => {
+  const queryClient = useQueryClient();
+  const { data: permissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const attach = useAttachPkiApplicationProfiles();
+  const [attachedProfileId, setAttachedProfileId] = useState<string>();
+  const { refetch } = useListCertificateProfiles({
+    applicationId,
+    limit: 100,
+    enabled: Boolean(applicationId)
+  });
+  const canAttach = permissionData?.permission.can(
+    PkiApplicationResourceActions.ManageProfiles,
+    PkiApplicationResourceSub.Application
+  );
+  const profileCreation = useProfileCreation<ProfileOption>(async (profile) => {
+    if (!applicationId || !canAttach) {
+      throw new Error(
+        "The profile was created, but you no longer have permission to attach it to this application."
+      );
+    }
+    const ca = queryClient
+      .getQueryData<TUnifiedCertificateAuthority[]>(caKeys.listCasByProjectId())
+      ?.find((option) => option.id === profile.caId);
+    if (profile.caId && (!ca || !isCaTypeLinkable(ca.type))) {
+      throw new Error(
+        "The profile was created, but its certificate authority cannot manage imported certificates. Cancel setup and choose a supported profile."
+      );
+    }
+    if (attachedProfileId !== profile.id) {
+      try {
+        await attach.mutateAsync({ applicationId, profileIds: [profile.id] });
+      } catch (error) {
+        let message =
+          "The profile was created, but attachment failed. Retry to attach it to this application.";
+        if (axios.isAxiosError<{ message?: unknown }>(error)) {
+          if (!error.response) {
+            message =
+              "The profile was created, but no response was received for the attachment request. Check your connection to Infisical, then retry.";
+          } else if (typeof error.response.data?.message === "string") {
+            const apiMessage = error.response.data.message.trim();
+            if (apiMessage) {
+              message = `The profile was created, but attachment failed: ${apiMessage}`;
+            }
+          }
+        }
+        throw new Error(message);
+      }
+      setAttachedProfileId(profile.id);
+    }
+    const result = await refetch();
+    const listedProfile = result.data?.certificateProfiles.find(
+      (option) => option.id === profile.id
+    );
+    if (result.isError || !listedProfile || !toProfileOption(listedProfile).isLinkable) {
+      throw new Error(
+        "The profile was attached, but the available profiles could not be refreshed. Retry to load and select it."
+      );
+    }
+    onChange(listedProfile.id);
+  });
+
+  return (
+    <Combobox<ProfileOption>
+      aria-label="Certificate profile"
+      isLoading={isLoading}
+      isClearable
+      options={options}
+      renderOption={(option) => (
+        <div className="min-w-0">
+          <p>{option.slug}</p>
+          {!option.isLinkable && (
+            <p className="text-xs whitespace-normal text-muted">
+              Infisical can&apos;t manage the lifecycle of a certificate issued by this authority
+              yet.
+            </p>
+          )}
+        </div>
+      )}
+      isOptionDisabled={(option) => !option.isLinkable}
+      value={options.find((option) => option.id === value) ?? null}
+      onValueChange={(selected) => onChange(selected?.id ?? undefined)}
+      getOptionLabel={(option) => option.slug}
+      getOptionValue={(option) => option.id}
+      placeholder="Select a profile..."
+      emptyMessage="This application has no certificate profiles."
+      creation={
+        canAttach && profileCreation
+          ? {
+              ...profileCreation,
+              emptyLabel: "Create and Attach Profile",
+              formatLabel: () => "Create and Attach Profile"
+            }
+          : undefined
+      }
+    />
+  );
+};
 
 export const useCertificateImportReference = (profile: ProfileOption | null) => {
   const reference = getCertificateImportReference(profile?.caType);
@@ -159,35 +229,16 @@ export const CertificateReferenceField = ({
   }
 
   return (
-    <FilterableSelect<ReferenceOption>
+    <Combobox<ReferenceOption>
+      aria-label={reference.optionsPlaceholder}
       isLoading={isOptionsLoading}
       isClearable
       options={referenceOptions}
       value={referenceOptions.find((option) => option.value === value) ?? null}
-      onChange={(selected) => onChange((selected as ReferenceOption | null)?.value ?? "")}
+      onValueChange={(selected) => onChange(selected?.value ?? "")}
       getOptionLabel={(option) => option.label}
       getOptionValue={(option) => option.value}
       placeholder={reference.optionsPlaceholder}
-      styles={{
-        control: (base) => ({ ...base, minHeight: "unset" }),
-        input: (base) => ({ ...base, "input:focus": { boxShadow: "none" } }),
-        menuPortal: (base) => ({ ...base, zIndex: 60, pointerEvents: "auto" }),
-        menu: (base) => ({
-          ...base,
-          width: "max-content",
-          minWidth: "100%",
-          maxWidth: "24rem",
-          overflowX: "auto"
-        }),
-        menuList: (base) => ({ ...base, width: "max-content", minWidth: "100%" }),
-        option: (base) => ({
-          ...base,
-          minWidth: "100%",
-          overflow: "visible",
-          textOverflow: "clip",
-          whiteSpace: "nowrap"
-        })
-      }}
     />
   );
 };

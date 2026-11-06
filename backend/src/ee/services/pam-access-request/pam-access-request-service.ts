@@ -1,7 +1,6 @@
 import { Knex } from "knex";
 
 import { TApprovalRequestGrants } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApprovalPolicyActions,
@@ -20,11 +19,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TWorkflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamAccessType } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
 import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamAccessApprovalResource } from "./pam-access-approval-resource";
 import { parseNotificationChannels, parseNotificationEvents } from "./pam-access-request-fns";
 import {
@@ -67,7 +66,6 @@ type TPamAccessRequestServiceFactoryDep = {
     "findByFolderIdWithIntegration" | "delete" | "insertMany" | "transaction"
   >;
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "find">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   approvalPolicyService: Pick<
     TApprovalPolicyServiceFactory,
     | "create"
@@ -80,7 +78,7 @@ type TPamAccessRequestServiceFactoryDep = {
     | "revokeGrant"
     | "getActiveGrant"
     | "getAccessStatuses"
-    | "getScopeIdsWithApprovers"
+    | "getRequestableScopes"
     | "getBypassableScopeIds"
     | "reapScope"
     | "reapSubject"
@@ -96,6 +94,17 @@ type TPamAccessRequestServiceFactoryDep = {
 
 export type TPamAccessRequestServiceFactory = ReturnType<typeof pamAccessRequestServiceFactory>;
 
+const toNotificationConfigKey = (config: {
+  workflowIntegrationId: string;
+  channels: { id: string }[];
+  events: string[];
+}) =>
+  JSON.stringify([
+    config.workflowIntegrationId,
+    config.channels.map((channel) => channel.id).sort(),
+    [...config.events].sort()
+  ]);
+
 export const pamAccessRequestServiceFactory = ({
   approvalPolicyDAL,
   approvalRequestDAL,
@@ -106,7 +115,6 @@ export const pamAccessRequestServiceFactory = ({
   identityDAL,
   pamFolderNotificationConfigDAL,
   workflowIntegrationDAL,
-  licenseService,
   approvalPolicyService,
   pamAccessApprovalResource
 }: TPamAccessRequestServiceFactoryDep) => {
@@ -171,7 +179,7 @@ export const pamAccessRequestServiceFactory = ({
       throw new NotFoundError({ message: "Folder not found" });
     }
 
-    const { steps, bypassers } = await approvalPolicyService.getScopeConfiguration(
+    const { steps, bypassers, autoApproval } = await approvalPolicyService.getScopeConfiguration(
       ApprovalPolicyType.PamAccess,
       ApprovalPolicyScope.PamFolder,
       folderId,
@@ -181,7 +189,8 @@ export const pamAccessRequestServiceFactory = ({
     return {
       steps: steps.map((step) => ({ approvers: step.approvers })),
       notificationConfigs: await getNotificationConfigs(folderId),
-      breakGlassUsers: bypassers
+      breakGlassUsers: bypassers,
+      autoApproval
     };
   };
 
@@ -191,6 +200,7 @@ export const pamAccessRequestServiceFactory = ({
     steps,
     notificationConfigs,
     breakGlassUsers,
+    autoApproval,
     ...ctx
   }: TSetApprovalConfigurationDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
@@ -207,9 +217,22 @@ export const pamAccessRequestServiceFactory = ({
     ];
 
     if (dedupedBreakGlassUsers.length > 0 && requestedApprovers.length === 0) {
-      throw new BadRequestError({
-        message: "Break-glass users can only be configured on a folder that has approvers"
-      });
+      // An omitted config leaves the stored rules in place, so they still count
+      const rules = autoApproval
+        ? autoApproval.rules
+        : (
+            await approvalPolicyService.getScopeConfiguration(
+              ApprovalPolicyType.PamAccess,
+              ApprovalPolicyScope.PamFolder,
+              folderId,
+              toApprovalActor(ctx)
+            )
+          ).autoApproval.rules;
+      if (!rules.length) {
+        throw new BadRequestError({
+          message: "Break-glass users can only be configured on a folder that has approvers or auto-approval rules"
+        });
+      }
     }
 
     await pamAccessApprovalResource.verifyPolicyActors?.({
@@ -219,16 +242,9 @@ export const pamAccessRequestServiceFactory = ({
       bypassers: dedupedBreakGlassUsers
     });
 
+    let removedNotificationConfigIds: string[] = [];
     if (notificationConfigs !== undefined) {
       if (notificationConfigs.length > 0) {
-        const plan = await licenseService.getPlan(ctx.actorOrgId);
-        if (!plan.pamSlackNotifications) {
-          throw new BadRequestError({
-            message:
-              "Failed to save notification configuration due to plan restriction. Upgrade plan to configure Slack notifications for PAM approvals."
-          });
-        }
-
         const integrationIds = [...new Set(notificationConfigs.map((c) => c.workflowIntegrationId))];
         const integrations = await workflowIntegrationDAL.find({ $in: { id: integrationIds } });
         const integrationById = new Map(integrations.map((i) => [i.id, i]));
@@ -246,21 +262,29 @@ export const pamAccessRequestServiceFactory = ({
         }
       }
 
-      await pamFolderNotificationConfigDAL.transaction(async (tx) => {
-        await pamFolderNotificationConfigDAL.delete({ folderId }, tx);
-        if (notificationConfigs.length > 0) {
-          await pamFolderNotificationConfigDAL.insertMany(
-            notificationConfigs.map((config) => ({
-              folderId,
-              workflowIntegrationId: config.workflowIntegrationId,
-              // arrays must be pre-serialized or knex binds them as PG arrays instead of jsonb
-              channels: JSON.stringify(config.channels),
-              events: JSON.stringify(config.events)
-            })),
-            tx
-          );
+      // Legacy Slack configs can only be removed, so every config sent back must match a stored one.
+      const unmatchedKeyById = new Map<string, string>(
+        (await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId)).map((row) => [
+          row.id,
+          toNotificationConfigKey({
+            workflowIntegrationId: row.workflowIntegrationId,
+            channels: parseNotificationChannels(row.channels),
+            events: parseNotificationEvents(row.events)
+          })
+        ])
+      );
+      for (const config of notificationConfigs) {
+        const key = toNotificationConfigKey(config);
+        const matchedId = [...unmatchedKeyById.keys()].find((id) => unmatchedKeyById.get(id) === key);
+        if (!matchedId) {
+          throw new BadRequestError({
+            message:
+              "Slack notifications on PAM folders can no longer be added or edited, only removed. Create an alert on the folder instead."
+          });
         }
-      });
+        unmatchedKeyById.delete(matchedId);
+      }
+      removedNotificationConfigIds = [...unmatchedKeyById.keys()];
     }
 
     const { policyId } = await approvalPolicyService.setScopeConfiguration(
@@ -270,6 +294,7 @@ export const pamAccessRequestServiceFactory = ({
       {
         steps: steps.map((step) => ({ requiredApprovals: 1, approvers: step.approvers })),
         ...(managesBreakGlass ? { bypassers: dedupedBreakGlassUsers } : {}),
+        ...(autoApproval ? { autoApproval } : {}),
         name: `PAM Folder Approval - ${folder.name}`,
         conditions: [],
         constraints: { accessDuration: { min: "30s", max: "7d" } }
@@ -277,12 +302,18 @@ export const pamAccessRequestServiceFactory = ({
       toApprovalActor(ctx)
     );
 
+    // Removed only once the policy saves, so a failed save keeps the Slack configs.
+    if (removedNotificationConfigIds.length > 0) {
+      await pamFolderNotificationConfigDAL.delete({ $in: { id: removedNotificationConfigIds } });
+    }
+
     return {
       policyId,
       folderId,
       stepCount: steps.length,
       notificationConfigCount: notificationConfigs?.length,
-      breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined
+      breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined,
+      autoApprovalRuleCount: autoApproval?.rules.length
     };
   };
 
@@ -373,6 +404,7 @@ export const pamAccessRequestServiceFactory = ({
     duration,
     accessType = PamAccessType.Session,
     breakGlass = false,
+    autoApprovalInputs,
     ...ctx
   }: TCreateAccessRequestDTO) => {
     const trimmedReason = reason?.trim() || undefined;
@@ -425,6 +457,8 @@ export const pamAccessRequestServiceFactory = ({
         },
         justification: trimmedReason,
         skipApproverNotification: breakGlass,
+        autoApprovalInputs,
+        skipAutoApproval: breakGlass,
         machineIdentityId: ctx.actor === ActorType.IDENTITY ? ctx.actorId : undefined,
         requesterName: requester.name,
         requesterEmail: requester.email
@@ -553,16 +587,25 @@ export const pamAccessRequestServiceFactory = ({
     return new Map(accountIds.map((accountId, i) => [accountId, statuses[i]]));
   };
 
-  // A folder counts as "configured" only when its policy has at least one approver, so an empty policy
-  // surfaces the unavailable flag.
-  const getFolderPolicyConfigured = async (folderIds: string[]): Promise<Set<string>> =>
-    new Set(
-      await approvalPolicyService.getScopeIdsWithApprovers(
-        ApprovalPolicyType.PamAccess,
-        ApprovalPolicyScope.PamFolder,
-        folderIds
-      )
+  // A folder is configured for an account when its policy has an approver, or auto-approval rules the account's
+  // template lets decide its requests. Anything else surfaces the unavailable flag.
+  const getFolderPolicyConfigured = async (folderIds: string[]) => {
+    const hasApproversByFolderId = new Map(
+      (
+        await approvalPolicyService.getRequestableScopes(
+          ApprovalPolicyType.PamAccess,
+          ApprovalPolicyScope.PamFolder,
+          folderIds
+        )
+      ).map(({ scopeId, hasApprovers }) => [scopeId, hasApprovers])
     );
+    return {
+      isConfiguredFor: (folderId: string, allowAutoApproval: boolean) => {
+        const hasApprovers = hasApproversByFolderId.get(folderId);
+        return hasApprovers !== undefined && (hasApprovers || allowAutoApproval);
+      }
+    };
+  };
 
   // Of the given folders, the ones where this actor is a named break-glass user. Drives whether the
   // account list offers the break-glass action at all.
@@ -604,7 +647,7 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    if (!account.folderId) return { steps: [] };
+    if (!account.folderId) return { steps: [], autoApprovalInputs: [], autoApprovalOnly: false };
 
     return approvalPolicyService.getApproverRoster(
       ApprovalPolicyType.PamAccess,

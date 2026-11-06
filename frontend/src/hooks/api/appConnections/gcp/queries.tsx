@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { appConnectionKeys } from "../queries";
 import {
   TGcpCertificateMap,
+  TGcpCloudDnsZone,
   TGcpLocation,
   TGcpProject,
   TListCertificateManagerResources,
@@ -30,7 +31,11 @@ const gcpConnectionKeys = {
       gcpProjectId
     ] as const,
   listCertificateMaps: ({ connectionId, gcpProjectId }: TListCertificateManagerResources) =>
-    [...gcpConnectionKeys.all, "certificate-maps", connectionId, gcpProjectId] as const
+    [...gcpConnectionKeys.all, "certificate-maps", connectionId, gcpProjectId] as const,
+  listCloudDnsProjects: (connectionId: string) =>
+    [...gcpConnectionKeys.all, "cloud-dns-projects", connectionId] as const,
+  listCloudDnsZones: ({ connectionId, gcpProjectId }: TListCertificateManagerResources) =>
+    [...gcpConnectionKeys.all, "cloud-dns-zones", connectionId, gcpProjectId] as const
 };
 
 export const useGcpConnectionListProjects = (
@@ -152,6 +157,57 @@ export const useGcpConnectionListCertificateMaps = (
     queryFn: async () => {
       const { data } = await apiRequest.get<TGcpCertificateMap[]>(
         `/api/v1/app-connections/gcp/${connectionId}/certificate-maps`,
+        { params: { gcpProjectId } }
+      );
+
+      return data;
+    },
+    ...options
+  });
+};
+
+export const useGcpConnectionListCloudDnsProjects = (
+  connectionId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TGcpProject[],
+      unknown,
+      TGcpProject[],
+      ReturnType<typeof gcpConnectionKeys.listCloudDnsProjects>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: gcpConnectionKeys.listCloudDnsProjects(connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGcpProject[]>(
+        `/api/v1/app-connections/gcp/${connectionId}/cloud-dns-projects`
+      );
+
+      return data;
+    },
+    ...options
+  });
+};
+
+export const useGcpConnectionListCloudDnsZones = (
+  { connectionId, gcpProjectId }: TListCertificateManagerResources,
+  options?: Omit<
+    UseQueryOptions<
+      TGcpCloudDnsZone[],
+      unknown,
+      TGcpCloudDnsZone[],
+      ReturnType<typeof gcpConnectionKeys.listCloudDnsZones>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: gcpConnectionKeys.listCloudDnsZones({ connectionId, gcpProjectId }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGcpCloudDnsZone[]>(
+        `/api/v1/app-connections/gcp/${connectionId}/cloud-dns-zones`,
         { params: { gcpProjectId } }
       );
 

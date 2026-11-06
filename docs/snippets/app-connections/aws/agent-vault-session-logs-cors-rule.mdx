@@ -1,0 +1,39 @@
+{/*
+Bare <Step> elements for adding Agent Vault's session logs CORS rule to the bucket, so a page can
+place them inside its own <Steps>. Used by integrations/app-connections/aws.mdx and
+documentation/platform/agent-vault/session-logs.mdx. The rule matches what the Session Logs
+dialog's View AWS Setup generates (AwsSetupDialog.tsx).
+*/}
+
+<Step>
+    In the Amazon S3 console, open the session logs bucket, go to **Permissions**, and select **Edit** under **Cross-origin resource sharing (CORS)**.
+</Step>
+<Step>
+    Paste this rule, then select **Save changes**. If the bucket already has CORS rules, add this rule's object to the existing array instead of replacing it, so other applications that use the bucket keep working:
+
+    <CodeGroup>
+        ```json Infisical Cloud (US)
+        [
+            {
+                "AllowedHeaders": ["*"],
+                "AllowedMethods": ["GET"],
+                "AllowedOrigins": ["https://app.infisical.com"],
+                "MaxAgeSeconds": 3000
+            }
+        ]
+        ```
+
+        ```json Infisical Cloud (EU)
+        [
+            {
+                "AllowedHeaders": ["*"],
+                "AllowedMethods": ["GET"],
+                "AllowedOrigins": ["https://eu.infisical.com"],
+                "MaxAgeSeconds": 3000
+            }
+        ]
+        ```
+    </CodeGroup>
+
+    If you self-host Infisical or use a dedicated instance, replace `AllowedOrigins` with your instance's URL.
+</Step>

@@ -1,7 +1,7 @@
-import { Helmet } from "react-helmet";
 import { LockKeyhole } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { PageTitle } from "@app/components/PageTitle";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 
 import { ShareSecretForm } from "./components";
@@ -9,16 +9,14 @@ import { ShareSecretForm } from "./components";
 export const ShareSecretPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Securely Share Secrets | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Securely Share Secrets" />
-        <meta
-          name="og:description"
-          content="Create an encrypted, expiring link for sensitive information."
-        />
-      </Helmet>
+      <PageTitle title="Securely Share Secrets" />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content="Securely Share Secrets" />
+      <meta
+        name="og:description"
+        content="Create an encrypted, expiring link for sensitive information."
+      />
       <AuthPageLayout variant="focused" contentClassName="max-w-xl">
         <Card>
           <CardHeader>

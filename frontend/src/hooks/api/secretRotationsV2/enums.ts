@@ -27,7 +27,9 @@ export enum SecretRotation {
   SnowflakeUserKeyPair = "snowflake-user-key-pair",
   CloudflareApiToken = "cloudflare-api-token",
   CloudflareR2AccessKey = "cloudflare-r2-access-key",
-  StripeApiKey = "stripe-api-key"
+  StripeApiKey = "stripe-api-key",
+  GcpServiceAccountKey = "gcp-service-account-key",
+  ClickHouseCredentials = "clickhouse-credentials"
 }
 
 export enum SecretRotationStatus {

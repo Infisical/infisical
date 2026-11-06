@@ -42,8 +42,16 @@ export const keyUsageDefaultOption: Record<
 export const formatKmsKeyAlgorithm = (algorithm: string): string =>
   algorithm.replaceAll("_", "-").toUpperCase();
 
+export const getAllowedSigningAlgorithms = (cmek: TCmek): SigningAlgorithm[] =>
+  Object.values(SigningAlgorithm).filter((a) => {
+    if (cmek?.algorithm?.startsWith("ML_DSA") || cmek?.algorithm === AsymmetricKeyAlgorithm.ED25519)
+      return (a as string) === (cmek.algorithm as string);
+    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
+    return a.toLowerCase().startsWith("ecdsa");
+  });
+
 export const getDefaultSigningAlgorithm = (cmek: TCmek): SigningAlgorithm => {
-  if (cmek?.algorithm?.startsWith("ML_DSA")) {
+  if (cmek?.algorithm?.startsWith("ML_DSA") || cmek?.algorithm === AsymmetricKeyAlgorithm.ED25519) {
     return cmek.algorithm as unknown as SigningAlgorithm;
   }
   if (cmek?.algorithm?.startsWith("RSA")) {

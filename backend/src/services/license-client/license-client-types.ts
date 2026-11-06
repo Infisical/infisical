@@ -21,13 +21,24 @@ const entitlementProductSchema = z
   })
   .passthrough();
 
+export const trialPaymentFailedNoticeSchema = z.object({
+  type: z.literal("trial_payment_failed"),
+  product_key: z.string(),
+  trial_plan_key: z.string().nullish(),
+  access_ends_at: z.string().datetime({ offset: true }),
+  next_attempt_at: z.string().datetime({ offset: true }).nullish(),
+  cause: z.string().nullish()
+});
+
 // `features` and `products` are load-bearing; passthrough tolerates the rest of the payload so
-// cloud/self-hosted version skew doesn't break reads.
+// cloud/self-hosted version skew doesn't break reads. Notices stay unknown here and are validated one
+// at a time in the projection, so a new or malformed notice can't fail the parse and drop the org to free.
 export const entitlementsResponseSchema = z
   .object({
     slug: z.string().nullish(),
     features: z.record(z.string(), entitlementFeatureSchema),
-    products: z.array(entitlementProductSchema).default([])
+    products: z.array(entitlementProductSchema).default([]),
+    notices: z.array(z.unknown()).optional().catch([])
   })
   .passthrough();
 
@@ -35,7 +46,29 @@ const catalogDimensionSchema = z
   .object({
     key: z.string(),
     label: z.string(),
-    noun: z.string()
+    noun: z.string(),
+    // "per_resource" | "metered"; aggregation ("sum" | "count" | "last") is how a metered period total is rated.
+    billingType: z.string().nullish(),
+    aggregation: z.string().nullish()
+  })
+  .passthrough();
+
+// One band of a metered price. upTo is inclusive and null on the last band; unitAmountDecimal is cents per
+// unit as a decimal string (sub-cent rates are exact). Stripe-style bands leave the unused amount null.
+const priceTierSchema = z
+  .object({
+    upTo: z
+      .number()
+      .nullish()
+      .transform((value) => value ?? null),
+    unitAmountDecimal: z
+      .string()
+      .nullish()
+      .transform((value) => value ?? "0"),
+    flatAmountCents: z
+      .number()
+      .nullish()
+      .transform((value) => value ?? 0)
   })
   .passthrough();
 
@@ -47,7 +80,9 @@ const catalogPlanPriceSchema = z
     // Permissive (like model/tier/cadence) so a new License Server kind can't break parsing; normalized in code.
     kind: z.string().default("per_unit"),
     unitAmountCents: z.number(),
-    includedQuantity: z.number().nullish()
+    includedQuantity: z.number().nullish(),
+    tiersMode: z.string().nullish(),
+    tiers: z.array(priceTierSchema).nullish()
   })
   .passthrough();
 
@@ -150,7 +185,48 @@ const subscriptionItemDimensionSchema = z
     commitAvailable: z.boolean().default(false),
     renewalDate: z.number().nullish(),
     canDecreaseNow: z.boolean().nullish(),
-    decreaseAllowedFrom: z.number().nullish()
+    decreaseAllowedFrom: z.number().nullish(),
+    // Metered only: the current billing window the License Server rated (and, for self-serve, reported to
+    // Stripe), priced through the org's pinned bands. earlierInPeriod is the part before a mid-period plan change.
+    usage: z
+      .object({
+        periodStart: z.number(),
+        periodEnd: z.number(),
+        asOf: z.number().nullish(),
+        estimatedAmountCents: z.number().nullish(),
+        currentTier: z
+          .number()
+          .nullish()
+          .transform((value) => value ?? 0),
+        nextTierAt: z.number().nullish(),
+        byTier: z.array(z.object({ quantity: z.number(), amountCents: z.number() }).passthrough()).default([]),
+        earlierInPeriod: z
+          .array(
+            z
+              .object({
+                periodStart: z.number(),
+                periodEnd: z.number(),
+                used: z.number(),
+                estimatedAmountCents: z.number().nullish()
+              })
+              .passthrough()
+          )
+          .default([]),
+        // The period rates a free trial: its usage is shown but never billed.
+        trial: z.boolean().default(false)
+      })
+      .passthrough()
+      .nullish()
+      // A malformed usage or pricing block must not fail the whole subscription parse (the org would read as Free).
+      .catch(undefined),
+    pricing: z
+      .object({
+        tiersMode: z.string(),
+        tiers: z.array(priceTierSchema).default([])
+      })
+      .passthrough()
+      .nullish()
+      .catch(undefined)
   })
   .passthrough();
 
@@ -169,6 +245,9 @@ const subscriptionItemSchema = z
     trialEndsAt: z.number().nullish(),
     trialPlan: z.string().nullish(),
     trialPlanEndsAt: z.number().nullish(),
+    trialPaymentDueAt: z.number().nullish(),
+    // An upgrade trial held for the customer's payment approval: trialPlan stays live until then.
+    trialPlanPaymentDueAt: z.number().nullish(),
     // Present only when this item's product OR plan is deprecated (product supersedes plan). The item
     // keeps working; this carries the contract-specific message (the sunset date comes from the catalog).
     deprecation: z.object({ reason: z.string().nullish(), nextSteps: z.string().nullish() }).nullish(),
@@ -191,7 +270,10 @@ const subscriptionLineSchema = z
     amountCents: z.number().nullish(),
     usageBased: z.boolean().default(false),
     currentPeriodStart: z.number().nullish(),
-    currentPeriodEnd: z.number().nullish()
+    currentPeriodEnd: z.number().nullish(),
+    // A metered line's rated usage this period and what it prices to.
+    usageQuantity: z.number().nullish(),
+    estimatedAmountCents: z.number().nullish()
   })
   .passthrough();
 
@@ -203,7 +285,9 @@ const subscriptionBillingSchema = z
     monthlyRecurringCents: z.number().default(0),
     annualRecurringCents: z.number().default(0),
     nextChargeAt: z.number().nullish(),
-    lines: z.array(subscriptionLineSchema).default([])
+    lines: z.array(subscriptionLineSchema).default([]),
+    // What this period's metered usage prices to across every line, in cents.
+    estimatedUsageCents: z.number().nullish()
   })
   .passthrough();
 
@@ -224,6 +308,7 @@ export const subscriptionResponseSchema = z
     currentPeriodEnd: z.number().nullish(),
     recurringTotal: z.number().nullish(),
     billing: subscriptionBillingSchema.nullish(),
+    payment: z.object({ state: z.string().nullish(), actionUrl: z.string().nullish() }).passthrough().nullish(),
     tier: z.string().optional(),
     items: z.array(subscriptionItemSchema)
   })
@@ -238,11 +323,14 @@ export const sessionResponseSchema = z
 // Result of a checkout / add / remove / commitment change. Checkout either needs the customer to
 // complete a Stripe Checkout (checkout_created) or is applied directly to an existing subscription
 // (subscription_updated). Removing the last product cancels the whole subscription
-// (subscription_canceled).
+// (subscription_canceled). payment_action_required: the card's bank wants the customer to approve the
+// charge on the Stripe invoice at paymentUrl. paymentUrl stays a plain string so a bad value can't fail
+// the parse; the service validates it.
 export const checkoutResultSchema = z
   .object({
-    outcome: z.enum(["checkout_created", "subscription_updated", "subscription_canceled"]),
+    outcome: z.enum(["checkout_created", "subscription_updated", "subscription_canceled", "payment_action_required"]),
     checkoutUrl: z.string().optional(),
+    paymentUrl: z.string().optional(),
     subscriptionId: z.string().optional()
   })
   .passthrough();
@@ -276,7 +364,8 @@ export const subscriptionPreviewResponseSchema = z
 
 export const upgradeResultSchema = z
   .object({
-    outcome: z.literal("upgraded"),
+    outcome: z.enum(["upgraded", "payment_action_required"]),
+    paymentUrl: z.string().optional(),
     subscriptionId: z.string().optional(),
     fromPlanKey: z.string().optional(),
     toPlanKey: z.string().optional(),
@@ -429,7 +518,8 @@ export type TCreatePortalPayload = {
 // The license server prices at its current time; the app never forwards a client-supplied instant.
 // productId is required: it names the product so the server can resolve the trialing plan and
 // create/attach the subscription when there isn't one yet (a trialing org) instead of having to infer
-// it. Not trialing the named product → product_not_trialing.
+// it. Not trialing the named product → product_not_trialing. Returns checkout_created when the org
+// has no subscription yet or when the card needs the customer to approve the charge.
 export type TChangeCommitmentsPayload = {
   productId: string;
   dimensions: TCommitmentChange[];
@@ -469,6 +559,28 @@ export type TCancelTrialPayload = {
   productKey: string;
 };
 
+export type TConfirmTrialPaymentPayload = {
+  returnUrl: string;
+};
+
+const httpUrlSchema = z
+  .string()
+  .url()
+  .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
+    message: "URL must start with http:// or https://"
+  });
+
+// Where the customer approves a trial conversion charge their bank held: a Stripe Checkout for a
+// free-tier trial, or the invoice of a change Stripe holds for an upgrade trial. 409
+// no_trial_awaiting_payment when nothing is waiting.
+const confirmTrialPaymentResultSchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("checkout_created"), checkoutUrl: httpUrlSchema }).passthrough(),
+  z.object({ outcome: z.literal("payment_action_required"), paymentUrl: httpUrlSchema }).passthrough(),
+  z.object({ outcome: z.literal("upgraded") }).passthrough()
+]);
+export type TConfirmTrialPaymentResult = z.infer<typeof confirmTrialPaymentResultSchema>;
+export { confirmTrialPaymentResultSchema };
+
 // Revokes the trialing entitlement immediately (product → free) and marks the trial completed so it
 // never converts. Idempotent-ish: the server 404s when there's no active trial to cancel.
 const trialCancelResultSchema = z.object({ outcome: z.literal("trial_completed") }).passthrough();
@@ -484,6 +596,9 @@ const trialHistoryItemSchema = z
     base_plan_key: z.string().nullish(),
     // trialing | converted | expired | canceled | completed | reverted
     outcome: z.string(),
+    // Why the trial ended (e.g. payment_not_completed). ended_detail is a machine code only on
+    // `reverted`; on `canceled` it is free text.
+    ended_reason: z.string().nullish(),
     ended_detail: z.string().nullish(),
     started_at: z.number().nullish(),
     trial_ends_at: z.number().nullish(),
@@ -516,6 +631,7 @@ export type TLicenseClientBackend = {
   startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
   // Cancel an in-progress trial for a product (product → free; the trial never converts).
   cancelTrial: (orgId: string, payload: TCancelTrialPayload) => Promise<TTrialCancelResult>;
+  confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   // The org's trial history, used to tell which products have already used their one-time trial.
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;

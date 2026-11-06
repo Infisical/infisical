@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Auth0ClientSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/auth0-client-secret-rotation-schema";
 import { AwsIamUserSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/aws-iam-user-secret-rotation-schema";
 import { AzureClientSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/azure-client-secret-rotation-schema";
+import { ClickHouseCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/clickhouse-credentials-rotation-schema";
 import { DatabricksServicePrincipalSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/databricks-service-principal-secret-rotation-schema";
 import { LdapPasswordRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/ldap-password-rotation-schema";
 import { MongoDBCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mongodb-credentials-rotation-schema";
@@ -22,6 +23,7 @@ import { DatadogApiKeyRotationSchema } from "./datadog-api-key-rotation-schema";
 import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application-key-secret-rotation-schema";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key-rotation-schema";
+import { GcpServiceAccountKeyRotationSchema } from "./gcp-service-account-key-rotation-schema";
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
 import { LiteLLMApiKeyRotationSchema } from "./litellm-api-key-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
@@ -68,7 +70,9 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         SnowflakeUserKeyPairRotationSchema,
         CloudflareApiTokenRotationSchema,
         CloudflareR2AccessKeyRotationSchema,
-        StripeApiKeyRotationSchema
+        StripeApiKeyRotationSchema,
+        GcpServiceAccountKeyRotationSchema,
+        ClickHouseCredentialsRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )

@@ -16,6 +16,7 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   defaultMembershipRole: true,
   enforceMfa: true,
   selectedMfaMethod: true,
+  ssoMfaTrust: true,
   allowSecretSharingOutsideOrganization: true,
   shouldUseNewPrivilegeSystem: true,
   privilegeUpgradeInitiatedByUsername: true,
@@ -31,6 +32,7 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   maxSharedSecretViewLimit: true,
   blockDuplicateSecretSyncDestinations: true,
   allowCrossProjectSecretSharing: true,
+  requireGatewayPools: true,
   rootOrgId: true,
   parentOrgId: true,
   secretShareBrandConfig: true

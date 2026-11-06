@@ -9,6 +9,7 @@ import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
@@ -107,6 +108,7 @@ export const PasswordSetupPage = () => {
 
   return (
     <AuthPageLayout variant="focused">
+      <PageTitle title="Set Password" />
       <form className="w-full" onSubmit={handleSubmit(handleSetPassword)}>
         <AuthPagePanel>
           <CardHeader className="mb-6 gap-2">

@@ -1,29 +1,32 @@
 import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { faCertificate, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
-import { twMerge } from "tailwind-merge";
+import { MoreHorizontalIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  IconButton,
   Pagination,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
@@ -107,36 +110,51 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
 
   return (
     <div>
-      <TableContainer>
+      {!isPending && !data?.certificates?.length ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <ScrollTextIcon />
+            </EmptyMedia>
+            <EmptyTitle>
+              {canListPkiSubscriberCerts
+                ? "No certificates have been issued for this subscriber"
+                : "You do not have permission to view this subscriber's certificates"}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
         <Table>
-          <THead>
-            <Tr>
-              <Th>Common Name</Th>
-              <Th>Status</Th>
-              <Th>Not Before</Th>
-              <Th>Not After</Th>
-              <Th />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={5} innerKey="pki-subscriber-certificates" />}
+          <TableHeader>
+            <TableRow>
+              <TableHead>Common Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Not Before</TableHead>
+              <TableHead>Not After</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isPending && <TableSkeletonRows columns={5} />}
             {!isPending &&
               data?.certificates?.map((certificate) => {
                 return (
-                  <Tr className="h-10" key={`certificate-${certificate.id}`}>
-                    <Td>{certificate.commonName}</Td>
-                    <Td>{getCertStatusBadge(certificate.status, certificate.notAfter)}</Td>
-                    <Td>
+                  <TableRow key={`certificate-${certificate.id}`}>
+                    <TableCell>{certificate.commonName}</TableCell>
+                    <TableCell>
+                      {getCertStatusBadge(certificate.status, certificate.notAfter)}
+                    </TableCell>
+                    <TableCell>
                       {certificate.notBefore
                         ? format(new Date(certificate.notBefore), "yyyy-MM-dd")
                         : "-"}
-                    </Td>
-                    <Td>
+                    </TableCell>
+                    <TableCell>
                       {certificate.notAfter
                         ? format(new Date(certificate.notAfter), "yyyy-MM-dd")
                         : "-"}
-                    </Td>
-                    <Td className="flex justify-end">
+                    </TableCell>
+                    <TableCell variant="action">
                       {(() => {
                         const caType = caCapabilityMap[certificate.caId];
                         const supportsRevocation =
@@ -149,33 +167,32 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
 
                         return (
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild className="rounded-lg">
-                              <div className="hover:text-project data-[state=open]:text-project">
-                                <Tooltip content="More options">
-                                  <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                                </Tooltip>
-                              </div>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="p-1">
+                            <Tooltip hoverable delayDuration={50}>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                  <IconButton aria-label="More options" variant="ghost" size="xs">
+                                    <MoreHorizontalIcon />
+                                  </IconButton>
+                                </DropdownMenuTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>More options</TooltipContent>
+                            </Tooltip>
+                            <DropdownMenuContent align="start">
                               <ProjectPermissionCan
                                 I={ProjectPermissionPkiSubscriberActions.Delete}
                                 a={ProjectPermissionSub.PkiSubscribers}
                               >
                                 {(isAllowed) => (
                                   <DropdownMenuItem
-                                    className={twMerge(
-                                      !isAllowed &&
-                                        "pointer-events-none cursor-not-allowed opacity-50"
-                                    )}
                                     onClick={() =>
                                       handlePopUpOpen &&
                                       handlePopUpOpen("revokeCertificate", {
                                         certificateId: certificate.id
                                       })
                                     }
-                                    disabled={!isAllowed}
-                                    icon={<FontAwesomeIcon icon={faTrash} />}
+                                    isDisabled={!isAllowed}
                                   >
+                                    <Trash2Icon />
                                     Revoke Certificate
                                   </DropdownMenuItem>
                                 )}
@@ -184,28 +201,22 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
                           </DropdownMenu>
                         );
                       })()}
-                    </Td>
-                  </Tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-          </TBody>
+          </TableBody>
         </Table>
-        {!isPending && data?.totalCount !== undefined && data.totalCount >= PER_PAGE_INIT && (
-          <Pagination
-            count={data.totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-          />
-        )}
-        {!isPending && !data?.certificates?.length && (
-          <EmptyState
-            title={`${canListPkiSubscriberCerts ? "No certificates have been issued for this subscriber" : "You do not have permission to view this subscriber's certificates"}`}
-            icon={faCertificate}
-          />
-        )}
-      </TableContainer>
+      )}
+      {!isPending && data?.totalCount !== undefined && data.totalCount >= PER_PAGE_INIT && (
+        <Pagination
+          count={data.totalCount}
+          page={page}
+          perPage={perPage}
+          onChangePage={(newPage) => setPage(newPage)}
+          onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+        />
+      )}
     </div>
   );
 };

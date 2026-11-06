@@ -102,7 +102,7 @@ export const main = async ({
   const defaultJsonParser = server.getDefaultJsonParser("error", "error");
   server.removeContentTypeParser("application/json");
   server.addContentTypeParser("application/json", { parseAs: "string" }, (req, body: string | Buffer, done) => {
-    const strBody = body instanceof Buffer ? body.toString() : body;
+    const strBody = typeof body === "string" ? body : body.toString();
     if (strBody?.length === 0) {
       done(null, {});
       return;
@@ -112,7 +112,7 @@ export const main = async ({
 
   server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body: string | Buffer, done) => {
     try {
-      const strBody = body instanceof Buffer ? body.toString() : body;
+      const strBody = typeof body === "string" ? body : body.toString();
       if (!strBody) {
         done(null, undefined);
         return;
@@ -151,7 +151,7 @@ export const main = async ({
     }
 
     await server.register(fastifyErrHandler);
-    await server.register(fastifySwagger);
+    await server.register(fastifySwagger, { fullSpec: appCfg.isOpenApiFullSpec });
     await server.register(fastifyFormBody);
     await server.register(websocket, {
       options: { maxPayload: 64 * 1024 } // 64 KB

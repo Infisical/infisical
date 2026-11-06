@@ -5,7 +5,7 @@ description: "Issue certificates using the Enrollment over Secure Transport (EST
 ---
 
 <Tip>
-  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+  New to Infisical Certificate Management? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
 </Tip>
 
 Use the EST enrollment method to issue and renew certificates for enterprise devices, IoT systems, and secure networks. EST provides strong mutual TLS authentication and is ideal for environments where devices have pre-installed bootstrap certificates.
@@ -100,13 +100,13 @@ Infisical's EST service implements [RFC 7030](https://datatracker.ietf.org/doc/h
 
 ## Enroll a device
 
-Configure your EST client with the profile ID and passphrase.
+Configure your EST client with the EST endpoint URL and passphrase.
 
 <Tabs>
   <Tab title="Initial Enrollment">
     For new devices with a bootstrap certificate:
     
-    1. Configure the EST server URL: `https://app.infisical.com:8443/.well-known/est/{profile-id}`
+    1. Configure the EST server URL: `https://app.infisical.com:8443/.well-known/est/applications/{application-id}/profiles/{profile-id}`
     2. Set EST username to any value (e.g., `device-001`)
     3. Set EST password to your **EST Passphrase**
     4. Use the bootstrap/manufacturer certificate for client authentication
@@ -118,7 +118,7 @@ Configure your EST client with the profile ID and passphrase.
       -u "device-001:<EST-passphrase>" \
       --data-binary @device.csr \
       -H "Content-Type: application/pkcs10" \
-      "https://app.infisical.com:8443/.well-known/est/{profile-id}/simpleenroll"
+      "https://app.infisical.com:8443/.well-known/est/applications/{application-id}/profiles/{profile-id}/simpleenroll"
     ```
     
     <Note>
@@ -137,14 +137,14 @@ Configure your EST client with the profile ID and passphrase.
       -u "device-001:<EST-passphrase>" \
       --data-binary @device.csr \
       -H "Content-Type: application/pkcs10" \
-      "https://app.infisical.com:8443/.well-known/est/{profile-id}/simplereenroll"
+      "https://app.infisical.com:8443/.well-known/est/applications/{application-id}/profiles/{profile-id}/simplereenroll"
     ```
   </Tab>
   <Tab title="Get CA Chain">
     Retrieve the CA certificate chain for validation:
     
     ```bash
-    curl "https://app.infisical.com:8443/.well-known/est/{profile-id}/cacerts"
+    curl "https://app.infisical.com:8443/.well-known/est/applications/{application-id}/profiles/{profile-id}/cacerts"
     ```
     
     Use this chain to validate certificates issued by Infisical.

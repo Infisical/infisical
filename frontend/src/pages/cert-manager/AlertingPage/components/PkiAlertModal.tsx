@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,21 +6,41 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Combobox,
+  DiscardChangesAlertDialog,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
-  SelectItem
-} from "@app/components/v2";
-import { useProject } from "@app/context";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   useCreatePkiAlert,
   useGetPkiAlertById,
   useListWorkspacePkiCollections,
   useUpdatePkiAlert
 } from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
+
+import { PkiCollectionModal } from "./PkiCollectionModal";
 
 enum TimeUnit {
   DAY = "days",
@@ -60,14 +80,17 @@ type Props = {
 };
 
 export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const { permission } = useProjectPermission();
+  const collectionPopup = usePopUp(["pkiCollection"] as const);
   const { currentProject } = useProject();
+  const formId = useId();
   const projectId = currentProject?.id || "";
 
-  const { data: alert } = useGetPkiAlertById(
-    (popUp?.pkiAlert?.data as { alertId: string })?.alertId || ""
-  );
+  const alertId = (popUp?.pkiAlert?.data as { alertId?: string })?.alertId || "";
+  const { data: alert } = useGetPkiAlertById(alertId);
+  const isAlertReady = !alertId || alert?.id === alertId;
 
-  const { data: pkiCollections } = useListWorkspacePkiCollections({
+  const { data: pkiCollections, refetch: refetchCollections } = useListWorkspacePkiCollections({
     projectId
   });
 
@@ -78,7 +101,8 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    setValue,
+    formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -87,6 +111,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   useEffect(() => {
+    if (!popUp.pkiAlert.isOpen || !isAlertReady || isDirty) return;
     if (alert) {
       reset({
         name: alert.name,
@@ -104,7 +129,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
         })
       });
     }
-  }, [alert, pkiCollections]);
+  }, [alert, pkiCollections, popUp.pkiAlert.isOpen, reset, isDirty, isAlertReady]);
 
   const onFormSubmit = async ({
     name,
@@ -113,7 +138,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
     alertUnit,
     emails
   }: FormData) => {
-    if (!projectId) return;
+    if (!projectId || !isAlertReady) return;
 
     const emailArray = emails
       .split(",")
@@ -151,135 +176,204 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
   };
 
-  return (
-    <Modal
-      isOpen={popUp?.pkiAlert?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("pkiAlert", isOpen);
+  const { requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty,
+      onDiscard: () => {
         reset();
-      }}
-    >
-      <ModalContent title={`${alert ? "Edit" : "Create"} Alert`}>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
-            control={control}
-            defaultValue=""
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="My Alert" autoComplete="off" name="pki-alert-name" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="pkiCollectionId"
-            defaultValue=""
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Certificate Collection"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                isRequired
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {(pkiCollections?.collections || []).map(({ id, name }) => (
-                    <SelectItem value={id} key={`project-${id}`}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-          <div className="flex items-center">
-            <Controller
-              control={control}
-              defaultValue=""
-              name="alertBefore"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Alert Before"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-full"
-                  isRequired
-                >
-                  <Input {...field} placeholder="5" type="number" min={1} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="alertUnit"
-              defaultValue={TimeUnit.YEAR}
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  className="ml-4"
-                  label="Alert Unit"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-48"
-                  >
-                    <SelectItem value={TimeUnit.DAY}>Days</SelectItem>
-                    <SelectItem value={TimeUnit.WEEK}>Weeks</SelectItem>
-                    <SelectItem value={TimeUnit.MONTH}>Months</SelectItem>
-                    <SelectItem value={TimeUnit.YEAR}>Years</SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-          </div>
-          <Controller
-            control={control}
-            defaultValue=""
-            name="emails"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Emails to Alert"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="johndoe@gmail.com, janedoe@gmail.com, ..." />
-              </FormControl>
-            )}
-          />
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
+        handlePopUpToggle("pkiAlert", false);
+      }
+    });
+
+  return (
+    <>
+      <Sheet
+        open={popUp?.pkiAlert?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) requestDiscard();
+        }}
+      >
+        <SheetContent size="form" isPending={isSubmitting}>
+          <SheetHeader>
+            <SheetTitle>{`${alertId ? "Edit" : "Create"} Alert`}</SheetTitle>
+            <SheetDescription>Configure certificate expiration notifications.</SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
+            <fieldset
+              disabled={isSubmitting || !isAlertReady}
+              className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
             >
-              {alert ? "Update" : "Create"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("pkiAlert", false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </ModalContent>
-    </Modal>
+              <Controller
+                control={control}
+                defaultValue=""
+                name="name"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor={`${formId}-name`}>
+                      Name <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <Input
+                      isError={Boolean(error)}
+                      id={`${formId}-name`}
+                      {...field}
+                      placeholder="My Alert"
+                      autoComplete="off"
+                      name="pki-alert-name"
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="pkiCollectionId"
+                defaultValue=""
+                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor={`${formId}-pkiCollectionId`}>
+                      Certificate Collection <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <Combobox
+                      id={`${formId}-pkiCollectionId`}
+                      ref={field.ref}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      isError={Boolean(error)}
+                      options={pkiCollections?.collections || []}
+                      value={
+                        pkiCollections?.collections.find(({ id }) => id === field.value) ?? null
+                      }
+                      onValueChange={(collection) => onChange(collection?.id ?? "")}
+                      getOptionValue={(collection) => collection.id}
+                      getOptionLabel={(collection) => collection.name}
+                      placeholder="Select a certificate collection"
+                      creation={
+                        permission.can(
+                          ProjectPermissionActions.Create,
+                          ProjectPermissionSub.PkiCollections
+                        )
+                          ? {
+                              mode: "action",
+                              emptyLabel: "Create New Collection",
+                              formatLabel: () => "Create New Collection",
+                              onAction: () => collectionPopup.handlePopUpOpen("pkiCollection")
+                            }
+                          : undefined
+                      }
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <div className="flex items-center">
+                <Controller
+                  control={control}
+                  defaultValue=""
+                  name="alertBefore"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="w-full" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor={`${formId}-alertBefore`}>
+                        Alert Before <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Input
+                        isError={Boolean(error)}
+                        id={`${formId}-alertBefore`}
+                        {...field}
+                        placeholder="5"
+                        type="number"
+                        min={1}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="alertUnit"
+                  defaultValue={TimeUnit.YEAR}
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <Field className="ml-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor={`${formId}-alertUnit`}>Alert Unit</FieldLabel>
+                      <Select value={field.value} onValueChange={onChange} name={field.name}>
+                        <SelectTrigger
+                          id={`${formId}-alertUnit`}
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                          className="w-full"
+                          isError={Boolean(error)}
+                        >
+                          <SelectValue placeholder="Select an option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={TimeUnit.DAY}>Days</SelectItem>
+                          <SelectItem value={TimeUnit.WEEK}>Weeks</SelectItem>
+                          <SelectItem value={TimeUnit.MONTH}>Months</SelectItem>
+                          <SelectItem value={TimeUnit.YEAR}>Years</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </div>
+              <Controller
+                control={control}
+                defaultValue=""
+                name="emails"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor={`${formId}-emails`}>
+                      Emails to Alert <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <Input
+                      isError={Boolean(error)}
+                      id={`${formId}-emails`}
+                      {...field}
+                      placeholder="johndoe@gmail.com, janedoe@gmail.com, ..."
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            </fieldset>
+            <SheetFooter className="justify-end border-t">
+              <SheetClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </SheetClose>
+              <Button
+                variant="project"
+                type="submit"
+                isPending={isSubmitting}
+                isDisabled={!isAlertReady}
+              >
+                {alertId ? "Update" : "Create"}
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
+      <PkiCollectionModal
+        popUp={collectionPopup.popUp}
+        handlePopUpToggle={collectionPopup.handlePopUpToggle}
+        onComplete={async (collection) => {
+          const result = await refetchCollections();
+          if (!result.data?.collections.some((option) => option.id === collection.id)) {
+            createNotification({
+              type: "error",
+              text: "The collection was created, but the list could not be refreshed. Refresh the list to select it."
+            });
+            return;
+          }
+          setValue("pkiCollectionId", collection.id, { shouldDirty: true, shouldValidate: true });
+        }}
+      />
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved changes will be lost."
+      />
+    </>
   );
 };
