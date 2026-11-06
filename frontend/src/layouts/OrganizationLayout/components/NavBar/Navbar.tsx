@@ -80,7 +80,7 @@ import {
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { getOrgScopedProductFromPath } from "@app/helpers/project";
+import { getOrgScopedProductFromPath, isAgentVaultProjectPath } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { subOrganizationsQuery, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
@@ -330,7 +330,7 @@ export const Navbar = () => {
 
   const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
   const isPamScope = orgScopedProduct === ProjectType.PAM;
-  const isAgentVaultScope = orgScopedProduct === ProjectType.AgentVault;
+  const isAgentVaultScope = isAgentVaultProjectPath(location.pathname);
   const isProjectScope =
     Boolean(orgScopedProduct) ||
     (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&

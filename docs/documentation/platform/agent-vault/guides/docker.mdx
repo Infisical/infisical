@@ -43,7 +43,7 @@ Every proxy starts from the same proxy token, so you create the proxy in Infisic
 
 ## Prerequisites
 
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - [Docker Engine](https://docs.docker.com/engine/install/) with [Docker Compose](https://docs.docker.com/compose/install/) v2, or [Docker Desktop](https://docs.docker.com/desktop/)
 - [`curl`](https://curl.se) and [`jq`](https://jqlang.org) on the machine that runs Docker
@@ -142,13 +142,14 @@ docker compose build
 
 ## Step 5: Run an agent
 
-This script runs one prompt in a new Compose project. Create it in the same directory, and replace `<access-bundle-name>` at the top with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` for EU Cloud or the URL of your self-hosted instance:
+This script runs one prompt in a new Compose project. Create it in the same directory, and at the top, replace `<project-id>` with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)) and `<access-bundle-name>` with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` for EU Cloud or the URL of your self-hosted instance:
 
 ```bash run-agent.sh expandable
 #!/bin/sh
 set -eu
 
 export INFISICAL_DOMAIN="https://app.infisical.com"
+AGENT_VAULT_PROJECT_ID="<project-id>"
 ACCESS_BUNDLE="<access-bundle-name>"
 PROJECT="agent-run-$(date +%s)-$$"
 
@@ -161,7 +162,7 @@ ACCESS_TOKEN=$(curl -fsS "$INFISICAL_DOMAIN/api/v1/auth/universal-auth/login" \
 SESSION=$(curl -fsS "$INFISICAL_DOMAIN/api/v1/agent-vault/sessions" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"accessBundle\": \"$ACCESS_BUNDLE\", \"ttl\": \"20m\"}")
+  -d "{\"accessBundle\": \"$ACCESS_BUNDLE\", \"ttl\": \"20m\", \"projectId\": \"$AGENT_VAULT_PROJECT_ID\"}")
 SESSION_ID=$(echo "$SESSION" | jq -r .session.id)
 
 cleanup() {
@@ -207,7 +208,7 @@ Claude Code replies, even though its container has no Anthropic API key and no i
   Each run now gets its own containers, network, and session. The only credential in the agent's container is a session token, and the script revokes the session when the run ends.
 </Check>
 
-To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
+To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in your Agent Vault project. Requests that got a credential have the outcome **Brokered**.
 
 ## Security considerations
 
@@ -234,6 +235,12 @@ If you think someone took control of the machine that runs Docker, [rotate the p
     - `INFISICAL_AGENT_VAULT_PROXY_TOKEN` has the current proxy token (a token stops working when you rotate it)
     - If you use EU Cloud or self-host Infisical, `INFISICAL_DOMAIN` in the script is the URL of your instance
     - The image tag in `compose.yaml` is an Infisical CLI version that can start a proxy from a proxy token
+  </Accordion>
+  <Accordion title="Creating the session fails">
+    Check the following:
+
+    - `AGENT_VAULT_PROJECT_ID` in your script is the ID of the Agent Vault project that holds the access bundle
+    - The machine identity is a member of that project and has a grant on the access bundle
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired before the agent finished. Set the session's `ttl` in the script longer than your longest run.

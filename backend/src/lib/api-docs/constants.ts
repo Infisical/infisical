@@ -113,7 +113,6 @@ export enum ApiDocsTags {
   AgentVaultDelegations = "Agent Vault Delegations",
   AgentVaultSessionLogs = "Agent Vault Session Logs",
   AgentVaultSettings = "Agent Vault Settings",
-  AgentVaultAppConnections = "Agent Vault App Connections",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
 }
@@ -4122,6 +4121,10 @@ export const SecretRotations = {
     GCP_SERVICE_ACCOUNT_KEY: {
       serviceAccountKey:
         "The name of the secret that the rotated service account key (the JSON key file) will be mapped to."
+    },
+    CLICKHOUSE_CREDENTIALS: {
+      username: "The name of the secret that the active username will be mapped to.",
+      password: "The name of the secret that the generated password will be mapped to."
     }
   }
 };
@@ -4665,6 +4668,7 @@ export const ENCRYPTION_KEY_ROTATION = {
 const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to Agent Vault's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
 
 export const AGENT_VAULT = {
+  projectId: "The ID of the Agent Vault project.",
   ACCESS_BUNDLE: {
     accessBundleId: "The ID of the access bundle.",
     name: "The name of the access bundle.",
@@ -4945,17 +4949,18 @@ export const AGENT_VAULT = {
   },
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
-    isActive: "Whether the member can currently reach Agent Vault.",
-    addedAt: "When the member was added to Agent Vault.",
+    isActive: "Whether the member can currently reach the project.",
+    addedAt: "When the member was added to the project.",
     userIds: "The IDs of the users to act on.",
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",
     emails: "The email addresses of the users to give access to. Each must already be in the organization.",
-    identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
-    addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
-    revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    usernames: "The usernames of the users to give access to. Each must already be in the organization.",
+    identifier: "The ID, email address or username the request named, echoed back so a reply can be matched to it.",
+    addSkipped: "The requested members who already had access to the project and were left as they were.",
+    revokeSkipped: "The requested members who did not have access to the project, so nothing was removed.",
     updateSkipped:
-      "The requested members who did not have access to Agent Vault or already had the role, so nothing was changed.",
+      "The requested members who did not have access to the project or already had the role, so nothing was changed.",
     actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
@@ -5058,6 +5063,7 @@ export const AGENT_VAULT = {
 
   SESSION: {
     sessionId: "The ID of the session.",
+    revokedAt: "When the session was revoked.",
     accessBundle:
       "The name of the access bundle this session carries. Leave it out to start a session with services of its own only.",
     accessBundleRead: "The access bundle this session carries. Null for a session with services of its own only.",
@@ -5125,11 +5131,11 @@ export const AGENT_VAULT = {
     machineIdentity: "The machine identity that can start sessions on behalf of users.",
     machineIdentityName: "The name of the machine identity.",
     scope:
-      "Which users the machine identity can start sessions on behalf of: every Agent Vault member (all-members), or only the users and the members of the groups in the delegation (selected).",
+      "Which users the machine identity can start sessions on behalf of: every member of the project (all-members), or only the users and the members of the groups in the delegation (selected).",
     userIds:
-      "The users the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+      "The users the machine identity can act on behalf of, up to 100. Each must be a member of the Agent Vault project. Only allowed when the scope is selected.",
     groupIds:
-      "The groups whose members the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+      "The groups whose members the machine identity can act on behalf of, up to 100. Each must be a member of the Agent Vault project. Only allowed when the scope is selected.",
     users: "The users in the delegation.",
     groups: "The groups in the delegation. Their members are covered while they stay in the group.",
     userId: "The ID of the user.",
@@ -5154,9 +5160,9 @@ export const AGENT_VAULT = {
     offset: "How many delegations to skip.",
     totalCount: "How many delegations match, across every page.",
     addUserIds:
-      "The users to add, up to 100. Each must be a member of Agent Vault. Users the delegation already names are skipped.",
+      "The users to add, up to 100. Each must be a member of the Agent Vault project. Users the delegation already names are skipped.",
     addGroupIds:
-      "The groups to add, up to 100. Each must be a member of Agent Vault. Groups the delegation already names are skipped.",
+      "The groups to add, up to 100. Each must be a member of the Agent Vault project. Groups the delegation already names are skipped.",
     removeUserIds: "The users to take out of the delegation, up to 100. Users it doesn't name are skipped.",
     removeGroupIds: "The groups to take out of the delegation, up to 100. Groups it doesn't name are skipped.",
     afterRemove:

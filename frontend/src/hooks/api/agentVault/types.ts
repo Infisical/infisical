@@ -367,6 +367,7 @@ export type TAgentVaultMintedSession = {
   token: string;
   expiresAt: string | null;
   createdAt: string;
+  projectId: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionInlineService[];
 };

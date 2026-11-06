@@ -294,6 +294,10 @@ export const projectTemplateServiceFactory = ({
       throw new BadRequestError({ message: "Certificate Manager project templates are not supported" });
     }
 
+    if (type === ProjectType.AgentVault) {
+      throw new BadRequestError({ message: "Agent Vault project templates are not supported" });
+    }
+
     if (environments && type !== ProjectType.SecretManager) {
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
     }

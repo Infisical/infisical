@@ -36,6 +36,7 @@ import {
   StepperStep
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
+import { useProject } from "@app/context";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultHttpTemplate,
@@ -335,9 +336,10 @@ export const ServiceSheet = ({
   prefillPath,
   onSaved
 }: Props) => {
+  const { projectId } = useProject();
   const isUpdate = Boolean(service);
-  const createService = useCreateAgentVaultService();
-  const updateService = useUpdateAgentVaultService();
+  const createService = useCreateAgentVaultService(projectId);
+  const updateService = useUpdateAgentVaultService(projectId);
 
   const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is
@@ -404,6 +406,7 @@ export const ServiceSheet = ({
   }, [secret, username, customHeaders, substitutions]);
   const [debouncedReferencedKeys] = useDebounce(referencedKeys, 300);
   const { missing: missingKeys } = useAgentVaultVariableKeyStatus(
+    projectId,
     debouncedReferencedKeys ? debouncedReferencedKeys.split(",") : [],
     { enabled: isOpen }
   );

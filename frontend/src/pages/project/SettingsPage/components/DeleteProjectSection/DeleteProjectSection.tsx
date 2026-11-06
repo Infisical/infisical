@@ -35,12 +35,17 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { useToggle } from "@app/hooks";
+import { useScopeVariant, useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useLeaveProject, useUpdateProject } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 const CONFIRM_KEYWORD = "confirm";
+
+const DELETE_CONSEQUENCES: Partial<Record<ProjectType, string>> = {
+  [ProjectType.AgentVault]:
+    "Running agents and proxies stop working, and its session logs can no longer be viewed."
+};
 
 export const DeleteProjectSection = () => {
   const navigate = useNavigate();
@@ -53,6 +58,7 @@ export const DeleteProjectSection = () => {
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const scopeVariant = useScopeVariant();
   const { memberships } = useProjectPermission();
   const isDirectMember = Boolean(memberships?.some((membership) => !membership.actorGroupId));
   const [isDeleting, setIsDeleting] = useToggle();
@@ -184,7 +190,7 @@ export const DeleteProjectSection = () => {
               {(isAllowed) => (
                 <Toggle
                   id="hasDeleteProtection"
-                  variant="project"
+                  variant={scopeVariant}
                   checked={hasDeleteProtection}
                   disabled={!isAllowed || isUpdatingDeleteProtection}
                   aria-label="Toggle delete protection"
@@ -278,7 +284,7 @@ export const DeleteProjectSection = () => {
             <div className="flex gap-2">
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                variant="project"
+                variant={scopeVariant}
                 onClick={(event) => {
                   event.preventDefault();
                   handleDeleteWorkspaceSubmit(false);
@@ -305,6 +311,9 @@ export const DeleteProjectSection = () => {
                 <AlertContent>
                   Permanently delete {currentProject?.name} and all of its data. This action is not
                   reversible.
+                  {currentProject && DELETE_CONSEQUENCES[currentProject.type] && (
+                    <> {DELETE_CONSEQUENCES[currentProject.type]}</>
+                  )}
                 </AlertContent>
               </Alert>
             </AlertDialogDescription>

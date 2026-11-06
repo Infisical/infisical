@@ -2672,6 +2672,15 @@ a.ifx-card__title:hover .ifx-card__chevron {
   margin-top: 0.875rem;
 }
 
+/* .cli-cmd__body breaks words anywhere, which splits code names such as error codes mid-word.
+   A table's first column keeps them whole; Mintlify's table wrapper scrolls when that's too wide. */
+.cli-cmd__description th:first-child,
+.cli-cmd__description td:first-child {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  padding-right: 1.5rem;
+}
+
 .cli-cmd__table {
   margin-top: 2rem;
   scroll-margin-top: calc(var(--cli-top) + var(--cli-head) + 1rem);

@@ -52,7 +52,7 @@ This guide walks you through running the [OpenClaw](https://docs.openclaw.ai/) [
 
 ## Prerequisites
 
-- An Infisical organization where you're an Agent Vault admin
+- An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) for OpenClaw (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - Two machines on the same private network, one for the Agent Vault proxy and one for OpenClaw (physical machines, virtual machines, or containers)
 - [OpenClaw](https://docs.openclaw.ai/start/getting-started) installed on the OpenClaw machine, with the gateway installed as a service (`openclaw onboard --install-daemon`) and a messaging platform set up and working with your real API keys
@@ -81,7 +81,7 @@ Most OpenClaw setups have three kinds of API keys:
 | External APIs | `GITHUB_TOKEN` | The API's template, such as **GitHub** (or a **Custom HTTP API** service if Infisical has no template for the API) |
 
 <Note>
-Settings that hold non-sensitive information don't need services in Agent Vault. This includes settings like allowed user IDs and channel IDs.
+Settings that hold non-sensitive information don't need services in your Agent Vault project. This includes settings like allowed user IDs and channel IDs.
 </Note>
 </Accordion>
 
@@ -89,7 +89,7 @@ Settings that hold non-sensitive information don't need services in Agent Vault.
 
 ### Add the keys to your access bundle
 
-Open your access bundle in Agent Vault and check that it has a service for each key from [Step 1](#step-1-list-the-api-keys-openclaw-uses). For each key that's missing:
+Open your access bundle in your Agent Vault project and check that it has a service for each key from [Step 1](#step-1-list-the-api-keys-openclaw-uses). For each key that's missing:
 
 <Steps>
   <Step>
@@ -121,7 +121,7 @@ Next, create a [proxy](/documentation/platform/agent-vault/proxies) on the Agent
 
 <Steps>
   <Step>
-    Go to **Proxies** and select **Create Proxy**.
+    In the project that holds your access bundle, go to **Proxies** and select **Create Proxy**. An agent can only use a proxy in the same project as its session.
   </Step>
   <Step>
     Give the proxy a **Name**.
@@ -202,7 +202,7 @@ Finally, create a [session](/documentation/platform/agent-vault/sessions) for th
 
 <Steps>
   <Step>
-    Go to **Sessions** and select **Create Session**.
+    In the same project, go to **Sessions** and select **Create Session**.
   </Step>
   <Step>
     Pick your access bundle, set **Expires** to **Never**, then select **Create Session**.
@@ -347,7 +347,7 @@ GitHub returns your account. If you run the same request in a terminal outside O
 
 ## Revoke or replace the session
 
-To stop OpenClaw from using the real credentials, open **Agent Vault** in Infisical and go to **Sessions**. Open the session's menu and select **Revoke Session**. The proxy stops attaching credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval), and OpenClaw stops replying because its requests to the model provider fail.
+To stop OpenClaw from using the real credentials, open your Agent Vault project in Infisical and go to **Sessions**. Open the session's menu and select **Revoke Session**. The proxy stops attaching credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval), and OpenClaw stops replying because its requests to the model provider fail.
 
 To give the gateway a new session, [create a session](#create-a-session) in Infisical. Then, on the OpenClaw machine, run `openclaw config set proxy.proxyUrl` again with the new token, and run `openclaw gateway restart`.
 

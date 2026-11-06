@@ -1,27 +1,28 @@
 ---
 title: "Inline services"
-description: "Services and credentials that you send when you create a session, so nothing needs to be set up in Agent Vault in advance."
+description: "Services and credentials that you send when you create a session, so nothing needs to be set up in an Agent Vault project in advance."
 ---
 
 An inline service is a [service](/documentation/platform/agent-vault/services) that you send in the request that creates a [session](/documentation/platform/agent-vault/sessions), instead of adding the service to an [access bundle](/documentation/platform/agent-vault/access-bundles). Only that session can use the inline service. A session can have inline services on their own, or together with one access bundle.
 
-Use inline services when the code that creates sessions, such as an agent orchestrator or a job runner, already knows which APIs an agent needs and holds their credentials. That code sends the services with each session, so nothing has to be set up in Agent Vault in advance, and a credential that exists for only one run is deleted when the session ends. You can also use inline services to give one session access to an API that isn't in its access bundle, without giving the API to the other sessions that use the bundle.
+Use inline services when the code that creates sessions, such as an agent orchestrator or a job runner, already knows which APIs an agent needs and holds their credentials. That code sends the services with each session, so nothing has to be set up in the Agent Vault project in advance, and a credential that exists for only one run is deleted when the session ends. You can also use inline services to give one session access to an API that isn't in its access bundle, without giving the API to the other sessions that use the bundle.
 
 ## Prerequisites
 
-- A machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership) (to set one up, follow [Step 1 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) and choose **Admin** in **Role**)
+- A machine identity with the **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership) (to set one up, follow [Step 1 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) and choose **Admin** in **Role**)
 - An access token for the machine identity, from [Step 2 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity)
-- A running [proxy](/documentation/platform/agent-vault/proxies) that the agent's machine can reach
+- A running [proxy](/documentation/platform/agent-vault/proxies) in the same project, which the agent's machine can reach
 
 ## Create a session with inline services
 
-You can send inline services only through the API, not from the dashboard or the CLI. Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) as the machine identity, and list the inline services in `services`. In this example, the session gets one HTTP service for `api.github.com` with a bearer token, and the agent can send only `GET` requests to that host:
+You can send inline services only through the API, not from the dashboard or the CLI. Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) as the machine identity, with the ID of your Agent Vault project in `projectId` ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), and list the inline services in `services`. In this example, the session gets one HTTP service for `api.github.com` with a bearer token, and the agent can send only `GET` requests to that host:
 
 ```bash
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   -H "Authorization: Bearer <access-token>" \
   -H "Content-Type: application/json" \
   -d '{
+    "projectId": "<project-id>",
     "ttl": "1h",
     "label": "release notes",
     "services": [
@@ -63,7 +64,7 @@ When you create the session, Infisical compares the host patterns of the inline 
 
 ## Find a session's inline services
 
-To see a session's inline services, go to **Sessions** in Agent Vault, select **View Session Logs** on the session's row, and look under **Inline Services**.
+To see a session's inline services, go to **Sessions** in your Agent Vault project, select **View Session Logs** on the session's row, and look under **Inline Services**.
 
 [The endpoint that reads a session](/api-reference/endpoints/agent-vault-sessions/get) and [the endpoint that lists sessions](/api-reference/endpoints/agent-vault-sessions/list) return the inline services in `services`, and the [audit event](/documentation/platform/agent-vault/sessions#audit-trail) for creating the session lists them too.
 
@@ -80,13 +81,13 @@ If you set `ttl` to `never`, revoke the session when the agent finishes, so that
 
 <AccordionGroup>
   <Accordion title="Creating the session fails with &quot;Only an Agent Vault admin can send services with a session&quot;">
-    The machine identity has the **Member** role in Agent Vault. Either give it the **Admin** role, or add the services to an access bundle and [grant the bundle](/documentation/platform/agent-vault/access-bundles#grant-access) to the machine identity.
+    The machine identity has the **Member** role in the Agent Vault project. Either give it the **Admin** role, or add the services to an access bundle and [grant the bundle](/documentation/platform/agent-vault/access-bundles#grant-access) to the machine identity.
 
     To give the machine identity the **Admin** role:
 
     <Steps>
       <Step>
-        In Agent Vault, go to **Access Control** > **Machine Identities**.
+        In your Agent Vault project, go to **Access Control** > **Machine Identities**.
       </Step>
       <Step>
         Open the machine identity's menu and select **Change Role**.
@@ -97,7 +98,7 @@ If you set `ttl` to `never`, revoke the session when the agent finishes, so that
     </Steps>
   </Accordion>
   <Accordion title="Requests to an inline service's host stop getting credentials">
-    The user or machine identity that created the session no longer has the **Admin** role in Agent Vault. Give the role back, or create a new session as an admin.
+    The user or machine identity that created the session no longer has the **Admin** role in the Agent Vault project. Give the role back, or create a new session as an admin.
   </Accordion>
 </AccordionGroup>
 

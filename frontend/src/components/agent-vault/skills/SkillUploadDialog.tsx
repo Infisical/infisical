@@ -16,6 +16,7 @@ import {
   DiscardChangesAlertDialog,
   FileDropzone
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   base64ToBytes,
   carrySkillFileModes,
@@ -63,8 +64,10 @@ type Props = {
 );
 
 export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad }: Props) => {
-  const updateSkill = useUpdateAgentVaultSkill();
+  const { projectId } = useProject();
+  const updateSkill = useUpdateAgentVaultSkill(projectId);
   const latest = useGetAgentVaultSkillVersion(
+    projectId,
     isOpen && skill ? skill.id : "",
     skill?.latestVersion
   );

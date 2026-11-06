@@ -35,7 +35,7 @@ flowchart LR
 | Orchestrator | Creates a session and starts the agent with the session token | Your Infisical login, or a [machine identity](/documentation/platform/identities/machine-identities) that can create sessions |
 | Agent | Does the task, in an environment such as a container, a virtual machine (VM), a Kubernetes pod, or a managed sandbox | The session token |
 | Proxy | Fetches the real credentials from Infisical and attaches them to the agent's requests, from its own container or machine | The proxy token |
-| Infisical | Stores your services and access bundles | The real credentials |
+| Infisical | Stores your services and access bundles in an [Agent Vault project](/documentation/platform/agent-vault/projects) | The real credentials |
 
 ### Orchestrators
 

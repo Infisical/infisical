@@ -89,6 +89,7 @@ export type TAgentVaultMemberIds = {
 export type TAddAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
   projectId: string;
   emails: string[];
+  usernames?: string[];
   role: ProjectMembershipRole.Admin | ProjectMembershipRole.Member;
   ctx: TGenericPermission;
 };
@@ -295,7 +296,7 @@ export const agentVaultMembershipServiceFactory = ({
         throw new BadRequestError({
           message: `Cannot add ${unresolved
             .map((el) => `'${el}'`)
-            .join(", ")} to Agent Vault because they are not a member of this organization. Invite them first.`
+            .join(", ")} to this project because they are not a member of this organization. Invite them first.`
         });
       }
 
@@ -371,7 +372,7 @@ export const agentVaultMembershipServiceFactory = ({
       throw new BadRequestError({
         message: `Machine identity(s) ${foreign
           .map((el) => `'${el}'`)
-          .join(", ")} belong to another project and cannot be given access to Agent Vault`
+          .join(", ")} belong to another project and cannot be given access to this project`
       });
     }
 
@@ -453,12 +454,14 @@ export const agentVaultMembershipServiceFactory = ({
     role,
     ctx,
     emails,
+    usernames = [],
     ...ids
   }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
     await checkProductAdmin(projectId, ctx);
     assertValidRole(role);
 
-    const actors = await resolveNamedActors({ ...ids, emails }, ctx.actorOrgId);
+    // A username is matched the same way as an email, by the user's username and then their SSO aliases.
+    const actors = await resolveNamedActors({ ...ids, emails: [...emails, ...usernames] }, ctx.actorOrgId);
     await assertActorsAreAddable(actors, ctx.actorOrgId, projectId);
 
     const nameByKey = await resolveActorNames(actors);
@@ -579,7 +582,7 @@ export const agentVaultMembershipServiceFactory = ({
         await assertWillRetainProjectAdmin({
           scopeProjectId: projectId,
           excludeMembershipIds: membershipIds,
-          productLabel: "Agent Vault",
+          productLabel: "This project",
           tx
         });
       }
@@ -661,7 +664,7 @@ export const agentVaultMembershipServiceFactory = ({
       await assertWillRetainProjectAdmin({
         scopeProjectId: projectId,
         excludeMembershipIds: membershipIds,
-        productLabel: "Agent Vault",
+        productLabel: "This project",
         tx
       });
 

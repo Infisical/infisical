@@ -3,13 +3,15 @@ title: "Sessions"
 description: "Time-bound grants that let AI agents access services without holding real credentials."
 ---
 
-A session is a time-bound grant scoped to one [access bundle](/documentation/platform/agent-vault/access-bundles), to [inline services](/documentation/platform/agent-vault/inline-services) that an admin sends with the session, or to both. Infisical returns a session token that identifies the session, and the agent uses that token to authenticate to the [proxy](/documentation/platform/agent-vault/proxies) on every outbound request. The proxy then attaches the real credential from the matching [service](/documentation/platform/agent-vault/services) at the network boundary.
+A session is a time-bound grant in an [Agent Vault project](/documentation/platform/agent-vault/projects). It's scoped to one [access bundle](/documentation/platform/agent-vault/access-bundles), to [inline services](/documentation/platform/agent-vault/inline-services) that an admin sends with the session, or to both. Infisical returns a session token that identifies the session, and the agent uses that token to authenticate to the [proxy](/documentation/platform/agent-vault/proxies) on every outbound request. The proxy then attaches the real credential from the matching [service](/documentation/platform/agent-vault/services) at the network boundary.
 
 Every session expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
+A session only works through a proxy in the same project as its access bundle.
+
 ## Create a session
 
-Anyone granted at least one access bundle can create a session. Admins can create one with any access bundle.
+Anyone granted at least one access bundle in a project can create a session in that project. Admins of the project can create one with any of its access bundles.
 
 <Tip>
   If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli), [the API](/documentation/platform/agent-vault/sessions-api), [the Python SDK](/sdks/languages/python#agent_vault-sessions), or [the Node.js SDK](/sdks/languages/node#agentvault-sessions). A machine identity can also create sessions [on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so that each agent uses the personal values of the person it runs for and gets no more access than that person.
@@ -19,7 +21,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
   <Tab title="Dashboard">
     <Steps>
       <Step>
-        In Agent Vault, go to **Sessions** and select **Create Session**.
+        In your Agent Vault project, go to **Sessions** and select **Create Session**.
       </Step>
       <Step>
         Pick the **Access Bundle** the agent should use, optionally enter a **Label** that says what the session is for, set a duration under **Expires**, then select **Create Session**.
@@ -47,24 +49,31 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     ```
   </Tab>
   <Tab title="CLI">
-    `infisical agent-vault run` creates a session for you when you name the access bundle:
+    [`infisical agent-vault sessions create`](/cli/reference#agent-vault-sessions-create) creates a session with the access bundle you name and prints the session token. Replace `<project-id>` with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)):
+
+    ```bash
+    export INFISICAL_AGENT_VAULT_PROJECT_ID=<project-id>
+    infisical agent-vault sessions create --access-bundle <bundle-name> --ttl 8h
+    ```
+
+    Set the duration with `--ttl`, which takes a value like `30m`, `8h`, `7d`, or `never`, and defaults to `never`. To [label the session](#label-a-session), pass `--label`.
+
+    To create a session and start the agent in one command, pass the access bundle to `infisical agent-vault run` instead. The CLI revokes that session when the agent exits:
 
     ```bash
     infisical agent-vault run --access-bundle <bundle-name> --proxy <proxy-address> -- <agent-command>
     ```
 
-    Set the duration with [`--ttl`](/cli/reference#agent-vault-run--flag-ttl), which takes a value like `30m`, `8h`, `7d`, or `never`. To [label the session](#label-a-session), pass [`--label`](/cli/reference#agent-vault-run--flag-label).
-
-    The CLI creates the session as your user by default, or as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables). It revokes the session when the agent exits unless you pass `--keep-session`.
+    The CLI creates the session as your user by default, or as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables). For a full example, see [Create sessions with the CLI](/documentation/platform/agent-vault/sessions-cli).
   </Tab>
   <Tab title="API">
-    Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the access bundle's name, a `ttl`, and optionally a `label`:
+    Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the ID of your Agent Vault project, the access bundle's name, a `ttl`, and optionally a `label`:
 
     ```bash
     curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
       -H "Authorization: Bearer <access-token>" \
       -H "Content-Type: application/json" \
-      -d '{"accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
+      -d '{"projectId": "<project-id>", "accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
     ```
 
     The response includes the session token.
@@ -81,12 +90,12 @@ A label is a short description of what a session is for, such as `nightly deploy
 
 You can add, change, or remove a session's label, even after the session expires or is revoked:
 
-- In Agent Vault, go to **Sessions**, open the session's menu, and select **Add Label** or **Edit Label**
+- In your Agent Vault project, go to **Sessions**, open the session's menu, and select **Add Label** or **Edit Label**
 - From an agent or a script, call [the endpoint that updates a session](/api-reference/endpoints/agent-vault-sessions/update), for example to record what the agent is working on
 
 ## View session logs
 
-[Session logs](/documentation/platform/agent-vault/session-logs) record every request an agent makes during a session. To view them, go to **Sessions** and select **View Session Logs** on the session's row. You can filter and search the requests, and while the session is active, new logs keep appearing.
+[Session logs](/documentation/platform/agent-vault/session-logs) record every request an agent makes during a session. To view them, go to **Sessions** in your Agent Vault project and select **View Session Logs** on the session's row. You can filter and search the requests, and while the session is active, new logs keep appearing.
 
 <Frame>
   <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
@@ -94,7 +103,7 @@ You can add, change, or remove a session's label, even after the session expires
 
 ## Revoke a session
 
-To revoke a session before it expires, go to the **Sessions** page, open the session's menu, and select **Revoke Session**. The proxy stops attaching credentials for the session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+To revoke a session before it expires, go to **Sessions** in your Agent Vault project, open the session's menu, and select **Revoke Session**. The proxy stops attaching credentials for the session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
 The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions so you can audit what an agent had access to during the session:
 
@@ -109,8 +118,8 @@ The access bundle and any inline services are chosen when you create the session
 - If someone no longer has any grant on an access bundle, directly or through a group, their sessions for that bundle stop getting credentials
 - If someone still has another grant on the bundle, such as through a group, revoking one grant doesn't affect their sessions
 - If you delete an access bundle, every session scoped to it stops getting credentials (the session still lists the bundle's name, so you can see what it was)
-- If you remove someone from Agent Vault, the proxy refuses every request on their sessions
-- If the user or machine identity that created a session loses the **Admin** role in Agent Vault, the session stops getting credentials for its [inline services](/documentation/platform/agent-vault/inline-services)
+- If you remove someone from the project, the proxy refuses every request on their sessions
+- If the user or machine identity that created a session loses the **Admin** role in the project, the session stops getting credentials for its [inline services](/documentation/platform/agent-vault/inline-services)
 
 None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, [delete the installed copies](/documentation/platform/agent-vault/skills#remove-installed-skills).
 
@@ -120,6 +129,6 @@ If a session stops getting credentials because of a lost grant, a deleted bundle
 
 ## Audit trail
 
-When you create a session, change its label, or revoke it, Infisical writes an audit event. To review these events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
+When you create a session, change its label, or revoke it, Infisical writes an audit event. To review these events, open **Audit Logs** in your Agent Vault project, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
 
 Audit events cover what you changed in Infisical. To see which requests an agent made while its session was running, [view its session logs](#view-session-logs).

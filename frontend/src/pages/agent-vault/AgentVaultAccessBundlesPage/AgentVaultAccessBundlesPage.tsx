@@ -57,7 +57,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
+import { useOrganization, useProjectPermission, useProject } from "@app/context";
 import { nameList } from "@app/helpers/string";
 import {
   getUserTablePreference,
@@ -84,6 +84,7 @@ enum SortColumn {
 }
 
 export const AgentVaultAccessBundlesPage = () => {
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
@@ -107,7 +108,7 @@ export const AgentVaultAccessBundlesPage = () => {
     null
   );
 
-  const { data, isPending } = useListAgentVaultAccessBundles({
+  const { data, isPending } = useListAgentVaultAccessBundles(projectId, {
     search: debouncedSearch.trim() || undefined,
     orderBy: sortColumn,
     orderDirection: sortDirection === "ascending" ? "asc" : "desc",
@@ -118,7 +119,7 @@ export const AgentVaultAccessBundlesPage = () => {
   const displayedBundles = data?.accessBundles ?? [];
 
   // From its own query rather than the page shown, so a bundle on a later page is still called out.
-  const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup();
+  const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup(projectId);
   const bundlesNeedingSetup = requiringSetup?.accessBundles ?? [];
   // The query loads at most a page of them; the count comes from the server.
   const bundlesNeedingSetupCount = requiringSetup?.totalCount ?? 0;
@@ -185,8 +186,12 @@ export const AgentVaultAccessBundlesPage = () => {
                 size="sm"
                 onClick={() =>
                   navigate({
-                    to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                    params: { orgId: currentOrg.id, accessBundleId: bundlesNeedingSetup[0].id }
+                    to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+                    params: {
+                      orgId: currentOrg.id,
+                      projectId,
+                      accessBundleId: bundlesNeedingSetup[0].id
+                    }
                   })
                 }
               >
@@ -297,8 +302,8 @@ export const AgentVaultAccessBundlesPage = () => {
                   <TableRow key={bundle.id} linked>
                     <TableCell isTruncatable className="min-w-64">
                       <RowLink
-                        to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                        params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                        to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                        params={{ orgId: currentOrg.id, projectId, accessBundleId: bundle.id }}
                         className="flex items-center gap-2.5"
                       >
                         <span className="truncate" title={bundle.name} data-row-interactive>
@@ -447,8 +452,8 @@ export const AgentVaultAccessBundlesPage = () => {
         onOpenChange={setIsCreateOpen}
         onCreated={(accessBundle) =>
           navigate({
-            to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-            params: { orgId: currentOrg.id, accessBundleId: accessBundle.id }
+            to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+            params: { orgId: currentOrg.id, projectId, accessBundleId: accessBundle.id }
           })
         }
       />

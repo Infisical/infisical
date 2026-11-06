@@ -1,0 +1,76 @@
+---
+title: "Agent Vault projects"
+sidebarTitle: "Projects"
+description: "Keep each agentic system's credentials, members, and proxies in its own Agent Vault project."
+---
+
+An Agent Vault project holds everything that one agentic system or team uses: its [access bundles](/documentation/platform/agent-vault/access-bundles), [services](/documentation/platform/agent-vault/services), [variables](/documentation/platform/agent-vault/variables), [skills](/documentation/platform/agent-vault/skills), [sessions](/documentation/platform/agent-vault/sessions), and [proxies](/documentation/platform/agent-vault/proxies). Each project has its own admins and members, so the people who run one system can't see or change the credentials of another.
+
+To open a project, select **Agent Vault** on your organization's overview, then select the project.
+
+## When to create another project
+
+Create a project for each agentic system or team that should manage its own credentials. For example, if one team runs a support bot and another team runs coding agents, give each team a project, so each team's admins manage only their own access bundles and variables.
+
+Keep agents in the same project if the same people manage them and the agents share credentials, such as a set of agents that all call the same GitHub organization.
+
+## What stays inside a project
+
+Nothing in this list is shared between projects:
+
+- Members and their roles (see [Access control](/documentation/platform/agent-vault/access-control))
+- Access bundles, services, and global variables
+- Personal variables and personal values, which each member sets up separately in each project
+- Skills
+- Sessions and proxies (a session only works through a proxy in the same project)
+- Session log settings, including where the logs are stored
+- Audit logs
+
+If two projects need the same credential, add it to each project.
+
+## Create a project
+
+Organization admins and members can create projects by default.
+
+<Steps>
+  <Step>
+    On your organization's overview, select **Agent Vault**.
+  </Step>
+  <Step>
+    Select **New Project**, enter a **Project Name**, then select **Create Project**.
+  </Step>
+</Steps>
+
+You become the project's admin. To give other people access, [add them to the project](/documentation/platform/agent-vault/access-control#adding-members).
+
+## Your first project
+
+If you pick Agent Vault when you sign up, Infisical creates a project named **My first project** for you. If your organization used Agent Vault before it had projects, everything you'd set up is in a project with the same name. Otherwise, your organization has no Agent Vault project until someone [creates one](#create-a-project).
+
+You can rename any project, including **My first project**, in the project's **Administration** > **Settings** > **General**.
+
+## Join a project as an organization admin
+
+Organization admins aren't automatically members of every Agent Vault project. To join a project you aren't a member of:
+
+<Steps>
+  <Step>
+    On your organization's overview, select **Agent Vault**, then select the **All Projects** tab.
+  </Step>
+  <Step>
+    On the project's row, select **Join as Admin**.
+  </Step>
+</Steps>
+
+Infisical adds you to the project with the **Admin** role, records the change in the [audit log](/documentation/platform/audit-logs), and emails the project's admins.
+
+## Find the project ID
+
+The [API](/api-reference/overview/introduction) and the [Infisical CLI](/cli/overview) need the ID of the Agent Vault project to work in. To find it, open the project, go to **Administration** > **Settings**, and copy the **Project ID**. The ID is also in the project's address in your browser, after `/projects/agent-vault/`.
+
+## Delete a project
+
+An admin of the project can delete it in the project's **Administration** > **Settings** > **General**. You can't undo deleting a project. When you delete a project:
+
+- Agents that use the project's sessions stop getting credentials, and the project's proxies stop working
+- You can no longer view the project's session logs
