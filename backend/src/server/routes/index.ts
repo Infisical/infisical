@@ -644,7 +644,6 @@ import { injectPermission } from "../plugins/auth/inject-permission";
 import { goSidecarPlugin } from "../plugins/go-sidecar";
 // import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
 import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
-import { injectAgentVaultProjectId } from "../plugins/inject-agent-vault-project-id";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
@@ -1013,9 +1012,14 @@ export const registerRoutes = async (
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL, keyStore });
   const emailDispatchGuard = emailDispatchGuardFactory({ keyStore });
 
+  const agentVaultPersonalValueDAL = agentVaultPersonalValueDALFactory(db);
+
   const applicationMembershipCleanupService = applicationMembershipCleanupServiceFactory({
     membershipDAL,
-    approvalPolicyDAL
+    approvalPolicyDAL,
+    agentVaultPersonalValueDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const oauthClientDAL = oauthClientDALFactory(db);
@@ -1481,7 +1485,8 @@ export const registerRoutes = async (
     membershipGroupService,
     pamAccountDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    agentVaultPersonalValueDAL
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1573,7 +1578,8 @@ export const registerRoutes = async (
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service,
     eventEmitter: eventOutboxService,
-    pamAccountDAL
+    pamAccountDAL,
+    agentVaultPersonalValueDAL
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -1596,7 +1602,9 @@ export const registerRoutes = async (
     pamAccountDAL,
     pamSessionDAL,
     userDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1710,7 +1718,9 @@ export const registerRoutes = async (
     keyStore,
     pamAccountDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1742,7 +1752,9 @@ export const registerRoutes = async (
     eventEmitter: eventOutboxService,
     pamAccountDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -2112,7 +2124,6 @@ export const registerRoutes = async (
   const agentVaultServiceSubstitutionDAL = agentVaultServiceSubstitutionDALFactory(db);
   const agentVaultVariableDAL = agentVaultVariableDALFactory(db);
   const agentVaultServiceVariableReferenceDAL = agentVaultServiceVariableReferenceDALFactory(db);
-  const agentVaultPersonalValueDAL = agentVaultPersonalValueDALFactory(db);
   const agentVaultPersonalValueReferenceDAL = agentVaultPersonalValueReferenceDALFactory(db);
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
@@ -2214,10 +2225,8 @@ export const registerRoutes = async (
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
     db,
-    projectDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    keyStore
+    keyStore,
+    permissionService
   });
 
   const agentVaultMembershipService = agentVaultMembershipServiceFactory({
@@ -3357,7 +3366,9 @@ export const registerRoutes = async (
     eventEmitter: eventOutboxService,
     pamAccountDAL,
     pamSessionDAL,
-    gatewayV2Service
+    gatewayV2Service,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
   });
 
   const userActivationService = userActivationServiceFactory({
@@ -5270,7 +5281,6 @@ export const registerRoutes = async (
   await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
   await server.register(injectPamProjectId);
-  await server.register(injectAgentVaultProjectId);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
   await server.register(injectPermissionDeniedAuditLog);

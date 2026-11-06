@@ -135,6 +135,7 @@ export enum QueueName {
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event",
+  MeteringEvent = "metering-event",
   IntegrationDeprecationNotice = "integration-deprecation-notice",
   LegacyPkiDeprecationNotice = "legacy-pki-deprecation-notice"
 }
@@ -230,6 +231,7 @@ export enum QueueJobs {
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job",
+  MeteringEvent = "metering-event-job",
   SendIntegrationDeprecationNotice = "send-integration-deprecation-notice",
   SendLegacyPkiDeprecationNotice = "send-legacy-pki-deprecation-notice"
 }
@@ -655,6 +657,13 @@ export type TQueueJobTypes = {
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
     payload: { orgId: string; dimensionKey: string };
+  };
+  [QueueName.MeteringEvent]: {
+    name: QueueJobs.MeteringEvent;
+    payload: {
+      orgId: string;
+      events: { eventId: string; dimensionKey: string; quantity: number; occurredAt: string }[];
+    };
   };
   [QueueName.IntegrationDeprecationNotice]: {
     name: QueueJobs.SendIntegrationDeprecationNotice;

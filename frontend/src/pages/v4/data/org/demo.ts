@@ -47,8 +47,7 @@ const organization = createFixtureStore<Organization>({
   requireGatewayPools: false,
   parentOrgId: null,
   rootOrgId: null,
-  pamProjectId: null,
-  agentVaultProjectId: null
+  pamProjectId: null
 });
 
 const roles = [
@@ -71,7 +70,12 @@ const productStats = (): TOrgProductStats => ({
   },
   secretScanning: secretScanningDemoCounts(),
   pam: { accountsCount: 0, accountTemplatesCount: 0, foldersCount: 0 },
-  agentVault: { accessBundlesCount: 0, servicesCount: 0, proxiesCount: 0 }
+  agentVault: {
+    accessBundlesCount: 0,
+    servicesCount: 0,
+    proxiesCount: 0,
+    projectsCount: demoProjectCount(ProjectType.AgentVault)
+  }
 });
 
 const contact = (id: string, email: string, at: string): IncidentContact => ({

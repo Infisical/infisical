@@ -246,7 +246,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
   const authorizeButton = isWaiting ? (
     <div className="flex items-center gap-2">
       <Button type="button" variant="outline" size="sm" isDisabled>
-        <Spinner size="xs" className="m-0 shrink-0 fill-product-av" />
+        <Spinner size="xs" className="m-0 shrink-0" variant="av" />
         Waiting for sign-in...
       </Button>
       <Button type="button" variant="ghost" size="sm" onClick={cancel}>

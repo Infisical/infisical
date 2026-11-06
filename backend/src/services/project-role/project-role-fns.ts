@@ -16,7 +16,7 @@ const NARROWED_ROLE_PROJECT_TYPES = new Set<string>([ProjectType.AgentVault]);
 const NARROWED_ROLE_SLUGS = new Set<string>([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]);
 
 const AGENT_VAULT_ROLE_DESCRIPTIONS: Record<string, string> = {
-  [ProjectMembershipRole.Admin]: "Full administrative access over Agent Vault",
+  [ProjectMembershipRole.Admin]: "Full administrative access over this project",
   [ProjectMembershipRole.Member]: "Create sessions over the access bundles they're granted"
 };
 

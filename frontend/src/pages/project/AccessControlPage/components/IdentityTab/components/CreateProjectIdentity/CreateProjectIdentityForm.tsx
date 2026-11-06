@@ -151,7 +151,7 @@ const ProjectIdentityFormContent = ({
   const { mutateAsync: updateMembership } = useUpdateProjectIdentityMembership();
   const { mutateAsync: createMembership } = useCreateProjectIdentityMembership();
   const { mutateAsync: addPamProductIdentityMember } = useAddPamProductIdentityMember();
-  const { mutateAsync: addAgentVaultMembers } = useAddAgentVaultMembers();
+  const { mutateAsync: addAgentVaultMembers } = useAddAgentVaultMembers(projectId);
   const { mutateAsync: addUniversalAuth } = useAddIdentityUniversalAuth();
   const { mutateAsync: createAdditionalPrivilege } = useCreateIdentityProjectAdditionalPrivilege();
 
@@ -213,7 +213,9 @@ const ProjectIdentityFormContent = ({
         queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
       }
       if (isAgentVault) {
-        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(currentOrg.id) });
+        queryClient.invalidateQueries({
+          queryKey: agentVaultKeys.members(currentOrg.id, projectId)
+        });
       }
 
       const hasTemplateGrants = data.templateIds.length > 0;

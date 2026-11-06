@@ -47,11 +47,11 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
 
 ## Prerequisites
 
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Modal](https://modal.com) account, with a [Modal token](https://modal.com/docs/reference/cli/token) on the machine that runs your code (run `modal setup`, or set `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`)
 - The Modal SDK for your language: the [`modal`](https://pypi.org/project/modal/) package for Python, the [`modal`](https://www.npmjs.com/package/modal) package for TypeScript, or the [Modal Go SDK](https://pkg.go.dev/github.com/modal-labs/modal-client/go)
-- For Python, the [Infisical Python SDK](/sdks/languages/python)
+- For Python, the [Infisical Python SDK](/sdks/languages/python), and for TypeScript, the [Infisical Node.js SDK](/sdks/languages/node)
 
 ## Step 1: Set up Agent Vault
 
@@ -59,7 +59,7 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Proxies** and select **Create Proxy**.
+    In the Agent Vault project that holds your access bundle, go to **Proxies** and select **Create Proxy**. An agent can only use a proxy in the same project as its session.
   </Step>
   <Step>
     Enter a **Name**, such as `modal-sandboxes`.
@@ -71,7 +71,7 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
 
 ### Create a machine identity for your code
 
-Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an Agent Vault admin can create sessions for every access bundle.
+Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an admin of the Agent Vault project can create sessions with every access bundle in the project.
 
 <MachineIdentitySetup />
 
@@ -178,7 +178,7 @@ func buildImage(ctx context.Context, mc *modal.Client) (*modal.App, *modal.Image
 
 ## Step 4: Run an agent in a sandbox
 
-This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` at the top with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` for EU Cloud or the URL of your self-hosted instance:
+This function runs one prompt in a new sandbox. At the top, replace `<project-id>` with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)) and `<access-bundle-name>` with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` for EU Cloud or the URL of your self-hosted instance:
 
 <CodeGroup>
 
@@ -192,6 +192,7 @@ from infisical_sdk import InfisicalSDKClient
 from sandbox_image import app, image
 
 INFISICAL_URL = "https://app.infisical.com"
+PROJECT_ID = "<project-id>"
 ACCESS_BUNDLE = "<access-bundle-name>"
 
 WAIT_FOR_PROXY = (
@@ -230,7 +231,9 @@ def run_agent(prompt: str) -> str:
 
     # One session per run. The ttl outlasts the sandbox's 15-minute timeout, so
     # the agent can't lose access mid-run.
-    session = infisical.agent_vault.sessions.create(access_bundle=ACCESS_BUNDLE, ttl="20m")
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
+    )
 
     sandbox = None
     try:
@@ -286,11 +289,13 @@ def run_agent(prompt: str) -> str:
 
 ```typescript TypeScript expandable
 // runAgent.ts
+import { InfisicalSDK } from "@infisical/sdk";
 import type { Sandbox } from "modal";
 
 import { app, image, modal } from "./sandboxImage.js";
 
 const INFISICAL_URL = "https://app.infisical.com";
+const PROJECT_ID = "<project-id>";
 const ACCESS_BUNDLE = "<access-bundle-name>";
 
 const WAIT_FOR_PROXY =
@@ -317,34 +322,20 @@ const AGENT_ENV = {
   DISABLE_AUTOUPDATER: "1",
 };
 
-async function infisical(path: string, { token, body }: { token?: string; body?: unknown } = {}) {
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const response = await fetch(`${INFISICAL_URL}${path}`, {
-    method: "POST",
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) throw new Error(`Infisical returned ${response.status}: ${await response.text()}`);
-  return response.json();
-}
-
 export async function runAgent(prompt: string): Promise<string> {
   // The machine identity's credentials stay here and never enter the sandbox.
-  const { accessToken } = await infisical("/api/v1/auth/universal-auth/login", {
-    body: {
-      clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID,
-      clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET,
-    },
+  const infisical = new InfisicalSDK({ siteUrl: INFISICAL_URL });
+  await infisical.auth().universalAuth.login({
+    clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID!,
+    clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET!,
   });
 
   // One session per run. The ttl outlasts the sandbox's 15-minute timeout, so
   // the agent can't lose access mid-run.
-  const { session } = await infisical("/api/v1/agent-vault/sessions", {
-    token: accessToken,
-    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" },
+  const session = await infisical.agentVault().sessions.create({
+    projectId: PROJECT_ID,
+    accessBundle: ACCESS_BUNDLE,
+    ttl: "20m",
   });
 
   let sandbox: Sandbox | undefined;
@@ -387,7 +378,7 @@ export async function runAgent(prompt: string): Promise<string> {
   } finally {
     // Revoke first, so the session ends even if terminating fails.
     try {
-      await infisical(`/api/v1/agent-vault/sessions/${session.id}/revoke`, { token: accessToken });
+      await infisical.agentVault().sessions.revoke(session.id);
     } finally {
       await sandbox?.terminate();
     }
@@ -415,6 +406,7 @@ import (
 
 const (
 	infisicalURL = "https://app.infisical.com"
+	projectID    = "<project-id>"
 	accessBundle = "<access-bundle-name>"
 )
 
@@ -499,6 +491,7 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 		} `json:"session"`
 	}
 	err = infisical(ctx, "/api/v1/agent-vault/sessions", login.AccessToken, map[string]any{
+		"projectId":    projectID,
 		"accessBundle": accessBundle,
 		"ttl":          "20m",
 	}, &created)
@@ -660,7 +653,7 @@ Claude Code replies, even though its sandbox has no Anthropic API key and can't 
   Each run now gets its own sandbox, proxy, and session. The only credential in the agent's container is a session token, and your code revokes the session when the run ends.
 </Check>
 
-To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
+To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in your Agent Vault project. Requests that got a credential have the outcome **Brokered**.
 
 ## Security considerations
 
@@ -686,6 +679,12 @@ Each sidecar has a copy of the proxy token. If you think someone took control of
     - The image has an Infisical CLI version that can start a proxy from a proxy token
 
     Modal doesn't show a sidecar's output, and it removes a sidecar as soon as its command exits. That's why the code starts the proxy with `|| sleep 600`: if the proxy exits, the sidecar keeps running, and the function can read the proxy's log.
+  </Accordion>
+  <Accordion title="Creating the session fails">
+    Check the following:
+
+    - `PROJECT_ID` in your code is the ID of the Agent Vault project that holds the access bundle
+    - The machine identity is a member of that project and has a grant on the access bundle
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked. Set the session's `ttl` a few minutes longer than the sandbox's `timeout`, so the session lasts as long as the sandbox can run.

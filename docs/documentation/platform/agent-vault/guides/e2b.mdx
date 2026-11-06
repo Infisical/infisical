@@ -53,11 +53,12 @@ One proxy serves every sandbox, so you set it up once.
 
 ## Prerequisites
 
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - An [E2B](https://e2b.dev) account with [bring your own proxy](https://e2b.dev/docs/network/byop) turned on (E2B lists it as a private beta, so you may need to ask E2B to turn it on)
 - An [E2B API key](https://e2b.dev/docs/api-key) in the `E2B_API_KEY` environment variable on the machine that runs your code
 - The E2B SDK version 2.57.0 or later for your language: [Python](https://pypi.org/project/e2b/) (with [`requests`](https://pypi.org/project/requests/)) or [TypeScript](https://www.npmjs.com/package/e2b)
+- For Python, the [Infisical Python SDK](/sdks/languages/python), and for TypeScript, the [Infisical Node.js SDK](/sdks/languages/node)
 - A Linux machine or Kubernetes cluster to run the proxy, reachable from the internet, with a DNS name that points to it
 - For the systemd setup, the [Infisical CLI](/cli/install) installed on that machine
 
@@ -207,6 +208,7 @@ The proxy token stays on the proxy's machine, so your code doesn't need it.
 
 This function runs one shell command in a new sandbox and returns the command's output. Replace the values at the top:
 
+- `<project-id>`: the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id))
 - `<access-bundle-name>`: your access bundle's name
 - `<proxy-id>`: the proxy's ID from [Step 2](#step-2-run-the-proxy-on-a-public-machine)
 - `<proxy-dns-name>`: the proxy machine's DNS name
@@ -220,8 +222,10 @@ import os
 
 import requests
 from e2b import Sandbox
+from infisical_sdk import InfisicalSDKClient
 
 INFISICAL_URL = "https://app.infisical.com"
+PROJECT_ID = "<project-id>"
 ACCESS_BUNDLE = "<access-bundle-name>"
 PROXY_ID = "<proxy-id>"
 PROXY_ADDRESS = "<proxy-dns-name>:1080"
@@ -239,32 +243,27 @@ CA_ENV = {
 
 def run_in_sandbox(command: str) -> str:
     # The machine identity's credentials stay here and never enter the sandbox.
-    login = requests.post(
-        f"{INFISICAL_URL}/api/v1/auth/universal-auth/login",
-        json={
-            "clientId": os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
-            "clientSecret": os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
-        },
-        timeout=30,
+    infisical = InfisicalSDKClient(host=INFISICAL_URL)
+    infisical.auth.universal_auth.login(
+        client_id=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
+        client_secret=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
     )
-    login.raise_for_status()
-    headers = {"Authorization": f"Bearer {login.json()['accessToken']}"}
 
     # Fetched on every run, because the CA changes when you rotate the proxy's token.
-    ca_response = requests.get(f"{INFISICAL_URL}/api/v1/agent-vault/proxies/{PROXY_ID}/ca", headers=headers, timeout=30)
+    # The SDK has no method for the CA, so this request calls the API with the SDK's access token.
+    ca_response = requests.get(
+        f"{INFISICAL_URL}/api/v1/agent-vault/proxies/{PROXY_ID}/ca",
+        headers={"Authorization": f"Bearer {infisical.get_token()}"},
+        timeout=30,
+    )
     ca_response.raise_for_status()
     ca = ca_response.json()["ca"]["certificate"]
 
     # One session per run. The ttl outlasts the sandbox's timeout, so the agent
     # can't lose access mid-run.
-    created = requests.post(
-        f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
-        headers=headers,
-        json={"accessBundle": ACCESS_BUNDLE, "ttl": "20m"},
-        timeout=30,
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
     )
-    created.raise_for_status()
-    session = created.json()["session"]
 
     sandbox = None
     try:
@@ -281,7 +280,7 @@ def run_in_sandbox(command: str) -> str:
                     "address": PROXY_ADDRESS,
                     # The proxy ignores the username and reads the session token from the password.
                     "username": "x-agent-vault",
-                    "password": session["token"],
+                    "password": session.token,
                     "tls": {"ca_cert": ca},
                 },
             },
@@ -296,11 +295,7 @@ def run_in_sandbox(command: str) -> str:
     finally:
         # Revoke first, so the session ends even if killing the sandbox fails.
         try:
-            requests.post(
-                f"{INFISICAL_URL}/api/v1/agent-vault/sessions/{session['id']}/revoke",
-                headers=headers,
-                timeout=30,
-            ).raise_for_status()
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
         finally:
             if sandbox:
                 sandbox.kill()
@@ -308,9 +303,11 @@ def run_in_sandbox(command: str) -> str:
 
 ```typescript TypeScript expandable
 // runInSandbox.ts
+import { InfisicalSDK } from "@infisical/sdk";
 import { Sandbox } from "e2b";
 
 const INFISICAL_URL = "https://app.infisical.com";
+const PROJECT_ID = "<project-id>";
 const ACCESS_BUNDLE = "<access-bundle-name>";
 const PROXY_ID = "<proxy-id>";
 const PROXY_ADDRESS = "<proxy-dns-name>:1080";
@@ -326,40 +323,29 @@ const CA_ENV = Object.fromEntries(
   ),
 );
 
-async function infisical(
-  path: string,
-  { method = "POST", token, body }: { method?: string; token?: string; body?: unknown } = {},
-) {
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const response = await fetch(`${INFISICAL_URL}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) throw new Error(`Infisical returned ${response.status}: ${await response.text()}`);
-  return response.json();
-}
-
 export async function runInSandbox(command: string): Promise<string> {
   // The machine identity's credentials stay here and never enter the sandbox.
-  const { accessToken } = await infisical("/api/v1/auth/universal-auth/login", {
-    body: {
-      clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID,
-      clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET,
-    },
+  const infisical = new InfisicalSDK({ siteUrl: INFISICAL_URL });
+  await infisical.auth().universalAuth.login({
+    clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID!,
+    clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET!,
   });
 
   // Fetched on every run, because the CA changes when you rotate the proxy's token.
-  const { ca } = await infisical(`/api/v1/agent-vault/proxies/${PROXY_ID}/ca`, { method: "GET", token: accessToken });
+  // The SDK has no method for the CA, so this request calls the API with the SDK's access token.
+  const caResponse = await fetch(`${INFISICAL_URL}/api/v1/agent-vault/proxies/${PROXY_ID}/ca`, {
+    headers: { Authorization: `Bearer ${infisical.auth().getAccessToken()}` },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!caResponse.ok) throw new Error(`Infisical returned ${caResponse.status}: ${await caResponse.text()}`);
+  const { ca } = await caResponse.json();
 
   // One session per run. The ttl outlasts the sandbox's timeout, so the agent
   // can't lose access mid-run.
-  const { session } = await infisical("/api/v1/agent-vault/sessions", {
-    token: accessToken,
-    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" },
+  const session = await infisical.agentVault().sessions.create({
+    projectId: PROJECT_ID,
+    accessBundle: ACCESS_BUNDLE,
+    ttl: "20m",
   });
 
   let sandbox: Sandbox | undefined;
@@ -390,7 +376,7 @@ export async function runInSandbox(command: string): Promise<string> {
   } finally {
     // Revoke first, so the session ends even if killing the sandbox fails.
     try {
-      await infisical(`/api/v1/agent-vault/sessions/${session.id}/revoke`, { token: accessToken });
+      await infisical.agentVault().sessions.revoke(session.id);
     } finally {
       await sandbox?.kill();
     }
@@ -434,7 +420,7 @@ The response lists Anthropic's models, even though the sandbox has no Anthropic 
   Each run now gets its own sandbox and session. The session token never enters the sandbox, and your code revokes the session when the run ends.
 </Check>
 
-To check which requests the sandbox made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
+To check which requests the sandbox made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in your Agent Vault project. Requests that got a credential have the outcome **Brokered**.
 
 ## Step 6: Run an agent
 
@@ -518,7 +504,7 @@ The proxy token is only on the proxy's machine. If you think someone took contro
   <Accordion title="Connections from the sandbox fail right away">
     The proxy refused the connection before any request. Check the proxy's log for one of these lines:
 
-    - `agent-vault: refused, the session is no longer valid`: the session expired or was revoked
+    - `agent-vault: refused, the session is no longer valid, or it belongs to a different Agent Vault project than this proxy`: the session expired or was revoked, or the session is in a different Agent Vault project from the proxy
     - `agent-vault: refused, Infisical rejected this proxy's token`: someone rotated or revoked the proxy's token, so restart the proxy with the new token
     - `agent-vault: refused, the session could not be resolved`: the proxy couldn't reach Infisical to check the session
     - `agent-vault: a client spoke plain SOCKS5 to the TLS port`: the sandbox's `egress_proxy` has no `tls` setting

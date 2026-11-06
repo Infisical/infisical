@@ -14,8 +14,8 @@ This guide walks you through using Agent Vault to launch an agent that calls HTT
 ## Prerequisites
 
 <ul>
-  <li>An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)</li>
-  <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent calls (see the [quickstart](/documentation/platform/agent-vault/quickstart))</li>
+  <li>An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)</li>
+  <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) in the project, with a service for each API the agent calls (see the [quickstart](/documentation/platform/agent-vault/quickstart))</li>
   <li>The [Infisical CLI](/cli/install) installed on the host that will run the Agent Vault proxy and on the host that will run the agent</li>
   <AgentPrereqLine />
 </ul>
@@ -26,11 +26,11 @@ This guide walks you through using Agent Vault to launch an agent that calls HTT
 
 ### Create a proxy
 
-First, create a [proxy](/documentation/platform/agent-vault/proxies) to intercept API calls from your agent.
+First, create a [proxy](/documentation/platform/agent-vault/proxies) to intercept API calls from your agent. Create the proxy in the same project as your access bundle, because a session only works through a proxy in its own project.
 
 <Steps>
   <Step>
-    Go to **Proxies** and select **Create Proxy**.
+    In your Agent Vault project, go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
     Give the proxy a **Name**, then select **Create**. The **Proxy Token** dialog shows the proxy token once, with a command to start the proxy. Copy the command from the **CLI** tab for the next step.
@@ -60,7 +60,7 @@ Next, create a [session](/documentation/platform/agent-vault/sessions) with your
 
 <Steps>
   <Step>
-    Go to **Sessions** and select **Create Session**.
+    In the same project, go to **Sessions** and select **Create Session**.
   </Step>
   <Step>
     Pick the **Access Bundle** the agent should use, set a duration under **Expires**, then select **Create Session**.

@@ -545,8 +545,7 @@ const organization = (state: AccessState): Organization => ({
   requireGatewayPools: false,
   parentOrgId: null,
   rootOrgId: null,
-  pamProjectId: null,
-  agentVaultProjectId: null
+  pamProjectId: null
 });
 
 const project = (state: AccessState, projectId: string): Project | undefined => {
