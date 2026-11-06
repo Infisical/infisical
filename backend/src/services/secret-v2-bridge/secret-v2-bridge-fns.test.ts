@@ -6,6 +6,7 @@ import { logger } from "@app/lib/logger";
 
 import {
   buildHierarchy,
+  createFetchFolderSecretsWithImports,
   expandSecretReferencesGroupedByPath,
   fnSecretBulkDelete,
   generatePaths
@@ -76,6 +77,41 @@ const buildRandomTree = (size: number, seed: number) => {
   }
   return folders;
 };
+
+describe("createFetchFolderSecretsWithImports", () => {
+  test("merges imported secrets into the folder view while preserving direct overrides", async () => {
+    const importedSecret = { id: "imported", key: "SHARED", folderId: "source" };
+    const importedOnlySecret = { id: "imported-only", key: "IMPORTED", folderId: "source" };
+    const directOverride = { id: "override", key: "SHARED", folderId: "target" };
+    const findByFolderId = vi.fn().mockResolvedValueOnce([directOverride]).mockResolvedValueOnce([
+      importedSecret,
+      importedOnlySecret
+    ]);
+    const findByFolderIds = vi.fn().mockResolvedValue([
+      {
+        id: "import-1",
+        folderId: "target",
+        importPath: "/",
+        importEnv: { id: "source-env", slug: "source", name: "Source" },
+        isReserved: false
+      }
+    ]);
+    const findBySecretPath = vi.fn().mockResolvedValue({ id: "source" });
+
+    const fetchFolderSecretsWithImports = createFetchFolderSecretsWithImports({
+      projectId: "project-1",
+      secretDAL: { findByFolderId },
+      secretImportDAL: { findByFolderIds, findByIds: vi.fn() },
+      folderDAL: { findBySecretPath }
+    });
+
+    await expect(fetchFolderSecretsWithImports({ folderId: "target" })).resolves.toEqual([
+      directOverride,
+      importedOnlySecret
+    ]);
+    expect(findBySecretPath).toHaveBeenCalledWith("project-1", "source", "/", undefined);
+  });
+});
 
 describe("generatePaths", () => {
   beforeEach(() => {
