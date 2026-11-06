@@ -449,7 +449,11 @@ export const OrgGroupDetail = () => {
                     <Icon name="copy" />
                     Copy group ID
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled={!canEdit} onSelect={() => setEditing(true)}>
+                  <DropdownMenuItem
+                    disabled={!canEdit}
+                    description={canEdit ? undefined : RESTRICTED}
+                    onSelect={() => setEditing(true)}
+                  >
                     <Icon icon={PencilIcon} />
                     Edit group
                   </DropdownMenuItem>
@@ -460,6 +464,11 @@ export const OrgGroupDetail = () => {
                         OrgPermissionGroupActions.Delete,
                         OrgPermissionSubjects.Groups
                       )
+                    }
+                    description={
+                      permission.can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups)
+                        ? undefined
+                        : RESTRICTED
                     }
                     onSelect={() => setDeleting(true)}
                   >

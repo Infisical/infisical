@@ -133,7 +133,11 @@ export const ProjectRolesTab = () => {
       const custom = isCustomProjectRole(role.slug);
       return (
         <>
-          <DropdownMenuItem disabled={!canEdit} onSelect={() => openRole(role)}>
+          <DropdownMenuItem
+            disabled={!canEdit}
+            description={canEdit ? undefined : RESTRICTED}
+            onSelect={() => openRole(role)}
+          >
             {custom ? <Icon icon={PencilIcon} /> : <Icon name="eye" />}
             {custom ? "Edit role" : "View role"}
           </DropdownMenuItem>

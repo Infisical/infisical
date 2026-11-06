@@ -54,7 +54,7 @@ import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime } from "../roles";
 import { failed, saved } from "../toast";
-import { Gate, Muted, RoleBadges, type Sort } from "../ui";
+import { Gate, Muted, RoleBadges, type Sort, RESTRICTED } from "../ui";
 import {
   type AuthIdentity,
   AuthMethodFormSheet,
@@ -282,7 +282,11 @@ export const OrgIdentitiesTab = () => {
         </DropdownMenuItem>
       ) : (
         <>
-          <DropdownMenuItem disabled={!canEdit} onSelect={() => openDetail(row)}>
+          <DropdownMenuItem
+            disabled={!canEdit}
+            description={canEdit ? undefined : RESTRICTED}
+            onSelect={() => openDetail(row)}
+          >
             <Icon icon={PencilIcon} />
             Edit machine identity
           </DropdownMenuItem>
@@ -303,6 +307,7 @@ export const OrgIdentitiesTab = () => {
               ))}
               <DropdownMenuItem
                 disabled={!canEditAuth}
+                description={canEditAuth ? undefined : RESTRICTED}
                 onSelect={() => setAuthForm({ identity: authIdentityOf(row) })}
               >
                 <Icon name="plus" />
@@ -313,6 +318,7 @@ export const OrgIdentitiesTab = () => {
           <DropdownMenuItem
             variant="destructive"
             disabled={!canDelete || row.identity.hasDeleteProtection}
+            description={canDelete ? undefined : RESTRICTED}
             onSelect={() => setDeleting(row)}
           >
             <Icon name="trash" />

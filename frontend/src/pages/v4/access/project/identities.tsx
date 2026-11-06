@@ -173,6 +173,11 @@ export const ProjectIdentitiesTab = () => {
               ))}
               <DropdownMenuItem
                 disabled={!can(ProjectPermissionIdentityActions.EditAuth, identity.id)}
+                description={
+                  can(ProjectPermissionIdentityActions.EditAuth, identity.id)
+                    ? undefined
+                    : RESTRICTED
+                }
                 onSelect={() => {
                   setAuthFor(identity.id);
                   flows.add();

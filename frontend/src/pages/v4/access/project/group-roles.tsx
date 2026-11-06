@@ -18,7 +18,7 @@ import type { TGroupMembership } from "@app/hooks/api/groups/types";
 import { useV4Adapter } from "../../data/adapters";
 import { grantSlug } from "../roles";
 import { failed, saved } from "../toast";
-import { Gate, RoleBadges } from "../ui";
+import { Gate, RoleBadges, RESTRICTED } from "../ui";
 import { type ProjectRoleOption, useGroupRoleAccess } from "./member-access";
 import { useProjectScope } from "./scope";
 import {
@@ -227,6 +227,7 @@ export const GroupRoles = ({
                 size="icon-row"
                 aria-label={`Edit roles for ${groupName}`}
                 disabled={!canEdit}
+                disabledReason={canEdit ? undefined : RESTRICTED}
               >
                 <Icon icon={PencilIcon} />
               </Button>

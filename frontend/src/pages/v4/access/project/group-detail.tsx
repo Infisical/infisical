@@ -426,6 +426,11 @@ export const ProjectGroupDetail = () => {
                   disabled={
                     !permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups)
                   }
+                  description={
+                    permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups)
+                      ? undefined
+                      : RESTRICTED
+                  }
                   onSelect={() => setRemoving(true)}
                 >
                   <Icon name="trash" />
