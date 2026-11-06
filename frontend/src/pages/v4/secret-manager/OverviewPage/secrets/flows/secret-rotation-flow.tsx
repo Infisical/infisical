@@ -39,9 +39,10 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import type { AppConnection as ApiAppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { useV4Adapter, useV4Mode } from "../../../../data/adapters";
+import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import { useCreateBlock } from "../row-actions/permissions";
+import { useConnectionCreation } from "./connection-creation";
 import { ReviewSection, RotationField, TextField, useRotationForm } from "./secret-rotation/fields";
 import {
   appConnectionName,
@@ -244,9 +245,9 @@ function ConfigurationFields({
   project: string;
   environments?: RotationEnvironment[];
   addedConnections: RotationConnection[];
-  onCreateConnection?: (connection: RotationConnection) => void;
+  onCreateConnection: (connection: RotationConnection) => void;
 }) {
-  const { control, setValue } = useRotationForm();
+  const { control, getValues, setValue } = useRotationForm();
   const [type, isAutoRotationEnabled] = useWatch({
     control,
     name: ["type", "isAutoRotationEnabled"]
@@ -264,7 +265,16 @@ function ConfigurationFields({
       app: connectionApp as string as AppConnection
     })),
     ...addedConnections
-  ].filter((connection) => apps.includes(connection.app));
+  ].filter(
+    (connection, index, all) =>
+      apps.includes(connection.app) &&
+      all.findIndex((entry) => entry.id === connection.id) === index
+  );
+  const creation = useConnectionCreation(app as string as ApiAppConnection, project, (created) => {
+    const connection = { ...created, app: created.app as string as AppConnection };
+    onCreateConnection(connection);
+    setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
+  });
   const connectionLabel = apps.length > 1 ? "Connection" : `${appConnectionName(app)} Connection`;
   return (
     <Stack gap={16}>
@@ -297,7 +307,6 @@ function ConfigurationFields({
         render={({ field, fieldState: { error } }) => (
           <RotationField
             label={connectionLabel}
-            tooltip="App Connections can be created from the Organization Settings page."
             error={error?.message ?? error?.root?.message}
             description={
               isUpdate ? (
@@ -320,25 +329,23 @@ function ConfigurationFields({
             <Combobox
               label={connectionLabel}
               value={field.value?.id ?? ""}
-              onValueChange={(id) => field.onChange(available.find((entry) => entry.id === id))}
+              onValueChange={(id) =>
+                field.onChange(
+                  available.find((entry) => entry.id === id) ??
+                    (getValues("connection")?.id === id ? getValues("connection") : undefined)
+                )
+              }
               options={available.map((connection) => ({
                 value: connection.id,
                 label: connection.name,
                 meta: apps.length > 1 ? appConnectionName(connection.app) : undefined
               }))}
               placeholder="Select connection..."
-              emptyText={`No ${apps.map(appConnectionName).join(" or ")} connections yet. Create one in App Connections.`}
+              emptyText={`No ${apps.map(appConnectionName).join(" or ")} connections yet.`}
               invalid={Boolean(error)}
               disabled={isUpdate}
               loading={loaded.isPending}
-              onCreate={
-                onCreateConnection &&
-                ((name) => {
-                  const connection = { id: crypto.randomUUID(), name, app };
-                  onCreateConnection(connection);
-                  setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
-                })
-              }
+              creation={isUpdate ? undefined : creation}
             />
           </RotationField>
         )}
@@ -504,7 +511,7 @@ function RotationSteps({
   project: string;
   environments: RotationEnvironment[];
   addedConnections: RotationConnection[];
-  onCreateConnection?: (connection: RotationConnection) => void;
+  onCreateConnection: (connection: RotationConnection) => void;
 }) {
   const Views = ROTATION_VIEWS[type];
   const current = FORM_STEPS[step];
@@ -604,7 +611,6 @@ export function SecretRotationFlow({
   const [submitError, setSubmitError] = useState<string>();
   const [discard, setDiscard] = useState<"close" | "provider" | null>(null);
   const [addedConnections, setAddedConnections] = useState<RotationConnection[]>([]);
-  const isDemo = useV4Mode() === "demo";
   const form = useForm<FieldValues>({
     resolver: zodResolver(SecretRotationV2FormSchema(isUpdate)),
     defaultValues: rotation
@@ -805,10 +811,8 @@ export function SecretRotationFlow({
                 environments={rotationEnvironments}
                 project={project}
                 addedConnections={addedConnections}
-                onCreateConnection={
-                  isDemo
-                    ? (connection) => setAddedConnections([...addedConnections, connection])
-                    : undefined
+                onCreateConnection={(connection) =>
+                  setAddedConnections([...addedConnections, connection])
                 }
               />
             ) : (

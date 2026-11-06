@@ -173,7 +173,8 @@ export const ProjectMembersTab = () => {
               onOpenChange: setFilterOpen,
               options: roles.map((role) => ({ value: role.slug, label: role.name })),
               selected: roleFilter,
-              disabled: members.isPending && !roleFilter.length,
+              disabledReason:
+                members.isPending && !roleFilter.length ? "Loading project users" : undefined,
               onToggle: (slug) => {
                 setRoleFilter((current) =>
                   current.includes(slug) ? current.filter((r) => r !== slug) : [...current, slug]

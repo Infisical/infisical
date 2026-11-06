@@ -107,7 +107,7 @@ const RoleGrantRow = ({
         <DurationPicker
           label={`Duration for role ${index + 1}`}
           grant={grant}
-          disabled={disabled}
+          disabledReason={disabled ? NO_EDIT : undefined}
           onChange={onChange}
         />
       </Field>

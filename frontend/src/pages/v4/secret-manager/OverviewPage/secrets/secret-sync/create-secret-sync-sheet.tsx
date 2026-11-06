@@ -53,7 +53,7 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/hooks/api/secret
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { getSecretSyncDestinationColValues } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/helpers";
 
-import { useV4Adapter, useV4Mode } from "../../../../data/adapters";
+import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import type { FlowFeedback, FlowScope } from "../flows";
 import {
@@ -980,7 +980,6 @@ export function CreateSecretSyncSheet({
   const [discard, setDiscard] = useState<"close" | "provider">();
   const [confirming, setConfirming] = useState(false);
   const [addedConnections, setAddedConnections] = useState<LocalSyncConnection[]>([]);
-  const isDemo = useV4Mode() === "demo";
   const connectionApp = destination ? SECRET_SYNC_CONNECTION_MAP[destination] : AppConnection.AWS;
   const loadedConnections = useV4Adapter("secrets").useSyncConnections(
     connectionApp,
@@ -1161,10 +1160,9 @@ export function CreateSecretSyncSheet({
   return (
     <SyncConnections
       value={{
+        projectId: scope.project,
         connections,
-        addConnection: isDemo
-          ? (connection) => setAddedConnections((list) => [...list, connection])
-          : undefined
+        addConnection: (connection) => setAddedConnections((list) => [...list, connection])
       }}
     >
       <FormProvider {...form}>
