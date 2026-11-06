@@ -83,6 +83,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getAcmeDirectory",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Directory - provides URLs for the client to make API calls to",
       params: z.object({
@@ -131,6 +132,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getAcmeNewNonce",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Nonce (GET) - generate a new nonce and return in Replay-Nonce header with 204 No Content",
       params: z.object({
@@ -158,6 +160,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createAcmeAccount",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Account - register a new account or find existing one",
       params: SharedParamsSchema,
@@ -196,6 +199,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deactivateAcmeAccount",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Account Deactivation",
       params: SharedParamsSchema.extend({
@@ -233,6 +237,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createAcmeOrder",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Order - apply for a new certificate",
       params: SharedParamsSchema,
@@ -269,6 +274,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getAcmeOrder",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Get Order - return status and details of the order",
       params: SharedParamsSchema.extend({
@@ -305,6 +311,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "finalizeAcmeOrder",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Finalize Order - finalize cert order by providing CSR",
       params: SharedParamsSchema.extend({
@@ -343,6 +350,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listAcmeOrders",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME List Orders - get existing orders from current account",
       params: SharedParamsSchema.extend({
@@ -379,6 +387,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "downloadAcmeCertificate",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Download Certificate - download certificate when ready",
       params: SharedParamsSchema.extend({
@@ -417,6 +426,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getAcmeAuthorization",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Identifier Authorization - get authorization info (challenges)",
       params: SharedParamsSchema.extend({
@@ -451,12 +461,14 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "respondToAcmeChallenge",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Respond to Challenge - let ACME server know challenge is ready",
       params: SharedParamsSchema.extend({
         authzId: z.string().uuid(),
         challengeId: z.string().uuid()
       }),
+      body: RawJwsPayloadSchema,
       response: {
         200: RespondToAcmeChallengeResponseSchema
       }
@@ -491,6 +503,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
+      operationId: "getAcmeApplicationDirectory",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Directory - provides URLs for the client to make API calls to",
       params: AppScopedParams,
@@ -505,6 +518,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      operationId: "createAcmeApplicationAccount",
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Account - register a new account or find existing one",
       params: AppScopedParams,

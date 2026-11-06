@@ -132,6 +132,20 @@ record, so publish it first; it is removed when the test ends.
 fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), "_infisical-verification.acme.test", "value")
 ```
 
+A DNS provider fake (`cloudflare`) serves the TXT records created through its API the
+same way, through `Emitter.SetTXT`, as the provider's nameservers would.
+
+## Certificate Manager
+
+| Fake | Host | Scope | Used by |
+|---|---|---|---|
+| `website` | every name under `web.test`, over plain HTTP on port 80 | the label left of `web.test` | ACME HTTP-01: the web server behind a name the test makes up (`website.Name(scope, "www")`) |
+| `acmeca` | `acme.ca.test/<scope>` | path | the upstream CA an ACME CA in Infisical orders from; verifies JWS, nonces and CSR names, and accepts a challenge once answered |
+| `cloudflare` | `api.cloudflare.com` | bearer API token | Cloudflare App Connections and DNS-01 records |
+| `dnsmadeeasy` | `api.dnsmadeeasy.com` | `x-dnsme-apiKey`, with the HMAC checked | DNS Made Easy App Connections and DNS-01 records |
+
+A host registered as `*.<domain>` answers for every name under it; an exact host wins.
+
 ## Test plumbing once
 
 Secret sync is tested end to end through GitHub. A new sync provider gets tests only for

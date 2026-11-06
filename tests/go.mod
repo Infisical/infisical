@@ -12,6 +12,8 @@ require (
 	github.com/mocktools/go-smtp-mock/v2 v2.5.4
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/russellhaering/goxmldsig v1.6.1
+	github.com/smallstep/pkcs7 v0.2.1
+	github.com/smallstep/scep v0.0.0-20261014185058-63893dadfda8
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	golang.org/x/crypto v0.54.0

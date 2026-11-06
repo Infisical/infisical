@@ -734,3 +734,27 @@ output-options:
     - createAzureKeyVaultAppConnection
     - updateAzureKeyVaultAppConnection
     - deleteAzureKeyVaultAppConnection
+    - getAcmeApplicationDirectory
+    - createAcmeApplicationAccount
+    - getAcmeNewNonce
+    - createAcmeOrder
+    - getAcmeOrder
+    - finalizeAcmeOrder
+    - listAcmeOrders
+    - downloadAcmeCertificate
+    - getAcmeAuthorization
+    - respondToAcmeChallenge
+    - getScepOperation
+    - getScepApplicationOperation
+    - getCertManagerInstanceState
+    - createInternalCertificateAuthorityV1
+    - createAcmeCertificateAuthorityV1
+    - createCertificatePolicy
+    - createCertificateProfile
+    - createPkiApplication
+    - attachPkiApplicationProfiles
+    - setPkiApplicationAcmeEnrollment
+    - revealPkiApplicationAcmeEabSecret
+    - setPkiApplicationScepEnrollment
+    - createCloudflareAppConnection
+    - createDnsMadeEasyAppConnection
