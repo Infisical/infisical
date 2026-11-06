@@ -46,8 +46,8 @@ type Props = {
 export const DataSourceDetailsCard = ({ dataSource, canEdit }: Props) => {
   const updateDataSource = useUpdateSecretScanningDataSource();
 
-  const connectionDetails =
-    APP_CONNECTION_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type]];
+  const connectionApp = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type];
+  const connectionDetails = connectionApp ? APP_CONNECTION_MAP[connectionApp] : undefined;
 
   const {
     control,
@@ -97,7 +97,7 @@ export const DataSourceDetailsCard = ({ dataSource, canEdit }: Props) => {
                 </Field>
               )}
             />
-            {dataSource.connection && (
+            {dataSource.connection && connectionDetails && (
               <Field>
                 <FieldLabel htmlFor="data-source-connection">App Connection</FieldLabel>
                 <FieldContent>

@@ -1,13 +1,15 @@
 import { z } from "zod";
 
 import { BitbucketDataSourceSchema, BitbucketFindingSchema } from "@app/ee/services/secret-scanning-v2/bitbucket";
+import { ClaudeCodeDataSourceSchema, ClaudeCodeFindingSchema } from "@app/ee/services/secret-scanning-v2/claude-code";
 import { GitHubDataSourceSchema, GitHubFindingSchema } from "@app/ee/services/secret-scanning-v2/github";
 import { GitLabDataSourceSchema, GitLabFindingSchema } from "@app/ee/services/secret-scanning-v2/gitlab";
 
 export const SecretScanningDataSourceSchema = z.discriminatedUnion("type", [
   GitHubDataSourceSchema,
   BitbucketDataSourceSchema,
-  GitLabDataSourceSchema
+  GitLabDataSourceSchema,
+  ClaudeCodeDataSourceSchema
 ]);
 
 export const SecretScanningFindingSchema = z.discriminatedUnion("dataSourceType", [
@@ -24,6 +26,11 @@ export const SecretScanningFindingSchema = z.discriminatedUnion("dataSourceType"
   GitLabFindingSchema.describe(
     JSON.stringify({
       title: "GitLab"
+    })
+  ),
+  ClaudeCodeFindingSchema.describe(
+    JSON.stringify({
+      title: "Claude Code"
     })
   )
 ]);

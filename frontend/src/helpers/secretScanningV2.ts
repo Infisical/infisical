@@ -7,6 +7,10 @@ import {
   SecretScanningFindingStatus,
   TSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
+import {
+  ClaudeCodeSecretDetectedAction,
+  TClaudeCodeDataSourceConfig
+} from "@app/hooks/api/secretScanningV2/types/claude-code-data-source";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 export const SECRET_SCANNING_DATA_SOURCE_MAP: Record<
@@ -27,17 +31,55 @@ export const SECRET_SCANNING_DATA_SOURCE_MAP: Record<
     name: "GitLab",
     image: "GitLab.png",
     size: 45
+  },
+  [SecretScanningDataSource.ClaudeCode]: {
+    name: "Claude Code",
+    image: "Anthropic.png",
+    size: 45
   }
 };
 
-export const SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP: Record<
-  SecretScanningDataSource,
-  AppConnection
+// Data sources without an entry, such as Claude Code, receive their content directly and need no App Connection.
+export const SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP: Partial<
+  Record<SecretScanningDataSource, AppConnection>
 > = {
   [SecretScanningDataSource.GitHub]: AppConnection.GitHubRadar,
   [SecretScanningDataSource.Bitbucket]: AppConnection.Bitbucket,
   [SecretScanningDataSource.GitLab]: AppConnection.GitLab
 };
+
+// Data sources without an App Connection only scan content as it is submitted to them, so they have no scan
+// settings, cannot be scanned on demand, and create their resources themselves.
+export const doesDataSourceRequireConnection = (type: SecretScanningDataSource) =>
+  Boolean(SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]);
+
+export const CLAUDE_CODE_PLUGIN_INSTALL_COMMAND =
+  "claude plugin marketplace add Infisical/claude-code-plugin && claude plugin install infisical-secret-scan@infisical";
+
+export const CLAUDE_CODE_PLUGIN_SETUP_COMMAND = "/infisical-secret-scan:setup";
+
+export const CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP: Record<
+  ClaudeCodeSecretDetectedAction,
+  { name: string; description: string }
+> = {
+  [ClaudeCodeSecretDetectedAction.Block]: {
+    name: "Block the prompt",
+    description:
+      "Claude Code blocks the prompt until the finding is marked as false positive or ignored.\nA resolved secret that comes back is recorded as a new finding."
+  },
+  [ClaudeCodeSecretDetectedAction.Report]: {
+    name: "Report only",
+    description:
+      "The prompt continues with a warning until the finding is marked as false positive or ignored.\nA resolved secret that comes back is recorded as a new finding."
+  }
+};
+
+// data sources created before this setting existed may not have a value, so they get the backend default
+export const getClaudeCodeConfig = (
+  config?: Partial<TClaudeCodeDataSourceConfig>
+): TClaudeCodeDataSourceConfig => ({
+  onSecretDetected: config?.onSecretDetected ?? ClaudeCodeSecretDetectedAction.Block
+});
 
 // GitLab discovery relies on group-level webhooks, so a project-scoped data source cannot discover new projects.
 export const doesDataSourceSupportDiscovery = ({
@@ -54,6 +96,7 @@ export const doesDataSourceSupportDiscovery = ({
 
 // a project-scoped GitLab data source scans exactly one project, so projects can't be added or removed
 export const canAddSecretScanningResources = (dataSource: TSecretScanningDataSource) =>
+  doesDataSourceRequireConnection(dataSource.type) &&
   !(
     dataSource.type === SecretScanningDataSource.GitLab &&
     dataSource.config.scope === GitLabDataSourceScope.Project
@@ -98,6 +141,13 @@ export const RESOURCE_DESCRIPTION_HELPER: Record<
     singularNoun: "project",
     pluralTitle: "Projects",
     singularTitle: "Project"
+  },
+  [SecretScanningDataSource.ClaudeCode]: {
+    verb: "prompt submission",
+    pluralNoun: "developers",
+    singularNoun: "developer",
+    pluralTitle: "Developers",
+    singularTitle: "Developer"
   }
 };
 

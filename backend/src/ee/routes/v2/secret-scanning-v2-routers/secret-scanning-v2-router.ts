@@ -4,6 +4,7 @@ import { z } from "zod";
 import { SecretScanningConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BitbucketDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/bitbucket";
+import { ClaudeCodeDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/claude-code";
 import { GitHubDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";
 import { GitLabDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/gitlab";
 import {
@@ -32,7 +33,8 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
   GitHubDataSourceListItemSchema,
   BitbucketDataSourceListItemSchema,
-  GitLabDataSourceListItemSchema
+  GitLabDataSourceListItemSchema,
+  ClaudeCodeDataSourceListItemSchema
 ]);
 
 export const registerSecretScanningV2Router = async (server: FastifyZodProvider) => {

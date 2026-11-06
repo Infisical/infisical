@@ -18,13 +18,20 @@ import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
 import { TSecretScanningDataSourceForm } from "../schemas";
 import { BitbucketDataSourceConnectionFields } from "./BitbucketDataSourceConfigFields";
+import { ClaudeCodeDataSourceScanFields } from "./ClaudeCodeDataSourceConfigFields";
 import { GitHubDataSourceConnectionFields } from "./GitHubDataSourceConfigFields";
 import { GitLabDataSourceConnectionFields } from "./GitLabDataSourceConfigFields";
 
-const CONNECTION_COMPONENT_MAP: Record<SecretScanningDataSource, React.FC> = {
+// data sources without an App Connection have no connection fields
+const CONNECTION_COMPONENT_MAP: Partial<Record<SecretScanningDataSource, React.FC>> = {
   [SecretScanningDataSource.GitHub]: GitHubDataSourceConnectionFields,
   [SecretScanningDataSource.Bitbucket]: BitbucketDataSourceConnectionFields,
   [SecretScanningDataSource.GitLab]: GitLabDataSourceConnectionFields
+};
+
+// data sources without an App Connection have their own scan options in place of the scan toggles
+const SCAN_COMPONENT_MAP: Partial<Record<SecretScanningDataSource, React.FC>> = {
+  [SecretScanningDataSource.ClaudeCode]: ClaudeCodeDataSourceScanFields
 };
 
 export const SecretScanningDataSourceConnectionFields = () => {
@@ -32,6 +39,8 @@ export const SecretScanningDataSourceConnectionFields = () => {
   const type = useWatch({ control, name: "type" });
 
   const Component = CONNECTION_COMPONENT_MAP[type];
+
+  if (!Component) return null;
 
   return (
     <FieldGroup>
@@ -93,6 +102,16 @@ export const SecretScanningDataSourceScanFields = () => {
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const { singularNoun, pluralNoun, pluralTitle } = RESOURCE_DESCRIPTION_HELPER[type];
   const supportsDiscovery = doesDataSourceSupportDiscovery({ type, config });
+
+  const Component = SCAN_COMPONENT_MAP[type];
+
+  if (Component) {
+    return (
+      <FieldGroup>
+        <Component />
+      </FieldGroup>
+    );
+  }
 
   return (
     <FieldGroup>

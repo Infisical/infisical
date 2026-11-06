@@ -437,10 +437,10 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
-      const dataSource = (await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
+      const { dataSource } = await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
         { type, dataSourceId },
         req.permission
-      )) as T;
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -449,7 +449,8 @@ export const registerSecretScanningEndpoints = <
           type: EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN,
           metadata: {
             type,
-            dataSourceId
+            dataSourceId,
+            dataSourceName: dataSource.name
           }
         }
       });
@@ -481,10 +482,10 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId, resourceId } = req.params;
 
-      const dataSource = (await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
+      const { dataSource, resourceName } = await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
         { type, dataSourceId, resourceId },
         req.permission
-      )) as T;
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -494,7 +495,9 @@ export const registerSecretScanningEndpoints = <
           metadata: {
             type,
             dataSourceId,
-            resourceId
+            dataSourceName: dataSource.name,
+            resourceId,
+            resourceName
           }
         }
       });

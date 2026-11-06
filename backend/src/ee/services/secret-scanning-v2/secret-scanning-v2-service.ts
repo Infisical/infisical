@@ -68,8 +68,10 @@ import { TAppConnection } from "@app/services/app-connection/app-connection-type
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
+import { claudeCodeSecretScanningService } from "./claude-code/claude-code-secret-scanning-service";
 import { gitlabSecretScanningService } from "./gitlab/gitlab-secret-scanning-service";
 import {
   TListSecretScanningFindingsFilter,
@@ -84,6 +86,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
@@ -101,6 +104,7 @@ export const secretScanningV2ServiceFactory = ({
   permissionService,
   appConnectionService,
   licenseService,
+  projectDAL,
   secretScanningV2Queue,
   appConnectionDAL,
   kmsService,
@@ -136,18 +140,23 @@ export const secretScanningV2ServiceFactory = ({
     }
   };
 
+  const $getDataSourceConnectionApp = (type: SecretScanningDataSource) => {
+    const app = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type];
+
+    if (!app)
+      throw new BadRequestError({
+        message: `${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Sources do not use an App Connection`
+      });
+
+    return app;
+  };
+
+  // No plan check: reads stay available after a downgrade (backend/CODE_QUALITY.md, License checks), and the Claude
+  // Code plugin needs them to keep checking prompts.
   const $checkListSecretScanningDataSourcesByProjectIdPermissions = async (
     projectId: string,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Data Sources due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -191,18 +200,12 @@ export const secretScanningV2ServiceFactory = ({
     return dataSources as TSecretScanningDataSourceWithDetails[];
   };
 
+  // No plan check: reads stay available after a downgrade (backend/CODE_QUALITY.md, License checks), and the Claude
+  // Code plugin needs them to keep checking prompts.
   const findSecretScanningDataSourceById = async (
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
 
     if (!dataSource)
@@ -337,7 +340,14 @@ export const secretScanningV2ServiceFactory = ({
       isScanNewCommitsEnabled,
       isDiscoveryEnabled: dto.isDiscoveryEnabled ?? supportsDiscovery,
       // Kept in sync for instances still reading the legacy flag during a rolling deploy.
-      isAutoScanEnabled: isScanNewCommitsEnabled
+      isAutoScanEnabled: isScanNewCommitsEnabled,
+      // Claude Code prompts are scanned as the plugin submits them; there is no history to scan or provider to discover.
+      ...(dto.type === SecretScanningDataSource.ClaudeCode && {
+        isHistoricalScanEnabled: false,
+        isScanNewCommitsEnabled: true,
+        isDiscoveryEnabled: false,
+        isAutoScanEnabled: true
+      })
     };
 
     const plan = await licenseService.getPlan(actor.orgId);
@@ -366,7 +376,7 @@ export const secretScanningV2ServiceFactory = ({
     if (payload.connectionId) {
       // validates permission to connect and app is valid for data source
       connection = await appConnectionService.validateAppConnectionUsageById(
-        SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[payload.type],
+        $getDataSourceConnectionApp(payload.type),
         { connectionId: payload.connectionId, projectId: payload.projectId },
         actor
       );
@@ -492,7 +502,7 @@ export const secretScanningV2ServiceFactory = ({
     if (dataSource.connectionId) {
       // validates permission to connect and app is valid for data source
       connection = await appConnectionService.validateAppConnectionUsageById(
-        SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
+        $getDataSourceConnectionApp(dataSource.type),
         { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
         actor
       );
@@ -710,10 +720,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
+    if (dataSource.type === SecretScanningDataSource.ClaudeCode)
+      throw new BadRequestError({
+        message: "Claude Code Data Sources scan prompts as they are submitted, so they can't be scanned manually."
+      });
+
     let connection: TAppConnection | null = null;
     if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
     let resourceExternalId: string | undefined;
+    let resourceName: string | undefined;
 
     if (resourceId) {
       const resource = await secretScanningV2DAL.resources.findOne({ id: resourceId, dataSourceId });
@@ -723,6 +739,7 @@ export const secretScanningV2ServiceFactory = ({
         });
       }
       resourceExternalId = resource.externalId;
+      resourceName = resource.name;
     }
 
     await secretScanningV2Queue.queueDataSourceFullScan(
@@ -737,7 +754,7 @@ export const secretScanningV2ServiceFactory = ({
       }
     );
 
-    return dataSource as TSecretScanningDataSource;
+    return { dataSource: dataSource as TSecretScanningDataSource, resourceName };
   };
 
   // Adds one resource by name, or every resource the connection can access when no name is given.
@@ -785,6 +802,11 @@ export const secretScanningV2ServiceFactory = ({
         message: `Data Source "${dataSource.name}" is disconnected from ${sourceName}, so resources can't be added to it. Delete it and connect ${sourceName} again.`
       });
 
+    if (dataSource.type === SecretScanningDataSource.ClaudeCode)
+      throw new BadRequestError({
+        message: `Data Source "${dataSource.name}" adds a resource for each developer who submits a prompt, so resources can't be added to it.`
+      });
+
     if (
       dataSource.type === SecretScanningDataSource.GitLab &&
       (dataSource.config as { scope?: string }).scope === GitLabDataSourceScope.Project
@@ -807,7 +829,7 @@ export const secretScanningV2ServiceFactory = ({
     let connection: TAppConnection | null = null;
     if (dataSource.connectionId) {
       connection = await appConnectionService.validateAppConnectionUsageById(
-        SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
+        $getDataSourceConnectionApp(dataSource.type),
         { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
         actor
       );
@@ -938,6 +960,12 @@ export const secretScanningV2ServiceFactory = ({
     if (type !== dataSource.type)
       throw new BadRequestError({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${sourceName}`
+      });
+
+    // Removing a developer deletes their findings, and with them the reviews that allow a secret for everyone.
+    if (dataSource.type === SecretScanningDataSource.ClaudeCode)
+      throw new BadRequestError({
+        message: "Claude Code Data Source resources are the developers who submitted prompts, and can't be removed."
       });
 
     const resource = await secretScanningV2DAL.resources.findOne({ id: resourceId, dataSourceId });
@@ -1071,7 +1099,7 @@ export const secretScanningV2ServiceFactory = ({
     let connection: TAppConnection | null = null;
     if (dataSource.connectionId) {
       connection = await appConnectionService.validateAppConnectionUsageById(
-        SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
+        $getDataSourceConnectionApp(dataSource.type),
         { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
         actor
       );
@@ -1370,15 +1398,9 @@ export const secretScanningV2ServiceFactory = ({
     };
   };
 
+  // No plan check: reads stay available after a downgrade (backend/CODE_QUALITY.md, License checks), and the Claude
+  // Code plugin needs them to keep checking prompts.
   const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1492,6 +1514,13 @@ export const secretScanningV2ServiceFactory = ({
     upsertSecretScanningConfig,
     github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
     bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService),
-    gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)
+    gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService),
+    claudeCode: claudeCodeSecretScanningService({
+      secretScanningV2DAL,
+      secretScanningV2Queue,
+      kmsService,
+      permissionService,
+      projectDAL
+    })
   };
 };

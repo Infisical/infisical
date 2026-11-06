@@ -16,12 +16,18 @@ import {
   SecretScanningScanType
 } from "../enums";
 import { TBitbucketDataSource, TBitbucketDataSourceOption } from "./bitbucket-data-source";
+import {
+  TClaudeCodeDataSource,
+  TClaudeCodeDataSourceOption,
+  TClaudeCodeFindingDetails
+} from "./claude-code-data-source";
 import { TGitHubDataSource, TGitHubDataSourceOption } from "./github-data-source";
 
 export type TSecretScanningDataSource =
   | TGitHubDataSource
   | TBitbucketDataSource
-  | TGitLabDataSource;
+  | TGitLabDataSource
+  | TClaudeCodeDataSource;
 
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScannedAt: string | null;
@@ -42,7 +48,8 @@ export type TListSecretScanningBasicDataSources = {
 export type TSecretScanningDataSourceOption =
   | TGitHubDataSourceOption
   | TBitbucketDataSourceOption
-  | TGitLabDataSourceOption;
+  | TGitLabDataSourceOption
+  | TClaudeCodeDataSourceOption;
 
 export type TListSecretScanningDataSourceOptions = {
   dataSourceOptions: TSecretScanningDataSourceOption[];
@@ -50,18 +57,17 @@ export type TListSecretScanningDataSourceOptions = {
 
 export type TSecretScanningDataSourceResponse = { dataSource: TSecretScanningDataSource };
 
+// scan settings are optional because data sources without an App Connection, such as Claude Code, do not accept them
 export type TCreateSecretScanningDataSourceDTO = DiscriminativePick<
   TSecretScanningDataSource,
-  | "name"
-  | "config"
-  | "description"
-  | "connectionId"
-  | "type"
-  | "isHistoricalScanEnabled"
-  | "isScanNewCommitsEnabled"
-  | "isDiscoveryEnabled"
-  | "projectId"
->;
+  "name" | "config" | "description" | "connectionId" | "type" | "projectId"
+> &
+  Partial<
+    Pick<
+      TSecretScanningDataSource,
+      "isHistoricalScanEnabled" | "isScanNewCommitsEnabled" | "isDiscoveryEnabled"
+    >
+  >;
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
   Omit<TCreateSecretScanningDataSourceDTO, "type" | "connectionId" | "projectId">
@@ -204,13 +210,32 @@ export type TGetSecretScanningConfigResponse = {
   config: TSecretScanningConfig;
 };
 
+export type TSecretScanningGitFindingDetails = {
+  description: string;
+  startLine: number;
+  endLine: number;
+  startColumn: number;
+  endColumn: number;
+  file: string;
+  link: string;
+  symlinkFile: string;
+  commit: string;
+  entropy: string;
+  author: string;
+  email: string;
+  date: string;
+  message: string;
+  tags: string[];
+  ruleID: string;
+  fingerprint: string;
+};
+
 export type TSecretScanningFinding = {
   id: string;
   resourceId: string;
   resourceName: string;
   dataSourceId: string;
   dataSourceName: string;
-  dataSourceType: SecretScanningDataSource;
   rule: string;
   severity: SecretScanningFindingSeverity;
   confidence?: SecretScanningFindingConfidence | null;
@@ -220,31 +245,20 @@ export type TSecretScanningFinding = {
   triagedAt?: string | null;
   resolvedAt?: string | null;
   fingerprint: string;
-  // TODO scott: this will need to be type differentiated once we add other scan types
-  details: {
-    description: string;
-    startLine: number;
-    endLine: number;
-    startColumn: number;
-    endColumn: number;
-    file: string;
-    link: string;
-    symlinkFile: string;
-    commit: string;
-    entropy: string;
-    author: string;
-    email: string;
-    date: string;
-    message: string;
-    tags: string[];
-    ruleID: string;
-    fingerprint: string;
-  };
   projectId: string;
   scanId: string;
   createdAt: string;
   updatedAt: string;
-};
+} & (
+  | {
+      dataSourceType: Exclude<SecretScanningDataSource, SecretScanningDataSource.ClaudeCode>;
+      details: TSecretScanningGitFindingDetails;
+    }
+  | {
+      dataSourceType: SecretScanningDataSource.ClaudeCode;
+      details: TClaudeCodeFindingDetails;
+    }
+);
 
 export type TListSecretScanningFindingsDTO = {
   projectId: string;

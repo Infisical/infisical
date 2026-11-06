@@ -29,6 +29,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
+  SecretScanningDataSource,
   SecretScanningFindingStatus,
   TSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2";
@@ -46,6 +47,105 @@ type Props = {
 };
 
 const formatDate = (date: string | Date) => format(new Date(date), "MMM d, yyyy h:mm a");
+
+const AuthorDetail = ({ label, finding }: { label: string; finding: TSecretScanningFinding }) => (
+  <Detail>
+    <DetailLabel>{label}</DetailLabel>
+    <DetailValue>
+      {finding.details.author || finding.details.email}
+      {finding.details.author && finding.details.email && (
+        <p className="text-xs text-muted">{finding.details.email}</p>
+      )}
+    </DetailValue>
+  </Detail>
+);
+
+const FingerprintDetail = ({ fingerprint }: { fingerprint: string }) => (
+  <Detail>
+    <DetailLabel>Fingerprint</DetailLabel>
+    <DetailValue>
+      <span className="text-xs break-all text-muted">{fingerprint}</span>
+    </DetailValue>
+  </Detail>
+);
+
+const FindingSourceDetails = ({ finding }: { finding: TSecretScanningFinding }) => {
+  // Claude Code findings come from a submitted prompt, so there is no file, commit, or link
+  if (finding.dataSourceType === SecretScanningDataSource.ClaudeCode) {
+    const { startLine, startColumn, date, cwd, sessionId } = finding.details;
+
+    return (
+      <>
+        <Detail>
+          <DetailLabel>Location</DetailLabel>
+          <DetailValue>
+            Prompt line {startLine}, column {startColumn}
+          </DetailValue>
+        </Detail>
+        <FingerprintDetail fingerprint={finding.fingerprint} />
+        <AuthorDetail label="Developer" finding={finding} />
+        <Detail>
+          <DetailLabel>Submitted</DetailLabel>
+          <DetailValue>{formatDate(date)}</DetailValue>
+        </Detail>
+        {cwd && (
+          <Detail className="col-span-2">
+            <DetailLabel>Working Directory</DetailLabel>
+            <DetailValue>
+              <span className="font-mono text-xs break-all">{cwd}</span>
+            </DetailValue>
+          </Detail>
+        )}
+        {sessionId && (
+          <Detail className="col-span-2">
+            <DetailLabel>Session ID</DetailLabel>
+            <DetailValue>
+              <span className="font-mono text-xs break-all">{sessionId}</span>
+            </DetailValue>
+          </Detail>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Detail>
+        <DetailLabel>File</DetailLabel>
+        <DetailValue>
+          {finding.details.link ? (
+            <a
+              href={finding.details.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 hover:underline hover:underline-offset-2"
+            >
+              <ExternalLinkIcon className="size-3.5 shrink-0" />
+              {finding.details.file}:{finding.details.startLine}
+            </a>
+          ) : (
+            `${finding.details.file}:${finding.details.startLine}`
+          )}
+        </DetailValue>
+      </Detail>
+      <FingerprintDetail fingerprint={finding.fingerprint} />
+      <Detail>
+        <DetailLabel>Commit</DetailLabel>
+        <DetailValue>
+          {finding.details.commit.slice(0, 7)}
+          {finding.details.message && (
+            <p className="line-clamp-3 text-xs text-muted">{finding.details.message}</p>
+          )}
+        </DetailValue>
+      </Detail>
+      <AuthorDetail label="Author" finding={finding} />
+      <Detail>
+        <DetailLabel>Committed</DetailLabel>
+        <DetailValue>{formatDate(finding.details.date)}</DetailValue>
+      </Detail>
+    </>
+  );
+};
 
 export const FindingDetailSheet = ({
   finding,
@@ -103,52 +203,7 @@ export const FindingDetailSheet = ({
             </SheetHeader>
 
             <div className="grid flex-1 grid-cols-2 content-start gap-4 overflow-y-auto p-4">
-              <Detail>
-                <DetailLabel>File</DetailLabel>
-                <DetailValue>
-                  {finding.details.link ? (
-                    <a
-                      href={finding.details.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 hover:underline hover:underline-offset-2"
-                    >
-                      <ExternalLinkIcon className="size-3.5 shrink-0" />
-                      {finding.details.file}:{finding.details.startLine}
-                    </a>
-                  ) : (
-                    `${finding.details.file}:${finding.details.startLine}`
-                  )}
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Fingerprint</DetailLabel>
-                <DetailValue>
-                  <span className="text-xs break-all text-muted">{finding.fingerprint}</span>
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Commit</DetailLabel>
-                <DetailValue>
-                  {finding.details.commit.slice(0, 7)}
-                  {finding.details.message && (
-                    <p className="line-clamp-3 text-xs text-muted">{finding.details.message}</p>
-                  )}
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Author</DetailLabel>
-                <DetailValue>
-                  {finding.details.author}
-                  {finding.details.email && (
-                    <p className="text-xs text-muted">{finding.details.email}</p>
-                  )}
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Committed</DetailLabel>
-                <DetailValue>{formatDate(finding.details.date)}</DetailValue>
-              </Detail>
+              <FindingSourceDetails finding={finding} />
               {finding.triageComment && (
                 <Detail className="col-span-2">
                   <DetailLabel>Comment</DetailLabel>

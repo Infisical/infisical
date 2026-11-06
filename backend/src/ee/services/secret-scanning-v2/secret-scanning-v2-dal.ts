@@ -67,8 +67,9 @@ const baseSecretScanningDataSourceQuery = ({
   options?: TSecretScanningDataSourceFindOptions;
   tx?: Knex;
 }) => {
+  // Left join: data sources such as Claude Code have no App Connection.
   const query = (tx || db.replicaNode())(TableName.SecretScanningDataSource)
-    .join(
+    .leftJoin(
       TableName.AppConnection,
       `${TableName.SecretScanningDataSource}.connectionId`,
       `${TableName.AppConnection}.id`
@@ -148,7 +149,7 @@ const expandSecretScanningDataSource = <
           gatewayPoolId: connectionGatewayPoolId,
           projectId: connectionProjectId
         }
-      : undefined
+      : null
   };
 };
 
@@ -268,15 +269,12 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningScan}.resourceId`,
           `${TableName.SecretScanningResource}.id`
         )
-        .leftJoin(
-          TableName.SecretScanningFinding,
-          `${TableName.SecretScanningFinding}.scanId`,
-          `${TableName.SecretScanningScan}.id`
-        )
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
-            .orWhereNull(`${TableName.SecretScanningFinding}.status`);
+        // Filtered in the join, not a where: a data source whose scans all found only reviewed findings (common for
+        // Claude Code, where every scan has findings) must still be listed.
+        .leftJoin(TableName.SecretScanningFinding, (join) => {
+          void join
+            .on(`${TableName.SecretScanningFinding}.scanId`, `${TableName.SecretScanningScan}.id`)
+            .andOnVal(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved);
         })
         .select(
           db.ref("id").withSchema(TableName.SecretScanningScan).as("scanId"),
@@ -316,7 +314,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         ]
       });
 
-      // counted separately because the join above drops resources whose findings are all resolved
+      // counted in a separate query, not from the joined rows above, which repeat each resource per scan
       const resourceCounts = await (tx || db.replicaNode())(TableName.SecretScanningResource)
         .whereIn(
           "dataSourceId",
@@ -760,6 +758,38 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // The status of the newest finding for each of these secrets in the project, by their org-level blind index. Only
+  // the newest counts: a secret resolved and later found again has a newer finding than the resolved one. Blind
+  // indexes are internal, so callers must not return them.
+  const findNewestFindingStatusesByProjectIdAndBlindIndexes = async (
+    projectId: string,
+    blindIndexes: string[],
+    tx?: Knex
+  ) => {
+    try {
+      const findings = (await baseFindingQuery(tx || db)
+        .where(`${TableName.SecretScanningDataSource}.projectId`, projectId)
+        .whereIn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`, blindIndexes)
+        .distinctOn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`)
+        .select(
+          db.ref("secretFindingBlindIndex").withSchema(TableName.SecretScanningFinding),
+          db.ref("status").withSchema(TableName.SecretScanningFinding)
+        )
+        .orderBy([
+          { column: `${TableName.SecretScanningFinding}.secretFindingBlindIndex` },
+          { column: `${TableName.SecretScanningFinding}.createdAt`, order: "desc" },
+          { column: `${TableName.SecretScanningFinding}.id`, order: "desc" }
+        ])) as { secretFindingBlindIndex: string; status: string }[];
+
+      return findings;
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Find Newest Statuses By Project ID And Blind Indexes - Secret Scanning Finding"
+      });
+    }
+  };
+
   const primaryNode = () => db.primaryNode();
 
   return {
@@ -792,7 +822,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       countByScanId: countFindingsByScanId,
       findByProjectId: findFindingsByProjectId,
       findByIdWithDetails: findFindingByIdWithDetails,
-      countByProjectId: countFindingsByProjectId
+      countByProjectId: countFindingsByProjectId,
+      findNewestStatusesByProjectIdAndBlindIndexes: findNewestFindingStatusesByProjectIdAndBlindIndexes
     },
     configs: configOrm
   };

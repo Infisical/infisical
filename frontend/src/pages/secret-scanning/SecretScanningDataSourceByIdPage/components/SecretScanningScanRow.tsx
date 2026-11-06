@@ -4,6 +4,7 @@ import {
   CopyIcon,
   GitBranchIcon,
   HistoryIcon,
+  MessageSquareIcon,
   MoreHorizontalIcon,
   RotateCwIcon
 } from "lucide-react";
@@ -24,6 +25,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  SecretScanningDataSource,
   SecretScanningScanStatus,
   SecretScanningScanType,
   TSecretScanningScanWithDetails
@@ -31,9 +33,25 @@ import {
 
 type Props = {
   scan: TSecretScanningScanWithDetails;
+  type: SecretScanningDataSource;
 };
 
-export const SecretScanningScanRow = ({ scan }: Props) => {
+const getScanTypeDetails = (isHistorical: boolean, type: SecretScanningDataSource) => {
+  if (isHistorical) {
+    return { Icon: HistoryIcon, description: "Historical scan: the full history was scanned" };
+  }
+
+  if (type === SecretScanningDataSource.ClaudeCode) {
+    return {
+      Icon: MessageSquareIcon,
+      description: "Realtime scan: a submitted prompt was scanned"
+    };
+  }
+
+  return { Icon: GitBranchIcon, description: "Realtime scan: new commits were scanned" };
+};
+
+export const SecretScanningScanRow = ({ scan, type: dataSourceType }: Props) => {
   const {
     id,
     resourceName,
@@ -48,6 +66,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
   } = scan;
   const totalFindings = resolvedFindings + unresolvedFindings;
   const isHistorical = type === SecretScanningScanType.Historical;
+  const scanTypeDetails = getScanTypeDetails(isHistorical, dataSourceType);
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(id);
@@ -90,14 +109,10 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
           <Tooltip>
             <TooltipTrigger asChild>
               <Badge variant="neutral" isSquare>
-                {isHistorical ? <HistoryIcon /> : <GitBranchIcon />}
+                <scanTypeDetails.Icon />
               </Badge>
             </TooltipTrigger>
-            <TooltipContent>
-              {isHistorical
-                ? "Historical scan: the full history was scanned"
-                : "Realtime scan: new commits were scanned"}
-            </TooltipContent>
+            <TooltipContent>{scanTypeDetails.description}</TooltipContent>
           </Tooltip>
           <p className="truncate">{resourceName}</p>
         </div>

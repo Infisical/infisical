@@ -52,7 +52,8 @@ export const PgSqlLock = {
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
   ExternalGroupOrgRoleMappingUpdate: (orgId: string) =>
     pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`),
-  AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`)
+  AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`),
+  RecordClaudeCodeFindings: (projectId: string) => pgAdvisoryLockHashText(`record-claude-code-findings:${projectId}`)
 } as const;
 
 // Shared by the secret list cache keys and the pattern the admin cache wipe deletes, so they cannot drift apart.

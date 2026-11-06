@@ -1,7 +1,8 @@
 export enum SecretScanningDataSource {
   GitHub = "github",
   Bitbucket = "bitbucket",
-  GitLab = "gitlab"
+  GitLab = "gitlab",
+  ClaudeCode = "claude-code"
 }
 
 export enum SecretScanningScanStatus {

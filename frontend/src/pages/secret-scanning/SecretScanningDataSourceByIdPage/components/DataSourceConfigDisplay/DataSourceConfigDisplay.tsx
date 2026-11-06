@@ -15,6 +15,7 @@ type Props = {
 export const DataSourceConfigDisplay = ({ dataSource }: Props) => {
   switch (dataSource.type) {
     case SecretScanningDataSource.GitHub:
+    case SecretScanningDataSource.ClaudeCode:
       return null;
     case SecretScanningDataSource.Bitbucket:
       return (

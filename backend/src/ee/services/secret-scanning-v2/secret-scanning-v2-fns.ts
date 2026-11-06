@@ -4,6 +4,7 @@ import picomatch from "picomatch";
 import RE2 from "re2";
 
 import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
+import { CLAUDE_CODE_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/claude-code";
 import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
 import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/gitlab";
 import {
@@ -35,7 +36,8 @@ import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListIte
 const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSecretScanningDataSourceListItem> = {
   [SecretScanningDataSource.GitHub]: GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
   [SecretScanningDataSource.Bitbucket]: BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
-  [SecretScanningDataSource.GitLab]: GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION
+  [SecretScanningDataSource.GitLab]: GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
+  [SecretScanningDataSource.ClaudeCode]: CLAUDE_CODE_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION
 };
 
 export const listSecretScanningDataSourceOptions = () => {

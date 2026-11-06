@@ -1,4 +1,5 @@
 import { BitbucketSecretScanningFactory } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-factory";
+import { ClaudeCodeSecretScanningFactory } from "@app/ee/services/secret-scanning-v2/claude-code/claude-code-secret-scanning-factory";
 import { GitHubSecretScanningFactory } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-factory";
 import { GitLabSecretScanningFactory } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-factory";
 
@@ -21,5 +22,6 @@ type TSecretScanningFactoryImplementation = TSecretScanningFactory<
 export const SECRET_SCANNING_FACTORY_MAP: Record<SecretScanningDataSource, TSecretScanningFactoryImplementation> = {
   [SecretScanningDataSource.GitHub]: GitHubSecretScanningFactory as TSecretScanningFactoryImplementation,
   [SecretScanningDataSource.Bitbucket]: BitbucketSecretScanningFactory as TSecretScanningFactoryImplementation,
-  [SecretScanningDataSource.GitLab]: GitLabSecretScanningFactory as TSecretScanningFactoryImplementation
+  [SecretScanningDataSource.GitLab]: GitLabSecretScanningFactory as TSecretScanningFactoryImplementation,
+  [SecretScanningDataSource.ClaudeCode]: ClaudeCodeSecretScanningFactory as TSecretScanningFactoryImplementation
 };

@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import {
   TSecretScanningDataSources,
   TSecretScanningFindings,
@@ -16,6 +18,14 @@ import {
   TBitbucketFinding,
   TQueueBitbucketResourceDiffScan
 } from "@app/ee/services/secret-scanning-v2/bitbucket";
+import {
+  TClaudeCodeDataSource,
+  TClaudeCodeDataSourceInput,
+  TClaudeCodeDataSourceListItem,
+  TClaudeCodeDataSourceWithConnection,
+  TClaudeCodeFinding,
+  TQueueClaudeCodeResourceDiffScan
+} from "@app/ee/services/secret-scanning-v2/claude-code";
 import {
   TGitHubDataSource,
   TGitHubDataSourceInput,
@@ -45,7 +55,11 @@ import {
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-export type TSecretScanningDataSource = TGitHubDataSource | TBitbucketDataSource | TGitLabDataSource;
+export type TSecretScanningDataSource =
+  | TGitHubDataSource
+  | TBitbucketDataSource
+  | TGitLabDataSource
+  | TClaudeCodeDataSource;
 
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScannedAt?: Date | null;
@@ -71,24 +85,27 @@ export type TSecretScanningScanWithDetails = TSecretScanningScans & {
 export type TSecretScanningDataSourceWithConnection =
   | TGitHubDataSourceWithConnection
   | TBitbucketDataSourceWithConnection
-  | TGitLabDataSourceWithConnection;
+  | TGitLabDataSourceWithConnection
+  | TClaudeCodeDataSourceWithConnection;
 
 export type TSecretScanningDataSourceInput =
   | TGitHubDataSourceInput
   | TBitbucketDataSourceInput
-  | TGitLabDataSourceInput;
+  | TGitLabDataSourceInput
+  | TClaudeCodeDataSourceInput;
 
 export type TSecretScanningDataSourceListItem =
   | TGitHubDataSourceListItem
   | TBitbucketDataSourceListItem
-  | TGitLabDataSourceListItem;
+  | TGitLabDataSourceListItem
+  | TClaudeCodeDataSourceListItem;
 
 export type TSecretScanningDataSourceCredentials =
   | TBitbucketDataSourceCredentials
   | TGitLabDataSourceCredentials
   | undefined;
 
-export type TSecretScanningFinding = TGitHubFinding | TBitbucketFinding | TGitLabFinding;
+export type TSecretScanningFinding = TGitHubFinding | TBitbucketFinding | TGitLabFinding | TClaudeCodeFinding;
 
 export type TListSecretScanningDataSourcesByProjectId = {
   projectId: string;
@@ -163,7 +180,8 @@ export type TQueueSecretScanningDataSourceFullScan = {
 export type TQueueSecretScanningResourceDiffScan =
   | TQueueGitHubResourceDiffScan
   | TQueueBitbucketResourceDiffScan
-  | TQueueGitLabResourceDiffScan;
+  | TQueueGitLabResourceDiffScan
+  | TQueueClaudeCodeResourceDiffScan;
 
 export type TQueueSecretScanningResourceDiffScanPayload = {
   payload: TQueueSecretScanningResourceDiffScan["payload"];
@@ -181,15 +199,23 @@ export type TQueueSecretScanningSendNotification = {
   resourceName: string;
 } & (
   | { status: SecretScanningScanStatus.Failed; errorMessage: string }
-  | {
+  | ({
       status: SecretScanningScanStatus.Completed;
       numberOfSecrets: number;
       scanId: string;
       isDiffScan: boolean;
       authorName?: string;
       authorEmail?: string;
-    }
+    } & TSecretScanningNotificationDetails)
 );
+
+// What a provider adds to a diff scan's notification, from the job payload.
+export type TSecretScanningNotificationDetails = {
+  // the secrets were found in a Claude Code prompt rather than a commit
+  isPromptScan?: boolean;
+  // whether the prompt was blocked, as decided when it was submitted; only set when isPromptScan is
+  isPromptBlocked?: boolean;
+};
 
 export type TCloneRepository = {
   cloneUrl: string;
@@ -251,6 +277,19 @@ export type TSecretScanningScanReportCompletion = {
 export type TSecretScanningFactoryGetRealtimeScanReport<P extends TQueueSecretScanningResourceDiffScan["payload"]> = (
   payload: P
 ) => TSecretScanningScanReport | undefined;
+
+// Picks which of a diff scan's findings to save. Runs inside the transaction that saves them, so a provider whose
+// findings depend on earlier ones (Claude Code skips secrets that were already reviewed) decides from committed state.
+export type TSecretScanningFactoryFilterDiffScanFindings<T extends TSecretScanningDataSourceWithConnection> = (params: {
+  dataSource: T;
+  findings: TFindingsPayload;
+  secretScanningV2DAL: Pick<TSecretScanningV2DALFactory, "findings">;
+  tx: Knex;
+}) => Promise<TFindingsPayload>;
+
+export type TSecretScanningFactoryGetDiffScanNotificationDetails<
+  P extends TQueueSecretScanningResourceDiffScan["payload"]
+> = (payload: P) => TSecretScanningNotificationDetails;
 
 // Built from the saved scan, for a scan whose worker died before it could close its report.
 export type TSecretScanningFactoryGetScanReport = (params: {
@@ -335,11 +374,20 @@ export type TSecretScanningFactory<
   validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<I["config"], T>;
   getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<P>;
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;
+  filterDiffScanFindings?: TSecretScanningFactoryFilterDiffScanFindings<T>;
+  getDiffScanNotificationDetails?: TSecretScanningFactoryGetDiffScanNotificationDetails<P>;
   getRealtimeScanReport?: TSecretScanningFactoryGetRealtimeScanReport<P>;
   getScanReport?: TSecretScanningFactoryGetScanReport;
   // Processes webhook events beyond pushes, in the worker; only providers that receive them implement it.
   processEvent?: TSecretScanningFactoryProcessEvent<E>;
 };
+
+export type TFindingsPayload = Pick<
+  TSecretScanningFindingsInsert,
+  "details" | "fingerprint" | "severity" | "rule" | "secretFindingBlindIndex" | "encryptedSecretValue"
+>[];
+
+export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
 export type TSecretScanningDiscoverResource = (params: {
   dataSource: Pick<TSecretScanningDataSources, "id" | "isHistoricalScanEnabled">;
@@ -364,9 +412,6 @@ export type TSecretScanningFactoryProcessEvent<E extends TQueueSecretScanningDat
   discoverResource: TSecretScanningDiscoverResource;
   queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan;
 }) => Promise<void>;
-
-export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
-export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
 export type TUpdateSecretScanningFindingDTO = {
   status?: SecretScanningFindingStatus;

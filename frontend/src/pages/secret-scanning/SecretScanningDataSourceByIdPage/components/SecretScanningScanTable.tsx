@@ -32,6 +32,7 @@ import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  SecretScanningDataSource,
   TSecretScanningDataSource,
   TSecretScanningScanWithDetails,
   useListSecretScanningScans
@@ -124,6 +125,7 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
   });
 
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
+  const isClaudeCode = dataSource.type === SecretScanningDataSource.ClaudeCode;
 
   const handleSortChange = (column: ScansOrderBy) => {
     if (column === orderBy) {
@@ -201,7 +203,9 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
           </EmptyMedia>
           <EmptyTitle>No scans yet</EmptyTitle>
           <EmptyDescription>
-            Scans appear here when a {resourceDetails.singularNoun} is scanned.
+            {isClaudeCode
+              ? "Scans appear here when the Claude Code plugin submits a prompt that contains a secret."
+              : `Scans appear here when a ${resourceDetails.singularNoun} is scanned.`}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -213,7 +217,9 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
       <CardHeader>
         <CardTitle>Scan History</CardTitle>
         <CardDescription>
-          When each {resourceDetails.singularNoun} was scanned and what the scan found.
+          {isClaudeCode
+            ? "Each prompt a developer submitted with a secret, and what the scan found."
+            : `When each ${resourceDetails.singularNoun} was scanned and what the scan found.`}
         </CardDescription>
         <InputGroup>
           <InputGroupAddon align="inline-start">
@@ -259,7 +265,9 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
               {!isLoading &&
                 filteredScans
                   .slice(offset, perPage * page)
-                  .map((scan) => <SecretScanningScanRow key={scan.id} scan={scan} />)}
+                  .map((scan) => (
+                    <SecretScanningScanRow key={scan.id} scan={scan} type={dataSource.type} />
+                  ))}
             </TableBody>
           </Table>
         )}

@@ -20,6 +20,18 @@ To see the details of a finding, select its row:
 
 If a later scan finds the same secret in the same place, Infisical keeps the existing finding and its status instead of adding a new one.
 
+### Claude Code findings
+
+A finding from a [Claude Code](/documentation/platform/secret-scanning/claude-code) data source comes from a prompt, not from a file. It contains the matching rule, where the secret is in the prompt, the secret's entropy, the name and email address of the developer who submitted the prompt, when they submitted it, and the working directory and session ID of the Claude Code session. Infisical doesn't keep the prompt. It stores a [blind index](/documentation/platform/secret-scanning/claude-code#how-infisical-matches-secrets) of the secret value, so the same secret in a later prompt matches the same finding. It also stores the secret value, encrypted with the project's KMS key. The API never returns the encrypted value or the blind index.
+
+The status of the newest finding for a secret also controls the plugin:
+
+- **Unresolved**: With **Block the prompt** (the default), Infisical blocks every prompt that contains the secret. With **Report only**, Infisical allows the prompt and warns the developer
+- **False Positive** or **Ignore**: Infisical allows prompts that contain the secret, for every developer in the project, and doesn't report the secret again
+- **Resolved**: The secret was usually revoked or rotated, so a prompt that contains it again is a new incident. Infisical records a new finding (the **Resolved** finding stays as history), and blocks the prompt or warns the developer
+
+To let developers use a secret in Claude Code, mark its finding as **False Positive** or **Ignore**, not **Resolved**. For more information, see [How Infisical handles a detected secret](/documentation/platform/secret-scanning/claude-code#how-infisical-handles-a-detected-secret).
+
 ## Finding statuses
 
 Every new finding starts as **Unresolved**. After you review a finding, change its status to one of the following:
@@ -28,7 +40,7 @@ Every new finding starts as **Unresolved**. After you review a finding, change i
 - **False Positive**: The value isn't a secret
 - **Ignore**: The value is a secret, but you've decided it's safe to leave, such as a test credential
 
-The status is only a record of your review, and doesn't change how Infisical scans. To stop a value from being reported in the first place, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+For repository data sources, the status is only a record of your review, and doesn't change how Infisical scans. For [Claude Code](/documentation/platform/secret-scanning/claude-code#how-infisical-handles-a-detected-secret), the status of the newest finding for a secret, and the data source's **When a Secret Is Detected** setting, decide whether Infisical allows, blocks, or warns about prompts that contain the secret. To stop a value from being reported in the first place, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
 
 ## Change a finding's status
 
@@ -56,6 +68,8 @@ Your comment appears as **Remarks** in the finding's details, and when you hover
 When a scan finds secrets, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning. The notification links to the findings from that scan. If a scan fails, the same members get a notification with the error instead.
 
 If a scan of a new push finds secrets, Infisical also notifies the author of the commit if they're a member. If the push has commits from more than one author, Infisical notifies only one of them.
+
+If a scan of a [Claude Code](/documentation/platform/secret-scanning/claude-code#notifications) prompt finds secrets, Infisical also notifies the developer who submitted the prompt if they're a member.
 
 <Note>
   If you self-host Infisical, scan notifications need an [email service](/self-hosting/configuration/envars#email-service) configured. Without one, Infisical doesn't send the email or the in-app notification.
