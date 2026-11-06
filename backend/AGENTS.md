@@ -125,7 +125,7 @@ exist to pin.
 
 CI (`.github/workflows/run-backend-tests.yml`) runs the e2e suite inside a FIPS image built
 from `Dockerfile.dev.fips`. The expensive, rarely-changing parts of that image (SoftHSM2,
-Oracle Instant Client, the FIPS OpenSSL 3.1.2 build and the PQC OpenSSL 3.5.6 build) live in
+Oracle Instant Client, the FIPS OpenSSL 3.1.2 build and the PQC OpenSSL 3.5.9 build) live in
 **`Dockerfile.fips-toolchain`**, which is published to
 `ghcr.io/infisical/backend-fips-toolchain` for amd64 and arm64 by
 `.github/workflows/publish-fips-toolchain.yml` on pushes to `main`.
