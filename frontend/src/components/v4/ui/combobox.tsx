@@ -1,8 +1,10 @@
 import * as React from "react";
 
+import { useDiscardChangesGuard } from "../hooks/use-discard-changes-guard";
 import { useFieldControlAttributes } from "../lib/field-context";
 import { type OptionCreateHandler, useOptionCreation } from "../lib/use-option-creation";
 import { cn } from "../lib/utils";
+import { DiscardChangesAlertDialog } from "./alert-dialog";
 import { Button } from "./button";
 import {
   Command,
@@ -13,6 +15,14 @@ import {
   CommandList,
   CommandSeparator
 } from "./command";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "./dialog";
 import { Icon } from "./icon";
 import { MultiSelect } from "./multi-select";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -23,6 +33,38 @@ import menu from "./menu.module.css";
 import styles from "./picker.module.css";
 
 export type ComboboxOption = { value: string; label: string; meta?: string; disabled?: boolean };
+export type ComboboxCreationFormProps = {
+  /** The trimmed search text when the row was chosen, for prefilling a name. */
+  query: string;
+  /** Give the form element this id; the dialog's submit button targets it. */
+  formId: string;
+  /** Select the created option and close the dialog. Ignored once the dialog was dismissed. */
+  complete: (option: ComboboxOption) => void;
+  /** Close the dialog, asking first when the form reported unsaved changes. */
+  dismiss: () => void;
+  onDirtyChange: (dirty: boolean) => void;
+  onPendingChange: (pending: boolean) => void;
+};
+export type ComboboxCreation =
+  | {
+      mode: "inline";
+      onCreate: OptionCreateHandler;
+      /** Keeps the Create row visible but disabled, with this reason beside it. */
+      disabledReason?: string;
+    }
+  | {
+      mode: "dialog";
+      /** The row label, for example Create Connection. */
+      label: string;
+      title: string;
+      description?: string;
+      submitLabel?: string;
+      renderForm: (props: ComboboxCreationFormProps) => React.ReactNode;
+      /** Keeps the Create row visible but disabled, with this reason beside it. */
+      disabledReason?: string;
+      discardTitle?: string;
+      discardDescription?: string;
+    };
 type SharedComboboxProps = {
   options: readonly ComboboxOption[];
   placeholder?: string;
@@ -48,6 +90,7 @@ export type ComboboxProps = SharedComboboxProps &
         onValueChange?: (value: string) => void;
         onSearch?: (query: string) => void;
         loading?: boolean;
+        creation?: ComboboxCreation;
       }
     | {
         multiple: true;
@@ -58,6 +101,7 @@ export type ComboboxProps = SharedComboboxProps &
         clearable?: boolean;
         onSearch?: never;
         loading?: never;
+        creation?: never;
       }
   );
 export function Combobox({
@@ -77,6 +121,10 @@ export function Combobox({
   } = props;
   const onSearch = props.multiple ? undefined : props.onSearch;
   const loading = !props.multiple && Boolean(props.loading);
+  const creationConfig = props.multiple ? undefined : props.creation;
+  const dialogCreation = creationConfig?.mode === "dialog" ? creationConfig : undefined;
+  const inlineCreate = creationConfig?.mode === "inline" ? creationConfig.onCreate : onCreate;
+  const creationBlocked = creationConfig?.disabledReason || undefined;
   const field = useFieldControlAttributes(props);
   const [internal, setInternal] = React.useState<string | string[]>(
     props.defaultValue ?? (props.multiple ? [] : "")
@@ -126,7 +174,7 @@ export function Combobox({
   };
   const contentId = React.useId();
   const [query, setQuery] = React.useState("");
-  const creation = useOptionCreation(onCreate, () => changeOpen(false));
+  const creation = useOptionCreation(inlineCreate, () => changeOpen(false));
   const { creating, error } = creation;
   const changeQuery = (next: string) => {
     creation.cancel();
@@ -150,9 +198,35 @@ export function Combobox({
         `${option.label} ${option.meta ?? ""}`.toLowerCase().includes(query.toLowerCase())
       );
   const canCreate =
-    onCreate &&
+    inlineCreate &&
     query.trim() &&
     !options.some((option) => option.label.toLowerCase() === query.trim().toLowerCase());
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const formId = React.useId();
+  const sessionRef = React.useRef(0);
+  const [session, setSession] = React.useState<{ id: number; query: string; open: boolean }>();
+  const [formDirty, setFormDirty] = React.useState(false);
+  const [formPending, setFormPending] = React.useState(false);
+  const closeDialog = () => {
+    sessionRef.current += 1;
+    setSession((current) => current && { ...current, open: false });
+    setFormDirty(false);
+    setFormPending(false);
+  };
+  const guard = useDiscardChangesGuard({ isDirty: formDirty, onDiscard: closeDialog });
+  const openDialog = () => {
+    sessionRef.current += 1;
+    setSession({ id: sessionRef.current, query: query.trim(), open: true });
+    setFormDirty(false);
+    setFormPending(false);
+    changeOpen(false);
+  };
+  const complete = (id: number, option: ComboboxOption) => {
+    if (id !== sessionRef.current) return;
+    setPicked(option);
+    apply([option.value]);
+    closeDialog();
+  };
   if (props.multiple)
     return (
       <div ref={fieldRef} className={cn(controlStyles.field, styles.multiCombobox)} data-size="sm">
@@ -222,7 +296,12 @@ export function Combobox({
   const trigger = (
     <PopoverTrigger asChild>
       <button
-        ref={ref}
+        ref={(node) => {
+          triggerRef.current = node;
+          if (typeof ref === "function") return ref(node);
+          if (ref) ref.current = node;
+          return undefined;
+        }}
         {...field}
         type="button"
         role="combobox"
@@ -273,8 +352,8 @@ export function Combobox({
             trailing={loading ? <Spinner /> : undefined}
           />
           <CommandList aria-busy={loading || undefined}>
-            {!onSearch && <CommandEmpty>{emptyText}</CommandEmpty>}
-            {onSearch && !filtered.length && (
+            {!onSearch && !dialogCreation && <CommandEmpty>{emptyText}</CommandEmpty>}
+            {(onSearch || dialogCreation) && !filtered.length && (
               <p role="status" data-slot="combobox-status" className={menu.empty}>
                 {loading ? "Searching…" : emptyText}
               </p>
@@ -298,7 +377,7 @@ export function Combobox({
               ))}
               {canCreate && (
                 <CommandItem
-                  disabled={creating || loading || disabled}
+                  disabled={creating || loading || disabled || Boolean(creationBlocked)}
                   value={`create:${query}`}
                   onSelect={() => {
                     creation.create(query.trim());
@@ -307,9 +386,27 @@ export function Combobox({
                   <span className={menu.title}>
                     {creating ? "Creating…" : `Create "${query.trim()}"`}
                   </span>
+                  {creationBlocked && <span className={menu.meta}>{creationBlocked}</span>}
                 </CommandItem>
               )}
             </CommandGroup>
+            {dialogCreation && (
+              <>
+                {filtered.length > 0 && <CommandSeparator />}
+                <CommandGroup>
+                  <CommandItem
+                    value="combobox-create-dialog"
+                    data-slot="combobox-create"
+                    disabled={disabled || Boolean(creationBlocked)}
+                    onSelect={openDialog}
+                  >
+                    <Icon name="plus" />
+                    <span className={menu.title}>{dialogCreation.label}</span>
+                    {creationBlocked && <span className={menu.meta}>{creationBlocked}</span>}
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
         {error && (
@@ -318,6 +415,55 @@ export function Combobox({
           </p>
         )}
       </PopoverContent>
+      {dialogCreation && session && (
+        <>
+          <Dialog
+            open={session.open}
+            onOpenChange={(next) => {
+              if (!next) guard.requestDiscard();
+            }}
+          >
+            <DialogContent
+              pending={formPending}
+              onSubmit={(event) => event.stopPropagation()}
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                triggerRef.current?.focus();
+              }}
+            >
+              <DialogHeader>
+                <DialogTitle>{dialogCreation.title}</DialogTitle>
+                {dialogCreation.description && (
+                  <DialogDescription>{dialogCreation.description}</DialogDescription>
+                )}
+              </DialogHeader>
+              <React.Fragment key={session.id}>
+                {dialogCreation.renderForm({
+                  query: session.query,
+                  formId,
+                  complete: (option) => complete(session.id, option),
+                  dismiss: guard.requestDiscard,
+                  onDirtyChange: setFormDirty,
+                  onPendingChange: setFormPending
+                })}
+              </React.Fragment>
+              <DialogFooter>
+                <Button variant="outline" disabled={formPending} onClick={guard.requestDiscard}>
+                  Cancel
+                </Button>
+                <Button type="submit" form={formId} loading={formPending}>
+                  {dialogCreation.submitLabel ?? "Create"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <DiscardChangesAlertDialog
+            {...guard.discardDialogProps}
+            title={dialogCreation.discardTitle}
+            description={dialogCreation.discardDescription}
+          />
+        </>
+      )}
     </Popover>
   );
 }

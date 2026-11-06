@@ -26,6 +26,24 @@ Source evidence:
 - src/components/v4/ui/combobox.tsx
 - src/pages/design-system/examples/combobox/default.tsx
 
+### combobox-dialog-creation
+
+Owner: combobox.
+
+When people may need to create the entity they are picking first, such as an app connection or a gateway.
+
+Do: Pass creation with mode dialog and a renderForm that reports dirty and pending and calls complete with the created option, and set disabledReason when the person may not create one.
+
+Avoid: Send people to another page to create the entity, hide the Create row without the permission, or close the Dialog from the form without the discard guard.
+
+Why: Creating in place keeps the flow and its draft, and routing every close through one guard means a dirty form is never lost by accident.
+
+Checked by: src/components/v4/ui/combobox.test.tsx. Opens the dialog row, edits the form and cancels: the discard prompt opens and Keep Editing keeps the Dialog. Submitting calls complete, which selects the new option on the trigger and closes the Dialog.
+
+Source evidence:
+- src/components/v4/ui/combobox.tsx
+- src/pages/design-system/examples/app-connection-form/default.tsx
+
 ### combobox-searchable-value
 
 Owner: combobox.
@@ -69,7 +87,7 @@ Why: Pending, rejection and cancellation have different outcomes and recovery pa
 - src/components/v4/ui/picker.module.css
 - src/components/v4/lib/use-option-creation.ts
 
-Exports: Combobox, ComboboxOption, ComboboxProps. Source TypeScript defines the API.
+Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, ComboboxProps. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -82,6 +100,10 @@ Exports: Combobox, ComboboxOption, ComboboxProps. Source TypeScript defines the 
 - defaultOpen opens the list on mount, for a picker that is the first step of a flow. Focus moving outside the list closes it unless closeOnFocusOutside is false, which is the default when defaultOpen is set, so a Dialog or Sheet taking focus on mount does not close a list that opened with it; outside pointer presses and Escape still close it. Multiple mode with clearable adds a Clear all button after the chips; it removes every removable chip, keeps locked ones and returns focus to the trigger.
 - Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.
 - A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable.
+- creation picks how the Create row works for single selection. mode inline takes onCreate and behaves exactly like the onCreate prop, which stays as its shorthand. mode dialog always ends the list with a plus row named by label, after a separator when options are listed, so an empty list still offers it. Choosing it closes the list and opens a Dialog titled title with description, the form from renderForm and a footer with Cancel and submitLabel (default Create), which submits the form whose id is formId.
+- renderForm receives query (the trimmed search text), formId, complete, dismiss, onDirtyChange and onPendingChange, and remounts on every open. complete(option) selects the option (its label shows on the trigger even before the host adds it to options), closes the Dialog and returns focus to the trigger; a complete that arrives after the Dialog was dismissed is ignored. onPendingChange(true) makes the Dialog pending, which blocks Escape, outside clicks and the corner close, disables Cancel and shows the submit Button loading.
+- Escape, an outside click, the corner close, Cancel and dismiss all go through useDiscardChangesGuard: with the form dirty (onDirtyChange(true)) they open DiscardChangesAlertDialog with discardTitle and discardDescription, and only Discard closes; a clean form closes at once. A submit inside the Dialog never reaches a form around the Combobox.
+- disabledReason on either mode keeps the Create row visible but disabled, with the reason beside its label (disable, do not hide). Gate it on the create permission.
 
 ## Accessibility
 
@@ -97,6 +119,7 @@ Exports: Combobox, ComboboxOption, ComboboxProps. Source TypeScript defines the 
 - Without onSearch, filtering is in memory. Async search does not virtualize results; keep the host's result page short.
 - onSearch and loading are single-selection props. Multiple mode filters its options in memory and orders the value by them, so it needs every selectable option up front.
 - Creation persistence belongs to the host. Aborting suppresses obsolete UI results and asks the host to cancel; it cannot undo an already committed server write.
+- Dialog creation is single selection only, in a fixed-width Dialog. A multi-step creation belongs in a Sheet the host opens from a mode inline onCreate.
 
 ## Declared example coverage
 
@@ -109,6 +132,8 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### state
 
+- dialog creation: example `dialog-creation`, visible label "AWS connection".
+- creation disabled with reason: example `dialog-creation`, visible label "Without permission to create connections".
 - disabled selected: example `multiple`, visible label "Audit".
 - creation unavailable: example `default`, visible label "Single environment".
 - pending creation: example `creation`, visible label "Search and create".
@@ -336,6 +361,88 @@ export default function Example() {
         {"Searches the server as you type"}
       </figcaption>
     </figure>
+  );
+}
+```
+
+### Create in a dialog
+
+Save this example at `src/pages/design-system/examples/app-connection-form/default.tsx`; its relative imports are generated for that exact path. States: controlled, loading, disabled.
+
+Registry items used: @infisical/app-connection-form, @infisical/combobox, @infisical/field. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { connectionCreation } from "../../../../components/v4/patterns/app-connection-form";
+import { Combobox, type ComboboxOption } from "../../../../components/v4/ui/combobox";
+import { Field } from "../../../../components/v4/ui/field";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { CONNECTION_PRESETS } from "@app/pages/v4/data/integrations/connection-presets";
+
+const seeded: ComboboxOption[] = [
+  { value: "aws-production", label: "aws-production", meta: "Assume Role" },
+  {
+    value: "aws-payments-legacy-access-key",
+    label: "aws-payments-legacy-access-key",
+    meta: "Access Key"
+  }
+];
+
+export default function Example() {
+  const [options, setOptions] = useState(seeded);
+  const [value, setValue] = useState("aws-production");
+  const creation = connectionCreation({
+    preset: CONNECTION_PRESETS[AppConnection.AWS],
+    create: async (values) => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 900);
+      });
+      const connection = { id: `demo-${values.name}`, name: values.name };
+      setOptions((current) => [...current, { value: connection.id, label: connection.name }]);
+      return connection;
+    }
+  });
+  const selected = options.find((option) => option.value === value)?.label ?? "none";
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Field label="AWS connection">
+            <Combobox
+              label="AWS connection"
+              options={options}
+              value={value}
+              onChange={setValue}
+              placeholder="Select connection"
+              creation={creation}
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{`Selected: ${selected}. Demo data, nothing is sent.`}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Field label="AWS connection">
+            <Combobox
+              label="AWS connection"
+              options={seeded}
+              defaultValue="aws-production"
+              creation={connectionCreation({
+                preset: CONNECTION_PRESETS[AppConnection.AWS],
+                disabledReason: "No permission to create.",
+                create: async () => {
+                  throw new Error("Creation is not allowed.");
+                }
+              })}
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Without permission to create connections"}
+        </figcaption>
+      </figure>
+    </div>
   );
 }
 ```

@@ -882,7 +882,8 @@ export const baselineOverlays = [
       "The trigger retains its own accessible name. Tooltip shortcut text describes a host binding; it does not register a hotkey."
     ],
     limitations: [
-      "Tooltip content is supplementary text, not a place for focusable actions. A displayed shortcut does not register its binding."
+      "Tooltip content is supplementary text, not a place for focusable actions. A displayed shortcut does not register its binding.",
+      "A natively disabled Button takes no pointer or focus events, so a Tooltip around it never opens, and a span anchor around it opens on hover but never on keyboard focus. Explain a blocked Button with its disabledReason, which renders this Tooltip itself; ui:lint fails a natively disabled Button written inside Tooltip or TooltipTrigger (rule/disabled-reason-tooltip)."
     ],
     examples: [
       {
@@ -908,6 +909,12 @@ export const baselineOverlays = [
         title: "Focusable text",
         module: "./examples/tooltip/text.tsx",
         states: ["default", "keyboard"]
+      },
+      {
+        id: "disabled",
+        title: "Blocked actions",
+        module: "./examples/tooltip/disabled.tsx",
+        states: ["disabled", "keyboard", "loading"]
       }
     ],
     coverage: [

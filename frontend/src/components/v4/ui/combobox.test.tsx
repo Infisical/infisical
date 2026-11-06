@@ -153,3 +153,54 @@ it.each([
     expect(document.querySelectorAll('[role="option"]').length).toBe(staysOpen ? 2 : 0);
   }
 );
+
+it("guards a dirty dialog creation and selects the option complete receives", async () => {
+  const button = (name: string) => {
+    const match = [...document.querySelectorAll("button")].find(
+      (node) => node.textContent === name
+    );
+    if (!match) throw new Error(`Missing button ${name}`);
+    return match;
+  };
+  await React.act(async () =>
+    root.render(
+      <V4Scope>
+        <Combobox
+          label="Connection"
+          defaultOpen
+          options={[{ value: "prod", label: "aws-production" }]}
+          creation={{
+            mode: "dialog",
+            label: "Create Connection",
+            title: "Create AWS Connection",
+            submitLabel: "Create Connection",
+            renderForm: ({ formId, complete, onDirtyChange }) => (
+              <form
+                id={formId}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  complete({ value: "new", label: "aws-staging" });
+                }}
+              >
+                <input aria-label="Name" onChange={() => onDirtyChange(true)} />
+              </form>
+            )
+          }}
+        />
+      </V4Scope>
+    )
+  );
+  await React.act(async () => element("[data-slot=combobox-create]").click());
+  const input = element('[role="dialog"] input[aria-label="Name"]') as HTMLInputElement;
+  await React.act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "x");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await React.act(async () => button("Cancel").click());
+  expect(element('[role="alertdialog"]').textContent).toContain("Discard");
+  await React.act(async () => button("Keep Editing").click());
+  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+  await React.act(async () => (input.form as HTMLFormElement).requestSubmit());
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(element('button[aria-label="Connection"]').textContent).toContain("aws-staging");
+});

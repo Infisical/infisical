@@ -108,6 +108,39 @@ export const destructiveInlineActions = (text: string) => {
   return found;
 };
 
+const jsxTagEnd = (text: string, from: number) => {
+  let depth = 0;
+  for (let index = from; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"' || char === "'" || char === "`") {
+      let end = index + 1;
+      while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+      index = end;
+    } else if (char === "{") depth += 1;
+    else if (char === "}") depth -= 1;
+    else if (char === ">" && depth === 0) return index;
+  }
+  return text.length;
+};
+
+/** Natively disabled Buttons inside a Tooltip or TooltipTrigger: they take no pointer or focus, so the tooltip never opens. */
+export const disabledButtonsInTooltips = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(/<(Tooltip|TooltipTrigger)(?=[\s>])/g)].forEach((open) => {
+    const start = jsxTagEnd(text, open.index ?? 0);
+    if (text[start - 1] === "/") return;
+    const close = text.indexOf(`</${open[1]}>`, start);
+    if (close < 0) return;
+    [...text.slice(start, close).matchAll(/<Button(?=[\s>])/g)].forEach((button) => {
+      const at = start + (button.index ?? 0);
+      const tag = text.slice(at, jsxTagEnd(text, at));
+      if (/\sdisabled(?=[\s=/>]|$)/.test(tag) && !/\sdisabledReason\b/.test(tag))
+        found.set(at, tag.split("\n")[0].trim());
+    });
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
 const classCallee = /(?:^|[^\w.$])(?:cn|cva|cx|clsx|twMerge)\s*$/;
 
 /** String literals that hold classes: className attributes and cn/cva/clsx call arguments, at any depth. */
@@ -349,6 +382,14 @@ export const v4Checks: readonly V4Check[] = [
       "Delete, Remove, Revoke, Disable and other destructive row actions never sit in the inline actions. Put them last in the More menu, after a separator, with the destructive menu item variant.",
     appliesTo: isAuthored,
     source: destructiveInlineActions
+  },
+  {
+    id: "disabled-in-tooltip",
+    rule: "disabled-reason-tooltip",
+    message:
+      "A natively disabled Button gets no pointer or focus events, so a Tooltip around it never opens. Pass the reason as disabledReason, which keeps the Button focusable and shows the reason in its own tooltip.",
+    appliesTo: isAuthored,
+    source: disabledButtonsInTooltips
   },
   {
     id: "dot-separator",

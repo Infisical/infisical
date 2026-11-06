@@ -254,14 +254,13 @@ const stop = (event: React.MouseEvent) => event.stopPropagation();
 function RowActionButton({ action, label }: { action: RowAction; label: string }) {
   const reason = action.disabledReason;
   return (
-    <Tooltip content={reason ?? action.label}>
+    <Tooltip content={reason ? undefined : action.label}>
       <span className={styles.tableRowActionSlot}>
         <Button
           variant="ghost"
           size="icon-row"
           iconOnly
-          disabled={Boolean(reason)}
-          aria-description={reason}
+          disabledReason={reason}
           onClick={(event) => {
             stop(event);
             action.onSelect();
