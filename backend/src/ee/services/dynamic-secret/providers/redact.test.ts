@@ -85,6 +85,28 @@ describe("restoreOmittedSecretFields", () => {
     expect(restoreOmittedSecretFields(DynamicSecretProviders.OAuth2, oauth2StoredInputs, edited)).toStrictEqual(edited);
   });
 
+  test.each(["tokenUrl", "revocationUrl"])("refuses to restore the secret when the edit changes %s", (field) => {
+    const edited = {
+      ...oauth2StoredInputs,
+      [field]: "https://other.example.com/oauth2",
+      clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost }
+    };
+
+    expect(() => restoreOmittedSecretFields(DynamicSecretProviders.OAuth2, oauth2StoredInputs, edited)).toThrow(
+      "Enter the client secret again to change the token URL or revocation URL."
+    );
+  });
+
+  test("keeps a supplied secret when the edit changes the token URL", () => {
+    const edited = {
+      ...oauth2StoredInputs,
+      tokenUrl: "https://other.example.com/oauth2",
+      clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost, clientSecret: "rotated-secret" }
+    };
+
+    expect(restoreOmittedSecretFields(DynamicSecretProviders.OAuth2, oauth2StoredInputs, edited)).toStrictEqual(edited);
+  });
+
   test("leaves inputs untouched for a provider that declares no secret fields", () => {
     const edited = { host: "db.internal" };
 

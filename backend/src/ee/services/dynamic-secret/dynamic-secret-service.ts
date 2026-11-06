@@ -326,6 +326,17 @@ export const dynamicSecretServiceFactory = ({
       );
     }
 
+    if (inputs) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionDynamicSecretActions.ReadRootCredential,
+        subject(ProjectPermissionSub.DynamicSecrets, {
+          environment: environmentSlug,
+          secretPath: path,
+          metadata: dynamicSecretCfg.metadata
+        })
+      );
+    }
+
     if (newName) {
       const existingDynamicSecret = await dynamicSecretDAL.findOne({ name: newName, folderId: folder.id });
       if (existingDynamicSecret)

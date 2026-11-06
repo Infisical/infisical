@@ -73,7 +73,11 @@ const getConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode"]) 
       autoComplete: "new-password",
       layout: "half",
       ...(mode === "edit"
-        ? { isOptional: true, description: "Leave blank to keep the current client secret." }
+        ? {
+            isOptional: true,
+            description:
+              "Leave blank to keep the current client secret. Enter it again when changing the token or revocation URL."
+          }
         : {})
     },
     {

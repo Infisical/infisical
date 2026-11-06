@@ -1,3 +1,5 @@
+import { BadRequestError } from "@app/lib/errors";
+
 import { DynamicSecretProviders } from "./models";
 
 export const DYNAMIC_SECRET_SECRET_FIELDS: Record<DynamicSecretProviders, readonly string[]> = {
@@ -32,6 +34,14 @@ export const DYNAMIC_SECRET_SECRET_FIELDS: Record<DynamicSecretProviders, readon
   [DynamicSecretProviders.Kafka]: []
 };
 
+const SECRET_FIELD_ENDPOINTS: Partial<Record<DynamicSecretProviders, { fields: readonly string[]; message: string }>> =
+  {
+    [DynamicSecretProviders.OAuth2]: {
+      fields: ["tokenUrl", "revocationUrl"],
+      message: "Enter the client secret again to change the token URL or revocation URL."
+    }
+  };
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -62,8 +72,8 @@ export const redactStoredInputs = (type: DynamicSecretProviders, inputs: unknown
   return secretFields.reduce<unknown>((acc, field) => omitPath(acc, field.split(".")), inputs);
 };
 
-// reads never return secret fields, so an edit that leaves one out keeps the stored value; the provider
-// schema drops it again if the edit switched to a shape that has no such field
+// reads never return secret fields, so an edit that leaves one out keeps the stored value while its endpoints
+// stay the same; the provider schema drops it again if the edit switched to a shape that has no such field
 export const restoreOmittedSecretFields = (
   type: DynamicSecretProviders,
   storedInputs: object,
@@ -72,11 +82,19 @@ export const restoreOmittedSecretFields = (
   const secretFields = DYNAMIC_SECRET_SECRET_FIELDS[type];
   if (!secretFields?.length) return newInputs;
 
+  const endpoints = SECRET_FIELD_ENDPOINTS[type];
+  const endpointChangeMessage = endpoints?.fields.some(
+    (field) => getPath(storedInputs, field.split(".")) !== getPath(newInputs, field.split("."))
+  )
+    ? endpoints.message
+    : undefined;
+
   return secretFields.reduce<Record<string, unknown>>(
     (acc, field) => {
       const path = field.split(".");
       const storedValue = getPath(storedInputs, path);
       if (storedValue === undefined || getPath(acc, path) !== undefined) return acc;
+      if (endpointChangeMessage) throw new BadRequestError({ message: endpointChangeMessage });
       return setPath(acc, path, storedValue);
     },
     newInputs as Record<string, unknown>
