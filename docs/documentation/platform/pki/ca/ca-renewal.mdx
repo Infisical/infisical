@@ -18,6 +18,10 @@ Renew a CA certificate to extend its validity period. The renewal process varies
   - If renewing an intermediate CA chained to an **external parent CA via manual import**, you'll need to generate a new certificate from the external parent CA and manually import it back.
 </Note>
 
+<Warning>
+  When you import a new certificate for a CA that already has one, the new certificate's subject must exactly match the subject of the CA's current certificate, including the order of its fields. Certificates the CA already issued name that subject as their issuer, so Infisical rejects an import with a different subject to keep their revocation checks working.
+</Warning>
+
 ## Renew a CA
 
 <Tabs>
