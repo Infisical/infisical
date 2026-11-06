@@ -277,7 +277,7 @@ def run_in_sandbox(command: str) -> str:
             envs={
                 **CA_ENV,
                 # Where the agent lists its services, through the proxy.
-                "INFISICAL_AGENT_VAULT_API_URL": f"{INFISICAL_URL}/api",
+                "INFISICAL_AGENT_VAULT_URL": INFISICAL_URL,
                 **SANDBOX_ENV,
             },
             network={
@@ -382,7 +382,7 @@ export async function runInSandbox(command: string): Promise<string> {
       envs: {
         ...CA_ENV,
         // Where the agent lists its services, through the proxy.
-        INFISICAL_AGENT_VAULT_API_URL: `${INFISICAL_URL}/api`,
+        INFISICAL_AGENT_VAULT_URL: INFISICAL_URL,
         ...SANDBOX_ENV,
       },
       network: {
@@ -438,7 +438,7 @@ The function adds the proxy's CA to the sandbox's system trust store, and sets t
 The function also prepares the sandbox for an agent, as `agent-vault run` does on other hosts:
 
 - It installs the session's [skills](/documentation/platform/agent-vault/skills) from the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint, including Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill), which tells the agent how to work behind the proxy
-- It sets `INFISICAL_AGENT_VAULT_API_URL` to your Infisical instance's API URL, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy
+- It sets `INFISICAL_AGENT_VAULT_URL` to your Infisical instance's URL, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy
 
 To keep the same CA when you rotate the proxy's token, [use your own CA](/documentation/platform/agent-vault/proxies#use-your-own-certificate-authority). Infisical doesn't have your own CA, so read its certificate from a file instead of [getting it from Infisical](/api-reference/endpoints/agent-vault-proxies/get-ca).
 
@@ -564,11 +564,11 @@ The proxy token is only on the proxy's machine. If you think someone took contro
     If none of these lines appears, the password might not be a session token, or E2B might not trust the SOCKS5 port's certificate. Start the proxy with `--log-level debug` to log these refusals too.
   </Accordion>
   <Accordion title="The agent can't list its services">
-    Run `curl -sS "$INFISICAL_AGENT_VAULT_API_URL/v1/agent-vault/session/services"` in the sandbox, and look for one of these errors in its output:
+    Run `curl -sS "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"` in the sandbox, and look for one of these errors in its output:
 
-    - `No host part in the URL`: the sandbox has no `INFISICAL_AGENT_VAULT_API_URL`, so set the variable when you create the sandbox, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does
+    - `No host part in the URL`: the sandbox has no `INFISICAL_AGENT_VAULT_URL`, so set the variable when you create the sandbox, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does
     - `Could not resolve host`: the sandbox can't find your Infisical instance's hostname in public DNS, so add the hostname to the sandbox's `/etc/hosts` with any public address, such as `1.1.1.1` (E2B sends the proxy the hostname, not the address)
-    - A `401` error from Infisical: the proxy adds the session's token only for the URL you passed to the proxy with `--domain`, so set the variable to that URL followed by `/api`
+    - A `401` error from Infisical: the proxy adds the session's token only for the URL you passed to the proxy with `--domain`, so set the variable to that URL
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked while the sandbox was running. Set the session's `ttl` a few minutes longer than the sandbox's timeout, so the session lasts as long as the sandbox can run.

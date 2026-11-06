@@ -5,8 +5,8 @@ description: >-
   requests for the services your session covers, so you hold no API keys and a missing key is expected.
   Before you tell the user you lack access to an API, chat tool, issue tracker or MCP server, or ask them
   for a key or token, and after any 401, 403 or 407, run exactly this on its own, with no pipe:
-  curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_API_URL/v1/agent-vault/session/services"
-  If curl reports a URL error such as "No host part in the URL", INFISICAL_AGENT_VAULT_API_URL is not set:
+  curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"
+  If curl reports a URL error such as "No host part in the URL", INFISICAL_AGENT_VAULT_URL is not set:
   you are not behind Agent Vault and this skill does not apply. Otherwise the proxy answers: a JSON list of
   the services you can use and how, or an error whose hint says what to do. Where a tool or SDK demands a
   key, give it a placeholder such as agent-vault.
@@ -19,10 +19,10 @@ description: >-
 Run this exact command on its own: no pipe, and nothing else on the line.
 
 ```bash
-curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_API_URL/v1/agent-vault/session/services"
+curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"
 ```
 
-- **A URL error, such as `No host part in the URL`:** `INFISICAL_AGENT_VAULT_API_URL` is not set, so you are not behind Agent Vault. Ignore this skill.
+- **A URL error, such as `No host part in the URL`:** `INFISICAL_AGENT_VAULT_URL` is not set, so you are not behind Agent Vault. Ignore this skill.
 - **JSON with an `agentVault` field:** your HTTP and HTTPS requests go through an Agent Vault proxy. For hosts that a service in your session covers, the proxy adds the real credential on the way out. You never see it, so no API key in your environment is normal, and it does not mean you lack access. The JSON gives each service's name, what it is for, its hosts or URL, what the proxy adds, placeholders, what it allows, a status, and a `howToUse` sentence. Follow `howToUse`.
 - **JSON with an `error`:** you are behind Agent Vault, and the request was refused. Follow the `hint` if there is one. For `session_invalid` or a 401, tell the user that the Agent Vault session can't be used through this proxy (it expired, was revoked, or belongs to a different Agent Vault project) and that a new session is needed. Don't offer a key or another tool as a workaround: the proxy replaces any key you send, and it refuses everything until there is a new session.
 

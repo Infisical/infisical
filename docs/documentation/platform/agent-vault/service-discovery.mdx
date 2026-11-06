@@ -49,18 +49,18 @@ This shortened example shows a GitHub service that allows only `GET` requests:
 
 The agent requests the list from the Infisical instance that the proxy connects to, through the same proxy as its other requests. The agent sends no token. The proxy adds the session's token to the request, so the agent never handles the token. Each request appears in the session's [logs](/documentation/platform/agent-vault/session-logs#what-gets-recorded) with the outcome **Listed Services**.
 
-`INFISICAL_AGENT_VAULT_API_URL` holds the API URL of that Infisical instance: the instance's URL followed by `/api`, such as `https://app.infisical.com/api`. With the variable set, the agent runs:
+`INFISICAL_AGENT_VAULT_URL` holds the URL of that Infisical instance, such as `https://app.infisical.com`. With the variable set, the agent runs:
 
 ```bash
-curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_API_URL/v1/agent-vault/session/services"
+curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"
 ```
 
 `--noproxy ""` sends the request through the proxy even if `NO_PROXY` lists your Infisical instance's host, such as `localhost`. If the request skips the proxy, it reaches Infisical without the session's token, and Infisical refuses it.
 
-To set `INFISICAL_AGENT_VAULT_API_URL` in the agent's environment:
+To set `INFISICAL_AGENT_VAULT_URL` in the agent's environment:
 
 - If you start the agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI gets the URL from the proxy and sets the variable for you
-- If your code starts agents another way, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), set the variable yourself to the URL you passed to the proxy with [`--domain`](/documentation/platform/agent-vault/proxies#command-flags), followed by `/api` (or to `https://app.infisical.com/api` if you didn't pass `--domain`)
+- If your code starts agents another way, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), set the variable yourself to the URL you passed to the proxy with [`--domain`](/documentation/platform/agent-vault/proxies#command-flags) (or to `https://app.infisical.com` if you didn't pass `--domain`)
 
 <Note>
   If the proxy runs an older version of the Infisical CLI, `infisical agent-vault run` can't get the URL from the proxy and doesn't set the variable, so the agent can't list its services. To fix this, update the Infisical CLI that runs the proxy.
@@ -86,7 +86,7 @@ A list you get this way doesn't include a traffic policy, because the request di
 - Read the `X-Agent-Vault-Decision` header to tell the proxy's responses apart from the API's (see [Responses from the proxy](#responses-from-the-proxy))
 - Never bypass the proxy, turn off TLS verification, or print the proxy URL, which holds the session token
 
-The skill tells the agent to request the list first, and to ignore the skill if `INFISICAL_AGENT_VAULT_API_URL` isn't set, such as when an agent later runs on the same host without Agent Vault.
+The skill tells the agent to request the list first, and to ignore the skill if `INFISICAL_AGENT_VAULT_URL` isn't set, such as when an agent later runs on the same host without Agent Vault.
 
 ### Read the built-in skill
 
@@ -97,7 +97,7 @@ Infisical provides the built-in skill, so you can't edit it or delete it. To lea
 ### How agents get the built-in skill
 
 - `infisical agent-vault run` installs the built-in skill along with the session's [other skills](/documentation/platform/agent-vault/skills#how-agents-get-skills)
-- If your code starts agents without `infisical agent-vault run`, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), install the skills that the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint returns (they include the built-in skill), and [set `INFISICAL_AGENT_VAULT_API_URL`](#how-an-agent-gets-the-list)
+- If your code starts agents without `infisical agent-vault run`, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), install the skills that the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint returns (they include the built-in skill), and [set `INFISICAL_AGENT_VAULT_URL`](#how-an-agent-gets-the-list)
 
 ### Turn off the built-in skill
 

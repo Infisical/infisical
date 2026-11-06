@@ -812,9 +812,10 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
     URL and, when successful, carries the endpoint's decision. Otherwise the agent gets no variable, the skills come
     from Infisical directly, and `run` warns that something may be changing the proxy's answers. With `--no-skills`, a
     `HEAD` of the services list confirms the claim (logged as Listed Services).
-  - Only a confirmed URL becomes `INFISICAL_AGENT_VAULT_API_URL` (an inherited value never passes through). A proxy
+  - Only a confirmed URL becomes `INFISICAL_AGENT_VAULT_URL`, minus its `/api`, since people hold and pass `--domain` the
+    base URL (an inherited value never passes through). A proxy
     that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the warning says the
-    proxy is too old. Code that starts agents without `run` sets the variable to the proxy's API URL itself.
+    proxy is too old. Code that starts agents without `run` sets the variable itself, to the URL it passed the proxy in `--domain`.
   - Infisical's skills audit event records the proxy's IP, not the agent host's. The CLI reads the proxy's own `busy`
     and `infisical_unreachable` answers as the proxy's (`agentvault.IsInfisicalForwardRefusal`), and its
     `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`).
@@ -823,7 +824,7 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   JSON with an `error` code and a `hint`; `message` keeps the text the proxy always sent.
 - **The built-in `infisical-agent-vault` skill** comes with the other skills unless `--no-agent-vault-skill` (sent as
   `includeBuiltin=false`) or `--no-skills`. It decides whether it applies by running
-  `curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_API_URL/v1/agent-vault/session/services"` on its own: a URL error from
+  `curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"` on its own: a URL error from
   curl means the variable isn't set, so the agent isn't behind Agent Vault. `--noproxy ""` keeps the request on the
   proxy when the agent's `NO_PROXY` covers Infisical's host (`run` always adds `localhost` and `127.0.0.1`, and keeps
   the operator's own entries); without it the request reaches Infisical directly, and the skill reads that 401 as a
