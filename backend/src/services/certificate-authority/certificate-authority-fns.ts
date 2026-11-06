@@ -694,22 +694,17 @@ export const getCaCrlIssuer = async ({
   return new x509.X509Certificate(decryptedCaCert).subjectName;
 };
 
-/**
- * Rebuilds the certificate revocation list (CRL)
- * for CA with id [caId]
- */
-export const rebuildCaCrl = async ({
+export const buildCaCrl = async ({
   caId,
   activeCaCert,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
-  certificateAuthorityCrlDAL,
   certificateAuthoritySecretDAL,
   projectDAL,
   certificateDAL,
   kmsService,
   caKeySourceService
-}: TRebuildCaCrlDTO) => {
+}: Omit<TRebuildCaCrlDTO, "certificateAuthorityCrlDAL">) => {
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
@@ -766,15 +761,12 @@ export const rebuildCaCrl = async ({
   const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
     plainText: Buffer.from(new Uint8Array(crl.rawData))
   });
+  return encryptedCrl;
+};
 
-  await certificateAuthorityCrlDAL.update(
-    {
-      caId: ca.id
-    },
-    {
-      encryptedCrl
-    }
-  );
+export const rebuildCaCrl = async ({ certificateAuthorityCrlDAL, ...dto }: TRebuildCaCrlDTO) => {
+  const encryptedCrl = await buildCaCrl(dto);
+  await certificateAuthorityCrlDAL.update({ caId: dto.caId }, { encryptedCrl });
 };
 
 export const expandInternalCa = (

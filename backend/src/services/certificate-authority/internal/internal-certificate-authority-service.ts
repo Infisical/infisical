@@ -81,6 +81,7 @@ import {
   assertNoCertificateProfilesUsingCa,
   assertPathLengthMatchesCa,
   buildAuthorityInfoAccessExtension,
+  buildCaCrl,
   buildCrlDistributionPointUrls,
   buildOcspResponderUrl,
   createDistinguishedName,
@@ -93,7 +94,6 @@ import {
   getCaSigner,
   getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
-  rebuildCaCrl,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
 } from "../certificate-authority-fns";
@@ -1693,6 +1693,18 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "CA and certificate public key do not match" });
     }
 
+    const encryptedCrl = await buildCaCrl({
+      caId: ca.id,
+      activeCaCert: certObj,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      certificateDAL,
+      kmsService,
+      caKeySourceService
+    });
+
     await certificateAuthorityCertDAL.transaction(async (tx) => {
       if (isParentChanging && resolvedParentCaId) {
         await assertCrossSignedCertsAllowSubCa({
@@ -1733,19 +1745,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         },
         tx
       );
-    });
 
-    await rebuildCaCrl({
-      caId: ca.id,
-      activeCaCert: certObj,
-      certificateAuthorityDAL,
-      certificateAuthorityCertDAL,
-      certificateAuthorityCrlDAL,
-      certificateAuthoritySecretDAL,
-      projectDAL,
-      certificateDAL,
-      kmsService,
-      caKeySourceService
+      await certificateAuthorityCrlDAL.update({ caId: ca.id }, { encryptedCrl }, tx);
     });
 
     if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE) {
