@@ -73,7 +73,7 @@
   max-height: 30vh;
   overflow-y: auto;
   padding: var(--v4-space-16);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .metaBox[data-empty] {
   border-style: dashed;

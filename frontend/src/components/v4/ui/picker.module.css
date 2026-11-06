@@ -184,7 +184,7 @@
   border-radius: 0;
 }
 [aria-disabled="true"] > .optionBox {
-  border-color: var(--v4-line);
+  border-color: var(--v4-line-soft);
   background-color: var(--v4-line-soft);
   color: var(--v4-faint);
 }

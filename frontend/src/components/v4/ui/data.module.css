@@ -15,7 +15,7 @@
 }
 .gridScroll {
   background: var(--v4-surface);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .gridScroll {
   font-family: var(--v4-type-mono-font-family);
@@ -105,7 +105,7 @@
   z-index: 2;
   background: var(--v4-paper);
   min-height: var(--v4-size-control-sm);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
   color: var(--v4-muted);
 }
 .gridHeader {
@@ -174,7 +174,7 @@
   min-width: var(--v4-space-40);
   text-align: right;
   color: var(--v4-faint);
-  border-right: var(--v4-size-control-border) solid var(--v4-line);
+  border-right: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .gridHead > .gutter {
   background: inherit;
@@ -435,7 +435,7 @@
   list-style: none;
   margin: 0;
   padding: 0 0 0 var(--v4-space-16);
-  border-left: 1px solid var(--v4-line-soft);
+  border-left: 1px solid var(--v4-line);
 }
 .treeRow {
   display: flex;
@@ -537,7 +537,7 @@
 }
 .listShell[data-variant="plain"] > .list {
   background: var(--v4-surface);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
 }
 .listShell[data-variant="framed"] > .status {
@@ -1041,7 +1041,7 @@ button.rowTitle::after {
 }
 .tableScroll tbody::after {
   z-index: 3;
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .tableScroll tbody > tr:first-child > td:first-child {
   border-start-start-radius: var(--v4-frame-inner-radius);
@@ -1098,7 +1098,7 @@ button.rowTitle::after {
   border-right: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .tableScroll [data-variant="bordered"] th:not(:last-child) {
-  border-right-color: var(--v4-line);
+  border-right-color: var(--v4-line-soft);
 }
 .tableScroll [data-pin="true"] {
   position: sticky;
@@ -1108,7 +1108,7 @@ button.rowTitle::after {
 }
 .tableScroll td[data-pin="true"] {
   box-shadow:
-    inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line),
+    inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line-soft),
     var(--v4-frame-pad) 0 0 var(--v4-tint);
 }
 .tableScroll th[data-pin="true"] {

@@ -11,7 +11,7 @@
   width: 100%;
   aspect-ratio: 1706 / 971;
   overflow: hidden;
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
   background: var(--v4-inset);
   container-type: inline-size;

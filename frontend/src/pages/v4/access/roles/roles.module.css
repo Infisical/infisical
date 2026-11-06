@@ -33,7 +33,7 @@
 }
 
 .panel {
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   background: var(--v4-surface);
 }
 .panelHead {
@@ -186,12 +186,12 @@
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   min-height: 100%;
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .templateNav {
   display: flex;
   flex-direction: column;
-  border-inline-end: var(--v4-size-control-border) solid var(--v4-line);
+  border-inline-end: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .templateItem {
   display: flex;
@@ -289,7 +289,7 @@
   gap: var(--v4-space-12);
 }
 .templateCard {
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .templateCardHead {
   display: flex;
@@ -304,7 +304,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   color: var(--v4-muted);
 }
 .badges {
@@ -352,7 +352,7 @@
 .preview,
 .previewEmpty {
   height: 360px;
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   background: var(--v4-tint);
 }
 .preview {

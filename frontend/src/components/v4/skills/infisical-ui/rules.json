@@ -33,12 +33,25 @@
     {
       "id": "line-colored-borders",
       "title": "Give every border a line color",
-      "instruction": "A border width utility (border, border-t, border-x and the rest) names its color in the same class string, usually a line token: border-[color:var(--v4-line)] or var(--v4-line-soft) for hairlines between rows. A bare border falls back to the global gray, which reads as a bright stripe in dark mode.",
-      "good": "border-t border-[color:var(--v4-line)] on a dialog footer.",
+      "instruction": "A border width utility (border, border-t, border-x and the rest) names its color in the same class string, usually line-soft: border-[color:var(--v4-line-soft)] for an edge or a divider that meets one, and var(--v4-line) only for a standalone rule (rule/line-roles). A bare border falls back to the global gray, which reads as a bright stripe in dark mode.",
+      "good": "border-t border-[color:var(--v4-line-soft)] on a dialog footer.",
       "avoid": "border-t alone on a footer, or border on a menu with no color.",
       "detect": {
         "by": "lint",
         "check": "bare-border"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "line-roles",
+      "title": "Use line-soft for edges and line for standalone rules",
+      "instruction": "line-soft is the default border: the outward edge of every inset surface, card, plain list, table, popover, dialog and bordered tile or badge, the app shell chrome (the AppInset island, the band rule, the sidebar edge and separators) and every divider that touches one of those edges, such as row hairlines, cell dividers and dialog head and footer rules. Reserve line for a standalone rule that touches no other border: a section rule, the band's divider marks, a lone hr, a tree guide, the tab track, chart axes and grid lines.",
+      "good": "border: var(--v4-size-control-border) solid var(--v4-line-soft) on a card, and a line rule under a section heading that ends in open space.",
+      "avoid": "A four-sided line border on a card, panel or tile, or a line-soft section rule floating on the page.",
+      "exceptions": "Control borders (inputs, outline buttons, selects) keep their own control tokens; only a control that points at line moves to line-soft.",
+      "detect": {
+        "by": "lint",
+        "check": "line-on-edge"
       },
       "category": "Visual"
     },

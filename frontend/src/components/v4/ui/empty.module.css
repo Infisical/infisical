@@ -48,7 +48,7 @@
 .media[data-variant="tile"] {
   width: var(--v4-size-empty-media);
   height: var(--v4-size-empty-media);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
   background: var(--v4-tint);
   color: var(--v4-text2);

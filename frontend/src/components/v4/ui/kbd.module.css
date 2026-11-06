@@ -36,7 +36,7 @@
   line-height: 1;
   background: var(--v4-tint);
   color: var(--v4-muted);
-  border: 1px solid var(--v4-line);
+  border: 1px solid var(--v4-line-soft);
   border-radius: 0;
   white-space: nowrap;
   pointer-events: none;

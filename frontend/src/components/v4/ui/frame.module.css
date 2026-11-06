@@ -73,7 +73,7 @@
 .frameInset {
   min-width: 0;
   background: var(--v4-surface);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: var(--v4-frame-inner-radius);
   box-shadow: var(--v4-shadow-raised);
 }

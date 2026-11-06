@@ -231,6 +231,19 @@ export const v4Checks: readonly V4Check[] = [
     classString: (value) => bareBorders(value)
   },
   {
+    id: "line-on-edge",
+    rule: "line-roles",
+    message:
+      "A four-sided border is a surface edge, so it takes line-soft. Keep line for a standalone rule that touches no other border.",
+    appliesTo: isAuthored,
+    css: [/(?:^|[;{\s])border(?:-color)?\s*:[^;{}]*var\(--v4-line\)/g],
+    classString: (value) =>
+      /(?:^|\s)border(?:-\d+)?(?=\s|$)/.test(value) &&
+      value.includes("border-[color:var(--v4-line)]")
+        ? ["border-[color:var(--v4-line)]"]
+        : []
+  },
+  {
     id: "decorative-effect",
     rule: "no-added-depth",
     message:
@@ -513,7 +526,7 @@ export const scanSource = (file: string, text: string): Finding[] => {
           return [{ check: check.id, file, line, text: match }];
         });
       const judge = check.classString;
-      if (judge)
+      if (judge && isMarkup(file))
         return classStrings.flatMap(({ value, index }) => {
           const line = text.slice(0, index).split("\n").length;
           if (exemptLine(line, check.id)) return [];

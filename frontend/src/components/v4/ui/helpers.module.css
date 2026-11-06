@@ -82,7 +82,7 @@
   flex: 0 0 auto;
   color: var(--v4-ink, var(--foreground));
   background: var(--v4-surface);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
 }
 .mediaSmall {
@@ -96,7 +96,7 @@
   width: 100%;
   padding: var(--v4-space-12);
   text-align: start;
-  border: 1px solid var(--v4-line, var(--border));
+  border: 1px solid var(--v4-line-soft, var(--border));
   background: var(--v4-surface, var(--background));
   color: var(--v4-ink, var(--foreground));
 }
@@ -172,7 +172,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  border: 1px solid var(--v4-line, var(--border));
+  border: 1px solid var(--v4-line-soft, var(--border));
 }
 .step[data-current] .stepNumber {
   background: repeating-linear-gradient(
@@ -262,14 +262,14 @@
   letter-spacing: var(--v4-type-caption-letter-spacing);
   height: var(--v4-size-badge);
   padding: 0 var(--v4-space-8);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
 }
 .badge.mono {
   font-family: var(--v4-type-mono-sm-font-family);
 }
 .badge[data-slot][data-tone] {
-  border-color: var(--v4-line);
+  border-color: var(--v4-line-soft);
   color: var(--v4-muted);
   background: transparent;
 }
@@ -381,7 +381,7 @@
 }
 .alert[data-tone="neutral"] {
   background: var(--v4-paper);
-  border-color: var(--v4-line);
+  border-color: var(--v4-line-soft);
   color: var(--v4-ink);
 }
 .alert[data-tone="neutral"] > svg {
@@ -425,7 +425,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--v4-space-8);
-  border: 1px solid var(--v4-line, var(--border));
+  border: 1px solid var(--v4-line-soft, var(--border));
   background: var(--v4-toast-bg, var(--popover));
   color: var(--v4-ink, var(--foreground));
   box-shadow: var(--v4-shadow-pop, 0 4px 16px rgb(0 0 0 / 0.12));
@@ -457,7 +457,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   mix-blend-mode: var(--v4-avatar-blend);
   pointer-events: none;
 }
@@ -540,7 +540,7 @@
   display: grid;
   width: 100%;
   grid-template-columns: minmax(0, 1fr);
-  border: 1px solid var(--v4-line);
+  border: 1px solid var(--v4-line-soft);
   border-radius: 0;
   padding: var(--v4-space-12);
   gap: var(--v4-space-4) var(--v4-space-8);

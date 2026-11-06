@@ -64,7 +64,7 @@
   gap: var(--v4-space-20);
   min-width: 0;
   padding: var(--v4-space-surface-inset);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
   background: var(--v4-surface);
 }
@@ -122,7 +122,7 @@
   bottom: 0;
   left: 11px;
   width: 1px;
-  background: var(--v4-line);
+  background: var(--v4-line-soft);
 }
 .step[data-state="done"]::before {
   background: var(--v4-ink);
@@ -149,7 +149,7 @@ button.stepButton:focus-visible {
   justify-content: center;
   width: var(--v4-space-24);
   height: var(--v4-space-24);
-  border: 1px solid var(--v4-line);
+  border: 1px solid var(--v4-line-soft);
   border-radius: 0;
   background: var(--v4-surface);
   color: var(--v4-muted);

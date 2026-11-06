@@ -462,7 +462,7 @@
   flex-direction: column;
   padding: var(--v4-dialog-pad);
   gap: var(--v4-space-content-group);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .v4
   :is(
@@ -478,7 +478,7 @@
   margin: 0 calc(-1 * var(--v4-dialog-pad)) calc(-1 * var(--v4-dialog-pad));
   padding: var(--v4-dialog-pad);
   gap: var(--v4-space-12);
-  border-top: var(--v4-size-control-border) solid var(--v4-line);
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
   background: var(--v4-paper);
   border-radius: 0;
 }
@@ -572,11 +572,11 @@
   display: flex;
   flex: none;
   flex-direction: column;
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .v4 [data-sections] > [data-slot="sheet-footer"],
 .v4 [data-sections] > [data-slot="sheet-form"] > [data-slot="sheet-footer"] {
-  border-top: var(--v4-size-control-border) solid var(--v4-line);
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 /* A form around the sections owns its footer submit; it draws no box, so the pinned layout is the same. */
 .v4 [data-sections] > :is([data-slot="sheet-form"], [data-slot="dialog-form"]) {

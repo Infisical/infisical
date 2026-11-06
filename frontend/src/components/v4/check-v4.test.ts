@@ -139,6 +139,19 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       ]
     ]
   },
+  "line-on-edge": {
+    bad: [
+      [css, ".card { border: var(--v4-size-control-border) solid var(--v4-line); }"],
+      [css, ".tile { border-color: var(--v4-line); }"],
+      [ui, '<div className="border border-[color:var(--v4-line)] p-3" />']
+    ],
+    good: [
+      [css, ".card { border: var(--v4-size-control-border) solid var(--v4-line-soft); }"],
+      [css, ".rule { height: 1px; background: var(--v4-line); }"],
+      [css, ".track { border-bottom: 1px solid var(--v4-line); }"],
+      [ui, '<div className="border-t border-[color:var(--v4-line)]" />']
+    ]
+  },
   "left-accent-bar": {
     bad: [
       [css, ".row[data-pending] > td:first-child { box-shadow: inset 2px 0 0 var(--v4-ok-line); }"],

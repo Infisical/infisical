@@ -234,7 +234,7 @@
 .treeChildren {
   margin-left: calc(var(--v4-space-6) - var(--v4-size-control-border));
   padding-left: var(--v4-space-10);
-  border-left: var(--v4-size-control-border) solid var(--v4-line-soft);
+  border-left: var(--v4-size-control-border) solid var(--v4-line);
 }
 .notice {
   margin: var(--v4-space-8) 0;

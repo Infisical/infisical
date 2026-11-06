@@ -15,7 +15,7 @@
 }
 .panelTitle {
   padding-block-end: var(--v4-space-8);
-  border-block-end: var(--v4-size-control-border) solid var(--v4-line);
+  border-block-end: var(--v4-size-control-border) solid var(--v4-line-soft);
   color: var(--v4-muted);
 }
 .grantList {

@@ -6,7 +6,7 @@
 }
 .scopeEnv {
   padding-inline-end: var(--v4-space-6);
-  border-inline-end: var(--v4-size-control-border) solid var(--v4-line);
+  border-inline-end: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .scopeRow {
   display: grid;

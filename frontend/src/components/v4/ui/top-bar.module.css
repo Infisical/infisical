@@ -32,7 +32,7 @@
 .shell > .inset {
   grid-area: main;
   margin: 0 var(--v4-space-shell-gap) var(--v4-space-shell-gap) 0;
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
 }
 .shell:not(:has(> .topBar)) > .inset {
@@ -82,7 +82,7 @@
 .topBar[data-mode="narrow"] {
   gap: var(--v4-space-4);
   padding-inline: var(--v4-space-4);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .trail {
   min-width: 0;
@@ -172,7 +172,7 @@
   align-items: center;
   min-height: var(--v4-size-control-lg);
   padding-inline: var(--v4-space-12) var(--v4-space-8);
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
   background: var(--v4-inset);
 }

@@ -14,7 +14,7 @@
   transition-timing-function: var(--v4-ease-standard);
 }
 .sidebar[data-edge] {
-  border-right: 1px solid var(--v4-line);
+  border-right: 1px solid var(--v4-line-soft);
 }
 .sidebar[data-collapsed] {
   width: var(--v4-size-sidebar-rail);
@@ -59,7 +59,7 @@
   align-items: center;
   gap: var(--v4-space-8);
   padding: var(--v4-space-8);
-  border-top: var(--v4-size-control-border) solid var(--v4-line);
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .cornerEnd {
   display: flex;
@@ -82,7 +82,7 @@
   gap: 1px;
   margin-inline: calc(-1 * var(--v4-space-8));
   padding: 0 var(--v4-space-8) var(--v4-space-8);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .marked {
   position: relative;
@@ -165,7 +165,7 @@
   gap: var(--v4-space-8);
   min-height: var(--v4-size-shell-bar);
   padding-inline: var(--v4-space-16) var(--v4-space-8);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .sheetOrg {
   display: flex;
@@ -185,7 +185,7 @@
 }
 .sheetAccount {
   flex: none;
-  border-top: var(--v4-size-control-border) solid var(--v4-line);
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .spaces {
   flex: none;
@@ -257,7 +257,7 @@
   color: var(--v4-ink);
 }
 .railSpace[aria-selected="true"] {
-  border: var(--v4-size-control-border) solid var(--v4-line);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
   background: var(--v4-pop);
   box-shadow: var(--v4-shadow-raised);
   color: var(--v4-ink);
@@ -341,13 +341,13 @@
   flex: 1 1 auto;
   min-width: var(--v4-space-12);
   height: 1px;
-  background: var(--v4-line);
+  background: var(--v4-line-soft);
 }
 .sidebar[data-collapsed] .sectionLabel {
   height: 1px;
   margin: 0 calc(-1 * var(--v4-space-8)) var(--v4-space-8);
   padding: 0;
-  background: var(--v4-line);
+  background: var(--v4-line-soft);
 }
 .sidebar[data-collapsed] .sectionLabel::after {
   display: none;

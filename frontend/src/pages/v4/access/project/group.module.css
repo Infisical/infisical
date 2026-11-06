@@ -10,7 +10,7 @@
 .editorFooter {
   display: flex;
   padding: var(--v4-space-8);
-  border-block-start: var(--v4-size-control-border) solid var(--v4-line);
+  border-block-start: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .editorFooter > * {
   flex: 1 1 auto;
