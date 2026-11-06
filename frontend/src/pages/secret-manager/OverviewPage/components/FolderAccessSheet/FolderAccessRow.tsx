@@ -113,6 +113,7 @@ export const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
 type Props = {
   actor: TFolderAccessActor;
   isDisabled?: boolean;
+  isPending?: boolean;
   // only the root folder's grants may apply to subfolders, so the control is hidden elsewhere
   canApplyToSubfolders?: boolean;
   onSetTier: (tier: SecretFolderRole, isRecursive: boolean) => void;
@@ -123,7 +124,7 @@ type Props = {
   onManageInheritedAccess?: () => void;
 };
 
-type GrantRowProps = Pick<Props, "actor" | "isDisabled" | "canApplyToSubfolders"> & {
+type GrantRowProps = Pick<Props, "actor" | "isDisabled" | "isPending" | "canApplyToSubfolders"> & {
   footerNote?: string;
   onSetTier: (tier: SecretFolderRole, isRecursive: boolean) => void;
 };
@@ -131,6 +132,7 @@ type GrantRowProps = Pick<Props, "actor" | "isDisabled" | "canApplyToSubfolders"
 export const FolderAccessGrantRow = ({
   actor,
   isDisabled,
+  isPending,
   canApplyToSubfolders,
   footerNote,
   onSetTier
@@ -154,6 +156,7 @@ export const FolderAccessGrantRow = ({
         </DropdownMenuTrigger>
         <TierDropdown
           footerNote={note || undefined}
+          isPending={isPending}
           recursive={
             canApplyToSubfolders
               ? { checked: isRecursive, onCheckedChange: setIsRecursive }
@@ -169,6 +172,7 @@ export const FolderAccessGrantRow = ({
 export const FolderAccessRow = ({
   actor,
   isDisabled,
+  isPending,
   canApplyToSubfolders,
   onSetTier,
   onSetRecursive,
@@ -312,6 +316,7 @@ export const FolderAccessRow = ({
             <TierDropdown
               activeTier={access?.permission ?? null}
               footerNote={grantedFooterNote}
+              isPending={isPending}
               inherited={
                 !access && inheritedAccess
                   ? {
