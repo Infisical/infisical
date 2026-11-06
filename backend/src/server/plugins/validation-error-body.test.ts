@@ -29,7 +29,7 @@ beforeAll(async () => {
     DB_CONNECTION_URI: "postgres://infisical:infisical@localhost:5432/infisical",
     REDIS_URL: "redis://localhost:6379",
     AUTH_SECRET: "validation-error-body-test-secret",
-    ENCRYPTION_KEY: "6c1fe4e407b8911c104518103505b218"
+    ENCRYPTION_KEY: "0".repeat(32)
   };
   Object.entries(env).forEach(([name, value]) => {
     if (!process.env[name]) vi.stubEnv(name, value);

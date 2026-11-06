@@ -6,7 +6,7 @@ const BASE = {
   DB_CONNECTION_URI: "postgres://infisical:infisical@localhost:5432/infisical",
   REDIS_URL: "redis://localhost:6379",
   AUTH_SECRET: "env-schema-test-secret",
-  ENCRYPTION_KEY: "6c1fe4e407b8911c104518103505b218"
+  ENCRYPTION_KEY: "0".repeat(32)
 };
 
 describe("envSchema", () => {
