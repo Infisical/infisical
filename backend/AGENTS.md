@@ -439,10 +439,17 @@ PKCE or redirect-URI mismatch, `invalid_scope`, `invalid_target`).
 minting a user token. A new client field that carries federation trust goes in both
 `hasWithdrawnTokenExchangeTrust` and `hasClientAuthorityChanged`, so narrowing it revokes issued tokens.
 
+**The exchange re-reads the client after creating its own session** (`findByIdForUpdate` +
+`hasClientAuthorityChanged`, re-running the sweep), because a withdrawal's `revokeSessionsByUserAgent` sweep
+only reaps sessions that already exist. Keep that read locking and on the primary, and keep each withdrawal's
+client write and its sweep in one transaction: a plain read sees the pre-withdrawal row until that transaction
+commits, after its sweep has already scanned past the new session.
+
 ### User Aliases: Provisioning Identifiers and IdP Profile Sync
 
-**Before touching `user-alias-fns.ts`, SCIM user handlers, OIDC login, or any invite / removal path that
-resolves people by identifier, read [`src/services/user-alias/AGENTS.md`](src/services/user-alias/AGENTS.md).**
+**Before touching `user-alias-fns.ts`, SCIM user handlers, SAML, OIDC or LDAP login, or any invite / removal
+path that resolves people by identifier, read
+[`src/services/user-alias/AGENTS.md`](src/services/user-alias/AGENTS.md).**
 In short: resolve by exact `users.username` first and only then by `resolveUsersBySsoExternalId`; match
 `externalId` exactly (never case-folded), scoped by org and alias type; treat ambiguity as an error.
 
