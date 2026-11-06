@@ -11,6 +11,7 @@ import {
   buildOcspResponderUrl,
   createDistinguishedName,
   extractDnParts,
+  getCaCrlIssuer,
   signatureAlgorithmToAlgCfg
 } from "./certificate-authority-fns";
 
@@ -574,5 +575,68 @@ describe("buildIssuedCertificateChain", () => {
     });
 
     expect(chain).toBe(infisicalRoot.trim());
+  });
+});
+
+describe("getCaCrlIssuer", () => {
+  const signingAlgorithm = { name: "ECDSA", hash: "SHA-256" };
+  const storedDn = createDistinguishedName({
+    commonName: "Example Intermediate CA",
+    ou: "IT",
+    organization: "Example Organization",
+    locality: "Example City",
+    province: "Example State",
+    country: "DE"
+  });
+
+  let caCert: x509.X509Certificate;
+  let caKeys: CryptoKeyPair;
+
+  beforeAll(async () => {
+    caKeys = (await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+      "sign",
+      "verify"
+    ])) as CryptoKeyPair;
+    caCert = await x509.X509CertificateGenerator.create({
+      serialNumber: "01",
+      subject: "C=DE, ST=Example State, L=Example City, O=Example Organization, OU=IT, CN=Example Intermediate CA",
+      issuer: "CN=External Root CA",
+      notBefore: new Date(Date.now() - 60 * 1000),
+      notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      publicKey: caKeys.publicKey,
+      signingKey: caKeys.privateKey,
+      signingAlgorithm,
+      extensions: [new x509.BasicConstraintsExtension(true, undefined, true)]
+    });
+  });
+
+  const resolveIssuer = (activeCaCertId: string | null, caCertRow?: { encryptedCertificate: Buffer }) =>
+    getCaCrlIssuer({
+      internalCa: { dn: storedDn, activeCaCertId },
+      kmsId: "kms-key",
+      certificateAuthorityCertDAL: { findById: vi.fn().mockResolvedValue(caCertRow) },
+      kmsService: {
+        decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
+      } as never
+    });
+
+  it("signs the CRL with the CA certificate subject when its RDN order differs from the stored DN", async () => {
+    const issuer = await resolveIssuer("ca-cert", { encryptedCertificate: Buffer.from(caCert.rawData) });
+    const crl = await x509.X509CrlGenerator.create({
+      issuer,
+      thisUpdate: new Date(),
+      entries: [],
+      signingKey: caKeys.privateKey,
+      signingAlgorithm
+    });
+
+    expect(Buffer.from(crl.issuerName.toArrayBuffer())).toEqual(Buffer.from(caCert.subjectName.toArrayBuffer()));
+    expect(Buffer.from(new x509.Name(storedDn).toArrayBuffer())).not.toEqual(
+      Buffer.from(caCert.subjectName.toArrayBuffer())
+    );
+  });
+
+  it("falls back to the stored DN while the CA has no certificate", async () => {
+    expect(await resolveIssuer(null)).toBe(storedDn);
   });
 });

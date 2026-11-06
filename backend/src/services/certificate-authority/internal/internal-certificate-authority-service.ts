@@ -29,6 +29,7 @@ import {
 } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -93,6 +94,7 @@ import {
   getCaSigner,
   getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
+  rebuildCaCrl,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
 } from "../certificate-authority-fns";
@@ -1733,6 +1735,22 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
     });
+
+    try {
+      await rebuildCaCrl({
+        caId: ca.id,
+        certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
+        certificateAuthorityCrlDAL,
+        certificateAuthoritySecretDAL,
+        projectDAL,
+        certificateDAL,
+        kmsService,
+        caKeySourceService
+      });
+    } catch (err) {
+      logger.error(err, `Failed to rebuild CRL after importing CA certificate [caId=${ca.id}]`);
+    }
 
     if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE) {
       const existingConfig = await caSigningConfigDAL.findByCaId(ca.internalCa.id);
