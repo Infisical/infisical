@@ -1,12 +1,14 @@
 import { Navigate, useParams } from "@tanstack/react-router";
 
 export const AgentVaultIndexRedirect = () => {
-  const { orgId } = useParams({ from: "/v4/organizations/$orgId/agent-vault/" });
+  const { orgId, projectId } = useParams({
+    from: "/v4/organizations/$orgId/projects/agent-vault/$projectId/"
+  });
   return (
     <Navigate
       replace
-      to="/v4/organizations/$orgId/$"
-      params={{ orgId, _splat: "agent-vault/sessions" }}
+      to="/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions"
+      params={{ orgId, projectId }}
     />
   );
 };

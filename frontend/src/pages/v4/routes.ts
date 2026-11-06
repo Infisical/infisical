@@ -45,6 +45,8 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "/secret-management/$projectId/roles/$roleSlug",
         "v4/project/RoleDetailsBySlugPage/route.tsx"
       ),
+      route("/agent-vault/$projectId/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
+      route("/agent-vault/$projectId/sessions", "v4/agent-vault/AgentVaultSessionsPage/route.tsx"),
       route("/$type/", "v4/organization/ProjectsPage/ProjectTypePage/route.tsx"),
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
@@ -70,8 +72,6 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     ),
     route("/pam/accounts/", "v4/pam/PamAccountsPage/route.tsx"),
     route("/pam/access", "v4/redirects/PamAccessRedirect/route.tsx"),
-    route("/agent-vault/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
-    route("/agent-vault/sessions", "v4/agent-vault/AgentVaultSessionsPage/route.tsx"),
     route("/secret-scanning/", "v4/redirects/SecretScanningIndexRedirect/route.tsx"),
     route("/$", "v4/organization/NotPortedPage/route.tsx")
   ])

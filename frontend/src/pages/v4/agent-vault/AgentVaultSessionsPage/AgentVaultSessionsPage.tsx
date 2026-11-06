@@ -22,7 +22,6 @@ import {
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
 import { RowLink } from "@app/components/v4/ui/row-link";
@@ -52,7 +51,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useV4Adapter } from "../../data/adapters";
 
-const route = "/v4/organizations/$orgId/agent-vault/sessions";
+const route = "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions";
 const NOT_PORTED = "Not available in v4 yet";
 const TABLE = "agentVaultSessionsTable";
 
@@ -99,7 +98,15 @@ const Identity = ({ session }: { session: TAgentVaultSession }) => (
   </Stack>
 );
 
-const Access = ({ session, orgId }: { session: TAgentVaultSession; orgId: string }) => {
+const Access = ({
+  session,
+  orgId,
+  projectId
+}: {
+  session: TAgentVaultSession;
+  orgId: string;
+  projectId: string;
+}) => {
   const { accessBundle, services } = session;
   if (!accessBundle && !services.length) return <Meta>-</Meta>;
   return (
@@ -107,8 +114,11 @@ const Access = ({ session, orgId }: { session: TAgentVaultSession; orgId: string
       {accessBundle?.id && (
         <Badge tone="outline" asChild>
           <Link
-            to="/v4/organizations/$orgId/$"
-            params={{ orgId, _splat: `agent-vault/access-bundles/${accessBundle.id}` }}
+            to="/v4/organizations/$orgId/projects/$"
+            params={{
+              orgId,
+              _splat: `agent-vault/${projectId}/access-bundles/${accessBundle.id}`
+            }}
           >
             <Icon name="folder" />
             {accessBundle.name}
@@ -159,7 +169,11 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   const navigate = useNavigate();
   const { sessionId } = useSearch({ from: route });
   const setSessionId = (next: string | undefined) =>
-    navigate({ to: route, params: { orgId }, search: (prev) => ({ ...prev, sessionId: next }) });
+    navigate({
+      to: route,
+      params: { orgId, projectId },
+      search: (prev) => ({ ...prev, sessionId: next })
+    });
   const { data: permission } = agentVault.useProjectPermission({ projectId });
   const isAdmin = Boolean(
     permission?.memberships.some((membership) =>
@@ -188,14 +202,14 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   const statuses = (filters.find((filter) => filter.field === "status")?.values ??
     []) as AgentVaultSessionStatus[];
 
-  const { data, isPending } = agentVault.useSessions(orgId, {
+  const { data, isPending } = agentVault.useSessions(orgId, projectId, {
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
     statuses,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const { data: accessBundles } = agentVault.useAccessBundles(orgId, { limit: 1 });
+  const { data: accessBundles } = agentVault.useAccessBundles(orgId, projectId, { limit: 1 });
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -221,7 +235,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       render: (row) => (
         <RowLink
           to={route}
-          params={{ orgId }}
+          params={{ orgId, projectId }}
           search={(prev) => ({ ...prev, sessionId: row.id })}
           title={row.label ?? undefined}
           style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -242,7 +256,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       id: "access",
       header: "Access",
       width: 264,
-      render: (row) => <Access session={row} orgId={orgId} />
+      render: (row) => <Access session={row} orgId={orgId} projectId={projectId} />
     },
     {
       id: "created",
@@ -433,7 +447,9 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
                   !hasReachableBundles && isAdmin ? (
                     <Button
                       variant="outline"
-                      onClick={() => openPlaceholder("agent-vault/access-bundles")}
+                      onClick={() =>
+                        openPlaceholder(`projects/agent-vault/${projectId}/access-bundles`)
+                      }
                     >
                       Go to access bundles
                     </Button>
@@ -473,7 +489,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
                 <EmptyHeader>
                   <EmptyTitle>This page isn&apos;t in v4 yet</EmptyTitle>
                   <EmptyDescription>
-                    {`/organizations/${orgId}/agent-vault/sessions?sessionId=${sessionId}`}{" "}
+                    {`/organizations/${orgId}/projects/agent-vault/${projectId}/sessions?sessionId=${sessionId}`}{" "}
                     hasn&apos;t been ported to the new app. The demo shows the pages that have.
                   </EmptyDescription>
                 </EmptyHeader>
@@ -487,8 +503,6 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
 };
 
 export const AgentVaultSessionsPage = () => {
-  const { orgId } = useParams({ from: route });
-  const { data: projectId } = useV4Adapter("agentVault").useProjectId(orgId);
-  if (!projectId) return <Loader size="page" label="Loading sessions" />;
-  return <Sessions orgId={orgId} projectId={projectId} />;
+  const { orgId, projectId } = useParams({ from: route });
+  return <Sessions key={projectId} orgId={orgId} projectId={projectId} />;
 };

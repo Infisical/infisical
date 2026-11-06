@@ -37,13 +37,16 @@ const detailOwners: [RegExp, string][] = [
 ];
 
 const locate = (path: string, isSubOrganization: boolean): Omit<ShellLocation, "current"> => {
-  const project = path.match(/^\/projects\/(secret-management|kms)\/([^/]+)/);
+  const project = path.match(/^\/projects\/(secret-management|kms|agent-vault)\/([^/]+)/);
   if (project && !productResources.has(project[2])) {
     const type = urlSlugToProjectType(project[1])!;
     const base = project[0];
-    return project[1] === "kms"
-      ? { level: "kms", sections: kmsSections(base), product: type, projectId: project[2] }
-      : { level: "project", sections: projectSections(base), product: type, projectId: project[2] };
+    const projectId = project[2];
+    if (project[1] === "kms")
+      return { level: "kms", sections: kmsSections(base), product: type, projectId };
+    if (project[1] === "agent-vault")
+      return { level: "agent-vault", sections: agentVaultSections(base), product: type, projectId };
+    return { level: "project", sections: projectSections(base), product: type, projectId };
   }
   if (path.startsWith("/cert-manager")) {
     return { level: "pki", sections: pkiSections, product: urlSlugToProjectType("cert-manager")! };
@@ -57,13 +60,6 @@ const locate = (path: string, isSubOrganization: boolean): Omit<ShellLocation, "
   }
   if (/^\/pam(\/|$)/.test(path)) {
     return { level: "pam", sections: pamSections, product: urlSlugToProjectType("pam")! };
-  }
-  if (/^\/agent-vault(\/|$)/.test(path)) {
-    return {
-      level: "agent-vault",
-      sections: agentVaultSections,
-      product: urlSlugToProjectType("agent-vault")!
-    };
   }
   const product = urlSlugToProjectType(
     path.match(/^\/projects\/product-settings\/([^/]+)/)?.[1] ??

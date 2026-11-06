@@ -169,8 +169,13 @@ const bundleRef = (bundle: number | null, index: number): TAgentVaultSession["ac
   return index === seeds.length - 1 ? { id: null, name: "Legacy billing" } : null;
 };
 
-const store = createFixtureStore<TAgentVaultSession[]>(
+const SUPPORT_BUNDLE = 2;
+const projectOf = (bundle: number | null, actor: TAgentVaultSessionActor) =>
+  bundle === SUPPORT_BUNDLE || actor === machines[1] ? "support-agents" : "agent-platform";
+
+const store = createFixtureStore<(TAgentVaultSession & { projectId: string })[]>(
   seeds.map(([label, actor, onBehalfOf, bundle, services, status, created, expires], index) => ({
+    projectId: projectOf(bundle, actor),
     id: uuid("d1", index + 1),
     label,
     actor,
@@ -193,18 +198,18 @@ const isMine = (session: TAgentVaultSession) =>
   session.actor.id === sarah.id || session.onBehalfOf?.id === sarah.id;
 
 export const agentVaultDemo: AgentVaultAdapter = {
-  useProjectId: () => ({ data: "agent-vault", isPending: false, error: null }),
   useProjectPermission: () => ({
     data: { memberships: [{ roles: [{ role: "admin" }] }] },
     isPending: false,
     error: null
   }),
-  useSessions: (_, { scope, statuses, search, limit = 20, offset = 0 }) => {
+  useSessions: (_, projectId, { scope, statuses, search, limit = 20, offset = 0 }) => {
     const term = search?.toLowerCase();
     const matched = store
       .use()
       .filter(
         (session) =>
+          session.projectId === projectId &&
           (scope !== AgentVaultSessionScope.Mine || isMine(session)) &&
           (!statuses?.length || statuses.includes(session.status)) &&
           (!term ||
@@ -223,9 +228,17 @@ export const agentVaultDemo: AgentVaultAdapter = {
       error: null
     };
   },
-  useAccessBundles: (_, { limit = 20, offset = 0 }) => ({
-    data: { accessBundles: bundles.slice(offset, offset + limit), totalCount: bundles.length },
-    isPending: false,
-    error: null
-  })
+  useAccessBundles: (_, projectId, { limit = 20, offset = 0 }) => {
+    const reachable = bundles.filter(
+      (_bundle, index) => (index === SUPPORT_BUNDLE) === (projectId === "support-agents")
+    );
+    return {
+      data: {
+        accessBundles: reachable.slice(offset, offset + limit),
+        totalCount: reachable.length
+      },
+      isPending: false,
+      error: null
+    };
+  }
 };
