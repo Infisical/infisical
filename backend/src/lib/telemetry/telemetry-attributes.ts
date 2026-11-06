@@ -13,6 +13,8 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "queue.state",
   "job.name",
   "error.type",
+  // "config" | "other" on secret sync failures.
+  "error.category",
   "outcome",
   "attempts.exhausted",
   "audit_log.event_type",

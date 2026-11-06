@@ -80,6 +80,7 @@ export const DaytonaSyncFns = {
       throw new SecretSyncError({
         secretKey: invalidKeys[0],
         shouldRetry: false,
+        isConfigError: true,
         message: `${invalidKeys.length} secret ${
           invalidKeys.length === 1 ? "key is" : "keys are"
         } not a valid Daytona secret name: ${invalidKeys.join(", ")}. ${DAYTONA_SECRET_NAME_RULE}`

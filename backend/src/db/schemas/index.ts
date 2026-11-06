@@ -29,6 +29,7 @@ export * from "./alert-history";
 export * from "./alert-history-target";
 export * from "./alerts";
 export * from "./app-connection-credential-rotations";
+export * from "./app-connection-health";
 export * from "./app-connections";
 export * from "./approval-policies";
 export * from "./approval-policy-auto-approval-conditions";

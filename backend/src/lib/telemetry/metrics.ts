@@ -714,31 +714,34 @@ export const recordSecretSyncOutcomeMetric = (params: {
   operation: "sync" | "import" | "remove";
   outcome: "success" | "failure";
   attemptsExhausted: boolean;
+  // Failures only. "config" is a sync rejected by Infisical's own validation
+  errorCategory?: "config" | "other";
 }) => {
   if (!isTelemetryEnabled()) return;
   secretSyncOutcomeCounter.add(1, {
     destination: params.destination,
     operation: params.operation,
     outcome: params.outcome,
-    "attempts.exhausted": String(params.attemptsExhausted)
+    "attempts.exhausted": String(params.attemptsExhausted),
+    ...(params.outcome === "failure" && params.errorCategory ? { "error.category": params.errorCategory } : {})
   });
 };
 
-export const secretSyncStatusChangeCounter = infisicalCoreMeter.createCounter(
-  "infisical.secret_sync.status_change.count",
+export const secretSyncConnectionStatusChangeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_sync.connection_status_change.count",
   {
     description:
-      "Secret syncs whose finished result flipped between healthy and failed, by destination. Counts distinct configs breaking without a per-config label.",
+      "App connections whose secret syncs flipped between healthy and failed, by destination. A connection fails when a sync on it finishes failing for a reason other than Infisical's own validation, and recovers when one succeeds. Counts distinct connections breaking, so one customer with many syncs on one connection counts once.",
     unit: "{change}"
   }
 );
 
-export const recordSecretSyncStatusChangeMetric = (params: {
+export const recordSecretSyncConnectionStatusChangeMetric = (params: {
   destination: string;
   newStatus: "failed" | "healthy";
 }) => {
   if (!isTelemetryEnabled()) return;
-  secretSyncStatusChangeCounter.add(1, {
+  secretSyncConnectionStatusChangeCounter.add(1, {
     destination: params.destination,
     new_status: params.newStatus
   });
@@ -767,18 +770,21 @@ export const recordSecretRotationOutcomeMetric = (params: {
   });
 };
 
-export const secretRotationStatusChangeCounter = infisicalCoreMeter.createCounter(
-  "infisical.secret_rotation.status_change.count",
+export const secretRotationConnectionStatusChangeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_rotation.connection_status_change.count",
   {
     description:
-      "Secret rotations whose finished result flipped between healthy and failed, by type. Counts distinct configs breaking without a per-config label.",
+      "App connections whose secret rotations flipped between healthy and failed, by rotation type. A connection fails when a rotation on it fails its final attempt, and recovers when one succeeds. Counts distinct connections breaking, so one customer with many rotations on one connection counts once.",
     unit: "{change}"
   }
 );
 
-export const recordSecretRotationStatusChangeMetric = (params: { type: string; newStatus: "failed" | "healthy" }) => {
+export const recordSecretRotationConnectionStatusChangeMetric = (params: {
+  type: string;
+  newStatus: "failed" | "healthy";
+}) => {
   if (!isTelemetryEnabled()) return;
-  secretRotationStatusChangeCounter.add(1, {
+  secretRotationConnectionStatusChangeCounter.add(1, {
     type: params.type,
     new_status: params.newStatus
   });

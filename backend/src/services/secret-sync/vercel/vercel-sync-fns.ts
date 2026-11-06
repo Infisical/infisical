@@ -74,7 +74,8 @@ const getVercelSecretsWithRetries = async (
   if (destinationConfig.scope !== VercelSyncScope.Project) {
     throw new SecretSyncError({
       message: "Invalid scope for Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -119,7 +120,8 @@ const getDecryptedVercelSecret = async (
   if (destinationConfig.scope !== VercelSyncScope.Project) {
     throw new SecretSyncError({
       message: "Invalid scope for Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -159,7 +161,8 @@ const getVercelSecrets = async (secretSync: TVercelSyncWithCredentials): Promise
   if (destinationConfig.scope !== VercelSyncScope.Project) {
     throw new SecretSyncError({
       message: "Invalid scope for Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -214,7 +217,8 @@ const deleteSecret = async (
   if (destinationConfig.scope !== VercelSyncScope.Project) {
     throw new SecretSyncError({
       message: "Invalid scope for Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -254,7 +258,8 @@ const createSecret = async (
     if (destinationConfig.scope !== VercelSyncScope.Project) {
       throw new SecretSyncError({
         message: "Invalid scope for Vercel secret sync",
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
     }
 
@@ -303,7 +308,8 @@ const updateSecret = async (
     if (destinationConfig.scope !== VercelSyncScope.Project) {
       throw new SecretSyncError({
         message: "Invalid scope for Vercel secret sync",
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
     }
 
@@ -402,7 +408,8 @@ const detachEnvFromProjectSecret = async (
   if (destinationConfig.scope !== VercelSyncScope.Project) {
     throw new SecretSyncError({
       message: "Invalid scope for Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -495,7 +502,8 @@ const listTeamSharedEnvVarsWithRetries = async (
   if (destinationConfig.scope !== VercelSyncScope.Team) {
     throw new SecretSyncError({
       message: "Invalid scope for team-level Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -555,7 +563,8 @@ const getDecryptedTeamSharedEnvVar = async (
   if (destinationConfig.scope !== VercelSyncScope.Team) {
     throw new SecretSyncError({
       message: "Invalid scope for team-level Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -599,7 +608,8 @@ const getOwnedTeamSharedEnvVars = async (secretSync: TVercelSyncWithCredentials)
   if (secretSync.destinationConfig.scope !== VercelSyncScope.Team) {
     throw new SecretSyncError({
       message: "Invalid scope for team-level Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -624,7 +634,8 @@ const createTeamSharedEnvVar = async (
   if (destinationConfig.scope !== VercelSyncScope.Team) {
     throw new SecretSyncError({
       message: "Invalid scope for team-level Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -642,7 +653,8 @@ const createTeamSharedEnvVar = async (
       message:
         "Marking secrets as sensitive in Vercel is not supported for development environments. Add another target environment or disable Sensitive.",
       secretKey: key,
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -700,7 +712,8 @@ const updateTeamSharedEnvVar = async (
   if (destinationConfig.scope !== VercelSyncScope.Team) {
     throw new SecretSyncError({
       message: "Invalid scope for team-level Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -720,7 +733,8 @@ const updateTeamSharedEnvVar = async (
       message:
         "Marking secrets as sensitive in Vercel is not supported for development environments. Add another target environment or disable Sensitive.",
       secretKey: envVar.key,
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -780,7 +794,8 @@ const deleteTeamSharedEnvVar = async (
   if (destinationConfig.scope !== VercelSyncScope.Team) {
     throw new SecretSyncError({
       message: "Invalid scope for team-level Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 
@@ -831,7 +846,8 @@ const detachTeamSharedEnvVar = async (
   if (destinationConfig.scope !== VercelSyncScope.Team) {
     throw new SecretSyncError({
       message: "Invalid scope for team-level Vercel secret sync",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 

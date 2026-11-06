@@ -27,6 +27,11 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
       );
     })
     .join(TableName.AppConnection, `${TableName.SecretSync}.connectionId`, `${TableName.AppConnection}.id`)
+    .leftJoin(
+      TableName.AppConnectionHealth,
+      `${TableName.SecretSync}.connectionId`,
+      `${TableName.AppConnectionHealth}.connectionId`
+    )
     .join(TableName.Project, `${TableName.SecretSync}.projectId`, `${TableName.Project}.id`)
     .whereNull(`${TableName.Project}.deleteAfter`)
     .select(selectAllTableCols(TableName.SecretSync))
@@ -47,6 +52,7 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
       db.ref("gatewayPoolId").withSchema(TableName.AppConnection).as("connectionGatewayPoolId"),
       db.ref("projectId").withSchema(TableName.AppConnection).as("connectionProjectId"),
       db.ref("isAutoRotationEnabled").withSchema(TableName.AppConnection).as("connectionIsAutoRotationEnabled"),
+      db.ref("syncFailing").withSchema(TableName.AppConnectionHealth).as("connectionSyncFailing"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("connectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt"),
       db
@@ -86,6 +92,7 @@ const expandSecretSync = (
     connectionGatewayPoolId,
     connectionProjectId,
     connectionIsAutoRotationEnabled,
+    connectionSyncFailing,
     ...el
   } = secretSync;
 
@@ -108,7 +115,8 @@ const expandSecretSync = (
       gatewayId: connectionGatewayId,
       gatewayPoolId: connectionGatewayPoolId,
       projectId: connectionProjectId,
-      isAutoRotationEnabled: connectionIsAutoRotationEnabled
+      isAutoRotationEnabled: connectionIsAutoRotationEnabled,
+      syncFailing: connectionSyncFailing
     },
     folder: folder
       ? {

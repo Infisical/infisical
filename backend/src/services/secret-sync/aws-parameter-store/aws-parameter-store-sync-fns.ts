@@ -57,7 +57,11 @@ const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema
   if (!keySchema || !keySchema.includes("/")) return path;
 
   if (keySchema.startsWith("/")) {
-    throw new SecretSyncError({ message: `Key schema cannot contain leading '/'`, shouldRetry: false });
+    throw new SecretSyncError({
+      message: `Key schema cannot contain leading '/'`,
+      shouldRetry: false,
+      isConfigError: true
+    });
   }
 
   const keySchemaSegments = handlebars
@@ -72,7 +76,8 @@ const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema
   if (pathSegments.some((segment) => segment.includes("{{secretKey}}"))) {
     throw new SecretSyncError({
       message: "Key schema cannot contain '/' after {{secretKey}}",
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 

@@ -732,7 +732,7 @@ Secret syncs and rotations retry a failed attempt automatically, and the outcome
 - `outcome="failure"` with `attempts.exhausted="false"`: the attempt failed, and Infisical will try again
 - `outcome="failure"` with `attempts.exhausted="true"`: the last attempt failed, so the sync or rotation failed
 
-The status change counters record a change only when a sync, rotation, or dynamic secret moves between working and failing. If a secret sync stays broken and fails on every run, it records one `failed` change, so the number of `failed` changes is the number of syncs that broke, not the number of failed attempts.
+The status change counters record a change only when something moves between working and failing. Secret syncs and rotations record it per [app connection](/integrations/app-connections/overview), and dynamic secrets record it per dynamic secret. If a connection stays broken, it records one `failed` change however many of its syncs or rotations fail, and however often, so the number of `failed` changes is the number of connections that broke.
 
 <AccordionGroup>
   <Accordion title="Secret Sync Outcome">
@@ -749,16 +749,26 @@ The status change counters record a change only when a sync, rotation, or dynami
       - `operation` (string): `sync`, `import`, or `remove`
       - `outcome` (string): `success` or `failure`
       - `attempts.exhausted` (string): `"true"` or `"false"`
+      - `error.category` (string): on failures only, `config` if Infisical rejected the sync's own settings or secrets (such as a secret name the destination doesn't accept), or `other` for any other failure
   </Accordion>
 
-  <Accordion title="Secret Sync Status Change">
-    **Metric Name**: `infisical.secret_sync.status_change.count`
+  <Accordion title="Secret Sync Connection Status Change">
+    **Metric Name**: `infisical.secret_sync.connection_status_change.count`
 
     **Type**: Counter
 
     **Unit**: `{change}`
 
-    **Description**: Secret syncs whose result changed from succeeded to failed, or from failed back to succeeded. Only the final result of a sync run counts, so retried attempts, imports, removes, and jobs that couldn't start don't record a change. If a secret sync has never succeeded, its first failure doesn't record a change.
+    **Description**: App connections whose secret syncs changed between working and failing.
+
+    A connection records a change when:
+      - `failed`: a sync that uses the connection fails its last attempt, and the connection was working
+      - `healthy`: a sync that uses the connection succeeds, and the connection was failing
+
+    These don't record a change:
+      - Failures with `error.category="config"`
+      - Retried attempts, imports, removes, and jobs that couldn't start
+      - The first failure on a connection that no sync has succeeded on yet
 
     **Attributes**:
       - `destination` (string)
@@ -780,14 +790,20 @@ The status change counters record a change only when a sync, rotation, or dynami
       - `attempts.exhausted` (string): `"true"` or `"false"`
   </Accordion>
 
-  <Accordion title="Secret Rotation Status Change">
-    **Metric Name**: `infisical.secret_rotation.status_change.count`
+  <Accordion title="Secret Rotation Connection Status Change">
+    **Metric Name**: `infisical.secret_rotation.connection_status_change.count`
 
     **Type**: Counter
 
     **Unit**: `{change}`
 
-    **Description**: Secret rotations whose status changed from successful to failed, or from failed back to successful. A rotation records `failed` only when its last attempt fails. It records `healthy` when a later rotation succeeds, or when a local account rotation reconciles its credentials.
+    **Description**: App connections whose secret rotations changed between working and failing.
+
+    A connection records a change when:
+      - `failed`: a rotation that uses the connection fails its last attempt, and the connection was working
+      - `healthy`: a rotation that uses the connection is created, succeeds, or has its local account credentials reconciled, and the connection was failing
+
+    Retried attempts don't record a change, and neither do runs that couldn't start because the same rotation was already running.
 
     **Attributes**:
       - `type` (string)

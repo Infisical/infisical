@@ -79,6 +79,7 @@ export const assertUniqueAzureKeyVaultSecretNames = (infisicalKeys: Iterable<str
 
   throw new SecretSyncError({
     message: `These Infisical secret names would overwrite each other in Azure Key Vault, because each underscore is written as a hyphen and vault names ignore case. ${details}. Rename them so each vault name belongs to one secret.`,
-    shouldRetry: false
+    shouldRetry: false,
+    isConfigError: true
   });
 };

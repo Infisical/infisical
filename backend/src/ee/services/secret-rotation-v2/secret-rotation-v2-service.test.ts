@@ -1,7 +1,11 @@
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
+import { logger } from "@app/lib/logger";
+import {
+  recordSecretRotationConnectionStatusChangeMetric,
+  recordSecretRotationOutcomeMetric
+} from "@app/lib/telemetry/metrics";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
@@ -27,7 +31,7 @@ vi.mock("@app/lib/logger", () => ({
 vi.mock("@app/lib/telemetry/metrics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/telemetry/metrics")>()),
   recordSecretRotationOutcomeMetric: vi.fn(),
-  recordSecretRotationStatusChangeMetric: vi.fn()
+  recordSecretRotationConnectionStatusChangeMetric: vi.fn()
 }));
 
 vi.mock("@app/services/app-connection/app-connection-fns", async (importOriginal) => ({
@@ -61,7 +65,13 @@ vi.mock("./unix-linux-local-account-rotation/unix-linux-local-account-rotation-f
   })
 }));
 
-const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.StripeApiKey) =>
+type TConnectionState = { rotationFailing: boolean | null };
+
+const rotation = (
+  rotationStatus: SecretRotationStatus,
+  type = SecretRotation.StripeApiKey,
+  connectionState: TConnectionState = { rotationFailing: false }
+) =>
   ({
     id: "rotation-1",
     name: "rotation",
@@ -80,7 +90,8 @@ const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.St
     connection: {
       id: "connection-1",
       orgId: "org-1",
-      app: type === SecretRotation.StripeApiKey ? "stripe" : "ssh"
+      app: type === SecretRotation.StripeApiKey ? "stripe" : "ssh",
+      ...connectionState
     },
     folder: { id: "folder-1", path: "/" },
     environment: { id: "env-1", slug: "dev", name: "Development" }
@@ -97,16 +108,18 @@ const actor = {
   parentOrgId: "org-1"
 };
 
-// storedStatus is the rotation row in the database; the object passed to rotateGeneratedCredentials is what the
-// job loaded, which can be older.
+// storedStatus is the rotation row in the database and connection the app connection row it uses; the object passed
+// to rotateGeneratedCredentials is what the job loaded, which can be older.
 const createService = ({
   storedStatus,
   lockFails = false,
-  type = SecretRotation.StripeApiKey
+  type = SecretRotation.StripeApiKey,
+  connection = { rotationFailing: false }
 }: {
   storedStatus: SecretRotationStatus;
   lockFails?: boolean;
   type?: SecretRotation;
+  connection?: TConnectionState;
 }) => {
   const stored = { rotationStatus: storedStatus };
   const release = vi.fn(async () => undefined);
@@ -131,18 +144,35 @@ const createService = ({
     },
     secretValidationRuleService: { findConstraintsForGeneratedSecret: vi.fn(async () => ({ ruleNames: [] })) },
     secretRotationV2DAL: {
-      findById: vi.fn(async () => rotation(stored.rotationStatus, type)),
+      findById: vi.fn(async () => rotation(stored.rotationStatus, type, { ...connection })),
       transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(TX)),
-      // A conditional UPDATE: only a row still matching the filter is changed and returned.
-      update: vi.fn(async (filter: { rotationStatus?: string }, data: { rotationStatus: SecretRotationStatus }) => {
-        if (filter.rotationStatus !== stored.rotationStatus) return [];
-        Object.assign(stored, data);
-        return [{ ...stored }];
-      }),
       updateById: vi.fn(async (_id: string, data: Partial<typeof stored>) => ({
         ...rotation(stored.rotationStatus, type),
         ...Object.assign(stored, data)
       }))
+    },
+    // Conditional writes, as in the database: a transition only changes a value that still holds `from`.
+    appConnectionHealthDAL: {
+      transition: vi.fn(
+        async ({
+          connectionId,
+          from,
+          to
+        }: {
+          connectionId: string;
+          column: "rotationFailing";
+          from: boolean;
+          to: boolean;
+        }) => {
+          if (connectionId !== "connection-1" || connection.rotationFailing !== from) return false;
+          Object.assign(connection, { rotationFailing: to });
+          return true;
+        }
+      ),
+      markWorkingIfUnknown: vi.fn(async ({ connectionId }: { connectionId: string; column: "rotationFailing" }) => {
+        if (connectionId === "connection-1" && connection.rotationFailing === null)
+          Object.assign(connection, { rotationFailing: false });
+      })
     },
     auditLogService: { createAuditLog: vi.fn(async () => undefined) },
     secretV2BridgeDAL: { invalidateSecretCacheByProjectId: vi.fn(async () => undefined) },
@@ -151,11 +181,19 @@ const createService = ({
     queueService: { queue: vi.fn(async () => undefined) }
   };
 
-  return { service: secretRotationV2ServiceFactory(deps as never), stored, deps };
+  const healthWrites = () =>
+    deps.appConnectionHealthDAL.transition.mock.calls.length +
+    deps.appConnectionHealthDAL.markWorkingIfUnknown.mock.calls.length;
+
+  return { service: secretRotationV2ServiceFactory(deps as never), stored, connection, deps, healthWrites };
 };
 
 const outcomeCalls = () => vi.mocked(recordSecretRotationOutcomeMetric).mock.calls.map(([params]) => params);
-const statusChangeCalls = () => vi.mocked(recordSecretRotationStatusChangeMetric).mock.calls.map(([params]) => params);
+const connectionChangeCalls = () =>
+  vi.mocked(recordSecretRotationConnectionStatusChangeMetric).mock.calls.map(([params]) => params);
+
+const failedChange = { type: SecretRotation.StripeApiKey, newStatus: "failed" };
+const healthyChange = { type: SecretRotation.StripeApiKey, newStatus: "healthy" };
 
 describe("rotateGeneratedCredentials metrics", () => {
   beforeEach(() => {
@@ -173,9 +211,9 @@ describe("rotateGeneratedCredentials metrics", () => {
     ]);
   });
 
-  test("reports an intermediate failed attempt as not exhausted and does not flip the status", async () => {
+  test("reports an intermediate failed attempt as not exhausted and leaves the connection alone", async () => {
     rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
-    const { service, stored } = createService({ storedStatus: SecretRotationStatus.Success });
+    const { service, stored, healthWrites } = createService({ storedStatus: SecretRotationStatus.Success });
 
     await expect(
       service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), { isFinalAttempt: false })
@@ -184,49 +222,47 @@ describe("rotateGeneratedCredentials metrics", () => {
     expect(outcomeCalls()).toEqual([
       { type: SecretRotation.StripeApiKey, outcome: "failure", attemptsExhausted: false }
     ]);
-    expect(statusChangeCalls()).toEqual([]);
+    expect(healthWrites()).toBe(0);
     expect(stored.rotationStatus).toBe(SecretRotationStatus.Success);
   });
+});
 
-  test("flips to failed when the final attempt fails after a previous success", async () => {
+describe("rotation connection status change", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("flips a healthy connection to failed when the final attempt fails", async () => {
     rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
-    const { service, stored } = createService({ storedStatus: SecretRotationStatus.Success });
+    const { service, stored, connection } = createService({ storedStatus: SecretRotationStatus.Success });
 
     await expect(
       service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), { isFinalAttempt: true })
     ).rejects.toThrow();
 
-    expect(outcomeCalls()).toEqual([
-      { type: SecretRotation.StripeApiKey, outcome: "failure", attemptsExhausted: true }
-    ]);
-    expect(statusChangeCalls()).toEqual([{ type: SecretRotation.StripeApiKey, newStatus: "failed" }]);
     expect(stored.rotationStatus).toBe(SecretRotationStatus.Failed);
+    expect(connection.rotationFailing).toBe(true);
+    expect(connectionChangeCalls()).toEqual([failedChange]);
   });
 
-  test("writes the failed status and the run's fields in one transaction", async () => {
+  test("skips the write when a rotation on an already failing connection fails", async () => {
     rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
-    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+    const { service, healthWrites } = createService({
+      storedStatus: SecretRotationStatus.Failed,
+      connection: { rotationFailing: true }
+    });
 
     await expect(
-      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), { isFinalAttempt: true })
+      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Failed, undefined, { rotationFailing: true }), {
+        isFinalAttempt: true
+      })
     ).rejects.toThrow();
 
-    expect(deps.secretRotationV2DAL.update).toHaveBeenCalledWith(expect.anything(), expect.anything(), TX);
-    expect(deps.secretRotationV2DAL.updateById).toHaveBeenCalledWith("rotation-1", expect.anything(), TX);
+    expect(healthWrites()).toBe(0);
+    expect(connectionChangeCalls()).toEqual([]);
   });
 
-  test("does not flip again when an already failed rotation fails", async () => {
-    rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
-    const { service } = createService({ storedStatus: SecretRotationStatus.Failed });
-
-    await expect(
-      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Failed), { isFinalAttempt: true })
-    ).rejects.toThrow();
-
-    expect(statusChangeCalls()).toEqual([]);
-  });
-
-  test("reports a breakage once when two runs loaded the same healthy rotation", async () => {
+  test("records one breakage when two rotations loaded the same healthy connection", async () => {
     rotateCredentials.mockRejectedValue(new Error("provider down"));
     const { service } = createService({ storedStatus: SecretRotationStatus.Success });
     const loadedBeforeEitherRan = rotation(SecretRotationStatus.Success);
@@ -234,30 +270,70 @@ describe("rotateGeneratedCredentials metrics", () => {
     await expect(service.rotateGeneratedCredentials(loadedBeforeEitherRan, { isFinalAttempt: true })).rejects.toThrow();
     await expect(service.rotateGeneratedCredentials(loadedBeforeEitherRan, { isFinalAttempt: true })).rejects.toThrow();
 
-    expect(statusChangeCalls()).toEqual([{ type: SecretRotation.StripeApiKey, newStatus: "failed" }]);
+    expect(connectionChangeCalls()).toEqual([failedChange]);
     rotateCredentials.mockReset();
   });
 
-  test("flips to healthy when a previously failed rotation succeeds", async () => {
+  test("flips a failing connection to healthy when a rotation succeeds", async () => {
     rotateCredentials.mockImplementationOnce(runCallback);
-    const { service, stored } = createService({ storedStatus: SecretRotationStatus.Failed });
+    const { service, stored, connection } = createService({
+      storedStatus: SecretRotationStatus.Failed,
+      connection: { rotationFailing: true }
+    });
 
-    await service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Failed), { isFinalAttempt: false });
+    await service.rotateGeneratedCredentials(
+      rotation(SecretRotationStatus.Failed, undefined, { rotationFailing: true }),
+      {
+        isFinalAttempt: false
+      }
+    );
 
-    expect(outcomeCalls()).toEqual([
-      { type: SecretRotation.StripeApiKey, outcome: "success", attemptsExhausted: false }
-    ]);
-    expect(statusChangeCalls()).toEqual([{ type: SecretRotation.StripeApiKey, newStatus: "healthy" }]);
     expect(stored.rotationStatus).toBe(SecretRotationStatus.Success);
+    expect(connection.rotationFailing).toBe(false);
+    expect(connectionChangeCalls()).toEqual([healthyChange]);
   });
 
-  test("does not flip to healthy when a healthy rotation succeeds", async () => {
+  test("skips the write when a rotation on a healthy connection succeeds", async () => {
     rotateCredentials.mockImplementationOnce(runCallback);
-    const { service } = createService({ storedStatus: SecretRotationStatus.Success });
+    const { service, healthWrites } = createService({ storedStatus: SecretRotationStatus.Success });
 
     await service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success));
 
-    expect(statusChangeCalls()).toEqual([]);
+    expect(healthWrites()).toBe(0);
+  });
+
+  test("does not count a failure on a connection no rotation has succeeded on", async () => {
+    rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
+    const { service, connection } = createService({
+      storedStatus: SecretRotationStatus.Success,
+      connection: { rotationFailing: null }
+    });
+
+    await expect(
+      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success, undefined, { rotationFailing: null }), {
+        isFinalAttempt: true
+      })
+    ).rejects.toThrow();
+
+    expect(connection.rotationFailing).toBeNull();
+    expect(connectionChangeCalls()).toEqual([]);
+  });
+
+  test("logs and still records the failed rotation when the connection write fails", async () => {
+    rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
+    const { service, stored, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+    deps.appConnectionHealthDAL.transition.mockRejectedValueOnce(new Error("connection reset"));
+
+    await expect(
+      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), { isFinalAttempt: true })
+    ).rejects.toThrow("provider down");
+
+    expect(vi.mocked(logger.warn)).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.stringContaining("Failed to record app connection health")
+    );
+    expect(stored.rotationStatus).toBe(SecretRotationStatus.Failed);
+    expect(connectionChangeCalls()).toEqual([]);
   });
 });
 
@@ -270,7 +346,7 @@ describe("row lock order", () => {
 
   const expectSecretsWrittenBeforeRotationRow = (deps: ReturnType<typeof createService>["deps"]) => {
     const [secretsWrite] = vi.mocked(fnSecretBulkUpdate).mock.invocationCallOrder;
-    const [rotationRowWrite] = deps.secretRotationV2DAL.update.mock.invocationCallOrder;
+    const [rotationRowWrite] = deps.secretRotationV2DAL.updateById.mock.invocationCallOrder;
     expect(secretsWrite).toBeLessThan(rotationRowWrite);
   };
 
@@ -303,8 +379,11 @@ describe("rotation lock contention", () => {
     vi.clearAllMocks();
   });
 
-  test("skips a run that cannot take the lock: no outcome, status write, notification or status change", async () => {
-    const { service, stored, deps } = createService({ storedStatus: SecretRotationStatus.Success, lockFails: true });
+  test("skips a run that cannot take the lock: no outcome, status write, notification or connection write", async () => {
+    const { service, stored, deps, healthWrites } = createService({
+      storedStatus: SecretRotationStatus.Success,
+      lockFails: true
+    });
 
     await expect(
       service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), {
@@ -314,7 +393,7 @@ describe("rotation lock contention", () => {
     ).rejects.toBeInstanceOf(SecretRotationInProgressError);
 
     expect(outcomeCalls()).toEqual([]);
-    expect(statusChangeCalls()).toEqual([]);
+    expect(healthWrites()).toBe(0);
     expect(stored.rotationStatus).toBe(SecretRotationStatus.Success);
     expect(deps.secretRotationV2DAL.updateById).not.toHaveBeenCalled();
     expect(deps.queueService.queue).not.toHaveBeenCalled();
@@ -339,10 +418,11 @@ describe("reconcile", () => {
     vi.clearAllMocks();
   });
 
-  test("records the recovery when it fixes a failed local-account rotation", async () => {
-    const { service, stored } = createService({
+  test("records the recovery when it fixes a rotation on a failing connection", async () => {
+    const { service, stored, connection } = createService({
       storedStatus: SecretRotationStatus.Failed,
-      type: SecretRotation.UnixLinuxLocalAccount
+      type: SecretRotation.UnixLinuxLocalAccount,
+      connection: { rotationFailing: true }
     });
 
     await service.reconcileLocalAccountRotation(
@@ -351,11 +431,12 @@ describe("reconcile", () => {
     );
 
     expect(stored.rotationStatus).toBe(SecretRotationStatus.Success);
-    expect(statusChangeCalls()).toEqual([{ type: SecretRotation.UnixLinuxLocalAccount, newStatus: "healthy" }]);
+    expect(connection.rotationFailing).toBe(false);
+    expect(connectionChangeCalls()).toEqual([{ type: SecretRotation.UnixLinuxLocalAccount, newStatus: "healthy" }]);
   });
 
-  test("records nothing when it reconciles a rotation that was not failing", async () => {
-    const { service } = createService({
+  test("records nothing when it reconciles a rotation on a healthy connection", async () => {
+    const { service, healthWrites } = createService({
       storedStatus: SecretRotationStatus.Success,
       type: SecretRotation.UnixLinuxLocalAccount
     });
@@ -365,6 +446,6 @@ describe("reconcile", () => {
       actor as never
     );
 
-    expect(statusChangeCalls()).toEqual([]);
+    expect(healthWrites()).toBe(0);
   });
 });

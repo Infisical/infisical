@@ -37,6 +37,7 @@ export const DigitalOceanAppPlatformSyncFns = {
       throw new SecretSyncError({
         secretKey: invalidKeys[0],
         shouldRetry: false,
+        isConfigError: true,
         message: `${invalidKeys.length} secret ${
           invalidKeys.length === 1 ? "key is" : "keys are"
         } not a valid DigitalOcean environment variable name: ${invalidKeys.join(", ")}. ${DIGITAL_OCEAN_ENV_KEY_RULE}`

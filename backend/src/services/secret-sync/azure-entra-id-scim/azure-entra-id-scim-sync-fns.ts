@@ -31,7 +31,8 @@ export const AzureEntraIdScimSyncFns = {
     if (!secretId) {
       throw new SecretSyncError({
         error: new Error("No secret is configured for this SCIM token sync. Please reconfigure syncOptions.secretKey."),
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
     }
 
@@ -41,7 +42,8 @@ export const AzureEntraIdScimSyncFns = {
         error: new Error(
           `Secret with ID "${secretId}" not found in source. Verify if the secret used for this sync wasn't deleted or moved.`
         ),
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
     }
     const [, secret] = secretEntry;

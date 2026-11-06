@@ -42,6 +42,7 @@ const listKeeperLoginRecords = async (credentials: TKeeperCredentials, folderUid
   if (!isAddressableKeeperUid(folderUid)) {
     throw new SecretSyncError({
       shouldRetry: false,
+      isConfigError: true,
       message: `Keeper Password Manager shared folder UID '${folderUid}' cannot be addressed through Keeper Commander Service Mode. Choose a different shared folder.`
     });
   }
@@ -126,6 +127,7 @@ export const KeeperSyncFns = {
       throw new SecretSyncError({
         secretKey: unsupportedKeys[0],
         shouldRetry: false,
+        isConfigError: true,
         message: `${unsupportedKeys.length} secret ${
           unsupportedKeys.length === 1 ? "key contains" : "keys contain"
         } "${KEEPER_VARIABLE_EXPANSION_TOKEN}", which Keeper Commander expands as a variable in record titles: ${unsupportedKeys.join(

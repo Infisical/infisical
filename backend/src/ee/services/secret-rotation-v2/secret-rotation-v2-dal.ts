@@ -40,6 +40,11 @@ const baseSecretRotationV2Query = ({
     .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
     .whereNull(`${TableName.Project}.deleteAfter`)
     .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
+    .leftJoin(
+      TableName.AppConnectionHealth,
+      `${TableName.SecretRotationV2}.connectionId`,
+      `${TableName.AppConnectionHealth}.connectionId`
+    )
     .select(selectAllTableCols(TableName.SecretRotationV2))
     .select(
       // environment
@@ -54,6 +59,7 @@ const baseSecretRotationV2Query = ({
       db.ref("orgId").withSchema(TableName.AppConnection).as("connectionOrgId"),
       db.ref("encryptedCredentials").withSchema(TableName.AppConnection).as("connectionEncryptedCredentials"),
       db.ref("isAutoRotationEnabled").withSchema(TableName.AppConnection).as("connectionIsAutoRotationEnabled"),
+      db.ref("rotationFailing").withSchema(TableName.AppConnectionHealth).as("connectionRotationFailing"),
       db.ref("description").withSchema(TableName.AppConnection).as("connectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("connectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("connectionGatewayId"),
@@ -117,6 +123,7 @@ const expandSecretRotation = <T extends Awaited<ReturnType<typeof baseSecretRota
     connectionProjectId,
     connectionIsPlatformManagedCredentials,
     connectionIsAutoRotationEnabled,
+    connectionRotationFailing,
     ...el
   } = secretRotation;
 
@@ -139,7 +146,8 @@ const expandSecretRotation = <T extends Awaited<ReturnType<typeof baseSecretRota
       gatewayPoolId: connectionGatewayPoolId,
       projectId: connectionProjectId,
       isPlatformManagedCredentials: connectionIsPlatformManagedCredentials,
-      isAutoRotationEnabled: connectionIsAutoRotationEnabled
+      isAutoRotationEnabled: connectionIsAutoRotationEnabled,
+      rotationFailing: connectionRotationFailing
     },
     folder: {
       id: folder!.id,
