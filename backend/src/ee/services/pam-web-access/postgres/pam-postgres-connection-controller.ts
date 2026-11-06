@@ -27,6 +27,7 @@ const pgTypes = {
 
 const MAX_ROWS = 1000;
 const FIRST_BATCH_ROWS = 10;
+const MAX_BATCH_ROWS = 250;
 
 const readCursorRows = async (cursor: Cursor): Promise<{ rows: Record<string, unknown>[]; isTruncated: boolean }> => {
   const rows: Record<string, unknown>[] = [];
@@ -58,12 +59,9 @@ const readCursorRows = async (cursor: Cursor): Promise<{ rows: Record<string, un
     const batch = await cursor.read(batchSize);
     if (isTruncated) return { rows, isTruncated };
     if (batch.length < batchSize) return { rows, isTruncated: false };
-    // Size the next read from the rows seen so far, so narrow results arrive in two round trips
-    const avgRowBytes = bytes / rows.length;
-    batchSize = Math.max(
-      1,
-      Math.min(MAX_ROWS + 1 - rows.length, Math.ceil((DATA_EXPLORER_MAX_RESULT_BYTES - bytes) / avgRowBytes) + 1)
-    );
+    // Grows instead of guessing from earlier rows, because rows past the cap still cross the network before they
+    // are dropped and the first rows can be much narrower or wider than the rest
+    batchSize = Math.min(batchSize * 2, MAX_BATCH_ROWS, MAX_ROWS + 1 - rows.length);
   }
 };
 

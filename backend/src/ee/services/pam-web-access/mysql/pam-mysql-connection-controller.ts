@@ -15,19 +15,13 @@ import { extractCommand, splitMysqlStatements } from "./pam-mysql-data-explorer-
 import { getTableDetailQuery } from "./pam-mysql-data-explorer-metadata";
 
 const MAX_ROWS = 1000;
-const ER_QUERY_INTERRUPTED = 1317;
-// MySQL undoes these as a whole when killed; a CALL or EXECUTE keeps the steps it already ran
-const KILLABLE_COMMANDS = new Set(["SELECT", "WITH", "SHOW", "EXPLAIN", "DESCRIBE", "DESC", "TABLE", "VALUES"]);
-
-// extractCommand stops at whitespace, so "SELECT* FROM t" and "(SELECT 1)" need the bare keyword pulled out
-const isKillable = (sql: string) => KILLABLE_COMMANDS.has(/^\(*([A-Z]+)/.exec(extractCommand(sql))?.[1] ?? "");
 
 type TStatementResult =
   | { rows: Record<string, unknown>[]; fields: FieldPacket[]; isTruncated: boolean }
   | { header: mysql.ResultSetHeader };
 
 // Streams rather than buffering the whole result, so rows past the size limit are dropped as they arrive
-const streamStatement = (conn: mysql.Connection, sql: string, cancelQuery?: () => Promise<void>) =>
+const streamStatement = (conn: mysql.Connection, sql: string) =>
   new Promise<TStatementResult>((resolve, reject) => {
     // The promise wrapper does not type its underlying connection, which is the only one that can stream
     const { connection } = conn as unknown as { connection: CoreConnection };
@@ -37,15 +31,6 @@ const streamStatement = (conn: mysql.Connection, sql: string, cancelQuery?: () =
     let header: mysql.ResultSetHeader | undefined;
     let bytes = 0;
     let isTruncated = false;
-    let killRequested = false;
-    let cancelled: Promise<void> = Promise.resolve();
-    // Past the size cap the server keeps sending the rest, and on a slow link that can run into max_execution_time
-    const truncate = () => {
-      isTruncated = true;
-      if (!cancelQuery) return;
-      killRequested = true;
-      cancelled = cancelQuery();
-    };
 
     connection
       .query(sql)
@@ -61,7 +46,6 @@ const streamStatement = (conn: mysql.Connection, sql: string, cancelQuery?: () =
         }
         // A CALL can return several result sets; only the first is shown
         if (currentFields !== resultFields || isTruncated) return;
-        // sql_select_limit leaves at most one more row here, so there is nothing worth killing
         if (rows.length === MAX_ROWS) {
           isTruncated = true;
           return;
@@ -73,26 +57,15 @@ const streamStatement = (conn: mysql.Connection, sql: string, cancelQuery?: () =
         }
         bytes += estimateRowBytes(row);
         if (bytes > DATA_EXPLORER_MAX_RESULT_BYTES) {
-          truncate();
+          isTruncated = true;
           return;
         }
         rows.push(row);
       })
-      // Waiting on the KILL keeps it from landing on the next statement
-      .on("error", (err: Error & { errno?: number }) => {
-        void cancelled.then(() => {
-          if (killRequested && err.errno === ER_QUERY_INTERRUPTED) {
-            resolve({ rows, fields: resultFields ?? [], isTruncated });
-          } else {
-            reject(err);
-          }
-        });
-      })
+      .on("error", reject)
       .on("end", () => {
-        void cancelled.then(() => {
-          if (!resultFields && header) resolve({ header });
-          else resolve({ rows, fields: resultFields ?? [], isTruncated });
-        });
+        if (!resultFields && header) resolve({ header });
+        else resolve({ rows, fields: resultFields ?? [], isTruncated });
       });
   });
 
@@ -275,9 +248,8 @@ export const createMysqlConnectionController = async (params: ControllerParams):
               for (const stmtSql of stmts) {
                 // eslint-disable-next-line no-await-in-loop
                 await conn.query(`SET SESSION sql_select_limit = ${MAX_ROWS + 1}`);
-                const cancelQuery = isKillable(stmtSql) ? cancelRunningQuery : undefined;
                 // eslint-disable-next-line no-await-in-loop
-                const result = await queryWithTimeout(() => streamStatement(conn, stmtSql, cancelQuery));
+                const result = await queryWithTimeout(() => streamStatement(conn, stmtSql));
 
                 if ("rows" in result) {
                   lastIsTruncated = result.isTruncated;
