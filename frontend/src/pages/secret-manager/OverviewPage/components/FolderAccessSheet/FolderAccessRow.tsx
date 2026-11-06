@@ -3,6 +3,7 @@ import {
   BotIcon,
   ChevronDownIcon,
   CornerDownRightIcon,
+  CornerLeftUpIcon,
   FolderTreeIcon,
   LockIcon
 } from "lucide-react";
@@ -54,7 +55,12 @@ type TRemainingTime = NonNullable<ReturnType<typeof remainingTimeOf>>;
 const expiryNoteOf = (remainingTime: TRemainingTime) =>
   `${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`;
 
-type TCaptionPart = { text: string; tone?: "muted" | "warning" | "danger"; title?: string };
+type TCaptionPart = {
+  text: string;
+  tone?: "muted" | "warning" | "danger";
+  title?: string;
+  icon?: React.ReactNode;
+};
 
 const CAPTION_TONE_CLASS_NAMES = {
   muted: "text-muted",
@@ -80,7 +86,12 @@ const RowCaption = ({ parts }: { parts: TCaptionPart[] }) => {
       {parts.map((part, index) => (
         <span key={part.text} title={part.title}>
           {index > 0 && <span className="text-muted"> · </span>}
-          <span className={CAPTION_TONE_CLASS_NAMES[part.tone ?? "muted"]}>{part.text}</span>
+          <span
+            className={`${CAPTION_TONE_CLASS_NAMES[part.tone ?? "muted"]} [&>svg]:mr-1 [&>svg]:inline [&>svg]:size-3 [&>svg]:align-[-2px]`}
+          >
+            {part.icon}
+            {part.text}
+          </span>
         </span>
       ))}
     </p>
@@ -236,7 +247,7 @@ export const FolderAccessRow = ({
     }
     if (inheritedAccess) {
       return [
-        { text: `Inherited from ${inheritedAccess.secretPath}` },
+        { text: `Inherited from ${inheritedAccess.secretPath}`, icon: <CornerLeftUpIcon /> },
         ...expiryCaptionOf(inheritedRemainingTime)
       ];
     }
