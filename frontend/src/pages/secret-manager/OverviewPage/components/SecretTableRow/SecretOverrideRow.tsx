@@ -205,7 +205,7 @@ export const SecretOverrideRow = ({
 
   return (
     <div
-      className="flex w-full cursor-text items-center gap-2"
+      className="flex w-full cursor-text items-start gap-2"
       onFocusCapture={() => onActiveChange?.(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -214,11 +214,11 @@ export const SecretOverrideRow = ({
       }}
     >
       {!isSingleEnvView && (
-        <div className="flex shrink-0 items-center text-override-foreground">
+        <div className="flex h-7 shrink-0 items-center text-override-foreground">
           <GitBranchIcon className="size-3.5" />
         </div>
       )}
-      <div className="min-w-0 grow">
+      <div className="min-w-0 grow py-1">
         <Controller
           control={control}
           name="value"
@@ -243,7 +243,7 @@ export const SecretOverrideRow = ({
           )}
         />
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex h-7 shrink-0 items-center gap-1">
         {isDirty ? (
           <SecretInputActions
             className={isSingleEnvView ? "mr-1" : "-mr-1.5"}

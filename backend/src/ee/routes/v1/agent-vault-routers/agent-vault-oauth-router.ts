@@ -80,12 +80,17 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) =>
-      server.services.agentVaultOauth.createAuthorization({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.body.accessBundleId
+      );
+      return server.services.agentVaultOauth.createAuthorization({
+        projectId,
         ctx: actorContext(req),
         ...req.body
-      })
+      });
+    }
   });
 
   // An action sub-resource rather than a PATCH of the status: completing exchanges a one-time code with a third
@@ -113,13 +118,18 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       response: { 200: z.object({ authorization: AuthorizationViewSchema.describe(AGENT_VAULT.OAUTH.authorization) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) =>
-      server.services.agentVaultOauth.completeAuthorization({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAuthorization(
+        actorContext(req),
+        req.params.authorizationId
+      );
+      return server.services.agentVaultOauth.completeAuthorization({
+        projectId,
         ctx: actorContext(req),
         authorizationId: req.params.authorizationId,
         ...req.body
-      })
+      });
+    }
   });
 
   server.route({
@@ -135,11 +145,16 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       response: { 200: z.object({ authorization: AuthorizationViewSchema.describe(AGENT_VAULT.OAUTH.authorization) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) =>
-      server.services.agentVaultOauth.getAuthorization({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAuthorization(
+        actorContext(req),
+        req.params.authorizationId
+      );
+      return server.services.agentVaultOauth.getAuthorization({
+        projectId,
         ctx: actorContext(req),
         authorizationId: req.params.authorizationId
-      })
+      });
+    }
   });
 };

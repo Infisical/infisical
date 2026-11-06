@@ -322,6 +322,52 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The projects among `projectIds` where anyone saved a value, sorted like `findProjectIdsWithValues`.
+  const findProjectIdsWithAnyValues = async (projectIds: string[], tx: Knex): Promise<string[]> => {
+    if (!projectIds.length) return [];
+    try {
+      const rows = (await tx(table)
+        .join(TableName.AgentVaultService, `${table}.serviceId`, `${TableName.AgentVaultService}.id`)
+        .join(
+          TableName.AgentVaultAccessBundle,
+          `${TableName.AgentVaultService}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .whereIn(`${TableName.AgentVaultAccessBundle}.projectId`, projectIds)
+        .distinct(`${TableName.AgentVaultAccessBundle}.projectId`)) as { projectId: string }[];
+      return rows.map((row) => row.projectId).sort();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault projects with any personal values" });
+    }
+  };
+
+  // The projects among `projectIds` where any of these actors saved a value, sorted so callers that clear each one
+  // take the per-project advisory locks in one order.
+  const findProjectIdsWithValues = async (
+    { projectIds, userIds, identityIds }: { projectIds: string[]; userIds: string[]; identityIds: string[] },
+    tx: Knex
+  ): Promise<string[]> => {
+    if (!projectIds.length || (!userIds.length && !identityIds.length)) return [];
+    try {
+      const rows = (await tx(table)
+        .join(TableName.AgentVaultService, `${table}.serviceId`, `${TableName.AgentVaultService}.id`)
+        .join(
+          TableName.AgentVaultAccessBundle,
+          `${TableName.AgentVaultService}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .whereIn(`${TableName.AgentVaultAccessBundle}.projectId`, projectIds)
+        .where((actor) => {
+          if (userIds.length) void actor.whereIn(`${table}.userId`, userIds);
+          if (identityIds.length) void actor.orWhereIn(`${table}.identityId`, identityIds);
+        })
+        .distinct(`${TableName.AgentVaultAccessBundle}.projectId`)) as { projectId: string }[];
+      return rows.map((row) => row.projectId).sort();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault projects with personal values" });
+    }
+  };
+
   // Every member's values for the service, except those for the fields still left to members.
   const deleteForServiceExceptFields = async (
     { serviceId, keepFields }: { serviceId: string; keepFields: string[] },
@@ -344,6 +390,8 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     findForOwner,
     lockForOwnerAndService,
     findForResolve,
+    findProjectIdsWithValues,
+    findProjectIdsWithAnyValues,
     deleteForActorsWithoutGrant,
     lockGrantsForOwner,
     lockAdminRolesForOwner

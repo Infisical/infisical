@@ -27,6 +27,7 @@ import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secre
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
+import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -80,9 +81,9 @@ import { createSecretBlindIndexer } from "./secret-blind-index-fns";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
+  LARGE_SECRET_CACHE_LOG_BYTES,
   MAX_SECRET_CACHE_BYTES,
   SECRET_DAL_TTL,
-  SecretServiceCacheKeys,
   TSecretV2BridgeDALFactory
 } from "./secret-v2-bridge-dal";
 import {
@@ -107,6 +108,7 @@ import {
   TDispatchSecretCreateSideEffectsDTO,
   TDispatchSecretMoveSideEffectsDTO,
   TGetASecretDTO,
+  TGetSecretKeyEnvironmentsDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
   TGetSecretsMultiEnvDTO,
@@ -1336,6 +1338,55 @@ export const secretV2BridgeServiceFactory = ({
     return secrets;
   };
 
+  const getSecretKeyEnvironments = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    environments,
+    path,
+    secretKey
+  }: TGetSecretKeyEnvironmentsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    // the folder lookup ignores empty segments, so check permissions against the same canonical path
+    const secretPath = `/${path.split("/").filter(Boolean).join("/")}`;
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
+    if (!folders.length) return [];
+
+    const folderEnvironments = new Map(folders.map((folder) => [folder.id, folder.environment.slug]));
+    const matches = await secretDAL.findSharedKeyInFolders({
+      folderIds: folders.map((folder) => folder.id),
+      key: secretKey
+    });
+
+    const existingEnvironments = new Set<string>();
+    matches.forEach(({ folderId, tagSlugs }) => {
+      const environment = folderEnvironments.get(folderId);
+      if (
+        environment &&
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath,
+          secretName: secretKey,
+          secretTags: tagSlugs
+        })
+      ) {
+        existingEnvironments.add(environment);
+      }
+    });
+
+    return environments.filter((environment) => existingEnvironments.has(environment));
+  };
+
   const getSecrets = async (dto: TGetSecretsDTO) => {
     const {
       actorId,
@@ -1428,10 +1479,10 @@ export const secretV2BridgeServiceFactory = ({
       secretPath: path
     });
 
-    const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
+    const cachedSecretDalVersion = await keyStore.pgGetIntItem(KeyStorePrefixes.SecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
 
-    const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
+    const cacheKey = KeyStorePrefixes.SecretsServiceLayerCache({
       projectId,
       version: secretDalVersion,
       actorId,
@@ -1450,8 +1501,8 @@ export const secretV2BridgeServiceFactory = ({
     if (encryptedCachedSecrets) {
       try {
         await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
-        const cachedSecrets = secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets });
-        // Decrypted bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
+        const cachedSecrets = await decompressZstd(secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets }));
+        // Decompressed bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
         // the same ETag without re-serializing the object.
         const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
         const {
@@ -1633,6 +1684,20 @@ export const secretV2BridgeServiceFactory = ({
     const withReferencedSecretIds = <T extends object>(payload: T) =>
       referencedSecretIds.size ? { ...payload, referencedSecretIds: [...referencedSecretIds].sort() } : payload;
     const reportReferencedSecrets = () => referencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
+    // Logged at write time only, so each entry is logged once however often it is hit. The etag lets
+    // us count how many actors cache an identical payload.
+    const logLargeSecretCacheEntry = (entry: {
+      cacheBytes: number;
+      uncompressedBytes: number;
+      stored: boolean;
+      etag: string;
+      importedSecretCount: number;
+    }) => {
+      if (entry.cacheBytes < LARGE_SECRET_CACHE_LOG_BYTES) return;
+      logger.info(
+        `getSecrets: large secret cache entry [projectId=${projectId}] [actorType=${actor}] [actorId=${actorId}] [cacheBytes=${entry.cacheBytes}] [uncompressedBytes=${entry.uncompressedBytes}] [stored=${entry.stored}] [secretCount=${decryptedSecrets.length}] [importedSecretCount=${entry.importedSecretCount}] [environment=${environment}] [path=${path}] [recursive=${Boolean(recursive)}] [includeImports=${Boolean(includeImports)}] [expandSecretReferences=${Boolean(shouldExpandSecretReferences)}] [cacheVersion=${secretDalVersion}] [etag=${entry.etag}]`
+      );
+    };
 
     const mainExpanderSecretDAL =
       secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
@@ -1689,13 +1754,22 @@ export const secretV2BridgeServiceFactory = ({
       const payload = { secrets: decryptedSecrets, imports: [] };
       const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
       const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
-      const encryptedUpdatedCachedSecrets = secretManagerEncryptor({ plainText: serializedPayload }).cipherTextBlob;
+      const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
+        plainText: await compressZstd(serializedPayload)
+      }).cipherTextBlob;
       const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
       const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
       if (stored) {
         await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
       }
       recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+      logLargeSecretCacheEntry({
+        cacheBytes,
+        uncompressedBytes: serializedPayload.byteLength,
+        stored,
+        etag: computedEtag,
+        importedSecretCount: 0
+      });
       recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
@@ -1786,13 +1860,22 @@ export const secretV2BridgeServiceFactory = ({
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
     const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
     const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
-    const encryptedUpdatedCachedSecrets = secretManagerEncryptor({ plainText: serializedPayload }).cipherTextBlob;
+    const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
+      plainText: await compressZstd(serializedPayload)
+    }).cipherTextBlob;
     const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
     const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
     if (stored) {
       await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
     }
     recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+    logLargeSecretCacheEntry({
+      cacheBytes,
+      uncompressedBytes: serializedPayload.byteLength,
+      stored,
+      etag: computedEtag,
+      importedSecretCount: importedSecrets.reduce((count, folder) => count + folder.secrets.length, 0)
+    });
     recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
@@ -3280,8 +3363,8 @@ export const secretV2BridgeServiceFactory = ({
           {
             type: ProjectEvents.SecretImportMutation,
             projectId,
-            secretPath: sourceFolder.path,
-            environment: sourceFolder.environment.slug
+            secretPath: destinationFolder.path,
+            environment: destinationFolder.environment.slug
           }
         ]
       });
@@ -3961,6 +4044,7 @@ export const secretV2BridgeServiceFactory = ({
     deleteManySecret: withSecretMetrics(deleteManySecret, { duration: "write", write: "delete" }),
     getSecrets: withSecretMetrics(getSecrets, { duration: "read" }),
     getSecretByName,
+    getSecretKeyEnvironments,
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,

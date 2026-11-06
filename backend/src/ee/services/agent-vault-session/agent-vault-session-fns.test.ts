@@ -67,7 +67,7 @@ describe("describeSessionForAudit", () => {
           lastName: null
         },
         onBehalfOf: null,
-        accessBundles: [{ name: "release" }]
+        accessBundle: { name: "release" }
       })
     ).toEqual({ sessionOwner: "alice@example.com", accessBundleName: "release" });
   });
@@ -84,19 +84,19 @@ describe("describeSessionForAudit", () => {
           lastName: null
         },
         onBehalfOf: null,
-        accessBundles: [{ name: "release" }]
+        accessBundle: { name: "release" }
       }).sessionOwner
     ).toBe("alice");
   });
 
-  test("names a machine identity's session by the identity, and allows a session with no bundle left", () => {
+  test("names a machine identity's session by the identity", () => {
     expect(
       describeSessionForAudit({
         actor: { type: AgentVaultMemberType.MachineIdentity, id: "i1", name: "github-actions" },
         onBehalfOf: null,
-        accessBundles: []
+        accessBundle: { name: "deploy" }
       })
-    ).toEqual({ sessionOwner: "github-actions", accessBundleName: null });
+    ).toEqual({ sessionOwner: "github-actions", accessBundleName: "deploy" });
   });
 
   test("names the identity as the owner of a session on a user's behalf, and the user it acts for", () => {
@@ -110,7 +110,7 @@ describe("describeSessionForAudit", () => {
       describeSessionForAudit({
         actor: { type: AgentVaultMemberType.MachineIdentity, id: "i1", name: "slack-assistant" },
         onBehalfOf: { ...user, id: "u1", email: "alice@example.com" },
-        accessBundles: [{ name: "release" }]
+        accessBundle: { name: "release" }
       })
     ).toEqual({
       sessionOwner: "slack-assistant",
@@ -125,8 +125,8 @@ describe("describeSessionForAudit", () => {
       describeSessionForAudit({
         actor: { type: AgentVaultMemberType.MachineIdentity, id: "i1", name: "slack-assistant" },
         onBehalfOf: { ...user, id: null, email: null },
-        accessBundles: []
+        accessBundle: { name: "release" }
       })
-    ).toEqual({ sessionOwner: "slack-assistant", accessBundleName: null, onBehalfOfUserName: "alice" });
+    ).toEqual({ sessionOwner: "slack-assistant", accessBundleName: "release", onBehalfOfUserName: "alice" });
   });
 });

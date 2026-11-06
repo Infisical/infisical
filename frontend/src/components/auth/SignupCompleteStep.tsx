@@ -83,9 +83,6 @@ export default function SignupCompleteStep({
     if (target === ProjectType.PAM) {
       return { to: "/organizations/$orgId/pam/access" as const, params: { orgId } };
     }
-    if (target === ProjectType.AgentVault) {
-      return { to: "/organizations/$orgId/agent-vault" as const, params: { orgId } };
-    }
     if (target !== ORG_OVERVIEW) {
       const project = projects[target];
       if (project) {

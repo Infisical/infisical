@@ -103,7 +103,7 @@ type TSuperAdminServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "delete">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   eventEmitter: TEventEmitter;

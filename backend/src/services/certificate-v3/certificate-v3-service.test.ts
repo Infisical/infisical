@@ -2614,6 +2614,52 @@ describe("CertificateV3Service", () => {
       });
     });
 
+    describe("DigiCert reissue", () => {
+      const setupRenewal = (ca: unknown) => {
+        vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+        vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+        vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(ca as any);
+        vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
+        vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+          isValid: true,
+          errors: [],
+          warnings: []
+        } as any);
+      };
+
+      it("rejects a reissue for a certificate that a DigiCert CA did not issue", async () => {
+        setupRenewal(mockCA);
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            externalConfiguration: { reissue: true },
+            ...mockActor
+          })
+        ).rejects.toThrow("Reissue is only available for certificates issued by these CAs: DigiCert.");
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+
+      it("rejects a TTL on a DigiCert reissue", async () => {
+        setupRenewal({
+          ...mockCA,
+          internalCa: undefined,
+          externalCa: { id: "ext-ca-1", type: CaType.DIGICERT, configuration: {} }
+        });
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            externalConfiguration: { reissue: true },
+            attributes: { ttl: "30d" },
+            ...mockActor
+          })
+        ).rejects.toThrow("Remove the TTL. It can't be set on a reissue.");
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+    });
+
     it("should successfully renew eligible certificate", async () => {
       // Three reads: the pre-transaction licence check, the in-transaction load, then the renewed row.
       vi.mocked(mockCertificateDAL.findById)
