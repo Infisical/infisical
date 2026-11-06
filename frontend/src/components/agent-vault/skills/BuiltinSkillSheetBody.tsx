@@ -10,6 +10,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Spinner
@@ -57,25 +58,13 @@ export const BuiltinSkillSheetBody = () => {
   return (
     <>
       <SheetHeader className="pr-12">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <SheetTitle className="flex items-center gap-2">
-              <span className="truncate">{skill.name}</span>
-              <BuiltinSkillBadge />
-            </SheetTitle>
-            <SheetDescription className="line-clamp-2" title={skill.description}>
-              {skill.description}
-            </SheetDescription>
-          </div>
-          <Button
-            variant="outline"
-            className="shrink-0"
-            onClick={() => downloadSkillFiles(skill.name, skill.files)}
-          >
-            <DownloadIcon />
-            Download
-          </Button>
-        </div>
+        <SheetTitle className="flex items-center gap-2">
+          <span className="truncate">{skill.name}</span>
+          <BuiltinSkillBadge />
+        </SheetTitle>
+        <SheetDescription className="line-clamp-2" title={skill.description}>
+          {skill.description}
+        </SheetDescription>
       </SheetHeader>
 
       <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -98,6 +87,13 @@ export const BuiltinSkillSheetBody = () => {
           className="min-h-96 flex-1"
         />
       </div>
+
+      <SheetFooter className="items-center justify-end border-t">
+        <Button variant="outline" onClick={() => downloadSkillFiles(skill.name, skill.files)}>
+          <DownloadIcon />
+          Download
+        </Button>
+      </SheetFooter>
     </>
   );
 };
