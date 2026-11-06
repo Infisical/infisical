@@ -169,6 +169,32 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [css, ".button:hover { width: auto; }"]
     ]
   },
+  "row-action-destructive-inline": {
+    bad: [
+      [example, 'inline: [{ label: "Delete token", icon: "trash", onSelect: remove }]'],
+      [
+        example,
+        'inline: [\n  { label: "Edit", icon: "settings", onSelect: edit },\n  {\n    label: "Revoke access",\n    icon: UserXIcon,\n    onSelect: revoke\n  }\n]'
+      ],
+      [example, 'inline={[{ label: "Unassign from group", icon: "trash", onSelect: unassign }]}'],
+      [
+        example,
+        'inline: [\n  {\n    label: (row) =>\n      row.managed ? "Delete identity" : "Remove from project",\n    onSelect: remove\n  }\n]'
+      ]
+    ],
+    good: [
+      [example, 'inline: [{ label: "Edit value", icon: "settings", onSelect: edit }]'],
+      [
+        example,
+        'inline: [{ label: "Copy", icon: "copy", disabledReason: () => "Remove the lock first", onSelect: copy }]'
+      ],
+      [
+        example,
+        '<DropdownMenuItem variant="destructive">\n  <Icon name="trash" />\n  Delete token\n</DropdownMenuItem>'
+      ],
+      [example, 'const removed = { label: "Remove user", icon: "trash" };']
+    ]
+  },
   "dot-separator": {
     bad: [[example, "<span>Primary · alias of default</span>"]],
     good: [[example, "<span>Primary, alias of default</span>"]]

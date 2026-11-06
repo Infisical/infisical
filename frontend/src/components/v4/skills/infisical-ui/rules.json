@@ -1084,6 +1084,18 @@
       "exceptions": "A same-size glyph swap inside a fixed box, such as a folder glyph that turns into a chevron, keeps the layout still. Mark it with v4-check-ignore and the reason."
     },
     {
+      "id": "row-actions-destructive-in-more",
+      "title": "Destructive row actions go last in the More menu",
+      "category": "Interaction",
+      "instruction": "Destructive row actions (Delete, Remove, Revoke, Disable and similar irreversible or access-removing actions) never appear in rowActions.inline or RowActions inline. They appear in the More menu as its last item, after a separator if the menu has other items, using the destructive menu item variant (DropdownMenuItem variant destructive). A row whose only action is destructive still uses More, so More is the single action in the actions tail.",
+      "good": "A members table with Edit user inline and a More menu that ends with a separator and a destructive Remove user item; a service token row whose only action is Delete token shows More alone.",
+      "avoid": "A trash or Remove user icon in the inline actions beside Edit and Copy, or a Delete item placed above other items in the More menu.",
+      "detect": {
+        "by": "lint",
+        "check": "row-action-destructive-inline"
+      }
+    },
+    {
       "id": "skeleton-for-known-shape",
       "title": "Skeleton when the shape is known, Loader when it is not",
       "instruction": "Inside a page that has rendered, when the shape of the content being loaded is known or measurable, show Skeleton shapes that match the loaded state at the same size. Use a Loader only when the shape is unknown. A whole page that is still loading takes the page loader instead (rule/page-loading).",

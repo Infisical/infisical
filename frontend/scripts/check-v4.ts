@@ -17,6 +17,8 @@ export type V4Check = {
   cssBlock?: (selector: string, body: string) => readonly string[];
   /** For .ts/.tsx files: judges each className-like string literal and returns the offending text. */
   classString?: (value: string) => readonly string[];
+  /** For .ts/.tsx files: judges the whole source and returns each offending text with its offset. */
+  source?: (text: string) => readonly { index: number; text: string }[];
 };
 
 const isUi = (file: string) => file.startsWith("src/components/v4/");
@@ -60,6 +62,50 @@ export const bareBorders = (value: string): string[] => {
     .filter((token) => borderWidth.test(token.utility))
     .filter((token) => !colored.has("") && !colored.has(token.variant))
     .map((token) => `${token.variant}${token.utility}`);
+};
+
+const destructiveLabel = /^\s*["'`](?:Delete|Remove|Revoke|Disable)\b/;
+const destructiveIcon = /\bicon\s*:\s*["']trash["']/;
+
+/** Entries of every rowActions or RowActions inline array literal that are destructive actions. */
+export const destructiveInlineActions = (text: string) => {
+  const found: { index: number; text: string }[] = [];
+  [...text.matchAll(/\binline\s*(?::|=\{)\s*\[/g)].forEach((start) => {
+    let depth = 0;
+    let entry = -1;
+    let index = (start.index ?? 0) + start[0].length;
+    while (index < text.length && depth >= 0) {
+      const char = text[index];
+      if (char === '"' || char === "'" || char === "`") {
+        let end = index + 1;
+        while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+        index = end;
+      } else if (char === "{" || char === "[" || char === "(") {
+        if (depth === 0 && char === "{") entry = index;
+        depth += 1;
+      } else if (char === "}" || char === "]" || char === ")") {
+        depth -= 1;
+        if (depth === 0 && char === "}" && entry >= 0) {
+          const body = text.slice(entry, index + 1);
+          const label = body.match(
+            /\blabel\s*:((?:(?!\b(?:icon|onSelect|disabledReason|hidden)\s*:)[\s\S])*)/
+          );
+          const labelText = label?.[1].replace(/^\s*\([^)]*\)\s*=>\s*/, "") ?? "";
+          const destructive =
+            destructiveLabel.test(labelText) ||
+            /[?:]\s*["'`](?:Delete|Remove|Revoke|Disable)\b/.test(labelText) ||
+            destructiveIcon.test(body);
+          if (destructive) {
+            const offset = label ? (label.index ?? 0) : body.search(destructiveIcon);
+            found.push({ index: entry + offset, text: body.slice(offset).split("\n")[0].trim() });
+          }
+          entry = -1;
+        }
+      }
+      index += 1;
+    }
+  });
+  return found;
 };
 
 const classCallee = /(?:^|[^\w.$])(?:cn|cva|cx|clsx|twMerge)\s*$/;
@@ -297,6 +343,14 @@ export const v4Checks: readonly V4Check[] = [
     }
   },
   {
+    id: "row-action-destructive-inline",
+    rule: "row-actions-destructive-in-more",
+    message:
+      "Delete, Remove, Revoke, Disable and other destructive row actions never sit in the inline actions. Put them last in the More menu, after a separator, with the destructive menu item variant.",
+    appliesTo: isAuthored,
+    source: destructiveInlineActions
+  },
+  {
     id: "dot-separator",
     rule: "no-dot-separators",
     message: "Separate details with words or layout, not a middle dot or bullet.",
@@ -365,6 +419,13 @@ export const scanSource = (file: string, text: string): Finding[] => {
             line,
             text: found
           }));
+        });
+      const whole = check.source;
+      if (whole && isMarkup(file))
+        return whole(text).flatMap(({ index, text: match }) => {
+          const line = text.slice(0, index).split("\n").length;
+          if (exemptLine(line, check.id)) return [];
+          return [{ check: check.id, file, line, text: match }];
         });
       const judge = check.classString;
       if (judge)
