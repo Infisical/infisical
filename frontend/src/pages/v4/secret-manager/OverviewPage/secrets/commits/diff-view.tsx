@@ -516,7 +516,7 @@ export function SecretDiffView({
       resourceLabel={resourceLabel}
       showChangedMarkers={showChangedMarkers}
       previousEmptyMessage="Secret did not exist in the previous version."
-      nextEmptyMessage="Secret will be deleted."
+      nextEmptyMessage="Secret does not exist in this version."
       newPaneBadge={
         newVersion?.isRedacted && (
           <Tooltip content="This secret version has been redacted. Rolling back to this version will result in an empty secret value.">
@@ -576,7 +576,7 @@ export function FolderDiffView({
       resourceLabel={resourceLabel}
       showChangedMarkers={showChangedMarkers}
       previousEmptyMessage="Folder did not exist in the previous version."
-      nextEmptyMessage="Folder will be deleted."
+      nextEmptyMessage="Folder does not exist in this version."
     />
   );
 }

@@ -21,6 +21,7 @@ import {
   useDeleteSecretV3,
   useUpdateSecretV3
 } from "@app/hooks/api/secrets/mutations";
+import { useGetSecretReferences, useGetSecretReferenceTree } from "@app/hooks/api/secrets/queries";
 import { useGetWsTags } from "@app/hooks/api/tags/queries";
 
 import type { SecretsAdapter } from "./contract";
@@ -32,6 +33,8 @@ export const secretsLive: SecretsAdapter = {
   useTags: useGetWsTags,
   useOverview: useGetProjectSecretsOverview,
   useSecretValue: useGetSecretValue,
+  useSecretReferenceTree: useGetSecretReferenceTree,
+  useSecretReferences: useGetSecretReferences,
   useCreateSecret: useCreateSecretV3,
   useUpdateSecret: useUpdateSecretV3,
   useDeleteSecret: useDeleteSecretV3,

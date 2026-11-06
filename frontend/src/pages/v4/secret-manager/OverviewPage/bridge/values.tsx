@@ -54,7 +54,7 @@ const ValueFetcher = ({
   request: ValueRequest;
   onResult: (key: string, value: string | { error: string }) => void;
 }) => {
-  const { data, error } = useV4Adapter("secrets").useSecretValue({
+  const { data, error, isFetching } = useV4Adapter("secrets").useSecretValue({
     projectId,
     environment: request.environment,
     secretPath: request.path,
@@ -64,14 +64,14 @@ const ValueFetcher = ({
   const value = request.isOverride ? data?.valueOverride : data?.value;
   const done = useRef(false);
   useEffect(() => {
-    if (done.current || (!data && !error)) return;
+    if (done.current || isFetching || (!data && !error)) return;
     done.current = true;
     if (data) onResult(keyOf(request), value ?? "");
     else if (error)
       onResult(keyOf(request), {
         error: error instanceof Error ? error.message : "Could not read the value"
       });
-  }, [data, error]);
+  }, [data, error, isFetching]);
   return null;
 };
 

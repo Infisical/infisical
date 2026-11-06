@@ -357,6 +357,7 @@ export const OrgIdentityDetail = () => {
                     <Icon name="copy" />
                     Copy machine identity ID
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     variant="destructive"
                     disabled={!canDelete || deleteBlocked}
