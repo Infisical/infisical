@@ -44,6 +44,24 @@ Source evidence:
 - src/components/v4/ui/popover.tsx
 - src/pages/design-system/examples/popover/default.tsx
 
+### popover-draggable
+
+Owner: popover.
+
+When an annotation popover (comment, tags, metadata) covers the row or values a person needs to read while editing it.
+
+Do: Pass draggable on PopoverContent so the panel gets its Move handle, and keep the panel's own title and actions as children.
+
+Avoid: Build a drag header inside the content, set a transform or position on PopoverContent, or keep a dragged position across opens.
+
+Why: The content owns the offset, the clamp and the reset; a second header or transform fights popper and leaves keyboard users without the arrow-key move.
+
+Checked by: src/components/v4/ui/popover-drag.test.tsx. Opens with focus on the first field, not the Move handle; then presses ArrowRight and Shift+ArrowDown on the handle and checks the content's translate grows by space-8 and space-48; closing and reopening drops the translate and focuses the field again.
+
+Source evidence:
+- src/components/v4/ui/popover.tsx
+- src/pages/design-system/examples/popover/draggable.tsx
+
 ## State guidance
 
 - opening: Move focus according to the task and retain the triggering object context.
@@ -68,10 +86,12 @@ Exports: Popover, PopoverAnchor, PopoverContent, PopoverDescription, PopoverHead
 - Radix open/onOpenChange controls a trigger-anchored region with side/alignment placement. Content portals into V4Scope and honors descendant Escape ownership.
 - Every v4 overlay (menu, submenu, popover, select, tooltip, hover card, dialog, sheet, alert dialog) shares one layer, z-50, in the V4Scope portal container. A nested overlay opens after its parent, so it mounts later in that container and paints above it; nothing stacks by a higher z-index.
 - PopoverAnchor re-anchors on every open, so content placed against a custom anchor stays on it inside a Dialog or Sheet and under StrictMode, where the trigger can otherwise re-claim the anchor.
+- With draggable, PopoverContent adds a Move handle as the panel's first row. Dragging it with the pointer (pointer capture, so the drag keeps going past the handle) offsets the panel by a transform on the content, on top of the position popper gives its wrapper, so popper keeps following the anchor and flipping or shifting it while the offset rides along. Every move, and every window resize, clamps the panel inside the viewport and the collision boundary, inset by collisionPadding. Closing and reopening returns the panel to its anchored position. Without draggable there is no handle and no transform.
 
 ## Accessibility
 
 - Name the popover's purpose through a heading or aria-label. Focus moves in when it opens and back to the trigger when it closes. Choose modal behavior for the task.
+- The drag handle is a button named Move, described by keyboard instructions. Opening skips it: unless the caller's onOpenAutoFocus prevents the default, focus goes to the first tabbable control after the handle, or to the content when there is none, so the form field gets focus as it would without draggable and Shift+Tab reaches the handle. While it has focus, the arrow keys move the panel by space-8 and Shift with an arrow by space-48, clamped like a pointer drag. Escape still closes the popover from the handle. The handle sits focus-clearance below the panel's top edge, so its focus outline is never clipped by the panel's scroll region.
 
 ## Use cases
 
@@ -80,6 +100,7 @@ Exports: Popover, PopoverAnchor, PopoverContent, PopoverDescription, PopoverHead
 ## Limits
 
 - PopoverTitle is a heading, not an automatic dialog label association; connect its ID when the content requires that name.
+- A dragged panel keeps its offset from the anchor, so scrolling moves it with the anchor; only resize re-clamps it. The offset assumes an unscaled portal container. The position is not remembered across opens.
 
 ## Declared example coverage
 
@@ -257,6 +278,82 @@ export default function Example() {
           </Dialog.Dialog>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Inside a dialog"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Draggable annotation
+
+Save this example at `src/pages/design-system/examples/popover/draggable.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard.
+
+Registry items used: @infisical/button, @infisical/field, @infisical/popover, @infisical/textarea. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import { Field } from "../../../../components/v4/ui/field";
+import * as UI from "../../../../components/v4/ui/popover";
+import { Textarea } from "../../../../components/v4/ui/textarea";
+
+function CommentPopover() {
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState("");
+  const [draft, setDraft] = useState(saved);
+  return (
+    <div className="flex flex-col gap-3">
+      <p>Comment on STRIPE_WEBHOOK_SIGNING_SECRET: {saved || "none"}</p>
+      <UI.Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next) setDraft(saved);
+        }}
+      >
+        <UI.PopoverTrigger asChild>
+          <Button variant="outline">{saved ? "Edit comment" : "Add comment"}</Button>
+        </UI.PopoverTrigger>
+        <UI.PopoverContent draggable align="start" aria-label="Comment">
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSaved(draft.trim());
+              setOpen(false);
+            }}
+          >
+            <Field label="Comment">
+              <Textarea
+                value={draft}
+                placeholder="Add a comment..."
+                onChange={(event) => setDraft(event.target.value)}
+              />
+            </Field>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" size="xs" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="xs" disabled={draft.trim() === saved}>
+                Save comment
+              </Button>
+            </div>
+          </form>
+        </UI.PopoverContent>
+      </UI.Popover>
+    </div>
+  );
+}
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <CommentPopover />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Draggable comment"}</figcaption>
       </figure>
     </div>
   );
