@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TableName } from "@app/db/schemas";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
@@ -17,7 +18,7 @@ const runCallback = async (_inactive: unknown, callback: TRotationCallback) => c
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
-  getConfig: () => ({ isSmtpConfigured: false })
+  getConfig: () => ({})
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -142,7 +143,21 @@ const createService = ({
       updateById: vi.fn(async (_id: string, data: Partial<typeof stored>) => ({
         ...rotation(stored.rotationStatus, type),
         ...Object.assign(stored, data)
-      }))
+      })),
+      deleteById: vi.fn(async () => rotation(stored.rotationStatus, type))
+    },
+    eventEmitter: {
+      emit: vi.fn<(events: { type: string; data: Record<string, unknown> }[], tx?: unknown) => Promise<void>>(
+        async () => undefined
+      )
+    },
+    alertService: {
+      deleteAlertsForDeletedResources: vi.fn<
+        (input: { resourceType: string; resourceIds: string[] }, tx?: unknown) => Promise<number>
+      >(async () => 0),
+      findOrphanedResourceIds: vi.fn<
+        (input: { resourceType: string; resourceTable: string; limit: number }) => Promise<string[]>
+      >(async () => [])
     },
     auditLogService: { createAuditLog: vi.fn(async () => undefined) },
     secretV2BridgeDAL: { invalidateSecretCacheByProjectId: vi.fn(async () => undefined) },
@@ -366,5 +381,115 @@ describe("reconcile", () => {
     );
 
     expect(statusChangeCalls()).toEqual([]);
+  });
+});
+
+describe("failure alert event", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
+  });
+
+  test("is emitted in the transaction that marks a scheduled rotation failed on its final attempt", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await expect(
+      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), {
+        isFinalAttempt: true,
+        shouldSendNotification: true
+      })
+    ).rejects.toThrow();
+
+    expect(deps.eventEmitter.emit).toHaveBeenCalledTimes(1);
+    const [[events, tx]] = deps.eventEmitter.emit.mock.calls;
+    expect(tx).toBe(TX);
+    expect(events.map((event) => event.type)).toEqual(["secret.rotation.failed"]);
+    expect(events[0].data).toMatchObject({
+      orgId: "org-1",
+      projectId: "project-1",
+      resourceType: "secret.rotation",
+      resourceId: "rotation-1",
+      targetIds: ["rotation-1"]
+    });
+  });
+
+  test("is not emitted for an attempt that will be retried", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await expect(
+      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), {
+        isFinalAttempt: false,
+        shouldSendNotification: true
+      })
+    ).rejects.toThrow();
+
+    expect(deps.eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("is not emitted for a manual rotation", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await expect(
+      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), { isManualRotation: true })
+    ).rejects.toThrow();
+
+    expect(deps.eventEmitter.emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("rotation alert cleanup", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("deleting a rotation reaps its alerts in the delete transaction", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await service.deleteSecretRotation(
+      {
+        type: SecretRotation.StripeApiKey,
+        rotationId: "rotation-1",
+        deleteSecrets: false,
+        revokeGeneratedCredentials: false
+      },
+      actor as never
+    );
+
+    expect(deps.alertService.deleteAlertsForDeletedResources).toHaveBeenCalledWith(
+      { resourceType: "secret.rotation", resourceIds: ["rotation-1"] },
+      TX
+    );
+    expect(deps.secretRotationV2DAL.deleteById).toHaveBeenCalledWith("rotation-1", TX);
+  });
+
+  test("the orphan sweep reaps batch by batch until a batch comes back short", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+    let fullBatch: string[] = [];
+    deps.alertService.findOrphanedResourceIds
+      .mockImplementationOnce(async ({ limit }) => {
+        fullBatch = Array.from({ length: limit }, (_, index) => `deleted-${index}`);
+        return fullBatch;
+      })
+      .mockResolvedValueOnce(["deleted-last"]);
+
+    await service.reapOrphanedRotationAlerts();
+
+    expect(deps.alertService.findOrphanedResourceIds).toHaveBeenCalledTimes(2);
+    expect(deps.alertService.findOrphanedResourceIds.mock.calls[0][0]).toMatchObject({
+      resourceType: "secret.rotation",
+      resourceTable: TableName.SecretRotationV2
+    });
+    expect(deps.alertService.deleteAlertsForDeletedResources.mock.calls).toEqual([
+      [{ resourceType: "secret.rotation", resourceIds: fullBatch }],
+      [{ resourceType: "secret.rotation", resourceIds: ["deleted-last"] }]
+    ]);
+  });
+
+  test("the orphan sweep deletes nothing when no rotation alert is orphaned", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await service.reapOrphanedRotationAlerts();
+
+    expect(deps.alertService.deleteAlertsForDeletedResources).not.toHaveBeenCalled();
   });
 });
