@@ -230,7 +230,7 @@ export const comboboxDefinition = {
         detect: {
           by: "test",
           test: "src/components/v4/ui/combobox.test.tsx",
-          how: "Opens the dialog row, edits the form and cancels: the discard prompt opens and Keep Editing keeps the Dialog. Submitting calls complete, which selects the new option on the trigger and closes the Dialog."
+          how: "Opens the dialog row, edits the form and cancels: the discard prompt opens and Keep editing keeps the Dialog. Submitting calls complete, which selects the new option on the trigger and closes the Dialog."
         }
       },
       {

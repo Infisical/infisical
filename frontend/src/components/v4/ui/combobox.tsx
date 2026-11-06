@@ -54,7 +54,7 @@ export type ComboboxCreation =
     }
   | {
       mode: "dialog";
-      /** The row label, for example Create Connection. */
+      /** The row label, for example Create connection. */
       label: string;
       title: string;
       description?: string;

@@ -241,12 +241,12 @@ export function connectionCreation({
   if (!preset) return undefined;
   return {
     mode: "dialog",
-    label: "Create Connection",
-    title: `Create ${preset.name} Connection`,
+    label: "Create connection",
+    title: `Create ${preset.name} connection`,
     description: "The new connection is selected once it is created.",
-    submitLabel: "Create Connection",
+    submitLabel: "Create connection",
     disabledReason,
-    discardTitle: "Discard Connection Setup?",
+    discardTitle: "Discard connection setup?",
     discardDescription: "Your progress configuring this connection will be lost.",
     renderForm: ({ query, formId, complete, onDirtyChange, onPendingChange }) => (
       <AppConnectionForm

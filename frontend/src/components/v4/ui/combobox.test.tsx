@@ -171,9 +171,9 @@ it("guards a dirty dialog creation and selects the option complete receives", as
           options={[{ value: "prod", label: "aws-production" }]}
           creation={{
             mode: "dialog",
-            label: "Create Connection",
-            title: "Create AWS Connection",
-            submitLabel: "Create Connection",
+            label: "Create connection",
+            title: "Create AWS connection",
+            submitLabel: "Create connection",
             renderForm: ({ formId, complete, onDirtyChange }) => (
               <form
                 id={formId}
@@ -198,7 +198,7 @@ it("guards a dirty dialog creation and selects the option complete receives", as
   });
   await React.act(async () => button("Cancel").click());
   expect(element('[role="alertdialog"]').textContent).toContain("Discard");
-  await React.act(async () => button("Keep Editing").click());
+  await React.act(async () => button("Keep editing").click());
   expect(document.querySelector('[role="alertdialog"]')).toBeNull();
   await React.act(async () => (input.form as HTMLFormElement).requestSubmit());
   expect(document.querySelector('[role="dialog"]')).toBeNull();

@@ -38,7 +38,7 @@ Avoid: Send people to another page to create the entity, hide the Create row wit
 
 Why: Creating in place keeps the flow and its draft, and routing every close through one guard means a dirty form is never lost by accident.
 
-Checked by: src/components/v4/ui/combobox.test.tsx. Opens the dialog row, edits the form and cancels: the discard prompt opens and Keep Editing keeps the Dialog. Submitting calls complete, which selects the new option on the trigger and closes the Dialog.
+Checked by: src/components/v4/ui/combobox.test.tsx. Opens the dialog row, edits the form and cancels: the discard prompt opens and Keep editing keeps the Dialog. Submitting calls complete, which selects the new option on the trigger and closes the Dialog.
 
 Source evidence:
 - src/components/v4/ui/combobox.tsx

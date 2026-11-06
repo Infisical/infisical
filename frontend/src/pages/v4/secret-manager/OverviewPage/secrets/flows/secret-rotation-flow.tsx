@@ -865,7 +865,7 @@ export function SecretRotationFlow({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
