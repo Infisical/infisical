@@ -37,7 +37,7 @@ import {
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { KmsKeyUsage } from "../kms/kms-types";
+import { KmsCiphertextUndecryptableError, KmsKeyUsage } from "../kms/kms-types";
 
 type TCmekServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
@@ -651,7 +651,7 @@ export const cmekServiceFactory = ({
     try {
       plaintextBlob = await decrypt({ cipherTextBlob: Buffer.from(ciphertext, "base64") });
     } catch (err) {
-      if (err instanceof DatabaseError) throw err;
+      if (!(err instanceof KmsCiphertextUndecryptableError)) throw err;
       // The ciphertext is caller input, so a blob no key version authenticates is a bad request, not a server fault.
       throw new BadRequestError({
         message:

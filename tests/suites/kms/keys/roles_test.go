@@ -19,19 +19,23 @@ type roleProject struct {
 	mac        kms.Key
 	disposable kms.Key
 	ciphertext string
+	validMac   string
 }
 
 func newRoleProject(t *testing.T, h *harness.Stack) roleProject {
 	t.Helper()
 	proj := newProject(t, h.NewTenant(t))
 	aes := kms.NewKey(t, proj)
+	mac := kms.NewKey(t, proj, kms.WithUsage(kms.MAC), kms.WithAlgorithm("HMAC_SHA_256"))
+	_, generated := keyOperations()["generate mac"](t, proj.Tenant().Admin.API, mac.ID)
 	return roleProject{
 		proj:       proj,
 		aes:        aes,
 		signing:    kms.NewKey(t, proj, kms.WithUsage(kms.SignVerify), kms.WithAlgorithm("ED25519")),
-		mac:        kms.NewKey(t, proj, kms.WithUsage(kms.MAC), kms.WithAlgorithm("HMAC_SHA_256")),
+		mac:        mac,
 		disposable: kms.NewKey(t, proj),
 		ciphertext: kms.Encrypt(t, proj, aes.ID, []byte("value")),
+		validMac:   kms.Decode[struct{ Mac string }](t, generated).Mac,
 	}
 }
 
@@ -52,9 +56,16 @@ func (r roleProject) sweep(t *testing.T, pr *harness.Principal) map[string]int {
 		kms.JSON(t, map[string]any{"signingAlgorithm": "ED25519", "data": b64("message"), "signature": b64("signature")}))
 	require.NoError(t, err)
 	sign, _ := signWith(t, pr.API, r.signing.ID, "ED25519")
+	byName, err := pr.API.GetKmsKeyByNameWithResponse(t.Context(), r.aes.Name, &api.GetKmsKeyByNameParams{ProjectId: r.proj.ID})
+	require.NoError(t, err)
+	verifyMac, err := pr.API.VerifyMacWithKmsKeyWithBodyWithResponse(t.Context(), r.mac.ID, "application/json",
+		kms.JSON(t, map[string]any{"data": b64("message"), "mac": r.validMac}))
+	require.NoError(t, err)
 
 	return map[string]int{
 		"list":               list.StatusCode(),
+		"get":                status("get", r.aes),
+		"get by name":        byName.StatusCode(),
 		"create":             create.StatusCode(),
 		"edit":               status("update", r.aes),
 		"rotate":             status("rotate", r.aes),
@@ -65,6 +76,7 @@ func (r roleProject) sweep(t *testing.T, pr *harness.Principal) map[string]int {
 		"public key":         status("public key", r.signing),
 		"signing algorithms": status("signing algorithms", r.signing),
 		"generate mac":       status("generate mac", r.mac),
+		"verify mac":         verifyMac.StatusCode(),
 		"export":             status("private key", r.aes),
 		"delete":             status("delete", r.disposable),
 	}
@@ -73,8 +85,8 @@ func (r roleProject) sweep(t *testing.T, pr *harness.Principal) map[string]int {
 // outcomes maps every swept route to forbidden, then to ok for the routes listed.
 func outcomes(allowed ...string) map[string]int {
 	out := map[string]int{}
-	for _, route := range []string{"list", "create", "edit", "rotate", "encrypt", "decrypt", "sign", "verify",
-		"public key", "signing algorithms", "generate mac", "export", "delete"} {
+	for _, route := range []string{"list", "get", "get by name", "create", "edit", "rotate", "encrypt", "decrypt", "sign",
+		"verify", "public key", "signing algorithms", "generate mac", "verify mac", "export", "delete"} {
 		out[route] = http.StatusForbidden
 	}
 	for _, route := range allowed {
@@ -87,11 +99,11 @@ func TestKmsKey_Roles(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	everything := []string{"list", "create", "edit", "rotate", "encrypt", "decrypt", "sign", "verify",
-		"public key", "signing algorithms", "generate mac", "export", "delete"}
-	member := []string{"list", "create", "edit", "rotate", "encrypt", "decrypt", "sign", "verify",
-		"public key", "signing algorithms", "generate mac", "delete"}
-	cryptographic := []string{"encrypt", "decrypt", "sign", "verify", "public key", "signing algorithms", "generate mac"}
+	everything := []string{"list", "get", "get by name", "create", "edit", "rotate", "encrypt", "decrypt", "sign", "verify",
+		"public key", "signing algorithms", "generate mac", "verify mac", "export", "delete"}
+	member := []string{"list", "get", "get by name", "create", "edit", "rotate", "encrypt", "decrypt", "sign", "verify",
+		"public key", "signing algorithms", "generate mac", "verify mac", "delete"}
+	cryptographic := []string{"encrypt", "decrypt", "sign", "verify", "public key", "signing algorithms", "generate mac", "verify mac"}
 
 	cases := []struct {
 		name    string
@@ -101,7 +113,7 @@ func TestKmsKey_Roles(t *testing.T) {
 		{"should let an admin use every key route", "admin", everything},
 		{"should let a member use every key route except export", "member", member},
 		{"should let a viewer read keys and public keys but use and change nothing", "viewer",
-			[]string{"list", "public key", "signing algorithms"}},
+			[]string{"list", "get", "get by name", "public key", "signing algorithms"}},
 		{"should let a cryptographic operator use keys and read public keys, but not list, change or export them",
 			"cryptographic-operator", cryptographic},
 		{"should refuse no-access on every key route", "no-access", nil},
