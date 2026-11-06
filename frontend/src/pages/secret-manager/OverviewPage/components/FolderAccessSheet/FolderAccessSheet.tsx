@@ -603,13 +603,14 @@ export const FolderAccessSheet = ({
                     >
                       <TabsList className="w-full">
                         <TabsTrigger value="user">
-                          <UserIcon />
+                          <UserIcon className="hidden sm:block" />
                           Users
                           <Badge variant="neutral">{noAccessCounts.user}</Badge>
                         </TabsTrigger>
                         <TabsTrigger value="identity">
-                          <BotIcon />
-                          Machine Identities
+                          <BotIcon className="hidden sm:block" />
+                          <span className="sm:hidden">Identities</span>
+                          <span className="hidden sm:inline">Machine Identities</span>
                           <Badge variant="neutral">{noAccessCounts.identity}</Badge>
                         </TabsTrigger>
                       </TabsList>

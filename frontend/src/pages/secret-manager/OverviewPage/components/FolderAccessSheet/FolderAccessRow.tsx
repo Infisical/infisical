@@ -76,7 +76,7 @@ const expiryCaptionOf = (remainingTime: TRemainingTime | null): TCaptionPart[] =
 const RowCaption = ({ parts }: { parts: TCaptionPart[] }) => {
   if (!parts.length) return null;
   return (
-    <p className="text-right text-xs whitespace-nowrap">
+    <p className="text-right text-xs">
       {parts.map((part, index) => (
         <span key={part.text} title={part.title}>
           {index > 0 && <span className="text-muted"> · </span>}
@@ -192,7 +192,7 @@ export const FolderAccessRow = ({
     return (
       <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
-        <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <div className="flex max-w-[60%] shrink-0 flex-col items-end gap-0.5">
           <span className="flex items-center gap-1.5 text-sm text-foreground">
             <LockIcon className="size-3.5 text-muted" />
             Full Access
@@ -253,14 +253,17 @@ export const FolderAccessRow = ({
     <div className={ROW_CLASS_NAME}>
       <ActorIdentity actor={actor} />
 
-      <div className="flex shrink-0 flex-col items-end gap-1">
+      <div className="flex max-w-[60%] shrink-0 flex-col items-end gap-1">
         <div className="flex items-center gap-2">
           {!access && !inheritedAccess && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="flex cursor-default items-center gap-1 text-xs text-muted">
+                <span
+                  aria-label="Via project role"
+                  className="flex cursor-default items-center gap-1 text-xs text-muted"
+                >
                   <CornerDownRightIcon className="size-3.5" />
-                  Via project role
+                  <span className="hidden sm:inline">Via project role</span>
                 </span>
               </TooltipTrigger>
               <TooltipContent>
@@ -280,7 +283,7 @@ export const FolderAccessRow = ({
               title={`Applies to ${access.secretPath} and all of its subfolders`}
             >
               <FolderTreeIcon />
-              Recursive
+              <span className="hidden sm:inline">Recursive</span>
             </Badge>
           )}
           <DropdownMenu
