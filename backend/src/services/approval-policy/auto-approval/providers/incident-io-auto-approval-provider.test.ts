@@ -135,6 +135,18 @@ describe("incident.io on-call check", () => {
     expect(options).toContainEqual({ value: SHARED_A, label: `Shared (${SHARED_A})` });
   });
 
+  test("the picker returns saved schedules first, whatever the search", async () => {
+    const options = await listOptions?.(
+      {} as Parameters<typeof resolve>[0],
+      { search: "secondary", siblings: { [IncidentIoRequesterConstraint.OnCall]: [PRIMARY] } },
+      {} as Parameters<typeof resolve>[4]
+    );
+    expect(options).toEqual([
+      { value: PRIMARY, label: "Primary" },
+      { value: SECONDARY, label: "Secondary" }
+    ]);
+  });
+
   test("descriptions show a checked schedule's name for its ID", () => {
     const facts: TIncidentIoRequesterFacts = {
       schedules: [{ id: PRIMARY, name: "Primary", onCall: false, error: null }],

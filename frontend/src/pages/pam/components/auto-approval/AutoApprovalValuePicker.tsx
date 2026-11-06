@@ -71,6 +71,31 @@ export const AutoApprovalValuePicker = ({
     );
   }, [options]);
 
+  // Saved values outside the first page of options get their labels from one extra lookup
+  const unlabelled = values.filter((value) => !labels.has(value));
+  const { data: savedOptions } = useQuery({
+    ...approvalPolicyQuery.autoApprovalOptions({
+      policyType,
+      scope,
+      scopeId,
+      connectionId,
+      subject,
+      constraint: constraint.id,
+      search: "",
+      siblings: { ...siblings, [constraint.id]: unlabelled }
+    }),
+    enabled: constraint.hasOptions && !isFetching && options.length > 0 && unlabelled.length > 0,
+    staleTime: 30_000,
+    retry: false
+  });
+  useEffect(() => {
+    if (!savedOptions?.length) return;
+    setLabels(
+      (current) =>
+        new Map([...current, ...savedOptions.map(({ value, label }) => [value, label] as const)])
+    );
+  }, [savedOptions]);
+
   const selected = useMemo(
     () =>
       values.map(

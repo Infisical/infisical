@@ -124,12 +124,13 @@ export const INCIDENT_IO_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TIncident
           label: "is on call in incident.io schedule",
           value: AutoApprovalConstraintValue.Many,
           maxValues: MAX_CHECKED_SCHEDULES,
-          listOptions: async (conn, { search }, deps) => {
+          listOptions: async (conn, { search, siblings }, deps) => {
             const schedules = await readSchedules(conn, deps.signal);
             const counts = countByName(schedules);
+            const picked = new Set(siblings[IncidentIoRequesterConstraint.OnCall] ?? []);
             return schedules
-              .filter(({ name }) => !search || name.toLowerCase().includes(search.toLowerCase()))
-              .sort((a, b) => a.name.localeCompare(b.name))
+              .filter(({ id, name }) => picked.has(id) || !search || name.toLowerCase().includes(search.toLowerCase()))
+              .sort((a, b) => Number(picked.has(b.id)) - Number(picked.has(a.id)) || a.name.localeCompare(b.name))
               .slice(0, MAX_OPTIONS)
               .map(({ id, name }) => ({
                 value: id,
