@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { nativeTargetText } from "@app/components/agent-vault/nativeServiceMeta";
 import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
 import {
   displayHostPattern,
@@ -71,8 +72,13 @@ enum SortColumn {
   Created = "created"
 }
 
-const targetOf = (service: TAgentVaultService) =>
-  service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
+const targetOf = (service: TAgentVaultService) => {
+  if (service.hostPattern === null) return nativeTargetText(service);
+  return service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
+};
+
+// The host, not the shown URL, so MCP servers sort among the HTTP hosts instead of together under "https".
+const sortTargetOf = (service: TAgentVaultService) => service.hostPattern ?? service.host;
 
 const SORT_COMPARATORS: Record<
   SortColumn,
@@ -80,8 +86,7 @@ const SORT_COMPARATORS: Record<
 > = {
   [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
   [SortColumn.Type]: (a, b) => a.type.localeCompare(b.type),
-  // The host, not the shown URL, so MCP servers sort among the HTTP hosts instead of together under "https".
-  [SortColumn.Target]: (a, b) => a.hostPattern.localeCompare(b.hostPattern),
+  [SortColumn.Target]: (a, b) => sortTargetOf(a).localeCompare(sortTargetOf(b)),
   [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 };
 
@@ -115,14 +120,24 @@ const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
   );
 };
 
-const TargetCell = ({ service }: { service: TAgentVaultService }) =>
-  service.type === AgentVaultServiceType.Mcp ? (
-    <span className="block max-w-72 truncate text-sm" title={service.serverUrl}>
-      {service.serverUrl.replace(/^https:\/\//i, "")}
+const TargetCell = ({ service }: { service: TAgentVaultService }) => {
+  if (service.type === AgentVaultServiceType.Mcp) {
+    return (
+      <span className="block max-w-72 truncate text-sm" title={service.serverUrl}>
+        {service.serverUrl.replace(/^https:\/\//i, "")}
+      </span>
+    );
+  }
+  if (service.type === AgentVaultServiceType.Http) {
+    return <HostsCell hostPattern={service.hostPattern} />;
+  }
+  const target = nativeTargetText(service);
+  return (
+    <span className="block max-w-72 truncate text-sm" title={target}>
+      {target}
     </span>
-  ) : (
-    <HostsCell hostPattern={service.hostPattern} />
   );
+};
 
 export const ServicesCard = ({
   accessBundleId,
@@ -146,7 +161,7 @@ export const ServicesCard = ({
     const filtered = services.filter((service) =>
       [
         service.name,
-        service.hostPattern,
+        service.hostPattern ?? "",
         targetOf(service),
         service.type,
         SERVICE_TYPE_LABELS[service.type]
@@ -200,8 +215,8 @@ export const ServicesCard = ({
           <DocumentationLinkBadge href={AgentVaultDocsUrls.services} />
         </CardTitle>
         <CardDescription>
-          A service defines one HTTP API or MCP server the agent can reach, and the credential the
-          proxy attaches to its requests.
+          A service defines one API, MCP server, database or SSH server the agent can reach, and the
+          credential the proxy uses for it.
         </CardDescription>
         {canManage && (
           <CardAction>
@@ -291,7 +306,7 @@ export const ServicesCard = ({
               <TableRow key={service.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <ServiceIcon hostPattern={service.hostPattern} />
+                    <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
                     {service.name}
                     {service.credential.type === AgentVaultCredentialType.OAuth &&
                       service.credential.status !== AgentVaultOauthStatus.Connected && (

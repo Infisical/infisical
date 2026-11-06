@@ -25,7 +25,7 @@ export type TVariableByIdDTO = TAgentVaultVariableScoped & { variableId: string 
 export type TAgentVaultVariableUsedByService = {
   id: string;
   name: string;
-  hostPattern: string;
+  hostPattern: string | null;
   accessBundleId: string;
   accessBundleName: string;
 };

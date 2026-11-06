@@ -68,6 +68,7 @@ import {
   toStoredTrafficPolicy,
   toTrafficPolicyView
 } from "../agent-vault/agent-vault-enums";
+import { toResolvedNativeTarget } from "../agent-vault/agent-vault-native-config-schemas";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import {
   findReachableAccessBundleIds,
@@ -89,6 +90,7 @@ import {
   TAuthorizeSessionDTO,
   TBootstrapProxyDTO,
   TCreateProxyDTO,
+  TGetSessionProxyCaFingerprintsDTO,
   TGetSessionSkillsDTO,
   TRevokeSessionByTokenDTO,
   THeartbeatDTO,
@@ -567,6 +569,17 @@ export const agentVaultProxyServiceFactory = ({
     if (row.credentialType === AgentVaultCredentialType.OAuth) {
       return toResolvedOauthCredential(row.credentialConfig as TAgentVaultOauthConfig, secret.accessToken);
     }
+    if (row.credentialType === AgentVaultCredentialType.SshKey) {
+      return {
+        type: AgentVaultCredentialType.SshKey,
+        username: secret.username,
+        privateKey: secret.privateKey,
+        ...(secret.certificate ? { certificate: secret.certificate } : {})
+      };
+    }
+    if (row.credentialType !== AgentVaultCredentialType.Basic) {
+      throw new InternalServerError({ message: `Unknown credential type '${row.credentialType}'` });
+    }
     return { type: AgentVaultCredentialType.Basic, username: secret.username ?? "", password: secret.password ?? "" };
   };
 
@@ -1026,7 +1039,8 @@ export const agentVaultProxyServiceFactory = ({
       name: row.name,
       accessBundleName: row.accessBundleName,
       type: row.type as AgentVaultServiceType,
-      hostPattern: row.hostPattern,
+      hostPattern: row.hostPattern ?? null,
+      native: toResolvedNativeTarget(row.type, row.config),
       allowedMethods: row.allowedMethods,
       allowedPathPrefixes: row.allowedPathPrefixes,
       allowedTools: row.allowedTools,
@@ -1227,6 +1241,19 @@ export const agentVaultProxyServiceFactory = ({
     return { skills, session, ownerUser, onBehalfOfUser, orgId: project.orgId };
   };
 
+  // Lets `infisical agent-vault connect` pin the proxy's CA without trusting the proxy for it. Only the fingerprint
+  // each proxy serves is returned: a stored certificate that differs from it is one no proxy serves.
+  const getSessionProxyCaFingerprints = async ({ sessionToken }: TGetSessionProxyCaFingerprintsDTO) => {
+    const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
+    const project = session ? await projectDAL.findById(session.projectId) : undefined;
+    if (!session || !project) {
+      throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+    }
+    await $authorizeSessionOwner(session, project.orgId);
+
+    return { fingerprints: await agentVaultProxyDAL.findCaFingerprintsByProjectId(session.projectId) };
+  };
+
   const $describeSessionOwner = async (session: TAgentVaultSessions) => {
     if (!session.userId) return null;
     const user = await userDAL.findById(session.userId);
@@ -1294,6 +1321,7 @@ export const agentVaultProxyServiceFactory = ({
     refreshCredential,
     reportMissingScopes,
     getSessionSkills,
+    getSessionProxyCaFingerprints,
     revokeSessionByToken
   };
 };

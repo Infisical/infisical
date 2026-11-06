@@ -336,7 +336,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
                 <ul className="mt-2 w-full divide-y divide-warning/15 rounded-md border border-warning/20">
                   {shownNeedsSetup.map((service) => (
                     <li key={service.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                      <ServiceIcon hostPattern={service.hostPattern} />
+                      <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
                       <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                         {service.name}
                       </span>

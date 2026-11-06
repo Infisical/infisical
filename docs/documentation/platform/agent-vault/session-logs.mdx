@@ -72,7 +72,7 @@ You can view a session's logs if you created the session or you're an admin of i
       }
       ```
 
-      - `serviceType`: `http` or `mcp`, or `null` if no service matched the request
+      - `serviceType`: `http`, `mcp`, `postgres`, `mysql`, or `ssh`, or `null` if no service matched the request
       - `mcp`: left out for other requests to an MCP service, such as the `GET` that opens an event stream
       - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body, or if a method or tool name holds characters other than letters, digits, and `_ . : / -` or is longer than 128 characters
       - `mcp.truncated`: `true` if the request held more than 8 calls and the rest weren't recorded (left out otherwise)
@@ -152,6 +152,17 @@ If a request matched an MCP service, its row shows an **MCP** badge and the call
 The proxy never records a tool's arguments or results.
 
 If the agent sent several calls in one request, the row shows the first one. If the proxy can't read the calls, such as from a compressed body, the row shows the request path.
+
+### Database and SSH connections
+
+For a [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh), each row is one thing the connection did, shown with the protocol in place of the method:
+
+- **PostgreSQL and MySQL:** A statement and its result, such as `SELECT 42`, but never the rows
+- **SSH commands:** A command and its output
+- **SSH file transfers:** One `scp` or `sftp` file operation
+- **SSH shells:** What the shell printed, in parts of up to 64 KB or one minute
+
+Statements and commands are recorded up to 8 KB, and output up to 64 KB. A row that was cut short says so. The values bound to a prepared statement are recorded with the statement, so the log can hold values from your database. If an agent forwards a port through an SSH service, the row says so, but the forwarded traffic isn't recorded.
 
 ## Storing session logs in your own S3 bucket
 

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { NATIVE_SERVICE_META } from "@app/components/agent-vault/nativeServiceMeta";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Badge,
@@ -22,16 +23,23 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { AgentVaultServiceType, AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultServiceType,
+  AgentVaultSessionLogDecision,
+  isNativeServiceType
+} from "@app/hooks/api/agentVault";
 import {
   TAgentVaultSessionLogMcpCall,
+  TAgentVaultSessionLogNativeDetail,
   TAgentVaultSessionLogRecord
 } from "@app/hooks/api/agentVault/types";
 
 import {
   groupRepeatedMcpCalls,
   httpStatusLabel,
+  isNativeSessionLogRecord,
   mcpMoreCallsLabel,
+  nativeSessionLogSummary,
   sessionLogMcpCalls,
   sessionLogMcpCallsTruncated
 } from "./SessionLogsPanel.utils";
@@ -170,12 +178,71 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
   );
 };
 
-const RequestDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) =>
-  record.serviceType === AgentVaultServiceType.Mcp ? (
+const NativeDetailSection = ({ label, value }: { label: string; value?: string }) =>
+  value ? (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs text-muted">{label}</span>
+      <pre className="max-h-48 overflow-y-auto font-mono text-xs break-all whitespace-pre-wrap">
+        {value}
+      </pre>
+    </div>
+  ) : null;
+
+const NativeDetailContent = ({ native }: { native: TAgentVaultSessionLogNativeDetail }) => (
+  <div className="flex flex-col gap-2">
+    <NativeDetailSection label="Statement" value={native.statement} />
+    <NativeDetailSection label="Command" value={native.command} />
+    {native.shell && !native.command && <span className="text-xs">Interactive shell</span>}
+    <NativeDetailSection label="File" value={native.file} />
+    <NativeDetailSection label="Input" value={native.stdin} />
+    <NativeDetailSection label="Result" value={native.result} />
+    <NativeDetailSection label="Output" value={native.output} />
+    {native.note && <p className="text-xs text-muted">{native.note}</p>}
+    {native.truncated && (
+      <p className="text-xs text-muted">Longer text was cut short when it was recorded.</p>
+    )}
+  </div>
+);
+
+const NativeDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
+  const meta = isNativeServiceType(record.serviceType)
+    ? NATIVE_SERVICE_META[record.serviceType]
+    : null;
+  const BadgeIcon = meta?.icon ?? ServerIcon;
+  const summary = nativeSessionLogSummary(record);
+  const { native } = record;
+
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <Badge variant="info">
+        <BadgeIcon />
+        {meta?.label ?? record.method}
+      </Badge>
+      {native ? (
+        <Tooltip>
+          <TooltipTrigger className="min-w-0 truncate text-left font-mono text-xs">
+            {summary || <span className="text-muted">No details recorded</span>}
+          </TooltipTrigger>
+          <TooltipContent className="max-w-lg">
+            <NativeDetailContent native={native} />
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <span className="text-muted">No details recorded</span>
+      )}
+      {native?.truncated && <span className="shrink-0 text-xs text-muted">(truncated)</span>}
+    </span>
+  );
+};
+
+const RequestDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
+  if (isNativeSessionLogRecord(record)) return <NativeDetail record={record} />;
+  return record.serviceType === AgentVaultServiceType.Mcp ? (
     <McpDetail record={record} />
   ) : (
     <PathDetail record={record} />
   );
+};
 
 type Props = {
   record: TAgentVaultSessionLogRecord;
@@ -197,7 +264,13 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
   }, [arrivedAt]);
 
   const presentation = decisionPresentation(record.decision);
-  const proxyAnswered = isProxyAnswered(record.decision);
+  const isNative = isNativeSessionLogRecord(record);
+  // A database or SSH exchange has no HTTP status: its record carries 0, which is not an error.
+  const proxyAnswered = !isNative && isProxyAnswered(record.decision);
+  const hasHttpStatus = !isNative && !proxyAnswered && Boolean(record.status);
+  let outcomeDescription: string | null = null;
+  if (proxyAnswered && record.status) outcomeDescription = proxyAnswerDescription(record);
+  else if (isNative && record.native?.note) outcomeDescription = record.native.note;
   const outcome = (
     <Badge variant={presentation.variant}>
       <presentation.icon />
@@ -206,7 +279,7 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
   );
   const host = (
     <span className="flex w-fit max-w-full items-center gap-2 text-sm">
-      <ServiceIcon hostPattern={record.host} />
+      <ServiceIcon hostPattern={record.host} serviceType={record.serviceType} />
       <span className="truncate" title={record.service ? undefined : record.host}>
         {record.host}
       </span>
@@ -247,7 +320,7 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
         <RequestDetail record={record} />
       </TableCell>
       <TableCell className="font-mono text-xs">
-        {!proxyAnswered && record.status ? (
+        {hasHttpStatus ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <span className={statusTone(record.status)}>{record.status}</span>
@@ -261,10 +334,10 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
         )}
       </TableCell>
       <TableCell>
-        {proxyAnswered && record.status ? (
+        {outcomeDescription ? (
           <Tooltip>
             <TooltipTrigger asChild>{outcome}</TooltipTrigger>
-            <TooltipContent className="max-w-sm">{proxyAnswerDescription(record)}</TooltipContent>
+            <TooltipContent className="max-w-sm">{outcomeDescription}</TooltipContent>
           </Tooltip>
         ) : (
           outcome

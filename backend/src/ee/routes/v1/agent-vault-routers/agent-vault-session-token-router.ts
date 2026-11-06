@@ -128,6 +128,34 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
     }
   });
 
+  // Unaudited: the fingerprints are public, and `connect` asks once per start.
+  server.route({
+    method: "GET",
+    url: "/proxy-ca-fingerprints",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "listAgentVaultSessionProxyCaFingerprints",
+      description:
+        "Get the CA fingerprints of the Agent Vault proxies in the calling session's project, so `infisical agent-vault connect` can check the proxy it talks to. Authenticate with the session token as `Authorization: Bearer agv_...`.",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      response: {
+        200: z.object({
+          fingerprints: z.string().array().describe(AGENT_VAULT.SESSION.proxyCaFingerprints)
+        })
+      }
+    },
+    handler: async (req) => {
+      const authorization = SessionTokenAuthorizationSchema.safeParse(req.headers.authorization);
+      if (!authorization.success) {
+        throw new UnauthorizedError({
+          message: "Send an Agent Vault session token in the Authorization header, as 'Bearer agv_...'."
+        });
+      }
+      return server.services.agentVaultProxy.getSessionProxyCaFingerprints({ sessionToken: authorization.data });
+    }
+  });
+
   // Ends the session the token belongs to, like Vault's token revoke. The same token-only auth as /skills, so a
   // script that minted a session can end it without keeping its id.
   server.route({

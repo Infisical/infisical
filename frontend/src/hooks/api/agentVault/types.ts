@@ -46,6 +46,7 @@ export type TAgentVaultCredentialSummary =
     }
   | { type: AgentVaultCredentialType.Basic; memberProvidedFields: TAgentVaultBasicMemberField[] }
   | { type: AgentVaultCredentialType.Passthrough }
+  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
   | TAgentVaultOauthCredentialSummary;
 
 export type TAgentVaultOauthCredentialInput = {
@@ -73,6 +74,31 @@ export type TAgentVaultCredentialInput =
 export type TAgentVaultCredentialUpdate =
   | TAgentVaultCredentialInput
   | TAgentVaultOauthCredentialInput;
+
+export type TAgentVaultBasicCredentialInput = Extract<
+  TAgentVaultCredentialInput,
+  { type: AgentVaultCredentialType.Basic }
+>;
+
+export type TAgentVaultSshKeyCredentialInput = {
+  type: AgentVaultCredentialType.SshKey;
+  username: string;
+  privateKey: string;
+  certificate?: string;
+};
+
+// Omitted fields keep what is stored; `certificate: null` removes it.
+export type TAgentVaultSshKeyCredentialUpdate = {
+  type: AgentVaultCredentialType.SshKey;
+  username?: string;
+  privateKey?: string;
+  certificate?: string | null;
+};
+
+export type TAgentVaultNativeTls = { enabled: boolean; verify: boolean; ca: string | null };
+
+// `ca: null` removes a stored certificate authority.
+export type TAgentVaultNativeTlsInput = { enabled?: boolean; verify?: boolean; ca?: string | null };
 
 export type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
 
@@ -111,15 +137,47 @@ export type TAgentVaultVariableReference = {
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
 
+type TAgentVaultNoNativeConfig = { host: null; port: null; database: null; tls: null };
+
+// A database or SSH service is reached by name, so it has no host pattern.
 export type TAgentVaultServiceConfig =
-  | { type: AgentVaultServiceType.Http; serverUrl: null; transport: null }
-  | { type: AgentVaultServiceType.Mcp; serverUrl: string; transport: AgentVaultMcpTransport };
+  | ({
+      type: AgentVaultServiceType.Http;
+      serverUrl: null;
+      transport: null;
+      hostPattern: string;
+    } & TAgentVaultNoNativeConfig)
+  | ({
+      type: AgentVaultServiceType.Mcp;
+      serverUrl: string;
+      transport: AgentVaultMcpTransport;
+      hostPattern: string;
+    } & TAgentVaultNoNativeConfig)
+  | {
+      type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
+      serverUrl: null;
+      transport: null;
+      hostPattern: null;
+      host: string;
+      port: number;
+      database: string;
+      tls: TAgentVaultNativeTls;
+    }
+  | {
+      type: AgentVaultServiceType.Ssh;
+      serverUrl: null;
+      transport: null;
+      hostPattern: null;
+      host: string;
+      port: number;
+      database: null;
+      tls: null;
+    };
 
 export type TAgentVaultService = TAgentVaultServiceConfig & {
   id: string;
   accessBundleId: string;
   name: string;
-  hostPattern: string;
   // null means unrestricted.
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
@@ -246,6 +304,8 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
   serviceCount: number;
   memberCount: number;
   hostPatterns: string[];
+  // Each type once.
+  serviceTypes: AgentVaultServiceType[];
   servicesRequiringSetup: { id: string; name: string }[];
 };
 
@@ -266,13 +326,19 @@ export type TAgentVaultSessionInlineService = {
   type: AgentVaultServiceType;
   serverUrl: string | null;
   transport: AgentVaultMcpTransport | null;
-  hostPattern: string;
+  host: string | null;
+  port: number | null;
+  database: string | null;
+  tls: TAgentVaultNativeTls | null;
+  // null for a database or SSH service.
+  hostPattern: string | null;
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
   credential:
     | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
     | { type: AgentVaultCredentialType.Basic }
-    | { type: AgentVaultCredentialType.Passthrough };
+    | { type: AgentVaultCredentialType.Passthrough }
+    | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
   customHeaders: { name: string; prefix: string }[];
   substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
 };
@@ -425,6 +491,24 @@ export type TCreateAgentVaultServiceDTO =
         | Extract<TAgentVaultCredentialInput, { type: AgentVaultCredentialType.Bearer }>
         | TAgentVaultOauthCredentialInput;
       customHeaders?: TAgentVaultCustomHeaderInput[];
+    }
+  | {
+      accessBundleId: string;
+      type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
+      name: string;
+      host: string;
+      port?: number;
+      database: string;
+      tls?: TAgentVaultNativeTlsInput;
+      credential: TAgentVaultBasicCredentialInput;
+    }
+  | {
+      accessBundleId: string;
+      type: AgentVaultServiceType.Ssh;
+      name: string;
+      host: string;
+      port?: number;
+      credential: TAgentVaultBasicCredentialInput | TAgentVaultSshKeyCredentialInput;
     };
 
 export type TUpdateAgentVaultServiceDTO = {
@@ -439,7 +523,11 @@ export type TUpdateAgentVaultServiceDTO = {
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
   allowedTools?: string[] | null;
-  credential?: TAgentVaultCredentialUpdate;
+  host?: string;
+  port?: number;
+  database?: string;
+  tls?: TAgentVaultNativeTlsInput;
+  credential?: TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
 };
@@ -620,6 +708,20 @@ export type TAgentVaultSessionLogMcpDetail = {
   truncated?: boolean;
 };
 
+// What the proxy saw of a database or SSH exchange. Each text field is cut at the proxy's limit.
+export type TAgentVaultSessionLogNativeDetail = {
+  statement?: string;
+  command?: string;
+  stdin?: string;
+  file?: string;
+  result?: string;
+  output?: string;
+  // True for an interactive shell, which has no single command.
+  shell?: boolean;
+  note?: string;
+  truncated?: boolean;
+};
+
 export type TAgentVaultSessionLogRecord = {
   ts: string;
   seq: number;
@@ -635,6 +737,7 @@ export type TAgentVaultSessionLogRecord = {
   // Absent on records written before service types existed, and null when no service matched.
   serviceType?: AgentVaultServiceType | null;
   mcp?: TAgentVaultSessionLogMcpDetail;
+  native?: TAgentVaultSessionLogNativeDetail;
 };
 
 export type TAgentVaultSessionLogGapReason =
@@ -667,7 +770,8 @@ export type TAgentVaultDecryptedSessionLogPage<
 export type TAgentVaultVariableUsedByService = {
   id: string;
   name: string;
-  hostPattern: string;
+  // null for a database or SSH service.
+  hostPattern: string | null;
   accessBundleId: string;
   accessBundleName: string;
 };

@@ -277,7 +277,8 @@ const MEMBER_FIELDS_OF_TYPE: Record<AgentVaultCredentialType, TAgentVaultMemberP
     AgentVaultVariableReferenceField.CredentialValue
   ],
   [AgentVaultCredentialType.Passthrough]: [],
-  [AgentVaultCredentialType.OAuth]: []
+  [AgentVaultCredentialType.OAuth]: [],
+  [AgentVaultCredentialType.SshKey]: []
 };
 
 const MemberProvidedToggle = ({
@@ -343,9 +344,20 @@ type Props = {
   storedType?: AgentVaultCredentialType;
   /** The fields that were member-provided when the sheet opened, which have no stored value behind them. */
   storedMemberFields?: TAgentVaultMemberProvidedField[];
+  /** The types to offer. The type picker is left out when there is only one. */
+  credentialTypes?: AgentVaultCredentialType[];
+  typeLabels?: Partial<Record<AgentVaultCredentialType, string>>;
+  /** Off for a database or SSH service, which sends no HTTP header. */
+  showsSendsPreview?: boolean;
 };
 
-export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props) => {
+export const CredentialFields = ({
+  storedType,
+  storedMemberFields = [],
+  credentialTypes = HTTP_CREDENTIAL_TYPES,
+  typeLabels = CREDENTIAL_LABELS,
+  showsSendsPreview = true
+}: Props) => {
   const { control, watch, setValue, clearErrors } = useFormContext<TServiceForm>();
   const { storedKeys } = useServiceVariables();
   const credentialType = watch("credentialType");
@@ -402,8 +414,9 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
     setValue("memberProvidedFields", storedMemberFields);
     if (!storedMemberFields.includes(secretCredentialField)) setValue("secret", UNCHANGED_SECRET);
     if (
-      credentialType === AgentVaultCredentialType.Basic &&
-      !storedMemberFields.includes(AgentVaultVariableReferenceField.CredentialUsername)
+      (credentialType === AgentVaultCredentialType.Basic &&
+        !storedMemberFields.includes(AgentVaultVariableReferenceField.CredentialUsername)) ||
+      credentialType === AgentVaultCredentialType.SshKey
     ) {
       setValue("username", UNCHANGED_SECRET);
     }
@@ -471,34 +484,36 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
 
   return (
     <div className="flex flex-col gap-5">
-      <Controller
-        control={control}
-        name="credentialType"
-        render={({ field }) => (
-          <Field>
-            <FieldLabel>Credential Type</FieldLabel>
-            <FieldContent>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {HTTP_CREDENTIAL_TYPES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {CREDENTIAL_LABELS[value]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isDeletingAllMemberValues && (
-                <FieldDescription>
-                  Members&apos; saved values for this service are deleted when you save.
-                </FieldDescription>
-              )}
-            </FieldContent>
-          </Field>
-        )}
-      />
+      {credentialTypes.length > 1 && (
+        <Controller
+          control={control}
+          name="credentialType"
+          render={({ field }) => (
+            <Field>
+              <FieldLabel>Credential Type</FieldLabel>
+              <FieldContent>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {credentialTypes.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {typeLabels[value] ?? CREDENTIAL_LABELS[value]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isDeletingAllMemberValues && (
+                  <FieldDescription>
+                    Members&apos; saved values for this service are deleted when you save.
+                  </FieldDescription>
+                )}
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
 
       {credentialType === AgentVaultCredentialType.Bearer && (
         <div className="flex items-start gap-3">
@@ -578,7 +593,9 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
         </div>
       )}
 
-      {credentialType !== AgentVaultCredentialType.Passthrough && <SendsPreview />}
+      {showsSendsPreview && credentialType !== AgentVaultCredentialType.Passthrough && (
+        <SendsPreview />
+      )}
 
       {credentialType === AgentVaultCredentialType.Passthrough && (
         <Alert variant="info">

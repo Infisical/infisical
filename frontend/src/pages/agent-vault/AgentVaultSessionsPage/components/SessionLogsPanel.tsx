@@ -57,6 +57,7 @@ import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionL
 import {
   chunkIdTime,
   groupSessionLogGaps,
+  isNativeSessionLogRecord,
   matchesSessionLogSearch,
   sessionLogSearchTerm
 } from "./SessionLogsPanel.utils";
@@ -508,7 +509,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <InputGroupInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search host, path, method, tool or service..."
+              placeholder="Search host, path, method, tool, statement, command or service..."
             />
             {search && (
               <InputGroupAddon align="inline-end">
@@ -705,6 +706,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
               const isAddable =
                 canAddService &&
                 !record.service &&
+                !isNativeSessionLogRecord(record) &&
                 (record.decision === AgentVaultSessionLogDecision.Blocked ||
                   record.decision === AgentVaultSessionLogDecision.Passthrough) &&
                 !addedHosts.has(hostPatternFor(record));

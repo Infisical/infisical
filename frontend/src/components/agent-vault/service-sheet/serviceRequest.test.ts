@@ -23,6 +23,14 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   serverUrl: "",
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: ["api.stripe.com"],
+  host: "",
+  port: "",
+  database: "",
+  tlsEnabled: true,
+  tlsVerify: true,
+  tlsCa: "",
+  sshPrivateKey: "",
+  sshCertificate: "",
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -391,5 +399,118 @@ describe("buildListMcpToolsRequest", () => {
     expect(buildListMcpToolsRequest("bundle-1", "service-1", mcpForm())).not.toHaveProperty(
       "credential"
     );
+  });
+});
+
+const postgresForm = (overrides: Partial<TServiceForm> = {}) =>
+  form({
+    serviceType: AgentVaultServiceType.Postgres,
+    name: "orders-db",
+    hosts: [],
+    host: " db.internal ",
+    port: "5432",
+    database: "orders",
+    credentialType: AgentVaultCredentialType.Basic,
+    username: "agent",
+    secret: "pw",
+    ...overrides
+  });
+
+const sshKeyForm = (overrides: Partial<TServiceForm> = {}) =>
+  form({
+    serviceType: AgentVaultServiceType.Ssh,
+    name: "build-server",
+    hosts: [],
+    host: "build.internal",
+    port: "22",
+    credentialType: AgentVaultCredentialType.SshKey,
+    username: "deploy",
+    secret: "",
+    sshPrivateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nkey\n-----END OPENSSH PRIVATE KEY-----\n",
+    ...overrides
+  });
+
+describe("native service requests", () => {
+  it("builds a database service with its server, TLS and login", () => {
+    expect(buildCreateServiceRequest("bundle-1", postgresForm())).toEqual({
+      accessBundleId: "bundle-1",
+      type: AgentVaultServiceType.Postgres,
+      name: "orders-db",
+      host: "db.internal",
+      port: 5432,
+      database: "orders",
+      tls: { enabled: true, verify: true },
+      credential: {
+        type: AgentVaultCredentialType.Basic,
+        username: "agent",
+        password: "pw",
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("builds an SSH key service without a certificate when none is given", () => {
+    expect(buildCreateServiceRequest("bundle-1", sshKeyForm())).toEqual({
+      accessBundleId: "bundle-1",
+      type: AgentVaultServiceType.Ssh,
+      name: "build-server",
+      host: "build.internal",
+      port: 22,
+      credential: {
+        type: AgentVaultCredentialType.SshKey,
+        username: "deploy",
+        privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nkey\n-----END OPENSSH PRIVATE KEY-----"
+      }
+    });
+  });
+
+  it("leaves untouched SSH key parts out of an update and removes an emptied certificate", () => {
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        "service-1",
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: ""
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey, certificate: null });
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        "service-1",
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: UNCHANGED_SECRET
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+  });
+
+  it("keeps an untouched database password and clears a removed CA on update", () => {
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        "service-1",
+        postgresForm({ username: UNCHANGED_SECRET, secret: UNCHANGED_SECRET, tlsCa: " " })
+      )
+    ).toEqual({
+      accessBundleId: "bundle-1",
+      serviceId: "service-1",
+      type: AgentVaultServiceType.Postgres,
+      name: "orders-db",
+      host: "db.internal",
+      port: 5432,
+      database: "orders",
+      tls: { enabled: true, verify: true, ca: null },
+      credential: {
+        type: AgentVaultCredentialType.Basic,
+        username: undefined,
+        password: undefined,
+        memberProvidedFields: []
+      }
+    });
   });
 });

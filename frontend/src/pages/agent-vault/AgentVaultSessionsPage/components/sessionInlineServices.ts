@@ -1,20 +1,29 @@
+import { nativeTargetText } from "@app/components/agent-vault/nativeServiceMeta";
 import { displayHostPattern } from "@app/components/agent-vault/service-sheet/serviceSchema";
-import { AgentVaultServiceType } from "@app/hooks/api/agentVault/enums";
+import { AgentVaultServiceType, isNativeServiceType } from "@app/hooks/api/agentVault/enums";
 import {
   TAgentVaultSession,
   TAgentVaultSessionAccessBundle,
   TAgentVaultSessionInlineService
 } from "@app/hooks/api/agentVault/types";
 
-// Where the service reaches, shown the way an access bundle's services are: an MCP server by its URL.
+// Where the service reaches, shown the way an access bundle's services are: an MCP server by its URL, and a
+// database or SSH service by its address.
 export const inlineServiceTarget = ({
   type,
   serverUrl,
-  hostPattern
-}: Pick<TAgentVaultSessionInlineService, "type" | "serverUrl" | "hostPattern">) =>
-  type === AgentVaultServiceType.Mcp && serverUrl
-    ? serverUrl.replace(/^https:\/\//i, "")
-    : displayHostPattern(hostPattern);
+  hostPattern,
+  host,
+  port,
+  database
+}: Pick<
+  TAgentVaultSessionInlineService,
+  "type" | "serverUrl" | "hostPattern" | "host" | "port" | "database"
+>) => {
+  if (isNativeServiceType(type)) return nativeTargetText({ host, port, database });
+  if (type === AgentVaultServiceType.Mcp && serverUrl) return serverUrl.replace(/^https:\/\//i, "");
+  return displayHostPattern(hostPattern ?? "");
+};
 
 export const inlineServicesLabel = (count: number) =>
   count === 1 ? "1 inline service" : `${count} inline services`;

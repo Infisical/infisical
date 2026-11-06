@@ -67,9 +67,11 @@ const setup = (
   variables: { id: string; encryptedValue: Buffer }[] = [],
   {
     inlineRows = [],
-    isOwnerAdmin = true
-  }: { inlineRows?: TAgentVaultSessionInlineServices[]; isOwnerAdmin?: boolean } = {}
+    isOwnerAdmin = true,
+    revokedAt = null
+  }: { inlineRows?: TAgentVaultSessionInlineServices[]; isOwnerAdmin?: boolean; revokedAt?: Date | null } = {}
 ) => {
+  const findCaFingerprintsByProjectId = vi.fn(async () => ["SHA256:AA:BB"]);
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
   const findInlineServices = vi.fn(async () => inlineRows);
@@ -78,7 +80,8 @@ const setup = (
   );
   const service = agentVaultProxyServiceFactory({
     agentVaultProxyDAL: {
-      findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
+      findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 }),
+      findCaFingerprintsByProjectId
     } as never,
     agentVaultResolveDAL: { findResolvableServices: async () => rows, findSessionSkills: async () => [] },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -87,7 +90,7 @@ const setup = (
     agentVaultPersonalValueDAL: { findForResolve: async () => [] },
     agentVaultSessionDAL: {
       findByTokenHash: async () =>
-        ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null }) as never
+        ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt, expiresAt: null }) as never
     } as never,
     agentVaultSessionInlineServiceDAL: {
       findBySessionId: findInlineServices,
@@ -123,7 +126,14 @@ const setup = (
       reportMissingScopes: reportMissingScopes as never
     }
   });
-  return { service, refreshServiceToken, reportMissingScopes, findInlineServices, createCipherPairWithDataKey };
+  return {
+    service,
+    refreshServiceToken,
+    reportMissingScopes,
+    findInlineServices,
+    createCipherPairWithDataKey,
+    findCaFingerprintsByProjectId
+  };
 };
 
 const refreshed = {
@@ -571,5 +581,79 @@ describe("resolve with inline services", () => {
     const sealed = setup(noRefresh, [passthroughBundleRow], [], { inlineRows: [inlineRow()] });
     await resolve(sealed.service);
     expect(sealed.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("database and SSH services on resolve", () => {
+  const resolve = (service: ReturnType<typeof setup>["service"]) =>
+    service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+
+  test("carry their server in native and no host pattern", async () => {
+    const { service } = setup(
+      async () => refreshed,
+      [
+        serviceRow({
+          type: AgentVaultServiceType.Postgres,
+          hostPattern: null,
+          config: { host: "db.internal", port: 5432, database: "app", tls: { enabled: true, verify: false } },
+          credentialType: AgentVaultCredentialType.Basic,
+          credentialConfig: { type: AgentVaultCredentialType.Basic },
+          encryptedCredential: Buffer.from(JSON.stringify({ username: "agent", password: "p" }))
+        })
+      ]
+    );
+    const { services } = await resolve(service);
+    expect(services[0]).toMatchObject({
+      hostPattern: null,
+      native: { host: "db.internal", port: 5432, database: "app", tls: { enabled: true, verify: false, ca: null } },
+      credential: { type: AgentVaultCredentialType.Basic, username: "agent", password: "p" }
+    });
+  });
+
+  test("send an SSH key with its certificate, and HTTP and MCP services send no native target", async () => {
+    const { service } = setup(
+      async () => refreshed,
+      [
+        serviceRow({
+          type: AgentVaultServiceType.Ssh,
+          hostPattern: null,
+          config: { host: "bastion.internal", port: 22 },
+          credentialType: AgentVaultCredentialType.SshKey,
+          credentialConfig: { type: AgentVaultCredentialType.SshKey, hasCertificate: true },
+          encryptedCredential: Buffer.from(
+            JSON.stringify({ username: "agent", privateKey: "key", certificate: "cert" })
+          )
+        }),
+        serviceRow({ id: "55555555-5555-4555-8555-555555555555" })
+      ]
+    );
+    const { services } = await resolve(service);
+    expect(services[0].credential).toEqual({
+      type: AgentVaultCredentialType.SshKey,
+      username: "agent",
+      privateKey: "key",
+      certificate: "cert"
+    });
+    expect(services[1].native).toBeNull();
+  });
+});
+
+describe("proxy CA fingerprints for a session", () => {
+  test("lists the fingerprints of the proxies in the session's project", async () => {
+    const { service, findCaFingerprintsByProjectId } = setup(async () => refreshed);
+    await expect(service.getSessionProxyCaFingerprints({ sessionToken: "token" })).resolves.toEqual({
+      fingerprints: ["SHA256:AA:BB"]
+    });
+    expect(findCaFingerprintsByProjectId).toHaveBeenCalledWith(PROJECT_ID);
+  });
+
+  test("a revoked session's token is a 401", async () => {
+    const { service, findCaFingerprintsByProjectId } = setup(async () => refreshed, [serviceRow()], [], {
+      revokedAt: new Date()
+    });
+    await expect(service.getSessionProxyCaFingerprints({ sessionToken: "token" })).rejects.toBeInstanceOf(
+      UnauthorizedError
+    );
+    expect(findCaFingerprintsByProjectId).not.toHaveBeenCalled();
   });
 });

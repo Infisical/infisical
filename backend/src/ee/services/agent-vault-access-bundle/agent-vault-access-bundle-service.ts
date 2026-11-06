@@ -73,6 +73,11 @@ import {
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
+import {
+  isNativeServiceType,
+  TAgentVaultNativeServiceConfig,
+  toNativeTlsConfigInput
+} from "../agent-vault/agent-vault-native-config-schemas";
 import { ownerOrNullOf } from "../agent-vault/agent-vault-owner-fns";
 import {
   getAgentVaultGrantedReachability,
@@ -90,9 +95,11 @@ import {
   TAgentVaultServiceConfig
 } from "../agent-vault/agent-vault-service-type-fns";
 import {
+  AGENT_VAULT_SSH_KEY_VARIABLE_MESSAGE,
   expandStoredVariableReferences,
   findStoredVariableIds,
   findVariableKeys,
+  hasVariableReference,
   toStoredVariableReferences,
   toVariableReference
 } from "../agent-vault/agent-vault-variable-fns";
@@ -122,6 +129,7 @@ import {
   TUpdateServiceDTO
 } from "./agent-vault-access-bundle-types";
 import {
+  assertNativeBasicHasUsername,
   isStoredSecretReplaced,
   mergeCredential,
   needsStoredSecretFor,
@@ -405,6 +413,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           type: AgentVaultCredentialType.Basic,
           memberProvidedFields: memberProvidedFields as TAgentVaultBasicMemberField[]
         };
+      case AgentVaultCredentialType.SshKey:
+        return {
+          type: AgentVaultCredentialType.SshKey,
+          hasCertificate: Boolean((service.credentialConfig as { hasCertificate?: boolean }).hasCertificate)
+        };
       default:
         return { type: AgentVaultCredentialType.Passthrough };
     }
@@ -444,16 +457,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     variableReferences: TAgentVaultVariableReferenceWithKey[]
   ) => {
     const config = (service.config ?? {}) as TAgentVaultServiceConfig;
+    const native = isNativeServiceType(service.type) ? (config as TAgentVaultNativeServiceConfig) : null;
     return {
       id: service.id,
       accessBundleId: service.accessBundleId,
       name: service.name,
       type: service.type as AgentVaultServiceType,
       // Flat, like the create and update bodies, so a client can send back what it read (all but the credential, whose
-      // secret is never returned). Null for an http service.
+      // secret is never returned). Null where the type doesn't take the field.
       serverUrl: config.serverUrl ?? null,
       transport: config.transport ?? null,
-      hostPattern: service.hostPattern,
+      host: native?.host ?? null,
+      port: native?.port ?? null,
+      database: native?.database ?? null,
+      tls: native?.tls ? { enabled: native.tls.enabled, verify: native.tls.verify, ca: native.tls.ca ?? null } : null,
+      hostPattern: service.hostPattern ?? null,
       allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
       allowedPathPrefixes: service.allowedPathPrefixes ?? null,
       allowedTools: service.allowedTools ?? null,
@@ -501,6 +519,16 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           ...(credential.username === undefined ? [] : [{ label: "The username", text: credential.username }]),
           ...(credential.password === undefined ? [] : [{ label: "The password", text: credential.password }])
         ];
+      // A key spans lines, which a variable's value can't, so none of the three parts takes a reference yet.
+      case AgentVaultCredentialType.SshKey:
+        if (
+          [credential.username, credential.privateKey, credential.certificate].some(
+            (text) => text && hasVariableReference(text)
+          )
+        ) {
+          throw new BadRequestError({ message: AGENT_VAULT_SSH_KEY_VARIABLE_MESSAGE });
+        }
+        return [];
       default:
         return [];
     }
@@ -576,19 +604,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     storedSecret: TCredentialWrite["secret"],
     variableIds: ReadonlySet<string>
   ) =>
-    Object.entries(storedSecret ?? {}).flatMap(([part, text]) =>
-      referenceRowsOf(
-        serviceId,
-        {
-          field:
-            part === "username"
-              ? AgentVaultVariableReferenceField.CredentialUsername
-              : AgentVaultVariableReferenceField.CredentialValue
-        },
-        text,
-        variableIds
-      )
-    );
+    Object.entries(storedSecret ?? {})
+      // An SSH key's parts never store a reference.
+      .filter(([part]) => part === "username" || part === "password" || part === "value")
+      .flatMap(([part, text]) =>
+        referenceRowsOf(
+          serviceId,
+          {
+            field:
+              part === "username"
+                ? AgentVaultVariableReferenceField.CredentialUsername
+                : AgentVaultVariableReferenceField.CredentialValue
+          },
+          text,
+          variableIds
+        )
+      );
 
   // The reference is stored by id, so a variable deleted after the key lookup is caught when the save locks the
   // rows it references (insertReferenceRows). The deferred foreign key is only the backstop.
@@ -946,7 +977,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       excludeServiceId
     }: {
       accessBundleId: string;
-      hostPattern: string;
+      hostPattern: string | null;
       excludeServiceId?: string;
     },
     // Without a tx this reads the replica outside any lock, so two creates for the same host both pass.
@@ -969,6 +1000,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     hostPattern: requestedHostPattern,
     serverUrl,
     transport,
+    host,
+    port,
+    database,
+    tls,
     allowedMethods,
     allowedPathPrefixes,
     allowedTools,
@@ -993,10 +1028,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       customHeaders,
       substitutions,
       serverUrl,
-      transport
+      transport,
+      host,
+      port,
+      database,
+      tls
     });
     assertCredentialTypeSupported(serviceType, credential.type);
-    const serviceConfig = buildServiceConfig(serviceType, { serverUrl, transport });
+    const serviceConfig = buildServiceConfig(serviceType, {
+      serverUrl,
+      transport,
+      host,
+      port,
+      database,
+      tls: toNativeTlsConfigInput(tls)
+    });
     const hostPattern = resolveServiceHostPattern(serviceType, serviceConfig, requestedHostPattern);
 
     const existing = await agentVaultServiceDAL.findOne({ accessBundleId: bundle.id, name });
@@ -1021,6 +1067,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       credential.type === AgentVaultCredentialType.OAuth
         ? null
         : splitCredential(storeCredentialReferences(credential, store));
+    if (split && isNativeServiceType(serviceType.type)) assertNativeBasicHasUsername(split);
     assertCustomHeadersDoNotShadowCredential(split ? split.config : { type: credential.type }, customHeaders);
     const secret = split?.secret ?? null;
     const memberProvidedFields = split?.memberProvidedFields ?? null;
@@ -1165,10 +1212,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     type,
     name,
     credential,
-    customHeaders,
+    customHeaders: sentCustomHeaders,
     hostPattern: sentHostPattern,
     serverUrl: sentServerUrl,
     transport: sentTransport,
+    host: sentHost,
+    port: sentPort,
+    database: sentDatabase,
+    tls: sentTls,
     allowedMethods: sentAllowedMethods,
     allowedPathPrefixes: sentAllowedPathPrefixes,
     allowedTools: sentAllowedTools,
@@ -1188,7 +1239,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const serviceType = getAgentVaultServiceType(service.type);
     if (type !== service.type) {
       throw new BadRequestError({
-        message: `The service '${service.name}' is an ${serviceType.label} service, so send 'type': '${service.type}'. A service's type can't be changed; create a new service of the other type instead.`
+        message: `The service '${service.name}' is ${serviceType.article.toLowerCase()} ${serviceType.label} service, so send 'type': '${service.type}'. A service's type can't be changed; create a new service of the other type instead.`
       });
     }
     const sentFields = dropReadBackServiceFields(
@@ -1197,27 +1248,31 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         hostPattern: sentHostPattern,
         serverUrl: sentServerUrl,
         transport: sentTransport,
+        host: sentHost,
+        port: sentPort,
+        database: sentDatabase,
+        tls: sentTls,
         allowedMethods: sentAllowedMethods,
         allowedPathPrefixes: sentAllowedPathPrefixes,
         allowedTools: sentAllowedTools,
+        customHeaders: sentCustomHeaders,
         substitutions: sentSubstitutions
       },
-      service.hostPattern
+      service.hostPattern ?? null
     );
     // The schema's check sees the read-back fields too, so a request holding only those reaches here with nothing to
     // change.
-    if ([name, credential, customHeaders, ...Object.values(sentFields)].every((value) => value === undefined)) {
+    if ([name, credential, ...Object.values(sentFields)].every((value) => value === undefined)) {
       throw new BadRequestError({ message: "Provide at least one field besides 'type' to update" });
     }
-    const {
-      hostPattern: requestedHostPattern,
-      allowedMethods,
-      allowedPathPrefixes,
-      allowedTools,
-      substitutions
-    } = sentFields;
+    const requestedHostPattern = sentFields.hostPattern ?? undefined;
+    const { allowedMethods, allowedPathPrefixes, allowedTools, customHeaders, substitutions } = sentFields;
     const serverUrl = sentFields.serverUrl ?? undefined;
     const transport = sentFields.transport ?? undefined;
+    const host = sentFields.host ?? undefined;
+    const port = sentFields.port ?? undefined;
+    const database = sentFields.database ?? undefined;
+    const tls = toNativeTlsConfigInput(sentFields.tls ?? undefined);
     assertServiceFieldsSupported(serviceType, {
       hostPattern: requestedHostPattern,
       allowedMethods,
@@ -1226,13 +1281,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       customHeaders,
       substitutions,
       serverUrl,
-      transport
+      transport,
+      host,
+      port,
+      database,
+      tls
     });
     if (credential) assertCredentialTypeSupported(serviceType, credential.type);
 
     // The fields of the type's config this request sent. Ones left out keep their stored value, so the config
     // is merged here for the fast checks and again under the lock against the row read there.
-    const configUpdate = shake({ serverUrl, transport }, (value) => value === undefined);
+    const configUpdate = shake({ serverUrl, transport, host, port, database, tls }, (value) => value === undefined);
     const hasConfigUpdate = Object.keys(configUpdate).length > 0;
     const deriveHostPattern = (config: TAgentVaultServiceConfig) =>
       resolveServiceHostPattern(serviceType, config, requestedHostPattern);
@@ -1320,6 +1379,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         const { encryptor } = storedSecretCipher ?? (await getProjectCipher(rest.projectId));
         encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
       }
+      if (isNativeServiceType(serviceType.type)) assertNativeBasicHasUsername({ config, secret, memberProvidedFields });
       writtenSecret = secret;
       credentialReplaced = isStoredSecretReplaced(credential, service, secret);
 
@@ -1686,6 +1746,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         hostPattern: requestedHostPattern,
         serverUrl,
         transport,
+        host,
+        port,
+        database,
+        tlsEnabled: tls?.enabled,
+        tlsVerify: tls?.verify,
         allowedMethods,
         allowedPathPrefixes,
         allowedTools,
@@ -1768,7 +1833,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             projectId: rest.projectId,
             expiresWithinSeconds: 60,
             rejectedTokenHash,
-            destination: { hostPattern: savedService.hostPattern, serverUrl: storedServerUrl }
+            destination: { hostPattern: savedService.hostPattern ?? null, serverUrl: storedServerUrl }
           });
           if (refreshed.status === AgentVaultOauthStatus.NeedsReauthorization) {
             throw new BadRequestError({

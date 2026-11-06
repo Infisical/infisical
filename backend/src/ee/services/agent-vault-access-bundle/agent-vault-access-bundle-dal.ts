@@ -9,7 +9,11 @@ import {
   TableName,
   TAgentVaultAccessBundles
 } from "@app/db/schemas";
-import { AGENT_VAULT_ACTOR_COLUMN, AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_ACTOR_COLUMN,
+  AgentVaultMemberType,
+  AgentVaultServiceType
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
@@ -24,6 +28,8 @@ export type TAgentVaultAccessBundleListRow = {
   updatedAt: Date;
   serviceCount: number;
   hostPatterns: string[];
+  // Each type once, so a list can show a database or SSH service, which covers no host pattern.
+  serviceTypes: AgentVaultServiceType[];
   memberCount: number;
 };
 
@@ -163,6 +169,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("updatedAt").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
           db.ref("hostPattern").withSchema(TableName.AgentVaultService),
+          db.ref("type").withSchema(TableName.AgentVaultService).as("serviceType"),
           db.raw('COALESCE(mc.count, 0)::int as "memberCount"')
         )
         .orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc")) as {
@@ -173,6 +180,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         updatedAt: Date;
         serviceId: string | null;
         hostPattern: string | null;
+        serviceType: AgentVaultServiceType | null;
         memberCount: number;
       }[];
 
@@ -188,6 +196,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
             updatedAt: row.updatedAt,
             serviceCount: 0,
             hostPatterns: [],
+            serviceTypes: [],
             memberCount: row.memberCount
           };
           byBundle.set(row.id, bundle);
@@ -195,6 +204,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         if (!row.serviceId) return;
         bundle.serviceCount += 1;
         if (row.hostPattern) bundle.hostPatterns.push(...row.hostPattern.split(","));
+        if (row.serviceType && !bundle.serviceTypes.includes(row.serviceType))
+          bundle.serviceTypes.push(row.serviceType);
       });
 
       // The fan-out query returns page rows in its own order, so the page order is reapplied here.

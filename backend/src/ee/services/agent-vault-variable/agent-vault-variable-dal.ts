@@ -38,7 +38,7 @@ export type TAgentVaultServiceUsingVariable = {
   variableId: string;
   serviceId: string;
   serviceName: string;
-  hostPattern: string;
+  hostPattern: string | null;
   accessBundleId: string;
   accessBundleName: string;
 };

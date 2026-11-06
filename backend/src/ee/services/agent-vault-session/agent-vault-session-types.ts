@@ -22,6 +22,10 @@ export type TAgentVaultInlineServiceInput = {
   hostPattern?: string;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
+  host?: string;
+  port?: number;
+  database?: string;
+  tls?: { enabled?: boolean; verify?: boolean; ca?: string | null };
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   // Accepted only to be refused by name: an inline MCP server can't be limited to some of its tools.
@@ -41,7 +45,8 @@ export type TAgentVaultInlineServiceInput = {
         memberProvidedFields?: string[];
       }
     | { type: AgentVaultCredentialType.Passthrough }
-    | { type: AgentVaultCredentialType.OAuth; authorizationId?: string };
+    | { type: AgentVaultCredentialType.OAuth; authorizationId?: string }
+    | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
 };
@@ -54,13 +59,18 @@ export type TAgentVaultInlineServiceSummary = {
   type: AgentVaultServiceType;
   serverUrl: string | null;
   transport: AgentVaultMcpTransport | null;
-  hostPattern: string;
+  hostPattern: string | null;
+  host: string | null;
+  port: number | null;
+  database: string | null;
+  tls: { enabled: boolean; verify: boolean; ca: string | null } | null;
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
   credential:
     | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
     | { type: AgentVaultCredentialType.Basic }
-    | { type: AgentVaultCredentialType.Passthrough };
+    | { type: AgentVaultCredentialType.Passthrough }
+    | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
   customHeaders: { name: string; prefix: string }[];
   substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
 };
