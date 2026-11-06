@@ -313,17 +313,13 @@ const SecretRotationV2FormContent = ({
           connectionId: connection.id
         })
       );
-      createNotification({
-        text: `Successfully ${secretRotation ? "updated" : "created"} ${rotationType} rotation`,
-        type: "success"
-      });
     } catch {
-      // MutationCache reports why the alert request failed; this only says the rotation itself was saved.
-      createNotification({
-        text: "Rotation saved, but its failure alert was not. Edit the rotation to try again.",
-        type: "warning"
-      });
+      // MutationCache reports why the alert request failed. The rotation itself is saved either way.
     }
+    createNotification({
+      text: `Successfully ${secretRotation ? "updated" : "created"} ${rotationType} rotation`,
+      type: "success"
+    });
     onComplete(rotation);
   };
 
