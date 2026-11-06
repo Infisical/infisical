@@ -19,7 +19,7 @@ import {
 } from "@app/db/schemas";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
-import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { RequestState } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import {
   decryptIntegrationAuths,
   decryptSecretApprovals,

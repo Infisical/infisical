@@ -1,8 +1,10 @@
 import { Knex } from "knex";
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import { TApprovalPolicies, TProjectEnvironments } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { containsGlobPatterns } from "@app/lib/picomatch";
 import {
   TApprovalPolicyBypassersDALFactory,
   TApprovalPolicyDALFactory,
@@ -10,22 +12,22 @@ import {
   TApprovalPolicyStepApproversDALFactory,
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
-import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { approvalPolicyMembershipVerifierFactory } from "../access-approval-policy/access-approval-policy-fns";
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
-import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
-import { TCreateSapDTO, TUpdateSapDTO } from "../secret-approval-policy/secret-approval-policy-types";
+import { TSecretChangePolicyDALFactory, TSecretChangePolicyRow } from "./secret-change-policy-dal";
 import {
-  TSecretChangeGlobalPolicyBridgeDALFactory,
-  TSecretChangePolicyRow
-} from "./secret-change-global-policy-bridge-dal";
-import { TSecretChangePolicy, TSecretChangePolicyEnvironment } from "./secret-change-global-policy-bridge-types";
+  TCreateSapDTO,
+  TSecretChangePolicy,
+  TSecretChangePolicyEnvironment,
+  TUpdateSapDTO
+} from "./secret-change-policy-types";
 
-type TSecretChangeGlobalPolicyFnsFactoryDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findOne" | "findByIdForUpdate" | "updateById" | "transaction">;
+type TSecretChangePolicyFnsFactoryDep = {
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByIdForUpdate" | "updateById" | "transaction">;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create" | "updateById">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany" | "delete">;
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
@@ -33,8 +35,7 @@ type TSecretChangeGlobalPolicyFnsFactoryDep = {
     TApprovalPolicySecretEnvironmentDALFactory,
     "findSecretChangePolicyByEnvIdsAndSecretPath" | "insertMany" | "delete"
   >;
-  secretChangeGlobalPolicyBridgeDAL: Pick<TSecretChangeGlobalPolicyBridgeDALFactory, "findSecretChangePolicies">;
-  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
+  secretChangePolicyDAL: Pick<TSecretChangePolicyDALFactory, "findSecretChangePolicies">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
 };
@@ -89,6 +90,58 @@ export const toSecretChangePolicy = (row: TSecretChangePolicyRow): TSecretChange
   };
 };
 
+export const getPolicyScore = (policy: { secretPath?: string | null }) =>
+  // if glob pattern score is 1, if not exist score is 0 and if its not both then its exact path meaning score 2
+  // eslint-disable-next-line
+  policy.secretPath ? (containsGlobPatterns(policy.secretPath) ? 1 : 2) : 0;
+
+// picks the highest-priority policy governing a secret path: exact path match first, then glob, then env-scoped.
+export const resolvePolicyForPath = <T extends { secretPath?: string | null; createdAt: Date; id: string }>(
+  policies: T[],
+  secretPath: string
+) =>
+  policies
+    .filter(
+      ({ secretPath: policyPath }) => !policyPath || picomatch.isMatch(secretPath, policyPath, { strictSlashes: false })
+    )
+    .sort(
+      (a, b) =>
+        getPolicyScore(b) - getPolicyScore(a) ||
+        a.createdAt.getTime() - b.createdAt.getTime() ||
+        a.id.localeCompare(b.id)
+    )
+    .shift();
+
+/**
+ * Returns the committer ID fields for a secret approval request,
+ * setting the appropriate field based on the actor type.
+ */
+export const getCommitterIds = (actor: ActorType, actorId: string) => ({
+  committerUserId: actor === ActorType.USER ? actorId : undefined,
+  committerIdentityId: actor === ActorType.IDENTITY ? actorId : undefined
+});
+
+/**
+ * Determines whether a secret approval policy should be enforced for the current actor.
+ *
+ * Returns `false` (skip enforcement) when:
+ *   1. No policy exists for the path/env (`policy` is `undefined`)
+ *   2. The actor is a machine identity and the policy allows bypass
+ *   3. The actor is neither a USER nor an IDENTITY (e.g. PLATFORM, SCIM_CLIENT)
+ *
+ * Acts as a TypeScript type guard: when it returns `true`, downstream code
+ * can safely access `policy.id`, `policy.name`, etc.
+ */
+export const shouldApplyPolicy = <T extends { bypassForMachineIdentities: boolean }>(
+  policy: T | undefined,
+  actorType: ActorType
+): policy is T => {
+  if (!policy) return false;
+  if (actorType === ActorType.IDENTITY && policy.bypassForMachineIdentities) return false;
+  if (actorType !== ActorType.USER && actorType !== ActorType.IDENTITY) return false;
+  return true;
+};
+
 export const splitApprovers = (approvers: TCreateSapDTO["approvers"]) => ({
   groupApprovers: approvers
     .filter((approver) => approver.type === ApproverType.Group)
@@ -103,44 +156,33 @@ export const splitApprovers = (approvers: TCreateSapDTO["approvers"]) => ({
     .filter(Boolean) as string[]
 });
 
-export const secretChangeGlobalPolicyFnsFactory = ({
+export const secretChangePolicyFnsFactory = ({
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
   approvalPolicyStepApproversDAL,
   approvalPolicyBypassersDAL,
   approvalPolicySecretEnvironmentDAL,
-  secretChangeGlobalPolicyBridgeDAL,
-  secretApprovalPolicyDAL,
+  secretChangePolicyDAL,
   projectDAL,
   userDAL
-}: TSecretChangeGlobalPolicyFnsFactoryDep) => {
+}: TSecretChangePolicyFnsFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
-  const findSecretChangePolicy = (policyId: string, tx?: Knex) =>
-    approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretChange }, tx);
-
   const findSecretChangePolicyById = async (policyId: string, tx?: Knex) => {
-    const [row] = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ policyId }, tx);
+    const [row] = await secretChangePolicyDAL.findSecretChangePolicies({ policyId }, tx);
     return row ? toSecretChangePolicy(row) : undefined;
   };
 
-  const findSecretChangePolicyBySecretPath = (
-    { envIds, secretPath }: { envIds: string[]; secretPath: string },
-    tx?: Knex
-  ) => approvalPolicySecretEnvironmentDAL.findSecretChangePolicyByEnvIdsAndSecretPath({ envIds, secretPath }, tx);
-
   const findSecretChangePoliciesByEnvId = async (envId: string, tx?: Knex) => {
-    const rows = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ envId }, tx);
+    const rows = await secretChangePolicyDAL.findSecretChangePolicies({ envId }, tx);
     return rows.map(toSecretChangePolicy);
   };
 
   const findSecretChangePoliciesByProjectId = async (projectId: string) => {
-    const rows = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ projectId });
+    const rows = await secretChangePolicyDAL.findSecretChangePolicies({ projectId });
     return rows.map(toSecretChangePolicy);
   };
 
-  // Policies are being migrated onto the global approval system, so a path is taken whether the policy that
-  // governs it still lives on the legacy secret approval tables or already lives on the new ones.
   const assertNoPolicyForSecretPath = async (
     {
       envs,
@@ -154,12 +196,10 @@ export const secretChangeGlobalPolicyFnsFactory = ({
     tx?: Knex
   ) => {
     const envIds = envs.map((env) => env.id);
-    const secretChangePolicy = await approvalPolicySecretEnvironmentDAL.findSecretChangePolicyByEnvIdsAndSecretPath(
+    const existingPolicy = await approvalPolicySecretEnvironmentDAL.findSecretChangePolicyByEnvIdsAndSecretPath(
       { envIds, secretPath, excludePolicyId },
       tx
     );
-    const legacyPolicy = await secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({ envIds, secretPath }, tx);
-    const existingPolicy = secretChangePolicy || legacyPolicy;
     if (!existingPolicy) return;
 
     const governedEnvIds = new Set(existingPolicy.environments.map((env) => env.id));
@@ -280,7 +320,7 @@ export const secretChangeGlobalPolicyFnsFactory = ({
   };
 
   const getSecretChangePolicyState = async (policyId: string, tx: Knex) => {
-    const [row] = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ policyId }, tx);
+    const [row] = await secretChangePolicyDAL.findSecretChangePolicies({ policyId }, tx);
     if (!row) {
       throw new NotFoundError({
         message: `Secret approval policy with ID '${policyId}' no longer governs any environment`
@@ -376,14 +416,12 @@ export const secretChangeGlobalPolicyFnsFactory = ({
         tx
       );
 
-      const [row] = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ policyId: policy.id }, tx);
+      const [row] = await secretChangePolicyDAL.findSecretChangePolicies({ policyId: policy.id }, tx);
       return toSecretChangePolicy(row);
     });
 
   return {
-    findSecretChangePolicy,
     findSecretChangePolicyById,
-    findSecretChangePolicyBySecretPath,
     findSecretChangePoliciesByEnvId,
     findSecretChangePoliciesByProjectId,
     assertNoPolicyForSecretPath,

@@ -85,7 +85,7 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
-import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import { ApprovalStatus } from "../secret-change-request/secret-change-request-types";
 import type { AuditLogEventClass } from "./audit-log-event-classes";
 
 export type TListProjectAuditLogDTO = {

@@ -213,7 +213,7 @@ describe("Global approval system guards outside the approval routes", () => {
     expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeUndefined();
   });
 
-  test("a folder with an open legacy change request cannot be deleted until the request is closed", async () => {
+  test("a folder with an open request that only exists in the legacy tables is deletable", async () => {
     const { parentName, parent, child } = await createFolderTree();
     const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {
       projectId,
@@ -223,14 +223,7 @@ describe("Global approval system guards outside the approval routes", () => {
       approverUserId: seedData1.id
     });
     legacyPolicyIds.push(legacyPolicy.id);
-    const legacyRequestId = await seedOpenLegacyRequest(child.id, legacyPolicy.id);
-    legacyRequestIds.push(legacyRequestId);
-
-    const blocked = await deleteFolderRequest(parent.id, "/");
-    expect(blocked.statusCode).toBe(400);
-    expect(blocked.json().message).toBe(openRequestMessage(`/${parentName}/child`));
-
-    await getDb()(TableName.SecretApprovalRequest).where({ id: legacyRequestId }).update({ status: "close" });
+    legacyRequestIds.push(await seedOpenLegacyRequest(child.id, legacyPolicy.id));
 
     await deleteFolder({
       workspaceId: projectId,
@@ -241,5 +234,21 @@ describe("Global approval system guards outside the approval routes", () => {
       forceDelete: true
     });
     expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeUndefined();
+  });
+
+  test("a user who only approves a policy in the legacy tables is removable", async () => {
+    const { userId, username } = await createProjectUser("legacy-approver");
+    userIds.push(userId);
+    const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {
+      projectId,
+      environment: envSlug,
+      secretPath: "/legacy-user-guard",
+      name: "legacy-user-guard",
+      approverUserId: userId
+    });
+    legacyPolicyIds.push(legacyPolicy.id);
+
+    const removed = await removeProjectUser(username);
+    expect(removed.statusCode).toBe(200);
   });
 });

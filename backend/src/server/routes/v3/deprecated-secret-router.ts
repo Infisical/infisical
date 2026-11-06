@@ -1331,7 +1331,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         skipMultilineEncoding
       } = req.body;
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
+        const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actorOrgId: req.permission.orgId,
           actorAuthMethod: req.permission.authMethod,
@@ -1341,7 +1341,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           projectId
         });
         if (policy) {
-          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
             actorAuthMethod: req.permission.authMethod,
@@ -1527,7 +1527,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       } = req.body;
 
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
+        const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           actorAuthMethod: req.permission.authMethod,
@@ -1537,7 +1537,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           projectId
         });
         if (policy) {
-          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
             actorAuthMethod: req.permission.authMethod,
@@ -1690,7 +1690,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { secretPath, type, workspaceId: projectId, secretId, environment } = req.body;
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
+        const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           actorAuthMethod: req.permission.authMethod,
@@ -1700,7 +1700,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           projectId
         });
         if (policy) {
-          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
             actorAuthMethod: req.permission.authMethod,
@@ -1893,7 +1893,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
+        const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           actorAuthMethod: req.permission.authMethod,
@@ -1903,7 +1903,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           projectId
         });
         if (policy) {
-          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
             actorAuthMethod: req.permission.authMethod,
@@ -2033,7 +2033,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
+        const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           actorAuthMethod: req.permission.authMethod,
@@ -2043,7 +2043,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           projectId
         });
         if (policy) {
-          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
             actorAuthMethod: req.permission.authMethod,
@@ -2168,7 +2168,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
+        const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           actorAuthMethod: req.permission.authMethod,
@@ -2178,7 +2178,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           projectId
         });
         if (policy) {
-          const approval = await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+          const approval = await server.services.secretChangeRequest.generateSecretApprovalRequest({
             actorId: req.permission.id,
             actor: req.permission.type,
             actorAuthMethod: req.permission.authMethod,
