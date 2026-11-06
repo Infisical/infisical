@@ -967,18 +967,19 @@ export const pkiScepServiceFactory = ({
 
     const certRequest = extractCertificateRequestFromCSR(csrPem);
     const { keyAlgorithm, signatureAlgorithm } = extractAlgorithmsFromCSR(csrPem);
+    const certRequestWithDefaults = applyProfileDefaults(
+      {
+        ...certRequest,
+        keyAlgorithm,
+        signatureAlgorithm,
+        validity: { ttl }
+      },
+      profile.defaults
+    );
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      applyProfileDefaults(
-        {
-          ...certRequest,
-          keyAlgorithm,
-          signatureAlgorithm,
-          validity: { ttl }
-        },
-        profile.defaults
-      ),
+      certRequestWithDefaults,
       { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
@@ -1002,7 +1003,11 @@ export const pkiScepServiceFactory = ({
       { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
     );
 
-    const createScepCertificateRequest = (status: CertificateRequestStatus, tx?: Knex) =>
+    const createScepCertificateRequest = (
+      status: CertificateRequestStatus,
+      recordedRequest: typeof certRequest,
+      tx?: Knex
+    ) =>
       certificateRequestService.createCertificateRequest({
         actor: ActorType.SCEP_ACCOUNT,
         actorId: profile.id,
@@ -1012,24 +1017,24 @@ export const pkiScepServiceFactory = ({
         caId: profile.caId!,
         profileId: profile.id,
         applicationId,
-        commonName: certRequest.commonName ?? "",
-        keyUsages: certRequest.keyUsages?.map((u) => u.toString()) ?? [],
-        extendedKeyUsages: certRequest.extendedKeyUsages?.map((u) => u.toString()) ?? [],
+        commonName: recordedRequest.commonName ?? "",
+        keyUsages: recordedRequest.keyUsages?.map((u) => u.toString()) ?? [],
+        extendedKeyUsages: recordedRequest.extendedKeyUsages?.map((u) => u.toString()) ?? [],
         keyAlgorithm: keyAlgorithm || "",
         signatureAlgorithm: signatureAlgorithm || "",
-        altNames: certRequest.subjectAlternativeNames,
+        altNames: recordedRequest.subjectAlternativeNames,
         csr: csrPem,
         ttl,
         status,
         customExtensions: validationResult.resolvedCustomExtensions,
         enrollmentType: EnrollmentType.SCEP,
-        organization: certRequest.organization,
-        organizationalUnit: certRequest.organizationalUnit,
-        country: certRequest.country,
-        state: certRequest.state,
-        locality: certRequest.locality,
-        domainComponents: certRequest.domainComponents,
-        ...(certRequest.basicConstraints && { basicConstraints: certRequest.basicConstraints }),
+        organization: recordedRequest.organization,
+        organizationalUnit: recordedRequest.organizationalUnit,
+        country: recordedRequest.country,
+        state: recordedRequest.state,
+        locality: recordedRequest.locality,
+        domainComponents: recordedRequest.domainComponents,
+        ...(recordedRequest.basicConstraints && { basicConstraints: recordedRequest.basicConstraints }),
         tx
       });
 
@@ -1041,29 +1046,30 @@ export const pkiScepServiceFactory = ({
             approvalPolicy,
             projectId: profile.projectId,
             organizationId: project.orgId,
-            createCertificateRequest: () => createScepCertificateRequest(CertificateRequestStatus.PENDING_APPROVAL, tx),
+            createCertificateRequest: () =>
+              createScepCertificateRequest(CertificateRequestStatus.PENDING_APPROVAL, certRequestWithDefaults, tx),
             requestData: {
               profileId: profile.id,
               profileName: profile.slug,
               certificateRequest: {
-                commonName: certRequest.commonName,
-                organization: certRequest.organization,
-                organizationalUnit: certRequest.organizationalUnit,
-                country: certRequest.country,
-                state: certRequest.state,
-                locality: certRequest.locality,
-                domainComponents: certRequest.domainComponents,
-                keyUsages: certRequest.keyUsages,
-                extendedKeyUsages: certRequest.extendedKeyUsages,
-                altNames: certRequest.subjectAlternativeNames,
+                commonName: certRequestWithDefaults.commonName,
+                organization: certRequestWithDefaults.organization,
+                organizationalUnit: certRequestWithDefaults.organizationalUnit,
+                country: certRequestWithDefaults.country,
+                state: certRequestWithDefaults.state,
+                locality: certRequestWithDefaults.locality,
+                domainComponents: certRequestWithDefaults.domainComponents,
+                keyUsages: certRequestWithDefaults.keyUsages,
+                extendedKeyUsages: certRequestWithDefaults.extendedKeyUsages,
+                altNames: certRequestWithDefaults.subjectAlternativeNames,
                 validity: { ttl },
                 signatureAlgorithm,
                 keyAlgorithm,
                 customExtensions: validationResult.resolvedCustomExtensions,
-                basicConstraints: certRequest.basicConstraints
+                basicConstraints: certRequestWithDefaults.basicConstraints
               }
             },
-            justification: `SCEP certificate request for ${certRequest.commonName || profile.slug}`,
+            justification: `SCEP certificate request for ${certRequestWithDefaults.commonName || profile.slug}`,
             requester: { actor: ActorType.SCEP_ACCOUNT, actorId: profile.id, name: "SCEP Client", email: "" },
             tx
           }
@@ -1076,7 +1082,7 @@ export const pkiScepServiceFactory = ({
       return { status: ScepIssuanceStatus.Pending };
     }
 
-    const newCertRequest = await createScepCertificateRequest(CertificateRequestStatus.PENDING);
+    const newCertRequest = await createScepCertificateRequest(CertificateRequestStatus.PENDING, certRequest);
 
     await certificateIssuanceQueue.queueCertificateIssuance({
       certificateId: newCertRequest.id,

@@ -308,6 +308,7 @@ export const certificateRenewalServiceFactory = ({
       isRenewalLinkPreset = false,
       certificateRequestId,
       certificateRequestCreatedAt,
+      isRequestMetadataCopied = false,
       orgId
     }: {
       newCert: TCertificates;
@@ -316,6 +317,7 @@ export const certificateRenewalServiceFactory = ({
       isRenewalLinkPreset?: boolean;
       certificateRequestId: string;
       certificateRequestCreatedAt: Date;
+      isRequestMetadataCopied?: boolean;
       orgId: string;
     },
     tx: Knex
@@ -347,8 +349,10 @@ export const certificateRenewalServiceFactory = ({
     await copyMetadataFromCertificate(resourceMetadataDAL, {
       sourceCertificateId: originalCert.id,
       targetCertificateId: newCert.id,
-      targetCertificateRequestId: certificateRequestId,
-      targetCertificateRequestCreatedAt: certificateRequestCreatedAt,
+      ...(!isRequestMetadataCopied && {
+        targetCertificateRequestId: certificateRequestId,
+        targetCertificateRequestCreatedAt: certificateRequestCreatedAt
+      }),
       orgId,
       tx
     });
@@ -613,6 +617,7 @@ export const certificateRenewalServiceFactory = ({
               finalRenewBeforeDays,
               certificateRequestId: pendingRequest.id,
               certificateRequestCreatedAt: pendingRequest.createdAt,
+              isRequestMetadataCopied: Boolean(approvedCertificateRequestId),
               orgId: actorOrgId
             },
             tx
@@ -1036,6 +1041,7 @@ export const certificateRenewalServiceFactory = ({
               finalRenewBeforeDays,
               certificateRequestId: pendingRequest.id,
               certificateRequestCreatedAt: pendingRequest.createdAt,
+              isRequestMetadataCopied: Boolean(approvedCertificateRequestId),
               orgId: actorCtx.actorOrgId
             },
             tx
@@ -1204,8 +1210,8 @@ export const certificateRenewalServiceFactory = ({
         approvalPolicy: approval.policy,
         projectId: originalCert.projectId,
         organizationId: profile.project?.orgId ?? actorCtx.actorOrgId,
-        createCertificateRequest: () =>
-          certificateRequestService.createCertificateRequest({
+        createCertificateRequest: async () => {
+          const heldRequest = await certificateRequestService.createCertificateRequest({
             internal: true,
             ...actorCtx,
             projectId: originalCert.projectId,
@@ -1232,7 +1238,16 @@ export const certificateRenewalServiceFactory = ({
             locality: certificateRequest.locality,
             domainComponents: certificateRequest.domainComponents,
             ...(renewalBasicConstraints && { basicConstraints: renewalBasicConstraints })
-          }),
+          });
+          await copyMetadataFromCertificate(resourceMetadataDAL, {
+            sourceCertificateId: originalCert.id,
+            targetCertificateRequestId: heldRequest.id,
+            targetCertificateRequestCreatedAt: heldRequest.createdAt,
+            orgId: profile.project?.orgId ?? actorCtx.actorOrgId,
+            tx
+          });
+          return heldRequest;
+        },
         requestData: {
           profileId: profile.id,
           profileName: profile.slug,
@@ -1690,6 +1705,7 @@ export const certificateRenewalServiceFactory = ({
             isRenewalLinkPreset: true,
             certificateRequestId: certRequestResult.id,
             certificateRequestCreatedAt: certRequestResult.createdAt,
+            isRequestMetadataCopied: Boolean(approvedCertificateRequestId),
             orgId: actorOrgId
           },
           tx
@@ -1821,12 +1837,14 @@ export const certificateRenewalServiceFactory = ({
         approvedCertificateRequestId
       );
 
-      await copyMetadataFromCertificate(resourceMetadataDAL, {
-        sourceCertificateId: originalCert.id,
-        targetCertificateRequestId: certificateRequest.id,
-        targetCertificateRequestCreatedAt: certificateRequest.createdAt,
-        orgId: actorOrgId
-      });
+      if (!approvedCertificateRequestId) {
+        await copyMetadataFromCertificate(resourceMetadataDAL, {
+          sourceCertificateId: originalCert.id,
+          targetCertificateRequestId: certificateRequest.id,
+          targetCertificateRequestCreatedAt: certificateRequest.createdAt,
+          orgId: actorOrgId
+        });
+      }
 
       await certificateIssuanceQueue.queueCertificateIssuance({
         certificateId: renewalOrderId,

@@ -89,6 +89,12 @@ describe("CertificateV3Service", () => {
     createCollapsedAuditLog: vi.fn().mockResolvedValue(undefined)
   };
 
+  const mockResourceMetadataDAL = {
+    insertMany: vi.fn().mockResolvedValue([]),
+    delete: vi.fn().mockResolvedValue([]),
+    find: vi.fn().mockResolvedValue([])
+  };
+
   const mockCertificateDAL: Pick<
     TCertificateDALFactory,
     | "findOne"
@@ -334,6 +340,9 @@ describe("CertificateV3Service", () => {
       signatureAlgorithm: "RSA-SHA256" as any
     });
 
+    mockResourceMetadataDAL.insertMany.mockResolvedValue([]);
+    mockResourceMetadataDAL.delete.mockResolvedValue([]);
+    mockResourceMetadataDAL.find.mockResolvedValue([]);
     service = certificateV3ServiceFactory({
       certificateAlertEventEmitter: { emit: vi.fn() },
       certificateDAL: mockCertificateDAL,
@@ -395,11 +404,7 @@ describe("CertificateV3Service", () => {
         findById: vi.fn().mockResolvedValue({ id: "identity-123", name: "test-identity" })
       },
       approvalPolicyService: mockApprovalPolicyService,
-      resourceMetadataDAL: {
-        insertMany: vi.fn().mockResolvedValue([]),
-        delete: vi.fn().mockResolvedValue([]),
-        find: vi.fn().mockResolvedValue([])
-      },
+      resourceMetadataDAL: mockResourceMetadataDAL,
       pkiApplicationProfileDAL: {
         findAllByProfileId: vi.fn().mockResolvedValue([]),
         findOneByApplicationAndProfile: vi.fn().mockResolvedValue(undefined)
@@ -2894,6 +2899,34 @@ describe("CertificateV3Service", () => {
           undefined
         );
         expect(mockCertificateRequestDAL.attachCertificate).toHaveBeenCalledWith("held-req-1", "cert-456", {});
+      });
+
+      it("copies the certificate's metadata to a held renewal once, when it is held", async () => {
+        const tags = [{ key: "team", value: "payments", orgId: "org-123" }];
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        mockResourceMetadataDAL.find.mockResolvedValue(tags);
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+        expect(mockResourceMetadataDAL.insertMany).toHaveBeenCalledWith(
+          [expect.objectContaining({ key: "team", certificateRequestId: "renewal-req-1" })],
+          {}
+        );
+        vi.clearAllMocks();
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        const reviewedCertificateRequest = await holdAndReadSnapshot();
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        mockResourceMetadataDAL.find.mockResolvedValue(tags);
+        mockCertificateRequestDAL.updateById.mockResolvedValue({ id: "held-req-1", createdAt: new Date() });
+
+        await service.renewApprovedCertificate({
+          certificateRequestId: "held-req-1",
+          organizationId: "org-123",
+          renewal: { certificateId: "cert-123", renewalKeySource: CertificateRenewalKeySource.New, caId: "ca-123" },
+          reviewedCertificateRequest
+        });
+
+        const insertedRows = mockResourceMetadataDAL.insertMany.mock.calls.flatMap(([rows]) => rows as object[]);
+        expect(insertedRows).toEqual([expect.objectContaining({ key: "team", certificateId: "cert-456" })]);
+        expect(insertedRows).not.toContainEqual(expect.objectContaining({ certificateRequestId: expect.anything() }));
       });
 
       it("applies an approved renewal to the certificate that replaced the original while it waited", async () => {
