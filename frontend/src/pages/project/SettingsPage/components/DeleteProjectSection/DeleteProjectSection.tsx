@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { addDays, format } from "date-fns";
 import { Trash2Icon } from "lucide-react";
@@ -35,15 +36,18 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { projectTypeToUrlSlug } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useLeaveProject, useUpdateProject } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { secretScanningV2Keys } from "@app/hooks/api/secretScanningV2/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 const CONFIRM_KEYWORD = "confirm";
 
 export const DeleteProjectSection = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "scheduleDeleteWorkspace",
@@ -78,9 +82,11 @@ export const DeleteProjectSection = () => {
         type: "success"
       });
 
+      // Secret Scanning's list page redirects into its cached active project, which may be this one.
+      queryClient.removeQueries({ queryKey: secretScanningV2Keys.all });
       navigate({
-        to: "/organizations/$orgId/projects",
-        params: { orgId: currentOrg.id }
+        to: "/organizations/$orgId/projects/$type",
+        params: { orgId: currentOrg.id, type: projectTypeToUrlSlug(currentProject.type) }
       });
       handlePopUpClose("scheduleDeleteWorkspace");
       handlePopUpClose("deleteWorkspace");
