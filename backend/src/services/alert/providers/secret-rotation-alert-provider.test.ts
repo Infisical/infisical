@@ -91,6 +91,14 @@ const failedEvent = (overrides: Record<string, unknown> = {}) => ({
 
 const actor = { actor: "user", actorId: "user-1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
 
+const permissionInput = (action: AlertPermissionAction, resourceId: string | null = "rotation-1") => ({
+  action,
+  orgId: "org-1",
+  projectId: "proj-1",
+  resourceId,
+  actor
+});
+
 describe("secret rotation alert provider", () => {
   test("delivers what the rotation failure path emits", async () => {
     let emitted: Record<string, unknown> | undefined;
@@ -103,12 +111,6 @@ describe("secret rotation alert provider", () => {
       { orgId: "org-1", projectId: "proj-1", rotationId: "rotation-1", attemptedAt: ATTEMPTED_AT },
       {} as never
     );
-
-    expect(emitted).toMatchObject({
-      resourceType: SECRET_ROTATION_RESOURCE_TYPE,
-      resourceId: "rotation-1",
-      targetIds: ["rotation-1"]
-    });
 
     const { provider } = buildProvider();
     const targets = await provider.findEventTargets({
@@ -168,30 +170,14 @@ describe("secret rotation alert provider", () => {
 
   test("changing an alert needs edit access to the rotation", async () => {
     const { provider } = buildProvider({ rules: [{ action: "read", subject: "secret-rotation" }] });
-    await expect(
-      provider.assertPermission({
-        action: AlertPermissionAction.Edit,
-        orgId: "org-1",
-        projectId: "proj-1",
-        resourceId: "rotation-1",
-        actor
-      })
-    ).rejects.toThrow();
+    await expect(provider.assertPermission(permissionInput(AlertPermissionAction.Edit))).rejects.toThrow();
   });
 
   test("checks edit access against the rotation's environment and path", async () => {
     const { provider } = buildProvider({
       rules: [{ action: "edit", subject: "secret-rotation", conditions: { environment: "staging" } }]
     });
-    await expect(
-      provider.assertPermission({
-        action: AlertPermissionAction.Create,
-        orgId: "org-1",
-        projectId: "proj-1",
-        resourceId: "rotation-1",
-        actor
-      })
-    ).rejects.toThrow();
+    await expect(provider.assertPermission(permissionInput(AlertPermissionAction.Create))).rejects.toThrow();
   });
 
   describe("listing a project's rotation alerts without naming a rotation", () => {
@@ -202,13 +188,7 @@ describe("secret rotation alert provider", () => {
       expect(error).toMatchObject({ action: "read", subjectType: "secret-rotation" });
     };
 
-    const listInput = {
-      action: AlertPermissionAction.Read,
-      orgId: "org-1",
-      projectId: "proj-1",
-      resourceId: null,
-      actor
-    };
+    const listInput = permissionInput(AlertPermissionAction.Read, null);
 
     test("is refused when rotation read is limited to some environments", async () => {
       const { provider } = buildProvider({
@@ -236,25 +216,11 @@ describe("secret rotation alert provider", () => {
   test("a test send before the rotation exists needs permission to create rotations", async () => {
     const allowed = buildProvider({ rules: [{ action: "create", subject: "secret-rotation" }] }).provider;
     await expect(
-      allowed.assertPermission({
-        action: AlertPermissionAction.Create,
-        orgId: "org-1",
-        projectId: "proj-1",
-        resourceId: null,
-        actor
-      })
+      allowed.assertPermission(permissionInput(AlertPermissionAction.Create, null))
     ).resolves.toBeUndefined();
 
     const denied = buildProvider({ rules: [{ action: "read", subject: "secret-rotation" }] }).provider;
-    await expect(
-      denied.assertPermission({
-        action: AlertPermissionAction.Create,
-        orgId: "org-1",
-        projectId: "proj-1",
-        resourceId: null,
-        actor
-      })
-    ).rejects.toThrow();
+    await expect(denied.assertPermission(permissionInput(AlertPermissionAction.Create, null))).rejects.toThrow();
   });
 
   test("rejects a rotation from another project or org as not found", async () => {

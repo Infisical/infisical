@@ -27,54 +27,6 @@ type TRotationRow = {
   orgId: string;
 };
 
-const insertFailureAlerts = async (
-  knex: Knex,
-  rotations: TRotationRow[],
-  encryptedEmptyConfigByProject: Map<string, Buffer>
-): Promise<void> => {
-  if (rotations.length === 0) return;
-
-  await knex.transaction(async (tx) => {
-    await tx.raw(`SET LOCAL statement_timeout = ${BATCH_STATEMENT_TIMEOUT_MS}`);
-    for (const rotation of rotations) {
-      const [alert] = (await tx(TableName.Alert)
-        .insert({
-          name: ALERT_NAME,
-          resourceType: RESOURCE_TYPE,
-          resourceId: rotation.id,
-          eventType: EVENT_TYPE,
-          triggerType: "event",
-          condition: null,
-          enabled: true,
-          orgId: rotation.orgId,
-          projectId: rotation.projectId,
-          createdByActorId: null,
-          createdByActorType: "platform"
-        })
-        .returning("id")) as { id: string }[];
-
-      const [channel] = (await tx(TableName.AlertChannel)
-        .insert({
-          name: "Email",
-          channelType: "email",
-          encryptedConfig: encryptedEmptyConfigByProject.get(rotation.projectId) as Buffer,
-          enabled: true,
-          orgId: rotation.orgId,
-          projectId: rotation.projectId,
-          createdByActorId: null,
-          createdByActorType: "platform"
-        })
-        .returning("id")) as { id: string }[];
-      await tx(TableName.AlertChannelMembership).insert({ alertId: alert.id, channelId: channel.id });
-      await tx(TableName.AlertChannelRecipient).insert({
-        channelId: channel.id,
-        principalType: PROJECT_ADMINS_PRINCIPAL_TYPE,
-        principalId: rotation.projectId
-      });
-    }
-  });
-};
-
 // Every rotation used to email its project's admins when a scheduled rotation failed. That email now comes
 // from the shared alert module, so each existing rotation gets the alert that reproduces it.
 export async function up(knex: Knex): Promise<void> {
@@ -134,6 +86,7 @@ export async function up(knex: Knex): Promise<void> {
       ).map((row) => row.resourceId as string)
     );
     const pending = rotations.filter((rotation) => !alreadyMigrated.has(rotation.id));
+    if (pending.length === 0) continue;
 
     const encryptedEmptyConfigByProject = new Map<string, Buffer>();
     for (const projectId of new Set(pending.map((rotation) => rotation.projectId))) {
@@ -148,7 +101,46 @@ export async function up(knex: Knex): Promise<void> {
       );
     }
 
-    await insertFailureAlerts(knex, pending, encryptedEmptyConfigByProject);
+    await knex.transaction(async (tx) => {
+      await tx.raw(`SET LOCAL statement_timeout = ${BATCH_STATEMENT_TIMEOUT_MS}`);
+      for (const rotation of pending) {
+        const [alert] = (await tx(TableName.Alert)
+          .insert({
+            name: ALERT_NAME,
+            resourceType: RESOURCE_TYPE,
+            resourceId: rotation.id,
+            eventType: EVENT_TYPE,
+            triggerType: "event",
+            condition: null,
+            enabled: true,
+            orgId: rotation.orgId,
+            projectId: rotation.projectId,
+            createdByActorId: null,
+            createdByActorType: "platform"
+          })
+          .returning("id")) as { id: string }[];
+
+        const [channel] = (await tx(TableName.AlertChannel)
+          .insert({
+            name: "Email",
+            channelType: "email",
+            encryptedConfig: encryptedEmptyConfigByProject.get(rotation.projectId) as Buffer,
+            enabled: true,
+            orgId: rotation.orgId,
+            projectId: rotation.projectId,
+            createdByActorId: null,
+            createdByActorType: "platform"
+          })
+          .returning("id")) as { id: string }[];
+        await tx(TableName.AlertChannelMembership).insert({ alertId: alert.id, channelId: channel.id });
+        await tx(TableName.AlertChannelRecipient).insert({
+          channelId: channel.id,
+          principalType: PROJECT_ADMINS_PRINCIPAL_TYPE,
+          principalId: rotation.projectId
+        });
+      }
+    });
+
     created += pending.length;
   }
 

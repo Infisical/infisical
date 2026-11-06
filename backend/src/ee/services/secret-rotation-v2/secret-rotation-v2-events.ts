@@ -12,7 +12,7 @@ export const SecretRotationFailedPayloadSchema = z.object({
   attemptedAt: z.coerce.date()
 });
 
-export type TSecretRotationFailedInput = {
+type TSecretRotationFailedInput = {
   orgId: string;
   projectId: string;
   rotationId: string;

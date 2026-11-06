@@ -413,25 +413,13 @@ describe("failure alert event", () => {
     });
   });
 
-  test("is not emitted for an attempt that will be retried", async () => {
+  test.each([
+    ["an attempt that will be retried", { isFinalAttempt: false, shouldSendNotification: true }],
+    ["a manual rotation", { isManualRotation: true }]
+  ])("is not emitted for %s", async (_, options) => {
     const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
 
-    await expect(
-      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), {
-        isFinalAttempt: false,
-        shouldSendNotification: true
-      })
-    ).rejects.toThrow();
-
-    expect(deps.eventEmitter.emit).not.toHaveBeenCalled();
-  });
-
-  test("is not emitted for a manual rotation", async () => {
-    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
-
-    await expect(
-      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), { isManualRotation: true })
-    ).rejects.toThrow();
+    await expect(service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), options)).rejects.toThrow();
 
     expect(deps.eventEmitter.emit).not.toHaveBeenCalled();
   });

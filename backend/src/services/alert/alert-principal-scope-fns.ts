@@ -4,7 +4,6 @@ import { OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -25,8 +24,7 @@ export type TPrincipalScope = { orgId: string; projectId?: string | null };
 export type TInScopePrincipals = { userIds: Set<string>; groupIds: Set<string> };
 
 export type TOrgAccessDALs = {
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgLinkedGroupIds">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findActorsWithActiveOrgAccess">;
   userDAL: Pick<TUserDALFactory, "find">;
 };
 
@@ -35,7 +33,7 @@ export type TOrgAccessDALs = {
 // memberships behind until the org access reconcile removes them, so the project's member listings alone can't be
 // trusted for it.
 export const findUsersWithOrgAccess = async (
-  { orgDAL, userGroupMembershipDAL, userDAL }: TOrgAccessDALs,
+  { orgDAL, userDAL }: TOrgAccessDALs,
   { orgId, userIds }: { orgId: string; userIds: string[] },
   tx?: Knex
 ): Promise<Set<string>> => {
@@ -55,30 +53,20 @@ export const findUsersWithOrgAccess = async (
   if (throughGroupOnly.length === 0) return withAccess;
 
   // A group row's isPending isn't cleared when its user finishes signup, so the account itself is checked instead.
-  const acceptedUserIds = new Set(
-    (await userDAL.find({ $in: { id: throughGroupOnly } }, { tx }))
-      .filter((user) => user.isAccepted)
-      .map((user) => user.id)
-  );
-  if (acceptedUserIds.size === 0) return withAccess;
+  const acceptedUserIds = (await userDAL.find({ $in: { id: throughGroupOnly } }, { tx }))
+    .filter((user) => user.isAccepted)
+    .map((user) => user.id);
+  if (acceptedUserIds.length === 0) return withAccess;
 
-  const groupMemberships = await userGroupMembershipDAL.find({ $in: { userId: [...acceptedUserIds] } }, { tx });
-  const linkedGroupIds = new Set(
-    await orgDAL.findOrgLinkedGroupIds(
-      orgId,
-      [...new Set(groupMemberships.map((membership) => membership.groupId))],
-      tx
-    )
+  const { userIds: viaGroup } = await orgDAL.findActorsWithActiveOrgAccess(
+    { orgId, userIds: acceptedUserIds, identityIds: [] },
+    tx
   );
-  groupMemberships.forEach((membership) => {
-    if (linkedGroupIds.has(membership.groupId)) withAccess.add(membership.userId);
-  });
+  viaGroup.forEach((userId) => withAccess.add(userId));
   return withAccess;
 };
 
-// The project admins the rotation failure email went to: direct project members with an admin role, which
-// leaves out admins through a group. An expired temporary admin role doesn't count, and anyone without a way
-// into the org is dropped.
+// Direct project members only: admins through a group are left out on purpose.
 export const findProjectAdminUserIds = async (
   deps: TOrgAccessDALs & {
     projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;

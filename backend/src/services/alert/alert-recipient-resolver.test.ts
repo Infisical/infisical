@@ -19,19 +19,12 @@ const buildResolver = (opts: {
   projectGroupMemberUserIds?: string[]; // users a project group member listing returns
   projectMemberRoles?: Record<string, TMemberRole[]>; // userId -> roles on either listing (defaults to member)
   userGroupIds?: Record<string, string[]>; // userId -> groups the user belongs to
-  pendingGroupUserIds?: string[]; // users whose group rows still carry isPending from before they signed up
   unacceptedUserIds?: string[]; // users who haven't finished signup (defaults to every user having finished)
   orgLinkedGroupIds?: string[]; // groups with a membership in the org, eg a root group linked into a sub-org
   verifiedDomains?: string[];
 }) => {
   const usersById = new Map(opts.users.map((u) => [u.id, u]));
   const rolesFor = (id: string) => opts.projectMemberRoles?.[id] ?? [{ role: "member" }];
-  // Like the real member listings, which left-join the org membership: no row at all reads as active.
-  const memberUser = (id: string) => ({
-    id,
-    isOrgMembershipActive: !(opts.deactivatedUserIds ?? []).includes(id),
-    isOrgMembershipPending: (opts.invitedUserIds ?? []).includes(id)
-  });
   return alertRecipientResolverFactory({
     userDAL: {
       find: async ({ $in }: { $in: { id: string[] } }) =>
@@ -41,22 +34,19 @@ const buildResolver = (opts: {
         }))
     } as never,
     userGroupMembershipDAL: {
-      find: async ({ $in }: { $in: { groupId?: string[]; userId?: string[] } }) =>
-        $in.groupId
-          ? $in.groupId.flatMap((groupId) =>
-              (opts.groupMembers?.[groupId] ?? []).map((userId) => ({ groupId, userId, isPending: false }))
-            )
-          : ($in.userId ?? []).flatMap((userId) =>
-              (opts.userGroupIds?.[userId] ?? []).map((groupId) => ({
-                groupId,
-                userId,
-                isPending: (opts.pendingGroupUserIds ?? []).includes(userId)
-              }))
-            )
+      find: async ({ $in }: { $in: { groupId: string[] } }) =>
+        $in.groupId.flatMap((groupId) => (opts.groupMembers?.[groupId] ?? []).map((userId) => ({ groupId, userId })))
     } as never,
     orgDAL: {
-      findOrgLinkedGroupIds: async (_orgId: string, groupIds: string[]) =>
-        groupIds.filter((groupId) => (opts.orgLinkedGroupIds ?? []).includes(groupId)),
+      // Only users without a direct org row are passed in, so a linked group is their only way in.
+      findActorsWithActiveOrgAccess: async ({ userIds }: { userIds: string[] }) => ({
+        userIds: new Set(
+          userIds.filter((id) =>
+            (opts.userGroupIds?.[id] ?? []).some((groupId) => (opts.orgLinkedGroupIds ?? []).includes(groupId))
+          )
+        ),
+        identityIds: new Set<string>()
+      }),
       // Mirrors the real DAL closely enough to honour the isActive/status filters the resolver passes.
       findMembership: async (filter: { $in: { actorUserId: string[] }; isActive?: boolean; status?: string }) => {
         const activeUserIds = opts.orgUserIds ?? opts.users.map((u) => u.id);
@@ -90,11 +80,11 @@ const buildResolver = (opts: {
     } as never,
     projectMembershipDAL: {
       findAllProjectMembers: async () =>
-        (opts.projectMemberUserIds ?? []).map((id) => ({ user: memberUser(id), roles: rolesFor(id) }))
+        (opts.projectMemberUserIds ?? []).map((id) => ({ user: { id }, roles: rolesFor(id) }))
     } as never,
     groupProjectDAL: {
       findAllProjectGroupMembers: async () =>
-        (opts.projectGroupMemberUserIds ?? []).map((id) => ({ user: memberUser(id), roles: rolesFor(id) }))
+        (opts.projectGroupMemberUserIds ?? []).map((id) => ({ user: { id }, roles: rolesFor(id) }))
     } as never,
     emailDomainDAL: {
       find: async () => (opts.verifiedDomains ?? []).map((domain) => ({ domain }))
@@ -332,12 +322,13 @@ describe("alert recipient resolver — all project members", () => {
     ).toEqual(["u1@example.com", "u2@example.com"]);
   });
 
-  test("still drops members whose org membership was deactivated", async () => {
+  test("still drops members whose org membership was deactivated or never accepted", async () => {
     const resolver = buildResolver({
-      users: [user("u1"), user("u2")],
+      users: [user("u1"), user("u2"), user("u3")],
       orgUserIds: ["u1"],
       deactivatedUserIds: ["u2"],
-      projectMemberUserIds: ["u1", "u2"],
+      invitedUserIds: ["u3"],
+      projectMemberUserIds: ["u1", "u2", "u3"],
       effectiveProjectUserIds: ["u1", "u2"]
     });
 
@@ -402,8 +393,7 @@ describe("alert recipient resolver — project admins", () => {
     const resolver = buildResolver({
       users: [user("u1"), user("u2")],
       projectMemberUserIds: ["u1", "u2"],
-      projectMemberRoles: { u1: [{ role: "admin" }] },
-      effectiveProjectUserIds: ["u1", "u2"]
+      projectMemberRoles: { u1: [{ role: "admin" }] }
     });
 
     expect(emailsOf(await resolver.resolveMany(projectAdmins, { orgId: "org-1", projectId: "proj-1" }))).toEqual([
@@ -416,8 +406,7 @@ describe("alert recipient resolver — project admins", () => {
       users: [user("u1"), user("u2")],
       projectMemberUserIds: ["u1"],
       projectGroupMemberUserIds: ["u2"],
-      projectMemberRoles: { u1: [{ role: "admin" }], u2: [{ role: "admin" }] },
-      effectiveProjectUserIds: ["u1", "u2"]
+      projectMemberRoles: { u1: [{ role: "admin" }], u2: [{ role: "admin" }] }
     });
 
     expect(emailsOf(await resolver.resolveMany(projectAdmins, { orgId: "org-1", projectId: "proj-1" }))).toEqual([
@@ -432,8 +421,7 @@ describe("alert recipient resolver — project admins", () => {
       projectMemberRoles: {
         u1: [{ role: "admin", isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) }],
         u2: [{ role: "admin", isTemporary: true, temporaryAccessEndTime: new Date(Date.now() + 60_000) }]
-      },
-      effectiveProjectUserIds: ["u1", "u2"]
+      }
     });
 
     expect(emailsOf(await resolver.resolveMany(projectAdmins, { orgId: "org-1", projectId: "proj-1" }))).toEqual([
@@ -445,8 +433,7 @@ describe("alert recipient resolver — project admins", () => {
     const resolver = buildResolver({
       users: [user("u1")],
       projectMemberUserIds: ["u1"],
-      projectMemberRoles: { u1: [{ role: "admin" }] },
-      effectiveProjectUserIds: ["u1"]
+      projectMemberRoles: { u1: [{ role: "admin" }] }
     });
 
     const result = await resolver.resolveMany(
@@ -459,116 +446,48 @@ describe("alert recipient resolver — project admins", () => {
 });
 
 describe("alert recipient resolver — project-wide recipients without a direct org membership", () => {
-  test("include sub-org members who reach the org only through a linked group", async () => {
-    const resolver = buildResolver({
-      users: [user("u1")],
-      orgUserIds: [],
-      projectMemberUserIds: ["u1"],
-      projectMemberRoles: { u1: [{ role: "admin" }] },
-      userGroupIds: { u1: ["root-group"] },
-      orgLinkedGroupIds: ["root-group"]
-    });
+  const projectWide = new Map([
+    ["members", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]],
+    ["admins", [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "proj-1" }]]
+  ]);
+  // A sub-org admin: no org row of their own, so a group linked into the org is their only way in.
+  const subOrgAdmin = {
+    users: [user("u1")],
+    orgUserIds: [],
+    projectMemberUserIds: ["u1"],
+    projectMemberRoles: { u1: [{ role: "admin" }] },
+    userGroupIds: { u1: ["root-group"] }
+  };
+  const resolveProjectWide = (opts: Parameters<typeof buildResolver>[0]) =>
+    buildResolver(opts).resolveMany(projectWide, { orgId: "org-1", projectId: "proj-1" });
 
-    const result = await resolver.resolveMany(
-      new Map([
-        ["members", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]],
-        ["admins", [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "proj-1" }]]
-      ]),
-      { orgId: "org-1", projectId: "proj-1" }
-    );
+  test("include sub-org members who reach the org through a linked group", async () => {
+    const result = await resolveProjectWide({ ...subOrgAdmin, orgLinkedGroupIds: ["root-group"] });
 
     expect(result.get("members")?.map((r) => r.email)).toEqual(["u1@example.com"]);
     expect(result.get("admins")?.map((r) => r.email)).toEqual(["u1@example.com"]);
   });
 
   test("drop a member who lost their last group path into the org before the cleanup reached them", async () => {
-    const resolver = buildResolver({
-      users: [user("u1")],
-      orgUserIds: [],
-      projectMemberUserIds: ["u1"],
-      projectMemberRoles: { u1: [{ role: "admin" }] },
-      userGroupIds: { u1: ["root-group"] },
-      orgLinkedGroupIds: []
-    });
-
-    const result = await resolver.resolveMany(
-      new Map([
-        ["members", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]],
-        ["admins", [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "proj-1" }]]
-      ]),
-      { orgId: "org-1", projectId: "proj-1" }
-    );
+    const result = await resolveProjectWide({ ...subOrgAdmin, orgLinkedGroupIds: [] });
 
     expect(result.get("members")).toEqual([]);
     expect(result.get("admins")).toEqual([]);
   });
 
-  test("include a sub-org member who finished signup while their group row still carries isPending", async () => {
-    const resolver = buildResolver({
-      users: [user("u1")],
-      orgUserIds: [],
-      projectMemberUserIds: ["u1"],
-      projectMemberRoles: { u1: [{ role: "admin" }] },
-      userGroupIds: { u1: ["root-group"] },
-      pendingGroupUserIds: ["u1"],
-      orgLinkedGroupIds: ["root-group"]
-    });
-
-    const result = await resolver.resolveMany(
-      new Map([
-        ["members", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]],
-        ["admins", [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: "proj-1" }]]
-      ]),
-      { orgId: "org-1", projectId: "proj-1" }
-    );
-
-    expect(result.get("members")?.map((r) => r.email)).toEqual(["u1@example.com"]);
-    expect(result.get("admins")?.map((r) => r.email)).toEqual(["u1@example.com"]);
-  });
-
   test("drop a group-only member who hasn't finished signup", async () => {
-    const resolver = buildResolver({
-      users: [user("u1")],
-      orgUserIds: [],
-      projectGroupMemberUserIds: ["u1"],
-      userGroupIds: { u1: ["root-group"] },
-      pendingGroupUserIds: ["u1"],
+    const result = await resolveProjectWide({
+      ...subOrgAdmin,
       unacceptedUserIds: ["u1"],
       orgLinkedGroupIds: ["root-group"]
     });
 
-    const result = await resolver.resolveMany(
-      new Map([["c1", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]]]),
-      { orgId: "org-1", projectId: "proj-1" }
-    );
-
-    expect(result.get("c1")).toEqual([]);
-  });
-
-  test("drop a member who was invited to the org and never accepted", async () => {
-    const resolver = buildResolver({
-      users: [user("u1"), user("u2")],
-      orgUserIds: ["u1"],
-      invitedUserIds: ["u2"],
-      projectMemberUserIds: ["u1", "u2"]
-    });
-
-    const result = await resolver.resolveMany(
-      new Map([["c1", [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: "proj-1" }]]]),
-      { orgId: "org-1", projectId: "proj-1" }
-    );
-
-    expect(result.get("c1")?.map((r) => r.email)).toEqual(["u1@example.com"]);
+    expect(result.get("members")).toEqual([]);
+    expect(result.get("admins")).toEqual([]);
   });
 
   test("do not let a user picked by name skip the org check through another channel", async () => {
-    const resolver = buildResolver({
-      users: [user("u1")],
-      orgUserIds: [],
-      projectMemberUserIds: ["u1"],
-      userGroupIds: { u1: ["root-group"] },
-      orgLinkedGroupIds: ["root-group"]
-    });
+    const resolver = buildResolver({ ...subOrgAdmin, orgLinkedGroupIds: ["root-group"] });
 
     const result = await resolver.resolveMany(
       new Map([

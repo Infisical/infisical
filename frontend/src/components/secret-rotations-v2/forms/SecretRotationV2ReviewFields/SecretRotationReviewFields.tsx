@@ -156,10 +156,10 @@ const FailureAlertReview = ({
 };
 
 type Props = {
-  isFailureAlertUnavailable?: boolean;
+  isFailureAlertUnavailable: boolean;
 };
 
-export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable = false }: Props) => {
+export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable }: Props) => {
   const { watch } = useFormContext<TSecretRotationV2Form>();
 
   const {

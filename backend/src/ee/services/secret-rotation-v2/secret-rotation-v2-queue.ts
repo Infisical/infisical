@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
 
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
@@ -35,8 +34,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
     "rotateGeneratedCredentials" | "reapOrphanedRotationAlerts"
   >;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgLinkedGroupIds">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findActorsWithActiveOrgAccess">;
   userDAL: Pick<TUserDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -49,7 +47,6 @@ export const secretRotationV2QueueServiceFactory = async ({
   secretRotationV2Service,
   projectMembershipDAL,
   orgDAL,
-  userGroupMembershipDAL,
   userDAL,
   projectDAL,
   notificationService
@@ -144,7 +141,7 @@ export const secretRotationV2QueueServiceFactory = async ({
         }
 
         const adminUserIds = await findProjectAdminUserIds(
-          { projectMembershipDAL, orgDAL, userGroupMembershipDAL, userDAL },
+          { projectMembershipDAL, orgDAL, userDAL },
           { orgId: project.orgId, projectId }
         );
 

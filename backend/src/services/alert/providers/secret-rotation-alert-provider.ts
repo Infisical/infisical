@@ -16,6 +16,7 @@ import {
 import { SECRET_ROTATION_NAME_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TAlertPayload } from "../alert-channel-types";
@@ -53,19 +54,15 @@ export const secretRotationAlertProviderFactory = ({
   const $loadRotationsWithPath = async (rotationIds: string[]) => {
     const rotations = await secretRotationAlertDAL.findRotationsByIds(rotationIds);
     const paths = new Map<string, string>();
-    const folderIdsByProject = new Map<string, string[]>();
-    rotations.forEach((rotation) => {
-      folderIdsByProject.set(rotation.projectId, [
-        ...(folderIdsByProject.get(rotation.projectId) ?? []),
-        rotation.folderId
-      ]);
-    });
-    for (const [projectId, folderIds] of folderIdsByProject) {
+    for (const [projectId, projectRotations] of Object.entries(groupBy(rotations, (rotation) => rotation.projectId))) {
       // The path decides what a permission check allows, so it comes from the primary like the rotation.
       // eslint-disable-next-line no-await-in-loop -- a failure event names one rotation, so this is one project
-      const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, undefined, {
-        readFromPrimary: true
-      });
+      const folders = await folderDAL.findSecretPathByFolderIds(
+        projectId,
+        projectRotations.map((rotation) => rotation.folderId),
+        undefined,
+        { readFromPrimary: true }
+      );
       folders.forEach((folder) => {
         if (folder?.path) paths.set(folder.id, folder.path);
       });

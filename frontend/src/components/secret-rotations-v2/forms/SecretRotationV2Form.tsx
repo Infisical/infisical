@@ -192,29 +192,24 @@ const SecretRotationV2FormContent = ({
   const { rotationOption } = useSecretRotationV2Option(type);
   // Fixed at open: a later refetch must not change what a save compares against, or saving an unrelated
   // rotation change could write over alert changes made elsewhere.
-  const [savedFailureAlert] = useState(failureAlert);
+  const [savedFailureAlert] = useState(
+    () =>
+      failureAlert && {
+        id: failureAlert.id,
+        enabled: failureAlert.enabled,
+        channels: failureAlert.channels.map(toChannelForm)
+      }
+  );
 
   const formMethods = useForm<TSecretRotationV2Form>({
-    resolver: zodResolver(
-      SecretRotationV2FormSchema(
-        Boolean(secretRotation),
-        savedFailureAlert
-          ? {
-              enabled: savedFailureAlert.enabled,
-              channels: savedFailureAlert.channels.map(toChannelForm)
-            }
-          : undefined
-      )
-    ),
+    resolver: zodResolver(SecretRotationV2FormSchema(Boolean(secretRotation), savedFailureAlert)),
     defaultValues: (secretRotation
       ? {
           ...secretRotation,
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
           isFailureAlertEnabled: savedFailureAlert?.enabled ?? false,
-          channels: savedFailureAlert
-            ? savedFailureAlert.channels.map(toChannelForm)
-            : [buildProjectAdminsChannel(currentProject.id)]
+          channels: savedFailureAlert?.channels ?? [buildProjectAdminsChannel(currentProject.id)]
         }
       : {
           type,
@@ -261,7 +256,7 @@ const SecretRotationV2FormContent = ({
       if (isFailureAlertEnabled) {
         const hasChannelChanges =
           serializeFailureAlertChannels(channels) !==
-          serializeFailureAlertChannels(savedFailureAlert.channels.map(toChannelForm));
+          serializeFailureAlertChannels(savedFailureAlert.channels);
         if (savedFailureAlert.enabled && !hasChannelChanges) return;
         await updateAlert.mutateAsync({
           alertId: savedFailureAlert.id,

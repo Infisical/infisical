@@ -23,16 +23,14 @@ import { TSecretRotationV2Form } from "./schemas";
 
 type TProjectPermission = ReturnType<typeof useProjectPermission>["permission"];
 
-type TRotationLocation = {
-  environment?: string;
-  secretPath?: string;
-  connectionId?: string;
-};
-
 // Mirrors the backend, where adding, changing or removing a rotation's alert needs edit on the rotation.
 export const canManageFailureAlert = (
   permission: TProjectPermission,
-  { environment, secretPath, connectionId }: TRotationLocation
+  {
+    environment,
+    secretPath,
+    connectionId
+  }: { environment?: string; secretPath?: string; connectionId?: string }
 ) => {
   if (!environment || !secretPath) return false;
 
@@ -58,6 +56,21 @@ const describeEmptiedChannels = (names: string[]) =>
     ? `The "${names[0]}" channel has no recipients left, so it's switched off. Add a recipient or remove the channel.`
     : `The ${names.map((name) => `"${name}"`).join(", ")} channels have no recipients left, so they're switched off. Add a recipient or remove them.`;
 
+// Watches the channels on its own so typing in a channel doesn't re-render every other channel card.
+const EmptiedChannelsWarning = () => {
+  const { control } = useFormContext<TSecretRotationV2Form>();
+  const channels = useWatch({ control, name: "channels" });
+  const names = (channels ?? []).filter(isEmptiedChannel).map((channel) => channel.name);
+  if (names.length === 0) return null;
+
+  return (
+    <Alert variant="warning">
+      <TriangleAlertIcon />
+      <AlertDescription>{describeEmptiedChannels(names)}</AlertDescription>
+    </Alert>
+  );
+};
+
 type Props = {
   projectId: string;
   rotationId?: string;
@@ -71,13 +84,10 @@ export const SecretRotationV2AlertsFields = ({
 }: Props) => {
   const { control, clearErrors, setValue } = useFormContext<TSecretRotationV2Form>();
   const { permission } = useProjectPermission();
-  const [isFailureAlertEnabled, environment, secretPath, connection, channels] = useWatch({
+  const [isFailureAlertEnabled, environment, secretPath, connection] = useWatch({
     control,
-    name: ["isFailureAlertEnabled", "environment", "secretPath", "connection", "channels"]
+    name: ["isFailureAlertEnabled", "environment", "secretPath", "connection"]
   });
-  const emptiedChannelNames = (channels ?? [])
-    .filter(isEmptiedChannel)
-    .map((channel) => channel.name);
 
   const canManage = canManageFailureAlert(permission, {
     environment: environment?.slug,
@@ -142,18 +152,15 @@ export const SecretRotationV2AlertsFields = ({
           secret rotations in this environment and path. Ask a project admin to add one.
         </p>
       )}
-      {canManage && isFailureAlertEnabled && emptiedChannelNames.length > 0 && (
-        <Alert variant="warning">
-          <TriangleAlertIcon />
-          <AlertDescription>{describeEmptiedChannels(emptiedChannelNames)}</AlertDescription>
-        </Alert>
-      )}
       {canManage && isFailureAlertEnabled && (
-        <ChannelsField
-          projectId={projectId}
-          resourceType={AlertResourceType.SecretRotation}
-          resourceId={rotationId}
-        />
+        <>
+          <EmptiedChannelsWarning />
+          <ChannelsField
+            projectId={projectId}
+            resourceType={AlertResourceType.SecretRotation}
+            resourceId={rotationId}
+          />
+        </>
       )}
       {canManage && !isFailureAlertEnabled && (
         <p className="text-sm text-muted">

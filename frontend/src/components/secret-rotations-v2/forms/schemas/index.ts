@@ -43,7 +43,7 @@ const FailureAlertChannelsSchema = z
   .array(channelFormSchema)
   .min(1, "At least one channel is required");
 
-export type TSavedFailureAlert = {
+type TSavedFailureAlert = {
   enabled: boolean;
   channels: TChannelForm[];
 };

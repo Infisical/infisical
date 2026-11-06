@@ -17,16 +17,20 @@ export type TSecretRotationWithLocation = {
 export type TSecretRotationAlertDALFactory = ReturnType<typeof secretRotationAlertDALFactory>;
 
 export const secretRotationAlertDALFactory = (db: TDbClient) => {
-  // Reads the primary: the event path treats an empty result as terminal, and the failure event commits in
-  // the same transaction that marks the rotation failed.
+  // Reads the primary: the event path treats an empty result as terminal, and the failure event commits in the
+  // same transaction that marks the rotation failed. The create form also adds a rotation's alert right after
+  // creating the rotation, and a lagging replica would leave that alert's audit log without the rotation's name.
+  const $rotationsWithProject = (rotationIds: string[]) =>
+    db(TableName.SecretRotationV2)
+      .whereIn(`${TableName.SecretRotationV2}.id`, rotationIds)
+      .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`);
+
   const findRotationsByIds = async (rotationIds: string[]): Promise<TSecretRotationWithLocation[]> => {
     if (rotationIds.length === 0) return [];
     try {
-      return (await db(TableName.SecretRotationV2)
-        .whereIn(`${TableName.SecretRotationV2}.id`, rotationIds)
-        .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      return (await $rotationsWithProject(rotationIds)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .select(
@@ -45,19 +49,13 @@ export const secretRotationAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary: the create form adds a rotation's alert right after creating the rotation, and a
-  // lagging replica would leave that alert's audit log without the rotation's name.
   const findRotationNamesByIds = async (
     rotationIds: string[],
     orgId: string
   ): Promise<{ id: string; name: string }[]> => {
     if (rotationIds.length === 0) return [];
     try {
-      return (await db(TableName.SecretRotationV2)
-        .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
-        .whereIn(`${TableName.SecretRotationV2}.id`, rotationIds)
+      return (await $rotationsWithProject(rotationIds)
         .where(`${TableName.Project}.orgId`, orgId)
         .select(`${TableName.SecretRotationV2}.id`, `${TableName.SecretRotationV2}.name`)) as {
         id: string;

@@ -36,7 +36,8 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
   // Reminder alerts are edited from the secret's reminder form, not the generic alert form.
   [AlertResourceType.SecretReminder]: [],
   [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed],
-  [AlertResourceType.SecretRotation]: [AlertEventType.SecretRotationFailed]
+  // Rotation alerts are edited from the rotation form, not the generic alert form.
+  [AlertResourceType.SecretRotation]: []
 };
 
 // Resource types whose provider accepts plain email addresses as email channel recipients
