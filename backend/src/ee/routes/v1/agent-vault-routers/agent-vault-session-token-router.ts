@@ -207,7 +207,7 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
       hide: false,
       operationId: "listAgentVaultSessionServices",
       description:
-        "List the services a session can use: what each one is for, the hosts or server it covers, what the proxy adds to requests, what it allows, and how an agent calls it. Never a credential or a value the proxy fills in. Authenticate with the session token as `Authorization: Bearer agv_...`. An agent behind the proxy reaches this list at `https://agent-vault.invalid/services`.",
+        "List the services a session can use: what each one is for, the hosts or server it covers, what the proxy adds to requests, what it allows, and how an agent calls it. Never a credential or a value the proxy fills in. Authenticate with the session token as `Authorization: Bearer agv_...`. Through its proxy, an agent reaches this list at the same path on the proxy's Infisical with no token of its own; `infisical agent-vault run` sets `INFISICAL_AGENT_VAULT_API_URL` to that Infisical's API URL.",
       tags: [ApiDocsTags.AgentVaultSessions],
       response: {
         200: z.object({

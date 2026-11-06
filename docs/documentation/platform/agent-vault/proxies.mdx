@@ -194,7 +194,7 @@ HTTP/1.1 403 Forbidden
 Content-Type: application/json
 X-Agent-Vault-Decision: blocked
 
-{"error":"host_not_allowed","message":"no service covers host \"internal.example.com\": host blocked by policy","hint":"This is the Agent Vault proxy, not the API: it only lets through hosts a service in this session covers. https://agent-vault.invalid/services lists them."}
+{"error":"host_not_allowed","message":"no service covers host \"internal.example.com\": host blocked by policy","hint":"This is the Agent Vault proxy, not the API: it only lets through hosts a service in this session covers. https://app.infisical.com/api/v1/agent-vault/session/services lists them."}
 ```
 
 The `X-Agent-Vault-Decision` header is on every response that goes through the proxy, so an agent can tell the proxy's responses apart from the API's. For its values, see [Responses from the proxy](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy).
