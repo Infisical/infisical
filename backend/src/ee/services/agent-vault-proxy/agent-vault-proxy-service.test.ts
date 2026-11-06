@@ -88,8 +88,11 @@ const setup = (
     agentVaultSessionDAL: {
       findByTokenHash: async () =>
         ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null }) as never
+    } as never,
+    agentVaultSessionInlineServiceDAL: {
+      findBySessionId: findInlineServices,
+      deleteSecretsBySessionId: async () => {}
     },
-    agentVaultSessionInlineServiceDAL: { findBySessionId: findInlineServices },
     agentVaultDelegationDAL: { identityCoversUser: async () => false },
     agentVaultSessionLogConfigDAL: {
       findOne: async () => sessionLogConfig,
@@ -365,8 +368,8 @@ describe("resolve for a session on a user's behalf", () => {
             revokedAt: null,
             expiresAt: null
           }) as never
-      },
-      agentVaultSessionInlineServiceDAL: { findBySessionId: async () => [] },
+      } as never,
+      agentVaultSessionInlineServiceDAL: { findBySessionId: async () => [], deleteSecretsBySessionId: async () => {} },
       agentVaultDelegationDAL: { identityCoversUser: async () => delegationCoversUser },
       agentVaultSessionLogConfigDAL: {
         findOne: async () => sessionLogConfig,

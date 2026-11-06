@@ -362,6 +362,16 @@ describe("deleteMembership org removal", () => {
     );
   });
 
+  test("leaves the org's groups before the revoke so its personal value clear sees the identity out of them", async () => {
+    const { service, deleteByIdentityIdsInGroupsOwnedByOrgs, revokeActorsInOrgs } = createService();
+
+    await service.deleteMembership(buildDto());
+
+    expect(deleteByIdentityIdsInGroupsOwnedByOrgs.mock.invocationCallOrder[0]).toBeLessThan(
+      revokeActorsInOrgs.mock.invocationCallOrder[0]
+    );
+  });
+
   test("removing a project membership leaves the identity's groups alone", async () => {
     const { service, deleteByIdentityIdsInGroupsOwnedByOrgs } = createService();
 

@@ -53,6 +53,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
@@ -131,9 +132,10 @@ export const ServicesCard = ({
   onEdit,
   onSetUp
 }: Props) => {
+  const { projectId } = useProject();
   const [search, setSearch] = useState("");
   const [serviceToDelete, setServiceToDelete] = useState<TAgentVaultService | null>(null);
-  const deleteService = useDeleteAgentVaultService();
+  const deleteService = useDeleteAgentVaultService(projectId);
 
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");

@@ -206,7 +206,6 @@ export const useAddUsersToOrg = () => {
       grantFailures?: {
         projectIds: string[];
         pamAccess: boolean;
-        agentVaultAccess: boolean;
       };
     };
   };

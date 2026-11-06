@@ -47,12 +47,12 @@ Every proxy starts from the same proxy token, so you set up the proxy once, no m
 
 ## Prerequisites
 
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Daytona](https://www.daytona.io) organization on [Tier 3 or 4](https://www.daytona.io/docs/en/network-limits/#tier-based-network-restrictions), because on Tiers 1 and 2 you can't limit a sandbox to reaching the proxy, and the proxy can't reach Infisical
 - A [Daytona API key](https://www.daytona.io/docs/en/api-keys/) in the `DAYTONA_API_KEY` environment variable on the machine that runs your code
 - The Daytona SDK for your language: [Python](https://pypi.org/project/daytona/), [TypeScript](https://www.npmjs.com/package/@daytona/sdk), [Go](https://pkg.go.dev/github.com/daytona/clients/sdk-go) (with [`api-client-go`](https://pkg.go.dev/github.com/daytona/clients/api-client-go)), [Ruby](https://rubygems.org/gems/daytona), or [Java](https://central.sonatype.com/artifact/io.daytona/sdk) (with [Jackson](https://github.com/FasterXML/jackson-databind))
-- For Python, the [Infisical Python SDK](/sdks/languages/python)
+- For Python, the [Infisical Python SDK](/sdks/languages/python), and for TypeScript, the [Infisical Node.js SDK](/sdks/languages/node)
 
 ## Step 1: Set up Agent Vault
 
@@ -200,7 +200,7 @@ public class SandboxImage {
 
 ## Step 4: Run an agent in a sandbox
 
-This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` at the top with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with the URL of your instance:
+This function runs one prompt in a new sandbox. At the top, replace `<project-id>` with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)) and `<access-bundle-name>` with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with the URL of your instance:
 
 <CodeGroup>
 
@@ -214,6 +214,7 @@ from infisical_sdk import InfisicalSDKClient
 from sandbox_image import SNAPSHOT
 
 INFISICAL_URL = "https://app.infisical.com"
+PROJECT_ID = "<project-id>"
 ACCESS_BUNDLE = "<access-bundle-name>"
 
 # Prints the proxy's address on the network it shares with the agent's sandbox.
@@ -250,7 +251,9 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
 
     # One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
     # agent can't lose access mid-run.
-    session = infisical.agent_vault.sessions.create(access_bundle=ACCESS_BUNDLE, ttl="20m")
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
+    )
 
     proxy_sandbox = None
     try:
@@ -325,10 +328,12 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
 ```typescript TypeScript expandable
 // runAgent.ts
 import type { Daytona, Sandbox } from "@daytona/sdk";
+import { InfisicalSDK } from "@infisical/sdk";
 
 import { SNAPSHOT } from "./sandboxImage.js";
 
 const INFISICAL_URL = "https://app.infisical.com";
+const PROJECT_ID = "<project-id>";
 const ACCESS_BUNDLE = "<access-bundle-name>";
 
 // Prints the proxy's address on the network it shares with the agent's sandbox.
@@ -352,34 +357,20 @@ const AGENT_ENV = {
   DISABLE_AUTOUPDATER: "1",
 };
 
-async function infisical(path: string, { token, body }: { token?: string; body?: unknown } = {}) {
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const response = await fetch(`${INFISICAL_URL}${path}`, {
-    method: "POST",
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) throw new Error(`Infisical returned ${response.status}: ${await response.text()}`);
-  return response.json();
-}
-
 export async function runAgent(daytona: Daytona, prompt: string): Promise<string> {
   // The machine identity's credentials stay here and never enter a sandbox.
-  const { accessToken } = await infisical("/api/v1/auth/universal-auth/login", {
-    body: {
-      clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID,
-      clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET,
-    },
+  const infisical = new InfisicalSDK({ siteUrl: INFISICAL_URL });
+  await infisical.auth().universalAuth.login({
+    clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID!,
+    clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET!,
   });
 
   // One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
   // agent can't lose access mid-run.
-  const { session } = await infisical("/api/v1/agent-vault/sessions", {
-    token: accessToken,
-    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" },
+  const session = await infisical.agentVault().sessions.create({
+    projectId: PROJECT_ID,
+    accessBundle: ACCESS_BUNDLE,
+    ttl: "20m",
   });
 
   let proxySandbox: Sandbox | undefined;
@@ -439,7 +430,7 @@ export async function runAgent(daytona: Daytona, prompt: string): Promise<string
     await proxySandbox?.process.executeCommand(STOP_PROXY).catch(() => {});
     // Revoke first, so the session ends even if deleting fails.
     try {
-      await infisical(`/api/v1/agent-vault/sessions/${session.id}/revoke`, { token: accessToken });
+      await infisical.agentVault().sessions.revoke(session.id);
     } finally {
       await proxySandbox?.delete();
     }
@@ -471,6 +462,7 @@ import (
 
 const (
 	infisicalURL = "https://app.infisical.com"
+	projectID    = "<project-id>"
 	accessBundle = "<access-bundle-name>"
 )
 
@@ -551,6 +543,7 @@ func runAgent(ctx context.Context, client *daytona.Client, prompt string) (outpu
 		} `json:"session"`
 	}
 	err = infisical(ctx, "/api/v1/agent-vault/sessions", login.AccessToken, map[string]any{
+		"projectId":    projectID,
 		"accessBundle": accessBundle,
 		"ttl":          "20m",
 	}, &created)
@@ -672,6 +665,7 @@ require "stringio"
 require_relative "sandbox_image"
 
 INFISICAL_URL = "https://app.infisical.com"
+PROJECT_ID = "<project-id>"
 ACCESS_BUNDLE = "<access-bundle-name>"
 
 # Prints the proxy's address on the network it shares with the agent's sandbox.
@@ -722,7 +716,7 @@ def run_agent(daytona, prompt)
   session = infisical(
     "/api/v1/agent-vault/sessions",
     token: access_token,
-    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" }
+    body: { projectId: PROJECT_ID, accessBundle: ACCESS_BUNDLE, ttl: "20m" }
   )["session"]
 
   proxy_sandbox = nil
@@ -820,6 +814,7 @@ import java.util.UUID;
 
 public class RunAgent {
     static final String INFISICAL_URL = "https://app.infisical.com";
+    static final String PROJECT_ID = "<project-id>";
     static final String ACCESS_BUNDLE = "<access-bundle-name>";
 
     // Prints the proxy's address on the network it shares with the agent's sandbox.
@@ -893,6 +888,7 @@ public class RunAgent {
         // One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
         // agent can't lose access mid-run.
         JsonNode session = infisical("/api/v1/agent-vault/sessions", accessToken, Map.of(
+            "projectId", PROJECT_ID,
             "accessBundle", ACCESS_BUNDLE,
             "ttl", "20m")).get("session");
 
@@ -1070,7 +1066,7 @@ Claude Code replies, even though its sandbox has no Anthropic API key and can on
   Each run now gets its own two sandboxes and its own session. The only credential in the agent's sandbox is a session token, and your code revokes the session when the run ends.
 </Check>
 
-To check which requests the agent made, [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
+To check which requests the agent made, [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in your Agent Vault project. Requests that got a credential have the outcome **Brokered**.
 
 ## Security considerations
 
@@ -1091,6 +1087,12 @@ Each proxy's sandbox holds a copy of the proxy token. If you think someone took 
     - `INFISICAL_AGENT_VAULT_PROXY_TOKEN` has the current proxy token (a token stops working when you rotate it)
     - If you use EU Cloud or self-host Infisical, `INFISICAL_URL` in your code is the URL of your instance
     - The snapshot has a recent Infisical CLI (change `SNAPSHOT` to a new name to build one with the latest CLI)
+  </Accordion>
+  <Accordion title="Creating the session fails">
+    Check the following:
+
+    - `PROJECT_ID` in your code is the ID of the Agent Vault project that holds the access bundle
+    - The machine identity is a member of that project and has a grant on the access bundle
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked. Set the session's `ttl` a few minutes longer than the proxy sandbox's time to live, so the session lasts as long as the sandboxes can run.

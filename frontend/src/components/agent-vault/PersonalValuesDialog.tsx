@@ -26,6 +26,7 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -133,20 +134,23 @@ type Props = {
  * so ones already set are replaced in full by typing them again.
  */
 export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
+  const { projectId } = useProject();
   const isOpen = Boolean(target);
   // Read from the bundle query rather than the copy the dialog opened with, so a refetch after an admin changes the
   // service (a save answered 409) shows the service as it is now.
   const { data: liveBundle } = useGetAgentVaultAccessBundle(
+    projectId,
     isOpen ? (target?.service.accessBundleId ?? "") : ""
   );
   const service =
     liveBundle?.services.find((candidate) => candidate.id === target?.service.id) ??
     target?.service;
   const personalValues = service?.personalValues;
-  const setValues = useSetAgentVaultPersonalValues();
-  const deleteValues = useDeleteAgentVaultPersonalValues();
+  const setValues = useSetAgentVaultPersonalValues(projectId);
+  const deleteValues = useDeleteAgentVaultPersonalValues(projectId);
   // A member keeps at most MAX_PERSONAL_VARIABLES, so one page holds every one of them.
   const { data: variablePage } = useListAgentVaultVariables(
+    projectId,
     { scope: AgentVaultVariableScope.Personal, limit: MAX_PERSONAL_VARIABLES },
     { enabled: isOpen }
   );

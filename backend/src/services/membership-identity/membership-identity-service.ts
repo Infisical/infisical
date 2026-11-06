@@ -433,6 +433,14 @@ export const membershipIdentityServiceFactory = ({
     await orgDAL.lockActorsForOrgAccess({ orgId, actorIds: [identityId] }, tx);
     await identityMetadataDAL.delete({ identityId, orgId }, tx);
     await additionalPrivilegeDAL.delete({ actorIdentityId: identityId, orgId }, tx);
+    // Group membership counts as org membership, so a row left in one of this org's groups would keep the
+    // identity in the org with no way for an admin to see or remove it. A parent org's group linked in here
+    // is the parent's to manage. Runs before the revoke so its personal value clear sees the identity out of
+    // these groups, as the user exit in org-fns.ts does.
+    await identityGroupMembershipDAL.deleteByIdentityIdsInGroupsOwnedByOrgs(
+      { identityIds: [identityId], orgIds: [orgId] },
+      tx
+    );
     // Runs before the membership delete below so the project rows it removes are the ones audited. It takes
     // everything, even on projects a group linked in from a parent org still reaches: that access belongs to
     // the parent org.
@@ -441,13 +449,6 @@ export const membershipIdentityServiceFactory = ({
       tx
     );
     await membershipIdentityDAL.delete({ actorIdentityId: identityId, scopeOrgId: orgId }, tx);
-    // Group membership counts as org membership, so a row left in one of this org's groups would keep the
-    // identity in the org with no way for an admin to see or remove it. A parent org's group linked in here
-    // is the parent's to manage.
-    await identityGroupMembershipDAL.deleteByIdentityIdsInGroupsOwnedByOrgs(
-      { identityIds: [identityId], orgIds: [orgId] },
-      tx
-    );
 
     // Durable deny atomic with the org-membership removal.
     await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId, orgId, tx });

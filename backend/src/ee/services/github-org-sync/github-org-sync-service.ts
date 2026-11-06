@@ -4,8 +4,13 @@ import { ForbiddenError } from "@casl/ability";
 import { Octokit } from "@octokit/core";
 import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
+import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -32,6 +37,7 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGroupDALFactory } from "../group/group-dal";
+import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -380,7 +386,9 @@ type TGithubOrgSyncServiceFactoryDep = {
   >;
   groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find" | "findGroupOrgIds">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany" | "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
@@ -418,9 +426,32 @@ export const githubOrgSyncServiceFactory = ({
   pamAccountDAL,
   pamSessionDAL,
   userDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL
 }: TGithubOrgSyncServiceFactoryDep) => {
   const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
+
+  // Run after the users' group rows are deleted in `tx`, so the clear keeps only the values of users who still hold
+  // the bundle another way.
+  const clearPersonalValuesForGroupExit = async (
+    { groupIds, userIds }: { groupIds: string[]; userIds: string[] },
+    tx: Knex
+  ) => {
+    if (!groupIds.length || !userIds.length) return;
+    const groupProjectMemberships = await membershipGroupDAL.find(
+      { scope: AccessScope.Project, $in: { actorGroupId: groupIds } },
+      { tx }
+    );
+    await clearPersonalValuesInProjects(
+      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+      {
+        projectIds: [...new Set(groupProjectMemberships.map((membership) => membership.scopeProjectId as string))],
+        userIds
+      },
+      tx
+    );
+  };
 
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -783,6 +814,10 @@ export const githubOrgSyncServiceFactory = ({
         const sendPamCancellations = await groupDAL.transaction(async (tx) => {
           await userGroupMembershipDAL.delete(
             { userId, $in: { groupId: removeFromTeams.map((el) => el.groupId) } },
+            tx
+          );
+          await clearPersonalValuesForGroupExit(
+            { groupIds: removeFromTeams.map((el) => el.groupId), userIds: [userId] },
             tx
           );
 
@@ -1197,6 +1232,7 @@ export const githubOrgSyncServiceFactory = ({
             const removedUserIds = membershipsToRemove
               .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
               .filter(Boolean) as string[];
+            await clearPersonalValuesForGroupExit({ groupIds: [team.id], userIds: removedUserIds }, tx);
             await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: removedUserIds }, tx);
             await emitGroupMembershipRemoved(
               eventEmitter,

@@ -159,6 +159,16 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Revoking by token reads the primary: a script that mints and revokes straight away would otherwise get a 401
+  // from a replica that hasn't seen the new session.
+  const findByTokenHashOnPrimary = async (tokenHash: string): Promise<TAgentVaultSessions | undefined> => {
+    try {
+      return await db(TableName.AgentVaultSession).where({ tokenHash }).first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault session by token hash on primary" });
+    }
+  };
+
   const findForList = async (
     {
       projectId,
@@ -458,5 +468,14 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, updateLabel, findByIdOnPrimary, createWithId };
+  return {
+    ...orm,
+    findByTokenHash,
+    findByTokenHashOnPrimary,
+    findForList,
+    revokeIfActive,
+    updateLabel,
+    findByIdOnPrimary,
+    createWithId
+  };
 };

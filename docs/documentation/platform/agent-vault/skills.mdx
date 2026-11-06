@@ -1,6 +1,6 @@
 ---
 title: "Skills"
-description: "Instructions you keep in Agent Vault and install for agents you start with an access bundle."
+description: "Instructions you keep in an Agent Vault project and install for agents you start with an access bundle."
 ---
 
 A skill is a folder of instructions that an AI agent loads when a task needs it, such as how your team reviews pull requests or how to cut a release. Skills follow the [Agent Skills](https://agentskills.io) format, so the same folder works in Claude Code, Codex, and other agents that support it.
@@ -8,12 +8,12 @@ A skill is a folder of instructions that an AI agent loads when a task needs it,
 An [access bundle](/documentation/platform/agent-vault/access-bundles) defines the services, such as external APIs or MCP servers, that an agent can access during a session. If you add a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`. Agents that use the proxy without `infisical agent-vault run`, such as the [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) and [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) setups, don't get skills.
 
 <Info>
-  [Agent Vault members](/documentation/platform/agent-vault/access-control#product-membership) can view the latest version of each skill in the access bundles granted to them.
+  [Members of an Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership) can view the latest version of each skill in the access bundles granted to them.
 </Info>
 
 ## Prerequisites
 
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), to add, change, and delete skills, and to add them to access bundles
+- The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership), to add, change, and delete skills, and to add them to access bundles
 - The [Infisical CLI](/cli/install) on each host where you start agents
 
 ## Skill format
@@ -43,7 +43,7 @@ The folder can also hold other files that the instructions refer to, such as scr
 
 If you self-host Infisical behind your own proxy, allow request bodies of at least 2 MB.
 
-Each organization can have up to 250 skills.
+Each Agent Vault project can have up to 250 skills.
 
 <Warning>
   Don't put API keys, tokens, or other secrets in a skill. Anyone with a session token can download the session's skills, and the CLI saves them as plain files on each agent's host. To let an agent use a credential, add the credential to a [service](/documentation/platform/agent-vault/services) instead.
@@ -61,15 +61,17 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
 
 <Tabs>
   <Tab title="CLI">
-    Log in to the CLI as an Agent Vault admin, then run the following command on the host that has the skill folder:
+    Log in to the CLI as an admin of the Agent Vault project, then run the following command on the host that has the skill folder, replacing `<project-id>` with the [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id):
 
     ```bash
-    infisical agent-vault skills push ./skills/code-review
+    infisical agent-vault skills push ./skills/code-review --project-id <project-id>
     ```
+
+    Instead of `--project-id`, you can set `INFISICAL_AGENT_VAULT_PROJECT_ID`.
 
     The CLI finds the skill by the `name` in `SKILL.md`. It creates the skill if it doesn't exist yet, and adds a new version if it does.
 
-    In a script or CI, authenticate as a [machine identity](/documentation/platform/identities/machine-identities) with the [Admin role in Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), in one of these ways:
+    In a script or CI, authenticate as a [machine identity](/documentation/platform/identities/machine-identities) with the [Admin role in the Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership), in one of these ways:
 
     - Pass `--client-id` and `--client-secret`
     - Set `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`
@@ -80,7 +82,7 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
   <Tab title="Infisical">
     <Steps>
       <Step>
-        In Agent Vault, go to **Skills** and select **Create Skill**.
+        In your Agent Vault project, go to **Skills** and select **Create Skill**.
       </Step>
       <Step>
         To start from a skill you already have, select **Upload** and drop a zipped skill folder or a Markdown file into the dialog. Infisical fills in the **Name**, the **Description**, and the files from the upload.
@@ -102,7 +104,7 @@ To install skills for agents, add them to an access bundle:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Access Bundles** and select the access bundle.
+    In your Agent Vault project, go to **Access Bundles** and select the access bundle.
   </Step>
   <Step>
     In the **Skills** section, select **Add Skills**.
@@ -177,9 +179,9 @@ The CLI always starts the agent, even if it can't install the skills. If it can'
 
 ### View a skill
 
-To open a skill, go to **Skills** in Agent Vault and select the skill. You can also open it from an access bundle: in the **Skills** section, open the skill's actions menu and select **View Skill**.
+To open a skill, go to **Skills** in your Agent Vault project and select the skill. You can also open it from an access bundle: in the **Skills** section, open the skill's actions menu and select **View Skill**.
 
-If you're an Agent Vault member, open the skill from an access bundle that's granted to you. The **Skills** page is only for admins.
+If you're a member of the project rather than an admin, open the skill from an access bundle that's granted to you. The **Skills** page is only for admins.
 
 The skill opens in a side panel that shows the latest version of its files. To get a copy of the files, select **Options** in the panel, then select **Download**. Infisical downloads the files as a zip file, and scripts that are executable in Infisical stay executable.
 
@@ -189,7 +191,7 @@ To change a skill's files in Infisical:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Skills** and select the skill. To edit a Markdown file, select **Code**.
+    In your Agent Vault project, go to **Skills** and select the skill. To edit a Markdown file, select **Code**.
   </Step>
   <Step>
     Change the files in the editor, as described in [Change the files](#change-the-files).
@@ -218,7 +220,7 @@ To replace a skill's files with a zipped folder or a Markdown file:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Skills** and select the skill.
+    In your Agent Vault project, go to **Skills** and select the skill.
   </Step>
   <Step>
     Select **Options**, then select **Upload New Version**, and drop the zipped folder or the Markdown file into the dialog.
@@ -246,7 +248,7 @@ To roll a skill back:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Skills** and select the skill.
+    In your Agent Vault project, go to **Skills** and select the skill.
   </Step>
   <Step>
     Select **Options**, then select **Version History**.
@@ -266,7 +268,7 @@ To delete a skill and every version of it:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Skills** and select the skill.
+    In your Agent Vault project, go to **Skills** and select the skill.
   </Step>
   <Step>
     Select **Options**, then select **Delete Skill**. The dialog lists the access bundles the skill is in.
@@ -282,4 +284,4 @@ Infisical removes the skill from every access bundle. The CLI doesn't delete cop
 
 Infisical writes an audit event when someone creates, edits, renames, rolls back, or deletes a skill, adds a skill to an access bundle or removes it, or opens a version of a skill. When the CLI downloads a session's skills, Infisical also writes one event for the session that lists each skill's version and the version's SHA-256 checksum, so you can see which version each agent got.
 
-To review these events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
+To review these events, open **Audit Logs** in your Agent Vault project, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.

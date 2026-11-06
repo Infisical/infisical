@@ -793,7 +793,7 @@ console.log(publicKey); // Returns the public key string
 
 `client.agentVault().sessions` manages [Agent Vault sessions](/documentation/platform/agent-vault/sessions). A session lets an AI agent use the [services](/documentation/platform/agent-vault/services) in one [access bundle](/documentation/platform/agent-vault/access-bundles), the [inline services](/documentation/platform/agent-vault/inline-services) sent with the session, or both, until the session expires or someone revokes it.
 
-What the client can do with sessions depends on the [Agent Vault role](/documentation/platform/agent-vault/access-control#product-membership) of the user or machine identity that the client logs in as:
+What the client can do with sessions depends on the [role](/documentation/platform/agent-vault/access-control#product-membership) that the user or machine identity the client logs in as has in the Agent Vault project:
 
 | Role | Can create sessions with | Can list, get, label, and revoke |
 | --- | --- | --- |
@@ -801,7 +801,7 @@ What the client can do with sessions depends on the [Agent Vault role](/document
 | **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the member | The member's own sessions |
 
 <Note>
-  `agentVault` requires `@infisical/sdk` version 5.1.0 or newer.
+  `agentVault` requires `@infisical/sdk` version 5.2.0 or newer.
 </Note>
 
 #### List sessions
@@ -810,6 +810,7 @@ What the client can do with sessions depends on the [Agent Vault role](/document
 import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@infisical/sdk";
 
 const { sessions, totalCount } = await client.agentVault().sessions.list({
+  projectId: "<project-id>",
   scope: AgentVaultSessionScope.Mine, // Optional
   statuses: [AgentVaultSessionStatus.Active], // Optional
   search: "nightly deploy", // Optional
@@ -819,7 +820,8 @@ const { sessions, totalCount } = await client.agentVault().sessions.list({
 ```
 
 **Parameters:**
-- `options` (object, optional):
+- `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list sessions from
   - `scope` (AgentVaultSessionScope, optional): whose sessions to list, either `AgentVaultSessionScope.Mine` (`"mine"`) for your own sessions or `AgentVaultSessionScope.All` (`"all"`) for every session if you're an admin (defaults to `AgentVaultSessionScope.Mine`)
   - `statuses` (AgentVaultSessionStatus[], optional): the statuses to include, from `AgentVaultSessionStatus.Active` (`"active"`), `AgentVaultSessionStatus.Revoked` (`"revoked"`), and `AgentVaultSessionStatus.Expired` (`"expired"`) (defaults to all three)
   - `search` (string, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
@@ -845,6 +847,7 @@ const session = await client.agentVault().sessions.get("<session-id>");
 
 ```typescript
 const session = await client.agentVault().sessions.create({
+  projectId: "<project-id>",
   accessBundle: "<access-bundle-name>",
   ttl: "1h", // Optional
   label: "nightly deploy" // Optional
@@ -853,6 +856,7 @@ const session = await client.agentVault().sessions.create({
 
 **Parameters:**
 - `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the session in
   - `accessBundle` (string, optional): the name of the access bundle that the agent can use during the session (pass `accessBundle`, `services`, or both)
   - `services` (AgentVaultInlineServiceInput[], optional): [inline services](#create-a-session-with-inline-services) to send with the session (Agent Vault admins only, up to 20)
   - `ttl` (string, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`, or to `1h` for a session on behalf of a user)
@@ -871,6 +875,7 @@ If the client logs in as a machine identity with a [delegation](/documentation/p
 
 ```typescript
 const session = await client.agentVault().sessions.create({
+  projectId: "<project-id>",
   accessBundle: "<access-bundle-name>",
   onBehalfOfUserEmail: "<user-email>"
 });
@@ -884,10 +889,11 @@ To find the access bundles that a session on behalf of the user can use, pass th
 
 #### Create a session with inline services
 
-If the client logs in as a user or machine identity with the **Admin** role in Agent Vault, the client can send inline services with a session, instead of or beside an access bundle. Inline services let you pass along credentials that your code already holds, without setting anything up in Agent Vault in advance.
+If the client logs in as a user or machine identity with the **Admin** role in the Agent Vault project, the client can send inline services with a session, instead of or beside an access bundle. Inline services let you pass along credentials that your code already holds, without setting anything up in Agent Vault in advance.
 
 ```typescript
 const session = await client.agentVault().sessions.create({
+  projectId: "<project-id>",
   ttl: "1h",
   services: [
     {
@@ -935,6 +941,7 @@ If the agent can run longer than the client's access token lasts, log in again b
 
 ```typescript
 const session = await client.agentVault().sessions.create({
+  projectId: "<project-id>",
   accessBundle: "<access-bundle-name>",
   ttl: "1h"
 });
@@ -956,16 +963,17 @@ try {
 
 `client.agentVault().proxies` manages [Agent Vault proxies](/documentation/platform/agent-vault/proxies). A proxy attaches API credentials to the requests that agents send through it.
 
-To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agentVault` requires `@infisical/sdk` version 5.1.0 or newer.
+  `agentVault` requires `@infisical/sdk` version 5.2.0 or newer.
 </Note>
 
 #### List proxies
 
 ```typescript
 const { proxies, totalCount } = await client.agentVault().proxies.list({
+  projectId: "<project-id>",
   search: "edge", // Optional
   orderBy: "name", // Optional
   orderDirection: "asc", // Optional
@@ -975,7 +983,8 @@ const { proxies, totalCount } = await client.agentVault().proxies.list({
 ```
 
 **Parameters:**
-- `options` (object, optional):
+- `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list proxies from
   - `search` (string, optional): text to find in proxy names and descriptions
   - `orderBy` (string, optional): what to sort the proxies by, `name` or `createdAt` (defaults to `createdAt`)
   - `orderDirection` (string, optional): the direction to sort in, `asc` or `desc` (defaults to `desc`)
@@ -993,6 +1002,7 @@ If the client logs in as a member, the proxies have no `trafficPolicy`, `allowed
 import { AgentVaultTrafficPolicy } from "@infisical/sdk";
 
 const { proxy, proxyToken } = await client.agentVault().proxies.create({
+  projectId: "<project-id>",
   name: "edge-proxy",
   trafficPolicy: AgentVaultTrafficPolicy.ServiceHosts, // Optional
   allowedHosts: ["registry.npmjs.org", "registry.yarnpkg.com"], // Optional
@@ -1003,6 +1013,7 @@ const { proxy, proxyToken } = await client.agentVault().proxies.create({
 
 **Parameters:**
 - `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the proxy in
   - `name` (string): the name of the proxy, in lowercase letters, numbers, and hyphens (up to 64 characters)
   - `trafficPolicy` (AgentVaultTrafficPolicy, optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.AnyHost` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.ServiceHosts` (`"service-hosts"`) to refuse requests to hosts that none of the session's services cover (defaults to `AgentVaultTrafficPolicy.AnyHost`)
   - `allowedHosts` (string[] | string, optional): hosts that agents can reach under `AgentVaultTrafficPolicy.ServiceHosts` even if none of the session's services cover them, as an array or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
@@ -1090,16 +1101,17 @@ const proxy = await client.agentVault().proxies.revoke("<proxy-id>");
 
 `client.agentVault().accessBundles` manages [Agent Vault access bundles](/documentation/platform/agent-vault/access-bundles) and who they're [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to. An access bundle is a list of services that an agent can use during a session.
 
-To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agentVault` requires `@infisical/sdk` version 5.1.0 or newer.
+  `agentVault` requires `@infisical/sdk` version 5.2.0 or newer.
 </Note>
 
 #### List access bundles
 
 ```typescript
 const { accessBundles, totalCount } = await client.agentVault().accessBundles.list({
+  projectId: "<project-id>",
   search: "release", // Optional
   requiresSetup: false, // Optional
   granted: true, // Optional
@@ -1111,7 +1123,8 @@ const { accessBundles, totalCount } = await client.agentVault().accessBundles.li
 ```
 
 **Parameters:**
-- `options` (object, optional):
+- `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list access bundles from
   - `search` (string, optional): text to find in access bundle names and descriptions
   - `requiresSetup` (boolean, optional): `true` to list only the access bundles with services that still need your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), or `false` to list the rest (defaults to listing both)
   - `granted` (boolean, optional): `true` to list only the access bundles granted to you directly or through a group, or `false` to list the ones you can use only because you're an admin (defaults to listing both)
@@ -1145,6 +1158,7 @@ const accessBundle = await client.agentVault().accessBundles.get("<access-bundle
 
 ```typescript
 const accessBundle = await client.agentVault().accessBundles.create({
+  projectId: "<project-id>",
   name: "release",
   description: "Release and deploy tools" // Optional
 });
@@ -1152,13 +1166,14 @@ const accessBundle = await client.agentVault().accessBundles.create({
 
 **Parameters:**
 - `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the access bundle in
   - `name` (string): the name of the access bundle, in lowercase letters, numbers, and hyphens (up to 64 characters)
   - `description` (string, optional): what the access bundle is for (up to 256 characters, without line breaks or tabs)
 
 **Returns:**
 - `AgentVaultAccessBundle`: the new access bundle
 
-Infisical grants the new access bundle to you, unless you're in Agent Vault only through a group. The SDK can't add services to an access bundle. To add them in Infisical, see [Services](/documentation/platform/agent-vault/services).
+Infisical grants the new access bundle to you, unless you're in the Agent Vault project only through a group. The SDK can't add services to an access bundle. To add them in Infisical, see [Services](/documentation/platform/agent-vault/services).
 
 #### Update access bundle
 
@@ -1222,7 +1237,7 @@ const { members, totalCount } = await client.agentVault().accessBundles.listGran
 
 #### List available grantees
 
-List the Agent Vault members that an access bundle isn't granted to yet.
+List the members of the Agent Vault project that an access bundle isn't granted to yet.
 
 ```typescript
 import { AgentVaultMemberType } from "@infisical/sdk";
@@ -1250,7 +1265,7 @@ const { members, totalCount } = await client.agentVault().accessBundles.listAvai
 
 Grant an access bundle to users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
 
-Each user, machine identity, and group must be a member of Agent Vault. If a user or machine identity is in Agent Vault only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to Agent Vault](/documentation/platform/agent-vault/access-control#adding-members).
+Each user, machine identity, and group must be a member of the Agent Vault project. If a user or machine identity is in the Agent Vault project only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to the Agent Vault project](/documentation/platform/agent-vault/access-control#adding-members).
 
 ```typescript
 const { members, skipped } = await client.agentVault().accessBundles.grant("<access-bundle-id>", {
@@ -1299,16 +1314,17 @@ const { members, skipped } = await client.agentVault().accessBundles.revoke("<ac
 
 `client.agentVault().delegations` manages [delegations](/documentation/platform/agent-vault/sessions-on-behalf-of-users), which let a machine identity [create sessions on behalf of users](#create-a-session-on-behalf-of-a-user).
 
-To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
+To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
 
 <Note>
-  `agentVault` requires `@infisical/sdk` version 5.1.0 or newer.
+  `agentVault` requires `@infisical/sdk` version 5.2.0 or newer.
 </Note>
 
 #### List delegations
 
 ```typescript
 const { delegations, totalCount } = await client.agentVault().delegations.list({
+  projectId: "<project-id>",
   machineIdentityIds: ["<machine-identity-id>"], // Optional
   limit: 100, // Optional
   offset: 0 // Optional
@@ -1316,7 +1332,8 @@ const { delegations, totalCount } = await client.agentVault().delegations.list({
 ```
 
 **Parameters:**
-- `options` (object, optional):
+- `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list delegations from
   - `machineIdentityIds` (string[], optional): the IDs of the machine identities whose delegations to list (up to 100)
   - `limit` (number, optional): the maximum number of delegations to return, from 1 to 100 (defaults to `100`)
   - `offset` (number, optional): the number of delegations to skip (defaults to `0`)
@@ -1329,11 +1346,15 @@ const { delegations, totalCount } = await client.agentVault().delegations.list({
 Get which users a machine identity can create sessions on behalf of. If the machine identity has no delegation, `get` throws an `InfisicalSDKRequestError` whose `statusCode` is `404`.
 
 ```typescript
-const delegation = await client.agentVault().delegations.get("<machine-identity-id>");
+const delegation = await client.agentVault().delegations.get("<machine-identity-id>", {
+  projectId: "<project-id>"
+});
 ```
 
 **Parameters:**
 - `machineIdentityId` (string): the ID of the machine identity
+- `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to get the delegation from
 
 **Returns:**
 - `AgentVaultDelegationDetail`: the delegation, including `missingAccessBundles`
@@ -1348,6 +1369,7 @@ Set which users a machine identity can create sessions on behalf of. The new del
 import { AgentVaultDelegationScope } from "@infisical/sdk";
 
 const delegation = await client.agentVault().delegations.set("<machine-identity-id>", {
+  projectId: "<project-id>",
   scope: AgentVaultDelegationScope.Selected,
   userIds: ["<user-id>"], // Optional
   groupIds: ["<group-id>"] // Optional
@@ -1355,9 +1377,10 @@ const delegation = await client.agentVault().delegations.set("<machine-identity-
 ```
 
 **Parameters:**
-- `machineIdentityId` (string): the ID of the machine identity, which must be a member of Agent Vault
+- `machineIdentityId` (string): the ID of the machine identity, which must be a member of the Agent Vault project
 - `options` (object):
-  - `scope` (AgentVaultDelegationScope): either `AgentVaultDelegationScope.Selected` (`"selected"`) for only the users and groups that you pass, or `AgentVaultDelegationScope.AllMembers` (`"all-members"`) for every Agent Vault member, admins included
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to set the delegation in
+  - `scope` (AgentVaultDelegationScope): either `AgentVaultDelegationScope.Selected` (`"selected"`) for only the users and groups that you pass, or `AgentVaultDelegationScope.AllMembers` (`"all-members"`) for every member of the Agent Vault project, admins included
   - `userIds` (string[], optional): with `AgentVaultDelegationScope.Selected`, the IDs of the users that the machine identity can act on behalf of (up to 100)
   - `groupIds` (string[], optional): with `AgentVaultDelegationScope.Selected`, the IDs of the groups whose members the machine identity can act on behalf of (up to 100)
 
@@ -1366,16 +1389,17 @@ const delegation = await client.agentVault().delegations.set("<machine-identity-
 
 With `AgentVaultDelegationScope.Selected`, pass at least one user or group. With `AgentVaultDelegationScope.AllMembers`, pass no users or groups. To stop the machine identity from acting on behalf of anyone, [delete the delegation](#delete-delegation).
 
-Each user and group must be a member of Agent Vault. If a user is in Agent Vault only through a group, pass the group instead.
+Each user and group must be a member of the Agent Vault project. If a user is in the Agent Vault project only through a group, pass the group instead.
 
 #### List available users and groups
 
-List the Agent Vault users and groups that you can add to a machine identity's delegation.
+List the users and groups in the Agent Vault project that you can add to a machine identity's delegation.
 
 ```typescript
 import { AgentVaultMemberType } from "@infisical/sdk";
 
 const { members, totalCount } = await client.agentVault().delegations.listAvailableSubjects("<machine-identity-id>", {
+  projectId: "<project-id>",
   actorType: AgentVaultMemberType.User, // Optional
   search: "jsmith", // Optional
   limit: 20, // Optional
@@ -1385,7 +1409,8 @@ const { members, totalCount } = await client.agentVault().delegations.listAvaila
 
 **Parameters:**
 - `machineIdentityId` (string): the ID of the machine identity
-- `options` (object, optional):
+- `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list users and groups from
   - `actorType` (AgentVaultMemberType, optional): either `AgentVaultMemberType.User` (`"user"`) to list only users or `AgentVaultMemberType.Group` (`"group"`) to list only groups (defaults to listing both)
   - `search` (string, optional): text to find in user names, usernames, email addresses, and group names
   - `limit` (number, optional): the maximum number of users and groups to return, from 1 to 100 (defaults to `20`)
@@ -1403,6 +1428,7 @@ Add users and groups to a machine identity's delegation. The users and groups th
 
 ```typescript
 const delegation = await client.agentVault().delegations.addSubjects("<machine-identity-id>", {
+  projectId: "<project-id>",
   userIds: ["<user-id>"], // Optional
   groupIds: ["<group-id>"] // Optional
 });
@@ -1411,6 +1437,7 @@ const delegation = await client.agentVault().delegations.addSubjects("<machine-i
 **Parameters:**
 - `machineIdentityId` (string): the ID of the machine identity
 - `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) that the delegation is in
   - `userIds` (string[], optional): the IDs of the users to add (up to 100)
   - `groupIds` (string[], optional): the IDs of the groups to add (up to 100)
 
@@ -1426,6 +1453,7 @@ Remove users and groups from a machine identity's delegation. Pass at least one 
 
 ```typescript
 const delegation = await client.agentVault().delegations.removeSubjects("<machine-identity-id>", {
+  projectId: "<project-id>",
   userIds: ["<user-id>"], // Optional
   groupIds: ["<group-id>"] // Optional
 });
@@ -1434,6 +1462,7 @@ const delegation = await client.agentVault().delegations.removeSubjects("<machin
 **Parameters:**
 - `machineIdentityId` (string): the ID of the machine identity
 - `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) that the delegation is in
   - `userIds` (string[], optional): the IDs of the users to remove (up to 100)
   - `groupIds` (string[], optional): the IDs of the groups to remove (up to 100)
 
@@ -1445,11 +1474,15 @@ const delegation = await client.agentVault().delegations.removeSubjects("<machin
 Stop a machine identity from creating sessions on behalf of users. The proxy refuses the sessions that the machine identity already created on behalf of users until a delegation covers those users again. To end those sessions for good, [revoke them](#revoke-session).
 
 ```typescript
-const delegation = await client.agentVault().delegations.delete("<machine-identity-id>");
+const delegation = await client.agentVault().delegations.delete("<machine-identity-id>", {
+  projectId: "<project-id>"
+});
 ```
 
 **Parameters:**
 - `machineIdentityId` (string): the ID of the machine identity
+- `options` (object):
+  - `projectId` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to delete the delegation from
 
 **Returns:**
 - `AgentVaultDelegation`: the deleted delegation, without `missingAccessBundles`

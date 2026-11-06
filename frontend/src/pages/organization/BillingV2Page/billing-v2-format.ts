@@ -1,6 +1,8 @@
 import axios from "axios";
 
 import {
+  BillingV2Band,
+  BillingV2Bands,
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2Dim,
@@ -289,3 +291,82 @@ const TAX_TYPE_LABELS: Record<string, string> = {
 
 export const taxTypeLabel = (type: string): string =>
   TAX_TYPE_LABELS[type] ?? type.replace(/_/g, " ").toUpperCase();
+
+// Price of one band as a buyer reads it: whole-unit prices per unit, sub-cent ones per 1,000 or per
+// 1,000,000 ("$5 per 1,000 minutes"), "free" when it costs nothing.
+// A sub-cent unit price reads better per pack: $0.005 a unit is "$5 per 1,000".
+const bandPackPrice = (band: BillingV2Band): { price: number; pack: number } => {
+  let pack = 1;
+  if (band.unitPrice < 0.01) {
+    pack = band.unitPrice * 1000 >= 0.01 ? 1000 : 1_000_000;
+  }
+  return { price: Math.round(band.unitPrice * pack * 1e6) / 1e6, pack };
+};
+
+const fmtPackPrice = (price: number): string => fmtMoney(price, 6, price % 1 === 0 ? 0 : 2);
+
+export const bandRateLabel = (band: BillingV2Band, noun: string): string => {
+  const flat = band.flatFee > 0 ? ` + ${fmtMoneyCents(band.flatFee)}` : "";
+  if (band.unitPrice <= 0) {
+    return band.flatFee > 0 ? `${fmtMoneyCents(band.flatFee)} flat` : "free";
+  }
+  const { price, pack } = bandPackPrice(band);
+  const per = pack === 1 ? noun : `${pack.toLocaleString("en-US")} ${pluralizeUnit(noun)}`;
+  return `${fmtPackPrice(price)} per ${per}${flat}`;
+};
+
+// A band's price in a band table, whose range column already names the unit: "Included",
+// "$5 per 1,000", "$0.25 each".
+export const bandTableRate = (band: BillingV2Band): string => {
+  const flat = band.flatFee > 0 ? ` + ${fmtMoneyCents(band.flatFee)}` : "";
+  if (band.unitPrice <= 0) {
+    return band.flatFee > 0 ? `${fmtMoneyCents(band.flatFee)} flat` : "Included";
+  }
+  const { price, pack } = bandPackPrice(band);
+  const per = pack === 1 ? "each" : `per ${pack.toLocaleString("en-US")}`;
+  return `${fmtPackPrice(price)} ${per}${flat}`;
+};
+
+// Range a band covers, e.g. "10,001 – 100,000" or "100,001+"; the first band starts at 0.
+export const bandRangeLabel = (bands: BillingV2Bands, index: number): string => {
+  const from = index === 0 ? 0 : (bands.tiers[index - 1].upTo ?? 0) + 1;
+  const { upTo } = bands.tiers[index];
+  return upTo === null
+    ? `${from.toLocaleString("en-US")}+`
+    : `${from.toLocaleString("en-US")} – ${upTo.toLocaleString("en-US")}`;
+};
+
+// A metered dimension's tile caption: what usage so far this period is estimated to cost, and the
+// band it is in when the price has more than one.
+export const meteredUsageCaption = (dim: BillingV2EntitlementDim): string | null => {
+  if (!dim.metered || !dim.usage) {
+    return null;
+  }
+  // A trial's usage is free, so it carries no amount; the plan card shows which band it reached.
+  if (dim.usage.trial) {
+    return "free during your trial";
+  }
+  const parts: string[] = [];
+  if (dim.usage.estimatedAmount !== null) {
+    parts.push(`≈ ${fmtMoneyCents(dim.usage.estimatedAmount)} so far`);
+  }
+  if (dim.bands && dim.bands.tiers.length > 1) {
+    const band = dim.bands.tiers[dim.usage.currentTier];
+    if (band) {
+      parts.push(`band ${dim.usage.currentTier + 1}: ${bandRateLabel(band, dim.noun)}`);
+    }
+  } else if (dim.bands && dim.bands.tiers.length === 1) {
+    parts.push(bandRateLabel(dim.bands.tiers[0], dim.noun));
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+};
+
+// The band a period total lands in: the first whose inclusive upper limit covers it.
+export const bandIndexFor = (bands: BillingV2Bands, quantity: number): number => {
+  const index = bands.tiers.findIndex((band) => band.upTo === null || quantity <= band.upTo);
+  return index >= 0 ? index : bands.tiers.length - 1;
+};
+
+// Whether meteredUsageCaption names the dimension's rate, so a meter beside it should not repeat it.
+export const meteredRateInCaption = (dim: BillingV2EntitlementDim): boolean =>
+  dim.metered && Boolean(dim.usage) && (dim.bands?.tiers.length ?? 0) > 0;

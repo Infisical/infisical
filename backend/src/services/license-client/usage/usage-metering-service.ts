@@ -1,11 +1,14 @@
+import { v4 as uuidv4 } from "uuid";
+
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { applyJitter } from "@app/lib/dates";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseClientFactory } from "../license-client";
 import { METERED_DIMENSION_KEYS } from "./usage-counters";
+import { MAX_USAGE_EVENTS_PER_REQUEST } from "./usage-reporter";
 
 export type TUsageMeteringServiceFactory = ReturnType<typeof usageMeteringServiceFactory>;
 
@@ -17,6 +20,16 @@ type TUsageMeteringServiceFactoryDep = {
 };
 
 const DEBOUNCE_MS = 5000;
+
+// A metered fact for a sum or count meter. The license server dedups on (eventId, occurredAt), so both
+// must be stable for the fact: recording it again with the same pair is a no-op. quantity is required
+// because the server reads a missing one as 0; a count meter ignores it, so pass 1.
+export type TMeteringEventInput = {
+  eventId: string;
+  dimensionKey: string;
+  quantity: number;
+  occurredAt: Date;
+};
 
 export const usageMeteringServiceFactory = ({
   queueService,
@@ -105,5 +118,56 @@ export const usageMeteringServiceFactory = ({
     });
   };
 
-  return { emit, emitForProject, reconcile };
+  // Fire-and-forget like emit, but every event is a fact to deliver, so jobs are never debounced or
+  // replaced. The server accepts or rejects a request whole, so each job (one request) holds a single
+  // dimension: a dimension the org's plan does not price is refused without taking other events.
+  const recordMeteringEvents = (orgId: string, events: TMeteringEventInput[]) => {
+    if (!licenseClient.isEnabled() || !events.length) {
+      return;
+    }
+
+    const byDimension = new Map<string, TQueueJobTypes[QueueName.MeteringEvent]["payload"]["events"]>();
+    events.forEach((e) => {
+      const group = byDimension.get(e.dimensionKey) ?? [];
+      group.push({
+        eventId: e.eventId,
+        dimensionKey: e.dimensionKey,
+        quantity: e.quantity,
+        occurredAt: e.occurredAt.toISOString()
+      });
+      byDimension.set(e.dimensionKey, group);
+    });
+
+    const chunks = [...byDimension.values()].flatMap((group) => {
+      const parts = [];
+      for (let i = 0; i < group.length; i += MAX_USAGE_EVENTS_PER_REQUEST) {
+        parts.push(group.slice(i, i + MAX_USAGE_EVENTS_PER_REQUEST));
+      }
+      return parts;
+    });
+
+    chunks.forEach((chunk) => {
+      void queueService
+        .queue(
+          QueueName.MeteringEvent,
+          QueueJobs.MeteringEvent,
+          { orgId, events: chunk },
+          {
+            jobId: uuidv4(),
+            attempts: 10,
+            backoff: { type: "exponential", delay: 10_000 },
+            removeOnComplete: true,
+            removeOnFail: { count: 1000 }
+          }
+        )
+        .catch((error) => {
+          logger.error(
+            error,
+            `usage-metering: failed to enqueue metering events [orgId=${orgId}] [dimensionKey=${chunk[0].dimensionKey}] [count=${chunk.length}]`
+          );
+        });
+    });
+  };
+
+  return { emit, emitForProject, reconcile, recordMeteringEvents };
 };
