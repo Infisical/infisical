@@ -56,6 +56,9 @@ import {
   TAgentVaultSessionAccessBundles,
   TAgentVaultSessionAccessBundlesInsert,
   TAgentVaultSessionAccessBundlesUpdate,
+  TAgentVaultSessionInlineServices,
+  TAgentVaultSessionInlineServicesInsert,
+  TAgentVaultSessionInlineServicesUpdate,
   TAgentVaultSessionLogConfigs,
   TAgentVaultSessionLogConfigsInsert,
   TAgentVaultSessionLogConfigsUpdate,
@@ -167,6 +170,9 @@ import {
   TCertificateAuthorityCrl,
   TCertificateAuthorityCrlInsert,
   TCertificateAuthorityCrlUpdate,
+  TCertificateAuthorityCrossSignedCerts,
+  TCertificateAuthorityCrossSignedCertsInsert,
+  TCertificateAuthorityCrossSignedCertsUpdate,
   TCertificateAuthoritySecret,
   TCertificateAuthoritySecretInsert,
   TCertificateAuthoritySecretUpdate,
@@ -933,6 +939,11 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrl,
       TCertificateAuthorityCrlInsert,
       TCertificateAuthorityCrlUpdate
+    >;
+    [TableName.CertificateAuthorityCrossSignedCert]: KnexOriginal.CompositeTableType<
+      TCertificateAuthorityCrossSignedCerts,
+      TCertificateAuthorityCrossSignedCertsInsert,
+      TCertificateAuthorityCrossSignedCertsUpdate
     >;
     [TableName.InternalCertificateAuthority]: KnexOriginal.CompositeTableType<
       TInternalCertificateAuthorities,
@@ -1898,6 +1909,11 @@ declare module "knex/types/tables" {
       TAgentVaultSessionAccessBundles,
       TAgentVaultSessionAccessBundlesInsert,
       TAgentVaultSessionAccessBundlesUpdate
+    >;
+    [TableName.AgentVaultSessionInlineService]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionInlineServices,
+      TAgentVaultSessionInlineServicesInsert,
+      TAgentVaultSessionInlineServicesUpdate
     >;
     [TableName.AgentVaultDelegation]: KnexOriginal.CompositeTableType<
       TAgentVaultDelegations,

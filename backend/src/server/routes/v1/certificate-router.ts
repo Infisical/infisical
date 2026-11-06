@@ -22,6 +22,7 @@ import {
   certificateAttributesSchema,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
+  csrSchema,
   CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE,
   resolvedCustomExtensionSchema,
   subjectAttributeSchema
@@ -52,8 +53,6 @@ type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertifica
 // their format here (wildcards like *.example.com are valid); only bound the length, which
 // subjectAttributeSchema does against the varchar(255) columns they are persisted in.
 const subjectAttributeField = subjectAttributeSchema;
-
-const csrSchema = z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters");
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -989,7 +988,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           profileId: z.string().uuid(),
-          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters"),
+          csr: csrSchema,
           ttl: z
             .string()
             .trim()
@@ -1259,7 +1258,14 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             .optional()
             .describe(CERTIFICATES.RENEW.renewalKeySource),
           csr: csrSchema.optional().describe(CERTIFICATES.RENEW.csr),
-          attributes: certificateAttributesSchema.optional().describe(CERTIFICATES.RENEW.attributes)
+          attributes: certificateAttributesSchema.optional().describe(CERTIFICATES.RENEW.attributes),
+          externalConfiguration: z
+            .object({
+              reissue: booleanSchema.optional().describe(CERTIFICATES.RENEW.reissue)
+            })
+            .strict()
+            .optional()
+            .describe(CERTIFICATES.RENEW.externalConfiguration)
         })
         .nullish(),
       response: {
@@ -1287,7 +1293,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         removeRootsFromChain: req.body?.removeRootsFromChain,
         renewalKeySource: req.body?.renewalKeySource,
         csr: req.body?.csr,
-        attributes: req.body?.attributes
+        attributes: req.body?.attributes,
+        externalConfiguration: req.body?.externalConfiguration
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1305,6 +1312,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             applicationId: data.applicationId,
             applicationName: data.applicationName,
             renewalKeySource: req.body?.renewalKeySource ?? CertificateRenewalKeySource.New,
+            externalConfiguration: req.body?.externalConfiguration,
             changedAttributes: data.changedAttributes ?? [],
             status: data.status
           }

@@ -92,6 +92,7 @@ import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
+import { ValidateClickHouseConnectionCredentialsSchema } from "./clickhouse";
 import { ValidateCloud66ConnectionCredentialsSchema } from "./cloud-66";
 import { cloud66ConnectionService } from "./cloud-66/cloud-66-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
@@ -347,7 +348,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
   [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
   [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
-  [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema
+  [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
+  [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -855,6 +857,14 @@ export const appConnectionServiceFactory = ({
       );
 
       if (gatewayId) {
+        const plan = await licenseService.getPlan(actor.orgId);
+        if (!plan.gateway) {
+          throw new BadRequestError({
+            message:
+              "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
+          });
+        }
+
         const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
         if (!gatewayV2) {
           throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
@@ -1481,7 +1491,13 @@ export const appConnectionServiceFactory = ({
     }),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
-    databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    databricks: databricksConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsService,
+      gatewayV2Service,
+      gatewayPoolService
+    ),
     aws: awsConnectionService(connectAppConnectionById),
     kempLoadMaster: kempLoadMasterConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     imperva: impervaConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),

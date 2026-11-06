@@ -103,7 +103,7 @@ type TSuperAdminServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "delete">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   eventEmitter: TEventEmitter;
@@ -364,8 +364,10 @@ export const superAdminServiceFactory = ({
   ) => {
     const updatedData = data;
 
-    if (data.enabledLoginMethods) {
-      const superAdminUser = await userDAL.findById(userId);
+    // The lockout guard protects a user admin. A machine identity admin signs in with none of these
+    // login methods, so there is nothing to lock it out of and no user row to read.
+    const superAdminUser = data.enabledLoginMethods ? await userDAL.findById(userId) : undefined;
+    if (data.enabledLoginMethods && superAdminUser) {
       const isSamlConfiguredForUser = Boolean(
         await userAliasDAL.findOne({
           userId,

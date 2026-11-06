@@ -17,9 +17,10 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  Input,
-  TextArea
+  Input
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import {
   useCreateAgentVaultAccessBundle,
   useUpdateAgentVaultAccessBundle
@@ -29,7 +30,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 const schema = z.object({
   name: slugSchema({ max: 64, field: "Name" }),
-  description: z.string().trim().max(256).optional()
+  description: agentVaultDescriptionSchema.optional()
 });
 
 type FormData = z.infer<typeof schema>;
@@ -47,8 +48,9 @@ export const AccessBundleFormDialog = ({
   accessBundle,
   onCreated
 }: Props) => {
-  const createAccessBundle = useCreateAgentVaultAccessBundle();
-  const updateAccessBundle = useUpdateAgentVaultAccessBundle();
+  const { projectId } = useProject();
+  const createAccessBundle = useCreateAgentVaultAccessBundle(projectId);
+  const updateAccessBundle = useUpdateAgentVaultAccessBundle(projectId);
   const isUpdate = Boolean(accessBundle);
 
   const {
@@ -127,9 +129,8 @@ export const AccessBundleFormDialog = ({
               <Field>
                 <FieldLabel>Description</FieldLabel>
                 <FieldContent>
-                  <TextArea
+                  <Input
                     {...field}
-                    rows={2}
                     placeholder="Paging, metrics, issue tracking"
                     isError={Boolean(fieldState.error)}
                   />

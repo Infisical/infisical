@@ -3,6 +3,7 @@ import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotat
 import { registerAuth0ClientSecretRotationRouter } from "./auth0-client-secret-rotation-router";
 import { registerAwsIamUserSecretRotationRouter } from "./aws-iam-user-secret-rotation-router";
 import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-rotation-router";
+import { registerClickHouseCredentialsRotationRouter } from "./clickhouse-credentials-rotation-router";
 import { registerCloudflareApiTokenRotationRouter } from "./cloudflare-api-token-rotation-router";
 import { registerCloudflareR2AccessKeyRotationRouter } from "./cloudflare-r2-access-key-rotation-router";
 import { registerConvexAccessKeyRotationRouter } from "./convex-access-key-rotation-router";
@@ -66,5 +67,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.CloudflareApiToken]: registerCloudflareApiTokenRotationRouter,
   [SecretRotation.CloudflareR2AccessKey]: registerCloudflareR2AccessKeyRotationRouter,
   [SecretRotation.StripeApiKey]: registerStripeApiKeyRotationRouter,
-  [SecretRotation.GcpServiceAccountKey]: registerGcpServiceAccountKeyRotationRouter
+  [SecretRotation.GcpServiceAccountKey]: registerGcpServiceAccountKeyRotationRouter,
+  [SecretRotation.ClickHouseCredentials]: registerClickHouseCredentialsRotationRouter
 };

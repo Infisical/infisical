@@ -542,20 +542,22 @@ export const CreateSecretForm = ({
     }
 
     if (updatedEnvs.length) {
+      const createdSecrets = results.flatMap((result) =>
+        result.status === "fulfilled" && !("approval" in result.value)
+          ? [
+              {
+                environment: result.value.environment,
+                key: result.value.secret.key,
+                value: result.value.secret.value,
+                tags: result.value.secret.tags?.map((tag) => tag.label)
+              }
+            ]
+          : []
+      );
       notifySecretsCreated(
-        responseCount,
-        results.flatMap((result) =>
-          result.status === "fulfilled" && !("approval" in result.value)
-            ? [
-                {
-                  environment: result.value.environment,
-                  key: result.value.secret.key,
-                  value: result.value.secret.value,
-                  tags: result.value.secret.tags?.map((tag) => tag.label)
-                }
-              ]
-            : []
-        )
+        new Set(createdSecrets.map(({ key }) => key)).size,
+        createdSecrets,
+        updatedEnvs.length > 1 ? `Added to ${updatedEnvs.length} environments` : undefined
       );
 
       // The user just created a secret: let the parent check whether to surface the nudge.

@@ -23,6 +23,7 @@ import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
+import { TVenafiTppConnectionConfig } from "@app/services/app-connection/venafi-tpp";
 import { DELEGATED_APPROVAL_CONNECTION_MAP } from "@app/services/delegated-approval/delegated-approval-maps";
 import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
@@ -108,6 +109,11 @@ import {
   getCircleCIConnectionListItem,
   validateCircleCIConnectionCredentials
 } from "./circleci";
+import {
+  ClickHouseConnectionMethod,
+  getClickHouseConnectionListItem,
+  validateClickHouseConnectionCredentials
+} from "./clickhouse";
 import {
   Cloud66ConnectionMethod,
   getCloud66ConnectionListItem,
@@ -337,7 +343,6 @@ import {
   validateVenafiTppConnectionCredentials,
   VenafiTppConnectionMethod
 } from "./venafi-tpp";
-import { TVenafiTppConnectionConfig } from "./venafi-tpp/venafi-tpp-connection-types";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 import {
@@ -521,7 +526,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getHpeIloConnectionListItem(),
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
-    getJiraConnectionListItem()
+    getJiraConnectionListItem(),
+    getClickHouseConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -772,7 +778,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -850,6 +857,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case WinRMConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case ClickHouseConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case SnowflakeConnectionMethod.UsernameAndToken:
       return "Username & Token";
@@ -914,6 +922,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Certificate";
     case AzureKeyVaultConnectionMethod.ManagedIdentity:
       return "Managed Identity";
+    case OVHConnectionMethod.Token:
+      return "Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -1099,7 +1109,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
-  [AppConnection.Jira]: platformManagedCredentialsNotSupported
+  [AppConnection.Jira]: platformManagedCredentialsNotSupported,
+  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

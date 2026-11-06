@@ -6,7 +6,8 @@ import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/compo
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
-  useOrganization
+  useOrganization,
+  useProject
 } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -24,6 +25,7 @@ export enum AgentVaultAccessControlTab {
 }
 
 const AgentVaultAccessControlTabs = () => {
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
@@ -35,9 +37,9 @@ const AgentVaultAccessControlTabs = () => {
 
   const updateTab = (tab: string) => {
     navigate({
-      to: "/organizations/$orgId/agent-vault/access-management",
+      to: "/organizations/$orgId/projects/agent-vault/$projectId/access-management",
       search: (prev) => ({ ...prev, selectedTab: tab }),
-      params: { orgId: currentOrg.id }
+      params: { orgId: currentOrg.id, projectId }
     });
   };
 

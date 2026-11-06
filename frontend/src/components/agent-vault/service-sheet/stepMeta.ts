@@ -78,8 +78,20 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     subtitle: "How the proxy authenticates to this MCP server.",
     rightLabel: "CREDENTIAL",
     rightDescription:
-      "The proxy authenticates to the MCP server for the agent. The agent can call any tool the server exposes to this credential.",
+      "The proxy authenticates to the MCP server for the agent. You choose which of its tools the agent can call on the next step.",
     rightTip: MCP_VARIABLE_TIP
+  },
+  {
+    step: ServiceStep.Tools,
+    name: "Tools",
+    shortDescription: "Tools agents can call",
+    title: "Tools",
+    subtitle: "Which of the server's tools agents can call through this service.",
+    rightLabel: "TOOLS",
+    rightDescription:
+      "The proxy refuses a call to any tool that isn't selected and hides it from the agent's tool list. The rule applies to every member and session using this service.",
+    rightTip:
+      "Turning off All Tools asks the server for its list with the credential from the previous step. To allow a tool the server doesn't list, type its exact name in Allowed Tools."
   },
   REVIEW_STEP
 ];

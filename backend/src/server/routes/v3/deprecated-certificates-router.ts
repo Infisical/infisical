@@ -11,7 +11,8 @@ import { validateCaDateField } from "@app/services/certificate-authority/certifi
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  csrSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
@@ -219,7 +220,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           profileId: z.string().uuid(),
-          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters"),
+          csr: csrSchema,
           ttl: z
             .string()
             .trim()

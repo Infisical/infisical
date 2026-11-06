@@ -377,7 +377,7 @@ func (r *delegatedRequest) callback(t *testing.T, token string) int {
 
 // sendCallback takes no *testing.T so it can run on another goroutine.
 func sendCallback(ctx context.Context, client *api.ClientWithResponses, sysID, token string) (int, error) {
-	body := api.HandleDelegatedApprovalCallbackJSONRequestBody{Version: api.N1, Event: api.SecretsManagementAccessRequest}
+	body := api.HandleDelegatedApprovalCallbackJSONRequestBody{Version: api.HandleDelegatedApprovalCallbackJSONBodyVersionN1, Event: api.SecretsManagementAccessRequest}
 	body.Details.ExternalId = sysID
 	res, err := client.HandleDelegatedApprovalCallbackWithResponse(ctx,
 		&api.HandleDelegatedApprovalCallbackParams{InfisicalApprovalToken: &token}, body)

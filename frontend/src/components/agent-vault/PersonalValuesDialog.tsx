@@ -26,6 +26,11 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import {
+  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
+  AGENT_VAULT_NO_CONTROL_CHARS_RE
+} from "@app/helpers/agentVaultControlChars";
 import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import {
   findVariableReferences,
@@ -53,13 +58,6 @@ import {
 } from "./service-sheet/ServiceVariablesContext";
 import { VariableKeyChips } from "./service-sheet/VariableChips";
 import { VariableFormDialog } from "./VariableFormDialog";
-
-// Mirrors AGENT_VAULT_NO_CONTROL_CHARS_RE on the backend.
-// eslint-disable-next-line no-control-regex
-const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
-
-const CONTROL_CHARS_MESSAGE =
-  "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
 // The fields reuse the service sheet's secret input, which names them as the sheet does: a token or a basic
 // password is `secret`.
@@ -110,7 +108,8 @@ const buildSchema = (
         if (!savedFields.has(field)) at("Required");
       } else if (value.length > maxLength) {
         at(`This can be at most ${maxLength} characters.`);
-      } else if (!NO_CONTROL_CHARS_RE.test(value)) at(CONTROL_CHARS_MESSAGE);
+      } else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(value))
+        at(AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
       else {
         // Only once the list has loaded: until then no key can be called missing.
         const missingKeys = keys
@@ -135,20 +134,23 @@ type Props = {
  * so ones already set are replaced in full by typing them again.
  */
 export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
+  const { projectId } = useProject();
   const isOpen = Boolean(target);
   // Read from the bundle query rather than the copy the dialog opened with, so a refetch after an admin changes the
   // service (a save answered 409) shows the service as it is now.
   const { data: liveBundle } = useGetAgentVaultAccessBundle(
+    projectId,
     isOpen ? (target?.service.accessBundleId ?? "") : ""
   );
   const service =
     liveBundle?.services.find((candidate) => candidate.id === target?.service.id) ??
     target?.service;
   const personalValues = service?.personalValues;
-  const setValues = useSetAgentVaultPersonalValues();
-  const deleteValues = useDeleteAgentVaultPersonalValues();
+  const setValues = useSetAgentVaultPersonalValues(projectId);
+  const deleteValues = useDeleteAgentVaultPersonalValues(projectId);
   // A member keeps at most MAX_PERSONAL_VARIABLES, so one page holds every one of them.
   const { data: variablePage } = useListAgentVaultVariables(
+    projectId,
     { scope: AgentVaultVariableScope.Personal, limit: MAX_PERSONAL_VARIABLES },
     { enabled: isOpen }
   );

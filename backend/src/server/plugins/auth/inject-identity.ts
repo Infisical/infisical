@@ -41,6 +41,7 @@ export type TAuthMode =
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
+      idpMfaOrgId?: string;
       oauthClientId?: string;
       token: AuthModeJwtTokenPayload;
     }
@@ -299,7 +300,7 @@ export const injectIdentity = fp(
       }
 
       // Authenticated on the route by an Agent Vault session token, which is not a JWT.
-      if (pathname === "/api/v1/agent-vault/session/skills") {
+      if (pathname === "/api/v1/agent-vault/session/skills" || pathname === "/api/v1/agent-vault/session/revoke") {
         return;
       }
 
@@ -326,7 +327,11 @@ export const injectIdentity = fp(
             await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
-          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.UserAuthInfo, {
+            userId: user.id,
+            email: user.email || "",
+            issuingRootOrgId: token.issuingRootOrgId
+          });
           req.auth = {
             authMode: AuthMode.JWT,
             user,
@@ -339,7 +344,8 @@ export const injectIdentity = fp(
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
             token,
-            mfaMethod: token.mfaMethod
+            mfaMethod: token.mfaMethod,
+            idpMfaOrgId: token.idpMfaOrgId
           };
           fireIdentifyForUser(user);
           break;
@@ -352,7 +358,11 @@ export const injectIdentity = fp(
           if (token.delegation !== OauthDelegationMode.Full) {
             requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
           }
-          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.UserAuthInfo, {
+            userId: user.id,
+            email: user.email || "",
+            issuingRootOrgId: token.issuingRootOrgId
+          });
           req.auth = {
             authMode: AuthMode.OAUTH,
             user,

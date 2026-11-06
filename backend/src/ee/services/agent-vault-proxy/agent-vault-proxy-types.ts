@@ -9,7 +9,8 @@ import {
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultProxyConfig = {
-  trafficPolicy: AgentVaultTrafficPolicy;
+  // The name proxies understand; the admin API calls bundle-hosts service-hosts.
+  trafficPolicy: AgentVaultTrafficPolicy.AnyHost | AgentVaultTrafficPolicy.BundleHosts;
   allowedHosts: string | null;
   pollInterval: number;
 };
@@ -24,6 +25,7 @@ export type TListProxiesDTO = TAgentVaultProxyScoped & {
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -32,6 +34,7 @@ export type TCreateProxyDTO = TAgentVaultProxyScoped & {
 export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
   proxyId: string;
   name?: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -64,6 +67,10 @@ export type TGetSessionSkillsDTO = {
   sessionToken: string;
 };
 
+export type TRevokeSessionByTokenDTO = {
+  sessionToken: string;
+};
+
 export type TResolveSessionDTO = TAuthorizeSessionDTO & {
   hasSessionLogKey: boolean;
 };
@@ -85,11 +92,13 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
 export type TResolvedService = {
   id: string;
   name: string;
-  accessBundleName: string;
+  // Null for a service sent inline with the session, which belongs to no bundle.
+  accessBundleName: string | null;
   type: AgentVaultServiceType;
   hostPattern: string;
   allowedMethods: string[] | null;
   allowedPathPrefixes: string[] | null;
+  allowedTools: string[] | null;
   credential:
     | {
         type: AgentVaultCredentialType.Bearer;

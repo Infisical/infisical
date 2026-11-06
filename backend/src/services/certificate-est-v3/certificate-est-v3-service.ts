@@ -349,7 +349,9 @@ export const certificateEstV3ServiceFactory = ({
     const verifiedChains = await Promise.all(
       caCertChains.map((chain) => {
         const caCert = new x509.X509Certificate(chain.certificate);
-        const caChain = extractX509CertFromChain(chain.certificateChain)?.map((c) => new x509.X509Certificate(c)) || [];
+        const caChain = chain.certificateChain
+          ? extractX509CertFromChain(chain.certificateChain).map((c) => new x509.X509Certificate(c))
+          : [];
 
         return isCertChainValid([cert, caCert, ...caChain]);
       })

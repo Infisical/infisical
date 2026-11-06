@@ -19,6 +19,9 @@ export const AGENT_VAULT_MALFORMED_REFERENCE_MESSAGE = `Double braces are reserv
 
 export const AGENT_VAULT_TOO_MANY_REFERENCES_MESSAGE = `A value can use at most ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} variable references, and a reference that repeats counts each time. Combine some into one variable to use fewer.`;
 
+export const AGENT_VAULT_INLINE_SERVICE_VARIABLE_MESSAGE =
+  "Services sent with a session can't use variables, so a value can't wrap text in double braces, as in {{GITHUB_TOKEN}}. Send the value itself, or add the service to an access bundle to use a variable.";
+
 // Every {{...}} counts as a reference, so a mistyped one fails the save instead of reaching a real host as
 // literal text.
 const REFERENCE_RE = new RE2(/\{\{([^{}]*)\}\}/g);
@@ -35,6 +38,9 @@ export const hasMalformedVariableReference = (text: string) =>
 
 export const hasTooManyVariableReferences = (text: string) =>
   findReferenceTokens(text).length > AGENT_VAULT_MAX_REFERENCES_PER_FIELD;
+
+// Well formed or not, anything that would count as a reference in a service that takes them.
+export const hasVariableReference = (text: string) => findReferenceTokens(text).length > 0;
 
 export const findVariableKeys = (text: string) => [
   ...new Set(findReferenceTokens(text).filter((token) => isVariableKey(token)))

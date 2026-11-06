@@ -911,8 +911,15 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
           isOpen={isImportOpen}
           onOpenChange={setIsImportOpen}
           sourceId={sourceId}
+          credentialAccountId={source?.credentialAccountId}
           accounts={selectedAccounts}
-          onImported={() => setSelected({})}
+          onImported={(discoveredAccountIds) =>
+            setSelected((prev) =>
+              Object.fromEntries(
+                Object.entries(prev).filter(([id]) => !discoveredAccountIds.includes(id))
+              )
+            )
+          }
         />
       )}
     </>
