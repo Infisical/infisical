@@ -1300,6 +1300,9 @@ td.tableSelectionCell {
   background-color: var(--v4-table-row-ground);
   background-image: var(--v4-table-row-layers);
 }
+.tableSelectionCell[data-divider="false"] {
+  border-inline-end: 0;
+}
 .tableSelectionCell > * {
   margin-inline: auto;
 }
