@@ -570,7 +570,7 @@ export const FolderAccessSheet = ({
                       key={`${actor.type}-${actor.id}`}
                       actor={actor}
                       canApplyToSubfolders={isRoot}
-                      onSetTier={(tier) => setTier(actor, tier)}
+                      onSetTier={(tier, isRecursive) => setTier(actor, tier, isRecursive)}
                       onSetRecursive={(isRecursive) => setRecursive(actor, isRecursive)}
                       onSetTemporaryRange={(range) =>
                         setAccessType(actor, {

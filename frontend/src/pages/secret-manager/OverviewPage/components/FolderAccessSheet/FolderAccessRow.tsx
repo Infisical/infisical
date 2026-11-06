@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { BotIcon, ChevronDownIcon, CornerDownRightIcon, LockIcon, ShieldIcon } from "lucide-react";
+import {
+  BotIcon,
+  ChevronDownIcon,
+  CornerDownRightIcon,
+  FolderTreeIcon,
+  LockIcon,
+  ShieldIcon
+} from "lucide-react";
 
 import {
   Badge,
@@ -32,6 +39,8 @@ import {
 import { TierDropdown } from "./TierDropdown";
 
 const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
+
+const RECURSIVE_NOTE = "The selected tier applies to / and all of its subfolders.";
 
 const remainingTimeOf = (grant: TFolderAccess | null) =>
   grant?.isTemporary && grant.temporaryAccessEndTime
@@ -115,7 +124,7 @@ type Props = {
   isDisabled?: boolean;
   // only the root folder's grants may apply to subfolders, so the control is hidden elsewhere
   canApplyToSubfolders?: boolean;
-  onSetTier: (tier: SecretFolderRole) => void;
+  onSetTier: (tier: SecretFolderRole, isRecursive: boolean) => void;
   onSetRecursive: (isRecursive: boolean) => void;
   onSetTemporaryRange: (range: string) => void;
   onMakePermanent: () => void;
@@ -136,12 +145,7 @@ export const FolderAccessGrantRow = ({
   onSetTier
 }: GrantRowProps) => {
   const [isRecursive, setIsRecursive] = useState(false);
-  const note = [
-    footerNote,
-    isRecursive ? "The selected tier applies to / and all of its subfolders." : undefined
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const note = [footerNote, isRecursive ? RECURSIVE_NOTE : undefined].filter(Boolean).join(" ");
 
   return (
     <div className={ROW_CLASS_NAME}>
@@ -183,6 +187,7 @@ export const FolderAccessRow = ({
   onManageInheritedAccess
 }: Props) => {
   const [isTemporaryOpen, setIsTemporaryOpen] = useState(false);
+  const [isRecursive, setIsRecursive] = useState(false);
   const [range, setRange] = useState(actor.access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
 
   const { access, inheritedAccess } = actor;
@@ -227,7 +232,13 @@ export const FolderAccessRow = ({
   })();
 
   const grantedFooterNote = (() => {
-    if (!access) return `Choosing a tier overrides ${firstName}'s project role in this folder.`;
+    if (!access)
+      return [
+        `Choosing a tier overrides ${firstName}'s project role in this folder.`,
+        isRecursive ? RECURSIVE_NOTE : undefined
+      ]
+        .filter(Boolean)
+        .join(" ");
     if (inheritedAccess)
       return `Also inherits ${inheritedTierLabel} from ${inheritedAccess.secretPath}; removing this access falls back to it.`;
     return undefined;
@@ -235,16 +246,13 @@ export const FolderAccessRow = ({
 
   const captionParts = ((): TCaptionPart[] => {
     if (access) {
-      const scope = access.isPermissionRecursive ? "this folder and subfolders" : "this folder";
       const source: TCaptionPart = isOverride
         ? {
             text: `Overrides ${roleNames} role${actor.roles.length > 1 ? "s" : ""}`,
             tone: "warning"
           }
-        : { text: `Granted in ${scope}` };
-      const recursive: TCaptionPart[] =
-        isOverride && access.isPermissionRecursive ? [{ text: "Includes subfolders" }] : [];
-      return [source, ...recursive, ...expiryCaptionOf(remainingTime)];
+        : { text: "Granted in this folder" };
+      return [source, ...expiryCaptionOf(remainingTime)];
     }
     if (inheritedAccess) {
       return [
@@ -273,7 +281,21 @@ export const FolderAccessRow = ({
               Via project role
             </span>
           )}
-          <DropdownMenu>
+          {access?.isPermissionRecursive && (
+            <Badge
+              variant="neutral"
+              iconPosition="left"
+              title={`Applies to ${access.secretPath} and all of its subfolders`}
+            >
+              <FolderTreeIcon />
+              Recursive
+            </Badge>
+          )}
+          <DropdownMenu
+            onOpenChange={(open) => {
+              if (!open) setIsRecursive(false);
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" isDisabled={isDisabled}>
                 {triggerLabel}
@@ -293,11 +315,12 @@ export const FolderAccessRow = ({
                     }
                   : undefined
               }
-              recursive={
-                access && canApplyToSubfolders
-                  ? { checked: access.isPermissionRecursive, onCheckedChange: onSetRecursive }
-                  : undefined
-              }
+              recursive={(() => {
+                if (!canApplyToSubfolders) return undefined;
+                if (access)
+                  return { checked: access.isPermissionRecursive, onCheckedChange: onSetRecursive };
+                return { checked: isRecursive, onCheckedChange: setIsRecursive };
+              })()}
               temporaryLabel={
                 remainingTime && remainingTime?.expiresAt ? (
                   <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
@@ -310,7 +333,7 @@ export const FolderAccessRow = ({
                   "Add Temporary Access"
                 )
               }
-              onSelectTier={onSetTier}
+              onSelectTier={(tier) => onSetTier(tier, isRecursive)}
               onEditTemporaryAccess={access ? openTemporary : undefined}
               onRemove={access ? onRemove : undefined}
               removeLabel={
