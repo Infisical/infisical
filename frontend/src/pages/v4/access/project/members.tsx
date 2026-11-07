@@ -97,7 +97,6 @@ export const ProjectMembersTab = () => {
     {
       id: "name",
       header: "Name",
-      primary: true,
       sortable: true,
       grow: true,
       render: (member) => (

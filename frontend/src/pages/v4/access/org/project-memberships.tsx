@@ -406,7 +406,6 @@ export const ProjectMembershipsSection = ({
     {
       id: "name",
       header: "Name",
-      primary: true,
       sortable: true,
       grow: true,
       render: (row) => (

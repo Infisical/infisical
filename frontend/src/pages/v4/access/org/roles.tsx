@@ -216,7 +216,6 @@ export const OrgRolesTab = () => {
     {
       id: "name",
       header: "Name",
-      primary: true,
       sortable: true,
       grow: true,
       render: (role) => (

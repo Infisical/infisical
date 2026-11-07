@@ -173,7 +173,6 @@ const UserGroupsSection = ({ username }: { username: string }) => {
     {
       id: "name",
       header: "Name",
-      primary: true,
       sortable: true,
       render: (group) => (
         <AccessRowLink href={accessLinks.orgGroup(orgId, group.id)} title={group.name}>

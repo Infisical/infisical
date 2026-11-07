@@ -90,7 +90,6 @@ export const ProjectRolesTab = () => {
     {
       id: "name",
       header: "Name",
-      primary: true,
       sortable: true,
       grow: true,
       render: (role) => (

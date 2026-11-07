@@ -245,32 +245,38 @@ export const OrgMembersTab = () => {
     {
       id: "name",
       header: "Name",
-      primary: true,
+      sortable: true,
+      grow: true,
+      render: (member) => (
+        <AccessRowLink
+          href={member.membership ? accessLinks.orgMember(orgId, member.membership.id) : undefined}
+          title={displayName(member.user) ?? undefined}
+        >
+          {displayName(member.user) ?? <Muted>-</Muted>}
+          {(member.membership?.isActive === false || member.user.superAdmin) && (
+            <span className={styles.linkBadges}>
+              {member.membership?.isActive === false && <Badge>Deactivated</Badge>}
+              {member.user.superAdmin && (
+                <Tooltip content="Server admin">
+                  <Badge tone="info">
+                    <Icon icon={UserCogIcon} size={12} />
+                    Server admin
+                  </Badge>
+                </Tooltip>
+              )}
+            </span>
+          )}
+        </AccessRowLink>
+      )
+    },
+    {
+      id: "username",
+      header: "Username",
       sortable: true,
       grow: true,
       render: (member) => (
         <Inline gap={8} wrap={false}>
-          <AccessRowLink
-            href={
-              member.membership ? accessLinks.orgMember(orgId, member.membership.id) : undefined
-            }
-            title={displayName(member.user) ?? undefined}
-          >
-            {displayName(member.user) ?? <Muted>-</Muted>}
-            {(member.membership?.isActive === false || member.user.superAdmin) && (
-              <span className={styles.linkBadges}>
-                {member.membership?.isActive === false && <Badge>Deactivated</Badge>}
-                {member.user.superAdmin && (
-                  <Tooltip content="Server admin">
-                    <Badge tone="info">
-                      <Icon icon={UserCogIcon} size={12} />
-                      Server admin
-                    </Badge>
-                  </Tooltip>
-                )}
-              </span>
-            )}
-          </AccessRowLink>
+          <span>{usernameOf(member)}</span>
           {member.membership?.lastLoginAuthMethod && member.membership.lastLoginTime && (
             <Tooltip
               content={`Last login with ${member.membership.lastLoginAuthMethod} on ${formatDateTime(member.membership.lastLoginTime)}`}
@@ -282,13 +288,6 @@ export const OrgMembersTab = () => {
           )}
         </Inline>
       )
-    },
-    {
-      id: "username",
-      header: "Username",
-      sortable: true,
-      grow: true,
-      render: (member) => <span>{usernameOf(member)}</span>
     },
     {
       id: "groups",

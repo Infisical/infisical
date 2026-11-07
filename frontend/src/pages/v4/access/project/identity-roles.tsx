@@ -159,7 +159,6 @@ export const IdentityRoleDetailsSection = ({
       id: "role",
       header: "Role",
       grow: true,
-      primary: true,
       render: (grant) => (
         <AccessRowLink
           href={accessLinks.projectRole(scope, grantSlug(grant))}

@@ -361,7 +361,6 @@ const UsagesDialog = ({
     {
       id: "name",
       header: "Identity name",
-      primary: true,
       grow: true,
       render: (usage) => (
         <AccessRowLink

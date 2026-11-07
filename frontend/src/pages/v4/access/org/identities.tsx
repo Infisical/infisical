@@ -192,7 +192,6 @@ export const OrgIdentitiesTab = () => {
     {
       id: "name",
       header: "Name",
-      primary: true,
       sortable: true,
       grow: true,
       text: (row) => row.identity.name,
