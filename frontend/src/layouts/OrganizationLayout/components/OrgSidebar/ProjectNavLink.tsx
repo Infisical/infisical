@@ -12,6 +12,7 @@ import {
 import { useOrganization, useProject } from "@app/context";
 import { isOrgScopedProduct } from "@app/helpers/project";
 
+import { projectLinkProps } from "./sidebarLinkProps";
 import type { NavItem, Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
 
@@ -105,13 +106,14 @@ export const ProjectNavLink = ({
         tooltip={item.label}
       >
         <Link
-          to={
-            isOrgScoped
-              ? (`/organizations/$orgId/${typePath}/${item.pathSuffix}` as any)
-              : (`/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}` as any)
-          }
-          params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
-          search={item.search as any}
+          {...projectLinkProps({
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            typePath,
+            pathSuffix: item.pathSuffix,
+            isOrgScoped,
+            search: item.search
+          })}
         >
           <item.icon className="size-4" />
           <span>{item.label}</span>

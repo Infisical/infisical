@@ -1,4 +1,4 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { type NavigateOptions, useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 export enum PamSheetTab {
@@ -41,16 +41,16 @@ export const usePamSheetState = (key: PamSheetKey) => {
     isOpen: Boolean(selectedId),
     tab,
     openSheet: (id: string, initialTab?: PamSheetTab) => {
-      navigate({ search: { ...search, [key]: id, tab: initialTab } as any });
+      navigate({ search: { ...search, [key]: id, tab: initialTab } as NavigateOptions["search"] });
     },
     setTab: (newTab: string) => {
-      navigate({ search: { ...search, tab: newTab } as any, replace: true });
+      navigate({ search: { ...search, tab: newTab } as NavigateOptions["search"], replace: true });
     },
     closeSheet: () => {
       const rest = Object.fromEntries(
         Object.entries(search).filter(([k]) => k !== key && k !== "tab")
       );
-      navigate({ search: rest as any });
+      navigate({ search: rest as NavigateOptions["search"] });
     }
   };
 };
