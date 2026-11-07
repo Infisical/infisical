@@ -170,9 +170,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   (`AgentVaultServiceDescriptionSchema`). A service is `needs-personal-values` exactly when resolve flags it
   `personalValuesMissing`: `toSetPersonalFields` counts a member's OAuth sign-in only while resolve would send it
   (`isMemberOauthConnectionUsable`, which resolve calls too), so `run` never configures an MCP server whose member has
-  to connect again. `credential.memberProvided` (resolve's `memberProvided`) says part of the credential is the session
-  owner's own, so `howToUse`, the notes and the built-in skill send a rejected credential to them, not to an admin, who
-  can't change another member's values. Its wording (`howToUse`, the notes) was measured with agents together with the
+  to connect again. `credential.memberProvided` (resolve's `memberProvided`) says part of the credential is a personal
+  value: the session owner's, or for a session on a user's behalf, that user's (`personalValuesOwner`). `howToUse`, the
+  notes and the built-in skill send a rejected credential to that person, not to an admin, who can't change another
+  member's values. Its wording (`howToUse`, the notes) was measured with agents together with the
   built-in skill, so change the two together and measure again. A forwarding proxy names itself
   (`X-Agent-Vault-Proxy-Id`, `X-Agent-Vault-Proxy-Version`); a proxy in the session's project adds its traffic policy,
   and anything else (no id, a malformed one, another project's) only leaves the policy out. Not audited, like resolve.

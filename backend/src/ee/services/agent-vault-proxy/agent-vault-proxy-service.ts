@@ -1399,7 +1399,8 @@ export const agentVaultProxyServiceFactory = ({
       session: {
         label: session.label ?? null,
         expiresAt: session.expiresAt ?? null,
-        accessBundle: bundles[0]?.name ?? null
+        accessBundle: bundles[0]?.name ?? null,
+        onBehalfOfUser: Boolean(session.onBehalfOfUserId)
       },
       services
     });

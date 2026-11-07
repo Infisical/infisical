@@ -142,9 +142,32 @@ const describeCredential = (service: TSessionServiceFacts): TSessionServiceDescr
   }
 };
 
-const howToUse = (service: TSessionServiceFacts, description: Omit<TSessionServiceDescription, "howToUse">) => {
+// A session uses its owner's personal values, or, on a user's behalf, that user's.
+const personalValuesHolder = (onBehalfOfUser: boolean) =>
+  onBehalfOfUser ? "the user this session is for" : "the session's owner";
+
+const memberCredentialSentence = (
+  credentialType: TSessionServiceDescription["credential"]["type"],
+  name: string,
+  onBehalfOfUser: boolean
+) => {
+  if (credentialType === "oauth") {
+    return onBehalfOfUser
+      ? `The credential is the sign-in of the user this session is for. If the server rejects it, that user has to reconnect their account for ${name} in Agent Vault, which an admin can't do for them.`
+      : `The credential is the session owner's own sign-in. If the server rejects it, they have to reconnect their account for ${name} in Agent Vault, which an admin can't do for them.`;
+  }
+  return onBehalfOfUser
+    ? `The credential is the personal value of the user this session is for. If the service rejects it with 401 or 403, that user has to update their personal value for ${name} in Agent Vault, which an admin can't do for them.`
+    : `The credential is the session owner's own. If the service rejects it with 401 or 403, they have to update their personal value for ${name} in Agent Vault, which an admin can't do for them.`;
+};
+
+const howToUse = (
+  service: TSessionServiceFacts,
+  description: Omit<TSessionServiceDescription, "howToUse">,
+  onBehalfOfUser: boolean
+) => {
   if (service.personalValuesMissing) {
-    return `Not usable yet: the session's owner has to set their personal values for ${JSON.stringify(service.name)} in Agent Vault. The proxy refuses requests to it until then, and it can take a few minutes to apply.`;
+    return `Not usable yet: ${personalValuesHolder(onBehalfOfUser)} has to set their personal values for ${JSON.stringify(service.name)} in Agent Vault. The proxy refuses requests to it until then, and it can take a few minutes to apply.`;
   }
   const parts: string[] = [];
   const target = description.url ?? "these hosts";
@@ -171,11 +194,7 @@ const howToUse = (service: TSessionServiceFacts, description: Omit<TSessionServi
     parts.push(`Call ${target} directly.`);
   }
   if (description.credential.addedByProxy && description.credential.memberProvided) {
-    parts.push(
-      description.credential.type === "oauth"
-        ? `The credential is the session owner's own sign-in. If the server rejects it, they have to reconnect their account for ${JSON.stringify(service.name)} in Agent Vault, which an admin can't do for them.`
-        : `The credential is the session owner's own. If the service rejects it with 401 or 403, they have to update their personal value for ${JSON.stringify(service.name)} in Agent Vault, which an admin can't do for them.`
-    );
+    parts.push(memberCredentialSentence(description.credential.type, JSON.stringify(service.name), onBehalfOfUser));
   }
   description.placeholders.forEach(({ placeholder, surfaces }) =>
     parts.push(
@@ -195,7 +214,10 @@ const howToUse = (service: TSessionServiceFacts, description: Omit<TSessionServi
   return parts.join(" ");
 };
 
-export const describeSessionService = (service: TSessionServiceFacts): TSessionServiceDescription => {
+export const describeSessionService = (
+  service: TSessionServiceFacts,
+  onBehalfOfUser = false
+): TSessionServiceDescription => {
   const isMcp = service.type === AgentVaultServiceType.Mcp;
   const description: Omit<TSessionServiceDescription, "howToUse"> = {
     name: service.name,
@@ -220,17 +242,18 @@ export const describeSessionService = (service: TSessionServiceFacts): TSessionS
     allowedPathPrefixes: service.allowedPathPrefixes,
     allowedTools: service.allowedTools ? sortedUnique(service.allowedTools) : null
   };
-  return { ...description, howToUse: howToUse(service, description) };
+  return { ...description, howToUse: howToUse(service, description, onBehalfOfUser) };
 };
 
 const sessionNotes = (
   trafficPolicy: TSessionServicesDocument["agentVault"]["trafficPolicy"],
-  expiresAt: string | null
+  expiresAt: string | null,
+  onBehalfOfUser: boolean
 ) => {
   const notes = [
     "Requests to these services go through this proxy, which adds each service's credential on the way out. You never hold the real keys, so a missing key in your environment is expected.",
     "Use your usual HTTP client with the proxy settings from the environment (HTTPS_PROXY). Do not unset them or bypass the proxy: a request that skips it carries no credential.",
-    "Responses that went through the proxy carry X-Agent-Vault-Decision: brokered (a credential was added), passthrough (no service covers the host), blocked (the proxy refused it; the JSON body says why) or error. A 401 or 403 marked brokered means the stored credential was rejected or lacks permission: an Agent Vault admin has to fix it, or the session's owner when the service's credential is memberProvided, and a key you send will not help."
+    `Responses that went through the proxy carry X-Agent-Vault-Decision: brokered (a credential was added), passthrough (no service covers the host), blocked (the proxy refused it; the JSON body says why) or error. A 401 or 403 marked brokered means the stored credential was rejected or lacks permission: an Agent Vault admin has to fix it, or ${personalValuesHolder(onBehalfOfUser)} when the service's credential is memberProvided, and a key you send will not help.`
   ];
   if (trafficPolicy === "service-hosts") notes.push("This proxy refuses requests to hosts no service covers.");
   if (trafficPolicy === "any-host") {
@@ -257,7 +280,7 @@ export const buildSessionServicesDocument = ({
   services
 }: {
   proxy: TSessionServicesProxy | null;
-  session: { label: string | null; expiresAt: Date | null; accessBundle: string | null };
+  session: { label: string | null; expiresAt: Date | null; accessBundle: string | null; onBehalfOfUser: boolean };
   services: TSessionServiceFacts[];
 }): TSessionServicesDocument => {
   let trafficPolicy: TSessionServicesDocument["agentVault"]["trafficPolicy"] = null;
@@ -266,13 +289,13 @@ export const buildSessionServicesDocument = ({
   return {
     agentVault: { proxy: proxy?.name ?? null, version: proxy?.version ?? null, trafficPolicy },
     session: { label: session.label || null, expiresAt, accessBundle: session.accessBundle },
-    services: services.map(describeSessionService),
-    notes: sessionNotes(trafficPolicy, expiresAt)
+    services: services.map((service) => describeSessionService(service, session.onBehalfOfUser)),
+    notes: sessionNotes(trafficPolicy, expiresAt, session.onBehalfOfUser)
   };
 };
 
 /**
- * The fields the session's owner has set, by service, counted only where resolve would use them: a member's OAuth
+ * The fields set in the personal values the session uses, by service, counted only where resolve would use them: a member's OAuth
  * sign-in on a service that leaves sign-in to members, while resolve would send it, and a typed value anywhere else.
  */
 export const toSetPersonalFields = (

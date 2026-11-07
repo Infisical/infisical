@@ -545,8 +545,35 @@ describe("resolve for a session on a user's behalf", () => {
       service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
     const reachedBundles = () =>
       (findResolvableServices.mock.calls[0] as unknown as [{ accessBundleIds: string[] | null }])[0].accessBundleIds;
-    return { resolve, reachedBundles, findPersonalValues };
+    return { service, resolve, reachedBundles, findPersonalValues };
   };
+
+  test("the services list names the user the session is for, whose personal values it uses", async () => {
+    const memberRow = serviceRow({
+      type: AgentVaultServiceType.Http,
+      name: "github",
+      hostPattern: "api.github.com",
+      config: {},
+      credentialType: AgentVaultCredentialType.Bearer,
+      credentialConfig: { headerName: "Authorization", headerPrefix: "Bearer " },
+      encryptedCredential: null,
+      memberProvidedFields: ["credential-value"]
+    });
+    const { service, findPersonalValues } = setupOnBehalfOf({ rows: [memberRow] });
+    findPersonalValues.mockResolvedValue([
+      { serviceId: SERVICE_ID, field: "credential-value", encryptedValue: Buffer.from("sealed"), oauthConfig: null }
+    ] as never);
+    const listed = await service.getSessionServices({ sessionToken: "token" });
+    expect(findPersonalValues).toHaveBeenCalledWith(expect.objectContaining({ owner: { userId: USER_ID } }));
+    expect(listed.services[0]).toMatchObject({
+      status: "ready",
+      credential: { type: "bearer", addedByProxy: true, memberProvided: true }
+    });
+    expect(listed.services[0].howToUse).toContain(
+      "If the service rejects it with 401 or 403, that user has to update their personal value"
+    );
+    expect(listed.notes.some((note) => note.includes("or the user this session is for when"))).toBe(true);
+  });
 
   test("a non-admin user's reach is narrowed to the bundles the identity reaches too", async () => {
     const { resolve, reachedBundles } = setupOnBehalfOf({

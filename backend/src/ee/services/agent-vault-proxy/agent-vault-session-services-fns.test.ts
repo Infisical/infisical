@@ -117,6 +117,31 @@ describe("describing one service", () => {
     expect(describeSessionService(facts()).howToUse).not.toContain("session owner");
   });
 
+  test("on a user's behalf, names that user as the one who sets or fixes a personal value", () => {
+    expect(describeSessionService(facts({ memberProvided: true }), true).howToUse).toContain(
+      'The credential is the personal value of the user this session is for. If the service rejects it with 401 or 403, that user has to update their personal value for "github" in Agent Vault, which an admin can\'t do for them.'
+    );
+    expect(
+      describeSessionService(facts({ memberProvided: true, credential: { type: "oauth" } }), true).howToUse
+    ).toContain(
+      'The credential is the sign-in of the user this session is for. If the server rejects it, that user has to reconnect their account for "github" in Agent Vault, which an admin can\'t do for them.'
+    );
+    expect(describeSessionService(facts({ personalValuesMissing: true, memberProvided: true }), true).howToUse).toBe(
+      'Not usable yet: the user this session is for has to set their personal values for "github" in Agent Vault. The proxy refuses requests to it until then, and it can take a few minutes to apply.'
+    );
+    const document = buildSessionServicesDocument({
+      proxy: null,
+      session: { label: null, expiresAt: null, accessBundle: "engineering", onBehalfOfUser: true },
+      services: [facts({ memberProvided: true })]
+    });
+    expect(document.services[0].howToUse).toContain("the user this session is for");
+    expect(
+      document.notes.some((note) =>
+        note.includes("or the user this session is for when the service's credential is memberProvided")
+      )
+    ).toBe(true);
+  });
+
   test("a service waiting for personal values says it isn't usable yet and offers no credential", () => {
     const described = describeSessionService(facts({ personalValuesMissing: true, memberProvided: true }));
     expect(described.status).toBe("needs-personal-values");
@@ -199,7 +224,7 @@ describe("the whole list", () => {
   test("describes the proxy it came through and that proxy's traffic policy", () => {
     const document = buildSessionServicesDocument({
       proxy: { name: "prod-proxy", version: "0.44.0", trafficPolicy: AgentVaultTrafficPolicy.BundleHosts },
-      session: { label: "nightly triage", expiresAt, accessBundle: "engineering" },
+      session: { label: "nightly triage", expiresAt, accessBundle: "engineering", onBehalfOfUser: false },
       services: [facts()]
     });
     expect(document.agentVault).toEqual({ proxy: "prod-proxy", version: "0.44.0", trafficPolicy: "service-hosts" });
@@ -222,7 +247,7 @@ describe("the whole list", () => {
   test("under any-host, says hosts no service covers are reachable", () => {
     const document = buildSessionServicesDocument({
       proxy: { name: "dev-proxy", version: null, trafficPolicy: AgentVaultTrafficPolicy.AnyHost },
-      session: { label: null, expiresAt: null, accessBundle: "skills-only" },
+      session: { label: null, expiresAt: null, accessBundle: "skills-only", onBehalfOfUser: false },
       services: []
     });
     expect(document.agentVault.trafficPolicy).toBe("any-host");
@@ -237,7 +262,7 @@ describe("the whole list", () => {
   test("without a proxy, leaves the traffic policy out instead of guessing it", () => {
     const document = buildSessionServicesDocument({
       proxy: null,
-      session: { label: "", expiresAt: null, accessBundle: null },
+      session: { label: "", expiresAt: null, accessBundle: null, onBehalfOfUser: false },
       services: [facts()]
     });
     expect(document.agentVault).toEqual({ proxy: null, version: null, trafficPolicy: null });
