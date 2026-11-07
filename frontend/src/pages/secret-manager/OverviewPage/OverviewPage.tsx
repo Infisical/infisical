@@ -94,7 +94,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardHeader,
   Checkbox,
   ConfirmationAlertDialog,
   Dialog,
@@ -263,10 +262,8 @@ import {
   useBatchStoreApi
 } from "../SecretDashboardPage/SecretMainPage.store";
 import {
-  DownloadEnvButton,
   DynamicSecretTableRow,
   EmptyResourceDisplay,
-  EnvironmentSelect,
   FolderAccessSheet,
   FolderBreadcrumb,
   FolderTableRow,
@@ -274,8 +271,6 @@ import {
   ProxiedServiceTableRow,
   QuickAddSecretRow,
   ResourceCount,
-  ResourceFilter,
-  ResourceSearchInput,
   SecretImportTableRow,
   SecretNoAccessTableRow,
   SecretRotationTableRow,
@@ -291,6 +286,7 @@ import {
 import { type CopySecretsInvocation, CopySecretsSheet } from "./components/CopySecretsSheet";
 import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { OverviewToolbar } from "./components/OverviewToolbar/OverviewToolbar";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
 import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
@@ -3930,87 +3926,34 @@ const OverviewPageContent = () => {
         }
       />
       <Card className="min-w-0">
-        <CardHeader className="min-w-0">
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 @min-[48rem]/card-header:grid-cols-[auto_minmax(0,1fr)_auto]">
-            <div className="col-start-1 row-start-1 min-w-0">
-              <EnvironmentSelect
-                selectedEnvs={filteredEnvs}
-                setSelectedEnvs={(value) => {
-                  overviewTelemetry.interaction({
-                    action: "environment-selection",
-                    source: "header"
-                  });
-                  setFilteredEnvs(value);
-                }}
-                onUpgradePlan={() => openUpgradeGate(getEnvironmentUpgradeRequest())}
-                isDisabled={
-                  isSingleEnvView &&
-                  (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                }
-              />
-            </div>
-            <div
-              className={`col-span-2 flex min-w-0 items-center gap-2 @min-[48rem]/card-header:col-span-1 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1 ${
-                userAvailableEnvs.length > 0
-                  ? "row-start-3 @min-[15rem]/card-header:row-start-2"
-                  : "row-start-2"
-              }`}
-            >
-              <ResourceSearchInput
-                key={secretPath}
-                className="min-w-0 flex-1"
-                value={searchFilter}
-                tags={tags}
-                onChange={(value) => {
-                  if (Boolean(value.trim()) !== Boolean(searchFilter.trim()))
-                    overviewTelemetry.interaction({
-                      action: value.trim() ? "search-started" : "search-cleared",
-                      source: "search"
-                    });
-                  setSearchFilter(value);
-                }}
-                onSelectResult={({ search }) => {
-                  if (search.trim() && !searchFilter.trim())
-                    overviewTelemetry.interaction({ action: "search-started", source: "search" });
-                  setSearchFilter(search);
-                }}
-                isSearchAllFoldersOpen={isSearchAllFoldersOpen}
-                onSearchAllFoldersOpenChange={(isOpen) => {
-                  if (isOpen && !isSearchAllFoldersOpen)
-                    overviewTelemetry.interaction({
-                      action: "search-all-folders",
-                      source: "search"
-                    });
-                  setIsSearchAllFoldersOpen(isOpen);
-                }}
-                environments={userAvailableEnvs}
-                projectId={currentProject?.id}
-              />
-              {userAvailableEnvs.length > 0 && (
-                <>
-                  <ResourceFilter
-                    rowTypeFilter={filter}
-                    onToggleRowType={handleToggleRowType}
-                    tags={tags}
-                    selectedTagSlugs={tagFilter}
-                    onToggleTag={handleToggleTag}
-                    onClearTags={handleClearTags}
-                  />
-                  <DownloadEnvButton
-                    secretPath={secretPath}
-                    environments={visibleEnvs}
-                    projectId={projectId}
-                  />
-                </>
-              )}
-            </div>
-            {userAvailableEnvs.length > 0 && (
-              <div className="col-start-2 row-start-2 justify-self-end @min-[15rem]/card-header:row-start-1 @min-[48rem]/card-header:col-start-3">
-                <AddResourceButtons {...addResourceButtonsProps} />
-              </div>
-            )}
-          </div>
-        </CardHeader>
+        <OverviewToolbar
+          overviewTelemetry={overviewTelemetry}
+          projectId={projectId}
+          secretPath={secretPath}
+          userAvailableEnvs={userAvailableEnvs}
+          visibleEnvs={visibleEnvs}
+          selectedEnvs={filteredEnvs}
+          onSelectedEnvsChange={setFilteredEnvs}
+          onUpgradePlan={() => openUpgradeGate(getEnvironmentUpgradeRequest())}
+          isEnvironmentSelectDisabled={
+            isSingleEnvView &&
+            (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+          }
+          searchFilter={searchFilter}
+          onSearchFilterChange={setSearchFilter}
+          tags={tags}
+          isSearchAllFoldersOpen={isSearchAllFoldersOpen}
+          onSearchAllFoldersOpenChange={setIsSearchAllFoldersOpen}
+          resourceFilterProps={{
+            rowTypeFilter: filter,
+            onToggleRowType: handleToggleRowType,
+            tags,
+            selectedTagSlugs: tagFilter,
+            onToggleTag: handleToggleTag,
+            onClearTags: handleClearTags
+          }}
+          addResourceButtonsProps={addResourceButtonsProps}
+        />
         <CardContent className="min-w-0">
           {relevantPendingApprovalsCount > 0 && (
             <Alert variant="info" className="-mt-2 mb-3 py-1.5">
