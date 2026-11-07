@@ -42,7 +42,8 @@ import {
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
-  extractCertificateRequestFromCSR
+  extractCertificateRequestFromCSR,
+  getCsrSignatureError
 } from "@app/services/certificate-common/certificate-csr-utils";
 import {
   recordCertificateIssuanceFailure,
@@ -1276,6 +1277,11 @@ export const pkiAcmeServiceFactory = ({
         await $recordFinalizeFailure(error);
         return error;
       };
+
+      const csrSignatureError = await getCsrSignatureError(csr);
+      if (csrSignatureError) {
+        throw await $rejectCsr(csrSignatureError);
+      }
 
       const allowedSanTypes = new Set([
         CertSubjectAlternativeNameType.DNS_NAME,

@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import {
   createDistinguishedName,
@@ -49,6 +50,32 @@ export const parseCsr = (csr: string): x509.Pkcs10CertificateRequest => {
     throw new BadRequestError({
       message: "The certificate signing request could not be parsed. Supply a PEM-encoded PKCS#10 request."
     });
+  }
+};
+
+export const INVALID_CSR_SIGNATURE_MESSAGE =
+  "The certificate signing request signature is invalid. Sign the request with the private key that matches its public key.";
+
+export const UNVERIFIABLE_CSR_SIGNATURE_MESSAGE =
+  "The certificate signing request signature could not be verified. Sign the request with a supported algorithm and the private key that matches its public key.";
+
+export const getCsrSignatureError = async (csr: string | x509.Pkcs10CertificateRequest): Promise<string | null> => {
+  const csrObj = typeof csr === "string" ? parseCsr(csr) : csr;
+  try {
+    return (await csrObj.verify()) ? null : INVALID_CSR_SIGNATURE_MESSAGE;
+  } catch (error) {
+    logger.warn(
+      error,
+      `Failed to verify certificate signing request signature [subject=${csrObj.subject}] [signatureAlgorithm=${csrObj.signatureAlgorithm.name}]`
+    );
+    return UNVERIFIABLE_CSR_SIGNATURE_MESSAGE;
+  }
+};
+
+export const verifyCsrSignature = async (csr: string | x509.Pkcs10CertificateRequest) => {
+  const message = await getCsrSignatureError(csr);
+  if (message) {
+    throw new BadRequestError({ message });
   }
 };
 
