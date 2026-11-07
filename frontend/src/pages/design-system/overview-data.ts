@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "table-rules",
+    title: "Table rules",
+    description:
+      "Navigation, pagination, sheet rows, context menus, facts density, inline actions, toolbars, bulk bars and tables in cards each have one rule.",
+    date: "2026-11-07",
+    commit: "c2b9967476",
+    page: "table"
+  },
+  {
     id: "row-ring-width",
     title: "Row rings keep column widths",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "45ad1c70c1",
     page: "settings-card"
-  },
-  {
-    id: "shared-hover",
-    title: "Shared hover",
-    description:
-      "Every hover and press is one ink overlay tuned by hover-mix and press-mix, darker in light themes and brighter in dark ones.",
-    date: "2026-11-07",
-    commit: "b7593b3735",
-    page: "colors"
   }
 ];
