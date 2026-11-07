@@ -394,7 +394,7 @@ export const RuleTable = (props: RuleTableProps) => {
       <Card
         variant="framed"
         title="Policies"
-        flush={rows.length > 0}
+        flush
         action={
           <Inline gap={8}>
             <ListToolbar
@@ -440,43 +440,46 @@ export const RuleTable = (props: RuleTableProps) => {
           >{`${plural(all.length, "rule", "rules")} across ${plural(policyCount, "policy", "policies")}. Rules on the same policy combine, and a Forbid wins over an Allow.`}</span>
         }
       >
-        {rows.length > 0 ? (
-          <DataTable
-            label="Role rules"
-            rows={rows}
-            columns={columns}
-            rowActions={rowActions}
-            getRowId={(row) => row.key}
-            rowLabel={(row) => `${row.config.title} rule`}
-            onRowActivate={edit}
-            selectable
-            selectedIds={selected}
-            onSelectionChange={setSelected}
-            actionBar={
-              <FloatingActionBar
-                placement="contained"
-                label="Selected rule actions"
-                count={selected.length}
-                total={rows.length}
-                onSelectAll={() => setSelected(rows.map((row) => row.key))}
-                onClear={() => setSelected([])}
-                noun={selected.length === 1 ? "rule" : "rules"}
-                actions={[
-                  {
-                    label: "Delete",
-                    icon: "trash",
-                    danger: true,
-                    disabled: !editable,
-                    onClick: () => removeRows(selected)
-                  }
-                ]}
-              />
-            }
-            selectionDisabledReason={() => (editable ? undefined : reason)}
-          />
-        ) : (
-          <EmptyState size="sm" icon="lock" title={filtering ? "No rules match" : "No rules yet"} />
-        )}
+        <DataTable
+          label="Role rules"
+          rows={rows}
+          columns={columns}
+          rowActions={rowActions}
+          getRowId={(row) => row.key}
+          rowLabel={(row) => `${row.config.title} rule`}
+          onRowActivate={edit}
+          selectable
+          selectedIds={selected}
+          onSelectionChange={setSelected}
+          actionBar={
+            <FloatingActionBar
+              placement="contained"
+              label="Selected rule actions"
+              count={selected.length}
+              total={rows.length}
+              onSelectAll={() => setSelected(rows.map((row) => row.key))}
+              onClear={() => setSelected([])}
+              noun={selected.length === 1 ? "rule" : "rules"}
+              actions={[
+                {
+                  label: "Delete",
+                  icon: "trash",
+                  danger: true,
+                  disabled: !editable,
+                  onClick: () => removeRows(selected)
+                }
+              ]}
+            />
+          }
+          selectionDisabledReason={() => (editable ? undefined : reason)}
+          empty={
+            <EmptyState
+              size="sm"
+              icon="lock"
+              title={filtering ? "No rules match" : "No rules yet"}
+            />
+          }
+        />
       </Card>
       {editing && (
         <RuleSheet

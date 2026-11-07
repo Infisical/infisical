@@ -15,6 +15,5 @@ export const Route = createFileRoute(
   staticData: { readiness: "partial", missing: ["Access requests", "Policies"] },
   component: SecretApprovalsPage,
   validateSearch: zodValidator(SecretApprovalPageQueryParams),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

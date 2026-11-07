@@ -15,6 +15,5 @@ export const Route = createFileRoute("/v4/organizations/$orgId/access-management
       action: z.string().catch("")
     })
   ),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

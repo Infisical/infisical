@@ -17,6 +17,5 @@ export const Route = createFileRoute(
   validateSearch: zodValidator(
     agentVaultSheetSearchParams.merge(agentVaultCreateIntentSearchParams)
   ),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

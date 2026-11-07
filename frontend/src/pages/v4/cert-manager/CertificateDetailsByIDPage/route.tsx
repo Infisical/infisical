@@ -15,6 +15,5 @@ export const Route = createFileRoute(
   staticData: { readiness: "partial", missing: ["Renew now", "Auto renewal", "Certificate syncs"] },
   component: CertificateDetailsByIDPage,
   validateSearch: zodValidator(CertificateDetailsByIDPageQuerySchema),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

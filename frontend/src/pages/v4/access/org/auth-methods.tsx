@@ -32,7 +32,6 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { DataList, List, ListRow } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -73,7 +72,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDate } from "../roles";
 import { failed, saved } from "../toast";
-import { Gate, Muted, RESTRICTED } from "../ui";
+import { DetailSkeleton, FormSkeleton, Gate, Muted, RESTRICTED } from "../ui";
 import { CopyButton, Value } from "./detail-parts";
 
 import css from "./org.module.css";
@@ -551,7 +550,7 @@ export const AuthMethodFormSheet = ({
   };
 
   let body: ReactNode = null;
-  if (loadingCurrent) body = <Loader label="Loading Universal Auth" />;
+  if (loadingCurrent) body = <FormSkeleton label="Loading Universal Auth" />;
   else if (isUniversal)
     body = (
       <UniversalAuthForm
@@ -664,7 +663,7 @@ const expiryLabel = (createdAt: string, ttlSeconds: number) => {
 
 const ConfigState = ({ loading, name }: { loading: boolean; name: string }) =>
   loading ? (
-    <Loader label={`Loading ${name}`} />
+    <DetailSkeleton label={`Loading ${name}`} />
   ) : (
     <EmptyState
       size="sm"
