@@ -27,6 +27,8 @@ type Props = {
   onClose?: () => void;
   isBatchMode?: boolean;
   onCommentChange?: (comment: string) => void;
+  onBatchSave?: () => void;
+  isBatchSavePending?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
@@ -38,6 +40,8 @@ export const SecretCommentForm = ({
   onClose,
   isBatchMode,
   onCommentChange,
+  onBatchSave,
+  isBatchSavePending,
   dragHandleProps
 }: Props) => {
   const { projectId } = useProject();
@@ -150,10 +154,25 @@ export const SecretCommentForm = ({
             />
           )}
         />
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="xs" type="button" onClick={onClose}>
             Close
           </Button>
+          {onBatchSave && (
+            <Button
+              variant="project"
+              size="xs"
+              type="button"
+              isDisabled={isBatchSavePending}
+              isPending={isBatchSavePending}
+              onClick={() => {
+                onCommentChange?.(watchedComment);
+                onBatchSave();
+              }}
+            >
+              Save Comment
+            </Button>
+          )}
         </div>
       </div>
     );

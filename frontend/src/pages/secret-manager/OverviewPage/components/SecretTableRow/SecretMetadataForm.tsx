@@ -48,6 +48,8 @@ type Props = {
   onClose?: () => void;
   isBatchMode?: boolean;
   onMetadataChange?: (metadata: { key: string; value: string; isEncrypted?: boolean }[]) => void;
+  onBatchSave?: () => void;
+  isBatchSavePending?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
@@ -59,6 +61,8 @@ export const SecretMetadataForm = ({
   onClose,
   isBatchMode,
   onMetadataChange,
+  onBatchSave,
+  isBatchSavePending,
   dragHandleProps
 }: Props) => {
   const { projectId, currentProject } = useProject();
@@ -285,10 +289,31 @@ export const SecretMetadataForm = ({
     return (
       <div className="space-y-3">
         {metadataFields}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="xs" type="button" onClick={onClose}>
             Close
           </Button>
+          {onBatchSave && canEditSecret && (
+            <Button
+              variant="project"
+              size="xs"
+              type="button"
+              isDisabled={isBatchSavePending}
+              isPending={isBatchSavePending}
+              onClick={() => {
+                onMetadataChange?.(
+                  watchedMetadata.map((m) => ({
+                    key: m.key,
+                    value: m.value,
+                    isEncrypted: m.isEncrypted
+                  }))
+                );
+                onBatchSave();
+              }}
+            >
+              Save Metadata
+            </Button>
+          )}
         </div>
       </div>
     );

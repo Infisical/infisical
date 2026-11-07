@@ -828,6 +828,21 @@ export const SecretEditTableRow = ({
     }
   };
 
+  const [isAnnotationSaveRequested, setIsAnnotationSaveRequested] = useState(false);
+  const canSaveAnnotationsDirectly = isBatchMode && Boolean(onPendingSave) && !isPendingCreate;
+  const requestAnnotationSave = useCallback(() => setIsAnnotationSaveRequested(true), []);
+  useEffect(() => {
+    if (!isAnnotationSaveRequested) return;
+    setIsAnnotationSaveRequested(false);
+    savePendingRow()
+      .then(() => {
+        setIsCommentOpen(false);
+        setIsTagOpen(false);
+        setIsMetadataOpen(false);
+      })
+      .catch(() => undefined);
+  }, [isAnnotationSaveRequested]);
+
   // Reset form when a pending change is externally discarded or saved (e.g. CommitForm discard
   // button or this row's inline save).
   const prevHasPendingRef = useRef(hasPendingChange);
@@ -1377,6 +1392,8 @@ export const SecretEditTableRow = ({
         onClose={() => setIsCommentOpen(false)}
         isBatchMode={isBatchMode}
         onCommentChange={handleCommentChange}
+        onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
+        isBatchSavePending={isSavingPendingChange}
       />
     </PopoverContent>
   );
@@ -1503,6 +1520,8 @@ export const SecretEditTableRow = ({
             onClose={() => setIsTagOpen(false)}
             isBatchMode={isBatchMode}
             onTagsChange={handleTagsChange}
+            onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
+            isBatchSavePending={isSavingPendingChange}
           />
         </PopoverContent>
       </Popover>
@@ -1533,6 +1552,8 @@ export const SecretEditTableRow = ({
             onClose={() => setIsMetadataOpen(false)}
             isBatchMode={isBatchMode}
             onMetadataChange={handleMetadataChange}
+            onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
+            isBatchSavePending={isSavingPendingChange}
           />
         </PopoverContent>
       </Popover>
