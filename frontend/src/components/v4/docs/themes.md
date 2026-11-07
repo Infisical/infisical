@@ -132,35 +132,31 @@ Overrides:
 
 - sidebar: #09090a
 - inset: #121213
-- surface: #181818
-- sidebar-current: #191919
-- tint: #222222
-- media-ground: {tint}
 
 | Text | Ground | Values | Ratio | Floor | Result |
 |---|---|---|---|---|---|
-| ink | surface | #f1f0ea on #181818 | 15.55:1 | 4.5:1 | pass |
+| ink | surface | #f1f0ea on #111111 | 16.54:1 | 4.5:1 | pass |
 | ink | inset | #f1f0ea on #121213 | 16.40:1 | 4.5:1 | pass |
 | ink | sidebar | #f1f0ea on #09090a | 17.43:1 | 4.5:1 | pass |
-| ink | tint | #f1f0ea on #222222 | 13.93:1 | 4.5:1 | pass |
-| ink | sidebar-current | #f1f0ea on #191919 | 15.40:1 | 4.5:1 | pass |
-| text2 | surface | #d8d8d4 on #181818 | 12.42:1 | 4.5:1 | pass |
+| ink | tint | #f1f0ea on #1c1c1c | 14.93:1 | 4.5:1 | pass |
+| ink | sidebar-current | #f1f0ea on #2c2c2b | 12.24:1 | 4.5:1 | pass |
+| text2 | surface | #d8d8d4 on #111111 | 13.21:1 | 4.5:1 | pass |
 | text2 | inset | #d8d8d4 on #121213 | 13.10:1 | 4.5:1 | pass |
 | text2 | sidebar | #d8d8d4 on #09090a | 13.93:1 | 4.5:1 | pass |
-| text2 | tint | #d8d8d4 on #222222 | 11.13:1 | 4.5:1 | pass |
-| text2 | sidebar-current | #d8d8d4 on #191919 | 12.30:1 | 4.5:1 | pass |
-| muted | surface | #b0b0a9 on #181818 | 8.14:1 | 4.5:1 | pass |
+| text2 | tint | #d8d8d4 on #1c1c1c | 11.92:1 | 4.5:1 | pass |
+| text2 | sidebar-current | #d8d8d4 on #2c2c2b | 9.78:1 | 4.5:1 | pass |
+| muted | surface | #b0b0a9 on #111111 | 8.66:1 | 4.5:1 | pass |
 | muted | inset | #b0b0a9 on #121213 | 8.58:1 | 4.5:1 | pass |
 | muted | sidebar | #b0b0a9 on #09090a | 9.13:1 | 4.5:1 | pass |
-| muted | tint | #b0b0a9 on #222222 | 7.30:1 | 4.5:1 | pass |
-| muted | sidebar-current | #b0b0a9 on #191919 | 8.06:1 | 4.5:1 | pass |
-| faint | surface | #8e9291 on #181818 | 5.64:1 | 3:1 | pass |
+| muted | tint | #b0b0a9 on #1c1c1c | 7.81:1 | 4.5:1 | pass |
+| muted | sidebar-current | #b0b0a9 on #2c2c2b | 6.41:1 | 4.5:1 | pass |
+| faint | surface | #8e9291 on #111111 | 6.00:1 | 3:1 | pass |
 | faint | inset | #8e9291 on #121213 | 5.95:1 | 3:1 | pass |
 | faint | sidebar | #8e9291 on #09090a | 6.32:1 | 3:1 | pass |
-| ok | surface | #8fc7a4 on #181818 | 9.19:1 | 4.5:1 | pass |
-| warn | surface | #e8c26a on #181818 | 10.45:1 | 4.5:1 | pass |
-| bad | surface | #ff5a4f on #181818 | 5.77:1 | 4.5:1 | pass |
-| info | surface | #8fb4de on #181818 | 8.25:1 | 4.5:1 | pass |
+| ok | surface | #8fc7a4 on #111111 | 9.78:1 | 4.5:1 | pass |
+| warn | surface | #e8c26a on #111111 | 11.11:1 | 4.5:1 | pass |
+| bad | surface | #ff5a4f on #111111 | 6.14:1 | 4.5:1 | pass |
+| info | surface | #8fb4de on #111111 | 8.77:1 | 4.5:1 | pass |
 | on-accent | accent | #010101 on #e3f047 | 16.72:1 | 4.5:1 | pass |
-| control | surface | #37393c on #181818 | 1.53:1 | 3:1 | below |
+| control | surface | #37393c on #111111 | 1.63:1 | 3:1 | below |
 | control | inset | #37393c on #121213 | 1.62:1 | 3:1 | below |
