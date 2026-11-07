@@ -25,6 +25,7 @@ import {
   SheetTitle
 } from "@app/components/v4/ui/sheet";
 import { Meta } from "@app/components/v4/ui/text";
+import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { FabDock, Gate, ListToolbar, Muted } from "../ui";
 import type { PermissionSubject } from "./catalog";
@@ -297,12 +298,14 @@ export const RuleTable = (props: RuleTableProps) => {
         <Inline gap={8} wrap={false} style={{ minWidth: 0 }}>
           <span style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{row.config.title}</span>
           {row.config.description && (
-            <Meta
-              mono={false}
-              style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-            >
-              {row.config.description}
-            </Meta>
+            <Tooltip content={row.config.description}>
+              <Meta
+                mono={false}
+                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {row.config.description}
+              </Meta>
+            </Tooltip>
           )}
           {errors?.[row.config.subject]?.[row.index] && <Badge tone="bad">Needs attention</Badge>}
         </Inline>
