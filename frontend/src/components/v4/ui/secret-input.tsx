@@ -6,7 +6,7 @@ import { useFieldControlAttributes } from "../lib/field-context";
 import { getInvisibleCharacterSummary } from "../lib/invisible-characters";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
-import { Tooltip } from "./tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 
 import geometry from "./button-geometry.module.css";
 import controlStyles from "./controls.module.css";
@@ -81,31 +81,29 @@ export function SecretInput({
           <span id={warningId} className="sr-only">
             Contains invisible characters
           </span>
-          <Tooltip
-            align="end"
-            content={
-              <>
-                <span className={styles.warningLine}>
-                  This value contains invisible characters that can break it when used:
+          <HoverCard openDelay={200}>
+            <HoverCardTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                iconOnly
+                icon="alert"
+                className={cn(geometry.nestedAction, styles.warning)}
+              >
+                Value contains invisible characters
+              </Button>
+            </HoverCardTrigger>
+            <HoverCardContent align="end">
+              <span className={styles.warningLine}>
+                This value contains invisible characters that can break it when used:
+              </span>
+              {invisible.map(({ codePoint, label, count }) => (
+                <span key={codePoint} className={styles.warningLine}>
+                  {count}x {label} ({codePoint})
                 </span>
-                {invisible.map(({ codePoint, label, count }) => (
-                  <span key={codePoint} className={styles.warningLine}>
-                    {count}x {label} ({codePoint})
-                  </span>
-                ))}
-              </>
-            }
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              iconOnly
-              icon="alert"
-              className={cn(geometry.nestedAction, styles.warning)}
-            >
-              Value contains invisible characters
-            </Button>
-          </Tooltip>
+              ))}
+            </HoverCardContent>
+          </HoverCard>
         </span>
       )}
     </span>

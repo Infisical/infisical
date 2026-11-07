@@ -48,6 +48,7 @@ Exports: HoverCard, HoverCardContent, HoverCardTrigger. Source TypeScript define
 ## Behavior
 
 - Radix HoverCard owns open/onOpenChange and hover delays; Content is scoped to V4Scope and accepts alignment and side offset.
+- HoverCard is where hovered content goes: the pointer can move into it and its text can be selected and copied, so it carries the longer reads, values and links a pass-through Tooltip cannot. Content with actions goes in a Popover instead.
 
 ## Accessibility
 

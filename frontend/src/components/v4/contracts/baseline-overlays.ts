@@ -336,7 +336,8 @@ export const baselineOverlays = [
     exports: ["HoverCard", "HoverCardContent", "HoverCardTrigger"],
     referenceNames: ["HoverCard"],
     behavior: [
-      "Radix HoverCard owns open/onOpenChange and hover delays; Content is scoped to V4Scope and accepts alignment and side offset."
+      "Radix HoverCard owns open/onOpenChange and hover delays; Content is scoped to V4Scope and accepts alignment and side offset.",
+      "HoverCard is where hovered content goes: the pointer can move into it and its text can be selected and copied, so it carries the longer reads, values and links a pass-through Tooltip cannot. Content with actions goes in a Popover instead."
     ],
     accessibility: [
       "HoverCard is supplementary preview content, not a keyboard task surface. Keep the trigger's destination and essential information available without opening it."
@@ -902,7 +903,9 @@ export const baselineOverlays = [
     referenceNames: ["Tooltip"],
     behavior: [
       "The shortcut specimen owns a Mod+K binding scoped to its focused region. Its button and binding open the same local search, which filters fictional connections and exposes the selected record. Editing and composition keys remain with their controls.",
-      "Tooltip opens after a hover delay and immediately from focus; side, alignment and a displayed shortcut are explicit.",
+      "Tooltip opens after a hover delay and immediately from keyboard focus (Tab, arrow keys, Home and End); side, alignment and a displayed shortcut are explicit.",
+      "Tooltips are pass-through: the content has pointer-events none and user-select none, and hoverable content is disabled, so it closes as soon as the pointer leaves the trigger and whatever sits under it stays clickable. Content meant to be read, selected or copied belongs in HoverCard, and content with actions in Popover.",
+      "A tooltip never reopens on its own. When a closing menu, dialog or sheet returns focus to the trigger, the tooltip stays closed; only keyboard navigation focus opens it. After a click on the trigger, it stays closed until the pointer leaves the trigger and comes back.",
       "TooltipText makes non-interactive text the tooltip trigger: it renders a span with tabIndex 0 (or, with asChild, puts that on its one child, such as StatusText or MiddleTruncate), draws the shared focus outline on keyboard focus and opens its content on hover and on focus. It adds no other styling, so the text keeps its own type and color. Inside a row with onRowActivate or a TableRow onClick, a click on it never activates the row.",
       "Content renders as one inline text run beside the shortcut, so inline code stays inside the sentence. It grows to size-tooltip-max (320px) and then wraps, breaking long inline code so it never runs past the surface. Content resets white-space, so a trigger inside a nowrap table cell or menu row never forces one long line; wrap is deprecated and has no effect. Menus, popovers, hover cards, dialogs and sheets reset white-space the same way."
     ],

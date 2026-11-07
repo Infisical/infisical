@@ -1110,6 +1110,19 @@
       "exceptions": "A Button disabled only while its own request is pending uses loading instead. The check reads Buttons written directly inside a Tooltip or TooltipTrigger; a Button rendered by a child component is reviewed by hand."
     },
     {
+      "id": "tooltip-pass-through",
+      "title": "Tooltips are pass-through; hovered content uses HoverCard",
+      "instruction": "A tooltip is a short label the pointer passes through: it cannot be hovered into or text-selected, it closes as soon as the pointer leaves the trigger, and it opens on keyboard focus but never on focus a closing overlay returns. Never put a link, button, input, copy action or click handler inside Tooltip content or TooltipContent. Use HoverCard for content meant to be read at length, selected or copied, and Popover when it holds actions.",
+      "good": "Tooltip content=\"Remove from favorites\" on an icon Button, and a HoverCard listing the invisible characters a secret value contains so their code points can be selected.",
+      "avoid": "A Tooltip whose content holds a Docs link or a Copy button, or a long value a person is expected to hover into and copy.",
+      "detect": {
+        "by": "lint",
+        "check": "interactive-tooltip"
+      },
+      "category": "Interaction",
+      "exceptions": "The check reads Tooltip content props and TooltipContent bodies in the same file. A long or copyable value with no interactive element is reviewed by hand."
+    },
+    {
       "id": "selection-floating-action-bar",
       "title": "Bulk selection uses the floating action bar",
       "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content.",
