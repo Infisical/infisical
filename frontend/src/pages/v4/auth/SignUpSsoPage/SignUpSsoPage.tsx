@@ -93,7 +93,7 @@ export const SignUpSsoPage = () => {
       window.dataLayer.push({ event: "signup_completed" });
     }
 
-    navigate({ to: "/organizations/onboarding", search: { callback_port: callbackPort } });
+    navigate({ to: "/v4/organizations/onboarding", search: { callback_port: callbackPort } });
   };
 
   const handleResendCode = async () => {

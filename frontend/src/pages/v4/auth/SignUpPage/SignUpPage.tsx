@@ -127,7 +127,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           search: { org_id: newOrgId, callback_port: callbackPort }
         });
       } else {
-        navigate({ to: "/organizations/onboarding", search: { callback_port: callbackPort } });
+        navigate({ to: "/v4/organizations/onboarding", search: { callback_port: callbackPort } });
       }
       return;
     }

@@ -19,8 +19,11 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/requestnewinvite", "v4/auth/RequestNewInvitePage/route.tsx"),
     route("/email-not-verified", "v4/auth/EmailNotVerifiedPage/route.tsx"),
     route("/account-recovery", "v4/auth/AccountRecoveryEmailPage/route.tsx"),
-    route("/account-recovery-reset", "v4/auth/AccountRecoveryResetPage/route.tsx")
+    route("/account-recovery-reset", "v4/auth/AccountRecoveryResetPage/route.tsx"),
+    route("/admin/signup", "v4/auth/AdminSignUpPage/route.tsx")
   ]),
+  route("/organizations/onboarding", "v4/auth/OrgOnboardingPage/route.tsx"),
+  route("/organizations/none", "v4/auth/NoOrgPage/route.tsx"),
   route("/password-setup", "v4/auth/PasswordSetupPage/route.tsx"),
   route("/mfa-session/$mfaSessionId", "v4/auth/MfaSessionPage/route.tsx"),
   route("/organizations/$orgId", "v4/organization/route.tsx", [

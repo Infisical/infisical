@@ -17,7 +17,10 @@ const AUTH_PATHS = new Set([
   "/email-not-verified",
   "/account-recovery",
   "/account-recovery-reset",
-  "/password-setup"
+  "/password-setup",
+  "/admin/signup",
+  "/organizations/onboarding",
+  "/organizations/none"
 ]);
 
 const pathOf = (href: string) => href.split(/[?#]/)[0].replace(/(.)\/$/, "$1");
