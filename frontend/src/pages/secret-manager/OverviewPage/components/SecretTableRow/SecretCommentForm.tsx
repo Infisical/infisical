@@ -149,6 +149,7 @@ export const SecretCommentForm = ({
             <TextArea
               {...field}
               autoFocus
+              disabled={isBatchSavePending}
               placeholder="Add a comment..."
               className="max-h-48 min-h-24 resize-none"
             />

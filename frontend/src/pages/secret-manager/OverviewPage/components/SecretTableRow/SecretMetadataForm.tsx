@@ -288,7 +288,9 @@ export const SecretMetadataForm = ({
   if (isBatchMode) {
     return (
       <div className="space-y-3">
-        {metadataFields}
+        <fieldset disabled={isBatchSavePending} className="contents">
+          {metadataFields}
+        </fieldset>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="xs" type="button" onClick={onClose}>
             Close

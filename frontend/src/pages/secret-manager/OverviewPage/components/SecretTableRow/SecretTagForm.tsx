@@ -160,7 +160,7 @@ export const SecretTagForm = ({
                   ? "Tag must be slug-friendly"
                   : "No tags match search"
               }
-              isDisabled={!canEditSecret}
+              isDisabled={!canEditSecret || isBatchSavePending}
               isLoading={isTagsLoading}
               placeholder="Select or create tags..."
               options={projectTags?.map((tag) => ({ label: tag.slug, value: tag.id }))}
