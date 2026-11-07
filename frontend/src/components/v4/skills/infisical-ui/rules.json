@@ -43,6 +43,18 @@
       "category": "Visual"
     },
     {
+      "id": "container-defaults",
+      "title": "Frame tables and lists; keep standalone cards plain",
+      "instruction": "Tables are framed: DataTable always sits in the tint frame, and only a table embedded in another surface uses the frameless native Table. Lists default to framed and change case by case. A standalone Card is plain, the default, or no card at all; set variant=\"framed\" only for emphasis, such as the org overview product cards, or for a section card that heads part of a page, such as a detail sidecar or a settings section.",
+      "good": "A DataTable in its frame on a list page, a plain Card for a standalone summary, and <Card variant=\"framed\" title=\"Details\"> in a DetailLayout sidecar.",
+      "avoid": "A framed Card wrapped around every block on a page, or a DataTable placed inside a framed Card so two frames nest.",
+      "detect": {
+        "by": "review",
+        "how": "Check each Card that sets variant framed is emphasis or a section card, and that no frame nests inside another."
+      },
+      "category": "Visual"
+    },
+    {
       "id": "theme-scheme",
       "title": "Branch on the scheme, not the theme name",
       "instruction": "Themes are named palettes (peach, pale, dark, dark-alt) declared in tokens.json themes.list, each with a light or dark scheme. Anything that differs between light and dark, such as an on-light logo, a chart cursor, a toast theme or an opacity swap, reads the scheme: [data-scheme=\"dark\"] in CSS and useV4Scheme() in code. A new theme lists only the tokens it overrides and inherits the rest.",

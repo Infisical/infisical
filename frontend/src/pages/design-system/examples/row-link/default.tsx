@@ -110,7 +110,7 @@ export default function Example() {
         align="stretch"
         label="Card opens the Detail page; the copy button keeps its own click"
       >
-        <Card>
+        <Card variant="framed">
           <div className="flex items-center gap-3">
             <ProviderIcon icon="Infisical.png" alt="" size="xl" />
             <div className="min-w-0 flex-1">

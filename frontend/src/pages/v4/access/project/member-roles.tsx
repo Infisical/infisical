@@ -347,7 +347,7 @@ export const MemberRolesSection = ({
 
   return (
     <>
-      <Card>
+      <Card variant="framed">
         <CardHeader>
           <CardTitle>Project roles</CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>

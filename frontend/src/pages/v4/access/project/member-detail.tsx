@@ -198,7 +198,7 @@ export const ProjectMemberDetail = () => {
       <DetailLayout
         asideLabel="Details"
         aside={
-          <Card>
+          <Card variant="framed">
             <CardHeader>
               <CardTitle>Details</CardTitle>
               <CardDescription>User membership details</CardDescription>

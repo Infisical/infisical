@@ -55,6 +55,7 @@ const MandateDeadlines = () => {
     .filter((phase) => phase.daysUntil > 0);
   return (
     <Card
+      variant="framed"
       title="CA/B Forum mandate deadlines"
       description="Upcoming reductions in maximum TLS certificate validity"
     >
@@ -91,6 +92,7 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
   ];
   return (
     <Card
+      variant="framed"
       title="Projected annual renewals"
       description="Estimated yearly renewal volume under each validity regime"
     >

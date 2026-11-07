@@ -113,6 +113,7 @@ export const TrendCard = <TPoint extends { period: string }>({
 
   return (
     <Card
+      variant="framed"
       title={title}
       description={description}
       action={

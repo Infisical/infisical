@@ -270,6 +270,7 @@ const ProjectCard = ({
   const environmentCount = project.environments?.length ?? 0;
   return (
     <Card
+      variant="framed"
       footerPlacement="frame"
       title={
         <CardLink to={homeRoute(project.type)} params={{ orgId, projectId: project.id }}>
@@ -834,6 +835,7 @@ const DeletedProjects = ({ projectType }: { projectType: ProjectType }) => {
 
   return (
     <Card
+      variant="framed"
       title="Recently deleted"
       description="Deleted projects can be restored until they are permanently deleted."
       flush

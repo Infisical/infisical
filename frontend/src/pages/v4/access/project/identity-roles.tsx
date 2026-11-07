@@ -371,6 +371,7 @@ export const IdentityRoleDetailsSection = ({
   return (
     <>
       <Card
+        variant="framed"
         title="Project roles"
         description="Manage roles assigned to this machine identity"
         flush={hasRoles}

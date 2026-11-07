@@ -488,6 +488,7 @@ export const OrgGroupDetail = () => {
           asideLabel="Details"
           aside={
             <Card
+              variant="framed"
               title="Details"
               description="Group details"
               action={

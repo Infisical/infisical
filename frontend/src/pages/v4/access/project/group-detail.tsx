@@ -446,7 +446,7 @@ export const ProjectGroupDetail = () => {
       <DetailLayout
         asideLabel="Details"
         aside={
-          <Card title="Details" description="Group details">
+          <Card variant="framed" title="Details" description="Group details">
             <DataList
               variant="props"
               items={[
@@ -474,7 +474,7 @@ export const ProjectGroupDetail = () => {
           </Card>
         }
       >
-        <Card title="Group members" description="View members of this group">
+        <Card variant="framed" title="Group members" description="View members of this group">
           <GroupMembersTable projectId={projectId} group={group} initialSearch={username} />
         </Card>
       </DetailLayout>

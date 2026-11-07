@@ -643,6 +643,7 @@ export const ProjectIdentityAuthSection = ({
   return (
     <>
       <Card
+        variant="framed"
         title="Authentication"
         description="Configure authentication methods"
         flush={methods.length > 0}

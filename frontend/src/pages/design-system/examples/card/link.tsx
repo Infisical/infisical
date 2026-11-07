@@ -13,7 +13,7 @@ export default function Example() {
         align="stretch"
         label="Whole card opens Detail; the copy button and docs link keep their own click"
       >
-        <Card>
+        <Card variant="framed">
           <div className="flex items-start gap-3">
             <ProviderIcon icon="Infisical.png" alt="" size="xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -46,7 +46,7 @@ export default function Example() {
         </Card>
       </ExampleCell>
       <ExampleCell align="stretch" label="Disabled: no href, no overlay">
-        <Card>
+        <Card variant="framed">
           <div className="flex items-start gap-3">
             <ProviderIcon icon="Kafka.png" alt="" size="xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">

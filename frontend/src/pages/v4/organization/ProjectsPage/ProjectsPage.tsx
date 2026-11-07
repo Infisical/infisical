@@ -94,6 +94,7 @@ export const ProjectsPage = () => {
       <Grid columns={2} gap={32}>
         {products.map((product) => (
           <Card
+            variant="framed"
             key={product.type}
             footerPlacement="frame"
             title={

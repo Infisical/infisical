@@ -77,6 +77,7 @@ export const KpiCards = ({ stats }: { stats: TDashboardStats }) => {
         const badge = badgeFor(card.key, stats);
         return (
           <Card
+            variant="framed"
             key={card.key}
             className="relative"
             title={

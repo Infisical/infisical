@@ -231,7 +231,7 @@ const RequestDetail = ({
       <DetailLayout
         asideLabel="Request details"
         aside={
-          <Card title="Details" size="sm">
+          <Card variant="framed" title="Details" size="sm">
             <Detail>
               <DetailLabel>Environment</DetailLabel>
               <DetailValue>{environment}</DetailValue>
@@ -250,7 +250,7 @@ const RequestDetail = ({
         }
       >
         <Stack gap={24}>
-          <Card title="Changes" flush>
+          <Card variant="framed" title="Changes" flush>
             <Table aria-label="Secret changes">
               <TableHeader>
                 <TableRow>
@@ -280,7 +280,7 @@ const RequestDetail = ({
               </TableBody>
             </Table>
           </Card>
-          <Card title="Reviewers" flush>
+          <Card variant="framed" title="Reviewers" flush>
             <Table aria-label="Reviewers">
               <TableHeader>
                 <TableRow>

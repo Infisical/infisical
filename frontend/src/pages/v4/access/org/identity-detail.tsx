@@ -378,6 +378,7 @@ export const OrgIdentityDetail = () => {
           asideLabel="Details"
           aside={
             <Card
+              variant="framed"
               title="Details"
               description="Machine identity details"
               action={
