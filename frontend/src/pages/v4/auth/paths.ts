@@ -11,7 +11,13 @@ const AUTH_PATHS = new Set([
   "/login/saml",
   "/login/provider/error",
   "/signup",
-  "/signup/sso"
+  "/signup/sso",
+  "/signupinvite",
+  "/requestnewinvite",
+  "/email-not-verified",
+  "/account-recovery",
+  "/account-recovery-reset",
+  "/password-setup"
 ]);
 
 const pathOf = (href: string) => href.split(/[?#]/)[0].replace(/(.)\/$/, "$1");

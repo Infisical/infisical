@@ -9,13 +9,19 @@ import {
   parseSignupTrialSearch
 } from "@app/components/auth/signupTrialIntent";
 import { createNotification } from "@app/components/notifications";
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { consumeLoginRedirectUrl } from "@app/helpers/sessionStorage";
 import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
-import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
+import {
+  authKeys,
+  fetchAuthToken,
+  selectOrganization,
+  verifySignupInvite
+} from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import {
   fetchOrganizationsWithSubOrgs,
@@ -313,4 +319,90 @@ export const autoSelectOrganization = async ({
   }
 
   return { autoSelectErrorMessage };
+};
+
+export const SignupInvitePageQueryParamsSchema = z.object({
+  token: z.string(),
+  to: z.string(),
+  organization_id: z.string()
+});
+
+export const acceptSignupInvite = async ({
+  context,
+  search
+}: {
+  context: TAuthRouteContext;
+  search: z.infer<typeof SignupInvitePageQueryParamsSchema>;
+}) => {
+  const email = decodeURIComponent(search.to).trim();
+  const { token, organization_id: organizationId } = search;
+
+  // Check if user is already logged in
+  const authData = await context.queryClient
+    .ensureQueryData({
+      queryKey: authKeys.getAuthToken,
+      queryFn: fetchAuthToken
+    })
+    .catch(() => null);
+
+  if (authData) {
+    setAuthToken(authData.token);
+  }
+
+  try {
+    const result = await verifySignupInvite({
+      email,
+      code: token,
+      organizationId
+    });
+
+    if (!result.token) {
+      createNotification({
+        text: "Invitation accepted. Please login into your account",
+        type: "success"
+      });
+    }
+
+    if (authData) {
+      // Logged-in user — invitation accepted, go to the org
+      throw redirect({
+        to: "/login/select-organization",
+        search: { org_id: organizationId }
+      });
+    }
+
+    if (result.token) {
+      // New user — store signup token, render the signup form
+      SecurityClient.setSignupToken(result.token);
+      return { inviteEmail: email, inviteOrganizationName: result.organizationName };
+    }
+
+    // Existing user, not logged in, membership accepted — send to login
+    throw redirect({ to: "/login" });
+  } catch (error: unknown) {
+    // Re-throw redirects
+    if (typeof error === "object" && error !== null && "to" in error) throw error;
+
+    // "Already a member" — redirect appropriately
+    const message =
+      (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      (error as Error)?.message ||
+      "";
+
+    if (message.includes("already a member")) {
+      if (authData) {
+        throw redirect({
+          to: "/login/select-organization",
+          search: { org_id: organizationId }
+        });
+      }
+      throw redirect({ to: "/login" });
+    }
+
+    // Verification failed — pass error to the page
+    return {
+      inviteEmail: email,
+      error: message || "This invitation link is invalid or has expired."
+    };
+  }
 };

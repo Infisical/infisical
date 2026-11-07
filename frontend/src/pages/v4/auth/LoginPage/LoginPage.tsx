@@ -328,7 +328,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
         canUseEmail ? (
           <span>
             Help me{" "}
-            <Link to="/account-recovery" className={styles.link}>
+            <Link to="/v4/account-recovery" className={styles.link}>
               recover my account
             </Link>
           </span>

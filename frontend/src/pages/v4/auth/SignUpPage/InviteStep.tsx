@@ -1,15 +1,6 @@
 import { useState } from "react";
 
 import { Button } from "@app/components/v4/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@app/components/v4/ui/dialog";
 import { Field } from "@app/components/v4/ui/field";
 import { Inline } from "@app/components/v4/ui/layout";
 import { toast } from "@app/components/v4/ui/sonner";
@@ -20,6 +11,7 @@ import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { waitForMinimumDuration } from "@app/lib/fn/promise";
 
 import { AuthPage } from "../components/AuthPage";
+import { EmailServiceDialog } from "../components/EmailServiceDialog";
 
 type Props = {
   draft: string;
@@ -141,31 +133,7 @@ export const InviteStep = ({
           </Button>
         </Inline>
       </Inline>
-      <Dialog open={isEmailSetupOpen} onOpenChange={setIsEmailSetupOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Email service not configured</DialogTitle>
-            <DialogDescription>
-              An instance administrator must configure an email service provider before this action
-              can run.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button asChild variant="link">
-              <a
-                href="https://infisical.com/docs/self-hosting/configuration/envars#email-service"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Documentation
-              </a>
-            </Button>
-            <DialogClose asChild>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmailServiceDialog open={isEmailSetupOpen} onOpenChange={setIsEmailSetupOpen} />
     </AuthPage>
   );
 };
