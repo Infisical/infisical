@@ -152,7 +152,10 @@ const ScopeRow = ({ scope, scopedCount, unit, hasProjectDetail, showParentOrg }:
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2 text-xs text-accent">
                     <ScopeIcon className="size-3.5 shrink-0 text-neutral" />
-                    <span className="truncate">{scope.isRoot ? "Org" : "Sub-Org"}</span>
+                    <span className="truncate">
+                      {scope.isRoot ? "Organization level" : "Sub-organization level"}
+                    </span>
+                    <span className="shrink-0 text-muted">not in a project</span>
                   </span>
                   <CountShare count={scope.orgLevelCount} total={scope.count} />
                 </div>
@@ -276,9 +279,11 @@ const BreakdownBody = ({
   const { total, userCount, scopedCount, unit, hasProjectDetail, scopes } = breakdown;
   const unitLabel = pluralizeUnit(unit);
   const isInstanceScope = scopeKind === "instance";
-  const uniqueNoun = total === 1 ? "unique identity" : "unique identities";
+  const uniqueNoun = total === 1 ? "billed identity" : "billed identities";
   const totalNoun = userCount > 0 ? uniqueNoun : unitForCount(unit, total);
-  const totalLabel = isInstanceScope ? totalNoun : `${totalNoun} from this organization`;
+  const totalLabel = isInstanceScope
+    ? `${totalNoun} on this instance`
+    : `${totalNoun} in this organization and its sub-organizations`;
   const rootScopes = useMemo(() => scopes.filter((scope) => scope.isRoot), [scopes]);
   const subOrgScopes = useMemo(() => scopes.filter((scope) => !scope.isRoot), [scopes]);
   // The instance-wide breakdown counts every organization on the instance, so it can carry several
@@ -331,7 +336,7 @@ const BreakdownBody = ({
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-accent">
             <span>
               <span className="font-semibold text-foreground">{userCount.toLocaleString()}</span>{" "}
-              {userCount === 1 ? "user identity" : "user identities"}
+              {userCount === 1 ? "user" : "users"}
             </span>
             <span className="text-border">·</span>
             <span>
@@ -340,18 +345,23 @@ const BreakdownBody = ({
             </span>
           </div>
         )}
+        {userCount > 0 && (
+          <span className="text-xs text-muted">
+            Users count once across organizations, so only machine identities are split below.
+          </span>
+        )}
       </div>
 
       {scopedCount === 0 ? (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>Nothing counted yet</EmptyTitle>
+            <EmptyTitle>{userCount > 0 ? "Only users so far" : "Nothing billed yet"}</EmptyTitle>
             <EmptyDescription>
-              No {unitLabel} have been created{" "}
+              No {unitLabel} have been given access{" "}
               {isInstanceScope
                 ? "anywhere on this instance"
                 : "in this organization or its sub-organizations"}
-              .
+              {userCount > 0 ? ", so every billed identity here is a user." : "."}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -359,7 +369,7 @@ const BreakdownBody = ({
         <>
           <div className="flex flex-col gap-1 pt-1">
             <span className="text-base font-semibold text-foreground">
-              {sentenceCase(unitLabel)} by scope
+              {sentenceCase(unitLabel)} by where they were created
             </span>
             <span className="text-xs text-muted">{spanSummary}</span>
           </div>

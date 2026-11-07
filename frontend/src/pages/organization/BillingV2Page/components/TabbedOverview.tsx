@@ -41,8 +41,10 @@ import {
   nextChargeProductLabel
 } from "../billing-v2-format";
 import { DetailsSheet, InvoicesSheet, PaymentSheet } from "./BillingSheets";
-import { InactiveProductCard, ProductOverviewCard } from "./ProductOverviewCard";
+import { InactiveProductCard } from "./InactiveProductCard";
+import { OrganizationFeatures } from "./OrganizationFeatures";
 import { CardEmpty } from "./shared";
+import { SubscriptionsTable } from "./SubscriptionsTable";
 
 const PRODUCT_UPGRADE_INTENTS: Record<string, UpgradeIntent> = {
   [CertificateManagementUpgradeIntent.productKey]: CertificateManagementUpgradeIntent,
@@ -204,9 +206,6 @@ export const TabbedOverview = ({
   const { subscription } = useSubscription();
   const licenseCopy = SELF_HOSTED_LICENSE_COPY[getSelfHostedLicenseState(subscription)];
   const refreshEntitlements = useRefreshBillingV2Entitlements();
-  const [expanded, setExpanded] = useState<{ productId: string; dimensionKey?: string } | null>(
-    null
-  );
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const [openSheet, setOpenSheet] = useState<"payment" | "invoices" | "details" | null>(null);
   const { billing, entitlements } = overview;
@@ -224,12 +223,6 @@ export const TabbedOverview = ({
     Boolean(entitlements[productId]?.entitled) && entitlements[productId]?.status !== "churned";
   const activeProducts = visible.filter((prod) => isActiveProduct(prod.id));
   const inactiveProducts = visible.filter((prod) => !isActiveProduct(prod.id));
-  const expandedProduct =
-    expanded &&
-    visible.some((prod) => prod.id === expanded.productId) &&
-    isActiveProduct(expanded.productId)
-      ? expanded
-      : null;
   const accountStatus =
     overview.subState in ACCOUNT_STATUS
       ? ACCOUNT_STATUS[overview.subState as keyof typeof ACCOUNT_STATUS]
@@ -317,7 +310,7 @@ export const TabbedOverview = ({
           Next Charge
           {accountStatus && <Badge variant={accountStatus.variant}>{accountStatus.label}</Badge>}
         </span>
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="text-lg leading-6 font-medium tabular-nums">
             {nextCharge ? fmtMoneyCents(nextCharge.amount) : "Nothing due"}
           </span>
@@ -460,6 +453,7 @@ export const TabbedOverview = ({
             )}
           </div>
         </div>
+        <OrganizationFeatures />
       </Card>
 
       {visible.length === 0 ? (
@@ -470,40 +464,18 @@ export const TabbedOverview = ({
       ) : (
         <>
           {activeProducts.length > 0 && (
-            <section className="flex flex-col gap-4">
-              {inactiveProducts.length > 0 && <SectionHeading title="Your Products" />}
-              <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-                {activeProducts.map((prod) => {
-                  const isExpanded = expandedProduct?.productId === prod.id;
-                  return (
-                    <ProductOverviewCard
-                      key={prod.id}
-                      prod={prod}
-                      ent={entitlements[prod.id]!}
-                      readOnly={readOnly}
-                      selfServe={overview.selfServe}
-                      isManaged={isManaged}
-                      breakdownOrgId={breakdownOrgId}
-                      breakdownScope={breakdownScope}
-                      isExpanded={isExpanded}
-                      isDimmed={Boolean(expandedProduct) && !isExpanded}
-                      selectedDimensionKey={isExpanded ? expandedProduct?.dimensionKey : undefined}
-                      onExpand={(dimensionKey) =>
-                        setExpanded({
-                          productId: prod.id,
-                          dimensionKey:
-                            dimensionKey ?? (isExpanded ? expandedProduct?.dimensionKey : undefined)
-                        })
-                      }
-                      onCollapse={() => setExpanded(null)}
-                      onManage={onManage}
-                      onSetCommitment={onSetCommitment}
-                      onViewBreakdown={onViewBreakdown}
-                    />
-                  );
-                })}
-              </div>
-            </section>
+            <SubscriptionsTable
+              products={activeProducts}
+              entitlements={entitlements}
+              readOnly={readOnly}
+              selfServe={overview.selfServe}
+              isManaged={isManaged}
+              breakdownOrgId={breakdownOrgId}
+              breakdownScope={breakdownScope}
+              onManage={onManage}
+              onSetCommitment={onSetCommitment}
+              onViewBreakdown={onViewBreakdown}
+            />
           )}
           {inactiveProducts.length > 0 && (
             <section className="flex flex-col gap-4">
@@ -514,7 +486,6 @@ export const TabbedOverview = ({
                 {inactiveProducts.map((prod) => (
                   <InactiveProductCard
                     key={prod.id}
-                    isDimmed={Boolean(expandedProduct)}
                     prod={prod}
                     readOnly={readOnly}
                     isManaged={isManaged}
