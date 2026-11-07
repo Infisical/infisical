@@ -1170,7 +1170,8 @@ export const CertificatesTable = ({
                                     e.stopPropagation();
                                     handlePopUpOpen("certificateExport", {
                                       certificateId: certificate.id,
-                                      serialNumber: certificate.serialNumber
+                                      serialNumber: certificate.serialNumber,
+                                      hasPrivateKey: certificate.hasPrivateKey
                                     });
                                   }}
                                 >

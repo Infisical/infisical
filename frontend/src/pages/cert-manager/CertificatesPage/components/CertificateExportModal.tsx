@@ -99,11 +99,13 @@ const createExportFormSchema = (pkcs12PasswordPolicy: TPasswordPolicy) => {
 type ExportFormData = z.infer<ReturnType<typeof createExportFormSchema>>;
 
 export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelected }: Props) => {
-  const { certificateId, serialNumber } =
+  const { certificateId, serialNumber, hasPrivateKey } =
     (popUp?.certificateExport?.data as {
       certificateId: string;
       serialNumber: string;
+      hasPrivateKey?: boolean;
     }) || {};
+  const isPkcs12Unavailable = hasPrivateKey === false;
 
   const { config } = useServerConfig();
   const exportFormSchema = useMemo(
@@ -193,7 +195,9 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
                   </SelectTrigger>
                   <SelectContent position="popper">
                     <SelectItem value="pem">PEM</SelectItem>
-                    <SelectItem value="pkcs12">PKCS12</SelectItem>
+                    <SelectItem value="pkcs12" disabled={isPkcs12Unavailable}>
+                      PKCS12{isPkcs12Unavailable ? " (no private key stored)" : ""}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FieldDescription>
