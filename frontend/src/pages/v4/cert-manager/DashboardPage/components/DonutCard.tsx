@@ -41,7 +41,7 @@ export const DonutCard = ({
   stacked = false
 }: {
   title: string;
-  description: string;
+  description?: string;
   slices: DonutSlice[];
   emptyTitle?: string;
   stacked?: boolean;

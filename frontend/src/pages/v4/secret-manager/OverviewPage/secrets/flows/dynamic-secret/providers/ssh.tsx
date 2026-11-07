@@ -52,7 +52,7 @@ function SshFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
             <Field
               wide
               label="Allowed Principals"
-              description="The usernames this dynamic secret can issue certificates for."
+              description="Usernames certificates can be issued for."
               error={fieldError(error)}
             >
               <Inline gap={8}>
@@ -106,14 +106,12 @@ function SshFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
         [
           {
             name: "inputs.keyAlgorithm",
-            label: "Key Algorithm",
-            description: "Algorithm for ephemeral key pairs generated per lease."
+            label: "Key Algorithm"
           },
           {
             name: "inputs.caKeyAlgorithm",
             label: "CA Key Algorithm",
-            description:
-              "Algorithm for the CA that signs lease certificates. Updating this requires hosts to be configured again."
+            description: "Changing this requires configuring hosts again."
           }
         ] as const
       ).map((definition) => (
@@ -125,7 +123,7 @@ function SshFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
             <Field
               wide
               label={definition.label}
-              description={definition.description}
+              description={"description" in definition ? definition.description : undefined}
               error={fieldError(error)}
             >
               <Select

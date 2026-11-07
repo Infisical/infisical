@@ -25,23 +25,19 @@ const connectionFields = [
     name: "inputs.tokenUrl",
     type: "text",
     label: "Token URL",
-    placeholder: "https://auth.example.com/oauth2/token",
-    description: "The authorization server's OAuth 2.0 token endpoint."
+    placeholder: "https://auth.example.com/oauth2/token"
   },
   {
     name: "inputs.revocationUrl",
     type: "text",
     label: "Revocation URL",
     placeholder: "https://auth.example.com/oauth2/revoke",
-    description:
-      "The RFC 7009 endpoint Infisical calls to revoke each lease's access token when the lease ends."
+    description: "RFC 7009 endpoint called to revoke each lease's token when the lease ends."
   },
   {
     name: "inputs.clientAuth.method",
     type: "select",
     label: "Client Authentication",
-    description:
-      "How Infisical sends the client credentials to the token and revocation endpoints.",
     options: [
       { label: "HTTP Basic Header", value: OAuth2ClientAuthMethod.ClientSecretBasic },
       { label: "Request Body", value: OAuth2ClientAuthMethod.ClientSecretPost }
@@ -68,7 +64,7 @@ const connectionFields = [
     label: "Scope",
     placeholder: "read:orders write:orders",
     isOptional: true,
-    description: "Space-separated scopes. Leave blank to use the client's default scopes."
+    description: "Space-separated. Leave blank for the client's default scopes."
   }
 ] satisfies readonly TDynamicSecretProviderField<TOAuth2CreateFormValues>[];
 
@@ -97,7 +93,7 @@ function OAuth2Fields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
         id="oauth2-extra-params"
         surface
         title="Extra Parameters"
-        description="Additional form parameters sent with the token request, such as audience or resource."
+        description="Sent with the token request, such as audience or resource."
       >
         <Stack gap={12} align="start">
           {extraParams.fields.map(({ id }, index) => (
@@ -154,7 +150,7 @@ function OAuth2Fields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
 
 const commonFields = {
   ttlDescription:
-    "TTLs must fit within the token lifetime the authorization server sets. They aren't checked if the server doesn't report a lifetime."
+    "TTLs must fit within the token lifetime the authorization server reports, if any."
 };
 
 export const oauth2FlowProvider = defineFlowProvider({

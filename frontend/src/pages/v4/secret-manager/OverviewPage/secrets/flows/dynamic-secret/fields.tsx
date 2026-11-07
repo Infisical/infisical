@@ -398,7 +398,7 @@ export function StatementAccordion<TValues extends FieldValues>({
 export function SslRejectUnauthorizedField<TValues extends FieldValues>({
   name = "inputs.sslRejectUnauthorized" as Path<TValues>,
   fallbackChecked = true,
-  description = "Verify the server certificate against the supplied certificate authorities."
+  description = "Reject server certificates not signed by the supplied CA."
 }: {
   name?: Path<TValues>;
   fallbackChecked?: boolean;

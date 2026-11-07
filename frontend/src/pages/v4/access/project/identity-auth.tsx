@@ -380,7 +380,7 @@ export const RemoveAuthMethodDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Remove auth method</AlertDialogTitle>
           <AlertDialogDescription>
-            {`Remove ${method ? authMethodName(method) : ""} from ${identity?.name ?? "this identity"}. Clients using this method can no longer authenticate as this identity, and its configuration and issued credentials are deleted. The method can be configured again later.`}
+            {`Removes ${method ? authMethodName(method) : ""} from ${identity?.name ?? "this identity"}. Clients using it can no longer authenticate, and its configuration and issued credentials are deleted.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -644,7 +644,6 @@ export const ProjectIdentityAuthSection = ({
     <>
       <Card
         title="Authentication"
-        description="Configure authentication methods"
         flush={methods.length > 0}
         action={
           methods.length > 0 && methods.length < allMethods.length
@@ -667,7 +666,6 @@ export const ProjectIdentityAuthSection = ({
             size="sm"
             icon="key"
             title="This machine identity has no auth methods configured"
-            description="Add an auth method to use this machine identity"
             actions={addButton("primary")}
           />
         )}

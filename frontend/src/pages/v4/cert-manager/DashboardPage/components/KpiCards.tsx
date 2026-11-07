@@ -12,21 +12,19 @@ import { formatShare, type InventoryFilters } from "./dashboard.utils";
 const cards: {
   key: keyof TDashboardStats["totals"];
   label: string;
-  subtitle: string;
+  subtitle?: string;
   icon: IconName;
   filters: InventoryFilters;
 }[] = [
   {
     key: "total",
     label: "Total certificates",
-    subtitle: "All certificates",
     icon: "cert",
     filters: {}
   },
   {
     key: "active",
     label: "Active",
-    subtitle: "Currently valid",
     icon: "check-c",
     filters: { filterStatus: "active" }
   },
@@ -40,14 +38,12 @@ const cards: {
   {
     key: "expired",
     label: "Expired",
-    subtitle: "Past validity",
     icon: "alert-c",
     filters: { filterStatus: "expired" }
   },
   {
     key: "revoked",
     label: "Revoked",
-    subtitle: "Manually revoked",
     icon: "alert",
     filters: { filterStatus: "revoked" }
   }
@@ -60,7 +56,6 @@ const badgeFor = (
   const { total, active, revoked } = stats.totals;
   if (key === "total" && total > 0)
     return { tone: "soft", label: `${formatShare(active, total)} active` };
-  if (key === "active" && total > 0) return { tone: "ok", label: "Valid and trusted" };
   if (key === "expiringSoon" && stats.expiringSoonNoAutoRenewal > 0)
     return { tone: "warn", label: `${stats.expiringSoonNoAutoRenewal} without auto-renewal` };
   if (key === "expired" && stats.expiredNotRenewed > 0)
@@ -95,7 +90,7 @@ export const KpiCards = ({ stats }: { stats: TDashboardStats }) => {
                 <Heading level={3} size="display">
                   {stats.totals[card.key]}
                 </Heading>
-                <Meta>{card.subtitle}</Meta>
+                {card.subtitle && <Meta>{card.subtitle}</Meta>}
               </Inline>
               {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
             </Stack>

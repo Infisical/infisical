@@ -3,7 +3,7 @@ import { type ReactNode, useState } from "react";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
-import { SmallText, Heading } from "@app/components/v4/ui/text";
+import { Heading } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { Muted } from "../ui";
@@ -12,23 +12,18 @@ import css from "./org.module.css";
 
 export const Section = ({
   title,
-  description,
   action,
   children
 }: {
   title: string;
-  description: string;
   action?: ReactNode;
   children: ReactNode;
 }) => (
   <section className={css.section}>
     <div className={css.sectionHead}>
-      <div className={css.sectionCopy}>
-        <Heading level={2} size="subsection">
-          {title}
-        </Heading>
-        <SmallText muted>{description}</SmallText>
-      </div>
+      <Heading level={2} size="subsection">
+        {title}
+      </Heading>
       {action}
     </div>
     {children}

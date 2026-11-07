@@ -241,8 +241,8 @@ export function DynamicSecretActions({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleted?.isForced
-                ? "This removes the dynamic secret and its leases from Infisical without revoking them in the external provider. This cannot be undone."
-                : "This deletes the dynamic secret configuration and revokes its active leases. This cannot be undone."}
+                ? "Removes it and its leases from Infisical without revoking them in the provider. This cannot be undone."
+                : "Deletes the configuration and revokes its active leases. This cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

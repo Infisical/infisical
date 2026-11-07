@@ -22,8 +22,7 @@ export const CONNECTION_PRESETS: Partial<Record<AppConnection, AppConnectionPres
       {
         value: AwsConnectionMethod.AssumeRole,
         label: methodLabel(AwsConnectionMethod.AssumeRole),
-        description:
-          "Infisical assumes an IAM role in your account. No long-lived keys are stored.",
+        description: "No long-lived keys are stored.",
         credentials: { roleArn: "", stsEndpoint: "" },
         fields: [
           {
@@ -45,7 +44,6 @@ export const CONNECTION_PRESETS: Partial<Record<AppConnection, AppConnectionPres
       {
         value: AwsConnectionMethod.AccessKey,
         label: methodLabel(AwsConnectionMethod.AccessKey),
-        description: "Infisical signs requests with an IAM user's access key.",
         credentials: { accessKeyId: "", secretAccessKey: "" },
         fields: [
           { name: "credentials.accessKeyId", label: "Access key ID", mono: true },

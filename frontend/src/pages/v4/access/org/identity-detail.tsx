@@ -23,7 +23,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -134,9 +133,6 @@ const EditIdentityDialog = ({
       <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>Update machine identity</DialogTitle>
-          <DialogDescription>
-            Update the identity&apos;s name, role, and metadata.
-          </DialogDescription>
         </DialogHeader>
         <form
           id="update-org-identity"
@@ -166,7 +162,6 @@ const EditIdentityDialog = ({
             <Switch
               layout="row"
               label="Delete protection"
-              description="Prevents this identity from being deleted while enabled."
               checked={protectedFlag}
               onChange={setProtected}
             />
@@ -228,7 +223,6 @@ export const OrgIdentityDetail = () => {
       <EmptyState
         icon="machine"
         title="Machine identity not found"
-        description="It may have been deleted, or you may not have access to it."
         actions={
           <Button variant="outline" asChild>
             <a href={backHref(orgId)}>Back to machine identities</a>
@@ -335,11 +329,6 @@ export const OrgIdentityDetail = () => {
           <PageHeader
             title={identity.name}
             mono
-            description={
-              isOwnIdentity
-                ? "Configure and manage machine identity and organization access control"
-                : "Configure and manage organization access control"
-            }
             actions={
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -379,7 +368,6 @@ export const OrgIdentityDetail = () => {
           aside={
             <Card
               title="Details"
-              description="Machine identity details"
               action={
                 <Gate allowed={canEdit}>
                   <Button
@@ -451,7 +439,6 @@ export const OrgIdentityDetail = () => {
           <div className={css.column}>
             <Section
               title="Authentication"
-              description="Configure authentication methods"
               action={
                 isOwnIdentity && methods.length > 0 && !allConfigured
                   ? addAuthButton("outline")
@@ -472,7 +459,6 @@ export const OrgIdentityDetail = () => {
                       size="sm"
                       icon="lock"
                       title="This machine identity has no auth methods configured"
-                      description="Add an auth method to use this machine identity"
                       actions={addAuthButton("primary")}
                     />
                   }
@@ -482,7 +468,6 @@ export const OrgIdentityDetail = () => {
                   size="sm"
                   icon="building"
                   title="Machine identity managed by organization"
-                  description="This machine identity's authentication methods are managed by your organization."
                   actions={
                     <Button variant="outline" asChild>
                       <a href={accessLinks.orgIdentity(identity.orgId, identity.id)}>

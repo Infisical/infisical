@@ -330,11 +330,11 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   };
 
   let emptyTitle = "No sessions yet";
-  let emptyDescription = "Create a session to get a token an agent can run with.";
+  let emptyDescription = "A session gives an agent a token to run with.";
   if (!hasReachableBundles) {
     emptyTitle = isAdmin ? "No sessions yet" : "No access bundles granted to you";
     emptyDescription = isAdmin
-      ? "Create an access bundle first, then create a session with it. Agents also need a proxy to route through."
+      ? "Sessions need an access bundle, and agents need a proxy to route through."
       : "Ask an admin to grant you an access bundle.";
   }
 
@@ -343,7 +343,6 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       <Stack gap={24}>
         <PageHeader
           title="Sessions"
-          description="Create sessions that let your agents reach the services they need."
           badges={
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/agent-vault/sessions" />
           }
@@ -422,7 +421,6 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
                 media="bare"
                 icon="search"
                 title="No sessions match these filters"
-                description="Try a different search term or status."
                 actions={
                   <Button
                     variant="outline"

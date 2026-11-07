@@ -54,10 +54,7 @@ const MandateDeadlines = () => {
     .map((phase) => ({ ...phase, daysUntil: Math.ceil((phase.date.getTime() - now) / 864e5) }))
     .filter((phase) => phase.daysUntil > 0);
   return (
-    <Card
-      title="CA/B Forum mandate deadlines"
-      description="Upcoming reductions in maximum TLS certificate validity"
-    >
+    <Card title="CA/B Forum mandate deadlines">
       <Stack gap={16}>
         {upcoming.map((phase) => (
           <Inline key={phase.maxDays} gap={12} justify="between" wrap={false}>
@@ -92,7 +89,7 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
   return (
     <Card
       title="Projected annual renewals"
-      description="Estimated yearly renewal volume under each validity regime"
+      description="Renewals per year at each maximum validity."
     >
       <Stack gap={8}>
         <ChartContainer
@@ -153,7 +150,7 @@ export const ValidityReadinessSection = ({ stats }: { stats: TDashboardStats }) 
         <ProjectedRenewals activeCerts={tlsActiveCerts} />
         <DonutCard
           title="Certificates by validity period"
-          description="Active certificates grouped by issuance-to-expiry duration"
+          description="Active certificates by issue-to-expiry duration."
           stacked
           slices={validityBuckets.map((entry) => ({
             label: entry.label,

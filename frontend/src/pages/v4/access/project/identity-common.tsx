@@ -29,8 +29,6 @@ import { useProjectScope } from "./scope";
 import styles from "./identity.module.css";
 
 export const DELETE_PROTECTED = "Delete protection is enabled";
-export const ASSUME_HINT =
-  "Assume the privileges of this machine identity, allowing you to replicate their access behavior.";
 
 export type ProjectIdentityMembership = Pick<
   IdentityProjectMembershipV2,
@@ -117,7 +115,7 @@ export const AssumePrivilegesDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Assume privileges of this machine identity</AlertDialogTitle>
           <AlertDialogDescription>
-            This will set your privileges to those of the machine identity for the next hour.
+            Your privileges become this machine identity&apos;s for one hour.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -192,8 +190,8 @@ export const IdentityRemovalDialog = ({
           <AlertDialogTitle>{isProjectIdentity ? `Delete ${name}?` : removeTitle}</AlertDialogTitle>
           <AlertDialogDescription>
             {isProjectIdentity
-              ? "This permanently deletes the project machine identity and revokes its access. This cannot be undone."
-              : "The machine identity will lose access to this project but remain available in its organization."}
+              ? "Deletes the machine identity and revokes its access. This cannot be undone."
+              : "It loses access to this project but stays in the organization."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

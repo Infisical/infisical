@@ -225,15 +225,9 @@ export const OrgGroupsTab = () => {
                 size="sm"
                 icon="search"
                 title={`No organization groups match ${searching ? "search" : "filter criteria"}`}
-                description="Adjust your search or filter criteria."
               />
             ) : (
-              <EmptyState
-                size="sm"
-                icon="user"
-                title="No organization groups found"
-                description="Create a group to get started."
-              />
+              <EmptyState size="sm" icon="user" title="No organization groups found" />
             )
           }
         />

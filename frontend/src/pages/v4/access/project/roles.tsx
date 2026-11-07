@@ -194,19 +194,9 @@ export const ProjectRolesTab = () => {
           onRowActivate={openRole}
           empty={
             roles.length ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title="No project roles match search"
-                description="Adjust your search criteria."
-              />
+              <EmptyState size="sm" icon="search" title="No project roles match search" />
             ) : (
-              <EmptyState
-                size="sm"
-                icon="lock"
-                title="This project does not have any roles"
-                description="Add a role to get started."
-              />
+              <EmptyState size="sm" icon="lock" title="This project does not have any roles" />
             )
           }
         />
@@ -230,7 +220,7 @@ export const ProjectRolesTab = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>{`Delete "${deleting?.name ?? "project role"}"?`}</AlertDialogTitle>
             <AlertDialogDescription>
-              This project role and its policies will be deleted. This action cannot be undone.
+              Deletes the role and its policies. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -20,7 +20,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -35,7 +34,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -155,9 +153,6 @@ const EditRolesSheet = ({
       <SheetContent pending={pending}>
         <SheetHeader>
           <SheetTitle>Roles</SheetTitle>
-          <SheetDescription>
-            Select one or more of the pre-defined or custom roles to configure project permissions.
-          </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <form
@@ -263,9 +258,6 @@ const EditRoleDialog = ({
       <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>Edit role</DialogTitle>
-          <DialogDescription>
-            Update this role assignment and its access duration.
-          </DialogDescription>
         </DialogHeader>
         <RoleAssignmentRow draft={draft} roles={roles} showLabels onChange={setDraft} />
         <DialogFooter>
@@ -372,7 +364,6 @@ export const IdentityRoleDetailsSection = ({
     <>
       <Card
         title="Project roles"
-        description="Manage roles assigned to this machine identity"
         flush={hasRoles}
         action={hasRoles ? editButton("outline") : undefined}
       >
@@ -391,7 +382,6 @@ export const IdentityRoleDetailsSection = ({
             size="sm"
             icon="user"
             title="This machine identity doesn't have any roles"
-            description="Give this machine identity one or more roles"
             actions={editButton("primary")}
           />
         )}

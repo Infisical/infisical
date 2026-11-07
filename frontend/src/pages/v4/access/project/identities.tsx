@@ -32,7 +32,6 @@ import { Gate, ListToolbar, RESTRICTED, RoleBadges, type Sort } from "../ui";
 import { AddProjectIdentitySheet } from "./identity-add-sheet";
 import { useAuthMethodFlows } from "./identity-auth";
 import {
-  ASSUME_HINT,
   AssumePrivilegesDialog,
   authMethodName,
   DELETE_PROTECTED,
@@ -184,7 +183,11 @@ export const ProjectIdentitiesTab = () => {
           )}
           <DropdownMenuItem
             disabled={!can(ProjectPermissionIdentityActions.AssumePrivileges, identity.id)}
-            description={ASSUME_HINT}
+            description={
+              can(ProjectPermissionIdentityActions.AssumePrivileges, identity.id)
+                ? undefined
+                : RESTRICTED
+            }
             onSelect={() => setAssuming(identity.id)}
           >
             <Icon name="user" />
@@ -260,18 +263,12 @@ export const ProjectIdentitiesTab = () => {
           onRowActivate={(row) => go(accessLinks.projectIdentity(scope, row.identity.id))}
           empty={
             searching ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title="No machine identities match search"
-                description="Adjust your search or filter criteria."
-              />
+              <EmptyState size="sm" icon="search" title="No machine identities match search" />
             ) : (
               <EmptyState
                 size="sm"
                 icon="machine"
                 title="No machine identities have been added to this project"
-                description="Add a machine identity to get started."
               />
             )
           }

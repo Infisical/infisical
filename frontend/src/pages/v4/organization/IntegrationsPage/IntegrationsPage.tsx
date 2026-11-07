@@ -285,7 +285,6 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
               size="sm"
               icon="search"
               title="No connections match your search"
-              description="Try another app, name or method."
               actions={
                 <Button
                   variant="link"
@@ -299,12 +298,7 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
               }
             />
           ) : (
-            <EmptyState
-              size="sm"
-              icon="apps"
-              title="No app connections yet"
-              description="Connect a third-party app to sync secrets, rotate credentials and issue certificates."
-            />
+            <EmptyState size="sm" icon="apps" title="No app connections yet" />
           )
         }
         footer={`${visible.length} of ${scoped.length} connections`}
@@ -361,7 +355,6 @@ export const IntegrationsPage = () => {
     <Stack gap={24}>
       <PageHeader
         title="Integrations"
-        description="Connect Infisical to external services and manage organization-wide integrations."
         actions={<NewConnection />}
         tabs={
           <Tabs

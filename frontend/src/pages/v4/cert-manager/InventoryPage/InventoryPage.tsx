@@ -181,7 +181,6 @@ export const InventoryPage = () => {
       <EmptyState
         icon="cert"
         title="Certificate Manager is not set up"
-        description="Set up Certificate Manager for this organization to see its certificates."
         actions={
           <Button variant="outline" asChild>
             <a href={`/v4/organizations/${orgId}/projects/cert-manager`}>Set up</a>
@@ -364,7 +363,7 @@ export const InventoryPage = () => {
           description={
             stats
               ? `${plural(stats.totals.expiringSoon, "certificate expires", "certificates expire")} within 30 days and ${stats.totals.expired} ${stats.totals.expired === 1 ? "has" : "have"} expired.`
-              : "Filter, view and inspect every certificate across your infrastructure."
+              : undefined
           }
           actions={
             <Button variant="outline" icon="upload">
@@ -507,7 +506,6 @@ export const InventoryPage = () => {
               size="sm"
               icon="search"
               title="No certificates match"
-              description="Try another search or remove a filter."
               actions={
                 <Button variant="link" onClick={clear}>
                   Clear filters

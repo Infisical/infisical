@@ -5,7 +5,6 @@ import { Combobox } from "@app/components/v4/ui/combobox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -118,9 +117,6 @@ export function CreateImportFlow({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add secret import</DialogTitle>
-          <DialogDescription>
-            Import secrets from this project or from another project that has granted you access.
-          </DialogDescription>
         </DialogHeader>
         <form
           id="create-import-flow"

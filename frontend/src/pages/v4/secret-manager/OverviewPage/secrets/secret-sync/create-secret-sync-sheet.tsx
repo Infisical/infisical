@@ -85,11 +85,8 @@ const formTabs = (destination: SecretSync, destinationName: string) => [
   {
     name: "Source",
     key: "source",
-    shortDescription: "Pick env and path",
     title: "Source secrets",
-    subtitle: "Pick the Infisical environment and path to sync from.",
-    rightDescription:
-      "Choose what gets synced. The environment and path together define the set of secrets this sync will push out.",
+    rightDescription: "The environment and path set which secrets this sync pushes.",
     fields:
       destination === SecretSync.AzureEntraIdScim
         ? ["secretPath", "environment", "syncOptions"]
@@ -98,50 +95,36 @@ const formTabs = (destination: SecretSync, destinationName: string) => [
   {
     name: "Destination",
     key: "destination",
-    shortDescription: "Connect provider",
     title: `Connect to ${destinationName}`,
-    subtitle: "Choose a connection and configure the target location.",
-    rightDescription: `Tell Infisical where to write. Pick a ${destinationName} connection and the exact destination, like a workspace, project, namespace, or whatever this provider expects.`,
+    rightDescription: `Where in ${destinationName} Infisical writes secrets.`,
     fields: ["connection", "destinationConfig"]
   },
   {
     name: "Initial sync",
     key: "initialSync",
-    shortDescription: "How to resolve the first run",
     title: "Initial sync behavior",
-    subtitle: `Choose how Infisical should reconcile existing secrets in ${destinationName} the first time this sync runs.`,
-    rightDescription:
-      "The first run is special. Infisical can either overwrite everything in the destination or import existing secrets back into Infisical. Subsequent runs follow your sync options.",
+    rightDescription: "Applies to the first run only. Later runs follow your sync options.",
     fields: ["syncOptions"]
   },
   {
     name: "Sync options",
     key: "options",
-    shortDescription: "Behavior and advanced",
     title: "Sync options",
-    subtitle: "Control how secrets are written and whether they sync automatically.",
-    rightDescription:
-      "Decide how Infisical reconciles changes on every run, including auto-sync, key schema, and how conflicts are handled.",
+    rightDescription: "These apply on every run.",
     fields: ["syncOptions"]
   },
   {
     name: "Details",
     key: "details",
-    shortDescription: "Name and description",
     title: "Sync details",
-    subtitle: "Give this sync a name and an optional description.",
-    rightDescription:
-      "A clear name helps when you have multiple syncs. The description shows up in the sync list as a tooltip.",
+    rightDescription: "The description shows as a tooltip in the sync list.",
     fields: ["name", "description"]
   },
   {
     name: "Review",
     key: "review",
-    shortDescription: "Confirm",
     title: "Review and create",
-    subtitle: "Double-check everything before creating the sync.",
-    rightDescription:
-      "Verify your configuration before creating the sync. You can edit these settings later if needed.",
+    rightDescription: "You can edit these settings later.",
     fields: [] as string[]
   }
 ];
@@ -163,14 +146,13 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
     );
   });
   const card = (destination: SecretSync) => {
-    const { name, image, category, description } = SECRET_SYNC_MAP[destination];
+    const { name, image, category } = SECRET_SYNC_MAP[destination];
     const ported = PORTED_SYNCS.includes(destination);
     return (
       <Gate key={destination} reason={ported ? undefined : NEXT_PHASE}>
         <Tile
           media={<ProviderLogo image={image} size={24} />}
           title={name}
-          description={description}
           disabled={!ported}
           onClick={() => onSelect(destination)}
         >
@@ -194,13 +176,7 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
         aria-label="Search secret sync providers"
       />
       {query && filtered.length > 0 && grid(filtered)}
-      {query && !filtered.length && (
-        <EmptyState
-          icon="search"
-          title="No matching providers"
-          description="Try a different search term."
-        />
-      )}
+      {query && !filtered.length && <EmptyState icon="search" title="No matching providers" />}
       {!query && (
         <>
           <section className={styles.pickerSection}>
@@ -260,7 +236,7 @@ function IncludeSubfoldersSwitch({
     <Switch
       layout="row"
       label="Include secrets from all subfolders"
-      description="Also sync secrets from every folder beneath this path, however deep. Secret names must be unique across all of them."
+      description="Includes every nested folder. Secret names must be unique across them."
       checked={checked}
       onCheckedChange={(next) => {
         onChange(next);
@@ -427,13 +403,11 @@ function DiagramColumn({ label, rows }: { label: string; rows: DiagramRow[] }) {
 
 function DiagramSection({
   title,
-  subtitle,
   destinationName,
   infisical,
   destination
 }: {
   title: string;
-  subtitle: string;
   destinationName: string;
   infisical: DiagramRow[];
   destination: DiagramRow[];
@@ -442,7 +416,6 @@ function DiagramSection({
     <div className={styles.diagramSection}>
       <div className={styles.diagramHead}>
         <span className={flowStyles.label}>{title}</span>
-        <SmallText muted>{subtitle}</SmallText>
       </div>
       <div className={styles.diagramColumns}>
         <DiagramColumn label="Infisical" rows={infisical} />
@@ -463,7 +436,6 @@ function ReconciliationDiagram({
     <div className={styles.diagram} aria-hidden="true">
       <DiagramSection
         title="Before"
-        subtitle="The secrets currently on each side, before the first sync runs"
         destinationName={destinationName}
         infisical={BEFORE_INFISICAL}
         destination={BEFORE_DESTINATION}
@@ -474,7 +446,6 @@ function ReconciliationDiagram({
       </div>
       <DiagramSection
         title="After"
-        subtitle="How each side looks once the first sync completes"
         destinationName={destinationName}
         infisical={AFTER[variant].infisical}
         destination={AFTER[variant].destination}
@@ -507,16 +478,16 @@ const behaviorCopy = (key: SecretSyncInitialSyncBehavior, destinationName: strin
   if (key === SecretSyncInitialSyncBehavior.OverwriteDestination)
     return {
       title: `Overwrite ${destinationName}`,
-      description: `On the initial sync, Infisical will write its secrets to ${destinationName}. No secrets will be imported from ${shortName}. Depending on your configuration this can lead to removal of secrets from ${shortName}.`
+      description: `Infisical writes its secrets to ${destinationName} and imports nothing. Depending on your options, secrets in ${shortName} can be removed.`
     };
   if (key === SecretSyncInitialSyncBehavior.ImportPrioritizeSource)
     return {
       title: `Import from ${shortName}, prioritize Infisical`,
-      description: `Prior to the initial sync, Infisical will import secrets from ${destinationName}. If an imported secret already exists in Infisical, the imported secret value is ignored, preserving the Infisical value.`
+      description: `Imports secrets from ${destinationName} first. Where a secret exists in both, the Infisical value is kept.`
     };
   return {
     title: `Import from ${shortName}, prioritize ${shortName}`,
-    description: `Prior to the initial sync, Infisical will import secrets from ${destinationName}. If an imported secret already exists in Infisical, the imported secret value will overwrite the existing value in Infisical.`
+    description: `Imports secrets from ${destinationName} first. Where a secret exists in both, the ${shortName} value overwrites Infisical.`
   };
 };
 
@@ -579,8 +550,8 @@ function InitialSyncFields() {
     <Stack gap={16}>
       {includeAllSubFolders && importable && (
         <Alert tone="info" title="Importing secrets is not supported with subfolders">
-          This sync includes secrets from subfolders, so there is no single folder to import
-          destination secrets into. Turn off subfolders on the source step to import instead.
+          With subfolders included, there is no single folder to import into. Turn off subfolders on
+          the Source step to import.
         </Alert>
       )}
       {!vercelSensitive && !includeAllSubFolders && !importable && (
@@ -601,10 +572,9 @@ function InitialSyncFields() {
         !vercelSensitive &&
         current !== SecretSyncInitialSyncBehavior.OverwriteDestination && (
           <Alert tone="warn" title="Limited import for team-scoped syncs">
-            Only Vercel shared environment variables whose scope exactly matches this sync&apos;s
-            configuration (target environments, target projects, and Apply to all Custom
-            Environments) will be imported. Variables covering a broader scope, or split across
-            separate records per environment, will not be imported on the initial sync.
+            Only shared environment variables whose scope exactly matches this sync&apos;s targets
+            (environments, projects, and Apply to all Custom Environments) are imported. Broader or
+            per-environment variables are not.
           </Alert>
         )}
       <Controller
@@ -669,7 +639,7 @@ function KeySchemaField({ destinationName }: { destinationName: string }) {
       <Switch
         layout="row"
         label="Customize key names"
-        description={`Add a prefix or suffix so Infisical can identify which keys in ${destinationName} it manages. Anything else is left untouched.`}
+        description={`A prefix or suffix marks the keys Infisical manages in ${destinationName}. Other keys are left alone.`}
         checked={enabled || hasError}
         onCheckedChange={(checked) => {
           setEnabled(checked);
@@ -690,8 +660,8 @@ function KeySchemaField({ destinationName }: { destinationName: string }) {
                 error={error?.message}
                 description={
                   <>
-                    Provide a template to rewrite each key. Use <code>{"{{secretKey}}"}</code> as a
-                    placeholder, and optionally include <code>{"{{environment}}"}</code>.{" "}
+                    Use <code>{"{{secretKey}}"}</code> as a placeholder, and optionally{" "}
+                    <code>{"{{environment}}"}</code>.{" "}
                     <a
                       href={`${DOCS}/overview#key-schemas`}
                       target="_blank"
@@ -742,7 +712,7 @@ function OptionsFields() {
             ref={field.ref}
             layout="row"
             label="Prevent secret deletion"
-            description={`Infisical will add and update secrets in ${destinationName} but never delete them. Turn this off to let syncs remove any secrets in ${destinationName} that are not in Infisical.`}
+            description={`Infisical adds and updates secrets in ${destinationName} but never deletes them.`}
             checked={Boolean(field.value)}
             onCheckedChange={(checked) => {
               if (checked) field.onChange(true);
@@ -758,7 +728,6 @@ function OptionsFields() {
             ref={field.ref}
             layout="row"
             label="Auto-sync on changes"
-            description={`When secrets in the source change, sync to ${destinationName} automatically. Turn off to only sync manually.`}
             checked={Boolean(field.value)}
             onCheckedChange={field.onChange}
           />
@@ -774,8 +743,7 @@ function OptionsFields() {
           <AlertDialogHeader>
             <AlertDialogTitle>Allow secret deletion</AlertDialogTitle>
             <AlertDialogDescription>
-              Turning off &quot;Prevent secret deletion&quot; lets a sync delete secrets in{" "}
-              {destinationName} that are not managed by Infisical.
+              The sync can then delete secrets in {destinationName} that Infisical does not manage.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1177,22 +1145,19 @@ export function CreateSecretSyncSheet({
           }
           title={destination ? `${destinationName} sync` : "Choose a destination"}
           description={
-            destination
-              ? `Sync secrets to ${destinationName}`
-              : "Where should Infisical write these secrets? You can change this later only by creating a new sync."
+            destination ? undefined : "You can't change the destination later without a new sync."
           }
           steps={
             destination
               ? [
                   { title: "Provider", summary: destinationName },
-                  ...tabs.map((tab) => ({ title: tab.name, summary: tab.shortDescription }))
+                  ...tabs.map((tab) => ({ title: tab.name }))
                 ]
               : undefined
           }
           current={step + 1}
           onStepClick={handleStepClick}
           heading={current?.title}
-          subtitle={current?.subtitle}
           aside={
             destination && current ? (
               <>
@@ -1268,15 +1233,13 @@ export function CreateSecretSyncSheet({
               <AlertDialogDescription asChild>
                 <div>
                   <Stack gap={8}>
-                    <span>Infisical is the source of truth for synced destinations.</span>
                     <span>
-                      Secrets in the destination will be overwritten, and any direct edits there may
-                      be overwritten by future syncs.
+                      Infisical is the source of truth. Secrets in the destination are overwritten,
+                      including direct edits made there later.
                     </span>
                     {willDeleteUnmatched && (
                       <span>
-                        Secrets in {destinationName} that don&apos;t exist in Infisical will be
-                        deleted.
+                        Secrets in {destinationName} that don&apos;t exist in Infisical are deleted.
                       </span>
                     )}
                   </Stack>
@@ -1294,7 +1257,7 @@ export function CreateSecretSyncSheet({
         <DiscardDialog
           open={Boolean(discard)}
           title="Discard sync setup?"
-          description="Your progress configuring this sync will be lost."
+          description="Your progress will be lost."
           onKeep={() => setDiscard(undefined)}
           onDiscard={() => {
             if (discard === "close") close();

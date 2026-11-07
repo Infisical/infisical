@@ -58,7 +58,7 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { getProjectDescription, getProjectTitle, urlSlugToProjectType } from "@app/helpers/project";
+import { getProjectTitle, urlSlugToProjectType } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -313,7 +313,6 @@ const NoProjects = ({
     <EmptyState
       icon={productOf(projectType).icon}
       title={`No ${title} projects yet`}
-      description={`Create your first ${title} project to get started.`}
       actions={
         <Button icon="plus" disabled={!canCreate} onClick={onCreate}>
           Create project
@@ -323,14 +322,7 @@ const NoProjects = ({
   );
 };
 
-const NoMatch = () => (
-  <EmptyState
-    size="sm"
-    icon="search"
-    title="No projects match your search"
-    description="Try a different search term."
-  />
-);
+const NoMatch = () => <EmptyState size="sm" icon="search" title="No projects match your search" />;
 
 type ListProps = {
   orgId: string;
@@ -528,7 +520,7 @@ const RequestAccessDialog = ({
         <DialogHeader>
           <DialogTitle>Confirm access request</DialogTitle>
           <DialogDescription>
-            {`Requesting access to project ${project?.name ?? ""}. You may include an optional note for project admins to review your request.`}
+            {`Admins of ${project?.name ?? ""} review this request.`}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -569,8 +561,7 @@ const LeaveProjectDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>{`Leave ${project?.name ?? ""}?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            Leaving removes your direct membership in this project. Any access you have through a
-            group will remain.
+            Removes your direct membership. Access through a group stays.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -672,7 +663,7 @@ const AllProjects = ({
             disabled
             description={
               project.isDirectMember
-                ? "Ask a project admin to upgrade this project before you can leave."
+                ? "Ask a project admin to upgrade this project first."
                 : "You have access through a group. Ask a group admin to remove your access."
             }
           >
@@ -833,17 +824,12 @@ const DeletedProjects = ({ projectType }: { projectType: ProjectType }) => {
   ];
 
   return (
-    <Card
-      title="Recently deleted"
-      description="Deleted projects can be restored until they are permanently deleted."
-      flush
-    >
+    <Card title="Recently deleted" flush>
       {error ? (
         <EmptyState
           size="sm"
           icon="alert"
           title="Deleted projects could not be loaded"
-          description="Retry to see which projects can still be restored."
           actions={
             <Button variant="outline" onClick={() => refetch()}>
               Retry
@@ -995,7 +981,6 @@ const NewProjectDialog = ({
       <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>{`Create a new ${title} project`}</DialogTitle>
-          <DialogDescription>{getProjectDescription(projectType)}</DialogDescription>
         </DialogHeader>
         <form
           id="new-project-form"
@@ -1033,7 +1018,7 @@ const NewProjectDialog = ({
                   <Stack gap={16}>
                     <Field
                       label="Project template"
-                      description="Create this project from a template to provision it with custom environments and roles."
+                      description="Provisions the project with the template's environments and roles."
                       wide
                     >
                       <Select
@@ -1120,7 +1105,6 @@ const ProjectTypeContent = ({
       <Stack gap={24}>
         <PageHeader
           title={getProjectTitle(projectType)}
-          description={getProjectDescription(projectType)}
           actions={
             canCreate ? (
               newProject

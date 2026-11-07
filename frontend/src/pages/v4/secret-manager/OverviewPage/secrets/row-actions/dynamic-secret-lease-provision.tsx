@@ -276,7 +276,7 @@ export function DynamicSecretLeaseProvision({
                 <Field
                   wide
                   label="Namespace"
-                  description="The Kubernetes namespace to lease the dynamic secret to. If omitted, the first configured namespace is used."
+                  description="Defaults to the first configured namespace."
                   error={error?.message}
                 >
                   <Input {...field} invalid={Boolean(error)} />
@@ -293,7 +293,7 @@ export function DynamicSecretLeaseProvision({
                   <Field
                     wide
                     label="Principals"
-                    description="The usernames to embed in the certificate. Each principal must be on the allowed list."
+                    description="Usernames to embed in the certificate. Each must be on the allowed list."
                     error={error?.message}
                   >
                     <Inline gap={8}>

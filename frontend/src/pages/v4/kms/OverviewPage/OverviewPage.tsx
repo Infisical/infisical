@@ -213,8 +213,8 @@ export const OverviewPage = () => {
           title="Keys"
           description={
             disabledCount
-              ? `${totalCount} keys, and ${disabledCount} ${disabledCount === 1 ? "is" : "are"} disabled and cannot encrypt or sign.`
-              : `${totalCount} keys, all active.`
+              ? `${disabledCount} disabled ${disabledCount === 1 ? "key" : "keys"} cannot encrypt or sign.`
+              : undefined
           }
           actions={
             <>
@@ -284,7 +284,6 @@ export const OverviewPage = () => {
               size="sm"
               icon="search"
               title="No keys match"
-              description="Try another name, ID or key usage."
               actions={
                 <Button
                   variant="link"

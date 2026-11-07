@@ -15,17 +15,17 @@ import type { CopySecretsAttributes } from "@app/pages/secret-manager/OverviewPa
 
 import styles from "./copy-secrets.module.css";
 
-const properties = [
-  { key: "value", label: "Secret value", description: "Copy values where you have read access." },
-  { key: "comment", label: "Comment", description: "Include the note attached to each secret." },
-  { key: "tags", label: "Tags", description: "Include assigned tags." },
-  { key: "metadata", label: "Metadata", description: "Include custom key/value metadata." },
-  {
-    key: "skipMultilineEncoding",
-    label: "Multi-line encoding",
-    description: "Preserve the multi-line encoding setting."
-  }
-] as const;
+const properties: {
+  key: keyof CopySecretsAttributes;
+  label: string;
+  description?: string;
+}[] = [
+  { key: "value", label: "Secret value", description: "Only values you can read are copied." },
+  { key: "comment", label: "Comment" },
+  { key: "tags", label: "Tags" },
+  { key: "metadata", label: "Metadata" },
+  { key: "skipMultilineEncoding", label: "Multi-line encoding" }
+];
 
 export function CopySecretsProperties({
   attributes,
@@ -55,8 +55,8 @@ export function CopySecretsProperties({
         <PopoverHeader>
           <PopoverTitle id="copy-properties-heading">Include properties</PopoverTitle>
           <PopoverDescription>
-            Keys are always copied. Unselected properties keep their existing destination values, or
-            use defaults for new secrets.
+            Keys are always copied. Unselected properties keep the destination values, or defaults
+            for new secrets.
           </PopoverDescription>
         </PopoverHeader>
         {properties.map(({ key, label, description }) => (

@@ -10,13 +10,7 @@ import {
 import { Button } from "@app/components/v4/ui/button";
 import { Calendar } from "@app/components/v4/ui/calendar";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyState,
-  EmptyTitle
-} from "@app/components/v4/ui/empty";
+import { Empty, EmptyHeader, EmptyState, EmptyTitle } from "@app/components/v4/ui/empty";
 import { Json, type JsonValue } from "@app/components/v4/ui/json";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
@@ -422,7 +416,7 @@ const LogsTab = () => {
               media="bare"
               icon="history"
               title="No events match these filters"
-              description={`Nothing in the ${active.title}. Try a wider date range or clear the filters.`}
+              description={`Nothing in the ${active.title}. Try a wider date range.`}
               actions={
                 filtered ? (
                   <Button
@@ -450,13 +444,11 @@ export const AuditLogsPage = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/audit-logs" });
   const navigate = useNavigate();
   const mode = useV4Mode();
-  const { organization } = useV4Session();
   const activeTab = tabs.some((tab) => tab.value === selectedTab) ? selectedTab : "audit-logs";
   return (
     <Stack gap={24}>
       <PageHeader
         title="Audit logs"
-        description={`Audit logs for security and compliance teams to monitor information access${organization.isSubOrganization ? " in this sub-organization" : ""}.`}
         tabs={
           <Tabs
             label="Audit log sections"
@@ -481,10 +473,6 @@ export const AuditLogsPage = () => {
         <Empty>
           <EmptyHeader>
             <EmptyTitle>This tab isn&apos;t in v4 yet</EmptyTitle>
-            <EmptyDescription>
-              {tabs.find((tab) => tab.value === activeTab)?.label} hasn&apos;t been ported to the
-              new app. The audit log itself has.
-            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}

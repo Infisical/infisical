@@ -834,8 +834,7 @@ function OverrideActions({
           <AlertDialogHeader>
             <AlertDialogTitle>Remove override</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove this personal override? The shared secret value will
-              be used instead.
+              The shared secret value is used instead.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

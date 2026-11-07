@@ -66,8 +66,7 @@ import { VaultImportSheet } from "./vault-import-sheet";
 import styles from "./roles.module.css";
 
 const BUILT_IN = "Built-in roles are read only";
-const DEFAULT_ROLE =
-  "Cannot delete default organization membership role. Re-assign default to allow deletion.";
+const DEFAULT_ROLE = "This is the default role for new members. Set another default to delete it.";
 
 type Overlay = "edit" | "duplicate" | "delete" | "discard" | "template" | "vault";
 
@@ -242,12 +241,9 @@ const RoleEditor = ({
       </Stack>
       <section className={styles.panel} aria-labelledby="role-policies-title">
         <header className={styles.panelHead}>
-          <div className={styles.panelCopy}>
-            <h3 id="role-policies-title" className={styles.panelTitle}>
-              Policies
-            </h3>
-            <p className={styles.muted}>Configure granular access policies</p>
-          </div>
+          <h3 id="role-policies-title" className={styles.panelTitle}>
+            Policies
+          </h3>
           <div className={styles.cardActions}>
             {dirty && (
               <Button
@@ -335,11 +331,7 @@ const RoleEditor = ({
                 ? `Are you sure you want to delete the organization role ${role.name}?`
                 : `Delete "${role.name}"?`}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {scope === "org"
-                ? "This action is irreversible."
-                : "This project role and its policies will be deleted. This action cannot be undone."}
-            </AlertDialogDescription>
+            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

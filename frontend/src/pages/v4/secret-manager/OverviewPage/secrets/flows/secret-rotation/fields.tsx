@@ -361,11 +361,11 @@ export function SecretsMappingFields({
 }
 
 const PASSWORD_FIELDS = [
-  ["length", "Password Length", "The length of the password to generate"],
-  ["required.digits", "Digit Count", "Minimum number of digits"],
-  ["required.lowercase", "Lowercase Character Count", "Minimum number of lowercase characters"],
-  ["required.uppercase", "Uppercase Character Count", "Minimum number of uppercase characters"],
-  ["required.symbols", "Symbol Count", "Minimum number of symbols"]
+  ["length", "Password Length"],
+  ["required.digits", "Digit Count"],
+  ["required.lowercase", "Lowercase Character Count"],
+  ["required.uppercase", "Uppercase Character Count"],
+  ["required.symbols", "Symbol Count"]
 ] as const;
 
 type PasswordRequirementsDefaults = Omit<typeof DEFAULT_PASSWORD_REQUIREMENTS, "allowedSymbols"> & {
@@ -388,12 +388,11 @@ export function PasswordRequirementsFields({
     <FieldSet>
       <FieldLegend variant="label">Password Requirements</FieldLegend>
       <Grid columns={2} gap={16}>
-        {PASSWORD_FIELDS.map(([path, label, tooltip]) => (
+        {PASSWORD_FIELDS.map(([path, label]) => (
           <TextField
             key={path}
             name={`parameters.passwordRequirements.${path}`}
             label={label}
-            tooltip={tooltip}
             numeric
             defaultValue={valueAt(path)}
           />
@@ -401,7 +400,6 @@ export function PasswordRequirementsFields({
         <TextField
           name="parameters.passwordRequirements.allowedSymbols"
           label="Allowed Symbols"
-          tooltip="Symbols to use in generated password"
           placeholder="-_.~!*"
           defaultValue={defaultRequirements.allowedSymbols}
         />
@@ -414,14 +412,9 @@ export function CreateUserStatementAlert({ statement }: { statement: string }) {
   return (
     <Alert tone="info" title="Example Create User Statement">
       <Stack gap={12}>
-        <p>Infisical requires two database users to be created for rotation.</p>
         <p>
-          These users are intended to be solely managed by Infisical. Altering their login after
-          rotation may cause unexpected failure.
-        </p>
-        <p>
-          Below is an example statement for creating the required users. You may need to modify it
-          to suit your needs.
+          Rotation needs two database users that only Infisical manages. Changing their login after
+          rotation can break it. Adapt this example as needed.
         </p>
         <div className={styles.statement}>
           <CodeBlock

@@ -5,7 +5,6 @@ import { Button } from "@app/components/v4/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -78,7 +77,6 @@ export function CreateFolderFlow({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add folder</DialogTitle>
-          <DialogDescription>Add a new folder to organize your secrets.</DialogDescription>
         </DialogHeader>
         <form
           id="create-folder-flow"

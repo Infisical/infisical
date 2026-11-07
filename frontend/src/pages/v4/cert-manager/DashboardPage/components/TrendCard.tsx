@@ -33,7 +33,7 @@ export const TrendCard = <TPoint extends { period: string }>({
   controls
 }: {
   title: string;
-  description: string;
+  description?: string;
   data?: TPoint[];
   series: TrendSeries[];
   range: string;

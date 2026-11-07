@@ -113,7 +113,7 @@ const AssumeMemberDialog = ({
             <div>
               <Alert tone="warn">
                 <AlertDescription>
-                  {`This will set your privileges to those of the ${noun} for the next hour.`}
+                  {`Your privileges become this ${noun}'s for one hour.`}
                 </AlertDescription>
               </Alert>
             </div>
@@ -296,18 +296,13 @@ const GroupMembersTable = ({
           }}
           empty={
             filtered ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title="No group members match your filters"
-                description="Adjust your search or filters to view group members."
-              />
+              <EmptyState size="sm" icon="search" title="No group members match your filters" />
             ) : (
               <EmptyState
                 size="sm"
                 icon="user"
                 title="This group doesn't have any members"
-                description="Assign members from organization access control or contact an organization admin."
+                description="Add members from organization access control."
               />
             )
           }
@@ -389,11 +384,7 @@ export const ProjectGroupDetail = () => {
     return (
       <Stack gap={32}>
         <BackLink href={back} />
-        <EmptyState
-          icon="alert"
-          title="Group not found"
-          description="This group is unavailable or is no longer assigned to the project."
-        />
+        <EmptyState icon="alert" title="Group not found" />
       </Stack>
     );
 
@@ -404,7 +395,6 @@ export const ProjectGroupDetail = () => {
         <BackLink href={back} />
         <PageHeader
           title={group.name}
-          description="Configure and manage project access control"
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -446,7 +436,7 @@ export const ProjectGroupDetail = () => {
       <DetailLayout
         asideLabel="Details"
         aside={
-          <Card title="Details" description="Group details">
+          <Card title="Details">
             <DataList
               variant="props"
               items={[
@@ -474,7 +464,7 @@ export const ProjectGroupDetail = () => {
           </Card>
         }
       >
-        <Card title="Group members" description="View members of this group">
+        <Card title="Group members">
           <GroupMembersTable projectId={projectId} group={group} initialSearch={username} />
         </Card>
       </DetailLayout>

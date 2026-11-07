@@ -19,7 +19,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetSubheader,
   SheetTitle
@@ -161,9 +160,6 @@ export function AccessInsightsSheet({
       >
         <SheetHeader>
           <SheetTitle>Secret access insights</SheetTitle>
-          <SheetDescription>
-            View and manage user, group, and machine identity access to this secret
-          </SheetDescription>
         </SheetHeader>
         <SheetSubheader className={styles.subject}>
           <span className={styles.subjectName}>{secret.name}</span>
@@ -226,11 +222,7 @@ export function AccessInsightsSheet({
             </div>
             {open && isPending && <Loader label="Loading access" />}
             {!(open && isPending) && rows.length === 0 && (
-              <EmptyState
-                icon="search"
-                title="No results found"
-                description="No users, groups, or identities match your search."
-              />
+              <EmptyState icon="search" title="No results found" />
             )}
             {rows.length > 0 && (
               <Table>

@@ -26,13 +26,12 @@ import { Steps } from "@app/components/v4/ui/multi-step";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
 } from "@app/components/v4/ui/sheet";
 import { Switch } from "@app/components/v4/ui/switch";
-import { Heading, SmallText, Text } from "@app/components/v4/ui/text";
+import { Heading, SmallText } from "@app/components/v4/ui/text";
 import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
@@ -85,11 +84,7 @@ type Props = {
 const FORM_STEPS = [
   {
     name: "Configuration",
-    shortDescription: "Connection and schedule",
     title: "Configure the rotation",
-    subtitle: "Choose the connection and decide when Infisical should rotate these credentials.",
-    rightDescription:
-      "The connection identifies the provider account. The schedule controls how often Infisical replaces its active credentials.",
     fields: [
       "isAutoRotationEnabled",
       "environment",
@@ -100,38 +95,22 @@ const FORM_STEPS = [
   },
   {
     name: "Parameters",
-    shortDescription: "Provider settings",
     title: "Set provider parameters",
-    subtitle: "Choose the provider resource and configure how its credentials should be rotated.",
-    rightDescription:
-      "These settings are specific to the selected provider and determine which account or resource Infisical manages.",
     fields: ["parameters", "temporaryParameters"]
   },
   {
     name: "Mappings",
-    shortDescription: "Generated secret keys",
     title: "Map generated credentials",
-    subtitle: "Choose the Infisical secret keys that will receive each generated credential.",
-    rightDescription:
-      "Each generated value is written to the mapped secret key in the selected environment and path.",
     fields: ["secretsMapping"]
   },
   {
     name: "Details",
-    shortDescription: "Name and description",
     title: "Add rotation details",
-    subtitle: "Give this rotation a clear name and an optional description.",
-    rightDescription:
-      "Use a name that distinguishes this rotation from other provider accounts and environments.",
     fields: ["name", "description"]
   },
   {
     name: "Review",
-    shortDescription: "Confirm configuration",
     title: "Review the rotation",
-    subtitle: "Confirm the configuration before saving the secret rotation.",
-    rightDescription:
-      "Verify the connection, schedule, provider parameters, and generated secret mappings before continuing.",
     fields: []
   }
 ];
@@ -209,7 +188,6 @@ function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void
                 key={type}
                 media={<ProviderLogo type={type} />}
                 title={SECRET_ROTATION_MAP[type].name}
-                description={`Rotate ${SECRET_ROTATION_MAP[type].name} and write the generated values to Infisical secrets.`}
                 onClick={() => onSelect(type)}
               >
                 <SmallText muted>
@@ -222,11 +200,6 @@ function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void
           <EmptyState
             icon="search"
             title={search.trim() ? "No matching providers" : "No providers available"}
-            description={
-              search.trim()
-                ? "Try a different search term."
-                : "No secret rotation providers are available for this instance."
-            }
           />
         )}
       </Stack>
@@ -313,7 +286,7 @@ function ConfigurationFields({
                 "Cannot be updated"
               ) : (
                 <>
-                  Check out{" "}
+                  See{" "}
                   <a
                     href={`https://infisical.com/docs/integrations/app-connections/${field.value?.app ?? app}`}
                     target="_blank"
@@ -321,7 +294,7 @@ function ConfigurationFields({
                   >
                     our docs
                   </a>{" "}
-                  to ensure your connection has the required permissions for secret rotation.
+                  for the permissions this connection needs.
                 </>
               )
             }
@@ -392,11 +365,7 @@ function ConfigurationFields({
             ref={field.ref}
             layout="row"
             label={`Auto-Rotation ${field.value ? "Enabled" : "Disabled"}`}
-            description={
-              field.value
-                ? "Secrets will automatically be rotated when the rotation interval specified above has elapsed."
-                : "Secrets will not be rotated automatically. You can still rotate secrets manually."
-            }
+            description={field.value ? undefined : "You can still rotate secrets manually."}
             checked={Boolean(field.value)}
             onCheckedChange={field.onChange}
           />
@@ -404,9 +373,8 @@ function ConfigurationFields({
       />
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
         <Alert tone="warn">
-          Due to {SECRET_ROTATION_MAP[type].name} Rotations rotating a single credential set,
-          auto-rotation may result in service interruptions. If you need to ensure service
-          continuity, we recommend disabling this option.{" "}
+          {SECRET_ROTATION_MAP[type].name} rotates a single credential set, so auto-rotation can
+          interrupt services that use it. Turn it off if you need continuity.{" "}
           <a
             href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
             target="_blank"
@@ -526,7 +494,7 @@ function RotationSteps({
           current={step + offset}
           steps={[
             ...(isUpdate ? [] : [{ title: "Provider", summary: SECRET_ROTATION_MAP[type].name }]),
-            ...FORM_STEPS.map((entry) => ({ title: entry.name, summary: entry.shortDescription }))
+            ...FORM_STEPS.map((entry) => ({ title: entry.name }))
           ]}
           onStepClick={(index) => {
             if (!isUpdate && index === 0) {
@@ -542,12 +510,9 @@ function RotationSteps({
         className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-6"
         onSubmit={(event) => event.preventDefault()}
       >
-        <Stack gap={4}>
-          <Heading level={2} size="subsection">
-            {current.title}
-          </Heading>
-          <Text muted>{current.subtitle}</Text>
-        </Stack>
+        <Heading level={2} size="subsection">
+          {current.title}
+        </Heading>
         {step === 0 && (
           <ConfigurationFields
             isUpdate={isUpdate}
@@ -570,18 +535,6 @@ function RotationSteps({
         {step === 3 && <DetailsFields />}
         {step === 4 && <ReviewFields />}
       </form>
-      <aside className="hidden w-80 shrink-0 flex-col gap-4 border-l border-[color:var(--v4-line-soft)] px-6 py-6 xl:flex">
-        <Inline justify="between" wrap={false}>
-          <SmallText muted>
-            Step {step + offset + 1}: {current.name}
-          </SmallText>
-          <DocsLink type={type} />
-        </Inline>
-        <Stack gap={8}>
-          <Text>What this step does</Text>
-          <SmallText muted>{current.rightDescription}</SmallText>
-        </Stack>
-      </aside>
     </div>
   );
 }
@@ -785,20 +738,12 @@ export function SecretRotationFlow({
                       <SheetTitle>{SECRET_ROTATION_MAP[type].name} secret rotation</SheetTitle>
                       <DocsLink type={type} />
                     </Inline>
-                    <SheetDescription>
-                      {isUpdate
-                        ? `Edit the ${SECRET_ROTATION_MAP[type].name} rotation configuration.`
-                        : `Configure how Infisical rotates ${SECRET_ROTATION_MAP[type].name}.`}
-                    </SheetDescription>
                   </Stack>
                 </Inline>
               </SheetHeader>
             ) : (
               <SheetHeader>
                 <SheetTitle>Choose a rotation provider</SheetTitle>
-                <SheetDescription>
-                  Select the provider whose credentials Infisical should rotate.
-                </SheetDescription>
               </SheetHeader>
             )}
             {type ? (

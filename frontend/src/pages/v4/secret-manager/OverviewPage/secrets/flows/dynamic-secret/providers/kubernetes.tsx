@@ -35,7 +35,7 @@ const authMethodField = [
     type: "select",
     label: "Auth Method",
     description:
-      "Token (API) uses a direct API token. Gateway uses the service account of a Gateway deployed in the Kubernetes cluster.",
+      "Token uses a direct API token. Gateway uses the service account of a Gateway in the cluster.",
     options: [
       { label: "Token (API)", value: KubernetesAuthMethod.Api },
       { label: "Gateway", value: KubernetesAuthMethod.Gateway }
@@ -183,7 +183,7 @@ function KubernetesFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
                   ref={field.ref}
                   layout="row"
                   label="Enable SSL"
-                  description="Optionally provide a custom CA certificate. Leave it blank to use the system CA."
+                  description="Leave the CA blank to use the system CA."
                   checked={field.value}
                   onBlur={field.onBlur}
                   onCheckedChange={field.onChange}
@@ -216,7 +216,7 @@ function KubernetesFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
                     ref={field.ref}
                     layout="row"
                     label="SSL Reject Unauthorized"
-                    description="Verify the server certificate against the supplied certificate authorities."
+                    description="Reject server certificates not signed by the supplied CA."
                     checked={field.value ?? true}
                     disabled={!sslEnabled}
                     onBlur={field.onBlur}

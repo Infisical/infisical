@@ -16,7 +16,6 @@ import { Combobox } from "@app/components/v4/ui/combobox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -106,8 +105,8 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
     body = (
       <p className={styles.notice}>
         {allGroups.length === 0
-          ? "Your organization has no groups yet. Create one at the organization level to add it to this project."
-          : "Every group in your organization is already added. To add another group, create one at the organization level first."}
+          ? "Your organization has no groups yet. Create one at the organization level first."
+          : "Every organization group is already added. Create another at the organization level first."}
       </p>
     );
     footer = (
@@ -177,9 +176,6 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
     <DialogContent pending={pending}>
       <DialogHeader>
         <DialogTitle>Add group to project</DialogTitle>
-        <DialogDescription>
-          Select an organization group and assign its project role.
-        </DialogDescription>
       </DialogHeader>
       {body}
       <DialogFooter>{footer}</DialogFooter>
@@ -220,7 +216,7 @@ export const RemoveGroupDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>{`Remove "${group?.name ?? ""}" from project?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            This removes the group&apos;s access to this project. You can add the group again later.
+            Members lose access granted through this group. You can add it again later.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -62,7 +62,7 @@ const commonFields = [
     label: "Tags",
     placeholder: "tag:ci,tag:prod",
     isOptional: true,
-    description: "Comma-separated ACL tags (for example, tag:ci, tag:prod)."
+    description: "Comma-separated."
   }
 ] satisfies readonly TTailscaleField[];
 
@@ -100,7 +100,7 @@ const scopesFields = [
     type: "text",
     label: "Scopes",
     placeholder: "devices:core,users:read",
-    description: "Comma-separated OAuth scopes."
+    description: "Comma-separated."
   }
 ] satisfies readonly TTailscaleField[];
 
@@ -110,7 +110,7 @@ const federatedFields = [
     type: "text",
     label: "Issuer",
     placeholder: "https://issuer.example.com",
-    description: "HTTPS URL of the OIDC issuer trusted for token exchange."
+    description: "Must be an HTTPS URL."
   },
   {
     name: "inputs.subject",

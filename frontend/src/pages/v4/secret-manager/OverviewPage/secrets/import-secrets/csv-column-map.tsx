@@ -135,15 +135,13 @@ export const mapCsvMatrix = (
   return { env, malformedMetadataRows };
 };
 
-const formatDelimiter = (d: CsvDelimiter) => (d === "\t" ? "tab" : d);
-
 const code = (text: string) => <code className={styles.code}>{text}</code>;
 
 export const MATRIX_ROWS: {
   mapKey: MapKey;
   label: string;
   icon: ReactNode;
-  hint?: (innerSeparator: "," | ";", outerDelimiter: CsvDelimiter) => ReactNode;
+  hint?: (innerSeparator: "," | ";") => ReactNode;
 }[] = [
   { mapKey: "key", label: "Secret key", icon: <Icon name="key" size={12} /> },
   { mapKey: "value", label: "Secret value", icon: <Icon icon={AsteriskIcon} size={12} /> },
@@ -152,17 +150,12 @@ export const MATRIX_ROWS: {
     mapKey: "tags",
     label: "Tags",
     icon: <Icon icon={TagsIcon} size={12} />,
-    hint: (sep, outer) => (
+    hint: (sep) => (
       <span className={styles.hintLines}>
         <span>
-          Separate multiple tag slugs with either {code(",")} or {code(";")}, whichever is not your
-          CSV&apos;s column delimiter.
+          Separate tag slugs with {code(sep)}, e.g. {code(`prod${sep}api`)}.
         </span>
-        <span>
-          Detected column delimiter: {code(formatDelimiter(outer))}, so use {code(sep)} (e.g.{" "}
-          {code(`prod${sep}api`)}).
-        </span>
-        <span>Missing tags are auto-created if you have permission.</span>
+        <span>Missing tags are created if you have permission.</span>
       </span>
     )
   },
@@ -170,16 +163,10 @@ export const MATRIX_ROWS: {
     mapKey: "metadata",
     label: "Metadata",
     icon: <Icon icon={CodeXmlIcon} size={12} />,
-    hint: (sep, outer) => (
-      <span className={styles.hintLines}>
-        <span>
-          Provide {code("key=value")} pairs separated by either {code(",")} or {code(";")},
-          whichever is not your CSV&apos;s column delimiter.
-        </span>
-        <span>
-          Detected column delimiter: {code(formatDelimiter(outer))}, so use {code(sep)} (e.g.{" "}
-          {code(`owner=team-a${sep}tier=p0`)}).
-        </span>
+    hint: (sep) => (
+      <span>
+        Use {code("key=value")} pairs separated by {code(sep)}, e.g.{" "}
+        {code(`owner=team-a${sep}tier=p0`)}.
       </span>
     )
   },
@@ -189,8 +176,7 @@ export const MATRIX_ROWS: {
     icon: <Icon icon={WrapTextIcon} size={12} />,
     hint: () => (
       <span>
-        Truthy cells ({code("true")}, {code("1")}, {code("yes")}) enable multi-line encoding;
-        anything else leaves it disabled.
+        {code("true")}, {code("1")}, or {code("yes")} turns it on.
       </span>
     )
   }

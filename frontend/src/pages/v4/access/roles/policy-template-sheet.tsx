@@ -26,7 +26,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -189,10 +188,6 @@ export const PolicyTemplateSheet = ({
         >
           <SheetHeader>
             <SheetTitle>Policy templates</SheetTitle>
-            <SheetDescription>
-              Select a template with prepopulated policies to get started. You can always add more
-              policies later.
-            </SheetDescription>
           </SheetHeader>
           <SheetBody>
             <div className={styles.templateLayout}>
@@ -215,7 +210,11 @@ export const PolicyTemplateSheet = ({
                         />
                         {template.name}
                       </span>
-                      <span className={styles.templateItemDescription}>{template.description}</span>
+                      {template.description && (
+                        <span className={styles.templateItemDescription}>
+                          {template.description}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -224,7 +223,7 @@ export const PolicyTemplateSheet = ({
                 <div className={styles.templatePanelHead}>
                   <div className={styles.templatePanelCopy}>
                     <h3 className={styles.templatePanelTitle}>{selected.name}</h3>
-                    <p className={styles.muted}>{selected.description}</p>
+                    {selected.description && <p className={styles.muted}>{selected.description}</p>}
                     <span>
                       <Badge tone="soft">{`${count} ${count === 1 ? "policy" : "policies"}`}</Badge>
                     </span>
@@ -284,9 +283,7 @@ export const PolicyTemplateSheet = ({
         <DialogContent className={styles.formDialog}>
           <DialogHeader>
             <DialogTitle>Conflicting policies</DialogTitle>
-            <DialogDescription>
-              The following resources already have policies assigned to them.
-            </DialogDescription>
+            <DialogDescription>These policies already have rules on this role.</DialogDescription>
           </DialogHeader>
           <ul className={styles.conflicts}>
             {conflicts.map((subject) => (

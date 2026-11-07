@@ -520,9 +520,7 @@ function CopySecretsSession({
                 </a>
               </Button>
             </SheetTitle>
-            <SheetDescription>
-              Perform a one-time copy of secrets between project locations.
-            </SheetDescription>
+            <SheetDescription>A one-time copy. Later changes are not synced.</SheetDescription>
           </SheetHeader>
           <SheetBody className={styles.body}>
             <div className={styles.columns}>
@@ -580,12 +578,7 @@ function CopySecretsSession({
                     />
                   ) : (
                     <div className={styles.emptyPane}>
-                      <EmptyState
-                        size="sm"
-                        icon="folder"
-                        title="Choose a source environment"
-                        description="Select an environment to browse its secrets."
-                      />
+                      <EmptyState size="sm" icon="folder" title="Choose a source environment" />
                     </div>
                   )}
                 </div>
@@ -645,7 +638,6 @@ function CopySecretsSession({
                         size="sm"
                         icon="folder"
                         title="Choose a destination environment"
-                        description="Select an environment to preview the copy."
                       />
                     </div>
                   )}
@@ -701,8 +693,7 @@ function CopySecretsSession({
           <AlertDialogHeader>
             <AlertDialogTitle>Resolve secret conflicts</AlertDialogTitle>
             <AlertDialogDescription>
-              These secrets already exist at the destination. Overwrite them or copy only secrets
-              without conflicts.
+              These secrets already exist at the destination.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul className={styles.conflicts}>

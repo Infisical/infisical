@@ -23,38 +23,29 @@ export const PROXIED_SERVICE_STEPS = [
   {
     step: ProxiedServiceStep.Details,
     name: "Details",
-    shortDescription: "Name and host",
     title: "Service details",
-    subtitle: "Name the service and choose which hosts it brokers.",
     rightDescription:
-      "The name identifies this service within the folder. The host pattern decides which outbound requests the agent proxy applies these credentials to."
+      "The host pattern decides which outbound requests the agent proxy applies these credentials to."
   },
   {
     step: ProxiedServiceStep.Headers,
     name: "Header rewrites",
-    shortDescription: "Request headers",
     title: "Header rewrites",
-    subtitle: "Set or overwrite request headers with a secret.",
     rightDescription:
-      "The proxy sets these headers on every outbound request, overwriting whatever the agent sent. Use this for Bearer tokens, API-key headers, or basic auth. Skip it if the credential is carried elsewhere."
+      "The proxy sets these headers on every outbound request, overwriting what the agent sent. Use it for Bearer tokens, API key headers, or basic auth."
   },
   {
     step: ProxiedServiceStep.Substitution,
     name: "Substitution",
-    shortDescription: "Placeholder swaps",
     title: "Secret substitution",
-    subtitle: "Swap a placeholder the agent sends for the real secret.",
     rightDescription:
-      "Infisical hands the agent a placeholder as an environment variable; the proxy swaps it for the real secret wherever it appears in the surfaces you pick (path, query, header, body). Ideal when the credential sits in the URL or the agent's client validates its format."
+      "The agent gets a placeholder as an environment variable, and the proxy swaps it for the real secret wherever it appears in the parts you pick (path, query, header, body). Use it when the credential sits in the URL or the client validates its format."
   },
   {
     step: ProxiedServiceStep.Review,
     name: "Review",
-    shortDescription: "Confirm",
     title: "Review",
-    subtitle: "Confirm the configuration before saving.",
-    rightDescription:
-      "Double-check the host pattern and each credential. You can edit any of this later from the folder view."
+    rightDescription: "You can edit any of this later from the folder view."
   }
 ];
 

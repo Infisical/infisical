@@ -19,7 +19,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -153,9 +152,6 @@ export function ShareSecretSheet({
         <SheetContent className={flowStyles.secretSheet}>
           <SheetHeader>
             <SheetTitle>Share a secret</SheetTitle>
-            <SheetDescription>
-              Create an encrypted link with controls for access, expiration, and delivery.
-            </SheetDescription>
           </SheetHeader>
           <SheetBody>
             {result ? (
@@ -215,7 +211,7 @@ export function ShareSecretSheet({
                 <Field
                   label="Name"
                   optional
-                  description="Only visible to your organization, never to the recipient."
+                  description="Visible only to your organization, not the recipient."
                   error={errors.name}
                 >
                   <Input
@@ -229,7 +225,7 @@ export function ShareSecretSheet({
                 </Field>
                 <Field
                   label="Secret value"
-                  description="Locked to the stored value, so the link shares exactly what is saved in Infisical."
+                  description="Uses the saved value. It cannot be edited here."
                   error={errors.secret}
                 >
                   <SecretValue value={value} label="Secret value" copyable={false} />
@@ -338,8 +334,8 @@ export function ShareSecretSheet({
                           error={errors.emails}
                           description={
                             form.allowExternalEmails
-                              ? "Recipients do not need an Infisical account, but they do need the password above."
-                              : "Recipients must sign in to Infisical so their identity can be verified."
+                              ? "Recipients need the password above, not an Infisical account."
+                              : "Recipients must sign in to Infisical to verify their identity."
                           }
                         >
                           <Input

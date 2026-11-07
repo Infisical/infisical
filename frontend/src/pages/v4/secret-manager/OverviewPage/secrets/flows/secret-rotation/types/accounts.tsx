@@ -537,7 +537,7 @@ function SnowflakeUserKeyPairParameters() {
                 ? "Cannot be updated."
                 : notListedHint(
                     "Don't see the user you're looking for?",
-                    "Select an existing Snowflake user, or type a new username to create it. New users are created as key-pair-only SERVICE users. Ensure your connection's role has the privileges to list users, alter the user's RSA public key, and (for new users) create users. If the keys are rotated the user will continue to exist."
+                    "Select an existing user, or type a new username to create a key-pair-only SERVICE user. The connection's role needs privileges to list users, alter their RSA public key, and create users. Rotating keys doesn't delete the user."
                   )
             }
             error={error?.message}
@@ -654,18 +654,8 @@ function UsernamePasswordMappings({
 function HpIloMappings() {
   return (
     <>
-      <TextField
-        name="secretsMapping.username"
-        label="Username"
-        placeholder="ILO_USERNAME"
-        description="The secret key where the iLO username will be stored"
-      />
-      <TextField
-        name="secretsMapping.password"
-        label="Password"
-        placeholder="ILO_PASSWORD"
-        description="The secret key where the rotated iLO password will be stored"
-      />
+      <TextField name="secretsMapping.username" label="Username" placeholder="ILO_USERNAME" />
+      <TextField name="secretsMapping.password" label="Password" placeholder="ILO_PASSWORD" />
     </>
   );
 }

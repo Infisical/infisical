@@ -19,7 +19,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -82,7 +81,6 @@ const OrganizationDetails = ({
   return (
     <SettingsCard
       title="Organization details"
-      description="Update your organization's name, slug, and default member role."
       hint={`Changes apply to everyone in ${saved.name}.`}
       dirty={dirty}
       onDiscard={() => setDraft(saved)}
@@ -141,7 +139,7 @@ const OrganizationDetails = ({
         </Field>
         <Field
           label="Default organization member role"
-          description="Users joining your organization get this role unless an invite says otherwise."
+          description="New members get this role unless their invite sets another."
         >
           <Select
             aria-label="Default organization member role"
@@ -184,9 +182,6 @@ const AddContactDialog = ({
       <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>Add incident contact</DialogTitle>
-          <DialogDescription>
-            This address is emailed if a severe incident affects your organization.
-          </DialogDescription>
         </DialogHeader>
         <form
           id={formId}
@@ -266,7 +261,7 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
     <>
       <SettingsCard
         title="Incident contacts"
-        description="Contacts notified in the unlikely event of a severe incident."
+        description="Emailed if a severe incident affects your organization."
         action={
           <Button variant="outline" size="sm" icon="plus" onClick={() => setAdding(true)}>
             Add contact
@@ -302,11 +297,6 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
                 size="sm"
                 icon="search"
                 title={contacts.length ? "No contacts match" : "No incident contacts"}
-                description={
-                  contacts.length
-                    ? "Try another email address."
-                    : "Add a contact to be told about severe incidents."
-                }
               />
             }
           />
@@ -346,14 +336,7 @@ const GeneralTab = () => {
   const { data: roles } = org.useRoles(current.id);
   return (
     <Stack gap={24}>
-      <PageHeader
-        title="General"
-        description={
-          current.isSubOrganization
-            ? "Update your sub-organization's name and other general settings."
-            : "Update your organization's name, incident contacts, and other general settings."
-        }
-      />
+      <PageHeader title="General" />
       <Alert tone="info">
         <AlertTitle>Some settings have moved</AlertTitle>
         <AlertDescription>
@@ -364,11 +347,7 @@ const GeneralTab = () => {
       {organization && roles ? (
         <OrganizationDetails key={organization.id} organization={organization} roles={roles} />
       ) : (
-        <SettingsCard
-          title="Organization details"
-          description="Update your organization's name, slug, and default member role."
-          loading
-        />
+        <SettingsCard title="Organization details" loading />
       )}
       {!current.isSubOrganization && <IncidentContacts orgId={current.id} />}
     </Stack>
@@ -384,8 +363,7 @@ export const SettingsPage = () => {
         <EmptyHeader>
           <EmptyTitle>This settings tab isn&apos;t in v4 yet</EmptyTitle>
           <EmptyDescription>
-            Only General has been ported. Open it from the sidebar or{" "}
-            <a href={`/v4/organizations/${orgId}/settings`}>go to General</a>.
+            <a href={`/v4/organizations/${orgId}/settings`}>Go to General</a>
           </EmptyDescription>
         </EmptyHeader>
       </Empty>

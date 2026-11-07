@@ -78,7 +78,6 @@ export const AccessManagementPage = () => {
       <Stack gap={24}>
         <PageHeader
           title="Organization access control"
-          description="Manage fine-grained access for users, groups, roles, and machine identities within your organization resources."
           tabs={
             allowed.length > 0 && (
               <Tabs

@@ -19,7 +19,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -104,10 +103,6 @@ const RuleSheet = ({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>{isNew ? "Add rule" : "Edit rule"}</SheetTitle>
-          <SheetDescription>
-            A rule allows or forbids actions on one policy, optionally only where its conditions
-            match.
-          </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <Stack gap={16}>
@@ -422,16 +417,7 @@ export const RuleTable = (props: RuleTableProps) => {
         onSelectionChange={setSelected}
         selectionDisabledReason={() => (editable ? undefined : reason)}
         empty={
-          <EmptyState
-            size="sm"
-            icon="lock"
-            title={filtering ? "No rules match" : "No rules yet"}
-            description={
-              filtering
-                ? "Adjust your search or policy filter."
-                : "Add a rule for any policy to grant this role access."
-            }
-          />
+          <EmptyState size="sm" icon="lock" title={filtering ? "No rules match" : "No rules yet"} />
         }
       />
       <p className={styles.legend}>
