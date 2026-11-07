@@ -331,13 +331,20 @@ const dateCell = (prod: BillingV2CatalogProduct, ent: BillingV2Entitlement, isMa
       />
     );
   }
-  if (upgradeTrial) {
+  if (upgradeTrial && ent.renewsOn) {
     return (
       <Stacked
-        primary={ent.trialPlanEndsAt ?? ent.renewsOn ?? "Trial"}
-        secondary={`${upgradeTrial} starts billing`}
+        primary={ent.renewsOn}
+        secondary={
+          ent.trialPlanEndsAt
+            ? `${upgradeTrial} trial ends ${ent.trialPlanEndsAt}`
+            : `${upgradeTrial} trial running`
+        }
       />
     );
+  }
+  if (upgradeTrial && ent.trialPlanEndsAt) {
+    return <Stacked primary={ent.trialPlanEndsAt} secondary={`${upgradeTrial} starts billing`} />;
   }
   if (ent.trialPaymentDueAt) {
     return (
