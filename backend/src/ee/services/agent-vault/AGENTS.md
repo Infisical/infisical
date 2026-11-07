@@ -377,8 +377,11 @@ outside it is logged unparsed and still checked against the list.
   create there is no service yet and the body carries a credential. It sends what a save of the same body would store
   (omitted values fall back to the saved service, variables expanded as resolve does), reads a pending OAuth
   authorization without claiming it, and refreshes a stored OAuth token through the usual refresh. The client is
-  hand-rolled on `safeRequest`, not the MCP SDK, which would bypass the SSRF guard. It is not audited, and a
-  member-provided bearer token can't load tools (the admin types names instead).
+  hand-rolled on `safeRequest`, not the MCP SDK, which would bypass the SSRF guard. It is not audited. A service
+  whose members each provide the credential has none to load with, so the sheet sends the admin's own instead, as a
+  credential the admin sets in full that only the list call sees: a typed token (`memberProvidedFields: []`), or a
+  sign-in. A saved member-provided OAuth service signs the admin in as a member (`personal: true`, the stored client),
+  so the read accepts an authorization of either intent; nothing claims it, and it expires unused.
 
 ## Transformations
 
@@ -467,7 +470,8 @@ one: a host pattern, method or path decides what a service can reach, so it stay
 
 ## Member-provided values
 
-An admin can leave a credential field to each member: the bearer token, or either half of a basic credential
+An admin can leave a credential field to each member: the bearer token, either half of a basic credential, or an MCP
+service's OAuth sign-in
 (`memberProvidedFields` on the service, named like variable references: `credential-value` is a token or a password,
 `credential-username` a username). Custom header and substitution values can't be member-provided yet. The personal
 value tables already carry the reference tables' target columns, but adding them still needs the service's check
@@ -539,6 +543,45 @@ personal values can reference.
   `granted` filter keeps only the bundles granted to the caller (`false`, only the ones an admin reaches by role).
   The sidebar asks for `requiresSetup=true&granted=true` and reads the count, so an admin isn't nagged in the nav
   about bundles they reach only by role, while the page's banner and badges still show them.
+
+### An OAuth sign-in left to members
+
+An MCP service's OAuth sign-in can be member provided (`memberProvidedFields: ["credential-value"]`), like a bearer
+token. Each member's connection is their personal value for `credential-value`: the sealed
+`{ accessToken, refreshToken, clientSecret }` in `encryptedValue` and the rest of a `TAgentVaultOauthConfig` in the
+nullable `oauthConfig` column, which only these rows fill. Reads return the connection's status as `oauth` on that
+field's entry in `personalValues.fields` (null on every typed value), not beside the fields, so whether the field is
+set and how its connection is doing come from the same row.
+
+- **The service row keeps no tokens.** Its `credentialConfig` is a `TAgentVaultOauthMemberConfig` (server URL, issuer,
+  `registration`, and an admin-entered `clientId`), and `encryptedCredential` is `{ clientSecret }` for an admin-entered
+  client with a secret, NULL otherwise. Anything that reads an OAuth service's sealed credential as tokens checks
+  `isMemberProvidedOauth` first: resolve, refresh, scope reports, tool loading and the admin's reauthorization all do.
+- **The save runs discovery and keeps no client** (`prepareMemberOauth`): a server with no OAuth, or with no
+  registration and no admin-entered client, fails the save. A guessed `/register` is probed by registering a client
+  that is then left unused, so a save can create clients at the provider. Each member's sign-in registers its own
+  client, as an admin's reauthorization does, or uses the admin-entered one.
+- **A member signs in through the same authorization routes with `personal: true`**, which needs only bundle Read and
+  a service that leaves sign-in to members. The record carries `personal`, and a claim refuses the wrong intent both
+  ways, so a member's sign-in never becomes the service's credential and an admin's never a personal value. The claim
+  goes through its own hidden route, `POST .../personal-values/oauth-connection` with `{ authorizationId }` (the
+  public PATCH takes typed values only), which re-checks under the service lock that the
+  server, config and client secret are the ones the first read saw, and 409s otherwise.
+- **Whatever the tokens are bound to clears every connection in the update's transaction**: the server URL, the
+  issuer, the client (id, registration mode, or a new secret), the credential type, or switching back to shared. The
+  update's audit event records `personalValuesCleared`. An admin-entered client's stored secret is never kept across an
+  issuer change: the save is refused until the secret is sent again. A save without a credential that would move a
+  member-provided service off the server its members' sign-in is bound to (a concurrent save changed it) 409s. Revoke, removal and demotion clear them like any personal value.
+- **Refresh and scope reports run on a token holder** (`serviceTokenHolder` or `personalTokenHolder`), so a member's
+  token gets the same compare-and-swap and jsonb merge as a service's (`agent-vault-oauth-token-dal-fns.ts`). The
+  personal lock is keyed by service and owner, not row id, because a reconnect replaces the row; a refresh racing a
+  reconnect loses its swap. The proxy's `credential-refresh` and `missing-scopes` carry the session, so the owner is
+  `personalValuesOwner(session)`, the user an on-behalf-of session acts for.
+- **Resolve reads the owner's values once**, before the refresh phase, so a member's lazy refresh shares the 4 second
+  budget with the services' own. A connection that needs reauthorization reads as not set up (`isConfigured` false,
+  `personalValuesMissing` in resolve), so the sidebar count and the OBO bundle list include it.
+- **Resolve marks every service with `memberProvided`**, which current CLIs use to tell the agent a rejected credential
+  is the member's to fix. Older proxies ignore it.
 
 ## Skills
 
@@ -615,7 +658,8 @@ an installed copy.
 `agent-vault-oauth/`. MCP services only. Infisical is the OAuth client and does discovery, registration, the
 code exchange and refresh; the proxy only ever receives the access token.
 
-- **The tokens live on the service row**, like every other credential: the non-secret half (endpoints, client,
+- **The tokens live on the service row**, like every other credential, unless the sign-in is left to members (see
+  [An OAuth sign-in left to members](#an-oauth-sign-in-left-to-members)): the non-secret half (endpoints, client,
   scopes, status, expiry, token hash) in `credentialConfig`, `{ accessToken, refreshToken, clientSecret }` sealed
   in `encryptedCredential`. Each service has its own client, used only with the issuer it was registered at.
   Reauthorizing registers a fresh client, since the server may have dropped the old one and the sign-in would then
@@ -647,11 +691,13 @@ code exchange and refresh; the proxy only ever receives the access token.
   stored value back with its remaining TTL, so it can be retried; nothing runs after commit.
 - **Resolve sends an OAuth token in the bearer shape** with `source: "oauth"`, so a proxy that predates OAuth
   injects it unchanged. The header is always `Authorization: Bearer` (the MCP authorization spec), so an OAuth
-  credential stores no header name or prefix and its input is only `authorizationId`. Resolve refreshes a token that expires before the next poll; the proxy calls
+  credential stores no header name or prefix and its input is `authorizationId`, or, when members sign in, `memberProvidedFields` with an optional admin-entered `clientId`, `clientSecret` or `registration: "dynamic"`. Resolve refreshes a token that expires before the next poll; the proxy calls
   `credential-refresh` after an upstream 401. A failing provider never fails resolve for other services: it costs
   that service a stale token and a `lastError`. A refresh error that means the login is dead (`invalid_grant`, a
-  dropped client, providers' own revoked or expired refresh token codes: `DEAD_LOGIN_ERROR_CODES`) moves the service
-  to needs reauthorization, so it isn't retried every poll. Any token type but a proof-of-possession one (DPoP, MAC,
+  dropped client, providers' own revoked or expired refresh token codes: `isDeadLoginError`) moves the service
+  to needs reauthorization, so it isn't retried every poll. `isClientRefusedError` picks out the refusals of the client
+  itself (`invalid_client`, `unauthorized_client` and providers' names for them): for a member's connection through the admin's own OAuth app, the
+  message says reconnecting won't help and a project admin has to update the app. Any token type but a proof-of-possession one (DPoP, MAC,
   PoP) is sent as a bearer token, since servers may name their own (Slack's is `user`).
 - **Both proxy calls answer well inside the proxy's 15 second timeout.** Resolve waits 4 seconds in total for its
   refreshes and sends the stored token for any still running, which finish in the background. Token requests (the
