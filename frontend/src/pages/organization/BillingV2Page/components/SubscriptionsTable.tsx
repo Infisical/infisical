@@ -578,14 +578,16 @@ const SubscriptionSheet = ({
   <Sheet open onOpenChange={(open) => !open && onClose()}>
     <SheetContent
       side="right"
-      className="product-color flex w-full flex-col p-0 sm:max-w-xl"
+      className="product-color"
       style={{ "--product-color": prod.color } as CSSProperties}
     >
-      <SheetHeader className="flex-row items-center gap-3 pr-12">
-        <ProductIcon product={prod} />
-        <div className="min-w-0">
-          <SheetTitle className="text-base">{prod.name}</SheetTitle>
-          <SheetDescription className="mt-0.5">Usage and limits on {planName}</SheetDescription>
+      <SheetHeader>
+        <div className="flex items-center gap-3 pr-8">
+          <ProductIcon product={prod} />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <SheetTitle>{prod.name}</SheetTitle>
+            <SheetDescription>Usage and limits on {planName}</SheetDescription>
+          </div>
         </div>
       </SheetHeader>
       <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
@@ -605,15 +607,15 @@ const SubscriptionSheet = ({
           />
         ))}
       </div>
-      <SheetFooter className="flex-row items-center justify-between border-t">
-        <span className="flex items-center gap-2">
+      <SheetFooter>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
           {hasBreakdown && (
-            <Button variant="outline" size="sm" onClick={onViewBreakdown}>
-              Usage Breakdown
-            </Button>
+            <span className="mr-auto">
+              <Button variant="outline" size="sm" onClick={onViewBreakdown}>
+                Usage Breakdown
+              </Button>
+            </span>
           )}
-        </span>
-        <span className="flex items-center gap-2">
           {canChangePlan && commitmentLabel === "Adjust Commitment" && (
             <Button variant="outline" size="sm" onClick={onSetCommitment}>
               {commitmentLabel}
@@ -629,7 +631,7 @@ const SubscriptionSheet = ({
               Done
             </Button>
           )}
-        </span>
+        </div>
       </SheetFooter>
     </SheetContent>
   </Sheet>
