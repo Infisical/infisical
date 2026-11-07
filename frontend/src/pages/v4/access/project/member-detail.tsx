@@ -16,7 +16,6 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
@@ -29,6 +28,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
@@ -82,7 +82,7 @@ export const ProjectMemberDetail = () => {
   const listHref = accessLinks.project(scope, ProjectAccessControlTabs.Member);
   const breadcrumb = [{ label: "Project users", href: listHref }];
 
-  if (permissionPending || query.isPending) return <Loader size="page" label="Loading user" />;
+  if (permissionPending || query.isPending) return <PageLoader label="Loading user" />;
   if (!permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member))
     return (
       <Stack gap={24}>

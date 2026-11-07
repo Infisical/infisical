@@ -14,7 +14,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Loader } from "@app/components/v4/ui/loader";
+import { Stack } from "@app/components/v4/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -23,6 +23,8 @@ import {
   SheetSubheader,
   SheetTitle
 } from "@app/components/v4/ui/sheet";
+import { Skeleton } from "@app/components/v4/ui/skeleton";
+import { Spinner } from "@app/components/v4/ui/spinner";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useV4Adapter } from "../../../../data/adapters";
@@ -196,7 +198,7 @@ function VersionItem({
                 : `Overwrites the current value with version ${version.version}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {confirm === "restore" && valuePending && <Loader label="Loading version value" />}
+          {confirm === "restore" && valuePending && <Spinner label="Loading version value" />}
           {confirm === "restore" && Boolean(valueError) && (
             <p role="alert">Could not load this version. Close this dialog and try again.</p>
           )}
@@ -284,7 +286,17 @@ export function VersionHistorySheet({
           <Badge tone="outline">{environmentLabel}</Badge>
         </SheetSubheader>
         <SheetBody>
-          {open && isPending && <Loader label="Loading versions" />}
+          {open && isPending && (
+            <Stack gap={24} role="status" aria-label="Loading versions">
+              {[0, 1, 2].map((index) => (
+                <Stack key={index} gap={8}>
+                  <Skeleton width={160} height={16} />
+                  <Skeleton height={36} />
+                  <Skeleton width={120} />
+                </Stack>
+              ))}
+            </Stack>
+          )}
           <ol className={styles.timeline}>
             {versions.map((version, index) => (
               <VersionItem

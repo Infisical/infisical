@@ -16,6 +16,5 @@ export const Route = createFileRoute(
       requesterEmail: z.string().catch("")
     })
   ),
-  pendingComponent: lazyRouteComponent(() => import("../../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../../V4ErrorPage"), "V4ErrorPage")
 });

@@ -19,6 +19,5 @@ export const Route = createFileRoute(
 )({
   component: SecretDashboardPage,
   validateSearch: zodValidator(SecretDashboardPageQueryParamsSchema),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });
