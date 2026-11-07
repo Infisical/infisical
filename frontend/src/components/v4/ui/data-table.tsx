@@ -7,7 +7,6 @@ import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { FloatingActionBarHostContext } from "./floating-action-bar";
 import { Icon, type IconName } from "./icon";
-import { Skeleton } from "./skeleton";
 import {
   rowActionSlots,
   RowActions,
@@ -19,6 +18,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TableLoadingRows,
   TableRow,
   TableRowActions,
   type RowAction,
@@ -531,50 +531,20 @@ export function DataTable<Row>({
         </TableHeader>
         {(loading || !groups || !rows.length) && (
           <TableBody>
-            {loading &&
-              Array.from({ length: skeletonRows }, (_, index) => (
-                <TableRow key={`loading-${index}`} aria-hidden data-loading>
-                  {selectable && (
-                    <TableCell selection>
-                      <div className={styles.tableSelection}>
-                        <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
-                      </div>
-                    </TableCell>
-                  )}
-                  {columns.map((column) => (
-                    <TableCell
-                      key={column.id}
-                      className={column.actions ? styles.tableActions : undefined}
-                      style={columnStyle(column)}
-                      data-actions={column.actions || undefined}
-                      data-pin={column.pin ?? column.actions}
-                    >
-                      {column.actions ? (
-                        <TableRowActions>
-                          <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
-                        </TableRowActions>
-                      ) : (
-                        <Skeleton
-                          className={styles.tableSkeleton}
-                          data-primary={column.primary || undefined}
-                          style={{ maxWidth: column.maxWidth }}
-                        />
-                      )}
-                    </TableCell>
-                  ))}
-                  {rowActions && (
-                    <TableActionsCell slots={slots} data-pin="true">
-                      <TableRowActions>
-                        {Array.from({ length: slots }, (_, slot) => (
-                          <span key={slot} className={styles.tableRowActionSkeleton}>
-                            <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
-                          </span>
-                        ))}
-                      </TableRowActions>
-                    </TableActionsCell>
-                  )}
-                </TableRow>
-              ))}
+            {loading && (
+              <TableLoadingRows
+                rows={skeletonRows}
+                selectable={selectable}
+                actionSlots={rowActions ? slots : undefined}
+                columns={columns.map((column) => ({
+                  primary: column.primary,
+                  actions: column.actions,
+                  pin: column.pin,
+                  maxWidth: column.maxWidth,
+                  style: columnStyle(column)
+                }))}
+              />
+            )}
             {!loading && start > 0 && (
               <TableRow aria-hidden data-spacer>
                 <TableCell

@@ -108,7 +108,7 @@ Owner: table.
 
 When each row opens its resource in a sheet or dialog on the same page.
 
-Do: Pass onRowActivate (or, in a native Table, TableRow onClick) and render the primary cell's name as a link Button that runs the same handler. The cell holds no RowLink, so no chevron is drawn, and the actions tail adds no Open or chevron action. Keep selection on the checkbox and Space.
+Do: Pass onRowActivate (or, in a native Table, TableRow onClick) and render the primary cell's name as a quiet link Button (variant link, underline hover) that runs the same handler. The cell holds no RowLink, so no chevron is drawn, and the actions tail adds no Open or chevron action. Keep selection on the checkbox and Space.
 
 Avoid: Navigate from onRowActivate or a cell's own onClick, give the row a button or link role, let a row click change the selection, or add stopPropagation to the row's controls and menus to keep them from activating it.
 
@@ -272,7 +272,7 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/frame.module.css
 - src/components/v4/tokens.json
 
-Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowIndicators, TableActionsHead, TableActionsCell, RowActions, RowContextMenu, RowAction, RowActionList, DataTableColumn, DataTableToggle, DataTableRowAction, DataTableRowActions, DataTableGroup, EnvMark. Source TypeScript defines the API.
+Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowIndicators, TableActionsHead, TableActionsCell, TableLoadingRows, TableLoadingColumn, RowActions, RowContextMenu, RowAction, RowActionList, DataTableColumn, DataTableToggle, DataTableRowAction, DataTableRowActions, DataTableGroup, EnvMark. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -299,6 +299,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - TableRow's onClick applies the same filter, in one place that DataTable's onRowActivate also goes through: it runs only for a primary click whose target is inside the row's own DOM and not on an interactive element there. Clicks that bubble through React from portaled content opened from the row (a menu, popover or dialog) are ignored, so a native Table row needs no stopPropagation on its menus, buttons, checkboxes or actions cell.
 - pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.
 - loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.
+- TableLoadingRows gives a native Table the same loading rows: DataTable renders its own through it, so the selection square, the size-skeleton-text bars (shorter with primary), the glyph squares in an actions column or a TableActionsCell tail with actionSlots, the row height and data-loading (no hover, no row ground, no context menu) match exactly. Pass one entry per body column with the widths the header uses, or a count. label names what loads, such as Loading secrets, and is announced from the first row; set aria-busy on the Table while it shows.
 - When every column declares a width, grows to fill the rest or is an actions column, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.
 - actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar.
 - Table's ref targets the table element. containerRef targets its horizontal scroll container (what v3 Table's ref pointed at) and containerClassName adds layout classes to it. DataTable takes the same two props for its scroll frame, which scrolls both ways when height is set, so ports keep reading scrollTop, observing scroll or calling scrollTo.
@@ -564,6 +565,91 @@ export default function States() {
         <figcaption className="text-muted-foreground text-xs">
           {"Loading more, retained rows"}
         </figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Native Table loading rows
+
+Save this example at `src/pages/design-system/examples/table/native-loading.tsx`; its relative imports are generated for that exact path. States: loading.
+
+Registry items used: @infisical/data-table, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+import {
+  Table,
+  TableActionsHead,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableLoadingRows,
+  TableRow
+} from "../../../../components/v4/ui/table";
+
+type Secret = { id: string; key: string; production: string; staging: string };
+const columns: DataTableColumn<Secret>[] = [
+  { id: "key", header: "Key", primary: true, grow: true, render: (row) => row.key },
+  { id: "production", header: "Production", width: 160, render: (row) => row.production },
+  { id: "staging", header: "Staging", width: 160, render: (row) => row.staging }
+];
+
+export default function NativeLoading() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Table aria-label="Secrets, loading" aria-busy>
+            <TableHeader>
+              <TableRow>
+                <TableHead selection />
+                <TableHead scope="col">Key</TableHead>
+                <TableHead scope="col" style={{ width: 160 }}>
+                  Production
+                </TableHead>
+                <TableHead scope="col" style={{ width: 160 }}>
+                  Staging
+                </TableHead>
+                <TableActionsHead slots={2} />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableLoadingRows
+                label="Loading secrets"
+                rows={3}
+                selectable
+                actionSlots={2}
+                columns={[{ primary: true }, { style: { width: 160 } }, { style: { width: 160 } }]}
+              />
+            </TableBody>
+          </Table>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Native Table with TableLoadingRows, as in a sheet or the secrets matrix"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Secrets, loading"
+            rows={[]}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.key}
+            selectable
+            loading
+            loadingRows={3}
+            rowActions={{
+              inline: [
+                { label: "Copy", icon: "copy", onSelect: () => {} },
+                { label: "History", icon: "history", onSelect: () => {} }
+              ]
+            }}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"DataTable loading"}</figcaption>
       </figure>
     </div>
   );
@@ -1219,7 +1305,7 @@ export default function RowActivation() {
       grow: true,
       text: (row) => row.cn,
       render: (row) => (
-        <Button variant="link" onClick={() => open(row)}>
+        <Button variant="link" underline="hover" onClick={() => open(row)}>
           {row.cn}
         </Button>
       )

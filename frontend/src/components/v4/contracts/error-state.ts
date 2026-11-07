@@ -13,7 +13,7 @@ export const errorStateDefinition = {
   referenceNames: ["ErrorState"],
   behavior: [
     "preset not-found shows Page not found, one line, an accent Go to organization home link and Go back. preset forbidden shows You don't have access, one line, an accent Go to organization home link and Go back, with no Reload. preset crash shows Something went wrong, one line, an accent Reload, Go to organization home and a closed Error details disclosure.",
-    "layout auto renders in the content area when an AppShell is above it, so the sidebar and top bar stay, and full-page when there is none, such as when the shell itself failed. full-page is fixed over its containing block: the viewport in the app, the stage in the workbench. Pass in-shell or full-page to force one.",
+    "layout auto renders in the content area when an AppShell is above it, so the sidebar and top bar stay, and full-page when there is none, such as when the shell itself failed. full-page is fixed over its containing block: the viewport in the app, the stage in the workbench. Both center with safe alignment, so content taller than the space, such as an open stack in a short window, starts at the top and scrolls instead of being clipped above it. Pass in-shell or full-page to force one.",
     "Error details holds one mono block with the error name and message, each details line (request id, status, route, time) and, in development builds or with showStack, the stack. Its Copy details button copies that same text.",
     "A quiet cell mark sits above the title: for not-found one cell is a dashed gap, for forbidden one cell is hatched shut, for crash one accent cell is knocked out of the grid.",
     "actions holds the page's own flows, such as Request access for a project the person is not a member of. They render after the preset's primary action and before its secondary one (Go back, or Go to organization home on crash), so the preset keeps its order and its one accent; pass outline Buttons.",
@@ -32,6 +32,12 @@ export const errorStateDefinition = {
       title: "Not found and crash",
       module: "./examples/error-state/default.tsx",
       states: ["default", "error"]
+    },
+    {
+      id: "long-stack",
+      title: "Tall content in a short space",
+      module: "./examples/error-state/long-stack.tsx",
+      states: ["error"]
     },
     {
       id: "forbidden",

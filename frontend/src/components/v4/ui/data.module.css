@@ -931,7 +931,7 @@ button.rowTitle::after {
 .tableScroll tbody tr[data-activatable] {
   cursor: pointer;
 }
-.tableScroll tbody tr[data-loading] {
+tbody > .nativeTableRow[data-loading] {
   background: none;
 }
 .tableScroll table[data-layout="fixed"] {

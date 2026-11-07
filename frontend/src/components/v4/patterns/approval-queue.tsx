@@ -3,6 +3,9 @@ import * as React from "react";
 import { Button } from "../ui/button";
 import { Media } from "../ui/item";
 import { List, ListFooter, ListHeader, ListRow, type ListRowProps, ListSection } from "../ui/list";
+import { Skeleton } from "../ui/skeleton";
+
+import styles from "./patterns.module.css";
 
 interface ApprovalRequestBase {
   id: string;
@@ -145,8 +148,45 @@ function lower(
   });
 }
 
+const loadingRow = (index: number): ListRowProps => ({
+  value: `loading-${index}`,
+  label: "",
+  media: <Skeleton width="var(--v4-size-control-lg)" height="var(--v4-size-control-lg)" />,
+  title: (
+    <span className={styles.queueTitleLine}>
+      <Skeleton width="calc(3 * var(--v4-size-cell-min))" />
+    </span>
+  ),
+  meta: <Skeleton width="var(--v4-space-24)" />,
+  children: (
+    <span className={styles.queueSmallLine}>
+      <Skeleton width="70%" />
+    </span>
+  ),
+  actions: (
+    <>
+      <Skeleton
+        width="calc(1.5 * var(--v4-size-cell-min))"
+        height="var(--v4-size-control-default)"
+      />
+      <Skeleton
+        width="calc(1.25 * var(--v4-size-cell-min))"
+        height="var(--v4-size-control-default)"
+      />
+    </>
+  )
+});
+
+const keepsWhileLoading = (node: React.ReactNode) =>
+  React.isValidElement(node) && (node.type === ListHeader || node.type === ListFooter);
+
 export type ApprovalQueueProps = {
   variant?: ApprovalQueueVariant;
+  /** Replaces the requests with skeleton items in the same geometry while the queue loads; the header and footer stay. */
+  loading?: boolean;
+  loadingRows?: number;
+  /** Announced while loading, naming what loads, such as Loading change requests. */
+  loadingLabel?: string;
 } & (
   | {
       requests: readonly ApprovalRequest[];
@@ -161,7 +201,13 @@ export type ApprovalQueueProps = {
   | { children: React.ReactNode; requests?: never }
 );
 
-export function ApprovalQueue({ variant, ...props }: ApprovalQueueProps) {
+export function ApprovalQueue({
+  variant,
+  loading = false,
+  loadingRows = 3,
+  loadingLabel = "Loading requests",
+  ...props
+}: ApprovalQueueProps) {
   let children: React.ReactNode = props.children;
   if (props.requests) {
     const { requests, current, onApprove, onView, onUndo, onRetry, historyHref } = props;
@@ -169,7 +215,11 @@ export function ApprovalQueue({ variant, ...props }: ApprovalQueueProps) {
       <>
         <ApprovalQueueHeader
           title="Needs you"
-          count={`${requests.filter((request) => request.state !== "resolved").length} waiting`}
+          count={
+            loading
+              ? undefined
+              : `${requests.filter((request) => request.state !== "resolved").length} waiting`
+          }
         />
         <ApprovalQueueList>
           {requests.map((request) => (
@@ -195,9 +245,27 @@ export function ApprovalQueue({ variant, ...props }: ApprovalQueueProps) {
     );
   }
   const list: React.ComponentProps<typeof ApprovalQueueList> = {};
-  const content = lower(children, list);
+  const lowered = lower(children, list);
+  const content = loading
+    ? [
+        ...React.Children.toArray(lowered).filter(keepsWhileLoading),
+        ...Array.from({ length: Math.max(1, Math.floor(loadingRows)) }, (_, index) => (
+          <ListRow key={`loading-${index}`} {...loadingRow(index)} />
+        ))
+      ]
+    : lowered;
   return (
-    <div data-slot="approval-queue" data-variant={variant ?? "framed"}>
+    <div
+      data-slot="approval-queue"
+      data-variant={variant ?? "framed"}
+      data-loading={loading || undefined}
+      aria-busy={loading || undefined}
+    >
+      {loading && (
+        <span className="sr-only" role="status">
+          {loadingLabel}
+        </span>
+      )}
       <List
         label={list.label ?? "Requests waiting on you"}
         variant={variant}

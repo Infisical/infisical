@@ -107,10 +107,12 @@ Exports: ApprovalQueue, ApprovalQueueHeader, ApprovalQueueList, ApprovalQueueGro
 - Approve is the accent Button in every variant and in the props API: an approval moment keeps the accent (rule/accent-create). It stays accent while pending, with its spinner; View diff and Retry stay outline and Undo stays a link.
 - New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry.
 - onUndo is optional. Without it resolved rows stay in place with no action, for decisions the host cannot take back.
+- loading replaces the items with loadingRows (default 3) skeleton items in the item geometry of the current variant: a 40px media square, a title bar with a short age bar at the end of its line, a description bar and two button-height action bars in the row below. The header (without its count in the props API) and the footer stay. loadingLabel names what loads, Loading requests by default, and is announced with aria-busy on the queue.
 
 ## Accessibility
 
 - Each request title links to the request and marks the open one as current. Errors are announced as alerts.
+- While loading, the skeleton items are hidden from assistive technology and the queue announces loadingLabel once.
 - ApprovalQueueList's label names the list (Requests waiting on you by default); the header title is visible text, not a heading.
 
 ## Use cases
@@ -537,6 +539,44 @@ export default function Example() {
         </div>
         <figcaption className="text-muted-foreground text-xs">{"divided"}</figcaption>
       </figure>
+    </div>
+  );
+}
+```
+
+### Loading in each variant
+
+Save this example at `src/pages/design-system/examples/approval-queue/loading.tsx`; its relative imports are generated for that exact path. States: loading.
+
+Registry items used: @infisical/approval-queue. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import {
+  ApprovalQueue,
+  type ApprovalQueueVariant
+} from "../../../../components/v4/patterns/approval-queue";
+
+const variants: ApprovalQueueVariant[] = ["framed", "segmented", "divided"];
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      {variants.map((variant) => (
+        <figure key={variant} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <ApprovalQueue
+              variant={variant}
+              loading
+              loadingRows={2}
+              loadingLabel="Loading change requests"
+              requests={[]}
+              onApprove={() => {}}
+              onRetry={() => {}}
+            />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{variant}</figcaption>
+        </figure>
+      ))}
     </div>
   );
 }
