@@ -8,11 +8,18 @@ import {
   ResourceType,
   TableName,
   TAgentVaultPersonalValueReferences,
-  TAgentVaultPersonalValues
+  TAgentVaultPersonalValues,
+  TAgentVaultServices
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
+import {
+  addOauthRequiredScopes,
+  compareAndSwapOauthTokens,
+  TOauthTokenColumns
+} from "../agent-vault-oauth/agent-vault-oauth-token-dal-fns";
+import { AgentVaultVariableReferenceField } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner, whereOwner } from "../agent-vault/agent-vault-owner-fns";
 
 export type TAgentVaultPersonalValueDALFactory = ReturnType<typeof agentVaultPersonalValueDALFactory>;
@@ -30,8 +37,18 @@ export type TAgentVaultPersonalValueServiceRow = {
 
 export type TAgentVaultPersonalValueSummaryRow = Pick<
   TAgentVaultPersonalValues,
-  "id" | "serviceId" | "field" | "updatedAt"
+  "id" | "serviceId" | "field" | "updatedAt" | "oauthConfig"
 >;
+
+// A member's OAuth tokens with where the service sends them, read on the primary for a refresh or a scope report.
+export type TAgentVaultPersonalOauthRow = Pick<TAgentVaultPersonalValues, "id" | "encryptedValue" | "oauthConfig"> &
+  Pick<TAgentVaultServices, "hostPattern" | "config">;
+
+const OAUTH_TOKEN_COLUMNS: TOauthTokenColumns = {
+  table: TableName.AgentVaultPersonalValue,
+  secretColumn: "encryptedValue",
+  configColumn: "oauthConfig"
+};
 
 export type TAgentVaultPersonalValueReferenceWithKey = TAgentVaultPersonalValueReferences & { key: string };
 
@@ -96,7 +113,8 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
         `${table}.id`,
         `${table}.serviceId`,
         `${table}.field`,
-        `${table}.updatedAt`
+        `${table}.updatedAt`,
+        `${table}.oauthConfig`
       )) as TAgentVaultPersonalValueSummaryRow[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault personal values" });
@@ -124,14 +142,15 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
   }: {
     serviceIds: string[];
     owner: TAgentVaultOwner;
-  }): Promise<Pick<TAgentVaultPersonalValues, "serviceId" | "field" | "encryptedValue">[]> => {
+  }): Promise<Pick<TAgentVaultPersonalValues, "serviceId" | "field" | "encryptedValue" | "oauthConfig">[]> => {
     if (!serviceIds.length) return [];
     try {
       return (await whereOwner(db.replicaNode()(table).whereIn(`${table}.serviceId`, serviceIds), table, owner).select(
         `${table}.serviceId`,
         `${table}.field`,
-        `${table}.encryptedValue`
-      )) as Pick<TAgentVaultPersonalValues, "serviceId" | "field" | "encryptedValue">[];
+        `${table}.encryptedValue`,
+        `${table}.oauthConfig`
+      )) as Pick<TAgentVaultPersonalValues, "serviceId" | "field" | "encryptedValue" | "oauthConfig">[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault personal values for resolve" });
     }
@@ -383,8 +402,101 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The primary, so a refresh never starts from tokens older than the last committed one.
+  const findOauthForOwner = async (
+    { serviceId, owner }: { serviceId: string; owner: TAgentVaultOwner },
+    tx?: Knex
+  ): Promise<TAgentVaultPersonalOauthRow | undefined> => {
+    try {
+      return (await whereOwner(
+        (tx || db)(table)
+          .join(TableName.AgentVaultService, `${TableName.AgentVaultService}.id`, `${table}.serviceId`)
+          .where(`${table}.serviceId`, serviceId)
+          .where(`${table}.field`, AgentVaultVariableReferenceField.CredentialValue)
+          .whereNotNull(`${table}.oauthConfig`),
+        table,
+        owner
+      ).first(
+        `${table}.id`,
+        `${table}.encryptedValue`,
+        `${table}.oauthConfig`,
+        db.ref("hostPattern").withSchema(TableName.AgentVaultService),
+        db.ref("config").withSchema(TableName.AgentVaultService)
+      )) as TAgentVaultPersonalOauthRow | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault personal OAuth value" });
+    }
+  };
+
+  // See compareAndSwapOauthTokens. A reconnect replaces the row, so a refresh racing one finds its id gone and loses.
+  const compareAndSwapOauth = async (
+    {
+      id,
+      expectedEncryptedValue,
+      encryptedValue,
+      oauthConfigPatch,
+      keepAdditionalScopesStatus
+    }: {
+      id: string;
+      expectedEncryptedValue: Buffer;
+      encryptedValue?: Buffer;
+      oauthConfigPatch: Record<string, unknown>;
+      keepAdditionalScopesStatus?: boolean;
+    },
+    tx?: Knex
+  ) => {
+    try {
+      return await compareAndSwapOauthTokens<Pick<TAgentVaultPersonalValues, "id" | "oauthConfig">>(
+        db,
+        OAUTH_TOKEN_COLUMNS,
+        {
+          where: { id },
+          expectedSecret: expectedEncryptedValue,
+          secret: encryptedValue,
+          configPatch: oauthConfigPatch,
+          keepAdditionalScopesStatus,
+          returning: ["id", "oauthConfig"]
+        },
+        tx
+      );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update agent vault personal OAuth value" });
+    }
+  };
+
+  // See addOauthRequiredScopes.
+  const addRequiredScopes = async (
+    {
+      id,
+      expectedEncryptedValue,
+      rejectedTokenHash,
+      requiredScopes
+    }: { id: string; expectedEncryptedValue: Buffer; rejectedTokenHash: string; requiredScopes: string[] },
+    tx?: Knex
+  ) => {
+    try {
+      return await addOauthRequiredScopes<Pick<TAgentVaultPersonalValues, "id" | "oauthConfig">>(
+        db,
+        OAUTH_TOKEN_COLUMNS,
+        {
+          where: { id },
+          expectedSecret: expectedEncryptedValue,
+          rejectedTokenHash,
+          requiredScopes,
+          returning: ["id", "oauthConfig"]
+        },
+        tx
+      );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Add agent vault personal OAuth required scopes" });
+    }
+  };
+
   return {
     ...orm,
+    findOauthForOwner,
+    compareAndSwapOauth,
+    addRequiredScopes,
     deleteForServiceExceptFields,
     findServicesNeedingValues,
     findForOwner,

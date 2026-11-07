@@ -22,9 +22,15 @@ export type TAgentVaultMemberProvidedField =
   | AgentVaultVariableReferenceField.CredentialValue
   | AgentVaultVariableReferenceField.CredentialUsername;
 
+export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;
+
+export type TAgentVaultOauthRegistration = "manual" | "dynamic";
+
+// With the sign-in left to each member, the service holds no tokens of its own, so it has no status.
 export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;
-  status: AgentVaultOauthStatus;
+  memberProvidedFields: TAgentVaultBearerMemberField[];
+  status?: AgentVaultOauthStatus;
   issuer: string;
   grantedScopes: string[];
   requiredScopes: string[];
@@ -32,9 +38,14 @@ export type TAgentVaultOauthCredentialSummary = {
   expiresAt?: string | null;
   authorizedAt?: string | null;
   lastError?: string | null;
+  // Only when each member signs in: the client every member signs in with.
+  registration?: TAgentVaultOauthRegistration;
+  clientId?: string | null;
 };
 
-export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;
+export type TAgentVaultSharedOauthCredentialSummary = TAgentVaultOauthCredentialSummary & {
+  status: AgentVaultOauthStatus;
+};
 export type TAgentVaultBasicMemberField = TAgentVaultMemberProvidedField;
 
 export type TAgentVaultCredentialSummary =
@@ -48,9 +59,15 @@ export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Passthrough }
   | TAgentVaultOauthCredentialSummary;
 
+// Either the admin's own sign-in (authorizationId) or, with memberProvidedFields, a sign-in left to each member, who
+// all sign in with the client set here (or one registered automatically).
 export type TAgentVaultOauthCredentialInput = {
   type: AgentVaultCredentialType.OAuth;
-  authorizationId: string;
+  authorizationId?: string;
+  memberProvidedFields?: TAgentVaultBearerMemberField[];
+  clientId?: string;
+  clientSecret?: string;
+  registration?: "dynamic";
 };
 
 // A member-provided field is sent without a value: each member sets their own.
@@ -473,6 +490,8 @@ export type TCreateAgentVaultOauthAuthorizationDTO = {
   clientId?: string;
   clientSecret?: string;
   registration?: "dynamic";
+  // A member's own sign-in for a service that leaves it to each member.
+  personal?: boolean;
 };
 
 export type TCreateAgentVaultOauthAuthorizationResponse = {
@@ -696,22 +715,44 @@ export type TUpdateAgentVaultVariableDTO = {
 };
 
 // The caller's own values for one service, and which of them they have set. Values never come back.
+export type TAgentVaultPersonalOauthConnection = {
+  status: AgentVaultOauthStatus;
+  issuer: string;
+  grantedScopes: string[];
+  requiredScopes: string[];
+  expiresAt: string | null;
+  authorizedAt: string | null;
+  lastError: string | null;
+};
+
 export type TAgentVaultPersonalValues = {
+  // False while the caller's connection needs reauthorization.
   isConfigured: boolean;
   fields: {
     field: TAgentVaultMemberProvidedField;
     isSet: boolean;
     updatedAt: string | null;
     variableReferences: { variableId: string; key: string }[];
+    // The caller's own account connection, on the credential-value field of a service that leaves its OAuth
+    // sign-in to each member. Null for a typed value.
+    oauth: TAgentVaultPersonalOauthConnection | null;
   }[];
 };
 
 export type TSetAgentVaultPersonalValuesDTO = {
   accessBundleId: string;
   serviceId: string;
-  values: { field: TAgentVaultMemberProvidedField; value: string }[];
   /** The type the dialog shows. If an admin changed it since, the save fails with a 409 instead of mislabeling a value. */
   credentialType: AgentVaultCredentialType;
+  values: { field: TAgentVaultMemberProvidedField; value: string }[];
+};
+
+/** A completed sign-in, which connects the caller's account and replaces any connection they had. */
+export type TConnectAgentVaultPersonalOauthDTO = {
+  accessBundleId: string;
+  serviceId: string;
+  credentialType: AgentVaultCredentialType;
+  authorizationId: string;
 };
 
 export type TDeleteAgentVaultPersonalValuesDTO = { accessBundleId: string; serviceId: string };
