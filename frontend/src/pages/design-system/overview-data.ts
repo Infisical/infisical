@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "row-context-menu",
+    title: "Right-click row actions",
+    description:
+      "Right-click a row, or press Shift+F10, to open the same actions as its More menu.",
+    date: "2026-11-07",
+    commit: "a7c26c60b7",
+    page: "table"
+  },
+  {
     id: "toggle-on",
     title: "Toggles show their selection",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "0e62ac760f",
     page: "card"
-  },
-  {
-    id: "link-rows-grid",
-    title: "Link rows and 1:2 grid",
-    description:
-      "ListRow takes a router link, Grid gains a 1:2 split that stacks below 896px, and a ToggleGroup no longer shrinks under its neighbours.",
-    date: "2026-11-07",
-    commit: "dca88d2ce5",
-    page: "list"
   }
 ];
