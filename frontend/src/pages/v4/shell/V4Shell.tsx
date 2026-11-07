@@ -23,6 +23,9 @@ import {
   settingsSections,
   type ShellNavSection
 } from "./navigation";
+import { ProjectGate } from "./project-gate";
+
+import styles from "./shell.module.css";
 
 const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) => void) => {
   const anchor = (event.target as HTMLElement).closest("a");
@@ -88,6 +91,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     }));
 
   const product = at.product ? productOf(at.product) : undefined;
+  const sidebarCurrent = at.current ?? (at.projectId ? at.sections[0]?.items[0] : undefined);
   const project = session.projects.find((entry) => entry.id === at.projectId);
   const levels: SidebarLevel[] = [
     {
@@ -213,12 +217,20 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       <Sidebar
         label="Main"
         levels={levels}
-        current={at.current ? `${at.level}:${at.current.id}` : undefined}
+        current={sidebarCurrent ? `${at.level}:${sidebarCurrent.id}` : undefined}
         help={chrome.help}
         announcements={chrome.announcements}
       />
       <AppInset>
-        <PageGutter>{children}</PageGutter>
+        <PageGutter className={styles.content}>
+          {at.projectId ? (
+            <ProjectGate key={at.projectId} projectId={at.projectId}>
+              {children}
+            </ProjectGate>
+          ) : (
+            children
+          )}
+        </PageGutter>
       </AppInset>
       {chrome.dialog}
       <CommandPalette

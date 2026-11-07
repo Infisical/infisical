@@ -90,7 +90,6 @@ import {
 import {
   useDeleteUserFromWorkspace,
   useGetAvailableProjectUsers,
-  useGetWorkspaceById,
   useGetWorkspaceGroupMembershipDetails,
   useGetWorkspaceUserDetails,
   useGetWorkspaceUsers,
@@ -131,6 +130,7 @@ import {
   useUpdateOrgMembership
 } from "@app/hooks/api/users/queries";
 
+import { useProjectById } from "../projectQuery";
 import type { AccessAdapter } from "./contract";
 
 const useOrgId = () => useParams({ from: "/v4/organizations/$orgId" }).orgId;
@@ -140,7 +140,7 @@ export const accessLive: AccessAdapter = {
   useProjectPermission: useGetUserProjectPermissions,
   useOrganization: useGetOrganizationById,
   useUpdateOrganization: useUpdateOrg,
-  useProject: useGetWorkspaceById,
+  useProject: useProjectById,
 
   useOrgUsers: useGetOrgUserAccess,
   useOrgMembership: useGetOrgMembership,

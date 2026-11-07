@@ -1,12 +1,8 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 
 import { NotPortedPage } from "../NotPortedPage";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/projects/$")({
-  beforeLoad: ({ context, location }) => {
-    if (context.v4Mode === "live") {
-      throw redirect({ href: location.href.replace(/^\/v4/, ""), replace: true });
-    }
-  },
-  component: NotPortedPage
+  component: NotPortedPage,
+  errorComponent: lazyRouteComponent(() => import("../../../V4ErrorPage"), "V4ErrorPage")
 });

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -13,5 +13,6 @@ export const Route = createFileRoute(
   "/v4/organizations/$orgId/cert-manager/certificates/$certificateId"
 )({
   component: CertificateDetailsByIDPage,
-  validateSearch: zodValidator(CertificateDetailsByIDPageQuerySchema)
+  validateSearch: zodValidator(CertificateDetailsByIDPageQuerySchema),
+  errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

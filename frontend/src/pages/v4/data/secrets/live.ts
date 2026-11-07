@@ -1,5 +1,5 @@
 import { useGetProjectSecretsOverview, useGetSecretValue } from "@app/hooks/api/dashboard/queries";
-import { useCreateWsEnvironment, useGetWorkspaceById } from "@app/hooks/api/projects/queries";
+import { useCreateWsEnvironment } from "@app/hooks/api/projects/queries";
 import {
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus,
@@ -24,12 +24,13 @@ import {
 import { useGetSecretReferences, useGetSecretReferenceTree } from "@app/hooks/api/secrets/queries";
 import { useGetWsTags } from "@app/hooks/api/tags/queries";
 
+import { useProjectById } from "../projectQuery";
 import type { SecretsAdapter } from "./contract";
 import { secretsFlowsLive } from "./live-flows";
 
 export const secretsLive: SecretsAdapter = {
   ...secretsFlowsLive,
-  useProject: useGetWorkspaceById,
+  useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,
   useOverview: useGetProjectSecretsOverview,

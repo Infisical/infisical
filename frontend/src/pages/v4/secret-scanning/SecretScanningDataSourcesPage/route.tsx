@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -11,5 +11,6 @@ const SecretScanningDataSourcesPageQueryParamsSchema = z.object({
 
 export const Route = createFileRoute("/v4/organizations/$orgId/secret-scanning/data-sources/")({
   component: SecretScanningDataSourcesPage,
-  validateSearch: zodValidator(SecretScanningDataSourcesPageQueryParamsSchema)
+  validateSearch: zodValidator(SecretScanningDataSourcesPageQueryParamsSchema),
+  errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });
