@@ -13,6 +13,7 @@ import { getLastLoginOrganizationSlug, useLastLogin } from "@app/hooks/useLastLo
 
 import { AuthPage } from "../components/AuthPage";
 import { PasswordInput } from "../components/PasswordInput";
+import { ProviderMark } from "../components/ProviderButton";
 import { useAuthPreview } from "../preview";
 
 const LOGIN_ERROR = "Login unsuccessful. Double-check your credentials and try again.";
@@ -111,6 +112,7 @@ export const LdapLoginPage = () => {
             className="w-full"
             disabled={!isFormValid}
           >
+            <ProviderMark provider="ldap" />
             Continue with LDAP
           </Button>
         </Stack>

@@ -10,6 +10,7 @@ import { LoginMethod } from "@app/hooks/api/admin/types";
 import { getLastLoginIdentifier, useLastLogin } from "@app/hooks/useLastLogin";
 
 import { AuthPage } from "../components/AuthPage";
+import { ProviderMark } from "../components/ProviderButton";
 import { useAuthPreview } from "../preview";
 
 const workEmailSchema = z.string().trim().email();
@@ -95,6 +96,7 @@ export const SsoLoginPage = ({ type }: { type: "SAML" | "OIDC" }) => {
             </Field>
           )}
           <Button type="submit" variant="accent" size="lg" className="w-full" disabled={!canSubmit}>
+            <ProviderMark provider={type.toLowerCase()} />
             Continue with {type}
           </Button>
         </Stack>
