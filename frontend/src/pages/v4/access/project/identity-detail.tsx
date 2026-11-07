@@ -26,7 +26,6 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Switch } from "@app/components/v4/ui/switch";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -42,6 +41,7 @@ import type { Identity } from "@app/hooks/api/identities/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
+import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgPermission, useProjectPermission } from "../permissions";
@@ -415,8 +415,7 @@ export const ProjectIdentityDetail = () => {
     </div>
   );
 
-  if (permissionPending || isPending)
-    return <Loader size="page" label="Loading machine identity" />;
+  if (permissionPending || isPending) return <PageLoader label="Loading machine identity" />;
 
   if (!permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity))
     return <AccessRestricted requirement="read Identity" />;

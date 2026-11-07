@@ -31,7 +31,6 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -53,6 +52,7 @@ import {
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
+import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
@@ -383,7 +383,7 @@ export const ProjectGroupDetail = () => {
   const [removing, setRemoving] = useState(false);
   const back = accessLinks.project(scope, ProjectAccessControlTabs.Groups);
 
-  if (permissionPending || query.isPending) return <Loader size="page" label="Loading group" />;
+  if (permissionPending || query.isPending) return <PageLoader label="Loading group" />;
   if (!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups))
     return (
       <Stack gap={32}>

@@ -23,7 +23,6 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import {
   OrgPermissionActions,
@@ -41,6 +40,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
+import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgPermission, useProjectPermission } from "../permissions";
@@ -393,8 +393,7 @@ const OrgRoleDetail = ({ orgId, roleId }: { orgId: string; roleId: string }) => 
   const backHref = accessLinks.org(orgId, OrgAccessControlTabSections.Roles);
 
   const canRead = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
-  if (permissionPending || (canRead && isPending))
-    return <Loader size="page" label="Loading role" />;
+  if (permissionPending || (canRead && isPending)) return <PageLoader label="Loading role" />;
   if (!canRead) return <AccessRestricted requirement="read Role" />;
   if (!role) return <NotFound backHref={backHref} />;
 
@@ -477,8 +476,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   const backHref = accessLinks.project(scope, ProjectAccessControlTabs.Roles);
 
   const canRead = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
-  if (permissionPending || (canRead && isPending))
-    return <Loader size="page" label="Loading role" />;
+  if (permissionPending || (canRead && isPending)) return <PageLoader label="Loading role" />;
   if (!canRead) return <AccessRestricted requirement="read Role" />;
   if (!role) return <NotFound backHref={backHref} />;
 
