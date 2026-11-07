@@ -49,24 +49,17 @@ export const HONEY_TOKEN_STEPS = [
   {
     key: "configuration",
     name: "Configuration",
-    shortDescription: "Environment and AWS account",
-    title: "Choose where to plant it",
-    subtitle:
-      "Select the environment for the decoy credentials and the AWS account that creates them."
+    title: "Choose where to plant it"
   },
   {
     key: "mapping",
     name: "Mapping",
-    shortDescription: "Secret keys",
-    title: "Map the generated credentials",
-    subtitle: "Choose the secret keys that will receive each decoy credential field."
+    title: "Map the generated credentials"
   },
   {
     key: "details",
     name: "Details",
-    shortDescription: "Name and description",
-    title: "Add honey token details",
-    subtitle: "Give this honey token a clear name and an optional description."
+    title: "Add honey token details"
   }
 ] as const;
 const MAPPING_ITEMS = [
@@ -131,8 +124,8 @@ export function HoneyTokenMappingFields({
       <Alert tone="info">
         <Icon name="info" />
         <AlertDescription>
-          These keys will appear as normal secrets in your project but are tied to a sandboxed IAM
-          user with zero permissions. Any API call made with these credentials triggers an alert.
+          These appear as normal secrets but belong to an IAM user with no permissions. Any API call
+          made with them triggers an alert.
         </AlertDescription>
       </Alert>
     </Stack>
@@ -243,10 +236,10 @@ export function CreateHoneyTokenFlow({
       setDraft((current) => ({ ...current, managedBy: HoneyTokenManagedBy.Instance }));
   }, [deployment.data, accountChosen, organizationReady, instanceReady]);
   let organizationDescription =
-    "Ask an organization admin to connect your organization's AWS account to use this option.";
+    "Ask an organization admin to connect an AWS account to use this option.";
   if (organizationReady)
     organizationDescription =
-      "Infisical creates the decoy credentials in the AWS account your organization connected.";
+      "Decoy credentials are created in your organization's connected AWS account.";
   else if (canSetUpAccount)
     organizationDescription = "Connect your organization's AWS account to use this option.";
   const accountChoices = [
@@ -256,7 +249,7 @@ export function CreateHoneyTokenFlow({
             value: HoneyTokenManagedBy.Instance,
             label: "Infisical managed",
             description: isAvailable(HoneyTokenManagedBy.Instance)
-              ? "Infisical creates the decoy credentials in an Infisical-managed AWS account. No setup needed."
+              ? "Decoy credentials are created in an Infisical-managed AWS account. No setup needed."
               : "Temporarily unavailable. Contact support if this persists.",
             disabled: !isAvailable(HoneyTokenManagedBy.Instance)
           }
@@ -414,18 +407,14 @@ export function CreateHoneyTokenFlow({
             </Button>
           </span>
         }
-        description="Plant a decoy credential that alerts on access"
-        steps={HONEY_TOKEN_STEPS.map((entry) => ({
-          title: entry.name,
-          summary: entry.shortDescription
-        }))}
+        description="Plant a decoy AWS credential that alerts when anyone uses it."
+        steps={HONEY_TOKEN_STEPS.map((entry) => ({ title: entry.name }))}
         current={step}
         onStepClick={(index) => {
           setErrors({});
           setStep(index);
         }}
         heading={current.title}
-        subtitle={current.subtitle}
         footer={
           <Inline justify="between">
             <SmallText muted>{`Step ${step + 1} of ${HONEY_TOKEN_STEPS.length}`}</SmallText>

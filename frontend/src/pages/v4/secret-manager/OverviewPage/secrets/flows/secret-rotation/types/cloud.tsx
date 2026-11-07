@@ -599,8 +599,8 @@ function OpenRouterApiKeyParameters() {
             label="Include BYOK"
             description={
               field.value
-                ? "BYOK (Bring Your Own Key) usage will count toward this key's spending limit."
-                : "Only OpenRouter credits count toward the limit. BYOK usage is tracked separately."
+                ? "BYOK usage counts toward this key's spending limit."
+                : "Only OpenRouter credits count toward the limit."
             }
             layout="row"
             checked={Boolean(field.value)}

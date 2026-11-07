@@ -4,13 +4,7 @@ import { useParams } from "@tanstack/react-router";
 
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@app/components/v4/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@app/components/v4/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,10 +95,7 @@ export const ProjectMemberDetail = () => {
     return (
       <Stack gap={24}>
         <PageHeader breadcrumb={breadcrumb} title="Project user" />
-        <EmptyState
-          title="User not found"
-          description="This membership may have been removed or is no longer available."
-        />
+        <EmptyState title="User not found" />
       </Stack>
     );
 
@@ -143,7 +134,6 @@ export const ProjectMemberDetail = () => {
       <PageHeader
         breadcrumb={breadcrumb}
         title={name}
-        description="Configure and manage project access control"
         actions={
           isSelf ? (
             <Tooltip
@@ -201,7 +191,6 @@ export const ProjectMemberDetail = () => {
           <Card variant="framed">
             <CardHeader>
               <CardTitle>Details</CardTitle>
-              <CardDescription>User membership details</CardDescription>
             </CardHeader>
             <CardContent>
               <dl className={styles.details}>

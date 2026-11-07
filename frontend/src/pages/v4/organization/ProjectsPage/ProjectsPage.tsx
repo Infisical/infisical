@@ -7,7 +7,6 @@ import { Item } from "@app/components/v4/ui/item";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { getProjectDescription } from "@app/helpers/project";
 import type { TOrgProductStats } from "@app/hooks/api/organization/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -72,7 +71,6 @@ export const ProjectsPage = () => {
     <Stack gap={32}>
       <PageHeader
         title={`${organization.isSubOrganization ? "Sub-organization" : "Organization"} overview`}
-        description="Your team's complete security toolkit, organized and ready when you need them."
       />
       {demoProject && (
         <Item
@@ -106,7 +104,7 @@ export const ProjectsPage = () => {
                 {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
               </Inline>
             }
-            description={getProjectDescription(product.type)}
+            description={product.blurb}
             footer={
               stats ? (
                 <Inline gap={24}>

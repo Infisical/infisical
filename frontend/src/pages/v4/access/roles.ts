@@ -65,7 +65,7 @@ export const roleOptions = (
   roles.map((role) => ({
     value: role.slug,
     label: role.name,
-    description: role.description || "No description"
+    description: role.description || undefined
   }));
 
 export const slugify = (value: string) =>

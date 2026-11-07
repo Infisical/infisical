@@ -46,7 +46,7 @@ const getRestrictionLabel = (secret: CopySecretsSource) => {
 const getRestrictionDescription = (secret: CopySecretsSource) => {
   if (secret.isRotated) return "Rotated secrets cannot be copied.";
   if (secret.isHoneyToken) return "Honey token secrets cannot be copied.";
-  return "No value access: this key will be copied without its value. Existing destination values are preserved.";
+  return "You can't read this value, so only the key is copied. Existing destination values are kept.";
 };
 
 const getPreviewLabel = (status: NonNullable<CopySecretsSource["previewStatus"]>) => {
@@ -58,11 +58,8 @@ const getPreviewLabel = (status: NonNullable<CopySecretsSource["previewStatus"]>
 const getPreviewDescription = (secret: CopySecretsSource) =>
   [
     secret.previewStatus === "conflict" &&
-      "This key already exists. Choose whether to overwrite or skip it when you copy.",
-    secret.previewStatus === "overwrite" && "This key already exists and will be overwritten.",
-    secret.previewStatus === "new" && "This key will be created at the destination.",
-    secret.isValueHidden &&
-      "Its source value is unavailable; existing destination values are preserved."
+      "This key already exists. You choose to overwrite or skip it when you copy.",
+    secret.isValueHidden && "Only the key is copied. Existing destination values are kept."
   ]
     .filter(Boolean)
     .join(" ");

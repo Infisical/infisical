@@ -235,6 +235,7 @@ const Findings = ({ projectId }: { projectId: string }) => {
     <Stack gap={24}>
       <PageHeader
         title="Findings"
+        description="Secrets detected across every data source."
         badges={
           unresolved > 0 && (
             <Badge tone="warn" dot>
@@ -242,7 +243,6 @@ const Findings = ({ projectId }: { projectId: string }) => {
             </Badge>
           )
         }
-        description="Secrets detected across every data source. Review and triage leaked secrets."
         tabs={
           <Tabs
             label="Finding status"
@@ -353,9 +353,6 @@ const Findings = ({ projectId }: { projectId: string }) => {
               filtered
                 ? `No ${statusLabel}findings${scopeLabel ? ` in ${scopeLabel}` : ""}`
                 : "No secret leaks found"
-            }
-            description={
-              filtered ? undefined : "Findings appear here when a scan detects a secret."
             }
             actions={
               status !== "all" ? (

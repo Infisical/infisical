@@ -161,8 +161,7 @@ function EditHoneyTokenSheet({
           </Button>
         </span>
       }
-      description="Plant a decoy credential that alerts on access"
-      steps={EDIT_STEPS.map((entry) => ({ title: entry.name, summary: entry.shortDescription }))}
+      steps={EDIT_STEPS.map((entry) => ({ title: entry.name }))}
       current={step}
       onStepClick={(index) => {
         if (index > step && !validate(step)) return;
@@ -170,7 +169,6 @@ function EditHoneyTokenSheet({
         setStep(index);
       }}
       heading={current.title}
-      subtitle={current.subtitle}
       footer={
         <Inline justify="between">
           <SmallText muted>{`Step ${step + 1} of ${EDIT_STEPS.length}`}</SmallText>
@@ -247,9 +245,8 @@ function RevokeHoneyTokenDialog({
           <AlertDialogDescription asChild>
             <Alert tone="bad">
               <AlertDescription>
-                This will revoke the AWS IAM credentials and remove the associated decoy secrets
-                from this environment. The honey token record and its events will be preserved for
-                audit purposes.
+                Revokes the AWS IAM credentials and removes the decoy secrets from this environment.
+                The record and its events are kept for audit.
               </AlertDescription>
             </Alert>
           </AlertDialogDescription>
@@ -400,20 +397,18 @@ function HoneyTokenDetailsSheet({
                 </div>
                 {isRevoked && (
                   <Alert tone="info" title="Honey token revoked">
-                    The AWS IAM credentials have been revoked and the decoy secrets removed. The
-                    honey token record and its events are preserved for audit purposes.
+                    The AWS IAM credentials are revoked and the decoy secrets removed. The record
+                    and its events are kept for audit.
                   </Alert>
                 )}
                 {isTriggered && (
                   <Alert tone="warn" title="What to do now?">
                     <p className={styles.paragraph}>
-                      If this is a false alarm, reset the honey token to return it to active status
-                      and hide past events.
+                      If this is a false alarm, reset the honey token to make it active again.
                     </p>
                     <p className={styles.paragraph}>
-                      If this activity is suspicious, follow your company&apos;s incident response
-                      plan, rotate any real secrets stored alongside the honey token, then revoke
-                      and replace the honey token.
+                      If it is suspicious, follow your incident response plan, rotate any real
+                      secrets stored alongside it, then revoke and replace the honey token.
                     </p>
                   </Alert>
                 )}
@@ -483,9 +478,8 @@ function HoneyTokenDetailsSheet({
             </AlertDialogMedia>
             <AlertDialogTitle>{`Reset ${token.name}?`}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will revert the honey token status to active and hide past events. The honey
-              token will be able to trigger again on new activity. Its credentials will remain
-              unchanged.
+              Sets the status back to active and hides past events, so it can trigger again.
+              Credentials are unchanged.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

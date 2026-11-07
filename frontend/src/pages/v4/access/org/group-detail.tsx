@@ -22,7 +22,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -159,9 +158,6 @@ const AddMembersDialog = ({
       <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>Add group members</DialogTitle>
-          <DialogDescription>
-            Search for members and assign them to this group. You can select multiple at once.
-          </DialogDescription>
         </DialogHeader>
         <Field label="Members">
           <MultiSelect
@@ -295,11 +291,7 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
   };
 
   return (
-    <Section
-      title="Group members"
-      description="Manage members of this group"
-      action={addButton("outline")}
-    >
+    <Section title="Group members" action={addButton("outline")}>
       <ListToolbar
         search={search}
         onSearch={(value) => {
@@ -339,18 +331,12 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
         }}
         empty={
           filtered ? (
-            <EmptyState
-              size="sm"
-              icon="search"
-              title="No members match this search"
-              description="Adjust search filters to view members."
-            />
+            <EmptyState size="sm" icon="search" title="No members match this search" />
           ) : (
             <EmptyState
               size="sm"
               icon="user"
               title="This group does not have any members"
-              description="Add users or machine identities to this group."
               actions={addButton("primary")}
             />
           )
@@ -379,7 +365,9 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
             <AlertDialogTitle>
               {`Are you sure you want to remove ${removing ? (memberEmail(removing) ?? memberName(removing)) : ""} from the group?`}
             </AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+            <AlertDialogDescription>
+              They lose any access granted through this group.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -418,7 +406,6 @@ export const OrgGroupDetail = () => {
       <EmptyState
         icon="user"
         title="Group not found"
-        description="It may have been deleted."
         actions={
           <Button variant="outline" onClick={back}>
             Back to groups
@@ -434,7 +421,6 @@ export const OrgGroupDetail = () => {
           <BackButton label="Organization groups" onClick={back} />
           <PageHeader
             title={group.name}
-            description="Configure and manage organization group"
             actions={
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -490,7 +476,6 @@ export const OrgGroupDetail = () => {
             <Card
               variant="framed"
               title="Details"
-              description="Group details"
               action={
                 <Gate allowed={canEdit}>
                   <Button

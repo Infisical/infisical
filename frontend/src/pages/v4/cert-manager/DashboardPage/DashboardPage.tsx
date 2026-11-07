@@ -156,7 +156,6 @@ export const DashboardPage = () => {
         <Grid gap={16} columns={2}>
           <DonutCard
             title="By enrollment method"
-            description="Distribution by enrollment type"
             slices={foldTail(
               stats.distributions.byEnrollmentMethod,
               (label) => (label === "Other" ? label : label.toUpperCase()),
@@ -166,14 +165,12 @@ export const DashboardPage = () => {
           />
           <DonutCard
             title="By algorithm"
-            description="Distribution by key algorithm"
             slices={foldTail(stats.distributions.byAlgorithm, algorithmName, (entry) =>
               entry.label === "Unknown" ? undefined : { filterKeyAlgorithm: entry.label }
             )}
           />
           <DonutCard
             title="By issuing CA"
-            description="Distribution by certificate authority"
             slices={foldTail(
               stats.distributions.byCA,
               (label) => label,
@@ -182,7 +179,6 @@ export const DashboardPage = () => {
           />
           <DonutCard
             title="Expiration timeline"
-            description="Certificates by time to expiry"
             emptyTitle="No expiration data"
             slices={expirationSlices(stats)}
           />
@@ -190,7 +186,6 @@ export const DashboardPage = () => {
         <CodeSigningSection projectId={projectId} />
         <TrendCard
           title="Certificate activity trend"
-          description="Certificates issued, expired, revoked and renewed"
           data={trend?.periods}
           range={trendRange}
           onRangeChange={setTrendRange}
@@ -207,14 +202,9 @@ export const DashboardPage = () => {
           <Stack gap={16}>
             <Heading level={2}>Post-quantum readiness</Heading>
             <Grid gap={16} columns={2}>
-              <DonutCard
-                title="PQC readiness"
-                description="Post-quantum vs. classical key algorithms"
-                slices={pqcSlices(stats)}
-              />
+              <DonutCard title="PQC readiness" slices={pqcSlices(stats)} />
               <TrendCard
                 title="PQC adoption trend"
-                description="Certificates issued with post-quantum and classical keys"
                 data={pqcTrend?.periods}
                 range={pqcTrendRange}
                 onRangeChange={setPqcTrendRange}
@@ -235,7 +225,7 @@ export const DashboardPage = () => {
       <Stack gap={24}>
         <PageHeader
           title="Dashboard"
-          description="See the overall state of your certificates at a glance."
+          description="Track certificate health, expiry, and compliance readiness."
         />
         {body}
       </Stack>

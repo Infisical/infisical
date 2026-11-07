@@ -106,18 +106,11 @@ export function TemplatePicker({
       key={template.key}
       media={<ProviderLogo image={template.image} />}
       title={template.name}
-      description={template.description}
       onClick={() => onSelect(template)}
     />
   );
   const custom = (
-    <Tile
-      key="custom"
-      media={<Icon name="plus" />}
-      title="Custom"
-      description="Set up any service manually."
-      onClick={() => onSelect(null)}
-    />
+    <Tile key="custom" media={<Icon name="plus" />} title="Custom" onClick={() => onSelect(null)} />
   );
   const popular = POPULAR_PROXIED_SERVICE_TEMPLATES.map((key) =>
     PROXIED_SERVICE_TEMPLATES.find((template) => template.key === key)

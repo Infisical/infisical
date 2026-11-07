@@ -571,9 +571,7 @@ function ImportSecretsContent({
       <SheetContent className={styles.sheet}>
         <SheetHeader>
           <SheetTitle>Import column mapping</SheetTitle>
-          <SheetDescription>
-            Map your data columns to different parts of the secret.
-          </SheetDescription>
+          <SheetDescription>Match each column in your file to a secret field.</SheetDescription>
         </SheetHeader>
         <SheetBody>
           <div className={styles.mapGrid}>
@@ -589,7 +587,7 @@ function ImportSecretsContent({
                 key={row.mapKey}
                 label={row.label}
                 icon={row.icon}
-                hint={row.hint?.(innerSeparator, csvData.delimiter)}
+                hint={row.hint?.(innerSeparator)}
                 value={matrixMap[row.mapKey]?.toString() ?? NONE}
                 options={
                   row.mapKey === "key"
@@ -632,9 +630,6 @@ function ImportSecretsContent({
       <SheetContent className={styles.sheet}>
         <SheetHeader>
           <SheetTitle className={styles.srOnly}>Upload secrets</SheetTitle>
-          <SheetDescription className={styles.srOnly}>
-            Upload a file or paste secret values, then review them before uploading.
-          </SheetDescription>
           <Tabs
             value={importMethod}
             onValueChange={(value) => setImportMethod(value as "upload" | "paste")}
@@ -750,7 +745,7 @@ function ImportSecretsContent({
       <SheetHeader>
         <SheetTitle>Review & upload secrets</SheetTitle>
         <SheetDescription>
-          {`${plural(secretCount, "secret")} found${folderSummary}. Select environments to upload to.`}
+          {`${plural(secretCount, "secret")} found${folderSummary}.`}
         </SheetDescription>
         {isOverRequestLimit && (
           <p className={styles.limitError}>
@@ -1082,8 +1077,7 @@ function ImportSecretsContent({
           <AlertDialogHeader>
             <AlertDialogTitle>Resolve secret conflicts</AlertDialogTitle>
             <AlertDialogDescription>
-              These secrets already exist in the target environments. Overwrite them or upload only
-              secrets without conflicts.
+              These secrets already exist in the target environments.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul className={styles.conflictList}>

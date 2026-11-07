@@ -70,21 +70,21 @@ const sqlStatementFields = [
     name: "inputs.creationStatement",
     type: "textarea",
     label: "Creation Statement",
-    description: "username, password and expiration are dynamically provisioned",
+    description: "Username, password, and expiration are dynamically provisioned.",
     rows: 3
   },
   {
     name: "inputs.revocationStatement",
     type: "textarea",
     label: "Revocation Statement",
-    description: "username is dynamically provisioned",
+    description: "Username is dynamically provisioned.",
     rows: 3
   },
   {
     name: "inputs.renewStatement",
     type: "textarea",
     label: "Renew Statement",
-    description: "username and expiration are dynamically provisioned",
+    description: "Username and expiration are dynamically provisioned.",
     rows: 3
   }
 ] satisfies readonly TDynamicSecretProviderField<TSqlDatabaseFormValues>[];
@@ -99,13 +99,6 @@ const requirementLabels: Record<NumericRequirement, string> = {
   symbols: "Symbol Count"
 };
 
-const requirementDescriptions: Partial<Record<NumericRequirement, string>> = {
-  lowercase: "Minimum number of lowercase letters",
-  uppercase: "Minimum number of uppercase letters",
-  digits: "Minimum number of digits",
-  symbols: "Minimum number of symbols"
-};
-
 const SqlPasswordNumberField = ({ fieldName }: { fieldName: NumericRequirement }) => {
   const { control } = useFormContext<TSqlDatabaseFormValues>();
   const isLength = fieldName === "length";
@@ -118,12 +111,7 @@ const SqlPasswordNumberField = ({ fieldName }: { fieldName: NumericRequirement }
       control={control}
       name={name}
       render={({ field, fieldState: { error } }) => (
-        <Field
-          wide
-          label={requirementLabels[fieldName]}
-          description={requirementDescriptions[fieldName]}
-          error={fieldError(error)}
-        >
+        <Field wide label={requirementLabels[fieldName]} error={fieldError(error)}>
           <Input
             ref={field.ref}
             name={field.name}
@@ -157,7 +145,6 @@ const SqlPasswordConfiguration = () => {
       presentation="collapse"
       title="Password Configuration (optional)"
     >
-      <FieldDescription>Set constraints on the generated database password.</FieldDescription>
       <SqlPasswordNumberField fieldName="length" />
       <FieldSet>
         <FieldLegend>Minimum Required Character Counts</FieldLegend>
@@ -312,7 +299,7 @@ const SqlDatabaseFields = ({ mode }: Pick<DynamicSecretRendererProps, "mode">) =
           )}
         />
 
-        <SslRejectUnauthorizedField<TSqlDatabaseFormValues> description="Verify the server certificate against the supplied certificate authorities. Disable this option when using a self-signed certificate." />
+        <SslRejectUnauthorizedField<TSqlDatabaseFormValues> description="Reject server certificates not signed by the supplied CA. Turn off for self-signed certificates." />
       </ProviderGroup>
 
       <MetadataFields id="sql-metadata" />
@@ -322,9 +309,6 @@ const SqlDatabaseFields = ({ mode }: Pick<DynamicSecretRendererProps, "mode">) =
         title="Creation, Revocation & Renew Statements (optional)"
       >
         <ProviderFields<TSqlDatabaseFormValues> fields={[usernameTemplateFieldDefinition]} />
-        <FieldDescription>
-          Customize SQL statements for managing database user lifecycle.
-        </FieldDescription>
         <ProviderFields fields={sqlStatementFields} />
       </ProviderGroup>
       <SqlPasswordConfiguration />

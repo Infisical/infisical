@@ -181,12 +181,12 @@ export function MetadataForm({
     >
       <div>
         <div className={styles.formLabel}>Metadata</div>
-        <SmallText muted>Encrypted Metadata will not be searchable via the UI or API.</SmallText>
+        <SmallText muted>Encrypted metadata is not searchable in the UI or API.</SmallText>
       </div>
       <div className={styles.metadataList} data-scroll-fade="y">
         {entries.length === 0 && (
           <SmallText muted className={styles.center}>
-            No metadata entries. Click below to add.
+            No metadata entries.
           </SmallText>
         )}
         {entries.map((entry, index) => (

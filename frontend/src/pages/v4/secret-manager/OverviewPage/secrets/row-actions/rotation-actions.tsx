@@ -23,7 +23,6 @@ import {
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Switch } from "@app/components/v4/ui/switch";
-import { Text } from "@app/components/v4/ui/text";
 import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
@@ -47,8 +46,6 @@ import { useManagedBlock } from "./permissions";
 import { RotationCredentialsDialog } from "./rotation-credentials-dialog";
 import type { RowAction, RowActionHostProps } from "./types";
 
-import styles from "./rotation-actions.module.css";
-
 type Action = Extract<RowAction, { kind: "rotation" }>;
 
 export const canReconcile = (rotation: Extract<Resource, { kind: "rotation" }>) => {
@@ -71,13 +68,11 @@ const reconcileTypeName = (type: SecretRotation) => {
 
 function RotateDialog({
   open,
-  rotationType,
   onOpenChange,
   onRotate,
   block
 }: {
   open: boolean;
-  rotationType: string;
   onOpenChange: (open: boolean) => void;
   onRotate: () => void;
   block?: string;
@@ -87,11 +82,10 @@ function RotateDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Rotate secrets</DialogTitle>
-          <DialogDescription>Rotate the secrets for this {rotationType}.</DialogDescription>
+          <DialogDescription>
+            Generates new credentials and retires the current ones.
+          </DialogDescription>
         </DialogHeader>
-        <Text muted>
-          Are you sure you want to rotate the secrets for this {rotationType} rotation?
-        </Text>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
@@ -126,19 +120,10 @@ function ReconcileDialog({
         <DialogHeader>
           <DialogTitle>Reconcile {typeName}</DialogTitle>
           <DialogDescription>
-            Sync the {typeName} password between Infisical and the server.
+            Makes the password in Infisical match the server. Use it after a failed rotation or a
+            manual password change on the server.
           </DialogDescription>
         </DialogHeader>
-        <div className={styles.body}>
-          <Text muted>
-            Reconciliation ensures the password stored in Infisical matches the actual password on
-            the server.
-          </Text>
-          <Text muted>
-            Use this if you suspect the credentials are out of sync, for example after a failed
-            rotation or manual password change on the server.
-          </Text>
-        </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
@@ -175,7 +160,7 @@ function DeleteDialog({
       <AlertDialogContent tone="danger">
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to delete {name}?</AlertDialogTitle>
-          <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+          <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
         </AlertDialogHeader>
         <Field label={`Type ${name} to confirm`}>
           <Input
@@ -190,14 +175,22 @@ function DeleteDialog({
         <Switch
           layout="row"
           label="Revoke credentials"
-          description={`Generated credentials will ${revokeGeneratedCredentials ? "" : "not "}be revoked on deletion${revokeGeneratedCredentials ? "" : " and remain active"}.`}
+          description={
+            revokeGeneratedCredentials
+              ? "Generated credentials are revoked."
+              : "Generated credentials stay active."
+          }
           checked={revokeGeneratedCredentials}
           onCheckedChange={setRevokeGeneratedCredentials}
         />
         <Switch
           layout="row"
           label="Delete secrets"
-          description={`Rotation secrets will ${deleteSecrets ? "" : "not "}be removed from your project on deletion.`}
+          description={
+            deleteSecrets
+              ? "Rotation secrets are removed from the project."
+              : "Rotation secrets stay in the project."
+          }
           checked={deleteSecrets}
           onCheckedChange={setDeleteSecrets}
         />
@@ -266,7 +259,6 @@ export function RotationActions({
   const validating = action?.action === "validate" ? action.entry : undefined;
   useEffect(() => {
     if (!validating) return;
-    const rotationType = SECRET_ROTATION_MAP[rotationTypeOf(validating)].name;
     const block = rotationBlock(
       validating,
       ProjectPermissionSecretRotationActions.Read,
@@ -277,14 +269,12 @@ export function RotationActions({
       onClose();
       return;
     }
-    checkCredentials.mutateAsync(target(validating)).then(
-      () =>
-        onToast("ok", {
-          title: "Credentials are valid",
-          description: `The current rotated credentials for ${validating.name} authenticated to ${rotationType}.`
-        }),
-      failed("Credentials check failed")
-    );
+    checkCredentials
+      .mutateAsync(target(validating))
+      .then(
+        () => onToast("ok", { title: "Credentials are valid" }),
+        failed("Credentials check failed")
+      );
     onClose();
   }, [validating]);
 
@@ -367,7 +357,6 @@ export function RotationActions({
       {last.action === "rotate" && (
         <RotateDialog
           open={isOpen("rotate")}
-          rotationType={rotationType}
           onOpenChange={onOpenChange}
           onRotate={rotate}
           block={rotationBlock(

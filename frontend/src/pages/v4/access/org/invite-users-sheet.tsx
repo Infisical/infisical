@@ -30,12 +30,11 @@ import { useV4Session } from "../../data/session/contract";
 import { useOrgId } from "../permissions";
 import { roleOptions } from "../roles";
 import { failed, saved } from "../toast";
-import { LabelHint } from "../ui";
 import { CopyButton } from "./detail-parts";
 
 export type InviteLink = { email: string; link: string };
 
-type RoleOption = { value: string; label: string; description: string };
+type RoleOption = { value: string; label: string; description?: string };
 
 type Product = { type: ProjectType; isSingleton: boolean; roles?: readonly RoleOption[] };
 
@@ -50,7 +49,7 @@ const CERT_MANAGER_ROLES: RoleOption[] = [
   {
     value: "member",
     label: "Member",
-    description: "Access scoped to the Applications and Code Signers they've been added to"
+    description: "Only the applications and code signers they're added to"
   }
 ];
 
@@ -65,22 +64,21 @@ const PRODUCTS: Product[] = [
 
 const builtInProjectRoles = (type?: ProjectType): RoleOption[] => [
   { value: "admin", label: "Admin", description: "Full administrative access over a project" },
-  { value: "member", label: "Member", description: "Limited read/write role in a project" },
+  { value: "member", label: "Member", description: "Limited read and write access" },
   ...(type === ProjectType.KMS
     ? [
         {
           value: "cryptographic-operator",
           label: "Cryptographic Operator",
-          description:
-            "Perform cryptographic operations, such as encryption and signing, in a project"
+          description: "Cryptographic operations such as encryption and signing"
         }
       ]
     : []),
-  { value: "viewer", label: "Viewer", description: "Only read role in a project" },
+  { value: "viewer", label: "Viewer", description: "Read-only access" },
   {
     value: "no-access",
     label: "No Access",
-    description: "No access to any resources in the project"
+    description: "No access to project resources"
   }
 ];
 
@@ -212,8 +210,8 @@ export const InviteUsersSheet = ({
           <SheetTitle>{`Invite others to ${session.organization.name}`}</SheetTitle>
           <SheetDescription>
             {links
-              ? "This Infisical instance does not have an email provider set up. Share these invite links with the invitees manually."
-              : "An invite is specific to an email address and expires after 1 day."}
+              ? "No email provider is set up. Share these invite links manually."
+              : "Invites are tied to one email address and expire after 1 day."}
           </SheetDescription>
         </SheetHeader>
         <SheetBody>
@@ -253,14 +251,7 @@ export const InviteUsersSheet = ({
                     }}
                   />
                 </Field>
-                <Field
-                  label={
-                    <LabelHint
-                      label="Assign organization role"
-                      hint="Select which organization role you want to assign to the user."
-                    />
-                  }
-                >
+                <Field label="Assign organization role">
                   <Select
                     label="Assign organization role"
                     value={role ?? defaultRole}
@@ -268,15 +259,7 @@ export const InviteUsersSheet = ({
                     options={roleOptions(orgRoles)}
                   />
                 </Field>
-                <Field
-                  label={
-                    <LabelHint
-                      label="Assign users to a product"
-                      hint="Select which product to grant the users access to."
-                    />
-                  }
-                  optional
-                >
+                <Field label="Assign users to a product" optional>
                   <Select
                     label="Assign users to a product"
                     placeholder="Select a product..."
@@ -317,9 +300,9 @@ export const InviteUsersSheet = ({
                   <Field
                     label={selectedProduct.isSingleton ? "Product role" : "Project role"}
                     description={
-                      selectedProduct.isSingleton
-                        ? "Select which role to assign to the users for this product."
-                        : "Select which role to assign to the users in the selected projects. When multiple projects are selected, only built-in roles are available. You can assign users to additional projects after they've been invited."
+                      selectedProduct.isSingleton || projects.length < 2
+                        ? undefined
+                        : "Only built-in roles are available for multiple projects."
                     }
                   >
                     <Select

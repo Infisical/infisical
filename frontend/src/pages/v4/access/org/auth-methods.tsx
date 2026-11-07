@@ -422,7 +422,7 @@ const UniversalAuthForm = ({
             <NumberField
               label="Access token period (seconds)"
               placeholder="0"
-              description="For periodic tokens: set a period (in seconds) to allow indefinite renewal. Set to 0 to disable periodic tokens and use TTL-based expiration."
+              description="Tokens renew indefinitely each period. Set to 0 to use TTL expiration instead."
               value={draft.accessTokenPeriod}
               error={errors.accessTokenPeriod}
               onChange={(value) => set("accessTokenPeriod", value)}
@@ -434,7 +434,7 @@ const UniversalAuthForm = ({
             <Switch
               layout="row"
               label="Lockout"
-              description={`The lockout feature will prevent login attempts for ${draft.lockoutDurationValue || "5"}${draft.lockoutDurationUnit} after ${draft.lockoutThreshold || "3"} consecutive login failures. If ${draft.lockoutCounterResetValue || "30"}${draft.lockoutCounterResetUnit} pass after the most recent failure, the lockout counter resets.`}
+              description={`Blocks logins for ${draft.lockoutDurationValue || "5"}${draft.lockoutDurationUnit} after ${draft.lockoutThreshold || "3"} failures in a row. The count resets ${draft.lockoutCounterResetValue || "30"}${draft.lockoutCounterResetUnit} after the last failure.`}
               checked={draft.lockoutEnabled}
               onChange={(checked) => set("lockoutEnabled", checked)}
             />
@@ -567,7 +567,7 @@ export const AuthMethodFormSheet = ({
         size="sm"
         icon="lock"
         title={`${authMethodName(method)} can't be configured here yet`}
-        description="Universal Auth is the only auth method you can add or edit from this page."
+        description="Only Universal Auth can be added or edited here."
       />
     );
 
@@ -859,9 +859,6 @@ const ClientSecrets = ({ identityId, canEdit }: { identityId: string; canEdit: b
         <DialogContent pending={pending}>
           <DialogHeader>
             <DialogTitle>Create client secret</DialogTitle>
-            <DialogDescription>
-              The client secret is shown once. Store it somewhere safe.
-            </DialogDescription>
           </DialogHeader>
           <form
             id="create-client-secret"
@@ -882,7 +879,7 @@ const ClientSecrets = ({ identityId, canEdit }: { identityId: string; canEdit: b
               <NumberField
                 label="TTL in seconds (optional)"
                 placeholder="0"
-                description="Leave empty or set to 0 for a client secret that never expires."
+                description="Leave empty or 0 to never expire."
                 value={form.ttl}
                 error={errors.ttl}
                 onChange={(ttl) => setForm({ ...form, ttl })}
@@ -908,7 +905,7 @@ const ClientSecrets = ({ identityId, canEdit }: { identityId: string; canEdit: b
       </Dialog>
       <CreatedSecretDialog
         title="Client secret created"
-        description="Copy the client secret now. You won't be able to see it again."
+        description="Copy it now. You won't be able to see it again."
         label="Client secret"
         value={created}
         onClose={() => setCreated(undefined)}
@@ -1008,9 +1005,6 @@ const AccessTokens = ({ identityId, canEdit }: { identityId: string; canEdit: bo
         <DialogContent pending={pending}>
           <DialogHeader>
             <DialogTitle>Create access token</DialogTitle>
-            <DialogDescription>
-              The access token is shown once. Store it somewhere safe.
-            </DialogDescription>
           </DialogHeader>
           <form
             id="create-access-token"
@@ -1044,7 +1038,7 @@ const AccessTokens = ({ identityId, canEdit }: { identityId: string; canEdit: bo
       </Dialog>
       <CreatedSecretDialog
         title="Access token created"
-        description="Copy the access token now. You won't be able to see it again."
+        description="Copy it now. You won't be able to see it again."
         label="Access token"
         value={created}
         onClose={() => setCreated(undefined)}
@@ -1264,7 +1258,7 @@ export const AuthMethodViewSheet = ({
               size="sm"
               icon="lock"
               title={`${authMethodName(method)} details aren't available here yet`}
-              description="Universal, Token, Kubernetes, AWS and OIDC Auth can be viewed from this page."
+              description="Only Universal, Token, Kubernetes, AWS and OIDC Auth can be viewed here."
             />
           )}
         </SheetBody>

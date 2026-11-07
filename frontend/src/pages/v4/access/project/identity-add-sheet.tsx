@@ -9,7 +9,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -151,8 +150,8 @@ const AddIdentityForm = ({
               />
               <Muted>
                 {currentMode === "assign"
-                  ? "Reuse an organization machine identity, which can be added to several projects."
-                  : "Create a dedicated machine identity managed at the project level."}
+                  ? "Reuse an organization machine identity across projects."
+                  : "Creates a machine identity that belongs to this project only."}
               </Muted>
             </Stack>
             {currentMode === "create" ? (
@@ -236,9 +235,6 @@ export const AddProjectIdentitySheet = ({
       <SheetContent pending={pending}>
         <SheetHeader>
           <SheetTitle>Add machine identity to project</SheetTitle>
-          <SheetDescription>
-            Create a new machine identity or assign an existing one
-          </SheetDescription>
         </SheetHeader>
         {open && (
           <AddIdentityForm

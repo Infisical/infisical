@@ -600,13 +600,6 @@ function MoveSecretsDialogContent({
     if (results) onCompleted?.();
   };
 
-  let description = isSingleEnvMode
-    ? `Move the selected ${noun} to another project location.`
-    : `Move the selected ${noun} to the same folder location across environments.`;
-  if (!isSingleEnvMode && secrets.size > 0 && !folders.size && !rotations.size)
-    description = `Synchronously move ${plural(secrets.size, "selected secret")} across ${environments.length} environments to the same destination.`;
-  if (results) description = "Review what happened in each environment.";
-
   const renderBody = () => {
     if (results)
       return (
@@ -678,9 +671,7 @@ function MoveSecretsDialogContent({
               </div>
             }
           />
-          {!isSingleEnvMode && (
-            <SmallText muted>This will create one commit per selected environment.</SmallText>
-          )}
+          {!isSingleEnvMode && <SmallText muted>Creates one commit per environment.</SmallText>}
         </div>
         {isSelfMove && (
           <Alert tone="bad" title="This move is not allowed">
@@ -692,11 +683,11 @@ function MoveSecretsDialogContent({
             tone="warn"
             title={`Folder permissions will move with ${isSingleRbacFolder ? "this folder" : "these folders"}`}
           >
-            {`Folder-specific permissions are granted on ${foldersWithRbacPolicies
+            {`Users and identities with access granted on ${foldersWithRbacPolicies
               .map((name) => `"${name}"`)
               .join(", ")} or ${
-              isSingleRbacFolder ? "one of its subfolders" : "their subfolders"
-            }. Users and identities with this access will keep it at the new location.`}
+              isSingleRbacFolder ? "its subfolders" : "their subfolders"
+            } keep it at the new location.`}
           </Alert>
         )}
       </div>
@@ -716,7 +707,9 @@ function MoveSecretsDialogContent({
       >
         <DialogHeader>
           <DialogTitle>{results ? "Move summary" : title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          {!isSingleEnvMode && !results && (
+            <DialogDescription>Moves to the same folder in each environment.</DialogDescription>
+          )}
         </DialogHeader>
         {renderBody()}
         <DialogFooter>

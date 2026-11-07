@@ -73,7 +73,7 @@ export function ImportActions({
         <AlertDialogHeader>
           <AlertDialogTitle>Remove secret import</AlertDialogTitle>
           <AlertDialogDescription>
-            {`This will unlink secrets imported from ${removing ? environmentLabel(removing.source.environment) : ""}. The source secrets will not be affected.`}
+            {`Unlinks secrets imported from ${removing ? environmentLabel(removing.source.environment) : ""}. The source secrets are not affected.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

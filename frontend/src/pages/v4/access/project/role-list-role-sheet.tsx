@@ -103,8 +103,8 @@ export const RoleListRoleSheet = ({
           <SheetTitle>{duplicate ? "Duplicate role" : "Create role"}</SheetTitle>
           <SheetDescription>
             {mode.kind === "duplicate"
-              ? `Create a new role with the same permissions as ${mode.source.name}.`
-              : "Create a custom project role. You can configure its permissions after creation."}
+              ? `Copies the permissions of ${mode.source.name}.`
+              : "You set its permissions after it's created."}
           </SheetDescription>
         </SheetHeader>
         <SheetBody>

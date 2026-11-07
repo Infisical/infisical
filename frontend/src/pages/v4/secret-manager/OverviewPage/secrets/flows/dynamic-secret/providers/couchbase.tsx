@@ -39,8 +39,8 @@ type TCouchbaseValues = TCouchbaseCreateValues;
 type TCouchbaseBuckets = Exclude<TCouchbaseValues["inputs"]["buckets"], string>;
 
 const COUCHBASE_ROLES = [
-  { value: "read", label: "Read", description: "Read-only access to bucket data." },
-  { value: "write", label: "Write", description: "Full write access to bucket data." }
+  { value: "read", label: "Read" },
+  { value: "write", label: "Write" }
 ] as const;
 
 const couchbaseConnectionFields = [
@@ -95,7 +95,7 @@ const passwordRequirementFields = [
     name: "inputs.passwordRequirements.required.lowercase",
     type: "number",
     label: "Lowercase Count",
-    description: "Minimum lowercase letters (required: at least 1).",
+    description: "At least 1.",
     min: 1,
     layout: "half"
   },
@@ -103,7 +103,7 @@ const passwordRequirementFields = [
     name: "inputs.passwordRequirements.required.uppercase",
     type: "number",
     label: "Uppercase Count",
-    description: "Minimum uppercase letters (required: at least 1).",
+    description: "At least 1.",
     min: 1,
     layout: "half"
   },
@@ -111,7 +111,7 @@ const passwordRequirementFields = [
     name: "inputs.passwordRequirements.required.digits",
     type: "number",
     label: "Digit Count",
-    description: "Minimum digits (required: at least 1).",
+    description: "At least 1.",
     min: 1,
     layout: "half"
   },
@@ -119,7 +119,7 @@ const passwordRequirementFields = [
     name: "inputs.passwordRequirements.required.symbols",
     type: "number",
     label: "Symbol Count",
-    description: "Minimum special characters (required: at least 1).",
+    description: "At least 1.",
     min: 1,
     layout: "half"
   },
@@ -170,13 +170,11 @@ function CouchbaseRolesField() {
         return (
           <FieldSet>
             <FieldLegend>Roles</FieldLegend>
-            <FieldDescription>Select one or more roles to assign to the user.</FieldDescription>
             <Stack gap={12}>
               {COUCHBASE_ROLES.map((role) => (
                 <Checkbox
                   key={role.value}
                   label={role.label}
-                  description={role.description}
                   checked={selectedRoles.includes(role.value)}
                   aria-invalid={Boolean(error) || undefined}
                   onCheckedChange={(checked) => {
@@ -218,7 +216,7 @@ function CouchbaseBucketFields() {
             ref={field.ref}
             layout="row"
             label="Advanced Bucket Configuration"
-            description="Limit access by bucket, scope, and collection instead of using a bucket pattern."
+            description="Limit access by bucket, scope, and collection instead of a pattern."
             checked={Boolean(field.value)}
             onBlur={field.onBlur}
             onCheckedChange={(checked) => {
@@ -237,7 +235,7 @@ function CouchbaseBucketFields() {
             <Field
               wide
               label="Bucket Access"
-              description="Specify comma-separated bucket names, or use * for all buckets, scopes, and collections."
+              description="Comma-separated bucket names, or * for all."
               error={fieldError(error)}
             >
               <Input
@@ -278,7 +276,7 @@ function CouchbaseBucketFields() {
                 <FieldSet>
                   <FieldLegend variant="label">Scopes</FieldLegend>
                   <FieldDescription>
-                    No scopes grants access to every scope in this bucket.
+                    Leave empty to grant access to every scope in this bucket.
                   </FieldDescription>
                   <Stack gap={12} align="start">
                     {(bucket.scopes ?? []).map((scope, scopeIndex) => (
@@ -311,7 +309,7 @@ function CouchbaseBucketFields() {
                         <FieldSet>
                           <FieldLegend variant="label">Collections (optional)</FieldLegend>
                           <FieldDescription>
-                            No collections grants access to every collection in this scope.
+                            Leave empty to grant access to every collection in this scope.
                           </FieldDescription>
                           <Stack gap={12} align="start">
                             {(scope.collections ?? []).map((_collection, collectionIndex) => (
@@ -429,10 +427,7 @@ function CouchbasePasswordFields() {
       presentation="collapse"
       title="Password Configuration (optional)"
     >
-      <FieldDescription>
-        Set constraints on the generated Couchbase user password (8–128 characters). Forbidden
-        characters: &lt; &gt; ; . * &amp; | £.
-      </FieldDescription>
+      <FieldDescription>Passwords must be 8 to 128 characters.</FieldDescription>
       <ProviderFields fields={passwordRequirementFields} />
       {exceedsLength ? (
         <FieldError>{total}</FieldError>

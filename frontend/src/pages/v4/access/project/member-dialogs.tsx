@@ -46,7 +46,7 @@ export const AssumePrivilegesDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>{`Assume privileges of this ${noun}`}</AlertDialogTitle>
           <AlertDialogDescription>
-            {`This will set your privileges to those of the ${noun} for the next hour.`}
+            {`Your privileges become this ${noun}'s for one hour.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -80,7 +80,7 @@ export const RemoveMemberDialog = ({
       <AlertDialogHeader>
         <AlertDialogTitle>{`Remove ${name ?? "this user"} from the project?`}</AlertDialogTitle>
         <AlertDialogDescription>
-          This user will lose access granted by this membership. This cannot be undone.
+          They lose the access this membership grants.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>

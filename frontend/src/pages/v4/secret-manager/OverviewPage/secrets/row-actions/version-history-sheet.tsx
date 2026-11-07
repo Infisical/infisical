@@ -19,7 +19,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetSubheader,
   SheetTitle
@@ -193,8 +192,8 @@ function VersionItem({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirm === "redact"
-                ? `Are you sure you want to redact the secret value on version ${version.version}? This action is irreversible.`
-                : `Are you sure you want to restore this secret to version ${version.version}? This will overwrite the current value.`}
+                ? `Permanently removes the value of version ${version.version}.`
+                : `Overwrites the current value with version ${version.version}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {confirm === "restore" && valuePending && <Loader label="Loading version value" />}
@@ -279,7 +278,6 @@ export function VersionHistorySheet({
       >
         <SheetHeader>
           <SheetTitle>Version history</SheetTitle>
-          <SheetDescription>Audit secret history and rollback changes</SheetDescription>
         </SheetHeader>
         <SheetSubheader className={styles.subject}>
           <span className={styles.subjectName}>{secret.name}</span>

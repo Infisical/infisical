@@ -333,23 +333,15 @@ export const OrgIdentitiesTab = () => {
   };
 
   const scopeLabel = scope === "project" ? "project" : "organization";
-  let empty = {
-    title: "No machine identities have been added to this organization",
-    description: "Add a machine identity to get started."
-  };
+  let empty = { title: "No machine identities have been added to this organization" };
   if (searching)
     empty = {
       title:
         scope === "all"
           ? "No machine identities match your search"
-          : `No ${scopeLabel} machine identities match your search`,
-      description: "Try adjusting your search."
+          : `No ${scopeLabel} machine identities match your search`
     };
-  else if (scope === "project")
-    empty = {
-      title: "No project machine identities found",
-      description: "Machine identities scoped to a project will appear here."
-    };
+  else if (scope === "project") empty = { title: "No project machine identities found" };
   const allCount =
     counts?.organization === undefined && counts?.project === undefined
       ? undefined
@@ -419,7 +411,6 @@ export const OrgIdentitiesTab = () => {
                 size="sm"
                 icon={searching ? "search" : "machine"}
                 title={empty.title}
-                description={empty.description}
                 actions={
                   searching ? (
                     <Button variant="link" onClick={() => setSearch("")}>

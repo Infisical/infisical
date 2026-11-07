@@ -55,7 +55,7 @@ import { ResourceChangeCard, sortChanges } from "./resource-change-card";
 import styles from "./commits.module.css";
 
 const MAX_RESTORE_MESSAGE_LENGTH = 256;
-const PLATFORM_HINT = "Generated automatically by the platform as part of an automated event.";
+const PLATFORM_HINT = "Made automatically by Infisical, not by a user.";
 
 type View =
   | { name: "history" }
@@ -239,7 +239,6 @@ export function CommitHistorySheet({
   });
   const loaded = (history.data?.commits ?? []).map(toViewCommit);
   const authors = [...new Set(loaded.map(authorName))].sort((a, b) => a.localeCompare(b));
-  const query = search.trim().toLowerCase();
   const visible = loaded.filter((commit) => !author || authorName(commit) === author);
   const groups = visible.reduce<{ date: string; commits: ViewCommit[] }[]>((acc, commit) => {
     const date = format(new Date(commit.createdAt), "MMM d, yyyy");
@@ -337,14 +336,9 @@ export function CommitHistorySheet({
     <SheetHeader key="header">
       <BackLink label="Commit history" onClick={backToHistory} />
       <SheetTitle className="sr-only">Commit details</SheetTitle>
-      <SheetDescription className="sr-only">This commit could not be found</SheetDescription>
     </SheetHeader>,
     <SheetBody key="body">
-      <EmptyState
-        icon="git"
-        title="Commit not found"
-        description="This commit is no longer part of this folder's history."
-      />
+      <EmptyState icon="git" title="Commit not found" />
     </SheetBody>
   ];
 
@@ -449,15 +443,7 @@ export function CommitHistorySheet({
             )}
           </div>
         ) : (
-          <EmptyState
-            icon="git"
-            title="No commits found"
-            description={
-              query || author
-                ? "No commits match your search and filters."
-                : "Changes to secrets and folders in this path will show up here."
-            }
-          />
+          <EmptyState icon="git" title="No commits found" />
         )}
       </SheetBody>
     ];
@@ -510,14 +496,14 @@ export function CommitHistorySheet({
                 description={
                   latest
                     ? "This is already the latest commit for this folder."
-                    : "Return this folder to its exact state at this commit, discarding every change made after it."
+                    : "Discards every change made after this commit."
                 }
                 onSelect={() => openRestore(commit.id)}
               >
                 Roll back to this commit
               </DropdownMenuItem>
               <DropdownMenuItem
-                description="Restore the previous version of the resources this commit touched."
+                description="Undoes only the changes in this commit."
                 onSelect={() => setRevertOpen(true)}
               >
                 Revert changes
@@ -620,8 +606,8 @@ export function CommitHistorySheet({
         <BackLink label="Commit details" onClick={() => openDetails(commit.id)} />
         <SheetTitle className="sr-only">Restore commit</SheetTitle>
         <SheetDescription className={styles.restoreIntro}>
-          Restoring returns <code>{scope.path}</code> to how it looked at commit{" "}
-          <code>{shortId(commit.id)}</code>. Every change made after this commit is undone.
+          Returns <code>{scope.path}</code> to commit <code>{shortId(commit.id)}</code>. Every later
+          change is undone.
         </SheetDescription>
       </SheetHeader>,
       <SheetSubheader key="subheader" className={styles.deepToggle}>
@@ -633,11 +619,6 @@ export function CommitHistorySheet({
             setSelectedPath(scope.path);
           }}
         />
-        <Tooltip content="Also returns every nested folder to its state at this commit.">
-          <span className={styles.hint}>
-            <Icon name="info" size={14} label="About restoring child folders" />
-          </span>
-        </Tooltip>
       </SheetSubheader>,
       <SheetBody key="body">
         <div className={styles.restoreLayout}>
@@ -702,8 +683,7 @@ export function CommitHistorySheet({
           <AlertDialogHeader>
             <AlertDialogTitle>Revert changes</AlertDialogTitle>
             <AlertDialogDescription>
-              This undoes every change made in this commit by restoring the previous version of the
-              resources it touched.
+              Restores the previous version of every resource this commit touched.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -725,9 +705,9 @@ export function CommitHistorySheet({
             <AlertDialogTitle>{`Restore commit ${shortId(commit?.id ?? "")}?`}</AlertDialogTitle>
             <AlertDialogDescription>
               {deep
-                ? "This returns this folder and every child folder to its state at this commit."
-                : "This returns this folder to its state at this commit."}{" "}
-              Changes made after this commit are permanently removed.
+                ? "Returns this folder and its child folders to this commit."
+                : "Returns this folder to this commit."}{" "}
+              Later changes are permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

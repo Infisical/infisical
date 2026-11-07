@@ -119,7 +119,8 @@ export function CreateImportFlow({
         <DialogHeader>
           <DialogTitle>Add secret import</DialogTitle>
           <DialogDescription>
-            Import secrets from this project or from another project that has granted you access.
+            Reference secrets from another environment or folder. Changes at the source show up
+            here.
           </DialogDescription>
         </DialogHeader>
         <form

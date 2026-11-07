@@ -248,17 +248,13 @@ export function CreateProxiedServiceFlow({
             </span>
           )
         }
-        description={
-          isPicking
-            ? "Pick a service to get a head start, or set one up yourself."
-            : "Define how the agent proxy brokers this service."
-        }
+        description="The agent proxy adds this service's credentials to outbound requests, so the agent never holds the real secret."
         steps={
           isPicking
             ? undefined
             : [
                 { title: "Template", summary: templateName },
-                ...STEPS.map((entry) => ({ title: entry.name, summary: entry.shortDescription }))
+                ...STEPS.map((entry) => ({ title: entry.name }))
               ]
         }
         current={stepIndex + 1}
@@ -272,7 +268,6 @@ export function CreateProxiedServiceFlow({
           setStepIndex(index - 1);
         }}
         heading={current.title}
-        subtitle={current.subtitle}
         aside={
           isPicking ? undefined : (
             <>

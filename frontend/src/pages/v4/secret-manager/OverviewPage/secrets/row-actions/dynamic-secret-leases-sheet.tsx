@@ -28,18 +28,15 @@ import { type DynamicSecretLease, DynamicSecretLeaseList } from "./dynamic-secre
 
 import styles from "./row-actions.module.css";
 
-const headings = {
-  list: {
-    title: "Leases",
-    description: "Generate temporary credentials, and renew or revoke active leases."
-  },
-  generate: {
-    title: "Generate lease",
-    description: "Generate temporary credentials from this dynamic secret."
-  },
+const headings: Record<
+  "list" | "generate" | "credentials",
+  { title: string; description?: string }
+> = {
+  list: { title: "Leases" },
+  generate: { title: "Generate lease" },
   credentials: {
     title: "Lease credentials",
-    description: "These credentials are shown once. Copy them before you go back."
+    description: "Shown once. Copy them before you go back."
   }
 };
 
@@ -126,7 +123,9 @@ export function DynamicSecretLeasesSheet({
       <SheetContent size="lg" pending={pending}>
         <SheetHeader>
           <SheetTitle>{headings[view].title}</SheetTitle>
-          <SheetDescription>{headings[view].description}</SheetDescription>
+          {headings[view].description && (
+            <SheetDescription>{headings[view].description}</SheetDescription>
+          )}
         </SheetHeader>
         <SheetSubheader className={styles.subject}>
           <span className={styles.subjectName}>{entry.name}</span>

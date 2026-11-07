@@ -759,8 +759,7 @@ export const OverviewPage = () => {
               ? {
                   tone: "neutral",
                   title: "Change request opened",
-                  description:
-                    "An approval policy covers this folder, so the changes wait for review."
+                  description: "An approval policy covers this folder, so changes wait for review."
                 }
               : { tone: "ok", title }
           );
@@ -1177,7 +1176,7 @@ export const OverviewPage = () => {
         tone: "bad",
         title: "Cannot copy secrets as .env",
         description:
-          "Some selected secret names aren’t compatible with .env format. Names must contain only letters, numbers, and underscores, and cannot start with a number. Nothing was copied."
+          "Names must use only letters, numbers, and underscores, and cannot start with a number. Nothing was copied."
       });
       return;
     }
@@ -1215,7 +1214,6 @@ export const OverviewPage = () => {
         <EmptyState
           icon="search"
           title="No matches in this folder"
-          description="Try a different search, or search every folder in this environment."
           actions={
             <>
               <Button variant="outline" onClick={clearFilters}>
@@ -1300,7 +1298,6 @@ export const OverviewPage = () => {
         <EmptyState
           icon="folder"
           title="No environments yet"
-          description="Create an environment before adding secrets."
           actions={gate(
             NEXT_PHASE,
             <Button icon="plus" disabled>
@@ -1314,7 +1311,7 @@ export const OverviewPage = () => {
         <EmptyState
           icon="lock"
           title="Secrets engine upgrade required"
-          description="This project uses the legacy engine. Upgrade the project to manage secrets here."
+          description="This project uses the legacy secrets engine."
           actions={gate(NEXT_PHASE, <Button disabled>Upgrade project</Button>)}
         />
       );
@@ -1323,7 +1320,7 @@ export const OverviewPage = () => {
         <EmptyState
           icon="alert"
           title="Could not load resources"
-          description={`The overview request failed. ${errorText(overview.error)}`}
+          description={errorText(overview.error)}
           actions={<Button onClick={() => overview.refetch()}>Retry</Button>}
         />
       );
@@ -1463,6 +1460,7 @@ export const OverviewPage = () => {
                     projectQuery.data?.name ??
                     projectId
                   }
+                  description={projectQuery.data?.description || undefined}
                   mono
                 />
                 <div className={styles.toolbar}>
@@ -1991,8 +1989,8 @@ export const OverviewPage = () => {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete folder</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This folder and all its contents will be removed. You can reverse this action by
-                  rolling back to a previous commit.
+                  Deletes the folder and everything in it. You can restore it by rolling back to an
+                  earlier commit.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -2020,7 +2018,7 @@ export const OverviewPage = () => {
                     : `Delete ${deleting?.length} resources?`}
                 </DialogTitle>
                 <DialogDescription>
-                  {`This removes the selected resources from ${path}. Folders are removed with everything inside them. This cannot be undone.`}
+                  Folders are deleted with everything inside them. This cannot be undone.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -2155,8 +2153,7 @@ export const OverviewPage = () => {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete environment</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete the environment and all its secrets. This action
-                  cannot be undone.
+                  Permanently deletes the environment and all its secrets.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

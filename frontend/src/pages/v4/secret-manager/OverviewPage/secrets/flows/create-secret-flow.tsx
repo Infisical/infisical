@@ -227,7 +227,7 @@ export function SecretEntryFields({
               </div>
               <Field
                 label="Metadata"
-                description="Encrypted Metadata will not be searchable via the UI or API."
+                description="Encrypted metadata isn't searchable in the UI or API."
                 group
                 wide
               >

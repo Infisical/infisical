@@ -70,7 +70,6 @@ export const CodeSigningSection = ({ projectId }: { projectId: string }) => {
   return (
     <TrendCard
       title="Code signing activity"
-      description="Signing operations by outcome"
       data={trendData}
       range={range}
       onRangeChange={setRange}

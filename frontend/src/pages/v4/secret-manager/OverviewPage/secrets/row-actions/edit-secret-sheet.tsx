@@ -117,7 +117,7 @@ export function EditSecretSheet({
         <SheetContent className={flowStyles.secretSheet}>
           <SheetHeader>
             <SheetTitle>Edit secret</SheetTitle>
-            <SheetDescription>{`Update this secret in ${environmentLabel}.`}</SheetDescription>
+            <SheetDescription>{`Changes apply to ${environmentLabel} only.`}</SheetDescription>
           </SheetHeader>
           <SheetBody>
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
@@ -182,7 +182,7 @@ export function EditSecretSheet({
       </Sheet>
       <DiscardDialog
         open={discard}
-        description="Your unsaved changes to this secret will be lost."
+        description="Your unsaved changes will be lost."
         onKeep={() => setDiscard(false)}
         onDiscard={() => {
           setDiscard(false);
@@ -199,8 +199,7 @@ export function EditSecretSheet({
           <AlertDialogHeader>
             <AlertDialogTitle>Update this secret?</AlertDialogTitle>
             <AlertDialogDescription>
-              This secret is referenced by other secrets in your project. Saving these changes will
-              update everywhere it&apos;s referenced.
+              Other secrets reference this one. Saving updates it everywhere it&apos;s referenced.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul className={styles.dependentList}>

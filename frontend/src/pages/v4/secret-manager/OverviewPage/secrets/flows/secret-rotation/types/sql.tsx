@@ -58,7 +58,7 @@ function SqlParameters() {
           <TextField
             name="parameters.rotationStatement"
             label="Rotation Statement"
-            description="username, password and database are dynamically provisioned"
+            description="Username, password, and database are dynamically provisioned."
             defaultValue={template.rotationStatement}
             multiline
             rows={3}

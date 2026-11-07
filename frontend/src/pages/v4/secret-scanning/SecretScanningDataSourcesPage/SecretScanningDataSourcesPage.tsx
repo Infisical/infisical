@@ -388,7 +388,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
       <Stack gap={24}>
         <PageHeader
           title="Data sources"
-          description="Connected systems Secret Scanning reads from."
+          description="Connected platforms that Secret Scanning checks for leaked secrets."
           badges={
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
           }
@@ -475,7 +475,6 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
                 media="bare"
                 icon="search"
                 title="No data sources match your filters"
-                description="Try a different search term or platform filter."
                 actions={
                   <Button
                     variant="outline"
@@ -490,13 +489,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
                 }
               />
             ) : (
-              <EmptyState
-                size="sm"
-                media="bare"
-                icon="git"
-                title="No data sources yet"
-                description="Add a data source to start scanning it for leaked secrets."
-              />
+              <EmptyState size="sm" media="bare" icon="git" title="No data sources yet" />
             )
           }
           pagination={
@@ -530,8 +523,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
             <AlertDialogHeader>
               <AlertDialogTitle>{`Delete ${deleting?.name ?? "data source"}?`}</AlertDialogTitle>
               <AlertDialogDescription>
-                This permanently deletes the findings and scan history of this data source. This
-                cannot be undone.
+                Its findings and scan history are deleted too. You cannot undo this.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

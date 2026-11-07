@@ -407,7 +407,6 @@ export const PamAccountsPage = () => {
         media="bare"
         icon="search"
         title="No accounts match your search"
-        description="Try a different search term."
         actions={
           <Button variant="outline" onClick={() => setSearchInput("")}>
             Clear search
@@ -422,7 +421,7 @@ export const PamAccountsPage = () => {
         media="bare"
         icon="folder"
         title="No accounts yet"
-        description="Create your first account to get started. You'll need at least one account template."
+        description="You need at least one account template first."
       />
     );
 
@@ -431,7 +430,7 @@ export const PamAccountsPage = () => {
       <Stack gap={24}>
         <PageHeader
           title="Accounts"
-          description="Launch sessions for accounts you have access to, or manage account settings."
+          description="Launch sessions with the accounts you have access to."
           badges={
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pam/accounts/overview" />
           }

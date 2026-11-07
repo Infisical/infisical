@@ -15,15 +15,9 @@
 }
 .sectionHead {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--v4-space-12);
-}
-.sectionCopy {
-  display: flex;
-  flex-direction: column;
-  gap: var(--v4-space-4);
-  min-width: 0;
 }
 .start {
   align-self: flex-start;

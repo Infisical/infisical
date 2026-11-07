@@ -20,7 +20,6 @@ import { Button } from "@app/components/v4/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -109,7 +108,6 @@ function RenewLeaseDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Renew lease</DialogTitle>
-          <DialogDescription>Extend this lease by a new TTL.</DialogDescription>
         </DialogHeader>
         <form
           id={RENEW_FORM_ID}
@@ -127,7 +125,7 @@ function RenewLeaseDialog({
               <Field
                 wide
                 label="TTL"
-                description="The existing expiration time will be extended by this TTL."
+                description="Added to the current expiration time."
                 error={error?.message}
               >
                 <Input {...field} invalid={Boolean(error)} />
@@ -185,7 +183,6 @@ export function DynamicSecretLeaseList({
       <EmptyState
         icon="clock"
         title="No active leases"
-        description="Generate a lease to get temporary credentials from this dynamic secret."
         actions={
           <Gate reason={leaseBlock}>
             <Button size="sm" disabled={Boolean(leaseBlock)} onClick={onGenerate}>
@@ -268,7 +265,7 @@ export function DynamicSecretLeaseList({
                           disabled={Boolean(leaseBlock)}
                           description={
                             leaseBlock ??
-                            "Removes the lease from Infisical without revoking it in the external provider."
+                            "Removes it from Infisical without revoking it in the provider."
                           }
                           onSelect={() => {
                             setRevoke({ leaseId: id, isForced: true });
@@ -306,8 +303,8 @@ export function DynamicSecretLeaseList({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {revoke?.isForced
-                ? "This removes the lease from Infisical without revoking it in the external provider. This cannot be undone."
-                : "This revokes the temporary credentials and deletes the lease. This cannot be undone."}
+                ? "Removes the lease from Infisical without revoking it in the provider. This cannot be undone."
+                : "Revokes the temporary credentials. This cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
