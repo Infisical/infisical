@@ -86,19 +86,17 @@ const deleteFolder = async (id: string) => {
 };
 
 const deepSearch = async (pagination?: { limit?: number; offset?: number }) => {
-  const params = new URLSearchParams({
-    projectId: seedData1.projectV3.id,
-    environments: seedData1.environment.slug,
-    search: SEARCH_TERM
-  });
-  if (pagination?.limit !== undefined) params.set("limit", String(pagination.limit));
-  if (pagination?.offset !== undefined) params.set("offset", String(pagination.offset));
-
   return testServer.inject({
-    method: "GET",
-    url: `/api/v1/dashboard/secrets-deep-search?${params.toString()}`,
+    method: "POST",
+    url: "/api/v1/dashboard/secrets-deep-search",
     headers: {
       authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      projectId: seedData1.projectV3.id,
+      environments: [seedData1.environment.slug],
+      search: SEARCH_TERM,
+      ...pagination
     }
   });
 };

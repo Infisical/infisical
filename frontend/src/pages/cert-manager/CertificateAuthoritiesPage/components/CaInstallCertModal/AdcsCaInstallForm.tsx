@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,12 +15,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  Input
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -33,6 +29,8 @@ import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { useAzureAdcsConnectionListTemplates } from "@app/hooks/api/appConnections/azure-adcs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+import { PathLengthDescription, PathLengthSelect, useLockedPathLength } from "./PathLengthSelect";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
@@ -85,6 +83,11 @@ export const AdcsCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     });
 
   const { data: existingSigningConfig } = useGetCaSigningConfig(caId, { enabled: !!caId });
+  const lockedPathLength = useLockedPathLength(caId);
+
+  useEffect(() => {
+    if (lockedPathLength !== undefined) setValue("maxPathLength", String(lockedPathLength));
+  }, [lockedPathLength]);
   const { mutateAsync: createSigningConfig } = useCreateCaSigningConfig();
   const { mutateAsync: updateSigningConfig } = useUpdateCaSigningConfig();
   const { mutateAsync: installAdcsCert } = useInstallCaCertificateAdcs();
@@ -214,18 +217,13 @@ export const AdcsCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
           render={({ field: { onChange, ...field }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel>Path Length</FieldLabel>
-              <Select value={field.value} onValueChange={onChange}>
-                <SelectTrigger className="w-full" isError={Boolean(error)}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {[-1, 0, 1, 2, 3].map((value) => (
-                    <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
-                      {String(value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PathLengthSelect
+                value={field.value}
+                onChange={onChange}
+                lockedPathLength={lockedPathLength}
+                isError={Boolean(error)}
+              />
+              <PathLengthDescription isLocked={lockedPathLength !== undefined} />
               <FieldError errors={[error]} />
             </Field>
           )}

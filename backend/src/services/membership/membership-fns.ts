@@ -142,5 +142,11 @@ export const assertProductWillRetainAdmin = async ({
   if (!project) return;
   const productLabel = getAdminMemberOnlyProductLabel(project.type);
   if (!productLabel) return;
-  await assertWillRetainProjectAdmin({ scopeProjectId: project.id, excludeMembershipIds, productLabel, tx });
+  // An org holds many Agent Vault projects, so the message names the project rather than the product.
+  await assertWillRetainProjectAdmin({
+    scopeProjectId: project.id,
+    excludeMembershipIds,
+    productLabel: project.type === ProjectType.AgentVault ? "This project" : productLabel,
+    tx
+  });
 };

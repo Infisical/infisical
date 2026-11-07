@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { AccessScope } from "@app/db/schemas";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { GROUP_MEMBERSHIP_REMOVED_EVENT } from "@app/services/org/org-membership-events";
@@ -10,6 +11,11 @@ import { githubOrgSyncServiceFactory } from "./github-org-sync-service";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+}));
+
+const { clearPersonalValuesInProjects } = vi.hoisted(() => ({ clearPersonalValuesInProjects: vi.fn() }));
+vi.mock("@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns", () => ({
+  clearPersonalValuesInProjects
 }));
 
 // The service builds its GitHub clients itself, so the fakes stand in for the SDK classes.
@@ -93,6 +99,12 @@ const createService = () => {
     insertMany,
     delete: vi.fn().mockResolvedValue([])
   };
+  const membershipGroupDAL = {
+    insertMany: vi.fn(async (rows: unknown[]) => rows.map((row, index) => ({ ...(row as object), id: `m-${index}` }))),
+    find: vi.fn().mockResolvedValue([{ scopeProjectId: "p-1" }, { scopeProjectId: "p-2" }, { scopeProjectId: "p-1" }])
+  };
+  const identityGroupMembershipDAL = { find: vi.fn() };
+  const agentVaultPersonalValueDAL = { deleteForActorsWithoutGrant: vi.fn(), findProjectIdsWithValues: vi.fn() };
 
   const service = githubOrgSyncServiceFactory({
     githubOrgSyncDAL: {
@@ -109,9 +121,9 @@ const createService = () => {
     userGroupMembershipDAL: userGroupMembershipDAL as never,
     groupDAL: groupDAL as never,
     membershipRoleDAL: { insertMany: vi.fn().mockResolvedValue([]) } as never,
-    membershipGroupDAL: {
-      insertMany: vi.fn(async (rows: unknown[]) => rows.map((row, index) => ({ ...(row as object), id: `m-${index}` })))
-    } as never,
+    membershipGroupDAL: membershipGroupDAL as never,
+    identityGroupMembershipDAL: identityGroupMembershipDAL as never,
+    agentVaultPersonalValueDAL: agentVaultPersonalValueDAL as never,
     licenseService: { getPlan: vi.fn().mockResolvedValue({ githubOrgSync: true }) } as never,
     orgMembershipDAL: orgMembershipDAL as never,
     userAliasDAL: userAliasDAL as never,
@@ -133,17 +145,49 @@ const createService = () => {
     userGroupMembershipDAL,
     orgMembershipDAL,
     userAliasDAL,
+    membershipGroupDAL,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL,
     lockActorsForOrgAccess,
     emit,
     insertMany
   };
 };
 
+// The clear needs the group rows gone first, in the same transaction, so it sees who still reaches each bundle.
+const expectPersonalValuesClearedAfterDelete = (
+  {
+    userGroupMembershipDAL,
+    membershipGroupDAL,
+    identityGroupMembershipDAL,
+    agentVaultPersonalValueDAL
+  }: Pick<
+    ReturnType<typeof createService>,
+    "userGroupMembershipDAL" | "membershipGroupDAL" | "identityGroupMembershipDAL" | "agentVaultPersonalValueDAL"
+  >,
+  { groupIds, userIds }: { groupIds: string[]; userIds: string[] }
+) => {
+  expect(membershipGroupDAL.find).toHaveBeenCalledWith(
+    { scope: AccessScope.Project, $in: { actorGroupId: groupIds } },
+    { tx: TX }
+  );
+  expect(clearPersonalValuesInProjects).toHaveBeenCalledTimes(1);
+  expect(clearPersonalValuesInProjects).toHaveBeenCalledWith(
+    { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+    { projectIds: ["p-1", "p-2"], userIds },
+    TX
+  );
+  expect(clearPersonalValuesInProjects.mock.invocationCallOrder[0]).toBeGreaterThan(
+    userGroupMembershipDAL.delete.mock.invocationCallOrder[0]
+  );
+};
+
 describe("GitHub org sync and org access reconcile", () => {
   beforeEach(() => vi.clearAllMocks());
 
   test("login sync emits a group membership removal per group the user left, and locks before adding", async () => {
-    const { service, groupDAL, userGroupMembershipDAL, lockActorsForOrgAccess, emit, insertMany } = createService();
+    const deps = createService();
+    const { service, groupDAL, userGroupMembershipDAL, lockActorsForOrgAccess, emit, insertMany } = deps;
     github.userTeams = ["kept", "existing", "brand-new"];
     userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg.mockResolvedValue([
       { groupId: "g-kept", groupName: "kept" },
@@ -175,6 +219,7 @@ describe("GitHub org sync and org access reconcile", () => {
       TX
     );
     expect(groupDAL.findGroupOrgIds).toHaveBeenCalledWith("g-left", TX);
+    expectPersonalValuesClearedAfterDelete(deps, { groupIds: ["g-left"], userIds: ["user-1"] });
 
     // One add for the new group, one for the existing group, each behind the lock.
     expect(insertMany).toHaveBeenCalledTimes(2);
@@ -189,6 +234,7 @@ describe("GitHub org sync and org access reconcile", () => {
   });
 
   test("manual sync emits the removed members of each team, and locks the added ones", async () => {
+    const deps = createService();
     const {
       service,
       groupDAL,
@@ -198,7 +244,7 @@ describe("GitHub org sync and org access reconcile", () => {
       lockActorsForOrgAccess,
       emit,
       insertMany
-    } = createService();
+    } = deps;
     // GitHub ids match the user ids' digits: u1 stays, u2 left the team, u3 joined it.
     github.orgTeams = [{ name: "team", logins: ["u1", "u3"] }];
     orgMembershipDAL.findOrgMembershipsWithUsersByOrgId.mockResolvedValue(
@@ -228,6 +274,7 @@ describe("GitHub org sync and org access reconcile", () => {
     } as never);
 
     expect(userGroupMembershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["ugm-2"] } }, TX);
+    expectPersonalValuesClearedAfterDelete(deps, { groupIds: ["g-team"], userIds: ["user-2"] });
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith(
       [

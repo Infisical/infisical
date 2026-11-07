@@ -1,13 +1,17 @@
 import { Knex } from "knex";
 
 import { RESOURCE_SCOPE } from "@app/db/schemas";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TMembershipDALFactory } from "./membership-dal";
 
-type TApplicationMembershipCleanupServiceFactoryDep = {
+type TApplicationMembershipCleanupServiceFactoryDep = TClearPersonalValuesInProjectsDeps & {
   membershipDAL: Pick<TMembershipDALFactory, "delete">;
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
@@ -22,8 +26,24 @@ const ORG_EXIT_APPROVAL_SCOPES = [...APPLICATION_APPROVAL_SCOPES, ApprovalPolicy
 
 export const applicationMembershipCleanupServiceFactory = ({
   membershipDAL,
-  approvalPolicyDAL
+  approvalPolicyDAL,
+  agentVaultPersonalValueDAL,
+  userGroupMembershipDAL,
+  identityGroupMembershipDAL
 }: TApplicationMembershipCleanupServiceFactoryDep) => {
+  // Runs after the actor's project membership and grants are deleted, since the clear keeps the values of anyone who
+  // still holds a grant or a project admin role. Values only exist in Agent Vault projects, so other project ids
+  // find nothing.
+  const clearAgentVaultPersonalValues = (
+    args: { projectIds: string[]; userIds?: string[]; identityIds?: string[]; groupIds?: string[] },
+    tx: Knex
+  ) =>
+    clearPersonalValuesInProjects(
+      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+      args,
+      tx
+    );
+
   const cleanupActorApplicationMemberships = async (
     {
       projectId,
@@ -58,6 +78,16 @@ export const applicationMembershipCleanupServiceFactory = ({
       },
       tx
     );
+
+    await clearAgentVaultPersonalValues(
+      {
+        projectIds: [projectId],
+        userIds: actorKind === ApplicationMemberKind.User ? [actorId] : [],
+        identityIds: actorKind === ApplicationMemberKind.Identity ? [actorId] : [],
+        groupIds: actorKind === ApplicationMemberKind.Group ? [actorId] : []
+      },
+      tx
+    );
   };
 
   const cleanupUsersApplicationMemberships = async (
@@ -79,6 +109,8 @@ export const applicationMembershipCleanupServiceFactory = ({
       },
       tx
     );
+
+    await clearAgentVaultPersonalValues({ projectIds: [projectId], userIds }, tx);
   };
 
   // Returns the removed resource rows so callers can report them.
@@ -111,6 +143,9 @@ export const applicationMembershipCleanupServiceFactory = ({
           tx
         )
       : [];
+
+    await clearAgentVaultPersonalValues({ projectIds, userIds, identityIds }, tx);
+
     return [...userRows, ...identityRows];
   };
 

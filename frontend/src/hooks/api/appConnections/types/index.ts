@@ -17,6 +17,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
+import { TClickHouseConnection } from "./clickhouse-connection";
 import { TCloud66Connection } from "./cloud-66-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
@@ -110,6 +111,7 @@ export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./checkly-connection";
+export * from "./clickhouse-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloud-66-connection";
@@ -284,7 +286,8 @@ export type TAppConnection =
   | THpeIloConnection
   | TServiceNowConnection
   | TS3CompatibleConnection
-  | TJiraConnection;
+  | TJiraConnection
+  | TClickHouseConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId"> & {
   gatewayId?: string | null;

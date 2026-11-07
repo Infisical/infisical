@@ -113,7 +113,6 @@ export enum ApiDocsTags {
   AgentVaultDelegations = "Agent Vault Delegations",
   AgentVaultSessionLogs = "Agent Vault Session Logs",
   AgentVaultSettings = "Agent Vault Settings",
-  AgentVaultAppConnections = "Agent Vault App Connections",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
 }
@@ -667,7 +666,7 @@ export const KUBERNETES_AUTH = {
     verifyTlsCertificate:
       "Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and the resulting effective CA must be empty. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.",
     tokenReviewerJwt:
-      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
+      "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token replaces the stored one and is used to validate service account tokens during authentication. Omit it, or send an empty string, to keep the stored JWT. Set it to null to remove the stored JWT; the client's own JWT is then used instead, which requires the client to have the system:auth-delegator ClusterRole binding. A stored JWT cannot be read back, so it must be supplied again when changing the host, gateway, gateway pool, CA certificate, or TLS verification.",
     tokenReviewMode:
       "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
@@ -686,6 +685,11 @@ export const KUBERNETES_AUTH = {
   },
   REVOKE: {
     identityId: "The ID of the machine identity to revoke the auth method for."
+  },
+  RESPONSE: {
+    tokenReviewerJwt:
+      "Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.",
+    hasTokenReviewerJwt: "Whether a token reviewer JWT is stored."
   }
 } as const;
 
@@ -1643,8 +1647,7 @@ export const DASHBOARD = {
   },
   SECRET_OVERVIEW_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",
-    environments:
-      "The slugs of the environments to list secrets/folders from (comma separated, ie 'environments=dev,staging,prod').",
+    environments: "The slugs of the environments to list secrets/folders from.",
     secretPath: "The secret path to list secrets/folders from.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th secret/folder.",
     limit: "The number of secrets/folders to return.",
@@ -1653,7 +1656,7 @@ export const DASHBOARD = {
     sortEnvironment:
       "The environment slug whose secret timestamps determine recency ordering. Required for multi-environment recency sorting.",
     search: "The text string to filter secret keys and folder names by.",
-    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
+    tags: "The slugs of the tags to filter secrets by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
@@ -1671,7 +1674,7 @@ export const DASHBOARD = {
     orderBy: "The column to order secrets/folders by.",
     orderDirection: "The direction to order secrets/folders in.",
     search: "The text string to filter secret keys and folder names by.",
-    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
+    tags: "The slugs of the tags to filter secrets by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeImports: "Whether to include project secret imports in the response.",
@@ -2280,6 +2283,8 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   GET_CSR: {
     caId: "The ID of the CA to generate CSR from.",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the chain. Use -1 for no limit. A CA that already has a path length always keeps it.",
     csr: "The generated CSR from the CA."
   },
   RENEW_CA_CERT: {
@@ -2334,6 +2339,30 @@ export const CERTIFICATE_AUTHORITIES = {
     caId: "The ID of the CA to import the certificate for.",
     certificate: "The certificate body to import.",
     certificateChain: "The certificate chain to import."
+  },
+  IMPORT_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to import the cross-signed certificate for.",
+    certificate:
+      "The PEM-encoded cross-signed certificate: the CA's certificate signed by the old CA as a CA certificate. It must have the same subject, public key, and subject key identifier as the CA.",
+    certificateChain:
+      "The PEM-encoded certificates of the old CA, in order: start with the CA that signed the cross-signed certificate and end with its root. When the old root signed it directly, this is the old root's certificate."
+  },
+  GET_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to get the cross-signed certificate for."
+  },
+  DELETE_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to remove the cross-signed certificate from."
+  },
+  CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA the cross-signed certificate belongs to.",
+    certificate: "The PEM-encoded cross-signed certificate.",
+    certificateChain:
+      "The PEM-encoded certificates of the old CA, from the one that signed the cross-signed certificate up to its root.",
+    issuer: "The distinguished name of the CA that signed the cross-signed certificate.",
+    serialNumber: "The serial number of the cross-signed certificate.",
+    notBefore: "The date and time the cross-signed certificate becomes valid.",
+    notAfter:
+      "The date and time the cross-signed certificate expires. After this, new certificates no longer include it in their chain."
   },
   ISSUE_CERT: {
     caId: "The ID of the CA to issue the certificate from.",
@@ -4091,6 +4120,10 @@ export const SecretRotations = {
     GCP_SERVICE_ACCOUNT_KEY: {
       serviceAccountKey:
         "The name of the secret that the rotated service account key (the JSON key file) will be mapped to."
+    },
+    CLICKHOUSE_CREDENTIALS: {
+      username: "The name of the secret that the active username will be mapped to.",
+      password: "The name of the secret that the generated password will be mapped to."
     }
   }
 };
@@ -4634,6 +4667,7 @@ export const ENCRYPTION_KEY_ROTATION = {
 const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to Agent Vault's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
 
 export const AGENT_VAULT = {
+  projectId: "The ID of the Agent Vault project.",
   ACCESS_BUNDLE: {
     accessBundleId: "The ID of the access bundle.",
     name: "The name of the access bundle.",
@@ -4677,6 +4711,8 @@ export const AGENT_VAULT = {
       "The ID of a completed OAuth authorization, to reauthorize the service or switch it to OAuth. To keep the stored tokens, leave `credential` out.",
     oauthStatus:
       "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks).",
+    oauthSummaryStatus:
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks). Absent when each member signs in for themselves.",
     oauthIssuer: "The OAuth authorization server that issued the tokens.",
     oauthGrantedScopes: "The scopes the authorization server granted.",
     oauthRequiredScopes: "Scopes the MCP server asked for that the connection lacks. Reauthorize to request them.",
@@ -4735,7 +4771,18 @@ export const AGENT_VAULT = {
     basicMemberProvidedFields:
       "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of the member who started it. A session a machine identity started on behalf of a user uses that user's values instead. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
     memberProvidedFields:
-      "The credential fields each member sets for themselves: credential-value (a bearer token or a basic password) and credential-username. Empty when the admin sets the whole credential."
+      "The credential fields each member sets for themselves: credential-value (a bearer token, a basic password, or an OAuth sign-in) and credential-username. Empty when the admin sets the whole credential.",
+    oauthMemberProvidedFields:
+      "Leave the OAuth sign-in to each member: send `credential-value` here and no `authorizationId`. Each member connects their own account, and a session uses the account of the member who started it, or of the user a machine identity started it on behalf of. When you save, Infisical checks that the server supports OAuth, and refuses the save if the server doesn't let Infisical register as an OAuth client and you didn't send `clientId`. To go back to one account for every session, send an empty list and an `authorizationId`. Turning this on removes the stored connection, and turning it off removes every member's connection.",
+    oauthClientId:
+      "With the sign-in left to members: the client ID of your own OAuth app, which every member signs in with, for a server that doesn't support dynamic client registration. Register the app with the redirect URI `<your Infisical URL>/agent-vault/oauth/callback`. Omit on update to keep the current client. Changing it removes every member's connection.",
+    oauthClientSecret:
+      "With the sign-in left to members: the client secret of your own OAuth app, if it has one. Never returned once saved. Sending it on update replaces the stored one and removes every member's connection.",
+    oauthRegistration:
+      "With the sign-in left to members: send `dynamic` to stop using your own OAuth app and have each member's sign-in register its own client. Removes every member's connection.",
+    oauthRegistrationMode:
+      "With the sign-in left to members: `manual` when every member signs in with your own OAuth app, `dynamic` when each sign-in registers its own client.",
+    oauthSummaryClientId: "With the sign-in left to members and your own OAuth app: its client ID."
   },
   PERSONAL_VALUE: {
     credentialType:
@@ -4746,13 +4793,21 @@ export const AGENT_VAULT = {
       "Whether you have set every value this service requires from you. Until you do, the proxy refuses this service's requests from your sessions.",
     fields: "Each value the service requires from you, and whether you have set it.",
     field:
-      "Which value: credential-value (a bearer token or a basic password) or credential-username (a basic username).",
+      "Which value: credential-value (a bearer token, a basic password, or an OAuth sign-in) or credential-username (a basic username).",
     isSet: "Whether you have set this value.",
-    updatedAt: "When you last set this value, or null if you haven't.",
+    updatedAt: "When this value last changed, or null if you haven't set it.",
     variableReferences: "Your personal variables that this value uses.",
     values:
       "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
-    value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`
+    value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`,
+    oauth:
+      "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field.",
+    oauthStatus:
+      "`connected`, `needs-reauthorization` (your login is no longer accepted, so connect again; until then your sessions can't use the service), or `needs-additional-scopes` (the MCP server asked for scopes your connection lacks; connect again to grant them).",
+    oauthRequiredScopes: "Scopes the MCP server asked for that your connection lacks. Connect again to grant them.",
+    oauthExpiresAt: "When your current access token expires, or null if the server didn't say.",
+    oauthAuthorizedAt: "When you last connected your account.",
+    oauthLastError: "The last refresh failure for your connection, if any. Never contains a token."
   },
   OAUTH: {
     authorization: "The OAuth authorization, or null when an OAuth client must be registered first.",
@@ -4766,6 +4821,8 @@ export const AGENT_VAULT = {
     clientSecret: "The client secret of your own OAuth app, if it has one.",
     registration:
       "Send `dynamic` to register a new client with the server, even when the service being reauthorized uses your own OAuth app.",
+    personal:
+      "Send `true` to connect your own account to a service that leaves its OAuth sign-in to each member, then save the authorization as your personal value for the service. Needs only access to the service's access bundle. `serviceId` is required, and the client is the one the service's admin set up, so leave `clientId`, `clientSecret` and `registration` out.",
     registrationRequired:
       "True when the server can't register Infisical as a client by itself, or refused to. Send `clientId` (and `clientSecret`) of your own OAuth app.",
     redirectUri:
@@ -4891,17 +4948,18 @@ export const AGENT_VAULT = {
   },
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
-    isActive: "Whether the member can currently reach Agent Vault.",
-    addedAt: "When the member was added to Agent Vault.",
+    isActive: "Whether the member can currently reach the project.",
+    addedAt: "When the member was added to the project.",
     userIds: "The IDs of the users to act on.",
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",
     emails: "The email addresses of the users to give access to. Each must already be in the organization.",
-    identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
-    addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
-    revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    usernames: "The usernames of the users to give access to. Each must already be in the organization.",
+    identifier: "The ID, email address or username the request named, echoed back so a reply can be matched to it.",
+    addSkipped: "The requested members who already had access to the project and were left as they were.",
+    revokeSkipped: "The requested members who did not have access to the project, so nothing was removed.",
     updateSkipped:
-      "The requested members who did not have access to Agent Vault or already had the role, so nothing was changed.",
+      "The requested members who did not have access to the project or already had the role, so nothing was changed.",
     actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
@@ -5004,6 +5062,7 @@ export const AGENT_VAULT = {
 
   SESSION: {
     sessionId: "The ID of the session.",
+    revokedAt: "When the session was revoked.",
     accessBundle:
       "The name of the access bundle this session carries. Leave it out to start a session with services of its own only.",
     accessBundleRead: "The access bundle this session carries. Null for a session with services of its own only.",
@@ -5071,11 +5130,11 @@ export const AGENT_VAULT = {
     machineIdentity: "The machine identity that can start sessions on behalf of users.",
     machineIdentityName: "The name of the machine identity.",
     scope:
-      "Which users the machine identity can start sessions on behalf of: every Agent Vault member (all-members), or only the users and the members of the groups in the delegation (selected).",
+      "Which users the machine identity can start sessions on behalf of: every member of the project (all-members), or only the users and the members of the groups in the delegation (selected).",
     userIds:
-      "The users the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+      "The users the machine identity can act on behalf of, up to 100. Each must be a member of the Agent Vault project. Only allowed when the scope is selected.",
     groupIds:
-      "The groups whose members the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+      "The groups whose members the machine identity can act on behalf of, up to 100. Each must be a member of the Agent Vault project. Only allowed when the scope is selected.",
     users: "The users in the delegation.",
     groups: "The groups in the delegation. Their members are covered while they stay in the group.",
     userId: "The ID of the user.",
@@ -5100,9 +5159,9 @@ export const AGENT_VAULT = {
     offset: "How many delegations to skip.",
     totalCount: "How many delegations match, across every page.",
     addUserIds:
-      "The users to add, up to 100. Each must be a member of Agent Vault. Users the delegation already names are skipped.",
+      "The users to add, up to 100. Each must be a member of the Agent Vault project. Users the delegation already names are skipped.",
     addGroupIds:
-      "The groups to add, up to 100. Each must be a member of Agent Vault. Groups the delegation already names are skipped.",
+      "The groups to add, up to 100. Each must be a member of the Agent Vault project. Groups the delegation already names are skipped.",
     removeUserIds: "The users to take out of the delegation, up to 100. Users it doesn't name are skipped.",
     removeGroupIds: "The groups to take out of the delegation, up to 100. Groups it doesn't name are skipped.",
     afterRemove:
@@ -5182,4 +5241,23 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   optionsSearch: "Filters the values by this text.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
+};
+
+export const HONEY_TOKENS = {
+  CONFIG: {
+    config: "Settings that depend on the honey token's type.",
+    managedBy:
+      "Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating."
+  }
+};
+
+export const AWS_HONEY_TOKENS = {
+  LIST_DEPLOYMENT_OPTIONS: {
+    deploymentOptions:
+      "The AWS accounts a honey token can be created in, and whether each one can be used now. Send the chosen `managedBy` as `config.managedBy` when creating the honey token.",
+    managedBy:
+      "Who manages the AWS account. `instance` is the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud). `organization` is the AWS account your organization connected in Organization Settings.",
+    unavailableReason:
+      "Why this AWS account cannot be used now, or null when it can. For `instance`: `instance-not-configured` means the instance has no managed signing key, `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set, and `invalid-role-arn` means the managed role ARN is not an IAM role ARN. For `organization`: `account-not-connected` means your organization has not connected an AWS account, and `stack-verification-pending` means the CloudFormation stack is not verified yet."
+  }
 };

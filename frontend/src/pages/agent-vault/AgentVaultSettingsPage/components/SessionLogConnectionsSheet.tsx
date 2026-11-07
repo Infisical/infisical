@@ -66,9 +66,9 @@ type Props = {
 };
 
 export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
-  const { currentProject } = useProject();
+  const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
-  const { data: state } = useGetAgentVaultSessionLogSettings();
+  const { data: state } = useGetAgentVaultSessionLogSettings(projectId);
   const sessionLogStorage = state?.settings?.storage;
   const sessionLogConnectionId =
     sessionLogStorage?.type === AgentVaultSessionLogStorageType.External
@@ -81,7 +81,7 @@ export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
     currentProject.id
   );
   const orgConnectionInUse = availableConnections?.find(
-    ({ id, projectId }) => id === sessionLogConnectionId && !projectId
+    (connection) => connection.id === sessionLogConnectionId && !connection.projectId
   );
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addConnection",
@@ -109,7 +109,7 @@ export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
             <DocumentationLinkBadge href={`${AgentVaultDocsUrls.sessionLogs}#connections`} />
           </SheetTitle>
           <SheetDescription>
-            AWS connections only Agent Vault can use. Organization connections are edited under
+            AWS connections only this project can use. Organization connections are edited under
             Integrations.
           </SheetDescription>
         </SheetHeader>

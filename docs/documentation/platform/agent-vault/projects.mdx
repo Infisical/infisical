@@ -1,0 +1,128 @@
+---
+title: "Agent Vault projects"
+sidebarTitle: "Projects"
+description: "Keep each agentic system's credentials and members in a separate Agent Vault project."
+---
+
+An Agent Vault project holds the credentials and settings that one agentic system or team uses. Each project has its own admins and members, so the people who run one system can't see or change the credentials of another.
+
+To open a project, select **Agent Vault** on your organization's overview, then select the project.
+
+<Frame>
+  <img src="/images/platform/agent-vault/projects-list.png" alt="The Agent Vault page listing two projects you're a member of, Customer Support and Engineering Agents, with their descriptions, the My Projects and All Projects tabs, and a New Project button" />
+</Frame>
+
+## Project and organization scope
+
+Some things in Agent Vault belong to a single project, and others belong to your whole organization:
+
+| Belongs to each project | Belongs to your organization |
+| --- | --- |
+| Members and their [roles](/documentation/platform/agent-vault/access-control) | Users, groups, and machine identities, which you [add to each project they need](/documentation/platform/agent-vault/access-control#adding-members) |
+| [Access bundles](/documentation/platform/agent-vault/access-bundles), [services](/documentation/platform/agent-vault/services), and [variables](/documentation/platform/agent-vault/variables) | Organization roles, which control who can [create projects](#create-a-project) and who can [join any project as an admin](#join-as-an-organization-admin) |
+| [Personal variables](/documentation/platform/agent-vault/variables#personal-variables) and [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), which each member sets up separately in each project | |
+| [Skills](/documentation/platform/agent-vault/skills) | |
+| [Sessions](/documentation/platform/agent-vault/sessions) and [proxies](/documentation/platform/agent-vault/proxies) (a session only works through a proxy in the same project) | |
+| [Session log](/documentation/platform/agent-vault/session-logs) settings, including where the logs are stored | |
+| [Audit logs](/documentation/platform/audit-logs) | |
+
+If two projects need the same credential, add the credential to each project.
+
+## Create a project
+
+<Tip>
+  Create a project for each agentic system or team that should manage its own credentials. For example, if one team runs a support bot and another team runs coding agents, give each team a project. If the same people manage several agents and the agents share credentials, keep the agents in one project.
+</Tip>
+
+Organization admins and members can create projects by default.
+
+<Steps>
+  <Step>
+    On your organization's overview, select **Agent Vault**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/org-overview.png" alt="The Organization Overview page, with the Agent Vault card showing the organization's access bundle, service, and project counts" />
+    </Frame>
+  </Step>
+  <Step>
+    Select **New Project**, enter a **Project Name**, then select **Create Project**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-create.png" alt="The Create a New Agent Vault Project dialog, with Data Pipelines as the project name, a description, and a Create Project button" />
+    </Frame>
+  </Step>
+</Steps>
+
+You become the project's admin. To give other people access, [add them to the project](/documentation/platform/agent-vault/access-control#adding-members).
+
+## Join a project
+
+A project admin can [add you to the project](/documentation/platform/agent-vault/access-control#adding-members). If no one has added you, you can request access, or join on your own if you're an organization admin.
+
+### Request access
+
+<Steps>
+  <Step>
+    On your organization's overview, select **Agent Vault**, then select the **All Projects** tab.
+  </Step>
+  <Step>
+    On the project's row, select **Request Access**.
+  </Step>
+  <Step>
+    Optionally, enter a **Note** for the project's admins, then select **Submit Request**.
+  </Step>
+</Steps>
+
+Infisical emails your request to the project's admins, who can then add you to the project.
+
+### Join as an organization admin
+
+Organization admins aren't automatically members of every Agent Vault project. To join a project you aren't a member of:
+
+<Steps>
+  <Step>
+    On your organization's overview, select **Agent Vault**, then select the **All Projects** tab.
+  </Step>
+  <Step>
+    On the project's row, select **Join as Admin**. If you're already a member through a group, the button is **Become Admin**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/projects-all.png" alt="The All Projects tab, listing Customer Support and Engineering Agents as Joined, and Growth Experiments with a Join as Admin button" />
+    </Frame>
+  </Step>
+</Steps>
+
+Infisical adds you to the project with the **Admin** role, records the change in the audit log, and emails the project's admins.
+
+## Find the project ID
+
+The [API](/api-reference/overview/introduction) and the [Infisical CLI](/cli/overview) need the ID of the Agent Vault project to work in. To find it, open the project, go to **Administration** > **Settings**, and copy the **Project ID**. The ID is also in the project's address in your browser, after `/projects/agent-vault/`.
+
+<Frame>
+  <img src="/images/platform/agent-vault/project-settings-general.png" alt="The General settings of the Engineering Agents project, with the Project Overview card showing the project's name, slug, ID, and description, and the Delete Protection card below" />
+</Frame>
+
+## Delete a project
+
+Only an admin of the project can delete it. You can't undo deleting a project.
+
+<Steps>
+  <Step>
+    In the project, go to **Administration** > **Settings**.
+  </Step>
+  <Step>
+    If **Delete Protection** is on, turn it off.
+  </Step>
+  <Step>
+    Select **Delete** followed by the project's name, type `confirm`, then select **Delete Project**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-delete.png" alt="The dialog that confirms deleting the Engineering Agents project, warning that running agents and proxies stop working, with a field to type confirm and a Delete Project button" />
+    </Frame>
+  </Step>
+</Steps>
+
+When you delete a project:
+
+- Agents that use the project's sessions stop getting credentials, and the project's proxies stop working
+- You can no longer view the project's session logs

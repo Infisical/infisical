@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { useGetAgentVaultDelegation } from "@app/hooks/api/agentVault";
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -42,10 +42,12 @@ type Props = {
 // Only admins can read or change a delegation, so members don't see the section at all. Changes happen
 // in the Manage Delegation sheet; this lists who the delegation covers.
 export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityName }: Props) => {
+  const { projectId } = useProject();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const { data, isPending, isError, isFetching, refetch } = useGetAgentVaultDelegation(
+    projectId,
     machineIdentityId,
     isAdmin
   );
@@ -121,9 +123,9 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
                 <div className="flex min-w-0 items-center gap-2.5">
                   <UsersRoundIcon className="size-4 shrink-0 text-muted" />
                   <div className="min-w-0">
-                    <div className="truncate">All Agent Vault Members</div>
+                    <div className="truncate">All Project Members</div>
                     <div className="truncate text-xs leading-4 text-muted">
-                      Every user in Agent Vault, including users added later
+                      Every user in this project, including users added later
                     </div>
                   </div>
                 </div>
@@ -134,7 +136,7 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
                   <MissingAccessBundlesHint
                     bundles={delegation.missingAccessBundles}
                     machineIdentityName={machineIdentityName}
-                    onBehalfOf="Agent Vault members"
+                    onBehalfOf="project members"
                   />
                 </div>
               </TableCell>

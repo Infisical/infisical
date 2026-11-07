@@ -1,6 +1,7 @@
 import { TAgentVaultServices } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TAgentVaultOauthMemberConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { sameMemberProvidedFields } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import {
   AgentVaultBearerConfigSchema,
@@ -75,11 +76,10 @@ const OAUTH_NEEDS_AUTHORIZATION_MESSAGE = "An OAuth credential needs a completed
 export const BASIC_NEEDS_A_HALF_MESSAGE =
   "A basic credential needs a username, a password, or both. Set one, or leave one to each member.";
 
-// NULL, never an empty list, is what the column stores for a credential the admin sets in full.
+// NULL, never an empty list, is what the column stores for a credential the admin sets in full. An OAuth sign-in left
+// to members is `credential-value`, the field that holds the token.
 export const memberFieldsOf = (credential: TAgentVaultCredentialInput): TAgentVaultMemberProvidedField[] | null => {
-  if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.OAuth) {
-    return null;
-  }
+  if (credential.type === AgentVaultCredentialType.Passthrough) return null;
   const fields = [...new Set<TAgentVaultMemberProvidedField>(credential.memberProvidedFields ?? [])];
   return fields.length ? fields : null;
 };
@@ -134,12 +134,13 @@ export const splitCredential = (credential: TAgentVaultCredentialInput): TCreden
   }
 };
 
-// The member-provided fields a PATCH ends with: an omitted list keeps the stored one.
+// The member-provided fields a PATCH ends with: an omitted list keeps the stored one, except that an OAuth
+// authorization is the admin's own sign-in, so it takes the sign-in back.
 export const nextMemberFieldsOf = (credential: TAgentVaultCredentialUpdate, stored: TAgentVaultServices) => {
   if (
     credential.type !== stored.credentialType ||
     credential.type === AgentVaultCredentialType.Passthrough ||
-    credential.type === AgentVaultCredentialType.OAuth
+    (credential.type === AgentVaultCredentialType.OAuth && credential.authorizationId)
   ) {
     return memberFieldsOf(credential);
   }
@@ -254,4 +255,45 @@ export const needsStoredSecretFor = (credential: TAgentVaultCredentialUpdate, se
     rewritesBasicSecret(credential, memberFieldsChanged) &&
     keptBasicHalves(credential, nextMemberFields, previousMemberFields).length > 0
   );
+};
+
+// Each member's sign-in is bound to the service's server, issuer and client, so a change to any of them, or a new
+// client secret, ends every member's connection: their tokens can't be refreshed through anything else.
+export const memberOauthChangeOf = ({
+  next,
+  stored,
+  clientSecretSent
+}: {
+  next: TAgentVaultOauthMemberConfig;
+  stored: TAgentVaultOauthMemberConfig | undefined;
+  clientSecretSent: boolean;
+}) => {
+  const sameClient =
+    stored !== undefined &&
+    next.registration === stored.registration &&
+    next.clientId === stored.clientId &&
+    next.issuer === stored.issuer;
+  return {
+    sameClient,
+    membersRebound: !sameClient || clientSecretSent || next.serverUrl !== stored?.serverUrl
+  };
+};
+
+// Which saved personal values an admin's save deletes: a new credential type, no member fields left, or a member
+// sign-in rebound to something else drops all of them, and a field the admin takes back drops that field's.
+export const personalValuesToClearOf = ({
+  credentialTypeChanged,
+  memberFieldsChanged,
+  nextMemberFields,
+  oauthMembersRebound
+}: {
+  credentialTypeChanged: boolean;
+  memberFieldsChanged: boolean;
+  nextMemberFields: TAgentVaultMemberProvidedField[] | null;
+  oauthMembersRebound: boolean;
+}): "none" | "all" | "fields-taken-back" => {
+  if (credentialTypeChanged || oauthMembersRebound) return "all";
+  if (!memberFieldsChanged) return "none";
+  if (!nextMemberFields?.length) return "all";
+  return "fields-taken-back";
 };

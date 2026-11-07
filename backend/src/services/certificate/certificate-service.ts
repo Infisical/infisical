@@ -145,6 +145,7 @@ type TCertificateServiceFactoryDep = {
     | "findLatestRenewalOf"
     | "updateById"
     | "findByIdForUpdate"
+    | "primaryNode"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
@@ -816,6 +817,7 @@ export const certificateServiceFactory = ({
       await rebuildCaCrl({
         caId: ca.id,
         certificateAuthorityDAL,
+        certificateAuthorityCertDAL,
         certificateAuthorityCrlDAL,
         certificateAuthoritySecretDAL,
         projectDAL,

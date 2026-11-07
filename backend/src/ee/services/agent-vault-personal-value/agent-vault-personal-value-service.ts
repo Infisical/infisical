@@ -10,21 +10,31 @@ import {
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
+import { TAgentVaultOauthServiceFactory } from "../agent-vault-oauth/agent-vault-oauth-service";
+import {
+  isMemberProvidedOauth,
+  memberOauthSetupOf,
+  oauthConnectionStatusOf
+} from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import { TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
+  AgentVaultOauthStatus,
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import { ownerColumns, ownerOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import { getAgentVaultGrantedReachability } from "../agent-vault/agent-vault-permission";
+import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   findStoredVariableIds,
   findVariableKeys,
@@ -39,13 +49,21 @@ import {
   TAgentVaultPersonalValueSummaryRow
 } from "./agent-vault-personal-value-dal";
 import { sameMemberProvidedFields } from "./agent-vault-personal-value-fns";
-import { TPersonalValuesByServiceDTO, TSetPersonalValuesDTO } from "./agent-vault-personal-value-types";
+import {
+  TConnectPersonalOauthDTO,
+  TPersonalValuesByServiceDTO,
+  TSetPersonalValuesDTO
+} from "./agent-vault-personal-value-types";
 
 type TAgentVaultPersonalValueServiceFactoryDep = {
   agentVaultPersonalValueDAL: TAgentVaultPersonalValueDALFactory;
   agentVaultPersonalValueReferenceDAL: TAgentVaultPersonalValueReferenceDALFactory;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeys" | "lockForReference">;
   agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "findByIdInProject" | "lockForPersonalValues">;
+  agentVaultOauthService: Pick<
+    TAgentVaultOauthServiceFactory,
+    "claimAuthorization" | "buildCredentialFromAuthorization"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -58,6 +76,11 @@ const fieldName = (credentialType: string, field: TAgentVaultMemberProvidedField
   if (field === AgentVaultVariableReferenceField.CredentialUsername) return "username";
   return credentialType === AgentVaultCredentialType.Basic ? "password" : "token";
 };
+
+type TPersonalValueCredentialType =
+  | AgentVaultCredentialType.Bearer
+  | AgentVaultCredentialType.Basic
+  | AgentVaultCredentialType.OAuth;
 
 const SERVICE_CHANGED_DURING_SAVE_MESSAGE =
   "An admin changed this service's credential while you were setting up your values. Reload the service and save again.";
@@ -72,6 +95,7 @@ export const agentVaultPersonalValueServiceFactory = ({
   agentVaultPersonalValueReferenceDAL,
   agentVaultVariableDAL,
   agentVaultServiceDAL,
+  agentVaultOauthService,
   permissionService,
   membershipDAL,
   kmsService
@@ -101,15 +125,22 @@ export const agentVaultPersonalValueServiceFactory = ({
   ) => {
     const fields = (service.memberProvidedFields as TAgentVaultMemberProvidedField[]).map((field) => {
       const saved = values.find((value) => value.serviceId === service.serviceId && value.field === field);
+      // An OAuth sign-in left to members is the `credential-value` field, and its status is on that field's row.
+      const isOauthField =
+        service.credentialType === AgentVaultCredentialType.OAuth &&
+        field === AgentVaultVariableReferenceField.CredentialValue;
+      const oauthConfig = isOauthField ? (saved?.oauthConfig as TAgentVaultOauthConfig | null | undefined) : null;
       return {
         field,
-        isSet: Boolean(saved),
+        // Resolve only uses an OAuth row that carries its connection, so one without it isn't set.
+        isSet: Boolean(saved) && (!isOauthField || Boolean(oauthConfig)),
         updatedAt: saved?.updatedAt ?? null,
         variableReferences: saved
           ? references
               .filter((reference) => reference.personalValueId === saved.id)
               .map((reference) => ({ variableId: reference.variableId, key: reference.key }))
-          : []
+          : [],
+        oauth: oauthConfig ? oauthConnectionStatusOf(oauthConfig) : null
       };
     });
     return {
@@ -118,8 +149,11 @@ export const agentVaultPersonalValueServiceFactory = ({
       hostPattern: service.hostPattern,
       accessBundleId: service.accessBundleId,
       accessBundleName: service.accessBundleName,
-      credentialType: service.credentialType as AgentVaultCredentialType.Bearer | AgentVaultCredentialType.Basic,
-      isConfigured: fields.every((field) => field.isSet),
+      credentialType: service.credentialType as TPersonalValueCredentialType,
+      // A connection whose login died refuses every session until the member connects again, so it needs setup too.
+      isConfigured: fields.every(
+        (field) => field.isSet && field.oauth?.status !== AgentVaultOauthStatus.NeedsReauthorization
+      ),
       fields
     };
   };
@@ -178,10 +212,146 @@ export const agentVaultPersonalValueServiceFactory = ({
     return { ...caller, service };
   };
 
-  const setPersonalValues = async ({ values, credentialType, ...dto }: TSetPersonalValuesDTO) => {
+  // Under the service lock, after the reach check: the caller's grants on the bundle, or for an admin without one, their
+  // admin role rows. A revoke, a removal or a demotion clears what the caller saved on bundles they lose, so none of
+  // those can land between the reach check and the write and leave values behind.
+  const lockReach = async (
+    {
+      projectId,
+      accessBundleId,
+      owner,
+      isAdmin,
+      serviceId
+    }: { projectId: string; accessBundleId: string; owner: TAgentVaultOwner; isAdmin: boolean; serviceId: string },
+    tx: Knex
+  ) => {
+    const grants = await agentVaultPersonalValueDAL.lockGrantsForOwner({ projectId, accessBundleId, owner }, tx);
+    const adminRoles =
+      !grants.length && isAdmin
+        ? await agentVaultPersonalValueDAL.lockAdminRolesForOwner({ projectId, owner }, tx)
+        : [];
+    if (!grants.length && !adminRoles.length) {
+      throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+    }
+  };
+
+  /**
+   * A member's own sign-in for a service that leaves it to members, saved as their personal value for
+   * `credential-value`: the sealed tokens in `encryptedValue` and the rest in `oauthConfig`. Claiming the authorization
+   * is single use and only its creator can do it, so a link sent to someone else can't attach their account.
+   */
+  const connectOauth = async ({ authorizationId, credentialType, ...dto }: TConnectPersonalOauthDTO) => {
     const { owner, service, isAdmin } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
+    }
+    if (!isMemberProvidedOauth(service)) {
+      throw new BadRequestError({
+        message: `The service '${service.name}' doesn't leave its OAuth sign-in to members, so there is no account of your own to connect.`
+      });
+    }
+    if (dto.ctx.actor !== ActorType.USER) {
+      throw new BadRequestError({
+        message:
+          "Only a user can connect an OAuth account, because it needs a browser sign-in. To use this service from a machine identity, start the session on behalf of a user who has connected their account."
+      });
+    }
+
+    const claim = await agentVaultOauthService.claimAuthorization({
+      authorizationId,
+      projectId: dto.projectId,
+      accessBundleId: service.accessBundleId,
+      serviceId: service.id,
+      ctx: dto.ctx,
+      serverUrl: getServiceServerUrl(service.config)!,
+      personal: true
+    });
+
+    try {
+      return await agentVaultPersonalValueDAL.transaction(async (tx) => {
+        const current = await agentVaultServiceDAL.lockForPersonalValues(service.id, tx);
+        if (!current) throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
+        // The tokens were issued for the server and client the first read named. An admin pointing the service
+        // elsewhere since deleted every member's connection, and this one must not come back after it.
+        if (!isMemberProvidedOauth(current) || memberOauthSetupOf(current) !== memberOauthSetupOf(service)) {
+          throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
+        }
+        // The same goes for a change made while the member was still signing in, before this save's first read.
+        if (claim.record.memberSetup !== memberOauthSetupOf(current)) {
+          throw new ConflictError({
+            message:
+              "An admin changed how members sign in to this service while you were connecting your account. Connect it again."
+          });
+        }
+        await lockReach(
+          {
+            projectId: dto.projectId,
+            accessBundleId: service.accessBundleId,
+            owner,
+            isAdmin,
+            serviceId: dto.serviceId
+          },
+          tx
+        );
+
+        const existing = await agentVaultPersonalValueDAL.lockForOwnerAndService({ serviceId: service.id, owner }, tx);
+        const previous = existing.find((row) => row.field === AgentVaultVariableReferenceField.CredentialValue)
+          ?.oauthConfig as TAgentVaultOauthConfig | null | undefined;
+        // Scopes the server asked for carry over only at the same issuer, as they do for a shared connection.
+        const { config, encryptedCredential } = agentVaultOauthService.buildCredentialFromAuthorization(claim.record, {
+          previousRequiredScopes: previous?.issuer === claim.record.issuer ? previous.requiredScopes : []
+        });
+        if (existing.length) {
+          await agentVaultPersonalValueDAL.delete({ $in: { id: existing.map((row) => row.id) } }, tx);
+        }
+        await agentVaultPersonalValueDAL.create(
+          {
+            serviceId: service.id,
+            field: AgentVaultVariableReferenceField.CredentialValue,
+            ...ownerColumns(owner),
+            encryptedValue: encryptedCredential,
+            oauthConfig: config
+          },
+          tx
+        );
+
+        const [projected] = await loadServices(
+          {
+            projectId: dto.projectId,
+            owner,
+            accessBundleIds: [service.accessBundleId],
+            serviceId: service.id,
+            withVariableReferences: false
+          },
+          tx
+        );
+        return { personalValues: projected };
+      });
+    } catch (err) {
+      await claim.restore();
+      if (isUniqueViolation(err)) {
+        throw new ConflictError({
+          message: "Your account for this service was connected by another request at the same time. Connect it again."
+        });
+      }
+      if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
+        throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
+      }
+      throw err;
+    }
+  };
+
+  const setPersonalValues = async (input: TSetPersonalValuesDTO) => {
+    const { values, credentialType, ...dto } = input;
+
+    const { owner, service, isAdmin } = await findReachableService(dto);
+    if (credentialType && credentialType !== service.credentialType) {
+      throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
+    }
+    if (isMemberProvidedOauth(service)) {
+      throw new BadRequestError({
+        message: `The service '${service.name}' takes each member's own OAuth sign-in, not a typed value. A user connects their account from the access bundle page in Infisical. A machine identity can't connect one, so start the session on behalf of a user who has.`
+      });
     }
 
     const memberProvidedFields = (service.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
@@ -249,20 +419,16 @@ export const agentVaultPersonalValueServiceFactory = ({
         ) {
           throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
         }
-        // A revoke, a removal or a demotion clears what the caller saved on bundles they lose. Saving under the lock
-        // of whatever grants the reach (a grant, or for an admin without one, their admin role) means none of those
-        // can land between the reach check above and this write and leave values behind.
-        const grants = await agentVaultPersonalValueDAL.lockGrantsForOwner(
-          { projectId: dto.projectId, accessBundleId: service.accessBundleId, owner },
+        await lockReach(
+          {
+            projectId: dto.projectId,
+            accessBundleId: service.accessBundleId,
+            owner,
+            isAdmin,
+            serviceId: dto.serviceId
+          },
           tx
         );
-        const adminRoles =
-          !grants.length && isAdmin
-            ? await agentVaultPersonalValueDAL.lockAdminRolesForOwner({ projectId: dto.projectId, owner }, tx)
-            : [];
-        if (!grants.length && !adminRoles.length) {
-          throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
-        }
 
         // Before the values: a variable delete locks the variable and then deletes values.
         const present = await agentVaultVariableDAL.lockForReference(
@@ -353,7 +519,7 @@ export const agentVaultPersonalValueServiceFactory = ({
           hostPattern: service.hostPattern,
           accessBundleId: service.accessBundleId,
           accessBundleName: service.accessBundleName,
-          credentialType: service.credentialType as AgentVaultCredentialType.Bearer | AgentVaultCredentialType.Basic,
+          credentialType: service.credentialType as TPersonalValueCredentialType,
           isConfigured: false,
           fields: []
         }
@@ -361,5 +527,5 @@ export const agentVaultPersonalValueServiceFactory = ({
     });
   };
 
-  return { findStatusesForOwner, setPersonalValues, deletePersonalValues };
+  return { findStatusesForOwner, setPersonalValues, connectOauth, deletePersonalValues };
 };

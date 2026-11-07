@@ -8,6 +8,7 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -286,6 +287,8 @@ describe("User folder access CRUD", () => {
       removalDeps = {
         userDAL: userDALFactory(testDb),
         userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+        identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+        agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
         membershipGroupDAL: membershipGroupDALFactory(testDb),
         groupDAL: groupDALFactory(testDb),
         projectKeyDAL: projectKeyDALFactory(testDb),
