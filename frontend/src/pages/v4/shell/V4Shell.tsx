@@ -23,6 +23,7 @@ import {
   settingsSections,
   type ShellNavSection
 } from "./navigation";
+import { ProjectGate } from "./project-gate";
 
 const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) => void) => {
   const anchor = (event.target as HTMLElement).closest("a");
@@ -218,7 +219,15 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         announcements={chrome.announcements}
       />
       <AppInset>
-        <PageGutter>{children}</PageGutter>
+        <PageGutter>
+          {at.projectId ? (
+            <ProjectGate key={at.projectId} projectId={at.projectId}>
+              {children}
+            </ProjectGate>
+          ) : (
+            children
+          )}
+        </PageGutter>
       </AppInset>
       {chrome.dialog}
       <CommandPalette
