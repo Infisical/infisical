@@ -210,8 +210,9 @@ export function EnvironmentPicker({
       <Popover open={open} onOpenChange={changeOpen}>
         <PopoverTrigger asChild>
           <Button
+            layout="trigger"
             variant="outline"
-            iconRight="chev-down"
+
             className={styles.envTrigger}
             aria-label={`Environments: ${label}`}
             disabled={disabled}

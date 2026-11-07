@@ -285,8 +285,20 @@ export const InventoryPage = () => {
               params={{ orgId, certificateId: r.id }}
             >
               {certificateName(r)}
+              {extra > 0 && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "var(--v4-space-8)",
+                    marginInlineStart: "var(--v4-space-8)",
+                    verticalAlign: "middle"
+                  }}
+                >
+                  <Badge size="sm" tone="outline">{`+${extra}`}</Badge>
+                </span>
+              )}
             </RowLink>
-            {extra > 0 && <Badge size="sm" tone="outline">{`+${extra}`}</Badge>}
           </Inline>
         );
       }

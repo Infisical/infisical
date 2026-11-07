@@ -203,7 +203,7 @@ export function AddNewMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="accent" iconRight="chev-down">
+        <Button layout="trigger" variant="accent">
           Add new
         </Button>
       </DropdownMenuTrigger>

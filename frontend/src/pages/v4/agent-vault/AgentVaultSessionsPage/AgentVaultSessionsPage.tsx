@@ -238,7 +238,6 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           params={{ orgId, projectId }}
           search={(prev) => ({ ...prev, sessionId: row.id })}
           title={row.label ?? undefined}
-          style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
         >
           {row.label ?? <Meta mono={false}>No label</Meta>}
         </RowLink>

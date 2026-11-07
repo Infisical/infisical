@@ -167,10 +167,16 @@ export const DurationPicker = ({
   const { text, tooltip, expired } = durationOf(grant);
   const trigger = (
     <PopoverTrigger asChild>
-      <Button variant="outline" disabledReason={disabledReason} aria-label={`${label}: ${text}`}>
-        {grant.isTemporary && (expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />)}
-        <span className={styles.grow}>{text}</span>
-        <Icon name="chev-down" />
+      <Button
+        layout="trigger"
+        variant="outline"
+        disabledReason={disabledReason}
+        aria-label={`${label}: ${text}`}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--v4-space-6)" }}>
+          {grant.isTemporary && (expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />)}
+          {text}
+        </span>
       </Button>
     </PopoverTrigger>
   );

@@ -153,7 +153,7 @@ const CertificateDetail = ({
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" icon="more" iconRight="chev-down">
+                <Button layout="trigger" variant="outline" icon="more">
                   More
                 </Button>
               </DropdownMenuTrigger>
@@ -197,9 +197,10 @@ const CertificateDetail = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
+                  layout="trigger"
                   variant="primary"
                   icon="download"
-                  iconRight="chev-down"
+
                   disabled={Boolean(blocks.export)}
                 >
                   Download

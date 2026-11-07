@@ -159,7 +159,7 @@ const RoleEditor = ({
     <Gate allowed={editable} reason={reason}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" iconRight="chev-down" disabled={!editable}>
+          <Button layout="trigger" type="button" variant="outline" disabled={!editable}>
             Import
           </Button>
         </DropdownMenuTrigger>

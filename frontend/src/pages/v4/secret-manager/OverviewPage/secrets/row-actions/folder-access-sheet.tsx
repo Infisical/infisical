@@ -269,9 +269,8 @@ function GrantRow({
       <Gate reason={block}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="accent" size="sm" disabled={Boolean(block)}>
+            <Button layout="trigger" variant="accent" size="sm" disabled={Boolean(block)}>
               Grant access
-              <Icon name="chev-down" />
             </Button>
           </DropdownMenuTrigger>
           <TierDropdown footerNote={footerNote} onSelectTier={onSetTier} />
@@ -330,7 +329,7 @@ function AccessRow({
         <DropdownMenu>
           <DropdownMenuTrigger asChild disabled={Boolean(block)}>
             {access ? (
-              <Button variant="ghost" size="sm">
+              <Button layout="trigger" variant="ghost" size="sm">
                 {tierLabel(access.permission)}
                 {isOverride && <Badge tone="warn">Override</Badge>}
                 {remainingTime && (
@@ -345,13 +344,11 @@ function AccessRow({
                     </span>
                   </Tooltip>
                 )}
-                <Icon name="chev-down" />
               </Button>
             ) : (
-              <Button variant="ghost" size="sm" title={roleNames || undefined}>
+              <Button layout="trigger" variant="ghost" size="sm" title={roleNames || undefined}>
                 <span className={styles.roleNames}>{roleNames || "Role"}</span>
                 <Badge tone="soft">Project</Badge>
-                <Icon name="chev-down" />
               </Button>
             )}
           </DropdownMenuTrigger>

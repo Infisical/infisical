@@ -712,9 +712,19 @@ export function FolderRow({
             title={first.name}
           >
             {first.name}
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "var(--v4-space-8)",
+                marginInlineStart: "var(--v4-space-8)",
+                verticalAlign: "middle"
+              }}
+            >
+              {first.description && <InfoHint text={first.description} />}
+              <PendingBadge type={ctx.pending?.[first.id]} />
+            </span>
           </RowLink>
-          {first.description && <InfoHint text={first.description} />}
-          <PendingBadge type={ctx.pending?.[first.id]} />
         </div>
       </TableCell>
       {!ctx.single &&

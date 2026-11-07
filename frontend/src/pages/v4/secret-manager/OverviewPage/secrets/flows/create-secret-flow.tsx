@@ -173,7 +173,6 @@ export function SecretEntryFields({
             <Textarea
               {...control}
               id={`${entry.id}-value`}
-              className={styles.mono}
               placeholder="Enter secret value..."
               autoComplete="off"
               spellCheck={false}
