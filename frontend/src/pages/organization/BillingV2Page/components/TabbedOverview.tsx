@@ -307,7 +307,7 @@ export const TabbedOverview = ({
       <div className="flex flex-wrap items-start gap-x-12 gap-y-3">
         <div className="flex flex-col gap-1">
           <span className="flex items-center gap-2 text-xs text-accent">
-            Current Bill
+            Upcoming Bill
             {accountStatus && <Badge variant={accountStatus.variant}>{accountStatus.label}</Badge>}
           </span>
           <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
