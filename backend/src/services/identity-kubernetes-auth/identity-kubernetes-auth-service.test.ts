@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { ConflictError } from "@app/lib/errors";
 
@@ -126,14 +127,12 @@ const createService = ({
       getProjectPermission: vi.fn(),
       getActorGrantAbilities: vi.fn().mockResolvedValue([])
     },
-    licenseService: {
-      getPlan: vi.fn().mockResolvedValue({
-        machineIdentityAuthTemplates: true,
-        gateway: true,
-        gatewayPool: true,
-        ipAllowlisting: true
-      })
-    },
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, {
+      machineIdentityAuthTemplates: true as false,
+      gateway: true as false,
+      gatewayPool: true as false,
+      ipAllowlisting: true as false
+    }),
     kmsService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),

@@ -9,7 +9,8 @@ import { join } from "node:path";
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { InstanceType } from "@app/domains/platform/license/ce/module";
+import { InstanceType, TPlan } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -78,6 +79,7 @@ vi.mock("@app/lib/logger", () => ({
 
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
+  let licenseService: FakeLicenseService;
 
   const mockTelemetryService = {
     sendPostHogEvents: vi.fn().mockResolvedValue(undefined)
@@ -211,11 +213,6 @@ describe("CertificateV3Service", () => {
     deleteItem: vi.fn(async () => 1)
   };
 
-  const mockLicenseService = {
-    getPlan: vi.fn().mockResolvedValue({ pkiPqc: true }),
-    getInstanceType: vi.fn(() => InstanceType.OnPrem)
-  };
-
   const mockCertificateIssuanceQueue = {
     queueCertificateIssuance: vi.fn()
   };
@@ -261,7 +258,9 @@ describe("CertificateV3Service", () => {
     mockKeyStore.getItem.mockResolvedValue(null);
     mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
     mockKeyStore.deleteItem.mockResolvedValue(1);
-    mockLicenseService.getPlan.mockResolvedValue({ pkiPqc: true });
+    licenseService = new FakeLicenseService();
+    licenseService.instance = { ...licenseService.instance, instanceType: InstanceType.OnPrem };
+    licenseService.defaultPlan = { ...licenseService.defaultPlan, pkiPqc: true as false };
     vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
       return callback(mockTx);
@@ -407,7 +406,7 @@ describe("CertificateV3Service", () => {
       },
       certManager: mockUsageCounterDAL,
       keyStore: mockKeyStore,
-      licenseService: mockLicenseService,
+      licenseService,
       telemetryService: mockTelemetryService,
       auditLogService: mockAuditLogService
     });
@@ -1488,7 +1487,7 @@ describe("CertificateV3Service", () => {
         defaults: { subjectAltNames: [{ type: "dns_name", value: "profile-default.example.com" }] }
       };
 
-      mockLicenseService.getPlan.mockResolvedValue({ pkiPqc: true, maxCertificates: 5, maxWildcardCertificates: null });
+      licenseService.defaultPlan = { ...licenseService.defaultPlan, maxCertificates: 5, maxWildcardCertificates: null };
       vi.mocked(mockPermissionService.getProjectPermission).mockResolvedValue({
         permission: {
           throwUnlessCan: vi.fn(),
@@ -2557,11 +2556,11 @@ describe("CertificateV3Service", () => {
     // quota key the org has never held. Renewal is exempt from the caps only while the names are
     // unchanged, because refusing that would let a live certificate expire.
     describe("certificate quota on renewal", () => {
-      const AT_CAP = { pkiPqc: true, maxCertificates: 5, maxWildcardCertificates: null };
+      const AT_CAP = { maxCertificates: 5, maxWildcardCertificates: null };
 
-      const atCap = (plan: Record<string, unknown> = AT_CAP, total = 5, wildcard = 0) => {
+      const atCap = (plan: Partial<TPlan> = AT_CAP, total = 5, wildcard = 0) => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
-        vi.mocked(mockLicenseService.getPlan).mockResolvedValue(plan as never);
+        licenseService.defaultPlan = { ...licenseService.defaultPlan, ...plan };
         vi.mocked(mockUsageCounterDAL.countActiveCertificateQuota).mockResolvedValue({ total, wildcard });
         vi.mocked(mockUsageCounterDAL.isCertificateQuotaKeyActive).mockResolvedValue(false);
       };
@@ -2593,7 +2592,7 @@ describe("CertificateV3Service", () => {
       });
 
       it("refuses a renewal that introduces a wildcard on a plan without wildcard support", async () => {
-        atCap({ pkiPqc: true, maxCertificates: null, maxWildcardCertificates: 0 }, 0, 0);
+        atCap({ maxCertificates: null, maxWildcardCertificates: 0 }, 0, 0);
 
         await expect(
           service.renewCertificate({
