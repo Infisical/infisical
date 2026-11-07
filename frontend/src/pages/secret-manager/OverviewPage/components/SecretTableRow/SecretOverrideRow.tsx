@@ -246,7 +246,7 @@ export const SecretOverrideRow = ({
       <div className="flex h-7 shrink-0 items-center gap-1">
         {isDirty ? (
           <SecretInputActions
-            className={isSingleEnvView ? "mr-1" : "-mr-1.5"}
+            className="-mr-1.5"
             isSaveDisabled={isSubmitting || !canSaveOverride}
             isUndoDisabled={isSubmitting}
             saveLabel={isCreatingOverride ? "Create override" : "Save override"}

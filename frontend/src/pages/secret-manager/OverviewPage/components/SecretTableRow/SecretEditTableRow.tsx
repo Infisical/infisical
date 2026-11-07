@@ -829,6 +829,21 @@ export const SecretEditTableRow = ({
     }
   };
 
+  const [isAnnotationSaveRequested, setIsAnnotationSaveRequested] = useState(false);
+  const canSaveAnnotationsDirectly = isBatchMode && Boolean(onPendingSave) && !isPendingCreate;
+  const requestAnnotationSave = useCallback(() => setIsAnnotationSaveRequested(true), []);
+  useEffect(() => {
+    if (!isAnnotationSaveRequested) return;
+    setIsAnnotationSaveRequested(false);
+    savePendingRow()
+      .then(() => {
+        setIsCommentOpen(false);
+        setIsTagOpen(false);
+        setIsMetadataOpen(false);
+      })
+      .catch(() => undefined);
+  }, [isAnnotationSaveRequested]);
+
   // Reset form when a pending change is externally discarded or saved (e.g. CommitForm discard
   // button or this row's inline save).
   const prevHasPendingRef = useRef(hasPendingChange);
@@ -1378,6 +1393,8 @@ export const SecretEditTableRow = ({
         onClose={() => setIsCommentOpen(false)}
         isBatchMode={isBatchMode}
         onCommentChange={handleCommentChange}
+        onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
+        isBatchSavePending={isSavingPendingChange}
       />
     </PopoverContent>
   );
@@ -1402,12 +1419,13 @@ export const SecretEditTableRow = ({
           <DropdownMenuTrigger asChild>
             <IconButton
               aria-label="Annotate secret"
+              tabIndex={-1}
               variant={isSingleEnvView ? "ghost-muted" : "ghost"}
               size={isSingleEnvView ? "2xs" : "xs"}
               className={
                 isSingleEnvView
                   ? twMerge(
-                      "transition-opacity duration-150 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
+                      "-mr-1 transition-opacity duration-150 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
                       isAnnotating && "[@media(hover:hover)]:opacity-100"
                     )
                   : "size-7 border-0"
@@ -1503,6 +1521,8 @@ export const SecretEditTableRow = ({
             onClose={() => setIsTagOpen(false)}
             isBatchMode={isBatchMode}
             onTagsChange={handleTagsChange}
+            onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
+            isBatchSavePending={isSavingPendingChange}
           />
         </PopoverContent>
       </Popover>
@@ -1533,6 +1553,8 @@ export const SecretEditTableRow = ({
             onClose={() => setIsMetadataOpen(false)}
             isBatchMode={isBatchMode}
             onMetadataChange={handleMetadataChange}
+            onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
+            isBatchSavePending={isSavingPendingChange}
           />
         </PopoverContent>
       </Popover>
@@ -1630,7 +1652,6 @@ export const SecretEditTableRow = ({
           </TooltipContent>
         </Tooltip>
       )}
-      {isSingleEnvView && annotateMenu}
     </div>
   );
 
@@ -2434,6 +2455,7 @@ export const SecretEditTableRow = ({
               {annotationSlot}
             </div>
             <SecretLastEditedTime secret={lastEdited} field={timestampField} />
+            {annotateMenu}
           </div>
         </TableCell>
         <TableCell
