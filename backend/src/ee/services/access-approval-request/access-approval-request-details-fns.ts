@@ -1,8 +1,6 @@
 import msFn from "ms";
 
 import { TAdditionalPrivileges, TApprovalRequestGrants, TApprovalRequests, TUsers } from "@app/db/schemas";
-import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
-import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -26,11 +24,12 @@ import {
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { TDelegatedApprovalRequest } from "@app/services/delegated-approval/delegated-approval-types";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TSecretAccessApprovalGlobalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-dal";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
-import { TSecretAccessApprovalGlobalRequestBridgeDALFactory } from "./secret-access-approval-global-request-bridge-dal";
-import { TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep } from "./secret-access-approval-global-request-bridge-types";
+import { TSecretAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
+import { TSecretAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
+import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { ApprovalStatus, TSecretAccessApprovalRequestServiceFactoryDep } from "./access-approval-request-types";
 
 export type TSecretAccessRequestRow = TApprovalRequests & {
   grant: TApprovalRequestGrants | null;
@@ -124,7 +123,7 @@ export const toLegacyAccessApprovalRequest = (
 };
 
 type TNotifySecretAccessStepApproversDep = Pick<
-  TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep,
+  TSecretAccessApprovalRequestServiceFactoryDep,
   | "userDAL"
   | "userGroupMembershipDAL"
   | "projectDAL"
@@ -244,7 +243,7 @@ export const notifySecretAccessStepApprovers = async (
 };
 
 type TNotifySecretAccessBypassDep = Pick<
-  TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep,
+  TSecretAccessApprovalRequestServiceFactoryDep,
   "userDAL" | "userGroupMembershipDAL" | "notificationService" | "smtpService"
 >;
 
@@ -318,10 +317,10 @@ export const notifySecretAccessBypass = async (
 };
 
 type TSecretAccessPolicyRow = Awaited<
-  ReturnType<TSecretAccessApprovalGlobalPolicyBridgeDALFactory["findSecretAccessPolicies"]>
+  ReturnType<TSecretAccessApprovalPolicyDALFactory["findSecretAccessPolicies"]>
 >[number];
 type TApprovalWithRequestId = Awaited<
-  ReturnType<TSecretAccessApprovalGlobalRequestBridgeDALFactory["findApprovalsByRequestIds"]>
+  ReturnType<TSecretAccessApprovalRequestDALFactory["findApprovalsByRequestIds"]>
 >[number];
 
 export type TSecretAccessRequestListInput = {

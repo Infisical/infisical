@@ -2,15 +2,15 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
 
-import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";
-import { secretAccessApprovalGlobalRequestBridgeServiceFactory } from "./secret-access-approval-global-request-bridge-service";
+import { externallyReviewedAccessRequestMessage } from "./access-approval-request-constants";
+import { secretAccessApprovalRequestServiceFactory } from "./access-approval-request-service";
+import { ApprovalStatus } from "./access-approval-request-types";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://example.com" })
@@ -81,11 +81,11 @@ const createService = ({
             new ForbiddenRequestError({ message: "You are not a member of this project with ID project-1" })
           );
 
-  const service = secretAccessApprovalGlobalRequestBridgeServiceFactory({
-    secretAccessApprovalGlobalRequestBridgeDAL: {
+  const service = secretAccessApprovalRequestServiceFactory({
+    secretAccessApprovalRequestDAL: {
       findSecretAccessRequestById: vi.fn().mockImplementation(async () => current)
     },
-    secretAccessApprovalGlobalPolicyBridgeDAL: { findSecretAccessPolicies },
+    secretAccessApprovalPolicyDAL: { findSecretAccessPolicies },
     permissionService: { getProjectPermission },
     delegatedApprovalService: { getRequestByRequestId: vi.fn().mockResolvedValue(delegated) },
     approvalRequestDAL: {
@@ -99,7 +99,7 @@ const createService = ({
 };
 
 const cancelAs = (service: ReturnType<typeof createService>["service"], actorId: string) =>
-  service.cancelAccessApprovalRequest({
+  service.cancelAccessRequest({
     requestId: "req-1",
     actor: ActorType.USER,
     actorId,
@@ -107,7 +107,7 @@ const cancelAs = (service: ReturnType<typeof createService>["service"], actorId:
     actorAuthMethod: AuthMethod.EMAIL
   });
 
-describe("secretAccessApprovalGlobalRequestBridge.cancelAccessApprovalRequest", () => {
+describe("secretAccessApprovalRequestService.cancelAccessRequest", () => {
   test("lets the requester cancel their own pending delegated request", async () => {
     const { service, updateById } = createService();
 
@@ -152,9 +152,9 @@ describe("secretAccessApprovalGlobalRequestBridge.cancelAccessApprovalRequest", 
   });
 });
 
-describe("secretAccessApprovalGlobalRequestBridge.reviewAccessApprovalRequest", () => {
+describe("secretAccessApprovalRequestService.reviewAccessRequest", () => {
   const reviewAs = (service: ReturnType<typeof createService>["service"], status: ApprovalStatus) =>
-    service.reviewAccessApprovalRequest({
+    service.reviewAccessRequest({
       requestId: "req-1",
       status,
       actor: ActorType.USER,
@@ -233,7 +233,7 @@ const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {
   const create = vi.fn().mockResolvedValue({ id: "req-1" });
   const createRequest = vi.fn().mockResolvedValue({ id: "delegated-1" });
 
-  const service = secretAccessApprovalGlobalRequestBridgeServiceFactory({
+  const service = secretAccessApprovalRequestServiceFactory({
     approvalRequestDAL: {
       transaction: async (callback: (tx: string) => Promise<unknown>) => callback("tx"),
       create
@@ -249,10 +249,11 @@ const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {
       createRequest
     },
     secretAccessApprovalGlobalResource: {
+      matchPolicy: vi.fn().mockResolvedValue(snapshotPolicy),
       validateConstraints: vi.fn().mockReturnValue({ valid: true }),
       canAccess: vi.fn().mockResolvedValue(null)
     },
-    secretAccessApprovalGlobalRequestBridgeDAL: {
+    secretAccessApprovalRequestDAL: {
       findPendingRequests: vi.fn().mockResolvedValue([]),
       findSecretAccessRequestById: vi.fn().mockResolvedValue(pendingRequest)
     },
@@ -265,7 +266,12 @@ const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {
         email: "ada@example.com"
       })
     },
-    projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", name: "Project", orgId: "org-1" }) },
+    projectDAL: {
+      findProjectBySlug: vi.fn().mockResolvedValue({ id: "project-1", name: "Project", orgId: "org-1" }),
+      checkProjectUpgradeStatus: vi.fn().mockResolvedValue(undefined)
+    },
+    projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: "dev", name: "Development" }) },
+    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: canEditPolicies }) },
     queueService: { queue: vi.fn().mockResolvedValue(undefined) }
   } as never);
 
@@ -277,20 +283,17 @@ const submitAccessRequest = (
   overrides: Record<string, unknown> = {}
 ) =>
   service.createAccessApprovalRequest({
-    policy: snapshotPolicy,
-    projectId: "project-1",
-    envId: "env-1",
-    envSlug: "dev",
-    envName: "Development",
-    secretPath: "/app",
-    requestedByUserId: "requester",
+    projectSlug: "project",
+    actor: ActorType.USER,
+    actorId: "requester",
     actorOrgId: "org-1",
+    actorAuthMethod: AuthMethod.EMAIL,
     permissions: REQUEST_PERMISSIONS,
     isTemporary: false,
     ...overrides
   } as Parameters<ReturnType<typeof createRequestService>["service"]["createAccessApprovalRequest"]>[0]);
 
-describe("secretAccessApprovalGlobalRequestBridge.createAccessApprovalRequest", () => {
+describe("secretAccessApprovalRequestService.createAccessApprovalRequest", () => {
   test("creates a delegated request while holding the lock on the unchanged policy", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-28T12:00:00.000Z"));
