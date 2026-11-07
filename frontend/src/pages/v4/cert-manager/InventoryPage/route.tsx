@@ -1,4 +1,4 @@
-import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -16,6 +16,5 @@ const inventoryPageSearchSchema = z.object({
 
 export const Route = createFileRoute("/v4/organizations/$orgId/cert-manager/inventory")({
   component: InventoryPage,
-  validateSearch: zodValidator(inventoryPageSearchSchema),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader")
+  validateSearch: zodValidator(inventoryPageSearchSchema)
 });

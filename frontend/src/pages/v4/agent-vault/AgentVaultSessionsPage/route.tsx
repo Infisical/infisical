@@ -1,4 +1,4 @@
-import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 
 import { agentVaultCreateIntentSearchParams } from "@app/hooks/useAgentVaultCreateIntent";
@@ -12,6 +12,5 @@ export const Route = createFileRoute(
   component: AgentVaultSessionsPage,
   validateSearch: zodValidator(
     agentVaultSheetSearchParams.merge(agentVaultCreateIntentSearchParams)
-  ),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader")
+  )
 });

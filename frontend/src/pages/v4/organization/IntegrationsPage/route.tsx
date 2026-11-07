@@ -1,4 +1,4 @@
-import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -17,6 +17,5 @@ export const Route = createFileRoute("/v4/organizations/$orgId/integrations")({
       connectionId: z.string().optional(),
       addConnectionApp: z.nativeEnum(AppConnection).optional()
     })
-  ),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader")
+  )
 });

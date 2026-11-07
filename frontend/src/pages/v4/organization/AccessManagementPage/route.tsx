@@ -1,4 +1,4 @@
-import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -13,6 +13,5 @@ export const Route = createFileRoute("/v4/organizations/$orgId/access-management
       selectedTab: z.string().catch(OrgAccessControlTabSections.Member),
       action: z.string().catch("")
     })
-  ),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader")
+  )
 });
