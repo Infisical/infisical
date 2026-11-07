@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "header-band",
+    title: "Header band and quiet empty rows",
+    description:
+      "Table headers keep one band edge to edge again, and empty, loading and group rows no longer light up on hover.",
+    date: "2026-11-07",
+    commit: "c23123067c",
+    page: "table"
+  },
+  {
     id: "mix-ink",
     title: "Softer states and mix ink",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "c700ce77aa",
     page: "colors"
-  },
-  {
-    id: "line-roles",
-    title: "Line roles",
-    description:
-      "line-soft is the default border for edges and the dividers that meet them, and line is kept for standalone rules such as a lone Separator.",
-    date: "2026-11-06",
-    commit: "3c11d43aee",
-    page: "rules"
   }
 ];
