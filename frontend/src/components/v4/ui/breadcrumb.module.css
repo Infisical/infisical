@@ -82,7 +82,7 @@
 }
 
 .segment {
-  --crumb-press: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-press), transparent);
+  --crumb-press: var(--v4-press);
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -99,9 +99,6 @@ button.segment {
   color: inherit;
   font: inherit;
   text-align: start;
-}
-:global([data-scheme="dark"]) .segment {
-  --crumb-press: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-press-dark), transparent);
 }
 /* v4-check-ignore cursor-pointer -- a crumb name always navigates, so it reads as a link even when onNavigate renders it as a button */
 .name {
@@ -145,7 +142,7 @@ button.segment {
   margin-inline-start: calc(-1 * var(--crumb-inset));
 }
 .segment[data-name-target="page"] > .name:hover {
-  background: var(--v4-segment-hover);
+  background: var(--v4-hover);
 }
 .segment[data-name-target="page"] > .name:active {
   background: var(--crumb-press);
@@ -158,7 +155,7 @@ button.segment {
   transition-timing-function: var(--v4-ease-standard);
 }
 .segment[data-name-target="switcher"]:hover {
-  background: var(--v4-segment-hover);
+  background: var(--v4-hover);
   color: var(--v4-ink);
 }
 .segment[data-name-target="switcher"]:is(:active, [aria-expanded="true"]) {
@@ -197,7 +194,7 @@ button.segment {
   transition-timing-function: var(--v4-ease-standard);
 }
 .chevron:hover {
-  background: var(--v4-segment-hover);
+  background: var(--v4-hover);
   color: var(--v4-ink);
 }
 .chevron:active,
@@ -228,7 +225,7 @@ button.segment {
   border-radius: 0;
 }
 .product .link:not(.static):hover {
-  background: var(--v4-segment-hover);
+  background: var(--v4-hover);
 }
 .product .label {
   max-width: 240px;

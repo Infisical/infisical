@@ -81,7 +81,7 @@
   height: 40px;
   flex: 0 0 auto;
   color: var(--v4-ink, var(--foreground));
-  background: var(--v4-media-ground);
+  background: var(--v4-surface);
   border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
 }
@@ -102,7 +102,7 @@
 }
 .tile:hover {
   border-color: var(--v4-control, var(--border));
-  background: var(--v4-tint, var(--muted));
+  background: var(--v4-hover);
 }
 .tile[aria-pressed="true"] {
   border-color: var(--v4-ink, var(--foreground));

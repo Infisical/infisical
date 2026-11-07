@@ -87,6 +87,60 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "palette-playground",
+    title: "Palette playground",
+    description:
+      "Tune any theme token live on a sample shell, share the view by link and copy the overrides as tokens.json.",
+    date: "2026-11-07",
+    commit: "d054fdfef6",
+    page: "palette"
+  },
+  {
+    id: "card-pairs",
+    title: "Bands, xs Input and flush SettingsCard",
+    description:
+      "Framed band labels sit at one height, Input gains a 24px xs size, and a flush SettingsCard embeds a table.",
+    date: "2026-11-07",
+    commit: "45ad1c70c1",
+    page: "settings-card"
+  },
+  {
+    id: "shared-hover",
+    title: "Shared hover",
+    description:
+      "Every hover and press is one ink overlay tuned by hover-mix and press-mix, darker in light themes and brighter in dark ones.",
+    date: "2026-11-07",
+    commit: "b7593b3735",
+    page: "colors"
+  },
+  {
+    id: "button-corner-badge",
+    title: "Button corner badge",
+    description:
+      "A Button can carry a small Badge on its top-right corner, such as Last used, without changing its size or hit area.",
+    date: "2026-11-07",
+    commit: "7ff23542fa",
+    page: "button"
+  },
+  {
+    id: "dark-alt-two-colors",
+    title: "Dark alt, two colors",
+    description:
+      "Dark alt now differs from Dark only in its sidebar and inset; every other color inherits.",
+    date: "2026-11-07",
+    commit: "4da1f58249",
+    page: "colors"
+  },
+  {
+    id: "tooltip-pass-through",
+    title: "Pass-through tooltips",
+    description:
+      "Tooltips close as the pointer leaves, never catch clicks, and no longer reopen when focus returns from a menu, dialog or sheet.",
+    date: "2026-11-07",
+    commit: "7371831b2f",
+    page: "tooltip"
+  },
+  {
     id: "no-nested-frames",
     title: "No frames in frames",
     description:
@@ -166,59 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "7ba6dacc87",
     page: "list"
-  },
-  {
-    id: "crumb-cursor",
-    title: "Crumbs and cursors",
-    description:
-      "Combined crumbs are one button with no dead pixels, and only links take the pointer cursor.",
-    date: "2026-11-06",
-    commit: "02076b65ee",
-    page: "breadcrumb"
-  },
-  {
-    id: "draggable-popover",
-    title: "Draggable Popover",
-    description:
-      "A Popover can opt in to a Move handle, with keyboard steps, a viewport clamp and a reset when it reopens.",
-    date: "2026-11-06",
-    commit: "82721e1d76",
-    page: "popover"
-  },
-  {
-    id: "selection-column",
-    title: "Selection column",
-    description:
-      "Native tables and DataTable share one selection hook, and icon columns that double as selection can drop the divider.",
-    date: "2026-11-06",
-    commit: "75c373c9f0",
-    page: "table"
-  },
-  {
-    id: "combobox-creation",
-    title: "Create from a picker",
-    description:
-      "A Combobox can create the entity it picks in a dialog, starting with app connections, so nobody leaves the flow.",
-    date: "2026-11-06",
-    commit: "d1c73789d8",
-    page: "combobox"
-  },
-  {
-    id: "actions-tail",
-    title: "Actions tail",
-    description:
-      "Striped rows paint across pinned cells, the actions tail end-aligns at row-target height and destructive actions go last in More.",
-    date: "2026-11-06",
-    commit: "d05df39e77",
-    page: "table"
-  },
-  {
-    id: "toast-disabled",
-    title: "Toasts and disabled reasons",
-    description:
-      "The shell hosts toasts, and a disabled Button explains why in a tooltip through disabledReason.",
-    date: "2026-11-05",
-    commit: "32e2402f30",
-    page: "toast"
   }
 ];

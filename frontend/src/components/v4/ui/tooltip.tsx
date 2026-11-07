@@ -9,14 +9,47 @@ import { Kbd } from "./kbd";
 import controls from "./controls.module.css";
 import menu from "./menu.module.css";
 
+const navigationKeys = new Set([
+  "Tab",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End"
+]);
+let lastNavigationKeyAt = -Infinity;
+if (typeof document !== "undefined") {
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      lastNavigationKeyAt = navigationKeys.has(event.key) ? performance.now() : -Infinity;
+    },
+    true
+  );
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      lastNavigationKeyAt = -Infinity;
+    },
+    true
+  );
+}
+const focusedByKeyboard = () => performance.now() - lastNavigationKeyAt < 1000;
+const coveredByOverlay = (trigger: Element) =>
+  trigger.getAttribute("aria-expanded") === "true" ||
+  getComputedStyle(document.body).pointerEvents === "none";
+
 function TooltipProvider({
   delayDuration = 200,
+  disableHoverableContent = true,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
+      disableHoverableContent={disableHoverableContent}
       {...props}
     />
   );
@@ -28,6 +61,7 @@ function Tooltip({
   side = "top",
   align = "center",
   wrap: _wrap,
+  disableHoverableContent = true,
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root> & {
@@ -39,7 +73,11 @@ function Tooltip({
   wrap?: boolean;
 }) {
   return (
-    <TooltipPrimitive.Root data-slot="tooltip" {...props}>
+    <TooltipPrimitive.Root
+      data-slot="tooltip"
+      disableHoverableContent={disableHoverableContent}
+      {...props}
+    >
       {content ? (
         <>
           <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -55,8 +93,42 @@ function Tooltip({
   );
 }
 
-function TooltipTrigger({ ref, ...props }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-  return <TooltipPrimitive.Trigger ref={ref} data-slot="tooltip-trigger" {...props} />;
+/**
+ * Opens on hover and on keyboard focus only. Focus that a closing menu, dialog or sheet returns to the
+ * trigger never opens it, and after a click it stays closed until the pointer leaves and comes back.
+ */
+function TooltipTrigger({
+  ref,
+  onPointerDown,
+  onPointerMove,
+  onPointerLeave,
+  onFocus,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  const pressed = React.useRef(false);
+  return (
+    <TooltipPrimitive.Trigger
+      ref={ref}
+      data-slot="tooltip-trigger"
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        pressed.current = true;
+      }}
+      onPointerMove={(event) => {
+        onPointerMove?.(event);
+        if (pressed.current) event.preventDefault();
+      }}
+      onPointerLeave={(event) => {
+        onPointerLeave?.(event);
+        if (!coveredByOverlay(event.currentTarget)) pressed.current = false;
+      }}
+      onFocus={(event) => {
+        onFocus?.(event);
+        if (pressed.current || !focusedByKeyboard()) event.preventDefault();
+      }}
+      {...props}
+    />
+  );
 }
 TooltipTrigger.displayName = "TooltipTrigger";
 

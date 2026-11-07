@@ -8,7 +8,7 @@ import { Kbd } from "./kbd";
 import styles from "./controls.module.css";
 
 export type InputProps = Omit<React.ComponentPropsWithoutRef<"input">, "size"> & {
-  size?: number | "sm" | "md" | "lg";
+  size?: number | "xs" | "sm" | "md" | "lg";
   icon?: IconName;
   mono?: boolean;
   invalid?: boolean;

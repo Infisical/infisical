@@ -275,11 +275,7 @@
   left: 0;
   z-index: 0;
   pointer-events: none;
-  background-color: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
-}
-.v4[data-scheme="dark"] [data-slot="list-highlight"],
-.v4 [data-scheme="dark"] [data-slot="list-highlight"] {
-  background-color: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover-dark), transparent);
+  background-color: var(--v4-hover);
 }
 .v4 [data-slot="list-highlight"][data-danger][data-danger] {
   background-color: var(--v4-action-danger-surface);

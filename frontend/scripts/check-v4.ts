@@ -184,6 +184,58 @@ export const nestedFrames = (text: string) => {
   return [...found].map(([index, match]) => ({ index, text: match }));
 };
 
+const interactiveElement =
+  /<(?:a|button|input|select|textarea|Button|Link|RowLink|CardLink|CopyButton|Checkbox|Switch)(?=[\s>/])|\son(?:Click|PointerDown|KeyDown)=/;
+
+const attributeValue = (tag: string, name: string) => {
+  const start = tag.search(new RegExp(`\\s${name}=\\{`));
+  if (start < 0) return "";
+  const open = tag.indexOf("{", start);
+  let depth = 0;
+  for (let index = open; index < tag.length; index += 1) {
+    if (tag[index] === "{") depth += 1;
+    else if (tag[index] === "}") depth -= 1;
+    if (depth === 0) return tag.slice(open + 1, index);
+  }
+  return tag.slice(open + 1);
+};
+
+/** Links, buttons, inputs and click handlers inside a Tooltip's content or a TooltipContent, which the pointer can never reach. */
+export const interactiveTooltipContent = (text: string) => {
+  const found: { index: number; text: string }[] = [];
+  [...text.matchAll(/<(Tooltip|TooltipContent)(?=[\s>])/g)].forEach((open) => {
+    const start = open.index ?? 0;
+    const tagEnd = jsxTagEnd(text, start);
+    const tag = text.slice(start, tagEnd + 1);
+    const content =
+      open[1] === "Tooltip"
+        ? attributeValue(tag, "content")
+        : text.slice(tagEnd + 1, Math.max(tagEnd + 1, text.indexOf("</TooltipContent>", tagEnd)));
+    if (interactiveElement.test(content))
+      found.push({ index: start, text: tag.split("\n")[0].trim() });
+  });
+  return found;
+};
+
+const flatHoverGround =
+  /^background(?:-color)?\s*:\s*(?:var\(--v4-(?:tint|surface|inset|sidebar|line-soft|paper|pop|frame|select)(?:,[^)]*)?\)|#[0-9a-f]{3,8}|rgba?\([^)]*\))\s*$/i;
+
+/** A :hover rule that paints its own element with a flat ground instead of the shared hover overlay. */
+export const flatHoverBackgrounds = (selector: string, body: string) => {
+  const bare = selector.replace(/:not\([^()]*(?:\([^()]*\)[^()]*)*\)/g, "");
+  if (!/:hover\b/.test(bare) || /::?(?:before|after)\b/.test(selector)) return [];
+  if (
+    /\[(?:aria-(?:pressed|current|selected)|data-(?:current|selected)|data-state="(?:on|active)")/.test(
+      bare
+    )
+  )
+    return [];
+  return body
+    .split(";")
+    .map((declaration) => declaration.trim())
+    .filter((declaration) => flatHoverGround.test(declaration));
+};
+
 const topLevelParts = (selector: string) => {
   const parts = [""];
   let depth = 0;
@@ -484,6 +536,22 @@ export const v4Checks: readonly V4Check[] = [
       'A framed container never renders inside another framed container. Remove variant="framed": inside a framed Card, List, DataTable or CodeBlock, a Card, List or ApprovalQueue drops to its frameless treatment on its own.',
     appliesTo: isMarkup,
     source: nestedFrames
+  },
+  {
+    id: "interactive-tooltip",
+    rule: "tooltip-pass-through",
+    message:
+      "A tooltip is pass-through: the pointer never reaches it and it closes when the pointer leaves the trigger, so a link, button, input or click handler inside it can never be used. Use HoverCard for content meant to be read, selected or copied, and Popover when it holds actions.",
+    appliesTo: isMarkup,
+    source: interactiveTooltipContent
+  },
+  {
+    id: "flat-hover",
+    rule: "translucent-hover",
+    message:
+      "Hover grounds use the shared overlay: background var(--v4-hover) (var(--v4-press) while pressed), translucent ink that lands on whatever sits underneath. Never paint a hovered element with a flat ground such as tint, surface or a literal color; where an opaque fill is needed, mix ink at var(--v4-hover-mix) into that ground in srgb.",
+    appliesTo: isCss,
+    cssBlock: flatHoverBackgrounds
   },
   {
     id: "dot-separator",

@@ -253,6 +253,44 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, '<Card title="Summary">\n  <List variant="framed" label="Rows" />\n</Card>']
     ]
   },
+  "interactive-tooltip": {
+    bad: [
+      [
+        example,
+        '<Tooltip content={<a href="/docs">Read the docs</a>}>\n  <Button>Help</Button>\n</Tooltip>'
+      ],
+      [
+        example,
+        "<Tooltip>\n  <TooltipTrigger asChild>\n    <Button>Key</Button>\n  </TooltipTrigger>\n  <TooltipContent>\n    <CopyButton value={id} />\n  </TooltipContent>\n</Tooltip>"
+      ],
+      [
+        example,
+        "<Tooltip\n  content={\n    <span onClick={() => setOpen(true)}>Details</span>\n  }\n>\n  <span>Status</span>\n</Tooltip>"
+      ]
+    ],
+    good: [
+      [example, '<Tooltip content="Export CSV">\n  <Button>Export</Button>\n</Tooltip>'],
+      [example, "<Tooltip content={<code>{id}</code>}>\n  <a href={href}>Key</a>\n</Tooltip>"],
+      [
+        example,
+        "<HoverCard>\n  <HoverCardTrigger asChild>\n    <Button>Key</Button>\n  </HoverCardTrigger>\n  <HoverCardContent>\n    <CopyButton value={id} />\n  </HoverCardContent>\n</HoverCard>"
+      ]
+    ]
+  },
+  "flat-hover": {
+    bad: [
+      [css, ".row:hover {\n  background: var(--v4-tint);\n}"],
+      [css, ".tool:is(:hover, :focus-visible) {\n  background-color: var(--v4-line-soft);\n}"],
+      [css, ".item:hover {\n  background: #eeeae3;\n}"]
+    ],
+    good: [
+      [css, ".row:hover {\n  background: var(--v4-hover);\n}"],
+      [css, ".row[data-current]:hover {\n  background: var(--v4-sidebar-current);\n}"],
+      [css, ".row:not(:hover) > td {\n  background-color: var(--v4-surface);\n}"],
+      [css, '.item[aria-pressed="true"]:hover {\n  background-color: var(--v4-pop);\n}'],
+      [css, ".resize:hover::after {\n  background: var(--v4-control);\n}"]
+    ]
+  },
   "disabled-in-tooltip": {
     bad: [
       [

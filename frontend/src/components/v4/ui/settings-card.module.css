@@ -54,6 +54,13 @@
   padding: var(--v4-space-16) var(--v4-space-surface-inset) var(--v4-space-surface-inset);
   border: 0;
 }
+.card[data-flush] > .header {
+  padding-bottom: var(--v4-space-16);
+}
+.flushContent {
+  min-width: 0;
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
 .content > [data-slot="field"],
 .content > [data-slot="input"] {
   max-width: var(--v4-size-measure-field);

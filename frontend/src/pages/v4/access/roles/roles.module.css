@@ -166,10 +166,7 @@
   text-align: start;
 }
 .templateItem:hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
-}
-:global(.v4[data-scheme="dark"]) .templateItem:hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover-dark), transparent);
+  background: var(--v4-hover);
 }
 .templateItem:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring);

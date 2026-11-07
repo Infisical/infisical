@@ -17,7 +17,10 @@ function InputGroup({
   invalid,
   ref,
   ...props
-}: React.ComponentPropsWithoutRef<"div"> & { size?: "sm" | "md" | "lg"; invalid?: boolean } & {
+}: React.ComponentPropsWithoutRef<"div"> & {
+  size?: "xs" | "sm" | "md" | "lg";
+  invalid?: boolean;
+} & {
   ref?: React.Ref<React.ComponentRef<"div">>;
 }) {
   const field = React.useContext(FieldControlContext);

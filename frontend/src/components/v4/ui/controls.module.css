@@ -22,6 +22,26 @@
   transition-duration: var(--v4-duration-fast);
   transition-timing-function: var(--v4-ease-fade);
 }
+.field[data-size="xs"] {
+  --v4-field-height: var(--v4-size-control-xs);
+  --v4-field-inline: var(--v4-space-6);
+  --v4-field-nested: calc(
+    var(--v4-size-control-xs) - 2 * (var(--v4-space-control-slot-inset) + var(--v4-size-control-border))
+  );
+  padding-block: calc(
+    (var(--v4-field-height) - var(--v4-type-caption-line-height)) / 2 -
+      var(--v4-size-control-border)
+  );
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+}
+.field[data-size="xs"]:is(.fieldBox, .inputGroup) {
+  padding-block: 0;
+}
+.field[data-size="xs"] .leading > svg {
+  width: var(--v4-size-icon-xs);
+  height: var(--v4-size-icon-xs);
+}
 .field[data-size="md"] {
   --v4-field-height: var(--v4-size-control-md);
   --v4-field-inline: var(--v4-space-control-inline-md);
@@ -303,7 +323,7 @@
   flex-grow: 1;
 }
 .card[data-variant="framed"] > .cardHeader {
-  align-items: first baseline;
+  align-items: center;
 }
 .card[data-variant="framed"] > .cardHeader .cardTitleGroup {
   flex: 1 1 var(--v4-size-cell-min);
@@ -995,7 +1015,7 @@
       [aria-pressed="true"],
       [data-state="on"]
     ) {
-    background-color: var(--v4-segment-hover);
+    background-color: var(--v4-hover);
     color: var(--v4-ink);
   }
 }

@@ -42,11 +42,11 @@
   color: var(--v4-text2);
 }
 .tool:hover {
-  background: var(--v4-sidebar-hover);
+  background: var(--v4-hover);
   color: var(--v4-ink);
 }
 .tool:active {
-  background: linear-gradient(var(--v4-segment-hover) 0 0) var(--v4-sidebar-hover);
+  background: var(--v4-press);
   color: var(--v4-ink);
 }
 .tool:focus-visible {
@@ -193,7 +193,7 @@
 }
 .spaces > div[data-variant] {
   border-radius: 0;
-  background: var(--v4-sidebar-hover);
+  background: color-mix(in srgb, var(--v4-ink) var(--v4-hover-mix), var(--v4-sidebar));
 }
 .spaces [data-slot="tabs-list"] {
   padding: 3px;
@@ -238,7 +238,7 @@
   width: var(--v4-size-control-md);
   padding: 2px;
   border-radius: 0;
-  background: var(--v4-sidebar-hover);
+  background: color-mix(in srgb, var(--v4-ink) var(--v4-hover-mix), var(--v4-sidebar));
 }
 .railSpace {
   position: relative;
@@ -279,7 +279,7 @@
   height: 6px;
   border-radius: 0;
   background: var(--v4-accent-fg);
-  box-shadow: 0 0 0 2px var(--v4-sidebar-hover);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--v4-ink) var(--v4-hover-mix), var(--v4-sidebar));
 }
 .railSpace[aria-selected="true"] .railDot {
   box-shadow: 0 0 0 2px var(--v4-pop);
@@ -394,11 +394,11 @@
   transition-timing-function: var(--v4-ease-standard);
 }
 .row:hover {
-  background: var(--v4-sidebar-hover);
+  background: var(--v4-hover);
   color: var(--v4-ink);
 }
 .row:active {
-  background: linear-gradient(var(--v4-segment-hover) 0 0) var(--v4-sidebar-hover);
+  background: var(--v4-press);
 }
 .row:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
@@ -505,7 +505,7 @@
   pointer-events: none;
 }
 .sidebar[data-collapsed] .row:hover .dot {
-  box-shadow: 0 0 0 2px var(--v4-sidebar-hover);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--v4-ink) var(--v4-hover-mix), var(--v4-sidebar));
 }
 .sidebar[data-collapsed] .row:is([data-current], [data-holds-current]) .dot {
   box-shadow: 0 0 0 2px var(--v4-sidebar-current);

@@ -189,7 +189,7 @@ function FieldLabel({ className, ref, ...props }: React.ComponentProps<typeof La
       ref={ref}
       data-slot="field-label"
       className={cn(
-        "group/field-label peer/field-label flex w-fit gap-2 border-[color:var(--v4-line-soft)] group-data-[disabled=true]/field:opacity-50 has-data-[state=checked]:border-[color:var(--v4-choice-selected-border)] has-data-[state=checked]:bg-[color:var(--v4-choice-selected-surface)] has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border has-[>[data-slot=field]]:not-has-[:disabled,[data-disabled]]:hover:bg-muted/50 has-[>[data-slot=field]]:has-[:focus-visible]:border-ring has-[>[data-slot=field]]:has-[:focus-visible]:ring-2 has-[>[data-slot=field]]:has-[:focus-visible]:ring-[color:var(--v4-focus-ring)] *:data-[slot=field]:p-2.5",
+        "group/field-label peer/field-label flex w-fit gap-2 border-[color:var(--v4-line-soft)] group-data-[disabled=true]/field:opacity-50 has-data-[state=checked]:border-[color:var(--v4-choice-selected-border)] has-data-[state=checked]:bg-[color:var(--v4-choice-selected-surface)] has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border has-[>[data-slot=field]]:not-has-[:disabled,[data-disabled]]:hover:bg-[color:var(--v4-hover)] has-[>[data-slot=field]]:has-[:focus-visible]:border-ring has-[>[data-slot=field]]:has-[:focus-visible]:ring-2 has-[>[data-slot=field]]:has-[:focus-visible]:ring-[color:var(--v4-focus-ring)] *:data-[slot=field]:p-2.5",
         "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
         className
       )}
