@@ -34,12 +34,7 @@ export const PasswordField = ({
 
   return (
     <Field label="Password" error={showRequirements ? undefined : error}>
-      <PasswordInput
-        {...registration}
-        autoComplete="new-password"
-        placeholder="Create a password"
-        invalid={Boolean(error)}
-      />
+      <PasswordInput {...registration} autoComplete="new-password" invalid={Boolean(error)} />
       {showRequirements && (
         <div className={styles.requirements} aria-live="polite">
           {visibleRequirements.map(({ code, isMet, message }) => {

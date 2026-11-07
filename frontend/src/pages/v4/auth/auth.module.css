@@ -73,16 +73,34 @@
   overflow: hidden;
   background: var(--v4-paper);
 }
-.art {
+.lens {
   position: absolute;
-  top: 50%;
-  left: -400px;
-  width: 800px;
-  height: 800px;
-  color: var(--v4-ink);
-  opacity: 0.06;
-  transform: translateY(-50%);
+  inset: 0;
   pointer-events: none;
+}
+.lensRule {
+  stroke: var(--v4-line-soft);
+  stroke-opacity: 0.8;
+}
+.lensGrid {
+  stroke: var(--v4-ink);
+  stroke-opacity: 0.08;
+}
+.lensFrame {
+  stroke: var(--v4-line);
+  stroke-opacity: 0.8;
+}
+.lensCorner {
+  fill: var(--v4-sidebar);
+  stroke: var(--v4-line);
+  stroke-opacity: 0.8;
+}
+.lensCenter {
+  fill: var(--v4-accent);
+}
+.lensRuler {
+  stroke: var(--v4-ink);
+  stroke-opacity: 0.2;
 }
 .asideBar {
   position: relative;
@@ -98,10 +116,14 @@
   flex: 1 1 auto;
   flex-direction: column;
   justify-content: center;
-  gap: var(--v4-space-16);
   max-width: 720px;
   margin-inline: auto;
   padding: 0 var(--v4-space-40) 64px;
+}
+.pitchCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-16);
 }
 .eyebrow {
   color: var(--v4-accent-fg);

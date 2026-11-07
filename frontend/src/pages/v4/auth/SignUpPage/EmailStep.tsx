@@ -16,7 +16,7 @@ import { useSendVerificationEmail } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
 import { AuthPage } from "../components/AuthPage";
-import { ProviderButton } from "../components/ProviderButton";
+import { ProviderButton, ProviderMark } from "../components/ProviderButton";
 import { RegionSelect } from "../components/RegionSelect";
 
 import styles from "../auth.module.css";
@@ -225,6 +225,7 @@ export const EmailStep = ({
               loading={isPending || isCaptchaPending}
               disabled={!isEmailValid || !isCaptchaReady}
             >
+              <ProviderMark provider="email" />
               Continue with email
             </Button>
           </Stack>

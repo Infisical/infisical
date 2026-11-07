@@ -25,7 +25,7 @@ import { useLastLogin } from "@app/hooks/useLastLogin";
 
 import { AuthPage } from "../components/AuthPage";
 import { PasswordInput } from "../components/PasswordInput";
-import { ProviderButton } from "../components/ProviderButton";
+import { ProviderButton, ProviderMark } from "../components/ProviderButton";
 import { RegionSelect } from "../components/RegionSelect";
 import { useAuthPreview } from "../preview";
 
@@ -403,6 +403,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
                 ) : undefined
               }
             >
+              <ProviderMark provider="email" />
               Continue with email
             </Button>
           </Stack>
