@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   IconButton,
+  rowLinkContainerClassName,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -582,162 +583,171 @@ export const SubscriptionsTable = ({
       <CardHeader>
         <CardTitle>Subscriptions</CardTitle>
       </CardHeader>
-      <div
-        role="table"
-        aria-label="Subscriptions"
-        className="-mx-5 -mb-5 overflow-hidden rounded-b-card"
-      >
-        <div
-          role="row"
-          className={cn(
-            ROW_GRID,
-            "h-[30px] border-y border-border bg-container-hover text-xs text-accent"
-          )}
-        >
-          <span role="columnheader">Product</span>
-          <span role="columnheader">Usage</span>
-          <span role="columnheader">Price</span>
-          <span role="columnheader">Next Billing Date</span>
-          <span role="columnheader">Status</span>
-          <span role="columnheader" aria-label="Actions" />
-        </div>
-        {products.map((prod) => {
-          const ent = entitlements[prod.id];
-          if (!ent) return null;
-          const dims = visibleDims(ent);
-          const ordered = collapsedOrder(dims);
-          const hidden = ordered.length - COLLAPSED_METERS;
-          const isExpanded = expandedId === prod.id;
-          const isMounted = mountedId === prod.id;
-          const canExpand = dims.length > 0;
-          const planName = ent.planTier
-            ? (prod.plans.find((plan) => plan.tier === ent.planTier)?.name ??
-              tierLabel(ent.planTier))
-            : "Included";
-          const breakdownDims = breakdownableDimensions(ent);
-          let commitmentLabel: string | null = null;
-          if (commitSavingsNudge(ent)) commitmentLabel = "Switch to Annual";
-          else if (dims.some(dimCommitted) && dims.some(dimCommitManageable)) {
-            commitmentLabel = "Adjust Commitment";
-          }
-          const toggle = () => {
-            if (isExpanded) {
-              setExpandedId(null);
-              return;
+      <div className="-mx-5 -mb-5 thin-scrollbar overflow-x-auto rounded-b-card">
+        <div role="table" aria-label="Subscriptions" className="min-w-[76rem]">
+          <div
+            role="row"
+            className={cn(
+              ROW_GRID,
+              "h-[30px] border-y border-border bg-container-hover text-xs text-accent"
+            )}
+          >
+            <span role="columnheader">Product</span>
+            <span role="columnheader">Usage</span>
+            <span role="columnheader">Price</span>
+            <span role="columnheader">Next Billing Date</span>
+            <span role="columnheader">Status</span>
+            <span role="columnheader" aria-label="Actions" />
+          </div>
+          {products.map((prod) => {
+            const ent = entitlements[prod.id];
+            if (!ent) return null;
+            const dims = visibleDims(ent);
+            const ordered = collapsedOrder(dims);
+            const hidden = ordered.length - COLLAPSED_METERS;
+            const isExpanded = expandedId === prod.id;
+            const isMounted = mountedId === prod.id;
+            const canExpand = dims.length > 0;
+            const planName = ent.planTier
+              ? (prod.plans.find((plan) => plan.tier === ent.planTier)?.name ??
+                tierLabel(ent.planTier))
+              : "Included";
+            const breakdownDims = breakdownableDimensions(ent);
+            let commitmentLabel: string | null = null;
+            if (commitSavingsNudge(ent)) commitmentLabel = "Switch to Annual";
+            else if (dims.some(dimCommitted) && dims.some(dimCommitManageable)) {
+              commitmentLabel = "Adjust Commitment";
             }
-            setExpandedId(prod.id);
-            setMountedId(prod.id);
-          };
-          const panelId = `billing-subscription-${prod.id}`;
-          const productIcon = (
-            <DynamicIcon
-              name={prod.icon.replace(/_/g, "-") as IconName}
-              color="var(--product-color-resolved)"
-              size={15}
-              fallback={ProductIconFallback}
-            />
-          );
+            const toggle = () => {
+              if (isExpanded) {
+                setExpandedId(null);
+                return;
+              }
+              setExpandedId(prod.id);
+              setMountedId(prod.id);
+            };
+            const panelId = `billing-subscription-${prod.id}`;
+            const productIcon = (
+              <DynamicIcon
+                name={prod.icon.replace(/_/g, "-") as IconName}
+                color="var(--product-color-resolved)"
+                size={15}
+                fallback={ProductIconFallback}
+              />
+            );
 
-          return (
-            <div
-              key={prod.id}
-              className={cn(
-                "product-color border-b border-border last:border-b-0",
-                isMounted && "bg-container-hover"
-              )}
-              style={{ "--product-color": prod.color } as CSSProperties}
-            >
+            return (
               <div
-                role="row"
+                key={prod.id}
                 className={cn(
-                  ROW_GRID,
-                  "min-h-16 py-3 transition-colors duration-75",
-                  canExpand && "hover:bg-container-hover"
+                  "product-color border-b border-border last:border-b-0",
+                  isMounted && "bg-container-hover"
                 )}
+                style={{ "--product-color": prod.color } as CSSProperties}
               >
-                <span role="cell" className="flex min-w-0 items-start gap-2">
-                  <span className="flex h-[18px] w-4 shrink-0 items-center justify-center">
-                    {canExpand ? (
-                      <IconButton
-                        size="2xs"
-                        variant="ghost-muted"
-                        aria-expanded={isExpanded}
-                        aria-controls={isMounted ? panelId : undefined}
-                        aria-label={`${isExpanded ? "Hide" : "Show"} ${prod.name} usage and limits`}
-                        onClick={toggle}
-                      >
-                        {isExpanded ? <ChevronDownIcon /> : productIcon}
-                      </IconButton>
-                    ) : (
-                      productIcon
+                <div
+                  role="row"
+                  className={cn(
+                    ROW_GRID,
+                    "min-h-16 py-3 transition-colors duration-75",
+                    canExpand && cn(rowLinkContainerClassName, "hover:bg-container-hover")
+                  )}
+                >
+                  {canExpand && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      aria-hidden
+                      className="absolute inset-0 z-[1] cursor-pointer"
+                      onClick={toggle}
+                    />
+                  )}
+                  <span role="cell" className="flex min-w-0 items-start gap-2">
+                    <span className="flex h-[18px] w-4 shrink-0 items-center justify-center">
+                      {canExpand ? (
+                        <IconButton
+                          size="2xs"
+                          variant="ghost-muted"
+                          aria-expanded={isExpanded}
+                          aria-controls={isMounted ? panelId : undefined}
+                          aria-label={`${isExpanded ? "Hide" : "Show"} ${prod.name} usage and limits`}
+                          onClick={toggle}
+                        >
+                          {isExpanded ? <ChevronDownIcon /> : productIcon}
+                        </IconButton>
+                      ) : (
+                        productIcon
+                      )}
+                    </span>
+                    <Stacked
+                      primary={
+                        <span className="flex items-center gap-1.5">
+                          {prod.name}
+                          {prod.addon && <Badge variant="neutral">Add-on</Badge>}
+                        </span>
+                      }
+                      secondary={
+                        trialPlanName(prod, ent)
+                          ? `${planName} · trialing ${trialPlanName(prod, ent)}`
+                          : planName
+                      }
+                    />
+                  </span>
+                  <span role="cell" className="flex min-w-0 items-center gap-6 overflow-hidden">
+                    {ordered.slice(0, COLLAPSED_METERS).map((dim) => (
+                      <Meter key={dim.key} dim={dim} breakdown={breakdown} />
+                    ))}
+                    {hidden > 0 && (
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-[14px] text-accent tabular-nums">
+                        +{hidden}
+                      </span>
+                    )}
+                    {dims.length === 0 && (
+                      <span className="text-xs text-muted">No usage-based limits</span>
                     )}
                   </span>
-                  <Stacked
-                    primary={
-                      <span className="flex items-center gap-1.5">
-                        {prod.name}
-                        {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-                      </span>
-                    }
-                    secondary={
-                      trialPlanName(prod, ent)
-                        ? `${planName} · trialing ${trialPlanName(prod, ent)}`
-                        : planName
-                    }
-                  />
-                </span>
-                <span role="cell" className="flex min-w-0 items-center gap-6">
-                  {ordered.slice(0, COLLAPSED_METERS).map((dim) => (
-                    <Meter key={dim.key} dim={dim} breakdown={breakdown} />
-                  ))}
-                  {hidden > 0 && (
-                    <span className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-[14px] text-accent tabular-nums">
-                      +{hidden}
-                    </span>
-                  )}
-                  {dims.length === 0 && (
-                    <span className="text-xs text-muted">No usage-based limits</span>
-                  )}
-                </span>
-                <span role="cell">{priceCell(ent, dims, isManaged)}</span>
-                <span role="cell">{dateCell(prod, ent, isManaged)}</span>
-                <span role="cell">{statusBadge(ent)}</span>
-                <span role="cell" className="flex justify-end">
-                  <ProductMenu
-                    prod={prod}
-                    currentTier={ent.planTier}
-                    canChangePlan={canChangePlan}
-                    hasBreakdown={breakdownDims.length > 0}
-                    commitmentLabel={commitmentLabel}
-                    onManage={onManage}
-                    onSetCommitment={() => onSetCommitment(prod.id)}
-                    onViewBreakdown={() => onViewBreakdown(prod.id, breakdownDims[0]?.key)}
-                  />
-                </span>
-              </div>
-              {isMounted && (
-                <ExpandedPanel
-                  id={panelId}
-                  isOpen={isExpanded}
-                  onClosed={() => setMountedId((current) => (current === prod.id ? null : current))}
-                >
-                  {dims.map((dim) => (
-                    <LimitRow
-                      key={dim.key}
-                      dim={dim}
+                  <span role="cell">{priceCell(ent, dims, isManaged)}</span>
+                  <span role="cell">{dateCell(prod, ent, isManaged)}</span>
+                  <span role="cell">{statusBadge(ent)}</span>
+                  <span role="cell" className="flex justify-end">
+                    <ProductMenu
                       prod={prod}
-                      ent={ent}
+                      currentTier={ent.planTier}
                       canChangePlan={canChangePlan}
-                      breakdown={breakdown}
-                      onManage={() => onManage(prod.id)}
+                      hasBreakdown={breakdownDims.length > 0}
+                      commitmentLabel={commitmentLabel}
+                      onManage={onManage}
                       onSetCommitment={() => onSetCommitment(prod.id)}
+                      onViewBreakdown={() => onViewBreakdown(prod.id, breakdownDims[0]?.key)}
                     />
-                  ))}
-                </ExpandedPanel>
-              )}
-            </div>
-          );
-        })}
+                  </span>
+                </div>
+                {isMounted && (
+                  <ExpandedPanel
+                    id={panelId}
+                    isOpen={isExpanded}
+                    onClosed={() =>
+                      setMountedId((current) => (current === prod.id ? null : current))
+                    }
+                  >
+                    {dims.map((dim) => (
+                      <LimitRow
+                        key={dim.key}
+                        dim={dim}
+                        prod={prod}
+                        ent={ent}
+                        canChangePlan={canChangePlan}
+                        breakdown={breakdown}
+                        onManage={() => onManage(prod.id)}
+                        onSetCommitment={() => onSetCommitment(prod.id)}
+                      />
+                    ))}
+                  </ExpandedPanel>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </Card>
   );
