@@ -28,13 +28,17 @@ export const ProjectGate = ({
 }) => {
   const { error, isPending } = useV4Adapter("access").useProject(projectId);
   const [pageLabel, setPageLabel] = useState<string>();
+  const [handedOff, setHandedOff] = useState(false);
+  useLayoutEffect(() => {
+    if (!isPending) setHandedOff(true);
+  }, [isPending]);
   const status = error instanceof AxiosError ? (error.status ?? error.response?.status) : undefined;
   if (status === 404) return <V4NotFoundPage />;
   if (status === 403 && error instanceof AxiosError)
     return <V4ErrorPage error={error} reset={() => undefined} />;
   return (
     <GateLoader value={setPageLabel}>
-      {(isPending || pageLabel !== undefined) && (
+      {(!handedOff || pageLabel !== undefined) && (
         <Loader size="page" label={pageLabel ?? "Loading project"} />
       )}
       {!isPending && children}
