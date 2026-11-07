@@ -201,6 +201,7 @@ export const MfaEnrollment = ({ method, onComplete, onUseRecoveryCode }: Props) 
 
   return (
     <AuthPage
+      variant="focused"
       pageTitle="Two-Factor Authentication"
       title="Set up two-factor authentication"
       description={`Your organization requires ${MFA_METHOD_LABELS[method].toLowerCase()} to sign in.`}

@@ -6,6 +6,7 @@ import { AuthPage } from "../components/AuthPage";
 
 export const ProviderErrorPage = () => (
   <AuthPage
+    variant="focused"
     pageTitle="Login Failed"
     title="We couldn't sign you in"
     description="Your sign-in provider didn't complete the login. Go back and try again."

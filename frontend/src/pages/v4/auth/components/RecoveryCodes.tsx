@@ -43,6 +43,7 @@ export const RecoveryCodes = ({ recoveryCodes, isPending, onContinue }: Props) =
 
   return (
     <AuthPage
+      variant="focused"
       pageTitle="Two-Factor Authentication"
       title="Save your recovery codes"
       description="Each code works once and lets you sign in if you lose access to your other methods."

@@ -371,6 +371,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
 
   return (
     <AuthPage
+      variant="focused"
       pageTitle="Two-Factor Authentication"
       title={title}
       description={description}

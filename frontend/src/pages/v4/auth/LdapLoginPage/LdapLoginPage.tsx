@@ -61,6 +61,7 @@ export const LdapLoginPage = () => {
 
   return (
     <AuthPage
+      variant="focused"
       pageTitle="Login"
       title="Log in with LDAP"
       titleAction={

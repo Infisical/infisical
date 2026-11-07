@@ -62,6 +62,7 @@ export const SsoLoginPage = ({ type }: { type: "SAML" | "OIDC" }) => {
 
   return (
     <AuthPage
+      variant="focused"
       pageTitle={`${type} Login`}
       title={`Log in with ${type}`}
       titleAction={

@@ -24,7 +24,12 @@ const Page = ({
   children?: React.ReactNode;
 }) => (
   <>
-    <AuthPage pageTitle="Two-Factor Authentication" title={title} description={description}>
+    <AuthPage
+      variant="focused"
+      pageTitle="Two-Factor Authentication"
+      title={title}
+      description={description}
+    >
       {children}
     </AuthPage>
     <Toaster />

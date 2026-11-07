@@ -120,7 +120,7 @@ export const SignUpSsoPage = () => {
           Enter the code we sent to <span className={styles.recipient}>{email}</span>
         </>
       }
-      footer={
+      bottom={
         <span>
           Already have an account?{" "}
           <Link to="/v4/login" search={{ callback_port: callbackPort }} className={styles.link}>
