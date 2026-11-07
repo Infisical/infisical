@@ -145,7 +145,7 @@ const useDebounced = (value: string, delay = 300) => {
   return debounced;
 };
 
-const GroupMembersTable = ({
+const GroupMembersCard = ({
   projectId,
   group,
   initialSearch
@@ -255,31 +255,40 @@ const GroupMembersTable = ({
 
   const filtered = Boolean(search.trim()) || typeFilter.length > 0;
   return (
-    <Stack gap={16}>
-      <ListToolbar
-        search={search}
-        onSearch={(value) => {
-          setSearch(value);
-          setPage(1);
-        }}
-        placeholder="Search group members..."
-        filter={{
-          label: "Filter by member type",
-          options: [
-            { value: FilterMemberType.USERS, label: "Users" },
-            { value: FilterMemberType.MACHINE_IDENTITIES, label: "Machine identities" }
-          ],
-          selected: typeFilter,
-          onToggle: (value) => {
-            const type = value as FilterMemberType;
-            setTypeFilter((current) =>
-              current.includes(type) ? current.filter((item) => item !== type) : [...current, type]
-            );
-            setPage(1);
-          }
-        }}
-      />
-      <Stack gap={8}>
+    <>
+      <Card
+        variant="framed"
+        title="Group members"
+        flush={query.isPending || members.length > 0}
+        action={
+          <ListToolbar
+            band
+            search={search}
+            onSearch={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            placeholder="Search group members..."
+            filter={{
+              label: "Filter by member type",
+              options: [
+                { value: FilterMemberType.USERS, label: "Users" },
+                { value: FilterMemberType.MACHINE_IDENTITIES, label: "Machine identities" }
+              ],
+              selected: typeFilter,
+              onToggle: (value) => {
+                const type = value as FilterMemberType;
+                setTypeFilter((current) =>
+                  current.includes(type)
+                    ? current.filter((item) => item !== type)
+                    : [...current, type]
+                );
+                setPage(1);
+              }
+            }}
+          />
+        }
+      >
         <DataTable
           label="Group members"
           rows={members}
@@ -306,27 +315,29 @@ const GroupMembersTable = ({
               />
             )
           }
+          pagination={
+            !query.isPending && totalCount > 0 ? (
+              <Pagination
+                page={page}
+                total={totalCount}
+                pageSize={perPage}
+                pageSizeOptions={[10, 20, 50, 100]}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPerPage(size);
+                  setPage(1);
+                }}
+              />
+            ) : undefined
+          }
         />
-        {!query.isPending && totalCount > 0 && (
-          <Pagination
-            page={page}
-            total={totalCount}
-            pageSize={perPage}
-            pageSizeOptions={[10, 20, 50, 100]}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPerPage(size);
-              setPage(1);
-            }}
-          />
-        )}
-      </Stack>
+      </Card>
       <AssumeMemberDialog
         projectId={projectId}
         member={assuming}
         onOpenChange={(open) => !open && setAssuming(undefined)}
       />
-    </Stack>
+    </>
   );
 };
 
@@ -464,9 +475,7 @@ export const ProjectGroupDetail = () => {
           </Card>
         }
       >
-        <Card variant="framed" title="Group members">
-          <GroupMembersTable projectId={projectId} group={group} initialSearch={username} />
-        </Card>
+        <GroupMembersCard projectId={projectId} group={group} initialSearch={username} />
       </DetailLayout>
       <RemoveGroupDialog
         projectId={projectId}

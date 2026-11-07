@@ -37,7 +37,6 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
 import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { Loader } from "@app/components/v4/ui/loader";
@@ -58,16 +57,8 @@ import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
-import { Gate, usePagedList, RESTRICTED } from "../ui";
-import {
-  BackButton,
-  CopyButton,
-  Dash,
-  MetadataBadges,
-  Section,
-  Value,
-  VerifiedMark
-} from "./detail-parts";
+import { Gate, ListToolbar, usePagedList, RESTRICTED } from "../ui";
+import { BackButton, CopyButton, Dash, MetadataBadges, Value, VerifiedMark } from "./detail-parts";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
@@ -198,39 +189,46 @@ const UserGroupsSection = ({ username }: { username: string }) => {
   };
 
   return (
-    <Section title="Groups">
-      <Input
-        icon="search"
-        placeholder="Search groups..."
-        aria-label="Search groups"
-        value={list.search}
-        onChange={(event) => list.setSearch(event.target.value)}
-      />
-      <DataTable
-        label={`Groups for ${username}`}
-        rows={list.pageRows}
-        columns={columns}
-        rowActions={rowActions}
-        getRowId={(group) => group.id}
-        rowLabel={(group) => group.name}
-        loading={isPending}
-        sort={list.sort}
-        onSortChange={list.setSort}
-        onRowActivate={(group) => go(accessLinks.orgGroup(orgId, group.id))}
-        empty={
-          groups.length ? (
-            <EmptyState size="sm" icon="search" title="No groups match this search" />
-          ) : (
-            <EmptyState
-              size="sm"
-              icon="user"
-              title="This user has not been assigned to any groups"
-              description="Add this user from a group's page."
-            />
-          )
+    <>
+      <Card
+        variant="framed"
+        title="Groups"
+        flush={isPending || list.pageRows.length > 0}
+        action={
+          <ListToolbar
+            band
+            search={list.search}
+            onSearch={list.setSearch}
+            placeholder="Search groups..."
+          />
         }
-      />
-      {list.pagination}
+      >
+        <DataTable
+          label={`Groups for ${username}`}
+          rows={list.pageRows}
+          columns={columns}
+          rowActions={rowActions}
+          getRowId={(group) => group.id}
+          rowLabel={(group) => group.name}
+          loading={isPending}
+          sort={list.sort}
+          onSortChange={list.setSort}
+          onRowActivate={(group) => go(accessLinks.orgGroup(orgId, group.id))}
+          empty={
+            groups.length ? (
+              <EmptyState size="sm" icon="search" title="No groups match this search" />
+            ) : (
+              <EmptyState
+                size="sm"
+                icon="user"
+                title="This user has not been assigned to any groups"
+                description="Add this user from a group's page."
+              />
+            )
+          }
+          pagination={list.pagination}
+        />
+      </Card>
       <AlertDialog
         open={Boolean(removing)}
         onOpenChange={(open) => !open && setRemoving(undefined)}
@@ -266,7 +264,7 @@ const UserGroupsSection = ({ username }: { username: string }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Section>
+    </>
   );
 };
 

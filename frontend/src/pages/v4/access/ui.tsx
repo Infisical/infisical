@@ -53,11 +53,13 @@ export const ListToolbar = ({
   search,
   onSearch,
   placeholder,
+  band = false,
   filter
 }: {
   search: string;
   onSearch: (value: string) => void;
   placeholder: string;
+  band?: boolean;
   filter?: {
     label: string;
     options: readonly { value: string; label: string }[];
@@ -68,7 +70,7 @@ export const ListToolbar = ({
     onOpenChange?: (open: boolean) => void;
   };
 }) => (
-  <div className={styles.toolbar}>
+  <div className={band ? `${styles.toolbar} ${styles.bandSearch}` : styles.toolbar}>
     <div className={styles.grow}>
       <Input
         icon="search"

@@ -584,7 +584,7 @@ export const ProjectIdentityAuthSection = ({
   const { canEditAuth, canDelete } = useAuthGates(projectId, identity.id);
   const flows = useAuthMethodFlows(projectId, identity);
   const methods = identity.authMethods;
-  const addButton = (variant: "outline" | "primary") => (
+  const addButton = (variant: "accent" | "primary") => (
     <Gate allowed={canEditAuth}>
       <Button variant={variant} size="xs" icon="plus" disabled={!canEditAuth} onClick={flows.add}>
         Add auth method
@@ -647,9 +647,7 @@ export const ProjectIdentityAuthSection = ({
         title="Authentication"
         flush={methods.length > 0}
         action={
-          methods.length > 0 && methods.length < allMethods.length
-            ? addButton("outline")
-            : undefined
+          methods.length > 0 && methods.length < allMethods.length ? addButton("accent") : undefined
         }
       >
         {methods.length > 0 ? (

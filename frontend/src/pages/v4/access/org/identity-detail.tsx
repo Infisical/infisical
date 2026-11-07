@@ -69,7 +69,7 @@ import {
   RemoveAuthMethodDialog,
   sortedMethods
 } from "./auth-methods";
-import { CopyButton, Dash, MetadataBadges, Section, Value } from "./detail-parts";
+import { CopyButton, Dash, MetadataBadges, Value } from "./detail-parts";
 import { lastUsedLabel } from "./identities";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
@@ -248,11 +248,11 @@ export const OrgIdentityDetail = () => {
   const roleRef = { role: membership.role, roleId: membership.customRole?.id };
   const deleteBlocked = identity.hasDeleteProtection;
 
-  const addAuthButton = (variant: "outline" | "primary") => (
+  const addAuthButton = (variant: "accent" | "primary") => (
     <Gate allowed={canEditAuth}>
       <Button
         variant={variant}
-        size="sm"
+        size={variant === "accent" ? "xs" : "sm"}
         icon="plus"
         disabled={!canEditAuth}
         onClick={() => setAuthForm({})}
@@ -438,11 +438,13 @@ export const OrgIdentityDetail = () => {
           }
         >
           <div className={css.column}>
-            <Section
+            <Card
+              variant="framed"
               title="Authentication"
+              flush={isOwnIdentity && methods.length > 0}
               action={
                 isOwnIdentity && methods.length > 0 && !allConfigured
-                  ? addAuthButton("outline")
+                  ? addAuthButton("accent")
                   : undefined
               }
             >
@@ -478,7 +480,7 @@ export const OrgIdentityDetail = () => {
                   }
                 />
               )}
-            </Section>
+            </Card>
             <ProjectMembershipsSection
               subject="identity"
               subjectId={identity.id}

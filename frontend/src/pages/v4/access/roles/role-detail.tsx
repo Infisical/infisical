@@ -63,8 +63,6 @@ import { OrgRoleDialog, ProjectRoleSheet, type RoleDraft } from "./role-dialogs"
 import { RuleTable } from "./rule-table";
 import { VaultImportSheet } from "./vault-import-sheet";
 
-import styles from "./roles.module.css";
-
 const BUILT_IN = "Built-in roles are read only";
 const DEFAULT_ROLE = "This is the default role for new members. Set another default to delete it.";
 
@@ -161,7 +159,13 @@ const RoleEditor = ({
     <Gate allowed={editable} reason={reason}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" iconRight="chev-down" disabled={!editable}>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            iconRight="chev-down"
+            disabled={!editable}
+          >
             Import
           </Button>
         </DropdownMenuTrigger>
@@ -239,16 +243,23 @@ const RoleEditor = ({
           }
         />
       </Stack>
-      <section className={styles.panel} aria-labelledby="role-policies-title">
-        <header className={styles.panelHead}>
-          <h3 id="role-policies-title" className={styles.panelTitle}>
-            Policies
-          </h3>
-          <div className={styles.cardActions}>
+      <RuleTable
+        scope={scope}
+        draft={current}
+        subjects={subjectsFor(scope)}
+        editable={editable}
+        reason={reason}
+        errors={errors}
+        references={references}
+        onChange={change}
+        actions={
+          <>
+            {importMenu}
             {dirty && (
               <Button
                 type="button"
                 variant="ghost"
+                size="xs"
                 disabled={saving}
                 onClick={() => (scope === "project" ? setOverlay("discard") : discard())}
               >
@@ -259,6 +270,7 @@ const RoleEditor = ({
               <Button
                 type="button"
                 variant="primary"
+                size="xs"
                 disabled={!editable || !dirty}
                 loading={saving}
                 onClick={save}
@@ -267,22 +279,9 @@ const RoleEditor = ({
                 Save
               </Button>
             </Gate>
-            {importMenu}
-          </div>
-        </header>
-        <div className={styles.panelBody}>
-          <RuleTable
-            scope={scope}
-            draft={current}
-            subjects={subjectsFor(scope)}
-            editable={editable}
-            reason={reason}
-            errors={errors}
-            references={references}
-            onChange={change}
-          />
-        </div>
-      </section>
+          </>
+        }
+      />
       {overlay === "edit" &&
         (scope === "org" ? (
           <OrgRoleDialog

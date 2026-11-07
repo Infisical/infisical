@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
+import { Card } from "@app/components/v4/ui/card";
 import { Combobox } from "@app/components/v4/ui/combobox";
 import {
   DataTable,
@@ -51,6 +52,7 @@ export type RuleTableProps = {
   editable: boolean;
   reason: string;
   errors?: PermissionErrors;
+  actions?: ReactNode;
   onChange: (next: RolePermissions) => void;
   references: { environments?: readonly string[]; tags?: readonly string[] };
 };
@@ -235,7 +237,7 @@ const RuleSheet = ({
 };
 
 export const RuleTable = (props: RuleTableProps) => {
-  const { scope, draft, subjects, editable, reason, errors, onChange } = props;
+  const { scope, draft, subjects, editable, reason, errors, actions, onChange } = props;
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -382,63 +384,78 @@ export const RuleTable = (props: RuleTableProps) => {
   const policyCount = subjects.filter((config) => draft[config.subject]?.length).length;
   const filtering = Boolean(search || filter.length);
   return (
-    <Stack gap={12}>
-      <div className={styles.layoutToolbar}>
-        <div className={styles.grow}>
-          <ListToolbar
-            search={search}
-            onSearch={setSearch}
-            placeholder="Search rules by policy, action or condition..."
-            filter={{
-              label: "Filter by policy",
-              options: subjects
-                .filter((config) => draft[config.subject]?.length)
-                .map((config) => ({ value: config.subject, label: config.title })),
-              selected: filter,
-              onToggle: (value) =>
-                setFilter((current) =>
-                  current.includes(value)
-                    ? current.filter((item) => item !== value)
-                    : [...current, value]
-                )
-            }}
-          />
-        </div>
-        <Gate allowed={editable} reason={reason}>
-          <Button
-            variant="accent"
-            icon="plus"
-            disabled={!editable}
-            onClick={() =>
-              setEditing({
-                subject: filter.length === 1 ? filter[0] : undefined,
-                rule: emptyRule()
-              })
-            }
-          >
-            Add rule
-          </Button>
-        </Gate>
-      </div>
-      <DataTable
-        label="Role rules"
-        rows={rows}
-        columns={columns}
-        rowActions={rowActions}
-        getRowId={(row) => row.key}
-        rowLabel={(row) => `${row.config.title} rule`}
-        onRowActivate={edit}
-        selectable
-        selectedIds={selected}
-        onSelectionChange={setSelected}
-        selectionDisabledReason={() => (editable ? undefined : reason)}
-        empty={
-          <EmptyState size="sm" icon="lock" title={filtering ? "No rules match" : "No rules yet"} />
+    <>
+      <Card
+        variant="framed"
+        title="Policies"
+        flush={rows.length > 0}
+        action={
+          <Inline gap={8}>
+            <ListToolbar
+              band
+              search={search}
+              onSearch={setSearch}
+              placeholder="Search rules by policy, action or condition..."
+              filter={{
+                label: "Filter by policy",
+                options: subjects
+                  .filter((config) => draft[config.subject]?.length)
+                  .map((config) => ({ value: config.subject, label: config.title })),
+                selected: filter,
+                onToggle: (value) =>
+                  setFilter((current) =>
+                    current.includes(value)
+                      ? current.filter((item) => item !== value)
+                      : [...current, value]
+                  )
+              }}
+            />
+            <Gate allowed={editable} reason={reason}>
+              <Button
+                variant="accent"
+                size="xs"
+                icon="plus"
+                disabled={!editable}
+                onClick={() =>
+                  setEditing({
+                    subject: filter.length === 1 ? filter[0] : undefined,
+                    rule: emptyRule()
+                  })
+                }
+              >
+                Add rule
+              </Button>
+            </Gate>
+            {actions}
+          </Inline>
         }
-      />
-      <p className={styles.legend}>
-        {`${plural(all.length, "rule", "rules")} across ${plural(policyCount, "policy", "policies")}. Rules on the same policy combine, and a Forbid wins over an Allow.`}
-      </p>
+        footer={
+          <span
+            className={styles.legend}
+          >{`${plural(all.length, "rule", "rules")} across ${plural(policyCount, "policy", "policies")}. Rules on the same policy combine, and a Forbid wins over an Allow.`}</span>
+        }
+      >
+        <DataTable
+          label="Role rules"
+          rows={rows}
+          columns={columns}
+          rowActions={rowActions}
+          getRowId={(row) => row.key}
+          rowLabel={(row) => `${row.config.title} rule`}
+          onRowActivate={edit}
+          selectable
+          selectedIds={selected}
+          onSelectionChange={setSelected}
+          selectionDisabledReason={() => (editable ? undefined : reason)}
+          empty={
+            <EmptyState
+              size="sm"
+              icon="lock"
+              title={filtering ? "No rules match" : "No rules yet"}
+            />
+          }
+        />
+      </Card>
       <FabDock active={selected.length > 0}>
         <FloatingActionBar
           placement="contained"
@@ -467,6 +484,6 @@ export const RuleTable = (props: RuleTableProps) => {
           onClose={() => setEditing(undefined)}
         />
       )}
-    </Stack>
+    </>
   );
 };

@@ -14,6 +14,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
+import { Card } from "@app/components/v4/ui/card";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
@@ -34,7 +35,7 @@ import {
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 import { SettingsCard } from "@app/components/v4/ui/settings-card";
@@ -45,6 +46,7 @@ import type { Organization } from "@app/hooks/api/organization/types";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
+import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 
@@ -259,49 +261,50 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
   else if (contacts.length > 1) hint = `${contacts.length} incident contacts.`;
   return (
     <>
-      <SettingsCard
+      <Card
+        variant="framed"
         title="Incident contacts"
         description="Emailed if a severe incident affects your organization."
+        flush={isPending || rows.length > 0}
         action={
-          <Button variant="outline" size="sm" icon="plus" onClick={() => setAdding(true)}>
-            Add contact
-          </Button>
+          <Inline gap={8} wrap={false}>
+            <ListToolbar
+              band
+              search={search}
+              onSearch={setSearch}
+              placeholder="Search incident contacts by email"
+            />
+            <Button variant="accent" size="xs" icon="plus" onClick={() => setAdding(true)}>
+              Add contact
+            </Button>
+          </Inline>
         }
-        hint={hint}
+        footer={hint}
       >
-        <Stack gap={12}>
-          <Input
-            icon="search"
-            aria-label="Search incident contacts"
-            placeholder="Search incident contacts by email"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <DataTable
-            label="Incident contacts"
-            rows={rows}
-            columns={columns}
-            loading={isPending}
-            getRowId={(row) => row.id}
-            rowLabel={(row) => row.email}
-            rowActions={{
-              renderMenu: (row) => (
-                <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(row)}>
-                  <Icon name="trash" />
-                  Remove contact
-                </DropdownMenuItem>
-              )
-            }}
-            empty={
-              <EmptyState
-                size="sm"
-                icon="search"
-                title={contacts.length ? "No contacts match" : "No incident contacts"}
-              />
-            }
-          />
-        </Stack>
-      </SettingsCard>
+        <DataTable
+          label="Incident contacts"
+          rows={rows}
+          columns={columns}
+          loading={isPending}
+          getRowId={(row) => row.id}
+          rowLabel={(row) => row.email}
+          rowActions={{
+            renderMenu: (row) => (
+              <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(row)}>
+                <Icon name="trash" />
+                Remove contact
+              </DropdownMenuItem>
+            )
+          }}
+          empty={
+            <EmptyState
+              size="sm"
+              icon="search"
+              title={contacts.length ? "No contacts match" : "No incident contacts"}
+            />
+          }
+        />
+      </Card>
       <AddContactDialog orgId={orgId} open={adding} onOpenChange={setAdding} />
       <AlertDialog open={Boolean(removing)} onOpenChange={(open) => !open && setRemoving(null)}>
         <AlertDialogContent tone="danger">
