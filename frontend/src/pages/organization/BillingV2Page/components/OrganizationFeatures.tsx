@@ -55,10 +55,12 @@ export const OrganizationFeatures = () => {
       className="-mx-5 -mb-5 border-t border-border px-5"
     >
       <AccordionItem value="features">
-        <AccordionTrigger className="items-baseline [&>[data-slot=accordion-chevron]]:self-center">
-          <span className="text-[13px]">Organization Features</span>
-          <span className="text-xs font-normal text-muted">
-            Unlocked by your plans and applied across every product
+        <AccordionTrigger>
+          <span className="flex items-baseline gap-2">
+            <span className="text-[13px]">Organization Features</span>
+            <span className="text-xs font-normal text-muted">
+              Unlocked by your plans and applied across every product
+            </span>
           </span>
         </AccordionTrigger>
         <AccordionContent className="pt-1 pb-3.5">

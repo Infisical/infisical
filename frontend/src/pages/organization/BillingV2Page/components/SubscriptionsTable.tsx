@@ -5,6 +5,7 @@ import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 import {
   Badge,
   Button,
+  IconButton,
   Card,
   CardHeader,
   CardTitle,
@@ -302,6 +303,16 @@ const priceCell = (
     else if (monthlyRate > 0) secondary = `${fmtMoneyCents(monthlyRate)} per identity`;
     return <Stacked primary={parts.join(" + ")} secondary={secondary} />;
   }
+  const meteredEstimate = dims.reduce(
+    (sum, dim) =>
+      dim.metered && dim.usage && !dim.usage.trial ? sum + (dim.usage.estimatedAmount ?? 0) : sum,
+    0
+  );
+  if (meteredEstimate > 0) {
+    return (
+      <Stacked primary={`Est. ${fmtMoneyCents(meteredEstimate)}`} secondary="This billing period" />
+    );
+  }
   if (ent.isTrialing) return <Stacked primary="Free" secondary="During trial" />;
   if (ent.planTier === "enterprise") {
     return <Stacked primary="Contract" secondary="Enterprise agreement" />;
@@ -586,30 +597,29 @@ export const SubscriptionsTable = ({
                   <TableCell className="py-3">
                     <span className="flex items-start gap-2">
                       {canExpand ? (
-                        <button
-                          type="button"
-                          aria-expanded={isExpanded}
-                          aria-controls={isExpanded ? panelId : undefined}
-                          aria-label={`${isExpanded ? "Hide" : "Show"} ${prod.name} usage and limits`}
-                          className="flex h-[18px] w-4 shrink-0 cursor-pointer items-center justify-center rounded-xs outline-0 focus-visible:ring-2 focus-visible:ring-ring"
-                          style={{
-                            color: isExpanded ? undefined : "var(--product-color-resolved)"
-                          }}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggle();
-                          }}
-                        >
-                          {isExpanded ? (
-                            <ChevronDownIcon className="size-4" />
-                          ) : (
-                            <DynamicIcon
-                              name={prod.icon.replace(/_/g, "-") as IconName}
-                              size={15}
-                              fallback={ProductIconFallback}
-                            />
-                          )}
-                        </button>
+                        <span className="flex h-[18px] w-4 shrink-0 items-center justify-center">
+                          <IconButton
+                            size="2xs"
+                            variant="ghost-muted"
+                            aria-expanded={isExpanded}
+                            aria-controls={isExpanded ? panelId : undefined}
+                            aria-label={`${isExpanded ? "Hide" : "Show"} ${prod.name} usage and limits`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggle();
+                            }}
+                          >
+                            {isExpanded ? (
+                              <ChevronDownIcon />
+                            ) : (
+                              <DynamicIcon
+                                name={prod.icon.replace(/_/g, "-") as IconName}
+                                color="var(--product-color-resolved)"
+                                fallback={ProductIconFallback}
+                              />
+                            )}
+                          </IconButton>
+                        </span>
                       ) : (
                         <span
                           className="flex h-[18px] w-4 shrink-0 items-center justify-center"
