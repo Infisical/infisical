@@ -95,9 +95,7 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
         className="text-muted-foreground mb-6 text-sm leading-6"
         style={{ maxWidth: "var(--v4-size-measure-prose)" }}
       >
-        {entry.description} Before is the current app on main with seeded data, captured at 1706 by
-        971. After is the routed v4 demo page, following the workbench theme. Drag the handle or use
-        the arrow keys, or open it live, full width, to click through it.
+        {entry.description}
       </p>
       {entry.screen === "secrets" && <SecretsComparison title={entry.title} href={entry.href} />}
       {entry.screen === "access" && <AccessComparison />}

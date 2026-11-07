@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
+import { v4Themes } from "@app/components/v4/lib/theme-registry";
 import {
   CommandMenu,
   type CommandMenuGroup,
@@ -30,8 +31,6 @@ import {
   settingsSections,
   type ShellNavSection
 } from "./navigation";
-
-type Theme = "light" | "dark" | "system";
 
 export const CommandPalette = ({
   orgId,
@@ -176,24 +175,17 @@ export const CommandPalette = ({
         limit: 8
       });
     }
-    const pickTheme = (theme: Theme) => () => setTheme(theme);
+    const pickTheme = (theme: string) => () => setTheme(theme);
     result.push({
       label: "Commands",
       items: [
-        {
-          id: "theme:light",
-          label: "Switch to light theme",
-          icon: "sun",
-          kind: "action",
-          onSelect: pickTheme("light")
-        },
-        {
-          id: "theme:dark",
-          label: "Switch to dark theme",
-          icon: "moon",
-          kind: "action",
-          onSelect: pickTheme("dark")
-        },
+        ...v4Themes.map((theme) => ({
+          id: `theme:${theme.id}`,
+          label: `Switch to ${theme.name} theme`,
+          icon: theme.scheme === "dark" ? ("moon" as const) : ("sun" as const),
+          kind: "action" as const,
+          onSelect: pickTheme(theme.id)
+        })),
         {
           id: "theme:system",
           label: "Use system theme",

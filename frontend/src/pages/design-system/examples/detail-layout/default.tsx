@@ -10,7 +10,7 @@ const Specimen = () => (
   <DetailLayout
     asideLabel="Details"
     aside={
-      <Card title="Details">
+      <Card variant="framed" title="Details">
         <DataList
           variant="props"
           items={[

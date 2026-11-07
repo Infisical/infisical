@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 
+import { v4Themes } from "@app/components/v4/lib/theme-registry";
 import { Button } from "@app/components/v4/ui/button";
 import { Input } from "@app/components/v4/ui/input";
 import {
@@ -72,7 +73,7 @@ const fromOklch = ({ L, C, h }: { L: number; C: number; h: number }) => {
     .join("")}`;
 };
 
-const canonical = (name: string, mode: Mode) => resolveColorToken(name, mode).toLowerCase();
+const canonical = (name: string, theme: string) => resolveColorToken(name, theme).toLowerCase();
 
 const deriveFamily = (base: string, mode: Mode): Family => {
   const reference = toOklch(canonical("accent", mode));
@@ -114,7 +115,7 @@ const overrideCss = (choice: AccentChoice) =>
         .map(([name, value]) => `--v4-${name}: ${value};`)
         .concat(mode === "dark" ? [`--v4-mark: ${family.accent};`] : [])
         .join(" ");
-      return `.v4.v4[data-theme="${mode}"] { ${declarations} }`;
+      return `.v4.v4[data-scheme="${mode}"] { ${declarations} }`;
     })
     .join("\n");
 
@@ -174,22 +175,22 @@ const Readout = ({ choice }: { choice: AccentChoice }) => (
       </tr>
     </thead>
     <tbody>
-      {(["light", "dark"] as const).map((mode) => {
-        const family = deriveFamily(choice[mode], mode);
+      {v4Themes.map((theme) => {
+        const family = deriveFamily(choice[theme.scheme], theme.scheme);
         return (
-          <tr key={mode}>
-            <td className="py-1">{mode === "light" ? "Light" : "Dark"}</td>
+          <tr key={theme.id}>
+            <td className="py-1">{theme.name}</td>
             <td className="py-1 font-mono">
-              {ratio(contrast(family.accent, canonical("surface", mode)))}
+              {ratio(contrast(family.accent, canonical("surface", theme.id)))}
             </td>
             <td className="py-1 font-mono">
-              {ratio(contrast(family.accent, canonical("paper", mode)))}
+              {ratio(contrast(family.accent, canonical("paper", theme.id)))}
             </td>
             <td className="py-1 font-mono">
-              {ratio(contrast(family["accent-line"], canonical("surface", mode)))}
+              {ratio(contrast(family["accent-line"], canonical("surface", theme.id)))}
             </td>
             <td className="py-1 font-mono">
-              {ratio(contrast(canonical("on-accent", mode), family.accent))}
+              {ratio(contrast(canonical("on-accent", theme.id), family.accent))}
             </td>
           </tr>
         );
@@ -223,8 +224,8 @@ export const AccentPanelProvider = ({ children }: { children: ReactNode }) => {
           <SheetHeader>
             <SheetTitle>Accent</SheetTitle>
             <SheetDescription>
-              Workbench only. Picks a base and derives accent-2, accent-wash and accent-line from
-              how today&apos;s tokens relate to it. On-accent stays ink.
+              Workbench only. accent-2, accent-wash and accent-line derive from the base; on-accent
+              stays ink.
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-col gap-6 px-4 pb-6">

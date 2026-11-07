@@ -365,6 +365,7 @@ export const IdentityRoleDetailsSection = ({
   return (
     <>
       <Card
+        variant="framed"
         title="Project roles"
         flush={hasRoles}
         action={hasRoles ? editButton("outline") : undefined}

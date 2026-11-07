@@ -15,7 +15,7 @@ export default function Example() {
   return (
     <ExampleGrid width="wide">
       <ExampleCell align="stretch" label="Groups with headers and an edit action">
-        <Card title="Gateway details">
+        <Card variant="framed" title="Gateway details">
           <DetailGroup>
             <DetailGroupHeader
               action={
@@ -63,7 +63,7 @@ export default function Example() {
         </Card>
       </ExampleCell>
       <ExampleCell align="stretch" label="Loose details, no group">
-        <Card>
+        <Card variant="framed">
           <Detail>
             <DetailLabel>Created</DetailLabel>
             <DetailValue>Oct 12, 2026, 09:41</DetailValue>

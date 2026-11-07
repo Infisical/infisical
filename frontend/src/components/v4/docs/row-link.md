@@ -210,7 +210,7 @@ export default function Example() {
       </figure>
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
-          <Card>
+          <Card variant="framed">
             <div className="flex items-center gap-3">
               <ProviderIcon icon="Infisical.png" alt="" size="xl" />
               <div className="min-w-0 flex-1">

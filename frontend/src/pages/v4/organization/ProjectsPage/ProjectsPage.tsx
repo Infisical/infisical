@@ -15,8 +15,6 @@ import { useV4Session } from "../../data/session/contract";
 import { useResolveV4Href } from "../../resolveV4Href";
 import { productHome, productOf, products, projectBase } from "../../shell/navigation";
 
-import styles from "./projects.module.css";
-
 const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][] => {
   switch (type) {
     case ProjectType.SecretManager:
@@ -94,8 +92,8 @@ export const ProjectsPage = () => {
       <Grid columns={2} gap={32}>
         {products.map((product) => (
           <Card
+            variant="framed"
             key={product.type}
-            className={styles.productCard}
             footerPlacement="frame"
             title={
               <Inline gap={8} align="center">

@@ -174,10 +174,7 @@ export default function Example() {
   const [value, setValue] = useState("dev");
   return (
     <div className="flex w-full min-w-0 flex-col items-start gap-6">
-      <Field
-        label="Single environment"
-        description="Choose an existing environment. Creation is unavailable."
-      >
+      <Field label="Single environment" description="Creation is unavailable.">
         <Combobox
           label="Single environment"
           options={[
@@ -216,7 +213,7 @@ export default function Example() {
     <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <Field
         label="Visible environments"
-        description="Audit is required by policy, so Clear all keeps it. Creation is unavailable."
+        description="Audit is required by policy, so Clear all keeps it."
       >
         <Combobox
           label="Visible environments"

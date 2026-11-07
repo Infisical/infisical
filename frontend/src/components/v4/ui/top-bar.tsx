@@ -2,6 +2,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 
+import { v4Themes } from "../lib/theme-registry";
 import { cn } from "../lib/utils";
 import { Count } from "./badge";
 import { BandDivider, Breadcrumb, type BreadcrumbCrumb } from "./breadcrumb";
@@ -25,7 +26,8 @@ import { Tooltip, TooltipProvider } from "./tooltip";
 import styles from "./top-bar.module.css";
 
 export type ShellMode = "wide" | "rail" | "narrow";
-export type ShellTheme = "light" | "dark" | "system";
+/** "system", or a theme id from tokens.json themes. */
+export type ShellTheme = string;
 export interface ShellMenuItem {
   label: string;
   icon?: IconName | LucideIcon;
@@ -348,8 +350,7 @@ export const ShellBottomSheet = ({
 
 const themeOptions: { value: ShellTheme; label: string }[] = [
   { value: "system", label: "System" },
-  { value: "dark", label: "Dark" },
-  { value: "light", label: "Light" }
+  ...v4Themes.map((theme) => ({ value: theme.id, label: theme.name }))
 ];
 
 export interface TopBarAccount {

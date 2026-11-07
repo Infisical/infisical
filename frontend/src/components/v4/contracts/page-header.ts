@@ -16,7 +16,8 @@ export const pageHeaderDefinition = {
     "The breadcrumb sits 8px above the title and every crumb is an ancestor, so none is marked current.",
     "lg sets the title in the 44/44 display role for top-level pages; md uses the 28/32 role for one object's page.",
     "Actions sit beside the title and drop under it when both cannot share a line. Titles wrap and never truncate.",
-    "Tabs sit 24px below everything else."
+    "Tabs sit 24px below everything else.",
+    "description is the optional lede: one sentence that orients the page, optionally closing with a Docs link, and never a restatement of the title or a tagline."
   ],
   accessibility: [
     "The title is the page's one h1.",

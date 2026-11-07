@@ -14,13 +14,13 @@ export default function Example() {
   return (
     <ExampleGrid width="wide">
       <ExampleCell align="stretch" label="framed">
-        <Card title="Posture" action={<a href="#card">View report</a>}>
+        <Card variant="framed" title="Posture" action={<a href="#card">View report</a>}>
           412 secrets across 3 environments. 3 are missing in production and 5 rotations are due
           this week.
         </Card>
       </ExampleCell>
       <ExampleCell align="stretch" label="framed, no header, with footer">
-        <Card footer="Expires in 7 days.">
+        <Card variant="framed" footer="Expires in 7 days.">
           <div className="flex items-center gap-3">
             <Media icon="key" />
             <span>Read access to staging, scoped to the payments project.</span>
@@ -28,7 +28,11 @@ export default function Example() {
         </Card>
       </ExampleCell>
       <ExampleCell align="stretch" label="framed footer">
-        <Card footer="412 secrets in 3 environments, 5 rotations due" footerPlacement="frame">
+        <Card
+          variant="framed"
+          footer="412 secrets in 3 environments, 5 rotations due"
+          footerPlacement="frame"
+        >
           Read access to staging, scoped to the payments project.
         </Card>
       </ExampleCell>
@@ -42,6 +46,7 @@ export default function Example() {
         <ExampleCell key={width} label={label}>
           <div className={`${width} max-w-full min-w-0`} data-narrow-card>
             <Card
+              variant="framed"
               title="Posture"
               description="Rotation and drift for the payments project"
               action={<a href="#card">View report</a>}

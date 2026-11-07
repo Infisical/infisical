@@ -279,6 +279,7 @@ const DetailsCard = ({
   const metadata = identity.metadata ?? [];
   return (
     <Card
+      variant="framed"
       title="Details"
       action={
         isOrgIdentity ? undefined : (
@@ -371,7 +372,7 @@ const DetailsCard = ({
 const OrgManagedAuthCard = ({ identity }: { identity: Identity }) => {
   const { permission } = useOrgPermission();
   return (
-    <Card title="Authentication">
+    <Card variant="framed" title="Authentication">
       <Alert tone="info" title="Machine identity managed by organization">
         {permission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity) ? (
           <>

@@ -56,7 +56,7 @@ export const DonutCard = ({
   );
 
   return (
-    <Card title={title} description={description}>
+    <Card variant="framed" title={title} description={description}>
       {plotted.length === 0 ? (
         <EmptyState size="sm" icon="cert" title={emptyTitle} />
       ) : (

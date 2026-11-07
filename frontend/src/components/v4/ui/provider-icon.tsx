@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { cn } from "../lib/utils";
-import { useV4Theme } from "../scope";
+import { useV4Scheme } from "../scope";
 import { Icon } from "./icon";
 
 import styles from "./provider-icon.module.css";
@@ -47,7 +47,7 @@ export function ProviderIcon({
   size?: "sm" | "md" | "lg" | "xl";
   ref?: React.Ref<HTMLImageElement>;
 }) {
-  const src = providerIconPath(icon, useV4Theme() ?? "light");
+  const src = providerIconPath(icon, useV4Scheme() ?? "light");
   const [failedSrc, setFailedSrc] = React.useState<string>();
   if (failedSrc === src)
     return (

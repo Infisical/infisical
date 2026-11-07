@@ -3,6 +3,8 @@ import { Navigate, Outlet, useMatches, useNavigate, useRouterState } from "@tans
 
 import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
 import { componentCatalog } from "@app/components/v4/catalog";
+import { defaultV4Theme, toV4Theme, v4ThemeScheme } from "@app/components/v4/lib/theme-registry";
+import type { V4Scheme } from "@app/components/v4/lib/themes";
 import { V4Scope } from "@app/components/v4/scope";
 import tokens from "@app/components/v4/tokens.json";
 import { type BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
@@ -156,10 +158,16 @@ export const DesignSystemPage = () => {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const navigate = useNavigate();
   const { resolvedTheme: hostTheme } = useTheme();
-  const [themeChoice, setTheme] = useState<"light" | "dark" | "system">(hostTheme);
-  const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() =>
+  const [themeChoice, setThemeChoice] = useState<string>(defaultV4Theme[hostTheme]);
+  const [preferred, setPreferred] = useState<Record<V4Scheme, string>>(defaultV4Theme);
+  const [systemTheme, setSystemTheme] = useState<V4Scheme>(() =>
     window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
   );
+  const setTheme = (next: string) => {
+    setThemeChoice(next);
+    const named = toV4Theme(next);
+    if (named) setPreferred((value) => ({ ...value, [v4ThemeScheme(named)]: named }));
+  };
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const update = () => setSystemTheme(media.matches ? "dark" : "light");
@@ -167,7 +175,7 @@ export const DesignSystemPage = () => {
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  const theme = themeChoice === "system" ? systemTheme : themeChoice;
+  const theme = themeChoice === "system" ? preferred[systemTheme] : themeChoice;
   const leaf = useMatches({
     select: (matches) => {
       const match = matches[matches.length - 1];
@@ -197,7 +205,7 @@ export const DesignSystemPage = () => {
     frame = requestAnimationFrame(seek);
     return () => cancelAnimationFrame(frame);
   }, [currentPage.id, hash]);
-  const nextTheme = theme === "dark" ? "light" : "dark";
+  const nextTheme = preferred[v4ThemeScheme(theme) === "dark" ? "light" : "dark"];
   const crumbs = useWorkbenchCrumbs(currentPage);
   const go = (id: string) => navigate(workbenchPage(id).link as Parameters<typeof navigate>[0]);
   if (legacyTarget)

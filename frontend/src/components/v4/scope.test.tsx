@@ -41,8 +41,8 @@ const themedProbe = (name: string) => {
 
 describe("portable theme boundaries", () => {
   it.each([
-    ["light", "dark"],
-    ["dark", "light"]
+    ["peach", "dark"],
+    ["dark", "peach"]
   ] as const)("keeps explicit %s host and %s scope independent", async (outer, inner) => {
     host.dataset.theme = outer;
     await render(
@@ -70,24 +70,24 @@ describe("portable theme boundaries", () => {
     await React.act(async () => {
       owner.dataset.theme = "light";
     });
-    expect(themedProbe("inherited-wrapper").theme).toBe("light");
-    expect(themedProbe("inherited-portal")).toEqual({ theme: "light", context: "light" });
+    expect(themedProbe("inherited-wrapper").theme).toBe("peach");
+    expect(themedProbe("inherited-portal")).toEqual({ theme: "peach", context: "peach" });
     await React.act(async () => {
       owner.removeAttribute("data-theme");
     });
     expect(themedProbe("inherited-portal")).toEqual({ theme: "dark", context: "dark" });
     await React.act(async () => {
-      host.dataset.theme = "light";
+      host.dataset.theme = "peach";
     });
-    expect(themedProbe("inherited-wrapper").theme).toBe("light");
+    expect(themedProbe("inherited-wrapper").theme).toBe("peach");
   });
 
   it("updates nested opposite scopes and their independent body portals after prop changes", async () => {
-    const tree = (theme: "light" | "dark") => (
+    const tree = (theme: "peach" | "dark") => (
       <V4Scope theme={theme}>
         <Probe name="outer" />
-        <V4Scope theme="light">
-          <Probe name="light" />
+        <V4Scope theme="peach">
+          <Probe name="peach" />
           <V4Scope theme="dark">
             <Probe name="dark" />
           </V4Scope>
@@ -98,12 +98,12 @@ describe("portable theme boundaries", () => {
       </V4Scope>
     );
     await render(tree("dark"));
-    expect(themedProbe("light-wrapper").theme).toBe("light");
+    expect(themedProbe("peach-wrapper").theme).toBe("peach");
     expect(themedProbe("dark-portal").theme).toBe("dark");
     expect(themedProbe("implicit-portal").theme).toBe("dark");
-    await render(tree("light"));
-    expect(themedProbe("outer-portal").theme).toBe("light");
-    expect(themedProbe("implicit-portal").theme).toBe("light");
+    await render(tree("peach"));
+    expect(themedProbe("outer-portal").theme).toBe("peach");
+    expect(themedProbe("implicit-portal").theme).toBe("peach");
     expect(themedProbe("dark-wrapper").theme).toBe("dark");
   });
 
@@ -113,7 +113,7 @@ describe("portable theme boundaries", () => {
     const rafs: FrameRequestCallback[] = [];
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => rafs.push(callback));
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
-    const tree = (theme: "light" | "dark") => (
+    const tree = (theme: "peach" | "dark") => (
       <V4Scope theme={theme}>
         <Probe name="page" />
         <V4Scope theme={theme} portalContainer={frame}>
@@ -121,11 +121,11 @@ describe("portable theme boundaries", () => {
         </V4Scope>
       </V4Scope>
     );
-    await render(tree("light"));
+    await render(tree("peach"));
     const framed = document.querySelector('[data-probe="framed-portal"]');
     const container = framed?.closest(".v4");
     expect(container?.parentElement).toBe(frame);
-    expect(themedProbe("framed-portal")).toEqual({ theme: "light", context: "light" });
+    expect(themedProbe("framed-portal")).toEqual({ theme: "peach", context: "peach" });
     expect(
       document.querySelector('[data-probe="page-portal"]')?.closest(".v4")?.parentElement
     ).toBe(document.body);
@@ -167,19 +167,19 @@ describe("portable theme boundaries", () => {
         <Probe name="pending" />
       </V4Scope>
     );
-    expect(themedProbe("pending-wrapper").context).toBe("light");
+    expect(themedProbe("pending-wrapper").context).toBe("peach");
     expect(document.querySelector('[data-probe="pending-portal"]')).toBeNull();
   });
 
   it("selects chart configuration colors from the resolved scope and updates them with the scope", async () => {
     host.dataset.theme = "dark";
     const config = { requests: { theme: { light: "#112233", dark: "#ddeeff" } } };
-    const tree = (theme: "light" | "dark") => (
+    const tree = (theme: "peach" | "dark") => (
       <V4Scope theme={theme}>
         <ChartStyle id="scope-chart" config={config} />
       </V4Scope>
     );
-    await render(tree("light"));
+    await render(tree("peach"));
     expect(host.querySelector("style")?.textContent).toContain("--color-requests: #112233");
     expect(host.querySelector("style")?.textContent).not.toContain("#ddeeff");
     expect(host.querySelector("style")?.textContent).not.toContain("data-theme");
@@ -210,7 +210,7 @@ describe("portable theme boundaries", () => {
       </V4Scope>
     );
     const first = ref.current;
-    expect(first?.getAttribute("data-theme")).toBe("light");
+    expect(first?.getAttribute("data-theme")).toBe("peach");
     await render(
       <V4Scope key="second" ref={ref}>
         <Probe name="second" />

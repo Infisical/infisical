@@ -100,7 +100,7 @@ button.segment {
   font: inherit;
   text-align: start;
 }
-:global([data-theme="dark"]) .segment {
+:global([data-scheme="dark"]) .segment {
   --crumb-press: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-press-dark), transparent);
 }
 /* v4-check-ignore cursor-pointer -- a crumb name always navigates, so it reads as a link even when onNavigate renders it as a button */

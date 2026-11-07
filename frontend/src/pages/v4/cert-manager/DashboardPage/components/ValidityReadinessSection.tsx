@@ -54,7 +54,7 @@ const MandateDeadlines = () => {
     .map((phase) => ({ ...phase, daysUntil: Math.ceil((phase.date.getTime() - now) / 864e5) }))
     .filter((phase) => phase.daysUntil > 0);
   return (
-    <Card title="CA/B Forum mandate deadlines">
+    <Card variant="framed" title="CA/B Forum mandate deadlines">
       <Stack gap={16}>
         {upcoming.map((phase) => (
           <Inline key={phase.maxDays} gap={12} justify="between" wrap={false}>
@@ -88,6 +88,7 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
   ];
   return (
     <Card
+      variant="framed"
       title="Projected annual renewals"
       description="Renewals per year at each maximum validity."
     >

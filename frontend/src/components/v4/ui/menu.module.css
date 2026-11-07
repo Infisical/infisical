@@ -226,7 +226,7 @@
 :global(.v4) {
   --overlay-hover: var(--v4-opacity-hover);
 }
-:global(.v4[data-theme="dark"]) {
+:global(.v4[data-scheme="dark"]) {
   --overlay-hover: var(--v4-opacity-hover-dark);
 }
 .row:is(

@@ -12,7 +12,7 @@ const FramedContext = React.createContext(false);
 function Card({
   className,
   size = "default",
-  variant = "framed",
+  variant = "plain",
   title,
   description,
   action,

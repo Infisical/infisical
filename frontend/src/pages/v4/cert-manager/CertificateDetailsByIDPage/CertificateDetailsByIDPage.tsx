@@ -218,7 +218,7 @@ const CertificateDetail = ({
         asideLabel="Certificate details"
         aside={
           <>
-            <Card title="Overview">
+            <Card variant="framed" title="Overview">
               <DataList
                 variant="props"
                 density="compact"
@@ -247,7 +247,7 @@ const CertificateDetail = ({
                 ]}
               />
             </Card>
-            <Card title="Issuance">
+            <Card variant="framed" title="Issuance">
               <DataList
                 variant="props"
                 density="compact"
@@ -279,7 +279,7 @@ const CertificateDetail = ({
         }
       >
         <Grid min="card" gap={24} style={{ alignItems: "start" }}>
-          <Card title="Subject">
+          <Card variant="framed" title="Subject">
             <DataList
               variant="props"
               density="compact"
@@ -297,7 +297,7 @@ const CertificateDetail = ({
               ]}
             />
           </Card>
-          <Card title="Key usage">
+          <Card variant="framed" title="Key usage">
             <DataList
               variant="props"
               density="compact"

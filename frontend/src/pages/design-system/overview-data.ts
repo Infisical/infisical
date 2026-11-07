@@ -87,6 +87,33 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "strategic-descriptions",
+    title: "Strategic descriptions",
+    description:
+      "Descriptions are optional and earn their place: a one-sentence lede, a scoping subtitle or a line that tells cards apart.",
+    date: "2026-11-07",
+    commit: "88efc85d88",
+    page: "rules"
+  },
+  {
+    id: "container-defaults",
+    title: "Container defaults",
+    description:
+      "Tables and lists stay framed, and a standalone Card is plain by default, framed only for emphasis or as a section card.",
+    date: "2026-11-07",
+    commit: "aab51e979e",
+    page: "card"
+  },
+  {
+    id: "themes",
+    title: "Four themes",
+    description:
+      "Peach, Pale, Dark and Dark alt are named themes with a light or dark scheme, picked from the account and workbench menus.",
+    date: "2026-11-07",
+    commit: "c700ce77aa",
+    page: "colors"
+  },
+  {
     id: "line-roles",
     title: "Line roles",
     description:
@@ -192,32 +219,5 @@ export const recentChanges: {
     date: "2026-11-05",
     commit: "3a41c65e00",
     page: "dropdown-menu"
-  },
-  {
-    id: "badge-field-mapping",
-    title: "Badges and FieldMapping",
-    description:
-      "Badges that share a row with controls take control height, and FieldMapping pairs source and destination fields.",
-    date: "2026-11-04",
-    commit: "35dce26df3",
-    page: "field-mapping"
-  },
-  {
-    id: "focus-clearance",
-    title: "Focus rings",
-    description:
-      "Focus rings clear overlay, table cell and scroll edges through a shared clearance.",
-    date: "2026-11-04",
-    commit: "d83fdd0dfc",
-    page: "rules"
-  },
-  {
-    id: "band-org-zone",
-    title: "Band org zone",
-    description:
-      "The band's org zone matches the sidebar, and the collapsed org trigger hugs its content and eases with the sidebar.",
-    date: "2026-11-04",
-    commit: "cf39aaea7d",
-    page: "top-bar"
   }
 ];

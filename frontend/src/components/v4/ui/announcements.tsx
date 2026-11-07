@@ -12,7 +12,7 @@ export interface Announcement {
   id: string;
   eyebrow: string;
   title: string;
-  description: React.ReactNode;
+  description?: React.ReactNode;
   media?: React.ReactNode;
   action?: { label: string; href?: string; external?: boolean; onClick?: () => void };
 }
@@ -128,7 +128,7 @@ export const Announcements = ({
                 <p className={styles.eyebrow}>{item.eyebrow}</p>
                 <h3 className={styles.title}>{item.title}</h3>
                 <DialogDescription asChild>
-                  <div className={styles.description}>{item.description}</div>
+                  {item.description && <div className={styles.description}>{item.description}</div>}
                 </DialogDescription>
                 {item.action &&
                   (item.action.href ? (

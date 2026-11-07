@@ -43,6 +43,30 @@
       "category": "Visual"
     },
     {
+      "id": "container-defaults",
+      "title": "Frame tables and lists; keep standalone cards plain",
+      "instruction": "Tables are framed: DataTable always sits in the tint frame, and only a table embedded in another surface uses the frameless native Table. Lists default to framed and change case by case. A standalone Card is plain, the default, or no card at all; set variant=\"framed\" only for emphasis, such as the org overview product cards, or for a section card that heads part of a page, such as a detail sidecar or a settings section.",
+      "good": "A DataTable in its frame on a list page, a plain Card for a standalone summary, and <Card variant=\"framed\" title=\"Details\"> in a DetailLayout sidecar.",
+      "avoid": "A framed Card wrapped around every block on a page, or a DataTable placed inside a framed Card so two frames nest.",
+      "detect": {
+        "by": "review",
+        "how": "Check each Card that sets variant framed is emphasis or a section card, and that no frame nests inside another."
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "theme-scheme",
+      "title": "Branch on the scheme, not the theme name",
+      "instruction": "Themes are named palettes (peach, pale, dark, dark-alt) declared in tokens.json themes.list, each with a light or dark scheme. Anything that differs between light and dark, such as an on-light logo, a chart cursor, a toast theme or an opacity swap, reads the scheme: [data-scheme=\"dark\"] in CSS and useV4Scheme() in code. A new theme lists only the tokens it overrides and inherits the rest.",
+      "good": ":global(.v4[data-scheme=\"dark\"]) .segment, or useV4Scheme() === \"light\" ? onLight : image.",
+      "avoid": ".v4[data-theme=\"dark\"] in a stylesheet, which misses dark-alt, or a theme name compared against light.",
+      "detect": {
+        "by": "lint",
+        "check": "theme-name-branch"
+      },
+      "category": "Visual"
+    },
+    {
       "id": "line-roles",
       "title": "Use line-soft for edges and line for standalone rules",
       "instruction": "line-soft is the default border: the outward edge of every inset surface, card, plain list, table, popover, dialog and bordered tile or badge, the app shell chrome (the AppInset island, the band rule, the sidebar edge and separators) and every divider that touches one of those edges, such as row hairlines, cell dividers and dialog head and footer rules. Reserve line for a standalone rule that touches no other border: a section rule, the band's divider marks, a lone hr, a tree guide, the tab track, chart axes and grid lines.",
@@ -111,6 +135,18 @@
         "by": "review"
       },
       "category": "Interaction"
+    },
+    {
+      "id": "strategic-descriptions",
+      "title": "Use descriptions strategically",
+      "instruction": "Descriptions are optional, and a good one carries information the title cannot. Use them where they help: a one-sentence page lede, optionally ending in a Docs link; a one-line dialog or sheet subtitle that scopes its content; short lines that tell the cards in a set apart; and secondary row lines that carry a state or a value. Keep flavor that orients people. Do not write text that restates the title, a lede longer than one sentence, or a marketing tagline, and trim existing copy, including copy ported from main, to that standard rather than deleting it wholesale.",
+      "good": "Billing with Manage your plan, payment method and invoices. as its one-line subtitle; plan cards whose short lines say who each plan is for; a row reading Visa ending in 6008.",
+      "avoid": "Group details under a Details title, a three-sentence page intro, or a tagline such as Your team's complete security toolkit.",
+      "detect": {
+        "by": "review",
+        "how": "Read each description: keep it if it scopes, distinguishes, states a value or orients in one sentence; cut it if it restates the title or sells."
+      },
+      "category": "Copy"
     },
     {
       "id": "plain-task-copy",

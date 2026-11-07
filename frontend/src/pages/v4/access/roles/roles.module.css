@@ -198,7 +198,7 @@
 .templateItem:hover {
   background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
 }
-:global(.v4[data-theme="dark"]) .templateItem:hover {
+:global(.v4[data-scheme="dark"]) .templateItem:hover {
   background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover-dark), transparent);
 }
 .templateItem:focus-visible {

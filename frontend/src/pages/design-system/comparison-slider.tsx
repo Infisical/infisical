@@ -1,6 +1,6 @@
 import { type KeyboardEvent, type PointerEvent, useLayoutEffect, useRef, useState } from "react";
 
-import { useV4Theme } from "@app/components/v4/scope";
+import { useV4Scheme, useV4Theme } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 
@@ -15,7 +15,8 @@ export type ComparisonSliderProps = {
 const clamp = (value: number) => Math.min(100, Math.max(0, value));
 
 export const ComparisonSlider = ({ title, before, href }: ComparisonSliderProps) => {
-  const theme = useV4Theme() ?? "light";
+  const theme = useV4Theme() ?? "peach";
+  const scheme = useV4Scheme() ?? "light";
   const [position, setPosition] = useState(50);
   const stage = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -29,7 +30,7 @@ export const ComparisonSlider = ({ title, before, href }: ComparisonSliderProps)
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  const shot = before[theme] ?? before.light ?? before.dark;
+  const shot = before[scheme] ?? before.light ?? before.dark;
   const frameSrc = `${href}${href.includes("?") ? "&" : "?"}theme=${theme}`;
   const move = (event: PointerEvent<HTMLElement>) => {
     const box = stage.current?.getBoundingClientRect();

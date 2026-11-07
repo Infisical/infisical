@@ -111,6 +111,7 @@ Exports: List, ListRow, ListSection, ListHeader, ListFooter, DataList. Source Ty
 - Resolved rows stay in place on a quieter fill: row-done inside framed and plain surfaces, row-done-card (half the tint) for segmented cards, and row-done-divided (translucent ink, quieter than hover) for divided rows on the page.
 - segmented and divided align the header, section heads and footer with the row content at surface-inset-sm. Every ground, gap, rule, hover, press and resolved fill of a variant lives here, so composites built on List (ApprovalQueue, ActivityLog, AccessList) inherit it.
 - Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.
+- framed is the default and the right choice for most standalone lists. Pick another variant case by case: plain or bare inside a surface that already has an edge, segmented or divided for a feed or queue that is the page's main content.
 - The title line never wraps: the title shrinks and ends in an ellipsis, and the meta keeps its width at the top right of the title's first line.
 - Selection skips disabled and locked rows. Current details and bulk selection remain independent.
 - Loading appends placeholders below retained rows; sections, empty and footer compose.

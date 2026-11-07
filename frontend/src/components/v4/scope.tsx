@@ -3,27 +3,32 @@ import { createPortal } from "react-dom";
 import { MotionConfig } from "motion/react";
 
 import { watchScrollEdges } from "./lib/scroll-edges";
+import { defaultV4Theme, toV4Theme, v4ThemeScheme } from "./lib/theme-registry";
+import type { V4Scheme } from "./lib/themes";
 import { cn } from "./lib/utils";
 
-type Theme = "light" | "dark";
 const PortalContainerContext = React.createContext<HTMLElement | null | undefined>(undefined);
-const ThemeContext = React.createContext<Theme | undefined>(undefined);
+const ThemeContext = React.createContext<string | undefined>(undefined);
 const CollisionBoundaryContext = React.createContext<HTMLElement | undefined>(undefined);
 const ToastLayerContext = React.createContext<HTMLElement | null>(null);
 
 export const useV4PortalContainer = () => React.useContext(PortalContainerContext);
 export const useV4CollisionBoundary = () => React.useContext(CollisionBoundaryContext);
 export const useV4Theme = () => React.useContext(ThemeContext);
+export const useV4Scheme = (): V4Scheme | undefined => {
+  const theme = useV4Theme();
+  return theme ? v4ThemeScheme(theme) : undefined;
+};
 export const useV4ToastLayer = () => React.useContext(ToastLayerContext);
 
-function inheritedTheme(node: HTMLElement, fallback: Theme | undefined): Theme {
+function inheritedTheme(node: HTMLElement, fallback: string | undefined): string {
   let ancestor = node.parentElement;
   while (ancestor) {
-    const value = ancestor.getAttribute("data-theme");
-    if (value === "light" || value === "dark") return value;
+    const value = toV4Theme(ancestor.getAttribute("data-theme"));
+    if (value) return value;
     ancestor = ancestor.parentElement;
   }
-  return fallback ?? "light";
+  return fallback ?? defaultV4Theme.light;
 }
 
 export function V4Scope({
@@ -34,7 +39,7 @@ export function V4Scope({
   ref: forwardedRef,
   ...props
 }: React.ComponentPropsWithoutRef<"div"> & {
-  theme?: Theme;
+  theme?: string;
   portalContainer?: HTMLElement | null;
 } & {
   ref?: React.Ref<HTMLDivElement>;
@@ -43,8 +48,9 @@ export function V4Scope({
   const [wrapper, setWrapper] = React.useState<HTMLDivElement | null>(null);
   const [container, setContainer] = React.useState<HTMLDivElement | null>(null);
   const [toastLayer, setToastLayer] = React.useState<HTMLDivElement | null>(null);
-  const [inherited, setInherited] = React.useState<Theme>();
-  const resolvedTheme = theme ?? inherited ?? parentTheme ?? "light";
+  const [inherited, setInherited] = React.useState<string>();
+  const resolvedTheme = toV4Theme(theme) ?? inherited ?? parentTheme ?? defaultV4Theme.light;
+  const scheme = v4ThemeScheme(resolvedTheme);
   const assignWrapper = React.useCallback(
     (node: HTMLDivElement | null) => {
       setWrapper(node);
@@ -98,18 +104,25 @@ export function V4Scope({
                 ref={assignWrapper}
                 className={cn("v4", className)}
                 data-theme={resolvedTheme}
+                data-scheme={scheme}
               >
                 {children}
               </div>
               {portalContainer !== null &&
                 createPortal(
                   <>
-                    <div ref={setContainer} className="v4" data-theme={resolvedTheme} />
+                    <div
+                      ref={setContainer}
+                      className="v4"
+                      data-theme={resolvedTheme}
+                      data-scheme={scheme}
+                    />
                     {/* After the overlay container, so a toast paints above every sheet and dialog on the same z-50 layer. */}
                     <div
                       ref={setToastLayer}
                       className="v4"
                       data-theme={resolvedTheme}
+                      data-scheme={scheme}
                       data-slot="v4-toast-layer"
                     />
                   </>,

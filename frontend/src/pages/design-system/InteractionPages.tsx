@@ -3,13 +3,7 @@ import { useState } from "react";
 import { AnimatedCollapse } from "@app/components/v4/ui/animated-collapse";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger
-} from "@app/components/v4/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@app/components/v4/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,7 +69,6 @@ export const MotionPage = () => {
               </DialogTrigger>
               <DialogContent>
                 <DialogTitle>Rotate secret</DialogTitle>
-                <DialogDescription>Watch it close faster than it opened.</DialogDescription>
               </DialogContent>
             </Dialog>
           </ExampleCell>

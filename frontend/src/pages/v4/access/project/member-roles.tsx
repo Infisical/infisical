@@ -334,7 +334,7 @@ export const MemberRolesSection = ({
 
   return (
     <>
-      <Card>
+      <Card variant="framed">
         <CardHeader>
           <CardTitle>Project roles</CardTitle>
           {!isSelf && member.roles.length > 0 && (

@@ -163,7 +163,8 @@ export const baselineOverlays = [
     id: "dialog",
     title: "Dialog",
     group: "Overlays",
-    summary: "Edit or inspect a task in a modal with a title and description.",
+    summary:
+      "Edit or inspect a task in a modal with a title and, only when it adds information, a short description.",
     sourceFiles: [
       "src/components/v4/ui/dialog.tsx",
       "src/components/v4/lib/overlay-pending.ts",
@@ -192,7 +193,7 @@ export const baselineOverlays = [
       "For a form, route onOpenChange(false) through useDiscardChangesGuard so a dirty dialog asks with DiscardChangesAlertDialog before it closes."
     ],
     accessibility: [
-      "Title and Description name the dialog. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog.",
+      "DialogTitle names the dialog. DialogDescription is optional: use it as a one-line subtitle that scopes the dialog, never to restate the title. Radix links aria-describedby only while a Description is mounted, so a title-only dialog needs nothing extra and logs no warning. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog.",
       "A focus ring is never clipped by the scroll region under the pinned header or above the pinned footer: the content pad clears the ring of the first and last control, and Tab scrolls a control the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) inside either edge."
     ],
     limitations: [
@@ -260,7 +261,7 @@ export const baselineOverlays = [
     ],
     guidance: {
       use: [
-        "Keep a named DialogTitle and useful description, let the task owner manage pending/error/open state and keep the failed draft inside the dialog."
+        "Keep a named DialogTitle, add a one-line scoping description where it helps, let the task owner manage pending/error/open state and keep the failed draft inside the dialog."
       ],
       avoid: [
         "Wrap an async submit in an unconditional close control or remove the only close path without a deliberate pending policy."
@@ -689,7 +690,7 @@ export const baselineOverlays = [
       "pending on SheetContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close and SheetClose while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the sheet. Route onOpenChange(false) through useDiscardChangesGuard so a dirty form asks with DiscardChangesAlertDialog first."
     ],
     accessibility: [
-      "Provide SheetTitle and SheetDescription. Focus stays in the sheet and returns to the trigger. Escape inside an open editor closes the editor before the sheet.",
+      "Provide SheetTitle. SheetDescription is optional: use it as a one-line subtitle that scopes the sheet, never to restate the title. Radix links aria-describedby only while a Description is mounted, so a title-only sheet needs nothing extra and logs no warning. Focus stays in the sheet and returns to the trigger. Escape inside an open editor closes the editor before the sheet.",
       "A focus ring is never clipped by the scroll region under the pinned header or above the pinned footer: SheetBody's inset clears the ring of the first and last control, and Tab scrolls a control the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) inside either edge."
     ],
     limitations: [

@@ -411,6 +411,7 @@ export const OrgMemberDetail = () => {
           asideLabel="Details"
           aside={
             <Card
+              variant="framed"
               title="Details"
               action={
                 !self && (

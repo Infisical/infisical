@@ -262,7 +262,7 @@
   box-shadow: var(--v4-shadow-raised);
   color: var(--v4-ink);
 }
-:global(.v4[data-theme="dark"]) .railSpace[aria-selected="true"] {
+:global(.v4[data-scheme="dark"]) .railSpace[aria-selected="true"] {
   border-color: var(--v4-selected-border);
   background: var(--v4-selected-surface);
   box-shadow: none;
@@ -284,7 +284,7 @@
 .railSpace[aria-selected="true"] .railDot {
   box-shadow: 0 0 0 2px var(--v4-pop);
 }
-:global(.v4[data-theme="dark"]) .railSpace[aria-selected="true"] .railDot {
+:global(.v4[data-scheme="dark"]) .railSpace[aria-selected="true"] .railDot {
   box-shadow: 0 0 0 2px var(--v4-selected-surface);
 }
 .navigation {

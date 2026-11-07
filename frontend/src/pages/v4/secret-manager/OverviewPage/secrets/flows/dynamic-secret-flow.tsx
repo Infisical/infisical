@@ -10,7 +10,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
-import { useV4Theme } from "@app/components/v4/scope";
+import { useV4Scheme } from "@app/components/v4/scope";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,7 +87,7 @@ const ON_LIGHT_LOGOS: Record<string, string> = {
 };
 
 function ProviderLogo({ provider }: { provider: DynamicSecretProviders }) {
-  const theme = useV4Theme();
+  const theme = useV4Scheme();
   const { providerFamily, logoFileName } =
     getDynamicSecretProviderRuntimeMetadata(provider).presentation;
   return (

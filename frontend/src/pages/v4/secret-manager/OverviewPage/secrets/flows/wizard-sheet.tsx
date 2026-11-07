@@ -1,6 +1,6 @@
 import { type ReactNode, useState } from "react";
 
-import { useV4Theme } from "@app/components/v4/scope";
+import { useV4Scheme } from "@app/components/v4/scope";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Steps } from "@app/components/v4/ui/multi-step";
 import {
@@ -16,7 +16,7 @@ import {
 import styles from "./flows.module.css";
 
 export function ProviderLogo({ image, size = 20 }: { image?: string; size?: number }) {
-  const theme = useV4Theme();
+  const theme = useV4Scheme();
   const onLight = image?.replace(/\.(png|svg)$/, ".on-light.$1");
   const [failed, setFailed] = useState<string[]>([]);
   const candidates = [theme === "light" ? onLight : undefined, image].filter(

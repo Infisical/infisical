@@ -9,7 +9,7 @@ import {
   type ToasterProps
 } from "sonner";
 
-import { useV4Theme, useV4ToastLayer } from "../scope";
+import { useV4Scheme, useV4ToastLayer } from "../scope";
 import { Icon } from "./icon";
 import { Spinner } from "./spinner";
 
@@ -76,7 +76,7 @@ const useOwnsToaster = (id: string) => {
 };
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const resolvedTheme = useV4Theme();
+  const resolvedTheme = useV4Scheme();
   const layer = useV4ToastLayer();
   const owns = useOwnsToaster(props.id ?? V4_TOASTER_ID);
   if (!owns) return null;
