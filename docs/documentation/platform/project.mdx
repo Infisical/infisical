@@ -51,3 +51,30 @@ Each project has its own settings panel, with options that vary depending on the
 setup and configuration for environments, tags, behaviors, encryption strategies, and other options.
 
 Project settings are fully independent and reflect the capabilities of the associated product.
+
+## Deleting a project
+
+You delete a project from its project settings, under **Danger Zone**. Infisical deletes most project types immediately, but a Secrets Management project gets a 14-day grace period. During the grace period, the project is inaccessible and its syncs, rotations, and integrations stop running, but its secrets, environments, and history are preserved. Other projects can't use the project's slug until Infisical permanently deletes it.
+
+When you delete a Secrets Management project, the **Schedule Deletion** dialog shows the date Infisical will permanently delete it. Select **Confirm** to start the grace period, or select **Delete Now** to permanently delete the project right away.
+
+<Note>
+  If your organization allows cross-project secret sharing, you can't delete a project while it shares secrets with other projects. Revoke their access in **Project Settings** > **Policies** > **Cross-Project Secret Sharing** first.
+</Note>
+
+### Restore a deleted project
+
+Organization members with the `access-all-projects` [organization permission](/internals/permissions/organization-permissions#admin-tools), such as organization admins, can restore a Secrets Management project during its grace period. The project comes back with the same slug, so secret references and configurations that use the slug keep working.
+
+<Steps>
+  <Step>
+    In your organization, open the **Secrets Management** project list and find the project under **Recently Deleted**.
+  </Step>
+  <Step>
+    Open the project's options menu and select **Restore Project**. To permanently delete the project without waiting for the grace period to end, select **Delete Now** instead.
+  </Step>
+</Steps>
+
+<Note>
+  Infisical refuses a restore that would put your organization over its plan's project, secret sync, or honey token limit. Remove existing resources or upgrade your plan before the grace period ends.
+</Note>

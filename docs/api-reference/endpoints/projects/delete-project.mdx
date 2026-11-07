@@ -4,5 +4,5 @@ openapi: "DELETE /api/v1/projects/{projectId}"
 ---
 
 <Warning>
-    This operation is irreversible. All data associated with the project will be deleted. Please use with caution.
+    By default, a Secrets Management project stays restorable for 14 days before Infisical permanently deletes it. Set `hardDelete` to `true` to skip the grace period. Infisical permanently deletes other project types right away. Permanently deleted projects can't be recovered.
 </Warning>
