@@ -1,0 +1,41 @@
+.progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  height: var(--v4-space-2);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--v4-duration-moderate) var(--v4-ease-fade);
+}
+.progress[data-state="loading"] {
+  opacity: 1;
+  transition-delay: var(--v4-duration-slow);
+}
+.bar {
+  height: 100%;
+  background: var(--v4-ink);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.progress[data-state="loading"] > .bar {
+  animation: trickle calc(var(--v4-duration-slow) * 40) var(--v4-ease-exit) forwards;
+}
+.progress[data-state="done"] > .bar {
+  transform: scaleX(1);
+}
+@keyframes trickle {
+  to {
+    transform: scaleX(0.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress,
+  .progress[data-state="loading"] {
+    transition-duration: 0s;
+  }
+  .progress[data-state="loading"] > .bar {
+    animation: none;
+    transform: scaleX(1);
+  }
+}

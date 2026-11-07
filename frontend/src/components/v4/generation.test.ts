@@ -22,7 +22,8 @@ const generateWith = (file: string, from: string, to: string) => {
       "src/components/v4",
       "src/pages/design-system/examples",
       "package.json",
-      ".oxfmtrc.json"
+      ".oxfmtrc.json",
+      "index.html"
     ].forEach((entry) => {
       cpSync(path.resolve(entry), path.join(fixture, entry), { recursive: true });
     });

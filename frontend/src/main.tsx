@@ -85,7 +85,13 @@ const router = createRouter({
   defaultErrorComponent: ErrorPage
 });
 
-router.subscribe("onBeforeLoad", ({ pathChanged }) => {
+const isV4Path = (pathname: string) => /^\/v4(?:\/|$)/.test(pathname);
+
+router.subscribe("onBeforeLoad", ({ pathChanged, toLocation }) => {
+  if (isV4Path(toLocation.pathname)) return;
+  // index.html paints the v4 theme's ground on /v4 paths before any JavaScript runs; main's pages
+  // paint their own, so the ground goes as soon as a navigation leaves /v4.
+  document.documentElement.removeAttribute("data-v4-boot");
   if (pathChanged) {
     NProgress.start();
     const timer = setTimeout(() => {
