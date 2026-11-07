@@ -92,7 +92,7 @@ export const roleServiceFactory = ({
     if (!plan?.rbac) {
       throw new BadRequestError({
         message:
-          "Failed to create custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to create custom roles."
+          "Failed to create custom role due to plan RBAC restriction. Upgrade to Infisical Advanced plan to create custom roles."
       });
     }
 
@@ -131,7 +131,7 @@ export const roleServiceFactory = ({
     if (!plan?.rbac) {
       throw new BadRequestError({
         message:
-          "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to update custom roles."
+          "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Advanced plan to update custom roles."
       });
     }
 
