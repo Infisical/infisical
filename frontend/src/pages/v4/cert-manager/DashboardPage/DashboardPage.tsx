@@ -11,6 +11,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
+import { Skeleton } from "@app/components/v4/ui/skeleton";
 import { Heading } from "@app/components/v4/ui/text";
 import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 import {
@@ -156,7 +157,18 @@ export const DashboardPage = () => {
       />
     );
   else if (isStatsPending || !stats)
-    body = <Loader size="page" label="Loading certificate stats" />;
+    body = (
+      <Stack gap={32} role="status" aria-label="Loading certificate stats">
+        <Skeleton height={56} />
+        <Stack gap={16}>
+          <Heading level={2}>Inventory health</Heading>
+          <Grid gap={16} columns="1:2">
+            <Skeleton height={256} />
+            <Skeleton height={256} />
+          </Grid>
+        </Stack>
+      </Stack>
+    );
   else
     body = (
       <Stack gap={32}>
