@@ -1,7 +1,7 @@
 import { useParams } from "@tanstack/react-router";
 
 import { Badge } from "@app/components/v4/ui/badge";
-import { Card } from "@app/components/v4/ui/card";
+import { Card, CardLink } from "@app/components/v4/ui/card";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Item } from "@app/components/v4/ui/item";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
@@ -12,7 +12,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
-import { useResolveV4Href } from "../../resolveV4Href";
 import { productHome, productOf, products, projectBase } from "../../shell/navigation";
 
 const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][] => {
@@ -62,7 +61,6 @@ export const ProjectsPage = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { organization, projects } = useV4Session();
   const { data: stats } = useV4Adapter("org").useProductStats(organization.id);
-  const resolve = useResolveV4Href();
   const demoProject =
     useV4Mode() === "demo"
       ? projects.find((project) => project.type === ProjectType.SecretManager)
@@ -98,9 +96,12 @@ export const ProjectsPage = () => {
             title={
               <Inline gap={8} align="center">
                 <Icon name={product.icon} size={18} />
-                <a href={resolve(`/v4/organizations/${orgId}${productHome(product)}`)}>
+                <CardLink
+                  to="/v4/organizations/$orgId/$"
+                  params={{ orgId, _splat: productHome(product).slice(1) }}
+                >
                   {product.label}
-                </a>
+                </CardLink>
                 {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
               </Inline>
             }
