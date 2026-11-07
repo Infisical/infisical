@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "mix-ink",
+    title: "Softer states and mix ink",
+    description:
+      "Hover, current and selected are about a third softer, and peach mixes them from a warm ink so they blend into its ground.",
+    date: "2026-11-07",
+    commit: "1a59816ab6",
+    page: "palette"
+  },
+  {
     id: "current-selected-mix",
     title: "Softer current and selected",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "3c11d43aee",
     page: "rules"
-  },
-  {
-    id: "approve-accent",
-    title: "Accent Approve",
-    description:
-      "Approve is the accent Button in every ApprovalQueue variant, and resolved rows in divided lists get their own visible fill.",
-    date: "2026-11-06",
-    commit: "578b7519dd",
-    page: "approval-queue"
   }
 ];
