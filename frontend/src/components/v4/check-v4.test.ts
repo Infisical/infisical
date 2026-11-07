@@ -466,6 +466,10 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [
         page,
         "<TableHeader>\n  <TableRow>\n    <TableActionsHead>Actions</TableActionsHead>\n  </TableRow>\n</TableHeader>"
+      ],
+      [
+        page,
+        "<TableRow>\n  <TableCell>{name}</TableCell>\n  <TableActionsCell slots={ROW_ACTION_SLOTS} />\n</TableRow>"
       ]
     ]
   },
