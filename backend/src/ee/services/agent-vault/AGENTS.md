@@ -837,7 +837,11 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   `--no-mcp-servers`: Claude Code loads MCP servers only at start, so an agent can't use one it finds mid-session. `run`
   gets the services list through the confirmed tunnel (from Infisical directly behind an old proxy) and turns each
   ready `mcp` service into a server at its `url` (`type: sse` for the `sse` transport) with a placeholder in
-  `credential.header`, so Claude Code never starts an OAuth sign-in; the proxy replaces it. It goes in as
+  `credential.header`, so Claude Code never starts an OAuth sign-in; the proxy replaces it. It leaves out, with a warning, a server whose
+  URL, header or name contains `$` (Claude Code fills in `${VAR}` from the agent's environment, the proxy URL with the
+  session token included) and one whose host the agent's `NO_PROXY` covers (Claude Code would reach it without the
+  credential; `httpproxy`'s matcher, which like Claude Code never proxies localhost). Its line naming the servers
+  respects `--silent`, and a client that can't be built reports `INFISICAL_CUSTOM_HEADERS` without its value. It goes in as
   `--mcp-config=<json>` right after `claude`: the flag is variadic, so a separate value would also take a prompt passed
   as the first argument, and Claude Code merges it with any `--mcp-config` the user passes. In the eval, S6 agents
   called `mcp__linear__list_issues` directly instead of curling JSON-RPC (3 turns instead of 6). Code that starts agents

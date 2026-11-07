@@ -83,7 +83,11 @@ Most MCP clients load their servers only when they start, so an agent can't add 
 - If you start Claude Code with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI adds the session's MCP servers that are ready to Claude Code with `--mcp-config` (to leave them out, pass [`--no-mcp-servers`](/cli/reference#agent-vault-run--flag-no-mcp-servers))
 - If your code starts the agent another way, build the configuration from the [List session services](/api-reference/endpoints/agent-vault-sessions/list-session-services) endpoint, as the following example shows
 
-For each service whose `type` is `mcp` and whose `status` is `ready`, add a server at the service's `url` with its `transport`. Put a placeholder in the header the proxy sets, `credential.header`, so the agent's MCP client doesn't try to sign in. The proxy replaces the placeholder with the real credential.
+Build one server for each service whose `type` is `mcp` and whose `status` is `ready`:
+
+- Add the server at the service's `url`, with its `transport`
+- Put a placeholder in the header the proxy sets, `credential.header`, so the agent's MCP client doesn't try to sign in (the proxy replaces it with the real credential)
+- Leave out a service whose URL or header contains `$`, because Claude Code fills in `${VAR}` from the agent's environment, so such a URL could send a variable, such as the proxy URL with the session token, to the server
 
 This example builds the value of Claude Code's `--mcp-config` from a session's token. If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with the URL of your instance:
 
@@ -101,6 +105,8 @@ services = requests.get(
 mcp_servers = {}
 for service in services:
     if service["type"] != "mcp" or service["status"] != "ready":
+        continue
+    if "$" in service["url"] or "$" in (service["credential"].get("header") or ""):
         continue
     server = {"type": "sse" if service.get("transport") == "sse" else "http", "url": service["url"]}
     header = service["credential"].get("header")
