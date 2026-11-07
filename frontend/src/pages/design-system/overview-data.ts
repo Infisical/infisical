@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "dark-alt-two-colors",
+    title: "Dark alt, two colors",
+    description:
+      "Dark alt now differs from Dark only in its sidebar and inset; every other color inherits.",
+    date: "2026-11-07",
+    commit: "4da1f58249",
+    page: "colors"
+  },
+  {
     id: "tooltip-pass-through",
     title: "Pass-through tooltips",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "d1c73789d8",
     page: "combobox"
-  },
-  {
-    id: "actions-tail",
-    title: "Actions tail",
-    description:
-      "Striped rows paint across pinned cells, the actions tail end-aligns at row-target height and destructive actions go last in More.",
-    date: "2026-11-06",
-    commit: "d05df39e77",
-    page: "table"
   }
 ];
