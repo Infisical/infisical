@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "current-selected-mix",
+    title: "Softer current and selected",
+    description:
+      "The current sidebar item and dark selected rows sit just past hover, tuned by current-mix and selected-mix in the palette playground.",
+    date: "2026-11-07",
+    commit: "c58b6c81ec",
+    page: "palette"
+  },
+  {
     id: "pinned-cells",
     title: "Pinned cells match their row",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "578b7519dd",
     page: "approval-queue"
-  },
-  {
-    id: "list-variants",
-    title: "List variants",
-    description:
-      "List owns the framed, plain, bare, segmented and divided variants with header, section and footer parts, and ApprovalQueue inherits them.",
-    date: "2026-11-06",
-    commit: "cdb1507383",
-    page: "list"
   }
 ];
