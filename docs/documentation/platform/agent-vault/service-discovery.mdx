@@ -76,6 +76,43 @@ curl -H "Authorization: Bearer <session-token>" https://app.infisical.com/api/v1
 
 A list you get this way doesn't include a traffic policy, because the request didn't come through a proxy.
 
+## Give the agent its MCP servers
+
+Most MCP clients load their servers only when they start, so an agent can't add an MCP server it finds in the list and use its tools in the same session. To give the agent those tools from the start, add the session's MCP servers to the agent's MCP configuration before it starts:
+
+- If you start Claude Code with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI adds the session's MCP servers that are ready to Claude Code with `--mcp-config` (to leave them out, pass [`--no-mcp-servers`](/cli/reference#agent-vault-run--flag-no-mcp-servers))
+- If your code starts the agent another way, build the configuration from the [List session services](/api-reference/endpoints/agent-vault-sessions/list-session-services) endpoint, as the following example shows
+
+For each service whose `type` is `mcp` and whose `status` is `ready`, add a server at the service's `url` with its `transport`. Put a placeholder in the header the proxy sets, `credential.header`, so the agent's MCP client doesn't try to sign in. The proxy replaces the placeholder with the real credential.
+
+This example builds the value of Claude Code's `--mcp-config` from a session's token. If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with the URL of your instance:
+
+```python
+import json
+
+import requests
+
+services = requests.get(
+    "https://app.infisical.com/api/v1/agent-vault/session/services",
+    headers={"Authorization": f"Bearer {session_token}"},
+    timeout=30,
+).json()["services"]
+
+mcp_servers = {}
+for service in services:
+    if service["type"] != "mcp" or service["status"] != "ready":
+        continue
+    server = {"type": "sse" if service.get("transport") == "sse" else "http", "url": service["url"]}
+    header = service["credential"].get("header")
+    if service["credential"]["addedByProxy"] and header:
+        server["headers"] = {header: "Bearer agent-vault"}
+    mcp_servers[service["name"]] = server
+
+mcp_config = json.dumps({"mcpServers": mcp_servers})
+```
+
+Then start Claude Code with `--mcp-config` set to `mcp_config`.
+
 ## The built-in skill
 
 `infisical-agent-vault` is a [skill](/documentation/platform/agent-vault/skills) that Agent Vault provides for every agent. The skill tells the agent to:

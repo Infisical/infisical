@@ -518,6 +518,8 @@ To run an agent such as Claude Code, start the sandbox from an E2B template that
 
 The agent calls its APIs the same way it does without Agent Vault, and E2B sends the connections to the proxy, so the agent doesn't need `HTTPS_PROXY` or `infisical agent-vault run`.
 
+Claude Code loads MCP servers only when it starts. To give it the session's MCP servers, build its `--mcp-config` from the session's services, as [Give the agent its MCP servers](/documentation/platform/agent-vault/service-discovery#give-the-agent-its-mcp-servers) shows.
+
 ## Security considerations
 
 ### Network access from the sandbox

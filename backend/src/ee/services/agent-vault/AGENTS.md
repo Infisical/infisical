@@ -833,6 +833,15 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   the command alone, with no pipe. Agents follow its wording closely: a gate line ending "Tell the user." made them ask
   before acting on unrelated tasks, and one pointing at `SSL_CERT_FILE` sent them to print their environment, proxy
   URL and session token included. Rerun the eval after any change to it.
+- **`agent-vault run` gives Claude Code the session's MCP servers** when the agent's command is `claude`, unless
+  `--no-mcp-servers`: Claude Code loads MCP servers only at start, so an agent can't use one it finds mid-session. `run`
+  gets the services list through the confirmed tunnel (from Infisical directly behind an old proxy) and turns each
+  ready `mcp` service into a server at its `url` (`type: sse` for the `sse` transport) with a placeholder in
+  `credential.header`, so Claude Code never starts an OAuth sign-in; the proxy replaces it. It goes in as
+  `--mcp-config=<json>` right after `claude`: the flag is variadic, so a separate value would also take a prompt passed
+  as the first argument, and Claude Code merges it with any `--mcp-config` the user passes. In the eval, S6 agents
+  called `mcp__linear__list_issues` directly instead of curling JSON-RPC (3 turns instead of 6). Code that starts agents
+  without `run` builds the same configuration from the list (docs: "Give the agent its MCP servers").
 - **Session-endpoint requests go in the session log**, with the proxy's Infisical as the host and no service: the
   services list with decision `discovery` (**Listed Services**) and the skills with `skills` (**Fetched Skills**). Each
   forwarded endpoint gets its own decision, so a new one on the allowlist needs a value, a label, and a docs row. The
