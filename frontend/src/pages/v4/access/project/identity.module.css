@@ -20,22 +20,6 @@
 .lock {
   display: inline-flex;
 }
-.roleRow {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--v4-space-8);
-}
-.roleField {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.durationField {
-  flex: 0 0 176px;
-  width: 176px;
-}
-.durationField [data-slot="button"] {
-  width: 100%;
-}
 .metadataBox {
   display: flex;
   flex-direction: column;

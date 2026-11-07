@@ -87,6 +87,42 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "button-corner-badge",
+    title: "Button corner badge",
+    description:
+      "A Button can carry a small Badge on its top-right corner, such as Last used, without changing its size or hit area.",
+    date: "2026-11-07",
+    commit: "7ff23542fa",
+    page: "button"
+  },
+  {
+    id: "dark-alt-two-colors",
+    title: "Dark alt, two colors",
+    description:
+      "Dark alt now differs from Dark only in its sidebar and inset; every other color inherits.",
+    date: "2026-11-07",
+    commit: "4da1f58249",
+    page: "colors"
+  },
+  {
+    id: "tooltip-pass-through",
+    title: "Pass-through tooltips",
+    description:
+      "Tooltips close as the pointer leaves, never catch clicks, and no longer reopen when focus returns from a menu, dialog or sheet.",
+    date: "2026-11-07",
+    commit: "7371831b2f",
+    page: "tooltip"
+  },
+  {
+    id: "no-nested-frames",
+    title: "No frames in frames",
+    description:
+      "A table, list or card inside a framed container drops its own frame, and a plain Card pads its content like a framed one.",
+    date: "2026-11-07",
+    commit: "0e62ac760f",
+    page: "card"
+  },
+  {
     id: "link-rows-grid",
     title: "Link rows and 1:2 grid",
     description:
@@ -183,41 +219,6 @@ export const recentChanges: {
       "Native tables and DataTable share one selection hook, and icon columns that double as selection can drop the divider.",
     date: "2026-11-06",
     commit: "75c373c9f0",
-    page: "table"
-  },
-  {
-    id: "combobox-creation",
-    title: "Create from a picker",
-    description:
-      "A Combobox can create the entity it picks in a dialog, starting with app connections, so nobody leaves the flow.",
-    date: "2026-11-06",
-    commit: "d1c73789d8",
-    page: "combobox"
-  },
-  {
-    id: "actions-tail",
-    title: "Actions tail",
-    description:
-      "Striped rows paint across pinned cells, the actions tail end-aligns at row-target height and destructive actions go last in More.",
-    date: "2026-11-06",
-    commit: "d05df39e77",
-    page: "table"
-  },
-  {
-    id: "toast-disabled",
-    title: "Toasts and disabled reasons",
-    description:
-      "The shell hosts toasts, and a disabled Button explains why in a tooltip through disabledReason.",
-    date: "2026-11-05",
-    commit: "32e2402f30",
-    page: "toast"
-  },
-  {
-    id: "grouped-rows",
-    title: "Grouped rows",
-    description: "DataTable groups rows under header rows and nests one level of child rows.",
-    date: "2026-11-05",
-    commit: "94a2ac115f",
     page: "table"
   }
 ];

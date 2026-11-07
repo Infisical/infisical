@@ -18,16 +18,19 @@ export const baselineActions = [
     behavior: [
       "Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the light accent face (one yellow in both themes) with owned inset illumination and an on-accent label in both themes, for a page's one primary create action in its header or toolbar and for approval and grant moments, never as a second primary. Ghost hover is ink at opacity-hover (6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad-fill fill and border with a white on-bad label at 600 in both themes, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.",
       "The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. icon-row is the table row action: a size-target-row (28px) box with a size-glyph (16px) glyph, separate from icon-sm so field and nested actions keep their 12 and 14px glyphs. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target.",
-      "Every variant except link keeps the default cursor, also when asChild renders an anchor: its fill, border or hover ground already shows that it acts. link takes the pointer cursor, like any text link."
+      "Every variant except link keeps the default cursor, also when asChild renders an anchor: its fill, border or hover ground already shows that it acts. link takes the pointer cursor, like any text link.",
+      "cornerBadge pins a small Badge to the top-right corner: its end edge sits on the button's end edge and its middle on the top border, so it straddles the border without changing the button's size or hit area. It takes no pointer events, stays put while the label presses or loads, and sits on a surface ground so a translucent tone never shows the border through it."
     ],
     accessibility: [
       "Use a real button for an action and asChild with an anchor for navigation. Name icon-only buttons. Native disabled removes activation, while loading remains focusable and exposes busy/disabled semantics.",
       "disabledReason disables the action without native disabled: the button sets aria-disabled, stays in the tab order, shows the reason in a Tooltip on hover and keyboard focus, and carries it as aria-description. Click, Enter, Space and form submission are blocked, so a submit Button with a reason never submits its form. It dims like native disabled, and the ink, accent and destructive variants keep their own disabled recipe.",
+      "cornerBadge renders inside the button, so its text joins the accessible name after the label, as in Continue with Google Last used. Write it as a short word or two that reads well in that position.",
       "The rendered button defaults to type button, so a Button inside a form never submits it by accident. Set type submit on the one Button that submits; an explicit type always wins. With asChild, Button sets no type and forwards only the one you pass, so an anchor child never gets a type attribute."
     ],
     limitations: [
       "The owner runs the operation and updates loading. Button does not start requests, show result notifications or impose a destructive confirmation.",
       "Button has no read-only prop. Use disabled for unavailable actions, or show read-only content without an action.",
+      "cornerBadge is not portaled: it overhangs the button's top edge by half the small Badge height (size-badge-sm / 2) and stays within its inline edges. An ancestor with overflow hidden clips that half unless it leaves that much room above the button. Pass a Badge with size sm; Button does not resize it.",
       "With disabledReason set the reason replaces any label tooltip. Do not wrap the Button in another Tooltip while it has a reason: pass the wrapper content only while the action is enabled, as in Tooltip content={reason ? undefined : label}."
     ],
     examples: [
@@ -60,6 +63,12 @@ export const baselineActions = [
         title: "Inside a form",
         module: "./examples/button/form-type.tsx",
         states: ["default", "success"]
+      },
+      {
+        id: "corner-badge",
+        title: "Corner badge",
+        module: "./examples/button/corner-badge.tsx",
+        states: ["default"]
       }
     ],
     coverage: [

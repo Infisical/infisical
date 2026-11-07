@@ -218,6 +218,65 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, 'const removed = { label: "Remove user", icon: "trash" };']
     ]
   },
+  "nested-frame": {
+    bad: [
+      [
+        example,
+        '<Card variant="framed" title="Roles">\n  <List variant="framed" label="Roles">\n    {rows}\n  </List>\n</Card>'
+      ],
+      [
+        example,
+        '<Card variant="framed" title="Overview">\n  <Card title="Inner">\n    <Card variant={"framed"}>Nested</Card>\n  </Card>\n</Card>'
+      ],
+      [
+        example,
+        '<DataTable\n  rows={rows}\n  columns={[{ id: "a", cell: () => <Card variant="framed">x</Card> }]}\n/>'
+      ],
+      [
+        example,
+        '<List label="Queues">\n  <ApprovalQueue variant="framed" requests={requests} />\n</List>'
+      ]
+    ],
+    good: [
+      [
+        example,
+        '<Card variant="framed" title="Roles">\n  <DataTable rows={rows} columns={columns} />\n</Card>'
+      ],
+      [
+        example,
+        '<Card variant="framed" title="A">a</Card>\n<Card variant="framed" title="B">b</Card>'
+      ],
+      [
+        example,
+        '<List variant="plain" label="Plans">\n  <Card variant="framed">Plan</Card>\n</List>'
+      ],
+      [example, '<Card title="Summary">\n  <List variant="framed" label="Rows" />\n</Card>']
+    ]
+  },
+  "interactive-tooltip": {
+    bad: [
+      [
+        example,
+        '<Tooltip content={<a href="/docs">Read the docs</a>}>\n  <Button>Help</Button>\n</Tooltip>'
+      ],
+      [
+        example,
+        "<Tooltip>\n  <TooltipTrigger asChild>\n    <Button>Key</Button>\n  </TooltipTrigger>\n  <TooltipContent>\n    <CopyButton value={id} />\n  </TooltipContent>\n</Tooltip>"
+      ],
+      [
+        example,
+        "<Tooltip\n  content={\n    <span onClick={() => setOpen(true)}>Details</span>\n  }\n>\n  <span>Status</span>\n</Tooltip>"
+      ]
+    ],
+    good: [
+      [example, '<Tooltip content="Export CSV">\n  <Button>Export</Button>\n</Tooltip>'],
+      [example, "<Tooltip content={<code>{id}</code>}>\n  <a href={href}>Key</a>\n</Tooltip>"],
+      [
+        example,
+        "<HoverCard>\n  <HoverCardTrigger asChild>\n    <Button>Key</Button>\n  </HoverCardTrigger>\n  <HoverCardContent>\n    <CopyButton value={id} />\n  </HoverCardContent>\n</HoverCard>"
+      ]
+    ]
+  },
   "disabled-in-tooltip": {
     bad: [
       [

@@ -81,6 +81,7 @@ function Button({
   iconOnly = false,
   selected,
   disabledReason,
+  cornerBadge,
   children,
   onClickCapture,
   onPointerDownCapture,
@@ -107,6 +108,8 @@ function Button({
     selected?: boolean;
     /** Disables the action and says why: it stays focusable, shows the reason in a tooltip and exposes it as the accessible description. */
     disabledReason?: string;
+    /** A small Badge pinned to the top-right corner, straddling the border. It is part of the accessible name and never changes the button's size or hit area. */
+    cornerBadge?: React.ReactNode;
   } & { ref?: React.Ref<React.ComponentRef<"button">> }) {
   const Comp = asChild ? MotionSlot : MotionButton;
   const loading = loadingProp ?? false;
@@ -153,6 +156,11 @@ function Button({
       </>
     );
   };
+  const badge = cornerBadge ? (
+    <span data-slot="button-corner-badge" className={geometry.cornerBadge}>
+      {cornerBadge}
+    </span>
+  ) : null;
   const child =
     asChild &&
     React.isValidElement<{
@@ -173,10 +181,16 @@ function Button({
               }
             }
           : undefined,
-        <span data-press="">{content(children.props.children)}</span>
+        <>
+          <span data-press="">{content(children.props.children)}</span>
+          {badge}
+        </>
       )
     ) : (
-      <span data-press="">{content(children)}</span>
+      <>
+        <span data-press="">{content(children)}</span>
+        {badge}
+      </>
     );
 
   const button = (
@@ -200,6 +214,7 @@ function Button({
       className={cn(
         buttonVariants({ variant, size }),
         iconOnly && geometry.iconOnly,
+        badge && geometry.badged,
         loadingProp !== undefined && !iconOnly && styles.pendable,
         loading && styles.pending,
         className
