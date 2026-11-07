@@ -21,10 +21,11 @@ import {
 
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { orgHref, v4Path } from "../../links";
 import { PageLoader } from "../../shell/project-gate";
 import { withoutDefaults } from "../search-defaults";
 
-const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/approval";
+const ROUTE = v4Path("/organizations/$orgId/projects/secret-management/$projectId/approval");
 
 enum TabSection {
   SecretApprovalRequests = "approval-requests",
@@ -416,7 +417,7 @@ export const SecretApprovalsPage = () => {
   const { data: count } = secrets.useApprovalRequestCount({ projectId });
   const { data: project } = secrets.useProject(projectId);
   const tab = selectedTab || TabSection.SecretApprovalRequests;
-  const base = `/v4/organizations/${orgId}/projects/secret-management/${projectId}/approval`;
+  const base = orgHref(orgId, `/projects/secret-management/${projectId}/approval`);
   const approvalSearch = (nextTab: string, nextRequestId: string) =>
     withoutDefaults(
       { selectedTab: nextTab, requestId: nextRequestId },

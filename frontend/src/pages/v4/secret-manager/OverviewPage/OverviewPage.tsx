@@ -82,6 +82,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { v4Path } from "../../links";
 import { withoutDefaults } from "../search-defaults";
 import { useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
@@ -172,7 +173,7 @@ const sortOptions: { value: string; label: string; field: SortField; direction: 
   ];
 const selectableKinds: ResourceKind[] = ["secret", "folder", "rotation"];
 
-const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/overview";
+const ROUTE = v4Path("/organizations/$orgId/projects/secret-management/$projectId/overview");
 const filterRowTypes: Record<ResourceKind, string> = {
   secret: "secret",
   folder: "folder",

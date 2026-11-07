@@ -45,6 +45,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { orgHref } from "../../links";
 import { productOf, projectBase } from "../../shell/navigation";
 import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
@@ -362,7 +363,10 @@ export const ProjectMembershipsSection = ({
     compare: (a, b) => a.project.name.localeCompare(b.project.name)
   });
   const projectHref = (row: ProjectMembershipRow) =>
-    `/v4/organizations/${orgId}${projectBase(row.project.type, row.project.id)}/access-management?selectedTab=${text.projectTab}`;
+    orgHref(
+      orgId,
+      `${projectBase(row.project.type, row.project.id)}/access-management?selectedTab=${text.projectTab}`
+    );
   const roleLabel = (row: ProjectMembershipRow) =>
     row.roles.length
       ? `${grantLabel(row.roles[0])}${row.roles.length > 1 ? ` (+${row.roles.length - 1})` : ""}`

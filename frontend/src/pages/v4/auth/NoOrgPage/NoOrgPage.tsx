@@ -20,6 +20,7 @@ import {
 } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 
 const PERSONAL_ORG_NAME = "Personal Org";
@@ -58,7 +59,7 @@ const CreateOrgForm = ({ isPreview }: { isPreview: boolean }) => {
     await selectOrg({ organizationId: organization.id });
     localStorage.setItem("orgData.id", organization.id);
     toast.success("Successfully created organization");
-    navigate({ to: "/v4/organizations/$orgId/projects", params: { orgId: organization.id } });
+    navigate({ to: v4Path("/organizations/$orgId/projects"), params: { orgId: organization.id } });
   };
 
   return (
@@ -75,7 +76,7 @@ const CreateOrgForm = ({ isPreview }: { isPreview: boolean }) => {
               onClick={async () => {
                 if (isPreview) return;
                 await logout.mutateAsync();
-                navigate({ to: "/v4/login" });
+                navigate({ to: v4Path("/login") });
               }}
             >
               Log out
@@ -123,13 +124,16 @@ export const NoOrgPage = () => {
       try {
         await selectOrg({ organizationId: organization.id });
         localStorage.setItem("orgData.id", organization.id);
-        navigate({ to: "/v4/organizations/$orgId/projects", params: { orgId: organization.id } });
+        navigate({
+          to: v4Path("/organizations/$orgId/projects"),
+          params: { orgId: organization.id }
+        });
       } catch {
         toast.error(
           "Created your organization, but couldn't open it automatically. Redirecting..."
         );
         await queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
-        navigate({ to: "/v4/login/select-organization" });
+        navigate({ to: v4Path("/login/select-organization") });
       } finally {
         sessionStorage.removeItem(CREATION_STARTED_KEY);
       }

@@ -2,6 +2,7 @@ import { Link, useSearch } from "@tanstack/react-router";
 
 import { Button } from "@app/components/v4/ui/button";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 
 export const RequestNewInvitePage = () => {
@@ -19,7 +20,7 @@ export const RequestNewInvitePage = () => {
       }
     >
       <Button asChild variant="accent" size="lg" className="w-full">
-        <Link to="/v4/login">Go to login</Link>
+        <Link to={v4Path("/login")}>Go to login</Link>
       </Button>
     </AuthPage>
   );

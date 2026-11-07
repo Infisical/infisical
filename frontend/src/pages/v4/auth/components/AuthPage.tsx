@@ -5,6 +5,7 @@ import { PageTitle } from "@app/components/PageTitle";
 import { Button } from "@app/components/v4/ui/button";
 import { Heading, Text } from "@app/components/v4/ui/text";
 
+import { v4Path } from "../../links";
 import { AuthCellField } from "./AuthCellField";
 
 import styles from "../auth.module.css";
@@ -40,7 +41,7 @@ export const AuthPage = ({
       <PageTitle title={pageTitle} />
       <section className={styles.formColumn}>
         <header className={styles.bar}>
-          <Link to="/v4/login" className={styles.brand} aria-label="Infisical">
+          <Link to={v4Path("/login")} className={styles.brand} aria-label="Infisical">
             <span aria-hidden className={styles.mark} />
           </Link>
         </header>

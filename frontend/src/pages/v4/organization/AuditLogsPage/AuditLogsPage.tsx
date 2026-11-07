@@ -35,6 +35,7 @@ import type { Actor, AuditLog, TGetAuditLogsFilter } from "@app/hooks/api/auditL
 
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { v4Path } from "../../links";
 
 const PAGE_SIZE = 500;
 const rowHeight = 48;
@@ -454,7 +455,7 @@ export const AuditLogsPage = () => {
                 to:
                   mode === "live" && next !== "audit-logs"
                     ? "/organizations/$orgId/audit-logs"
-                    : "/v4/organizations/$orgId/audit-logs",
+                    : v4Path("/organizations/$orgId/audit-logs"),
                 params: { orgId },
                 search: { selectedTab: next }
               })

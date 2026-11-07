@@ -48,6 +48,7 @@ import { GenericResourceNameSchema } from "@app/lib/schemas";
 import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { orgHref } from "../../links";
 
 const GENERAL_TAB = "tab-org-general";
 
@@ -368,7 +369,7 @@ export const SettingsPage = () => {
         <EmptyHeader>
           <EmptyTitle>This settings tab isn&apos;t in v4 yet</EmptyTitle>
           <EmptyDescription>
-            <a href={`/v4/organizations/${orgId}/settings`}>Go to General</a>
+            <a href={orgHref(orgId, "/settings")}>Go to General</a>
           </EmptyDescription>
         </EmptyHeader>
       </Empty>

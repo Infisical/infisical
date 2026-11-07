@@ -6,9 +6,10 @@ import { List, ListRow } from "@app/components/v4/ui/list";
 import { StatusText } from "@app/components/v4/ui/text";
 import type { TDashboardStats } from "@app/hooks/api/certificates/types";
 
+import { v4Path } from "../../../links";
 import type { InventoryFilters } from "./dashboard.utils";
 
-const inventory = "/v4/organizations/$orgId/cert-manager/inventory";
+const inventory = v4Path("/organizations/$orgId/cert-manager/inventory");
 
 type AttentionItem = {
   key: string;

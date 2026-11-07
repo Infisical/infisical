@@ -50,8 +50,9 @@ import {
 import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secretScanningV2/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { v4Path } from "../../links";
 
-const route = "/v4/organizations/$orgId/secret-scanning/data-sources/";
+const route = v4Path("/organizations/$orgId/secret-scanning/data-sources/");
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
 
@@ -329,7 +330,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
       render: (row) => (
         <Stack gap={0} style={{ minWidth: 0 }}>
           <RowLink
-            to="/v4/organizations/$orgId/$"
+            to={v4Path("/organizations/$orgId/$")}
             params={{ orgId, _splat: `secret-scanning/data-sources/${row.type}/${row.id}` }}
           >
             {row.name}

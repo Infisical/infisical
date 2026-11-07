@@ -34,6 +34,7 @@ import {
 } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 import { useV4Adapter } from "../../data/adapters";
+import { orgHref, v4Path } from "../../links";
 import {
   altNamesOf,
   certificateBlocks,
@@ -47,7 +48,7 @@ import {
   useCertManagerProjectId
 } from "../components/certificate";
 
-const routeId = "/v4/organizations/$orgId/cert-manager/certificates/$certificateId";
+const routeId = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
 
 const ledeOf = (cert: TCertificate) => {
   const left = daysLeft(cert.notAfter);
@@ -119,7 +120,7 @@ const CertificateDetail = ({
   });
   const [revoking, setRevoking] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const org = `/v4/organizations/${orgId}/cert-manager`;
+  const org = orgHref(orgId, "/cert-manager");
   const parentApplication = cert.applicationName ?? fromApplication;
   const caType = authorities.find((ca) => ca.id === cert.caId)?.type;
   const blocks = certificateBlocks(cert, {
@@ -401,7 +402,7 @@ const CertificateDetail = ({
         onClose={() => setDeleting(false)}
         onDeleted={() =>
           navigate({
-            to: "/v4/organizations/$orgId/cert-manager/inventory",
+            to: v4Path("/organizations/$orgId/cert-manager/inventory"),
             params: { orgId }
           })
         }
@@ -424,7 +425,7 @@ export const CertificateDetailsByIDPage = () => {
         description="It may have been deleted, or you may not have access to it."
         actions={
           <Button variant="outline" asChild>
-            <a href={`/v4/organizations/${orgId}/cert-manager/inventory`}>Back to inventory</a>
+            <a href={orgHref(orgId, "/cert-manager/inventory")}>Back to inventory</a>
           </Button>
         }
       />

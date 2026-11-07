@@ -13,6 +13,7 @@ import { useServerConfig } from "@app/context";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 import { useSetupPassword } from "@app/hooks/api/auth/queries";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { NewPasswordFields } from "../components/NewPasswordFields";
 
@@ -69,7 +70,7 @@ export const PasswordSetupPage = () => {
       setIsRedirecting(true);
       toast.success("Password successfully set", { description: "Redirecting to login..." });
       setTimeout(() => {
-        window.location.href = "/v4/login";
+        window.location.href = v4Path("/login");
       }, 3000);
     } catch {
       navigate({ to: "/personal-settings" });
