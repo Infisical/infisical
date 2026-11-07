@@ -108,7 +108,7 @@ export default function Example() {
       </ExampleCell>
       <ExampleCell
         align="stretch"
-        label="Card opens the Detail page; the copy button keeps its own click"
+        label="Card opens the Detail page without a chevron; the copy button keeps its own click"
       >
         <Card variant="framed">
           <div className="flex items-center gap-3">
@@ -117,6 +117,7 @@ export default function Example() {
               <RowLink
                 to="/design-system/components/$group/$component"
                 params={{ group: "data-display", component: "detail" }}
+                chevron={false}
               >
                 Detail
               </RowLink>

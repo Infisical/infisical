@@ -323,11 +323,11 @@
   min-width: 0;
 }
 .machine {
-  font-family: var(--v4-type-mono-font-family);
-  font-size: var(--v4-type-mono-font-size);
-  line-height: var(--v4-type-mono-line-height);
-  font-weight: var(--v4-type-mono-font-weight);
-  letter-spacing: var(--v4-type-mono-letter-spacing);
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
   overflow-wrap: anywhere;
   white-space: pre;
   overflow: hidden;
@@ -337,19 +337,19 @@
 }
 .editorInput {
   display: block;
-  font-family: var(--v4-type-mono-font-family);
-  font-size: var(--v4-type-mono-font-size);
-  line-height: var(--v4-type-mono-line-height);
-  font-weight: var(--v4-type-mono-font-weight);
-  letter-spacing: var(--v4-type-mono-letter-spacing);
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
   border-radius: 0;
   background: var(--v4-surface);
   color: var(--v4-ink);
   border: var(--v4-size-control-border) solid var(--v4-control);
   min-height: var(--v4-size-control-default);
-  max-height: calc(12 * var(--v4-type-mono-line-height));
+  max-height: calc(12 * var(--v4-type-body-line-height));
   padding: calc(
-      (var(--v4-size-control-default) - var(--v4-type-mono-line-height)) / 2 -
+      (var(--v4-size-control-default) - var(--v4-type-body-line-height)) / 2 -
         var(--v4-size-control-border)
     )
     var(--v4-space-control-inline);
@@ -366,7 +366,7 @@
   box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
 }
 .editorInput::placeholder {
-  color: var(--v4-faint);
+  color: var(--v4-muted);
 }
 .editorSlot {
   flex: none;

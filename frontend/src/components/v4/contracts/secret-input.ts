@@ -16,7 +16,8 @@ export const secretInputDefinition = {
     "Controlled: value and onChange(value: string) own the text. While the textarea is not focused and the value is not empty it shows HIDDEN_SECRET_VALUE, the same 16-dot mask as v3; focus binds the real value for editing, selection and copy, and blur masks it again. The mask is never passed to onChange.",
     "It is a textarea, so pasted line breaks are kept. One-line by default at the 32px control height and grows with content up to seven lines, then scrolls. multiline starts it at three lines for certificates and JSON.",
     "When the value holds invisible characters (control, format, Unicode space, line and paragraph separators, found by Unicode category and ignoring emoji joiner sequences), a warning action sits in the trailing slot. Its tooltip lists each character type, count and code point without revealing the value, and it stays visible while the value is masked.",
-    "Field wiring (id, aria-describedby, aria-invalid) comes from the surrounding Field. Without a label it falls back to the accessible name Secret value. invalid draws the invalid border."
+    "Field wiring (id, aria-describedby, aria-invalid) comes from the surrounding Field. Without a label it falls back to the accessible name Secret value. invalid draws the invalid border.",
+    "The typed value, the mask and the placeholder use the body role in the UI sans, like Input. The placeholder takes its muted color from the shared field placeholder rule in controls.module.css, the same rule Input uses, so it reads the same in every theme."
   ],
   accessibility: [
     "Label it with Field or aria-label. The invisible character warning is named and linked to the textarea through aria-describedby, so screen readers hear it with the field.",
@@ -85,6 +86,23 @@ export const secretInputDefinition = {
           by: "test",
           test: "src/components/v4/ui/migration-traps.test.tsx",
           how: "Renders a value with a zero-width space, checks the textarea shows the mask and the warning, then focuses it and checks the real value."
+        }
+      },
+      {
+        id: "secret-input-sans-muted-placeholder",
+        when: "A SecretInput sits beside an Input, such as a name and value pair in a quick-add row or a form.",
+        do: "Leave the font and placeholder color to the primitive: the body role in the UI sans for the value and placeholder, and the shared muted field placeholder.",
+        avoid:
+          "Set a mono font on the value or the placeholder, or override the placeholder color in a page stylesheet.",
+        reason:
+          "A secret value is typed text, not literal machine output, and Geist Mono's wider, heavier strokes make a muted placeholder read near full ink beside the sans one next to it.",
+        evidence: [
+          "src/components/v4/ui/secret-input.module.css",
+          "src/pages/design-system/examples/secret-input/default.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Compare the computed ::placeholder color and font family of a SecretInput and an Input in peach and dark; both must match."
         }
       }
     ],

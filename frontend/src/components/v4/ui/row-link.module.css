@@ -12,6 +12,34 @@
   color: var(--v4-muted);
   cursor: not-allowed;
 }
+.rowLink[data-chevron] {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--v4-space-8);
+}
+.label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chevron {
+  flex: none;
+  width: var(--v4-size-glyph);
+  height: var(--v4-size-glyph);
+  margin-inline-start: auto;
+  stroke-width: var(--v4-stroke-icon);
+  color: var(--v4-muted);
+  transition: color var(--v4-duration-fast) var(--v4-ease-fade);
+}
+.rowLink[data-disabled] .chevron {
+  color: var(--v4-faint);
+}
+:is(:global(tr), :global([data-slot="card"])):is(:hover, :focus-within) .stretched .chevron {
+  color: var(--v4-ink);
+}
 .cardLink {
   color: inherit;
   text-decoration: none;

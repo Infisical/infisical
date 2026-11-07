@@ -26,6 +26,24 @@ Source evidence:
 - src/components/v4/ui/secret-input.tsx
 - src/pages/design-system/examples/secret-input/default.tsx
 
+### secret-input-sans-muted-placeholder
+
+Owner: secret-input.
+
+When a SecretInput sits beside an Input, such as a name and value pair in a quick-add row or a form.
+
+Do: Leave the font and placeholder color to the primitive: the body role in the UI sans for the value and placeholder, and the shared muted field placeholder.
+
+Avoid: Set a mono font on the value or the placeholder, or override the placeholder color in a page stylesheet.
+
+Why: A secret value is typed text, not literal machine output, and Geist Mono's wider, heavier strokes make a muted placeholder read near full ink beside the sans one next to it.
+
+Checked by: review only. Look for: Compare the computed ::placeholder color and font family of a SecretInput and an Input in peach and dark; both must match.
+
+Source evidence:
+- src/components/v4/ui/secret-input.module.css
+- src/pages/design-system/examples/secret-input/default.tsx
+
 ## State guidance
 
 - masked: Blur always masks a non-empty value; the warning stays visible.
@@ -53,6 +71,7 @@ Exports: SecretInput, SecretInputProps, HIDDEN_SECRET_VALUE. Source TypeScript d
 - It is a textarea, so pasted line breaks are kept. One-line by default at the 32px control height and grows with content up to seven lines, then scrolls. multiline starts it at three lines for certificates and JSON.
 - When the value holds invisible characters (control, format, Unicode space, line and paragraph separators, found by Unicode category and ignoring emoji joiner sequences), a warning action sits in the trailing slot. Its tooltip lists each character type, count and code point without revealing the value, and it stays visible while the value is masked.
 - Field wiring (id, aria-describedby, aria-invalid) comes from the surrounding Field. Without a label it falls back to the accessible name Secret value. invalid draws the invalid border.
+- The typed value, the mask and the placeholder use the body role in the UI sans, like Input. The placeholder takes its muted color from the shared field placeholder rule in controls.module.css, the same rule Input uses, so it reads the same in every theme.
 
 ## Accessibility
 

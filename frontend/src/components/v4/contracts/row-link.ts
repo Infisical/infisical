@@ -14,12 +14,14 @@ export const rowLinkDefinition = {
     "Its ::after covers the nearest table row or Card. The row or Card becomes the positioning context through :has(), so hosts need no linked prop.",
     "Buttons, inputs, checkboxes, comboboxes, switches, other links, tooltip triggers and anything marked data-row-interactive inside that host sit above the overlay and keep their own click.",
     "The link text truncates with an ellipsis; pass title to show the full value on hover.",
+    "A trailing chevron-right marks the row as navigation. The link grows to fill its cell's flex line, so the chevron sits at the trailing edge, at size-glyph in muted, and turns ink while the row or Card is hovered or holds focus. It takes no width a column did not already have and does not change the row height. Pass chevron={false} for the rare host that should not show it, such as a Card whose whole surface already reads as a link.",
     "disabled renders a span with no href and no overlay, in muted text, so the row stays visible but does not navigate."
   ],
   accessibility: [
     "The row's accessible target is a real link, so it supports middle-click, open in new tab, copy link and the browser's status bar.",
     "Keyboard focus lands on the link and draws the ink focus outline around the whole row or Card.",
-    "The disabled span has role link and aria-disabled true, so it is announced as an unavailable link."
+    "The disabled span has role link and aria-disabled true, so it is announced as an unavailable link.",
+    "The chevron is decorative and aria-hidden, so the link's accessible name is its text alone."
   ],
   limitations: [
     "Use one RowLink per row or Card; a second stretched target would cover the first. When the whole Card is the link and its name should wrap, use CardLink, which shares these semantics.",
@@ -48,7 +50,7 @@ export const rowLinkDefinition = {
         {
           value: "Card",
           exampleId: "default",
-          label: "Card opens the Detail page; the copy button keeps its own click"
+          label: "Card opens the Detail page without a chevron; the copy button keeps its own click"
         }
       ]
     },
@@ -94,12 +96,31 @@ export const rowLinkDefinition = {
           by: "review",
           how: "Search for router.navigate or navigate( inside onRowActivate handlers, and for tables that pass onRowActivate while rendering RowLink."
         }
+      },
+      {
+        id: "row-link-chevron",
+        when: "A table row navigates to another page through RowLink.",
+        do: "Keep the default trailing chevron and place RowLink last in its cell's flex line, so the chevron lands on the cell's trailing edge.",
+        avoid:
+          "Draw a second chevron or arrow in the row, put badges or hints after the RowLink, or turn the chevron off on a navigating table row.",
+        reason:
+          "The chevron is the row's only visual sign that activating it navigates; content after the link pushes it off the trailing edge.",
+        evidence: [
+          "src/components/v4/ui/row-link.tsx",
+          "src/pages/design-system/examples/row-link/default.tsx"
+        ],
+        detect: {
+          by: "test",
+          test: "src/components/v4/ui/row-link.test.tsx",
+          how: "Renders an enabled, a disabled and a chevron={false} RowLink and checks the aria-hidden chevron is present on the first two and absent on the third."
+        }
       }
     ],
     states: [
       {
         state: "hover",
-        guidance: "Table rows keep their own hover tint; a Card gets a translucent ink overlay."
+        guidance:
+          "Table rows keep their own hover tint; a Card gets a translucent ink overlay. The chevron turns from muted to ink."
       },
       {
         state: "disabled",

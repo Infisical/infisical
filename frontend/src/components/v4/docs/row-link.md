@@ -26,9 +26,27 @@ Source evidence:
 - src/components/v4/ui/row-link.tsx
 - src/pages/design-system/examples/row-link/default.tsx
 
+### row-link-chevron
+
+Owner: row-link.
+
+When a table row navigates to another page through RowLink.
+
+Do: Keep the default trailing chevron and place RowLink last in its cell's flex line, so the chevron lands on the cell's trailing edge.
+
+Avoid: Draw a second chevron or arrow in the row, put badges or hints after the RowLink, or turn the chevron off on a navigating table row.
+
+Why: The chevron is the row's only visual sign that activating it navigates; content after the link pushes it off the trailing edge.
+
+Checked by: src/components/v4/ui/row-link.test.tsx. Renders an enabled, a disabled and a chevron={false} RowLink and checks the aria-hidden chevron is present on the first two and absent on the third.
+
+Source evidence:
+- src/components/v4/ui/row-link.tsx
+- src/pages/design-system/examples/row-link/default.tsx
+
 ## State guidance
 
-- hover: Table rows keep their own hover tint; a Card gets a translucent ink overlay.
+- hover: Table rows keep their own hover tint; a Card gets a translucent ink overlay. The chevron turns from muted to ink.
 - disabled: Muted text, no overlay and no href; give the reason elsewhere in the row.
 
 ## Presentation rules
@@ -52,6 +70,7 @@ Exports: RowLink. Source TypeScript defines the API.
 - Its ::after covers the nearest table row or Card. The row or Card becomes the positioning context through :has(), so hosts need no linked prop.
 - Buttons, inputs, checkboxes, comboboxes, switches, other links, tooltip triggers and anything marked data-row-interactive inside that host sit above the overlay and keep their own click.
 - The link text truncates with an ellipsis; pass title to show the full value on hover.
+- A trailing chevron-right marks the row as navigation. The link grows to fill its cell's flex line, so the chevron sits at the trailing edge, at size-glyph in muted, and turns ink while the row or Card is hovered or holds focus. It takes no width a column did not already have and does not change the row height. Pass chevron={false} for the rare host that should not show it, such as a Card whose whole surface already reads as a link.
 - disabled renders a span with no href and no overlay, in muted text, so the row stays visible but does not navigate.
 
 ## Accessibility
@@ -59,6 +78,7 @@ Exports: RowLink. Source TypeScript defines the API.
 - The row's accessible target is a real link, so it supports middle-click, open in new tab, copy link and the browser's status bar.
 - Keyboard focus lands on the link and draws the ink focus outline around the whole row or Card.
 - The disabled span has role link and aria-disabled true, so it is announced as an unavailable link.
+- The chevron is decorative and aria-hidden, so the link's accessible name is its text alone.
 
 ## Use cases
 
@@ -81,7 +101,7 @@ Source declarations and review criteria only. Generation checks references and c
 ### host
 
 - DataTable row: example `default`, visible label "DataTable rows open their page; the last row is disabled".
-- Card: example `default`, visible label "Card opens the Detail page; the copy button keeps its own click".
+- Card: example `default`, visible label "Card opens the Detail page without a chevron; the copy button keeps its own click".
 
 ### state
 
@@ -217,6 +237,7 @@ export default function Example() {
                 <RowLink
                   to="/design-system/components/$group/$component"
                   params={{ group: "data-display", component: "detail" }}
+                  chevron={false}
                 >
                   Detail
                 </RowLink>
@@ -237,7 +258,7 @@ export default function Example() {
           </Card>
         </div>
         <figcaption className="text-muted-foreground text-xs">
-          {"Card opens the Detail page; the copy button keeps its own click"}
+          {"Card opens the Detail page without a chevron; the copy button keeps its own click"}
         </figcaption>
       </figure>
     </div>

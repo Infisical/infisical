@@ -20,6 +20,9 @@ it("renders a typed href with a stretched target, and a span with no href when d
         <RowLink to={"/items/$itemId" as never} params={{ itemId: "b" } as never} disabled>
           Item B
         </RowLink>
+        <RowLink to={"/items/$itemId" as never} params={{ itemId: "c" } as never} chevron={false}>
+          Item C
+        </RowLink>
       </>
     )
   });
@@ -30,6 +33,9 @@ it("renders a typed href with a stretched target, and a span with no href when d
   } as never);
   await router.load();
   const markup = renderToStaticMarkup(<RouterProvider router={router as never} />);
-  expect(markup).toMatch(/<a [^>]*data-row-link=""[^>]*href="\/items\/a"[^>]*>Item A<\/a>/);
-  expect(markup).toMatch(/<span role="link" aria-disabled="true"[^>]*>Item B<\/span>/);
+  expect(markup).toMatch(
+    /<a [^>]*data-row-link=""[^>]*href="\/items\/a"[^>]*><span [^>]*>Item A<\/span><svg [^>]*aria-hidden="true"[^>]*data-row-link-chevron=""/
+  );
+  expect(markup).toMatch(/<span role="link" aria-disabled="true"[^>]*><span [^>]*>Item B<\/span>/);
+  expect(markup).toMatch(/<a [^>]*href="\/items\/c"[^>]*>Item C<\/a>/);
 });
