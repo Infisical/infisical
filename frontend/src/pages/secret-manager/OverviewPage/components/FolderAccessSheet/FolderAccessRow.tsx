@@ -3,9 +3,12 @@ import {
   BotIcon,
   ChevronDownIcon,
   ClockIcon,
+  CornerDownRightIcon,
   CornerLeftUpIcon,
+  FolderIcon,
   FolderTreeIcon,
-  ShieldIcon
+  LockIcon,
+  ShieldAlertIcon
 } from "lucide-react";
 
 import {
@@ -43,7 +46,7 @@ import { TierDropdown } from "./TierDropdown";
 
 const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
 
-const recursiveTitle = (path: string) => `Applies to ${path} and all of its subfolders`;
+const RECURSIVE_NOTE = "The selected tier applies to / and all of its subfolders.";
 
 const remainingTimeOf = (grant: TFolderAccess | null) =>
   grant?.isTemporary && grant.temporaryAccessEndTime
@@ -55,29 +58,69 @@ type TRemainingTime = NonNullable<ReturnType<typeof remainingTimeOf>>;
 const expiryNoteOf = (remainingTime: TRemainingTime) =>
   `${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`;
 
-// the menu repeats the time left, so narrow sheets drop this badge to keep the member name visible
-const ExpiryBadge = ({
-  remainingTime,
-  hasTitle = true
-}: {
-  remainingTime: TRemainingTime;
-  hasTitle?: boolean;
-}) => (
-  <span className="hidden sm:contents">
-    <Badge
-      variant={remainingTime.isExpired ? "danger" : "neutral"}
-      iconPosition="left"
-      title={hasTitle ? `Access ${expiryNoteOf(remainingTime)}` : undefined}
+type TRowNote = {
+  key: string;
+  icon: React.ReactNode;
+  text: string;
+  tone?: "muted" | "warning" | "danger";
+  tooltip?: React.ReactNode;
+};
+
+const NOTE_TONE_CLASS_NAMES = {
+  muted: "text-muted",
+  warning: "text-warning",
+  danger: "text-danger"
+};
+
+const expiryNoteFor = (remainingTime: TRemainingTime | null): TRowNote[] => {
+  if (!remainingTime) return [];
+  return [
+    {
+      key: "expiry",
+      icon: <ClockIcon />,
+      text: remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`,
+      tone: remainingTime.isExpired ? "danger" : "muted",
+      tooltip: `Access ${expiryNoteOf(remainingTime)}`
+    }
+  ];
+};
+
+// notes sit on the control's own line so every row keeps a single-line height; narrow screens keep
+// only the icon and the tooltip carries the detail
+const RowNote = ({ icon, text, tone = "muted", tooltip }: Omit<TRowNote, "key">) => {
+  const content = (
+    <span
+      className={`flex items-center gap-1 text-xs whitespace-nowrap ${NOTE_TONE_CLASS_NAMES[tone]} [&>svg]:size-3.5 [&>svg]:shrink-0`}
     >
-      <ClockIcon />
-      {remainingTime.isExpired ? "Expired" : remainingTime.value}
-    </Badge>
-  </span>
+      {icon}
+      <span className="hidden sm:inline">{text}</span>
+    </span>
+  );
+  if (!tooltip) return content;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" aria-label={text} className="cursor-default">
+          {content}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
+  );
+};
+
+const RoleList = ({ title, roles }: { title: string; roles: TFolderAccessActor["roles"] }) => (
+  <>
+    <p className="font-medium">{title}</p>
+    {roles.map((role) => (
+      <p key={role.slug}>{role.name}</p>
+    ))}
+  </>
 );
 
-const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
+export const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
   <>
-    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
+    <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-neutral/10 text-xs font-semibold text-accent">
       {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
     </div>
     <div className="min-w-0 flex-1">
@@ -90,9 +133,10 @@ const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
 type Props = {
   actor: TFolderAccessActor;
   isDisabled?: boolean;
+  isPending?: boolean;
   // only the root folder's grants may apply to subfolders, so the control is hidden elsewhere
   canApplyToSubfolders?: boolean;
-  onSetTier: (tier: SecretFolderRole) => void;
+  onSetTier: (tier: SecretFolderRole, isRecursive: boolean) => void;
   onSetRecursive: (isRecursive: boolean) => void;
   onSetTemporaryRange: (range: string) => void;
   onMakePermanent: () => void;
@@ -100,7 +144,7 @@ type Props = {
   onManageInheritedAccess?: () => void;
 };
 
-type GrantRowProps = Pick<Props, "actor" | "isDisabled" | "canApplyToSubfolders"> & {
+type GrantRowProps = Pick<Props, "actor" | "isDisabled" | "isPending" | "canApplyToSubfolders"> & {
   footerNote?: string;
   onSetTier: (tier: SecretFolderRole, isRecursive: boolean) => void;
 };
@@ -108,17 +152,13 @@ type GrantRowProps = Pick<Props, "actor" | "isDisabled" | "canApplyToSubfolders"
 export const FolderAccessGrantRow = ({
   actor,
   isDisabled,
+  isPending,
   canApplyToSubfolders,
   footerNote,
   onSetTier
 }: GrantRowProps) => {
   const [isRecursive, setIsRecursive] = useState(false);
-  const note = [
-    footerNote,
-    isRecursive ? "The selected tier applies to / and all of its subfolders." : undefined
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const note = [footerNote, isRecursive ? RECURSIVE_NOTE : undefined].filter(Boolean).join(" ");
 
   return (
     <div className={ROW_CLASS_NAME}>
@@ -136,6 +176,7 @@ export const FolderAccessGrantRow = ({
         </DropdownMenuTrigger>
         <TierDropdown
           footerNote={note || undefined}
+          isPending={isPending}
           recursive={
             canApplyToSubfolders
               ? { checked: isRecursive, onCheckedChange: setIsRecursive }
@@ -151,6 +192,7 @@ export const FolderAccessGrantRow = ({
 export const FolderAccessRow = ({
   actor,
   isDisabled,
+  isPending,
   canApplyToSubfolders,
   onSetTier,
   onSetRecursive,
@@ -160,12 +202,12 @@ export const FolderAccessRow = ({
   onManageInheritedAccess
 }: Props) => {
   const [isTemporaryOpen, setIsTemporaryOpen] = useState(false);
+  const [isRecursive, setIsRecursive] = useState(false);
   const [range, setRange] = useState(actor.access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
 
   const { access, inheritedAccess } = actor;
   const firstName = actor.name.split(" ")[0];
   const isRangeValid = isValidTemporaryRange(range);
-  const roleNames = actor.roles.map((role) => role.name).join(", ");
   const isOverride = Boolean(access && actor.roles.length > 0);
   const grantState = grantStateOf(access);
   const removeTone = isOverride ? ("warning" as const) : ("danger" as const);
@@ -184,13 +226,17 @@ export const FolderAccessRow = ({
     return (
       <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
-        <Button variant="ghost" size="sm" className="shrink-0" isDisabled>
-          Full Access on All Folders
-          <Badge variant="neutral" iconPosition="left">
-            <ShieldIcon />
-            Admin
-          </Badge>
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <RowNote
+            icon={<CornerDownRightIcon />}
+            text="Via Admin role"
+            tooltip="Admins have full access to every folder."
+          />
+          <span className="flex items-center gap-1.5 text-sm text-foreground">
+            <LockIcon className="size-3.5 text-muted" />
+            Full Access
+          </span>
+        </div>
       </div>
     );
   }
@@ -198,101 +244,98 @@ export const FolderAccessRow = ({
   const inheritedTierLabel = inheritedAccess
     ? FOLDER_ROLE_TIER_LABELS[inheritedAccess.permission]
     : null;
-  const inheritedExpiryNote = inheritedRemainingTime
-    ? `, ${expiryNoteOf(inheritedRemainingTime)}`
-    : "";
   const inheritedExpiryLabel = (() => {
     if (!inheritedRemainingTime) return undefined;
     return inheritedRemainingTime.isExpired ? "Expired" : `${inheritedRemainingTime.value} left`;
   })();
 
   const grantedFooterNote = (() => {
-    if (!access) return `Choosing a tier overrides ${firstName}'s project role in this folder.`;
+    if (!access)
+      return [
+        `Choosing a tier overrides ${firstName}'s project role in this folder.`,
+        isRecursive ? RECURSIVE_NOTE : undefined
+      ]
+        .filter(Boolean)
+        .join(" ");
     if (inheritedAccess)
       return `Also inherits ${inheritedTierLabel} from ${inheritedAccess.secretPath}; removing this access falls back to it.`;
     return undefined;
   })();
 
-  const trigger = (() => {
+  const roleTitle = actor.roles.length > 1 ? "Project roles" : "Project role";
+  const notes = ((): TRowNote[] => {
     if (access) {
-      return (
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" isDisabled={isDisabled}>
-            {FOLDER_ROLE_TIER_LABELS[access.permission]}
-            {access.isPermissionRecursive && (
-              <Badge
-                variant="neutral"
-                iconPosition="left"
-                title={recursiveTitle(access.secretPath)}
-              >
-                <FolderTreeIcon />
-                Recursive
-              </Badge>
-            )}
-            {isOverride && <Badge variant="warning">Override</Badge>}
-            {remainingTime && <ExpiryBadge remainingTime={remainingTime} />}
-            <ChevronDownIcon />
-          </Button>
-        </DropdownMenuTrigger>
-      );
+      const source: TRowNote = isOverride
+        ? {
+            key: "source",
+            icon: <ShieldAlertIcon />,
+            text: "Overrides project role",
+            tone: "warning",
+            tooltip: <RoleList title="Overrides in this folder" roles={actor.roles} />
+          }
+        : { key: "source", icon: <FolderIcon />, text: "Granted in this folder" };
+      return [source, ...expiryNoteFor(remainingTime)];
     }
     if (inheritedAccess) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                isDisabled={isDisabled}
-                aria-label={`${inheritedTierLabel} for ${actor.name}, inherited from ${inheritedAccess.secretPath}${inheritedExpiryNote}`}
-              >
-                {inheritedTierLabel}
-                <Badge variant="neutral" iconPosition="left" className="font-mono">
-                  <CornerLeftUpIcon />
-                  {inheritedAccess.secretPath}
-                </Badge>
-                {inheritedRemainingTime && (
-                  <ExpiryBadge remainingTime={inheritedRemainingTime} hasTitle={false} />
-                )}
-                <ChevronDownIcon />
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent>
-            Inherited from {inheritedAccess.secretPath} (applied to subfolders)
-            {inheritedExpiryNote}
-          </TooltipContent>
-        </Tooltip>
-      );
+      return [
+        {
+          key: "source",
+          icon: <CornerLeftUpIcon />,
+          text: `Inherited from ${inheritedAccess.secretPath}`,
+          tooltip: `Applied on ${inheritedAccess.secretPath} to all of its subfolders`
+        },
+        ...expiryNoteFor(inheritedRemainingTime)
+      ];
     }
-    return (
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="max-w-48"
-          title={roleNames || undefined}
-          isDisabled={isDisabled}
-        >
-          <span className="truncate">{roleNames || "Role"}</span>
-          <Badge variant="project">Project</Badge>
-          <ChevronDownIcon />
-        </Button>
-      </DropdownMenuTrigger>
-    );
+    return [
+      {
+        key: "source",
+        icon: <CornerDownRightIcon />,
+        text: "Via project role",
+        tooltip: <RoleList title={roleTitle} roles={actor.roles} />
+      }
+    ];
+  })();
+
+  const triggerLabel = (() => {
+    if (access) return FOLDER_ROLE_TIER_LABELS[access.permission];
+    if (inheritedTierLabel) return inheritedTierLabel;
+    return "Set Access";
   })();
 
   return (
     <div className={ROW_CLASS_NAME}>
       <ActorIdentity actor={actor} />
 
-      <div className="shrink-0">
-        <DropdownMenu>
-          {trigger}
+      <div className="flex shrink-0 items-center gap-2">
+        {notes.map(({ key, ...note }) => (
+          <RowNote key={key} {...note} />
+        ))}
+        {access?.isPermissionRecursive && (
+          <Badge
+            variant="neutral"
+            iconPosition="left"
+            title={`Applies to ${access.secretPath} and all of its subfolders`}
+          >
+            <FolderTreeIcon />
+            <span className="hidden sm:inline">Recursive</span>
+          </Badge>
+        )}
+        <DropdownMenu
+          onOpenChange={(open) => {
+            if (!open) setIsRecursive(false);
+          }}
+        >
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" isDisabled={isDisabled}>
+              {triggerLabel}
+              <ChevronDownIcon />
+            </Button>
+          </DropdownMenuTrigger>
           <TierDropdown
             activeTier={access?.permission ?? null}
             footerNote={grantedFooterNote}
+            isPending={isPending}
             inherited={
               !access && inheritedAccess
                 ? {
@@ -303,11 +346,12 @@ export const FolderAccessRow = ({
                   }
                 : undefined
             }
-            recursive={
-              access && canApplyToSubfolders
-                ? { checked: access.isPermissionRecursive, onCheckedChange: onSetRecursive }
-                : undefined
-            }
+            recursive={(() => {
+              if (!canApplyToSubfolders) return undefined;
+              if (access)
+                return { checked: access.isPermissionRecursive, onCheckedChange: onSetRecursive };
+              return { checked: isRecursive, onCheckedChange: setIsRecursive };
+            })()}
             temporaryLabel={
               remainingTime && remainingTime?.expiresAt ? (
                 <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
@@ -320,7 +364,7 @@ export const FolderAccessRow = ({
                 "Add Temporary Access"
               )
             }
-            onSelectTier={onSetTier}
+            onSelectTier={(tier) => onSetTier(tier, isRecursive)}
             onEditTemporaryAccess={access ? openTemporary : undefined}
             onRemove={access ? onRemove : undefined}
             removeLabel={
