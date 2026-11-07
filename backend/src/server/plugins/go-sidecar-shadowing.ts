@@ -7,7 +7,8 @@ const SHADOWED_ROUTES: { method: string; url: string }[] = [
   { method: "GET", url: "/api/v3/secrets/raw/:secretName" },
   { method: "GET", url: "/api/v3/secrets/raw" },
   { method: "GET", url: "/api/v4/secrets/:secretName" },
-  { method: "GET", url: "/api/v4/secrets" }
+  { method: "GET", url: "/api/v4/secrets" },
+  { method: "GET", url: "/api/v2/folders" }
 ];
 
 const SENSITIVE_FIELDS = new Set([
