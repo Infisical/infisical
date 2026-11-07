@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 
+import { orgLinkProps } from "./sidebarLinkProps";
 import type { OrgNavItem } from "./types";
 
 // --- Org nav link (handles normal link, submenu trigger, or custom onClick) ---
@@ -46,11 +47,7 @@ export const OrgNavLink = ({
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild closeOnMobile isActive={isActive} size="lg" tooltip={item.label}>
-        <Link
-          to={`/organizations/$orgId/${item.pathSuffix}` as any}
-          params={{ orgId } as any}
-          search={item.search as any}
-        >
+        <Link {...orgLinkProps(orgId, item.pathSuffix, item.search)}>
           <item.icon className="size-4" />
           <span>{item.label}</span>
         </Link>
