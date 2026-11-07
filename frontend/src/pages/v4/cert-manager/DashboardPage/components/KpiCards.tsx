@@ -9,6 +9,8 @@ import type { TDashboardStats } from "@app/hooks/api/certificates/types";
 
 import { formatShare, type InventoryFilters } from "./dashboard.utils";
 
+import styles from "./kpi-cards.module.css";
+
 const cards: {
   key: keyof TDashboardStats["totals"];
   label: string;
@@ -73,7 +75,7 @@ export const KpiCards = ({ stats }: { stats: TDashboardStats }) => {
         return (
           <Card
             key={card.key}
-            className="relative"
+            className={`relative ${styles.kpi}`}
             title={
               <CardLink
                 to="/v4/organizations/$orgId/cert-manager/inventory"
