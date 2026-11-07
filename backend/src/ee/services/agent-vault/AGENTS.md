@@ -167,7 +167,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   (`agent-vault-session-services-fns.ts`) builds it from the rows resolve reads, without decrypting anything: the
   session's label and expiry, and each service's name, description, hosts, rules and placeholders, never a credential
   or a value. A service's description is written for that, so it also refuses invisible characters
-  (`AgentVaultServiceDescriptionSchema`). Its wording (`howToUse`, the notes) was measured with agents together with the
+  (`AgentVaultServiceDescriptionSchema`). A service is `needs-personal-values` exactly when resolve flags it
+  `personalValuesMissing`: `toSetPersonalFields` counts a member's OAuth sign-in only while resolve would send it
+  (`isMemberOauthConnectionUsable`, which resolve calls too), so `run` never configures an MCP server whose member has
+  to connect again. Its wording (`howToUse`, the notes) was measured with agents together with the
   built-in skill, so change the two together and measure again. A forwarding proxy names itself
   (`X-Agent-Vault-Proxy-Id`, `X-Agent-Vault-Proxy-Version`); a proxy in the session's project adds its traffic policy,
   and anything else (no id, a malformed one, another project's) only leaves the policy out. Not audited, like resolve.

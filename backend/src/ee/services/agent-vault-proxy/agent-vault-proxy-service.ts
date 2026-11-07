@@ -38,7 +38,11 @@ import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
   TAgentVaultOauthServiceFactory
 } from "../agent-vault-oauth/agent-vault-oauth-service";
-import { isMemberProvidedOauth, toResolvedOauthCredential } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import {
+  isMemberOauthConnectionUsable,
+  isMemberProvidedOauth,
+  toResolvedOauthCredential
+} from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import { TAgentVaultOauthConfig, TAgentVaultOauthSecret } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
@@ -104,7 +108,11 @@ import {
   TUpdateProxyDTO
 } from "./agent-vault-proxy-types";
 import { TAgentVaultResolveDALFactory, TResolveServiceRow } from "./agent-vault-resolve-dal";
-import { buildSessionServicesDocument, toBundleServiceFacts } from "./agent-vault-session-services-fns";
+import {
+  buildSessionServicesDocument,
+  toBundleServiceFacts,
+  toSetPersonalFields
+} from "./agent-vault-session-services-fns";
 
 export const AGENT_VAULT_MAX_PROXIES_PER_PROJECT = 10;
 
@@ -724,19 +732,12 @@ export const agentVaultProxyServiceFactory = ({
       if (!memberFields.length) return service;
 
       // A login that died reads as not set up: the proxy refuses the service rather than sending a token the
-      // provider has already refused. The service row and the connection are read separately, possibly from
-      // replicas at different points, so a token authorized for another server is refused the same way.
+      // provider has already refused, and a token authorized for another server is refused the same way.
       const row = rowById.get(service.id)!;
       if (isMemberProvidedOauth(row)) {
         const connection = oauthByService.get(service.id);
-        const config = connection?.oauthConfig as TAgentVaultOauthConfig | undefined;
         const refreshed = refreshedOauth.get(service.id);
-        if (
-          !connection ||
-          !config ||
-          config.serverUrl !== getServiceServerUrl(row.config) ||
-          (refreshed?.status ?? config.status) === AgentVaultOauthStatus.NeedsReauthorization
-        ) {
+        if (!connection || !isMemberOauthConnectionUsable(row, connection.oauthConfig, refreshed?.status)) {
           return missing(service);
         }
         return {
@@ -744,7 +745,7 @@ export const agentVaultProxyServiceFactory = ({
           credential:
             refreshed?.credential ??
             toResolvedOauthCredential(
-              config,
+              connection.oauthConfig as TAgentVaultOauthConfig,
               (decryptJson(connection.encryptedValue) as TAgentVaultOauthSecret).accessToken
             )
         };
@@ -1367,10 +1368,7 @@ export const agentVaultProxyServiceFactory = ({
       proxyId ? agentVaultProxyDAL.findByIdWithOrg(proxyId) : undefined
     ]);
 
-    const setPersonalFields = new Map<string, Set<string>>();
-    personalValueRows.forEach(({ serviceId, field }) =>
-      setPersonalFields.set(serviceId, (setPersonalFields.get(serviceId) ?? new Set<string>()).add(field))
-    );
+    const setPersonalFields = toSetPersonalFields(rows, personalValueRows);
 
     // Bundle services before inline ones, the order resolve sends them in.
     const services = [

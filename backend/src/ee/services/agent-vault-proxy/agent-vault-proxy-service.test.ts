@@ -772,6 +772,42 @@ describe("resolve for a service whose members sign in", () => {
     expect(services[0]).toMatchObject({ personalValuesMissing: true, credential: { type: "passthrough" } });
   });
 
+  test("the services list waits for the owner exactly when resolve refuses their sign-in", async () => {
+    // Registered dynamically, so the row seals nothing that could pass for a credential.
+    const dynamicRow = { ...memberRow, encryptedCredential: null };
+    const cases = [
+      { personalRows: [connection({ status: AgentVaultOauthStatus.Connected, expiresAt: null })], ready: true },
+      { personalRows: [], ready: false },
+      {
+        personalRows: [connection({ status: AgentVaultOauthStatus.NeedsReauthorization, expiresAt: null })],
+        ready: false
+      },
+      {
+        personalRows: [
+          connection({
+            serverUrl: "https://old.example.com/mcp",
+            status: AgentVaultOauthStatus.Connected,
+            expiresAt: null
+          })
+        ],
+        ready: false
+      }
+    ];
+    for (const { personalRows, ready } of cases) {
+      const { service } = setup(async () => refreshed, [dynamicRow], [], { personalRows });
+      // eslint-disable-next-line no-await-in-loop
+      const [listed] = (await service.getSessionServices({ sessionToken: "token" })).services;
+      // eslint-disable-next-line no-await-in-loop
+      const [resolved] = (await resolve(service)).services;
+      expect(resolved.personalValuesMissing).toBe(!ready);
+      expect(listed).toMatchObject(
+        ready
+          ? { status: "ready", credential: { type: "oauth", header: "Authorization", addedByProxy: true } }
+          : { status: "needs-personal-values", credential: { type: "none", addedByProxy: false } }
+      );
+    }
+  });
+
   test("a refresh after a rejection names the session's owner", async () => {
     const { service, refreshServiceToken } = setup(async () => refreshed, [memberRow]);
     await service.refreshCredential({ ...refreshArgs, hostPattern: "mcp.linear.app" });

@@ -1,3 +1,4 @@
+import { isMemberOauthConnectionUsable, isMemberProvidedOauth } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
@@ -251,6 +252,25 @@ export const buildSessionServicesDocument = ({
 };
 
 /**
+ * The fields the session's owner has set, by service, counted only where resolve would use them: a member's OAuth
+ * sign-in on a service that leaves sign-in to members, while resolve would send it, and a typed value anywhere else.
+ */
+export const toSetPersonalFields = (
+  rows: Pick<TResolveServiceRow, "id" | "config" | "credentialType" | "memberProvidedFields">[],
+  personalValueRows: { serviceId: string; field: string; oauthConfig?: unknown }[]
+) => {
+  const rowById = new Map(rows.map((row) => [row.id, row]));
+  const setFields = new Map<string, Set<string>>();
+  personalValueRows.forEach(({ serviceId, field, oauthConfig }) => {
+    const row = rowById.get(serviceId);
+    if (!row) return;
+    const counts = isMemberProvidedOauth(row) ? isMemberOauthConnectionUsable(row, oauthConfig) : !oauthConfig;
+    if (counts) setFields.set(serviceId, (setFields.get(serviceId) ?? new Set<string>()).add(field));
+  });
+  return setFields;
+};
+
+/**
  * What the proxy would send for a bundle service, without decrypting anything. A field left to members makes the
  * credential the member's, which only counts once they have set every such field.
  */
@@ -271,7 +291,11 @@ export const toBundleServiceFacts = (
   if (!personalValuesMissing && hasCredential) {
     if (row.credentialType === AgentVaultCredentialType.Bearer) {
       credential = { type: "bearer", headerName: config.headerName ?? null };
-    } else if (row.credentialType === AgentVaultCredentialType.OAuth && row.encryptedCredential) {
+    } else if (
+      row.credentialType === AgentVaultCredentialType.OAuth &&
+      (row.encryptedCredential || isMemberProvidedOauth(row))
+    ) {
+      // A service whose members sign in seals at most its client's secret, so the token is the member's.
       credential = { type: "oauth" };
     } else if (row.credentialType === AgentVaultCredentialType.Basic) {
       credential = { type: "basic" };

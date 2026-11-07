@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   AgentVaultCredentialType,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultTrafficPolicy,
   AgentVaultVariableReferenceField
@@ -11,6 +12,7 @@ import {
   buildSessionServicesDocument,
   describeSessionService,
   toBundleServiceFacts,
+  toSetPersonalFields,
   TSessionServiceFacts
 } from "./agent-vault-session-services-fns";
 
@@ -268,5 +270,67 @@ describe("a bundle service's facts", () => {
     const set = toBundleServiceFacts(memberRow, context([AgentVaultVariableReferenceField.CredentialValue]));
     expect(set.personalValuesMissing).toBe(false);
     expect(set.credential).toEqual({ type: "bearer", headerName: "Authorization" });
+  });
+
+  describe("a service whose members sign in with OAuth", () => {
+    const SERVER_URL = "https://mcp.linear.app/mcp";
+    // Registered dynamically, so the row seals nothing, not even a client secret.
+    const signInRow = row({
+      type: AgentVaultServiceType.Mcp,
+      hostPattern: "mcp.linear.app",
+      config: { serverUrl: SERVER_URL, transport: "streamable-http" },
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: "oauth", serverUrl: SERVER_URL, registration: "dynamic" },
+      encryptedCredential: null,
+      memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue]
+    });
+    const connection = (oauthConfig: Record<string, unknown> | null) => ({
+      serviceId: "service-1",
+      field: AgentVaultVariableReferenceField.CredentialValue,
+      oauthConfig: oauthConfig && { serverUrl: SERVER_URL, status: AgentVaultOauthStatus.Connected, ...oauthConfig }
+    });
+    const factsWith = (personalValueRow?: ReturnType<typeof connection>) =>
+      toBundleServiceFacts(signInRow, {
+        ...context(),
+        setPersonalFields:
+          toSetPersonalFields([signInRow], personalValueRow ? [personalValueRow] : []).get("service-1") ??
+          new Set<string>()
+      });
+
+    test("is ready with the member's OAuth token once they are signed in", () => {
+      const signedIn = factsWith(connection({}));
+      expect(signedIn.personalValuesMissing).toBe(false);
+      expect(signedIn.credential).toEqual({ type: "oauth" });
+      expect(describeSessionService(signedIn).credential).toEqual({
+        type: "oauth",
+        header: "Authorization",
+        addedByProxy: true
+      });
+    });
+
+    test("waits for the member while resolve would refuse their sign-in", () => {
+      [
+        undefined,
+        connection({ status: AgentVaultOauthStatus.NeedsReauthorization }),
+        connection({ serverUrl: "https://old.example.com/mcp" }),
+        // A typed value saved before the service left sign-in to members is never sent as a token.
+        connection(null)
+      ].forEach((personalValueRow) => {
+        const waiting = factsWith(personalValueRow);
+        expect(waiting.personalValuesMissing).toBe(true);
+        expect(describeSessionService(waiting)).toMatchObject({
+          status: "needs-personal-values",
+          credential: { type: "none", addedByProxy: false }
+        });
+      });
+    });
+
+    test("a sign-in never counts as a typed value on a service that takes one", () => {
+      const typedRow = row({ memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue] });
+      expect(toSetPersonalFields([typedRow], [connection({})]).has("service-1")).toBe(false);
+      expect(toSetPersonalFields([typedRow], [connection(null)]).get("service-1")).toEqual(
+        new Set([AgentVaultVariableReferenceField.CredentialValue])
+      );
+    });
   });
 });
