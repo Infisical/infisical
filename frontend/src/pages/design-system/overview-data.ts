@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "no-nested-frames",
+    title: "No frames in frames",
+    description:
+      "A table, list or card inside a framed container drops its own frame, and a plain Card pads its content like a framed one.",
+    date: "2026-11-07",
+    commit: "0e62ac760f",
+    page: "card"
+  },
+  {
     id: "link-rows-grid",
     title: "Link rows and 1:2 grid",
     description:
@@ -211,13 +220,5 @@ export const recentChanges: {
     date: "2026-11-05",
     commit: "32e2402f30",
     page: "toast"
-  },
-  {
-    id: "grouped-rows",
-    title: "Grouped rows",
-    description: "DataTable groups rows under header rows and nests one level of child rows.",
-    date: "2026-11-05",
-    commit: "94a2ac115f",
-    page: "table"
   }
 ];
