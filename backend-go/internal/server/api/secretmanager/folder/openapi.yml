@@ -1,0 +1,93 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Folders API
+  description: Secret folder endpoints
+
+paths:
+  /api/v2/folders:
+    get:
+      operationId: listSecretFolders
+      summary: List folders
+      tags:
+        - Folders
+      security:
+        - jwt: []
+        - identityAccessToken: []
+        - serviceToken: []
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          description: Required, but an empty value is valid and means the root, so presence is checked in the handler
+          schema:
+            type: string
+        - name: lastSecretModified
+          in: query
+          schema:
+            type: string
+        - name: recursive
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The folders under the path
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [folders]
+                properties:
+                  folders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecretFolder'
+
+components:
+  schemas:
+    SecretFolder:
+      type: object
+      required: [id, name, createdAt, updatedAt, envId]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        version:
+          type: integer
+          nullable: true
+          x-omitempty: false
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        envId:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+          x-omitempty: false
+        isReserved:
+          type: boolean
+          nullable: true
+          x-omitempty: false
+        description:
+          type: string
+          nullable: true
+          x-omitempty: false
+        lastSecretModified:
+          type: string
+          nullable: true
+          x-omitempty: false
+        relativePath:
+          type: string
