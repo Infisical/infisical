@@ -107,6 +107,7 @@ Exports: List, ListRow, ListSection, ListHeader, ListFooter, DataList. Source Ty
 - Interactive rows use a translucent ink overlay on hover and press (opacity-hover and opacity-press tokens), so tinted surfaces behind the list show through.
 - Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface), bare, segmented (no container, each row a borderless tint card with a gap between) or divided (no container, rows split by line-soft rules); md/sm, static/link/button rows and actions below.
 - Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.
+- A row links with href for a plain URL or link for a router destination (TanStack LinkOptions: to, params, search). link renders one real anchor through createLink, so the href is typed and real, a plain click navigates in the app and modifier or middle clicks open a new tab natively, with no buildLocation or navigate at the call site.
 - ListHeader (title, count, action) and ListFooter can sit among List's children in place of the title, count, action and footer props. framed puts the header in its eyebrow band with count and action on the right; every other variant gives it its own row with a title-sm title, a muted count and the action slot.
 - Resolved rows stay in place on a quieter fill: row-done inside framed and plain surfaces, row-done-card (half the tint) for segmented cards, and row-done-divided (translucent ink, quieter than hover) for divided rows on the page.
 - segmented and divided align the header, section heads and footer with the row content at surface-inset-sm. Every ground, gap, rule, hover, press and resolved fill of a variant lives here, so composites built on List (ApprovalQueue, ActivityLog, AccessList) inherit it.
@@ -291,6 +292,33 @@ export default function Interactive() {
         </div>
         <figcaption className="text-muted-foreground text-xs">
           {"Link rows, hover a row, staging is current"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="Related components" title="Related components">
+            {(
+              [
+                ["table", "Table", "Typed rows with selection and row actions"],
+                ["card", "Card", "Plain by default, framed for emphasis"]
+              ] as const
+            ).map(([component, title, description]) => (
+              <ListRow
+                key={component}
+                value={component}
+                label={title}
+                title={title}
+                description={description}
+                link={{
+                  to: "/design-system/components/$group/$component",
+                  params: { group: "data-display", component }
+                }}
+              />
+            ))}
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Router link rows, a modifier click opens a new tab"}
         </figcaption>
       </figure>
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">

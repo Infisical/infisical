@@ -12,14 +12,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@app/components/v4/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@app/components/v4/ui/card";
 import {
   DataTable,
   type DataTableColumn,
@@ -28,7 +21,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -145,9 +137,7 @@ const EditRolesSheet = ({
       <SheetContent className={styles.wideSheet} pending={pending}>
         <SheetHeader>
           <SheetTitle>Roles</SheetTitle>
-          <SheetDescription>
-            Select one or more of the pre-defined or custom roles to configure project permissions.
-          </SheetDescription>
+          <SheetDescription>Pick one or more built-in or custom project roles.</SheetDescription>
         </SheetHeader>
         <SheetBody>
           <div className={styles.grantList}>
@@ -239,9 +229,6 @@ const EditRoleDialog = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit role</DialogTitle>
-          <DialogDescription>
-            Update this role assignment and its access duration.
-          </DialogDescription>
         </DialogHeader>
         <RoleGrantRow
           grant={draft}
@@ -350,7 +337,6 @@ export const MemberRolesSection = ({
       <Card variant="framed">
         <CardHeader>
           <CardTitle>Project roles</CardTitle>
-          <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isSelf && member.roles.length > 0 && (
             <CardAction>{editButton("outline", !canEdit)}</CardAction>
           )}
@@ -370,7 +356,6 @@ export const MemberRolesSection = ({
             <EmptyState
               size="sm"
               title="This user doesn't have any roles"
-              description="Give this user one or more roles"
               actions={editButton("primary", !canEdit || isSelf)}
             />
           )}

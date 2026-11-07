@@ -46,7 +46,6 @@ const kafkaConnectionFields = [
     name: "inputs.saslMechanism",
     type: "select",
     label: "SASL Mechanism",
-    description: "How Infisical authenticates as the admin user.",
     options: Object.values(KafkaSaslMechanism).map((value) => ({ label: value, value }))
   },
   {
@@ -71,8 +70,7 @@ const advancedFields = [
   {
     name: "inputs.sslEnabled",
     type: "switch",
-    label: "Enable SSL",
-    description: "Connect to the broker over TLS."
+    label: "Enable SSL"
   }
 ] satisfies readonly TDynamicSecretProviderField<TKafkaFormValues>[];
 
@@ -82,7 +80,7 @@ const caField = {
   label: "CA Certificate",
   placeholder: "-----BEGIN CERTIFICATE----- ...",
   isOptional: true,
-  description: "PEM-encoded CA certificate used to verify the broker.",
+  description: "PEM-encoded.",
   rows: 3
 } satisfies TDynamicSecretProviderField<TKafkaFormValues>;
 

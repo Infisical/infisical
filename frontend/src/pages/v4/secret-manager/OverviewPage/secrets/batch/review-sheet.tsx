@@ -11,7 +11,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -99,11 +98,6 @@ export function ReviewSheet({
               </Badge>
             </span>
           </SheetTitle>
-          <SheetDescription>
-            {single
-              ? "Review the change you're about to save."
-              : "Write a commit message and review the changes you're about to commit."}
-          </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <div className={styles.groups}>

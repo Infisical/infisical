@@ -46,7 +46,7 @@ const connectionFields = [
     type: "text",
     label: "Host",
     placeholder: "http://localhost",
-    description: "The URL scheme defaults to HTTPS when a CA is provided and HTTP otherwise.",
+    description: "Defaults to HTTPS when a CA is provided, HTTP otherwise.",
     layout: "half"
   },
   { name: "inputs.port", type: "number", label: "Port", placeholder: "19530", layout: "half" },
@@ -88,7 +88,7 @@ const trailingFields = [
     label: "CA Certificate",
     placeholder: "-----BEGIN CERTIFICATE----- ...",
     isOptional: true,
-    description: "PEM-encoded CA certificate used to verify the Milvus server.",
+    description: "PEM-encoded.",
     rows: 3
   }
 ] satisfies readonly TDynamicSecretProviderField<TMilvusFormValues>[];
@@ -113,12 +113,7 @@ function MilvusFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
         <ProviderFields fields={connectionFields} />
       </ProviderGroup>
 
-      <ProviderGroup
-        id="milvus-privileges"
-        surface
-        title="Privileges"
-        description="Privileges granted to the ephemeral role assigned to the lease user."
-      >
+      <ProviderGroup id="milvus-privileges" surface title="Privileges">
         <Stack gap={12}>
           {privileges.fields.map(({ id }, index) => (
             <div key={id} className="flex items-end gap-3">

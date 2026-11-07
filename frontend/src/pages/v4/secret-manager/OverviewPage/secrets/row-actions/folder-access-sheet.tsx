@@ -48,7 +48,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetSubheader,
@@ -96,28 +95,27 @@ const FOLDER_ROLE_TIERS = [
   {
     value: SecretFolderRole.List,
     label: "List",
-    description: "Can see secret and import names, not values."
+    description: "Secret and import names only, no values."
   },
   {
     value: SecretFolderRole.Read,
     label: "Read",
-    description: "Can read secret values and generate dynamic credentials."
+    description: "Also reads values and generates dynamic credentials."
   },
   {
     value: SecretFolderRole.Edit,
     label: "Edit",
-    description: "Can add, edit, and delete secrets."
+    description: "Also adds, edits, and deletes secrets."
   },
   {
     value: SecretFolderRole.Manage,
     label: "Manage",
-    description: "Can manage rotations, dynamic secrets, and honey tokens."
+    description: "Also manages rotations, dynamic secrets, and honey tokens."
   },
   {
     value: SecretFolderRole.FullAccess,
     label: "Full access",
-    description:
-      "Everything in Manage, plus deleting the folder and granting or revoking access to it."
+    description: "Also deletes the folder and grants or revokes access to it."
   }
 ];
 const tierLabel = (tier: SecretFolderRole) =>
@@ -402,7 +400,7 @@ function AccessRow({
           <DialogHeader>
             <DialogTitle>Temporary access</DialogTitle>
             <DialogDescription>
-              {`Folder access for ${actor.name} is revoked automatically once the duration elapses.`}
+              {`Access for ${actor.name} is revoked when the duration ends.`}
             </DialogDescription>
           </DialogHeader>
           <div className={styles.stackTight}>
@@ -502,27 +500,26 @@ function RemoveAccessDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {isExpired && expiry && (
             <AlertDialogDescription>
-              This {label} grant for {name} expired on {formatExpiryFull(expiry.expiresAt)} and no
-              longer applies in {path}. Clearing it does not change their access.
+              This {label} grant for {name} expired on {formatExpiryFull(expiry.expiresAt)}.
+              Clearing it does not change their access.
             </AlertDialogDescription>
           )}
           {!isExpired && isOverride && (
             <AlertDialogDescription>
-              The {actorKind} {name} will fall back to their{" "}
+              The {actorKind} {name} falls back to their{" "}
               <span className={styles.strong}>{roleNames}</span> project role in {path} on{" "}
-              {environmentName}.{label ? ` This ${label} override` : " This override"} currently
-              replaces that role here, so removing it can broaden or narrow their access.
+              {environmentName}, which can broaden or narrow their access.
             </AlertDialogDescription>
           )}
           {!isExpired && !isOverride && (
             <AlertDialogDescription>
-              The {actorKind} {name} will lose access to {path} on {environmentName}. No project
-              role grants them access to this folder.
+              The {actorKind} {name} loses access to {path} on {environmentName}. No project role
+              grants them access to this folder.
             </AlertDialogDescription>
           )}
           {isTemporary && expiry && (
             <AlertDialogDescription>
-              It would otherwise expire in {expiry.value}, on {formatExpiryFull(expiry.expiresAt)}.
+              It would otherwise expire on {formatExpiryFull(expiry.expiresAt)}.
             </AlertDialogDescription>
           )}
         </AlertDialogHeader>
@@ -614,20 +611,15 @@ export function FolderAccessSheet({
     : [];
   const rosterCount = projectMembers.length;
 
-  let emptyState = {
+  let emptyState: { title: string; description?: string } = {
     title: "No access on this page",
-    description: `None of project members 1 to ${rosterCount} have access to this folder. Grant access from the No access section, or check another page.`
+    description: "Grant access from the No access section, or check another page."
   };
-  if (rosterCount === 0)
-    emptyState = {
-      title: "No project members",
-      description: "This project has no users or machine identities yet."
-    };
+  if (rosterCount === 0) emptyState = { title: "No project members" };
   if (isFiltering && rosterCount > 0)
     emptyState = {
       title: "No matching access",
-      description:
-        "No one on this page matches these filters. Clear a filter, or check another page."
+      description: "Clear a filter, or check another page."
     };
   if (manageBlock) emptyState = { title: "Access restricted", description: `${manageBlock}.` };
 
@@ -692,9 +684,6 @@ export function FolderAccessSheet({
         >
           <SheetHeader>
             <SheetTitle>Manage permissions</SheetTitle>
-            <SheetDescription className="sr-only">
-              Grant users and machine identities access to this folder
-            </SheetDescription>
           </SheetHeader>
           <SheetSubheader className={styles.crumbs}>
             <Icon icon={LayersIcon} size={14} className={styles.mutedIcon} />

@@ -110,9 +110,7 @@ export const AddMemberDialog = ({
       <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>Add users to your project</DialogTitle>
-          <DialogDescription>
-            Users will receive an email with instructions to gain access.
-          </DialogDescription>
+          <DialogDescription>Users get an email with instructions to join.</DialogDescription>
         </DialogHeader>
         <form
           id="add-project-members"

@@ -131,7 +131,7 @@ function ElasticSearchFields() {
         presentation="panel"
         surface
         title="Roles"
-        description="Assign built-in roles such as superuser, apm_user, kibana_admin, or monitoring_user, or enter a custom role."
+        description="Built-in roles, such as superuser or kibana_admin, or custom ones."
       >
         <Stack gap={12} align="start">
           {roles.map((_, index) => (

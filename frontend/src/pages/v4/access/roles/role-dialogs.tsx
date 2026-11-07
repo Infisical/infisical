@@ -184,9 +184,7 @@ export const OrgRoleDialog = ({
         <DialogHeader>
           <DialogTitle>{mode === "update" ? "Update role" : "Duplicate role"}</DialogTitle>
           {mode === "duplicate" && (
-            <DialogDescription>
-              Duplicate this role to create a new role with the same permissions.
-            </DialogDescription>
+            <DialogDescription>Creates a new role with the same permissions.</DialogDescription>
           )}
         </DialogHeader>
         <form
@@ -256,11 +254,9 @@ export const ProjectRoleSheet = ({
       <SheetContent pending={form.pending}>
         <SheetHeader>
           <SheetTitle>{mode === "update" ? "Edit role" : "Duplicate role"}</SheetTitle>
-          <SheetDescription>
-            {mode === "update"
-              ? "Update the role name, slug, and description."
-              : `Create a new role with the same permissions as ${role.name}.`}
-          </SheetDescription>
+          {mode === "duplicate" && (
+            <SheetDescription>{`Creates a new role with the same permissions as ${role.name}.`}</SheetDescription>
+          )}
         </SheetHeader>
         <SheetBody>
           <form

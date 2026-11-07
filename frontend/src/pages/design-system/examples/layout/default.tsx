@@ -30,6 +30,12 @@ export default function Example() {
             <span className={tile}>Certificates</span>
           </Grid>
         </ExampleCell>
+        <ExampleCell align="stretch" label="1:2, one column below 896px">
+          <Grid columns="1:2" gap={8}>
+            <span className={tile}>Details</span>
+            <span className={tile}>Activity</span>
+          </Grid>
+        </ExampleCell>
         <ExampleCell align="stretch" label="auto-fit">
           <Grid gap={8}>
             <span className={tile}>Secrets</span>

@@ -254,7 +254,7 @@ const TemplateSheet = ({
               : "Create machine identity auth template"}
           </SheetTitle>
           <SheetDescription>
-            {isEdit ? "Update the authentication template" : "Create a new authentication template"}
+            One auth configuration that many machine identities can share.
           </SheetDescription>
         </SheetHeader>
         <SheetBody>
@@ -297,7 +297,7 @@ const TemplateSheet = ({
                     size="sm"
                     icon="lock"
                     title="This template reviews tokens through a gateway"
-                    description="Gateway settings can't be changed from this page. You can still rename the template."
+                    description="Gateway settings can't be changed here. You can still rename the template."
                   />
                 ) : (
                   <>
@@ -497,7 +497,6 @@ export const AuthTemplatesSection = () => {
   return (
     <Section
       title="Machine identity auth templates"
-      description="Reuse authentication configurations across machine identities to keep settings consistent and easier to manage."
       action={
         <Gate allowed={canCreate}>
           <Button
@@ -536,12 +535,7 @@ export const AuthTemplatesSection = () => {
               sort={sort}
               onSortChange={setSort}
               empty={
-                <EmptyState
-                  size="sm"
-                  icon="search"
-                  title="No templates match search filter"
-                  description="Adjust your search criteria."
-                />
+                <EmptyState size="sm" icon="search" title="No templates match search filter" />
               }
             />
             {!loading && totalCount > 0 && (

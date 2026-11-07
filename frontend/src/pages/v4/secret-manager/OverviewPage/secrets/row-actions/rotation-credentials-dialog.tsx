@@ -1,13 +1,7 @@
 import { format } from "date-fns";
 
 import { Alert } from "@app/components/v4/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from "@app/components/v4/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
@@ -39,7 +33,7 @@ function CredentialSet({
   values
 }: {
   title: string;
-  description: string;
+  description?: string;
   icon: "check" | "history";
   tone: "ok" | "warn";
   fields: CredentialField[];
@@ -51,7 +45,7 @@ function CredentialSet({
         <Icon name={icon} size={14} />
         {title}
       </Text>
-      <SmallText muted>{description}</SmallText>
+      {description && <SmallText muted>{description}</SmallText>}
       <div className={styles.credentialFrame}>
         {fields.map(({ field, label, sensitive }) => {
           const value = values?.[field];
@@ -105,7 +99,6 @@ export function RotationCredentialsDialog({
       <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Generated credentials</DialogTitle>
-          <DialogDescription>View the current and retired {rotationType}.</DialogDescription>
         </DialogHeader>
         {block && (
           <Alert tone="warn" title="Access restricted">
@@ -115,7 +108,6 @@ export function RotationCredentialsDialog({
         <div className={styles.body} hidden={Boolean(block)}>
           <CredentialSet
             title="Current credentials"
-            description="The active credential set currently mapped to the rotation secrets."
             icon="check"
             tone="ok"
             fields={fields}
@@ -123,7 +115,7 @@ export function RotationCredentialsDialog({
           />
           <CredentialSet
             title="Retired credentials"
-            description="The retired credential set that will be revoked during the next rotation cycle."
+            description="Revoked at the next rotation."
             icon="history"
             tone="warn"
             fields={fields}
@@ -131,8 +123,8 @@ export function RotationCredentialsDialog({
           />
           {!IS_ROTATION_DUAL_CREDENTIALS[type] && (
             <Alert tone="info" title={`${appName} retired credentials behavior`}>
-              Due to {rotationType} Rotations utilizing a single credential set, retired credentials
-              will not be able to authenticate with {appName} during their{" "}
+              {rotationType} rotations use a single credential set, so retired credentials cannot
+              authenticate with {appName} during their{" "}
               <a
                 target="_blank"
                 href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
@@ -140,7 +132,7 @@ export function RotationCredentialsDialog({
               >
                 inactive period
               </a>
-              . This is a limitation of {appName} and cannot be rectified by Infisical.
+              . This is a limitation of {appName}.
             </Alert>
           )}
           {next && (

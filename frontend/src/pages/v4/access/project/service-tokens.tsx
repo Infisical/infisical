@@ -170,19 +170,9 @@ export const ServiceTokensTab = () => {
           onSortChange={list.setSort}
           empty={
             list.search.trim() ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title="No service tokens match search"
-                description="Adjust your search criteria."
-              />
+              <EmptyState size="sm" icon="search" title="No service tokens match search" />
             ) : (
-              <EmptyState
-                size="sm"
-                icon="key"
-                title="No service tokens found"
-                description="Create a token to get started."
-              />
+              <EmptyState size="sm" icon="key" title="No service tokens found" />
             )
           }
         />

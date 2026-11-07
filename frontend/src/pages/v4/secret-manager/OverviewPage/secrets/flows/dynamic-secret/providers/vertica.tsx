@@ -72,42 +72,36 @@ const passwordRequirementFields = [
   {
     name: "inputs.passwordRequirements.length",
     type: "number",
-    label: "Password Length",
-    description: "Total generated password length."
+    label: "Password Length"
   },
   {
     name: "inputs.passwordRequirements.required.lowercase",
     type: "number",
     label: "Lowercase Count",
-    description: "Minimum number of lowercase letters.",
     layout: "half"
   },
   {
     name: "inputs.passwordRequirements.required.uppercase",
     type: "number",
     label: "Uppercase Count",
-    description: "Minimum number of uppercase letters.",
     layout: "half"
   },
   {
     name: "inputs.passwordRequirements.required.digits",
     type: "number",
     label: "Digit Count",
-    description: "Minimum number of digits.",
     layout: "half"
   },
   {
     name: "inputs.passwordRequirements.required.symbols",
     type: "number",
     label: "Symbol Count",
-    description: "Minimum number of symbols.",
     layout: "half"
   },
   {
     name: "inputs.passwordRequirements.allowedSymbols",
     type: "text",
     label: "Allowed Symbols",
-    description: "Symbols available to the password generator.",
     isOptional: true
   }
 ] satisfies readonly TDynamicSecretProviderField<TVerticaCreateFormValues>[];
@@ -157,7 +151,6 @@ function VerticaFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
         id="vertica-password"
         presentation="collapse"
         title="Password Configuration (optional)"
-        description="Set constraints on the generated database password."
       >
         <ProviderFields fields={passwordRequirementFields} />
       </ProviderGroup>

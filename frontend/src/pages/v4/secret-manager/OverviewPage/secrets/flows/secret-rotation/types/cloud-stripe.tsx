@@ -126,10 +126,7 @@ export function StripePermissionSelector({
         <FieldLabel id="stripe-permissions-label">Permissions</FieldLabel>
         <SmallText muted>{summary}</SmallText>
       </Inline>
-      <FieldDescription>
-        Grant only the access your application needs. The generated key gets exactly these
-        permissions.
-      </FieldDescription>
+      <FieldDescription>The generated key gets exactly these permissions.</FieldDescription>
       <Card size="sm">
         <div role="group" aria-labelledby="stripe-permissions-label">
           <Stack gap={8}>

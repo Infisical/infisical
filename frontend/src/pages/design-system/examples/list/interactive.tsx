@@ -33,6 +33,28 @@ export default function Interactive() {
           ))}
         </List>
       </ExampleCell>
+      <ExampleCell align="stretch" label="Router link rows, a modifier click opens a new tab">
+        <List label="Related components" title="Related components">
+          {(
+            [
+              ["table", "Table", "Typed rows with selection and row actions"],
+              ["card", "Card", "Plain by default, framed for emphasis"]
+            ] as const
+          ).map(([component, title, description]) => (
+            <ListRow
+              key={component}
+              value={component}
+              label={title}
+              title={title}
+              description={description}
+              link={{
+                to: "/design-system/components/$group/$component",
+                params: { group: "data-display", component }
+              }}
+            />
+          ))}
+        </List>
+      </ExampleCell>
       <ExampleCell align="stretch" label={`Button rows, hover or press a row. Opened: ${opened}`}>
         <List label="Recent requests" title="Recent requests">
           <ListRow

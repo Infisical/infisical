@@ -384,7 +384,7 @@ export function DynamicSecretFlow({
             <SheetHeader>
               <SheetTitle>Choose a Dynamic Secret Provider</SheetTitle>
               <SheetDescription>
-                Select the provider whose credentials Infisical should generate.
+                Pick the system Infisical issues short-lived credentials for.
               </SheetDescription>
             </SheetHeader>
           )}
@@ -407,7 +407,6 @@ export function DynamicSecretFlow({
                           key={item.provider}
                           media={<ProviderLogo provider={item.provider} />}
                           title={item.label}
-                          description={`Generate time-limited ${item.label} credentials on demand.`}
                           onClick={() => selectProvider(item.provider)}
                         >
                           <Meta mono={false} className="block">
@@ -420,11 +419,7 @@ export function DynamicSecretFlow({
                       ))}
                     </Grid>
                   ) : (
-                    <EmptyState
-                      icon="search"
-                      title="No matching providers"
-                      description="Try a different search term."
-                    />
+                    <EmptyState icon="search" title="No matching providers" />
                   )}
                 </Stack>
               </Stack>
@@ -447,7 +442,9 @@ export function DynamicSecretFlow({
                   </Badge>
                 </Inline>
               </SheetTitle>
-              <SheetDescription>Configure dynamic secret parameters.</SheetDescription>
+              <SheetDescription>
+                Each lease gets its own credentials, revoked when its TTL ends.
+              </SheetDescription>
             </SheetHeader>
           )}
           {definition && (
@@ -522,7 +519,7 @@ export function DynamicSecretFlow({
           <DialogHeader>
             <DialogTitle>Certificate Authentication Setup</DialogTitle>
             <DialogDescription>
-              Configure the target host to trust certificates issued by this dynamic secret.
+              Configure the target host to trust certificates from this dynamic secret.
             </DialogDescription>
           </DialogHeader>
           <Stack gap={16}>
@@ -696,7 +693,6 @@ export function DynamicSecretEditSheet({
         <SheetContent className="w-full data-[side=right]:sm:max-w-3xl">
           <SheetHeader>
             <SheetTitle>Edit dynamic secret</SheetTitle>
-            <SheetDescription>Update dynamic secret parameters.</SheetDescription>
           </SheetHeader>
           <SheetBody>
             {definition && context && (

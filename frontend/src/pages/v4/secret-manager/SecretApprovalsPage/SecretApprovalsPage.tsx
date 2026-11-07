@@ -437,14 +437,14 @@ export const SecretApprovalsPage = () => {
     <EmptyState
       icon="inbox"
       title="Not available in v4 yet"
-      description="This section still lives in the current app."
+      description="Use the current app for this section."
     />
   );
   return (
     <Stack gap={24}>
       <PageHeader
         title="Approval workflows"
-        description="Approval policies for any change to secrets in sensitive environments and folders."
+        description="Require review before secrets change in sensitive environments and folders."
         tabs={
           <Tabs
             label="Approval sections"

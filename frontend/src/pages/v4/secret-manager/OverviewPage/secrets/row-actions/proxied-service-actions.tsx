@@ -17,7 +17,6 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -154,7 +153,6 @@ function EditProxiedServiceSheet({
                   {docs}
                 </span>
               </SheetTitle>
-              <SheetDescription>Update how the agent proxy brokers this service.</SheetDescription>
             </div>
           </SheetHeader>
           <SheetBody className={flowStyles.wizardBody}>
@@ -162,10 +160,7 @@ function EditProxiedServiceSheet({
               <nav className={flowStyles.rail} aria-label="Configuration">
                 <p className={flowStyles.eyebrow}>Configuration</p>
                 <Steps
-                  steps={PROXIED_SERVICE_STEPS.map((entry) => ({
-                    title: entry.name,
-                    summary: entry.shortDescription
-                  }))}
+                  steps={PROXIED_SERVICE_STEPS.map((entry) => ({ title: entry.name }))}
                   current={stepIndex}
                   orientation="vertical"
                   onStepClick={setStepIndex}
@@ -175,7 +170,6 @@ function EditProxiedServiceSheet({
               <div className={flowStyles.wizardMain}>
                 <div className={flowStyles.stepHead}>
                   <h3 className={flowStyles.stepHeading}>{current.title}</h3>
-                  <p className={flowStyles.stepSubtitle}>{current.subtitle}</p>
                 </div>
                 <form
                   noValidate
@@ -299,8 +293,7 @@ function DeleteProxiedServiceDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>{`Are you sure you want to delete ${service.name}?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            The agent proxy will stop brokering credentials for this service. This action cannot be
-            undone.
+            The agent proxy stops brokering credentials for this service. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

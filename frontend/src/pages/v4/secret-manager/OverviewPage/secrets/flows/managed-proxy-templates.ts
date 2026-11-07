@@ -23,7 +23,6 @@ export type ProxiedServiceTemplate = {
   name: string;
   image: string;
   category: ProxiedServiceTemplateCategory;
-  description: string;
   hostPattern: string;
   defaultName?: string;
   aliases?: string[];
@@ -61,7 +60,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "OpenAI",
     image: "OpenAI.png",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Chat and models from OpenAI.",
     hostPattern: "api.openai.com",
     aliases: ["gpt", "chatgpt"],
     seed: {
@@ -73,7 +71,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Anthropic",
     image: "Anthropic.png",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Claude models from Anthropic.",
     hostPattern: "api.anthropic.com",
     aliases: ["claude"],
     seed: {
@@ -88,7 +85,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Google Gemini",
     image: "Gemini.svg",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Google's Gemini models.",
     hostPattern: "generativelanguage.googleapis.com",
     aliases: ["google", "bard", "vertex"],
     seed: {
@@ -103,7 +99,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Mistral AI",
     image: "Mistral.svg",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Chat and embedding models from Mistral.",
     hostPattern: "api.mistral.ai",
     seed: {
       substitutions: bearerSubstitution("MISTRAL_API_KEY", () => randomToken(32))
@@ -114,7 +109,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Cohere",
     image: "Cohere.svg",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Cohere's language models.",
     hostPattern: "api.cohere.com",
     seed: {
       substitutions: bearerSubstitution("CO_API_KEY", () => randomToken(40))
@@ -125,7 +119,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Groq",
     image: "Groq.svg",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Fast model inference from Groq.",
     hostPattern: "api.groq.com",
     seed: {
       substitutions: bearerSubstitution("GROQ_API_KEY", () => `gsk_${randomToken(52)}`)
@@ -136,7 +129,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Perplexity",
     image: "Perplexity.svg",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Perplexity's answer engine.",
     hostPattern: "api.perplexity.ai",
     seed: {
       substitutions: bearerSubstitution("PERPLEXITY_API_KEY", () => `pplx-${randomToken(48)}`)
@@ -147,7 +139,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "OpenRouter",
     image: "OpenRouter.png",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "One key for many AI models.",
     hostPattern: "openrouter.ai",
     seed: {
       substitutions: bearerSubstitution(
@@ -161,7 +152,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Together AI",
     image: "Together.svg",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Open models on Together AI.",
     hostPattern: "api.together.ai, api.together.xyz",
     seed: {
       substitutions: bearerSubstitution("TOGETHER_API_KEY", () => randomToken(64, HEX))
@@ -172,7 +162,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "DeepSeek",
     image: "DeepSeek.svg",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "DeepSeek's chat and reasoning models.",
     hostPattern: "api.deepseek.com",
     seed: {
       substitutions: bearerSubstitution("DEEPSEEK_API_KEY", () => `sk-${randomToken(32)}`)
@@ -183,7 +172,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "xAI (Grok)",
     image: "xAI.svg",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Grok models from xAI.",
     hostPattern: "api.x.ai",
     aliases: ["grok"],
     seed: {
@@ -195,7 +183,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Fireworks AI",
     image: "Fireworks.png",
     category: ProxiedServiceTemplateCategory.Llm,
-    description: "Fast open-model inference.",
     hostPattern: "api.fireworks.ai",
     seed: {
       substitutions: bearerSubstitution("FIREWORKS_API_KEY", () => `fw_${randomToken(24)}`)
@@ -206,7 +193,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Stripe",
     image: "Stripe.svg",
     category: ProxiedServiceTemplateCategory.Payments,
-    description: "Payments and billing.",
     hostPattern: "api.stripe.com",
     defaultName: "stripe-api",
     seed: {
@@ -218,7 +204,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Twilio",
     image: "Twilio.svg",
     category: ProxiedServiceTemplateCategory.Communication,
-    description: "SMS, voice, and messaging.",
     hostPattern: "api.twilio.com",
     seed: {
       basicAuth: { withPassword: true }
@@ -229,7 +214,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "SendGrid",
     image: "SendGrid.png",
     category: ProxiedServiceTemplateCategory.Communication,
-    description: "Send transactional email.",
     hostPattern: "api.sendgrid.com",
     seed: {
       substitutions: bearerSubstitution(
@@ -243,7 +227,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Resend",
     image: "Resend.svg",
     category: ProxiedServiceTemplateCategory.Communication,
-    description: "Email built for developers.",
     hostPattern: "api.resend.com",
     seed: {
       substitutions: bearerSubstitution("RESEND_API_KEY", () => `re_${randomToken(24)}`)
@@ -254,7 +237,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Slack",
     image: "Slack.svg",
     category: ProxiedServiceTemplateCategory.Communication,
-    description: "Post messages and build Slack apps.",
     hostPattern: "slack.com",
     seed: {
       substitutions: [
@@ -278,7 +260,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Telegram",
     image: "Telegram.svg",
     category: ProxiedServiceTemplateCategory.Communication,
-    description: "Build and run Telegram bots.",
     hostPattern: "api.telegram.org",
     defaultName: "telegram-bot-api",
     seed: {
@@ -294,7 +275,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Discord",
     image: "Discord.svg",
     category: ProxiedServiceTemplateCategory.Communication,
-    description: "Build and run Discord bots.",
     hostPattern: "discord.com/api/*",
     seed: {
       headers: bearer("Authorization", "Bot")
@@ -305,7 +285,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "GitHub",
     image: "GitHub.png",
     category: ProxiedServiceTemplateCategory.DeveloperTools,
-    description: "Repos, issues, and more on GitHub.",
     hostPattern: "api.github.com",
     seed: {
       substitutions: bearerSubstitution("GITHUB_TOKEN", () => `ghp_${randomToken(36)}`)
@@ -316,7 +295,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "GitLab",
     image: "GitLab.png",
     category: ProxiedServiceTemplateCategory.DeveloperTools,
-    description: "Repos and pipelines on GitLab.",
     hostPattern: "gitlab.com/api/*",
     seed: {
       headers: [{ headerName: "PRIVATE-TOKEN" }]
@@ -327,7 +305,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Vercel",
     image: "Vercel.png",
     category: ProxiedServiceTemplateCategory.DeveloperTools,
-    description: "Deploys and the Vercel API.",
     hostPattern: "api.vercel.com",
     seed: { headers: bearer() }
   },
@@ -336,7 +313,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Cloudflare",
     image: "Cloudflare.png",
     category: ProxiedServiceTemplateCategory.DeveloperTools,
-    description: "DNS, CDN, and the Cloudflare API.",
     hostPattern: "api.cloudflare.com",
     seed: { headers: bearer() }
   },
@@ -345,7 +321,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Supabase",
     image: "Supabase.png",
     category: ProxiedServiceTemplateCategory.DeveloperTools,
-    description: "Postgres, auth, and storage.",
     hostPattern: "*.supabase.co",
     seed: { headers: [{ headerName: "apikey" }] }
   },
@@ -354,7 +329,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "npm",
     image: "NPM.svg",
     category: ProxiedServiceTemplateCategory.DeveloperTools,
-    description: "The npm package registry.",
     hostPattern: "registry.npmjs.org",
     seed: { headers: bearer() }
   },
@@ -363,7 +337,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "GitHub Packages",
     image: "GitHub.png",
     category: ProxiedServiceTemplateCategory.DeveloperTools,
-    description: "GitHub's npm package registry.",
     hostPattern: "npm.pkg.github.com",
     aliases: ["npm", "packages"],
     seed: { headers: bearer() }
@@ -373,7 +346,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Datadog",
     image: "Datadog.png",
     category: ProxiedServiceTemplateCategory.Monitoring,
-    description: "Monitoring and analytics.",
     hostPattern: "api.datadoghq.com",
     seed: { headers: [{ headerName: "DD-API-KEY" }] }
   },
@@ -382,7 +354,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Sentry",
     image: "Sentry.svg",
     category: ProxiedServiceTemplateCategory.Monitoring,
-    description: "Error and performance monitoring.",
     hostPattern: "sentry.io",
     seed: { headers: bearer() }
   },
@@ -391,7 +362,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "PagerDuty",
     image: "PagerDuty.svg",
     category: ProxiedServiceTemplateCategory.Monitoring,
-    description: "On-call and incident management.",
     hostPattern: "api.pagerduty.com",
     seed: { substitutions: bearerSubstitution("PAGERDUTY_TOKEN", () => randomToken(20)) }
   },
@@ -400,7 +370,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Linear",
     image: "Linear.svg",
     category: ProxiedServiceTemplateCategory.Productivity,
-    description: "Issue tracking and project management.",
     hostPattern: "api.linear.app",
     seed: { headers: [{ headerName: "Authorization" }] }
   },
@@ -409,7 +378,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Notion",
     image: "Notion.svg",
     category: ProxiedServiceTemplateCategory.Productivity,
-    description: "Notion workspace and docs.",
     hostPattern: "api.notion.com",
     seed: { headers: bearer() }
   },
@@ -418,7 +386,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Jira",
     image: "Jira.svg",
     category: ProxiedServiceTemplateCategory.Productivity,
-    description: "Atlassian Jira issue tracking.",
     hostPattern: "*.atlassian.net",
     seed: { basicAuth: { withPassword: true } }
   },
@@ -427,7 +394,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Google Workspace",
     image: "Google Workspace.svg",
     category: ProxiedServiceTemplateCategory.Productivity,
-    description: "Gmail, Calendar, Sheets, and Drive.",
     hostPattern:
       "gmail.googleapis.com/*, sheets.googleapis.com/*, www.googleapis.com/calendar/*, www.googleapis.com/drive/*, www.googleapis.com/upload/drive/*",
     aliases: ["workspace", "gsuite", "gmail", "calendar", "sheets", "drive", "gdrive"],
@@ -444,7 +410,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Postmark",
     image: "Postmark.png",
     category: ProxiedServiceTemplateCategory.Communication,
-    description: "Transactional email.",
     hostPattern: "api.postmarkapp.com",
     seed: { headers: [{ headerName: "X-Postmark-Server-Token" }] }
   },
@@ -453,7 +418,6 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     name: "Shopify",
     image: "Shopify.svg",
     category: ProxiedServiceTemplateCategory.Commerce,
-    description: "Shopify e-commerce API.",
     hostPattern: "*.myshopify.com",
     seed: { headers: [{ headerName: "X-Shopify-Access-Token" }] }
   }

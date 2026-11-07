@@ -35,8 +35,6 @@ import { useProjectScope } from "./scope";
 import styles from "../access.module.css";
 
 const SELF_REASON = "You cannot modify your own membership";
-const ASSUME_DESCRIPTION =
-  "Assume the privileges of this user, allowing you to replicate their access behavior.";
 
 export const ProjectMembersTab = () => {
   const scope = useProjectScope();
@@ -120,7 +118,6 @@ export const ProjectMembersTab = () => {
       <>
         <DropdownMenuItem
           disabled={!canAssume(member)}
-          description={canAssume(member) ? ASSUME_DESCRIPTION : undefined}
           onSelect={() => setAssuming({ id: member.user.id, type: ActorType.USER })}
         >
           <Icon name="user" />
@@ -210,19 +207,9 @@ export const ProjectMembersTab = () => {
           onRowActivate={(member) => go(accessLinks.projectMember(scope, member.id))}
           empty={
             searching ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title="No project users match search"
-                description="Adjust your search or filter criteria."
-              />
+              <EmptyState size="sm" icon="search" title="No project users match search" />
             ) : (
-              <EmptyState
-                size="sm"
-                icon="user"
-                title="No project users found"
-                description="Add users to get started."
-              />
+              <EmptyState size="sm" icon="user" title="No project users found" />
             )
           }
         />

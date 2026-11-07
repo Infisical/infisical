@@ -22,7 +22,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -110,11 +109,6 @@ const RoleDialog = ({
       <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>{source ? "Duplicate role" : "Create role"}</DialogTitle>
-          {source && (
-            <DialogDescription>
-              Duplicate this role to create a new role with the same permissions.
-            </DialogDescription>
-          )}
         </DialogHeader>
         <form
           id={formId}
@@ -344,19 +338,9 @@ export const OrgRolesTab = () => {
           onRowActivate={openRole}
           empty={
             roles.length ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title="No organization roles match search"
-                description="Adjust your search criteria."
-              />
+              <EmptyState size="sm" icon="search" title="No organization roles match search" />
             ) : (
-              <EmptyState
-                size="sm"
-                icon="key"
-                title="This organization does not have any roles"
-                description="Add a role to get started."
-              />
+              <EmptyState size="sm" icon="key" title="This organization does not have any roles" />
             )
           }
         />

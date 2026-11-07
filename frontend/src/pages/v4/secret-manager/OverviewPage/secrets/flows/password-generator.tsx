@@ -5,7 +5,6 @@ import { Checkbox } from "@app/components/v4/ui/checkbox";
 import {
   Popover,
   PopoverContent,
-  PopoverDescription,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger
@@ -74,7 +73,6 @@ export function PasswordGenerator({
       <PopoverContent align="end" className={styles.panel}>
         <PopoverHeader>
           <PopoverTitle>Generate random value</PopoverTitle>
-          <PopoverDescription>Generate strong unique values</PopoverDescription>
         </PopoverHeader>
         <div className={styles.output}>
           <p className={styles.value}>{password}</p>

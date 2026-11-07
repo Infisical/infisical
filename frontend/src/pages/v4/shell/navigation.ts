@@ -29,24 +29,51 @@ export const products = [
     type: ProjectType.SecretManager,
     slug: "secret-management",
     label: "Secrets Management",
-    icon: "key"
+    icon: "key",
+    blurb: "Store, sync, and rotate secrets across environments."
   },
   {
     type: ProjectType.CertificateManager,
     slug: "cert-manager",
     label: "Certificate Manager",
-    icon: "cert"
+    icon: "cert",
+    blurb: "Issue and renew certificates for TLS and code signing."
   },
-  { type: ProjectType.KMS, slug: "kms", label: "KMS", icon: "lock" },
+  {
+    type: ProjectType.KMS,
+    slug: "kms",
+    label: "KMS",
+    icon: "lock",
+    blurb: "Manage keys to encrypt, decrypt, and sign data."
+  },
   {
     type: ProjectType.SecretScanning,
     slug: "secret-scanning",
     label: "Secret Scanning",
-    icon: "search"
+    icon: "search",
+    blurb: "Find leaked secrets in repositories and other sources."
   },
-  { type: ProjectType.PAM, slug: "pam", label: "Privileged Access Manager", icon: "terminal" },
-  { type: ProjectType.AgentVault, slug: "agent-vault", label: "Agent Vault", icon: "agent" }
-] as const satisfies readonly { type: ProjectType; slug: string; label: string; icon: IconName }[];
+  {
+    type: ProjectType.PAM,
+    slug: "pam",
+    label: "Privileged Access Manager",
+    icon: "terminal",
+    blurb: "Broker and record access to databases and servers."
+  },
+  {
+    type: ProjectType.AgentVault,
+    slug: "agent-vault",
+    label: "Agent Vault",
+    icon: "agent",
+    blurb: "Give AI agents scoped access to secrets and services."
+  }
+] as const satisfies readonly {
+  type: ProjectType;
+  slug: string;
+  label: string;
+  icon: IconName;
+  blurb: string;
+}[];
 
 export type ShellProduct = (typeof products)[number];
 

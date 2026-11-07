@@ -108,7 +108,7 @@ function BulkTagDialogContent({
         <DialogHeader>
           <DialogTitle>Bulk tag secrets</DialogTitle>
           <DialogDescription>
-            {`Apply tags to ${selectedSecretCount} selected secret${selectedSecretCount !== 1 ? "s" : ""} across all environments.`}
+            {`Applies to ${selectedSecretCount} selected secret${selectedSecretCount !== 1 ? "s" : ""} in every environment.`}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -184,11 +184,7 @@ function BulkTagDialogContent({
             checked={isReplaceMode}
             onCheckedChange={setIsReplaceMode}
             label="Replace existing tags"
-            description={
-              isReplaceMode
-                ? "All existing tags on selected secrets will be removed and replaced with the tags selected above."
-                : "Selected tags will be added to each secret, keeping any existing tags."
-            }
+            description="Removes existing tags from the selected secrets first."
           />
         </form>
         <DialogFooter>

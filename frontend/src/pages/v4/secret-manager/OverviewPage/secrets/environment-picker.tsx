@@ -120,7 +120,7 @@ function AddEnvironmentDialog({
             <Field
               label="Environment slug"
               error={errors.slug}
-              description="Slugs are shorthand identifiers used to reference this environment."
+              description="Used to reference this environment in the CLI and API."
             >
               <Input
                 mono

@@ -9,7 +9,6 @@ import { Card } from "@app/components/v4/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -51,7 +50,6 @@ import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, Muted } from "../ui";
 import { ProjectIdentityAuthSection } from "./identity-auth";
 import {
-  ASSUME_HINT,
   AssumePrivilegesDialog,
   authMethodName,
   DELETE_PROTECTED,
@@ -119,9 +117,6 @@ const EditIdentityDialog = ({
       <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>Edit project identity</DialogTitle>
-          <DialogDescription>
-            Update the identity&apos;s name, delete protection, and metadata.
-          </DialogDescription>
         </DialogHeader>
         <form
           id="edit-project-identity"
@@ -162,12 +157,7 @@ const EditIdentityDialog = ({
                 onChange={(event) => setName(event.target.value)}
               />
             </Field>
-            <Switch
-              label="Delete protection"
-              description="Prevents this identity from being deleted while enabled."
-              checked={protection}
-              onChange={setProtection}
-            />
+            <Switch label="Delete protection" checked={protection} onChange={setProtection} />
             <Stack gap={8}>
               <span className={styles.sectionLabel}>Metadata</span>
               <div className={styles.metadataBox} data-empty={metadata.length ? undefined : ""}>
@@ -291,7 +281,6 @@ const DetailsCard = ({
     <Card
       variant="framed"
       title="Details"
-      description="Machine identity details"
       action={
         isOrgIdentity ? undefined : (
           <Gate allowed={canEdit}>
@@ -383,20 +372,21 @@ const DetailsCard = ({
 const OrgManagedAuthCard = ({ identity }: { identity: Identity }) => {
   const { permission } = useOrgPermission();
   return (
-    <Card variant="framed" title="Authentication" description="Configure authentication methods">
+    <Card variant="framed" title="Authentication">
       <Alert tone="info" title="Machine identity managed by organization">
-        This machine identity&apos;s authentication methods are managed by your organization.
-        {permission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity) && (
+        {permission.can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity) ? (
           <>
-            {" To make changes, "}
+            {"To make changes, "}
             <Button variant="link" asChild>
               <RouteLink href={accessLinks.orgIdentity(identity.orgId, identity.id)}>
                 go to organization access control
               </RouteLink>
             </Button>
+            .
           </>
+        ) : (
+          "Ask an organization admin to make changes."
         )}
-        .
       </Alert>
     </Card>
   );
@@ -435,11 +425,7 @@ export const ProjectIdentityDetail = () => {
     return (
       <Stack gap={24}>
         {backLink}
-        <EmptyState
-          icon="search"
-          title="Machine identity not found"
-          description="The machine identity may have been removed or you may not have access to it."
-        />
+        <EmptyState icon="search" title="Machine identity not found" />
       </Stack>
     );
 
@@ -458,7 +444,6 @@ export const ProjectIdentityDetail = () => {
         <PageHeader
           title={identity.name}
           mono
-          description={`Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`}
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -476,11 +461,7 @@ export const ProjectIdentityDetail = () => {
                   <Icon name="copy" />
                   Copy machine identity ID
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!canAssume}
-                  description={ASSUME_HINT}
-                  onSelect={() => setAssuming(true)}
-                >
+                <DropdownMenuItem disabled={!canAssume} onSelect={() => setAssuming(true)}>
                   <Icon name="user" />
                   Assume privileges
                 </DropdownMenuItem>

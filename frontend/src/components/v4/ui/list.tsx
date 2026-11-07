@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createLink, type LinkOptions } from "@tanstack/react-router";
 
 import { cn } from "../lib/utils";
 import { Checkbox } from "./checkbox";
@@ -26,6 +27,8 @@ export interface ListRowProps {
   error?: React.ReactNode;
   children?: React.ReactNode;
   href?: string;
+  /** A router link (to, params, search); the title renders as one anchor that keeps modifier clicks native. */
+  link?: LinkOptions;
   onClick?: (event: React.MouseEvent) => void;
   current?: boolean;
   disabled?: boolean;
@@ -34,6 +37,15 @@ export interface ListRowProps {
   resolved?: boolean;
   label: string;
 }
+function RowTitleAnchor({
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"a"> & { ref?: React.Ref<HTMLAnchorElement> }) {
+  return <a ref={ref} {...props} />;
+}
+
+const RowTitleLink = createLink(RowTitleAnchor);
+
 export function ListRow({
   value,
   title,
@@ -45,6 +57,7 @@ export function ListRow({
   error,
   children,
   href,
+  link,
   onClick,
   current,
   disabled,
@@ -56,7 +69,8 @@ export function ListRow({
   const context = React.useContext(ListContext);
   const fullTitle = typeof title === "string" ? title : undefined;
   const checked = context?.selected.includes(value);
-  const button = !href && (onClick || (context?.multiple && selectable));
+  const anchor = Boolean(href || link);
+  const button = !anchor && (onClick || (context?.multiple && selectable));
   const click = (event: React.MouseEvent) => {
     if (disabled) {
       event.preventDefault();
@@ -66,7 +80,7 @@ export function ListRow({
     else if (context?.multiple && selectable) context.toggle(value);
   };
   let disabledRole: "button" | "link" | undefined;
-  if (disabled && href) disabledRole = "link";
+  if (disabled && anchor) disabledRole = "link";
   else if (disabled && button) disabledRole = "button";
   const below = context?.actionsPlacement === "below" && context.size !== "sm";
   return (
@@ -78,7 +92,7 @@ export function ListRow({
       data-disabled={disabled || undefined}
       data-resolved={resolved || undefined}
       data-size={context?.size}
-      data-interactive={(!disabled && Boolean(href || button)) || undefined}
+      data-interactive={(!disabled && Boolean(anchor || button)) || undefined}
     >
       {context?.multiple && (
         <span className={styles.rowCheck}>
@@ -100,7 +114,18 @@ export function ListRow({
       <div className={styles.listBody}>
         <div className={styles.titleLine}>
           {unread && !media && <span className={styles.unread} aria-hidden />}
-          {href && !disabled ? (
+          {link && !disabled ? (
+            <RowTitleLink
+              {...link}
+              className={styles.rowTitle}
+              title={fullTitle}
+              onClick={click}
+              aria-current={current ? "page" : undefined}
+              data-list-target
+            >
+              {title}
+            </RowTitleLink>
+          ) : href && !disabled ? (
             <a
               className={styles.rowTitle}
               title={fullTitle}

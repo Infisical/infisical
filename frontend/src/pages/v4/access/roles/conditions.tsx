@@ -23,38 +23,37 @@ import {
 
 import styles from "./roles.module.css";
 
-type ConditionOption = { value: string; label: string; description: string };
+type ConditionOption = { value: string; label: string; description?: string };
 
 const ENVIRONMENT: ConditionOption = {
   value: "environment",
   label: "Environment slug",
-  description: "The environment slug (e.g., dev, staging, prod)"
+  description: "Such as dev, staging, or prod"
 };
 const SECRET_PATH: ConditionOption = {
   value: "secretPath",
   label: "Secret path",
-  description: "The path within an environment (e.g., /app/config)"
+  description: "Such as /app/config"
 };
 const CONNECTION_ID: ConditionOption = {
   value: "connectionId",
-  label: "App connection ID",
-  description: "App Connection identifier"
+  label: "App connection ID"
 };
 const assignable = (target: string): ConditionOption[] => [
   {
     value: "assignableRole",
     label: "Assignable roles",
-    description: `The roles that the actor is allowed to assign to the target ${target}. (e.g., admin, member, viewer)`
+    description: `Roles this role can assign to ${target}, such as admin or viewer`
   },
   {
     value: "assignableSubject",
     label: "Assignable subjects",
-    description: `The permission subjects that the actor is allowed to grant in additional privileges to the target ${target}. (e.g., secrets, environments, members)`
+    description: `Policies this role can grant to ${target} as additional privileges, such as secrets`
   },
   {
     value: "assignableAction",
     label: "Assignable actions",
-    description: `The specific actions that the actor is allowed to grant in additional privileges to the target ${target}. (e.g., secrets:describeSecret, environments:edit)`
+    description: `Actions this role can grant to ${target} as additional privileges, such as secrets:describeSecret`
   }
 ];
 
@@ -64,8 +63,8 @@ export const CONDITION_OPTIONS: Record<string, ConditionOption[]> = {
   secrets: [
     ENVIRONMENT,
     SECRET_PATH,
-    { value: "secretName", label: "Secret name", description: "The name of a specific secret" },
-    { value: "secretTags", label: "Secret tags", description: "Tags associated with secrets" }
+    { value: "secretName", label: "Secret name" },
+    { value: "secretTags", label: "Secret tags" }
   ],
   "dynamic-secrets": [
     ENVIRONMENT,
@@ -73,12 +72,12 @@ export const CONDITION_OPTIONS: Record<string, ConditionOption[]> = {
     {
       value: "metadataKey",
       label: "Metadata key",
-      description: "The key of a metadata pair (use with $elemMatch for nested matching)"
+      description: "Use with $elemMatch for nested matching"
     },
     {
       value: "metadataValue",
       label: "Metadata value",
-      description: "The value of a metadata pair (use with $elemMatch for nested matching)"
+      description: "Use with $elemMatch for nested matching"
     }
   ],
   "secret-folders": GENERAL,
@@ -90,26 +89,23 @@ export const CONDITION_OPTIONS: Record<string, ConditionOption[]> = {
   identity: [
     {
       value: "identityId",
-      label: "Identity ID",
-      description: "The unique identifier of the target machine identity"
+      label: "Identity ID"
     },
     ...assignable("machine identities")
   ],
   member: [
     {
       value: "userEmail",
-      label: "User email",
-      description: "The email address of the target user"
+      label: "User email"
     },
     ...assignable("users")
   ],
   groups: [
-    { value: "groupName", label: "Group name", description: "The name of the target group" },
+    { value: "groupName", label: "Group name" },
     {
       value: "assignableRole",
       label: "Assignable roles",
-      description:
-        "The roles that the actor is allowed to assign to the target groups. (e.g., admin, member, viewer)"
+      description: "Roles this role can assign to groups, such as admin or viewer"
     }
   ],
   "secret-rotation": [ENVIRONMENT, SECRET_PATH, CONNECTION_ID],
@@ -118,8 +114,7 @@ export const CONDITION_OPTIONS: Record<string, ConditionOption[]> = {
   "app-connections": [
     {
       value: "connectionId",
-      label: "Connection ID",
-      description: "Connection identifier for app connections"
+      label: "Connection ID"
     }
   ]
 };
@@ -145,10 +140,8 @@ const operatorsFor = (lhs: string) => {
 };
 
 const OPERATOR_HELP: Record<string, string> = {
-  $eq: "Value should equal specified value.",
-  $ne: "Value should not equal specified value.",
-  $in: "List of comma-separated values that match a given value.",
-  $all: "List of comma-separated values that must all be present."
+  $in: "Comma-separated values. Matches any of them.",
+  $all: "Comma-separated values. All must be present."
 };
 
 const defaultOperator = (lhs: string): Operator => (lhs === "secretTags" ? "$in" : "$eq");
@@ -183,10 +176,7 @@ const GlobInfo = () => {
         itself: <code>/app/*</code> does not match secrets directly in <code>/app</code>. Use{" "}
         <code>/app/**</code> to match a folder and everything under it.
       </p>
-      <Field
-        label="Glob pattern"
-        description="Examples: dev-*, /services/**, config-?, {dev,staging}-*"
-      >
+      <Field label="Glob pattern">
         <Input
           id={`${id}-pattern`}
           mono
@@ -195,10 +185,7 @@ const GlobInfo = () => {
           onChange={(event) => setPattern(event.target.value)}
         />
       </Field>
-      <Field
-        label="Test string"
-        description={hasInput ? undefined : "Type a value to test the pattern against"}
-      >
+      <Field label="Test string">
         <Input
           id={`${id}-test`}
           mono
@@ -320,10 +307,6 @@ export const ConditionsFields = ({
               </li>
             ))}
           </ul>
-          <p>
-            Remove the incompatible conditions or update the selected actions to make them
-            compatible.
-          </p>
         </Alert>
       )}
       {conditions.length > 0 && (
@@ -377,7 +360,7 @@ export const ConditionsFields = ({
                         onChange={(lhs) => patch(index, { lhs, operator: defaultOperator(lhs) })}
                       />
                     </div>
-                    {option && (
+                    {option?.description && (
                       <HintIcon label={`About ${option.label}`} content={option.description} />
                     )}
                   </div>
@@ -412,10 +395,12 @@ export const ConditionsFields = ({
                         </PopoverContent>
                       </Popover>
                     ) : (
-                      <HintIcon
-                        label="About this operator"
-                        content={OPERATOR_HELP[condition.operator] ?? ""}
-                      />
+                      OPERATOR_HELP[condition.operator] && (
+                        <HintIcon
+                          label="About this operator"
+                          content={OPERATOR_HELP[condition.operator]}
+                        />
+                      )
                     )}
                   </div>
                   <div className={styles.grow}>

@@ -155,7 +155,6 @@ export const VaultImportSheet = ({
     emptyPreview = (
       <div>
         <p className={styles.warningText}>No KV mounts found</p>
-        <p>This namespace has no KV secret engines configured.</p>
         <p>Policy translation requires KV mounts.</p>
       </div>
     );
@@ -166,28 +165,20 @@ export const VaultImportSheet = ({
         <SheetHeader>
           <SheetTitle>Import from HashiCorp Vault</SheetTitle>
           <SheetDescription>
-            Select a policy from your Vault namespace or paste your own HCL policy to translate it
-            into Infisical permissions.
+            Translate a Vault HCL policy into Infisical permissions.
           </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <div className={styles.vaultBody}>
             <Alert tone="info" title="How policy translation works">
               <p>
-                Policies are translated by identifying KV secret engine mounts and parsing path
-                structures to extract environments and secret paths.
-              </p>
-              <p>
-                <strong>Key assumptions:</strong> The first path segment after the mount is treated
-                as the environment (e.g., <code>secret/data/prod/app</code> to env:{" "}
-                <code>prod</code>, path: <code>/app</code>). Vault capabilities and wildcards are
-                automatically mapped to equivalent Infisical permissions and glob patterns.
+                Only KV mounts are translated. The first path segment after the mount becomes the
+                environment (<code>secret/data/prod/app</code> becomes env <code>prod</code>, path{" "}
+                <code>/app</code>). Capabilities and wildcards map to Infisical permissions and glob
+                patterns.
               </p>
             </Alert>
-            <Field
-              label="App connection"
-              description="HashiCorp Vault app connections available to you in this project."
-            >
+            <Field label="App connection">
               <Select
                 label="App connection"
                 placeholder="Select app connection..."
@@ -201,10 +192,7 @@ export const VaultImportSheet = ({
                 }}
               />
             </Field>
-            <Field
-              label="Namespace"
-              description="Select the Vault namespace used to fetch policies and KV mount information for the translation."
-            >
+            <Field label="Namespace">
               <Select
                 label="Namespace"
                 placeholder={
@@ -225,7 +213,7 @@ export const VaultImportSheet = ({
             <Field
               label="Select Vault policy"
               optional
-              description="Select a policy to auto-populate the HCL editor below, or skip to paste your own policy."
+              description="Fills the HCL editor below. Skip to paste your own."
             >
               <Select
                 label="Select Vault policy"
@@ -243,10 +231,7 @@ export const VaultImportSheet = ({
               />
             </Field>
             <div className={styles.vaultGrid}>
-              <Field
-                label="Vault HCL policy"
-                description="Paste your HCL policy here or select one from the dropdown above."
-              >
+              <Field label="Vault HCL policy">
                 <Textarea
                   mono
                   id="vault-hcl-policy"

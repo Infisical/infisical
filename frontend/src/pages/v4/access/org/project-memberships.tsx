@@ -19,7 +19,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -67,25 +66,19 @@ export type ProjectMembershipRow = {
 
 const copy = {
   user: {
-    description: "Manage user project memberships",
     emptyTitle: "This user is not a member of any projects",
-    emptyDescription: "Assign this user to a project.",
     added: "Successfully added user to project",
     removed: () => "Successfully removed user from project",
     projectTab: ProjectAccessControlTabs.Member
   },
   identity: {
-    description: "Manage machine identity project memberships",
     emptyTitle: "This machine identity is not a member of any projects",
-    emptyDescription: "Assign this machine identity to a project.",
     added: "Successfully added identity to project",
     removed: () => "Successfully removed identity from project",
     projectTab: ProjectAccessControlTabs.Identities
   },
   group: {
-    description: "Manage group project memberships",
     emptyTitle: "This group is not a member of any projects",
-    emptyDescription: "Add this group to a project.",
     added: "",
     removed: (project: string) => `Successfully removed the group from project ${project}`,
     projectTab: ProjectAccessControlTabs.Groups
@@ -128,11 +121,6 @@ const AddToProjectDialog = ({
           <DialogTitle>
             {isUser ? "Add user to project" : "Add machine identity to project"}
           </DialogTitle>
-          <DialogDescription>
-            {isUser
-              ? "Select a project to add this user to."
-              : "Select a project and the role this machine identity should have in it."}
-          </DialogDescription>
         </DialogHeader>
         <form
           id={`add-${subject}-to-project`}
@@ -471,11 +459,7 @@ export const ProjectMembershipsSection = ({
   const searching = Boolean(list.search.trim());
 
   return (
-    <Section
-      title="Projects"
-      description={text.description}
-      action={showHeaderAdd ? addButton("outline") : undefined}
-    >
+    <Section title="Projects" action={showHeaderAdd ? addButton("outline") : undefined}>
       <Input
         icon="search"
         placeholder="Search projects..."
@@ -496,18 +480,12 @@ export const ProjectMembershipsSection = ({
         onRowActivate={openProject}
         empty={
           searching ? (
-            <EmptyState
-              size="sm"
-              icon="search"
-              title="No projects match this search"
-              description="Adjust search filters to view project memberships."
-            />
+            <EmptyState size="sm" icon="search" title="No projects match this search" />
           ) : (
             <EmptyState
               size="sm"
               icon="folder"
               title={text.emptyTitle}
-              description={text.emptyDescription}
               actions={canAdd ? addButton("primary") : undefined}
             />
           )
@@ -550,9 +528,10 @@ export const ProjectMembershipsSection = ({
                 `Are you sure you want to remove the group from ${removing?.project.name ?? ""}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {subject === "identity"
-                ? `Remove ${subjectName} from ${removing?.project.name ?? "this project"}. The identity loses all access it has through this project membership.`
-                : "This action is irreversible."}
+              {subject === "user" && "They lose their direct access to this project."}
+              {subject === "identity" &&
+                `${subjectName} loses its access to ${removing?.project.name ?? "this project"}.`}
+              {subject === "group" && "Members lose access granted through this group."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

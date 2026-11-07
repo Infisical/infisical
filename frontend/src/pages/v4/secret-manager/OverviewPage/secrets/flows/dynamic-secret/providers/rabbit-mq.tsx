@@ -40,7 +40,7 @@ const rabbitMqConnectionFields = [
     name: "inputs.port",
     type: "number",
     label: "Management Port",
-    description: "The port on which the RabbitMQ management plugin is running. Default is 15672.",
+    description: "Default: 15672.",
     layout: "half"
   },
   {
@@ -78,7 +78,7 @@ const virtualHostFields = [
     type: "text",
     label: "Name",
     placeholder: "/virtual-host",
-    description: "The virtual host to which the user will be assigned. Default is /.",
+    description: "Default: /.",
     layout: "half"
   },
   {
@@ -128,7 +128,7 @@ function RabbitMqFields() {
         presentation="panel"
         surface
         title="Tags"
-        description="Assign built-in tags such as management, policymaker, monitoring, or administrator, or enter a custom tag."
+        description="Built-in tags, such as management or administrator, or custom ones."
       >
         <Stack gap={12} align="start">
           {tags.map((_, index) => (

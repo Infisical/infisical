@@ -198,7 +198,7 @@ const UserGroupsSection = ({ username }: { username: string }) => {
   };
 
   return (
-    <Section title="Groups" description="Manage user group memberships">
+    <Section title="Groups">
       <Input
         icon="search"
         placeholder="Search groups..."
@@ -219,18 +219,13 @@ const UserGroupsSection = ({ username }: { username: string }) => {
         onRowActivate={(group) => go(accessLinks.orgGroup(orgId, group.id))}
         empty={
           groups.length ? (
-            <EmptyState
-              size="sm"
-              icon="search"
-              title="No groups match this search"
-              description="Adjust search filters to view group memberships."
-            />
+            <EmptyState size="sm" icon="search" title="No groups match this search" />
           ) : (
             <EmptyState
               size="sm"
               icon="user"
               title="This user has not been assigned to any groups"
-              description="Assign this user to a group from the group access control page."
+              description="Add this user from a group's page."
             />
           )
         }
@@ -243,7 +238,9 @@ const UserGroupsSection = ({ username }: { username: string }) => {
         <AlertDialogContent tone="danger" confirmText="confirm">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to unassign user from group?</AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+            <AlertDialogDescription>
+              They lose any access granted through this group.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -298,7 +295,6 @@ export const OrgMemberDetail = () => {
       <EmptyState
         icon="user"
         title="User not found"
-        description="This user may have been removed from the organization."
         actions={
           <Button variant="outline" onClick={back}>
             Back to users
@@ -347,7 +343,6 @@ export const OrgMemberDetail = () => {
           <BackButton label="Organization users" onClick={back} />
           <PageHeader
             title={name ?? user.username}
-            description="Configure and manage organization user membership"
             actions={
               !self && (
                 <DropdownMenu>
@@ -418,7 +413,6 @@ export const OrgMemberDetail = () => {
             <Card
               variant="framed"
               title="Details"
-              description="User membership details"
               action={
                 !self && (
                   <Gate allowed={canEdit}>
@@ -522,7 +516,7 @@ export const OrgMemberDetail = () => {
             <AlertDialogTitle>
               {`Are you sure you want to remove member with username ${user.username}?`}
             </AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+            <AlertDialogDescription>They lose access to the organization.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -550,7 +544,7 @@ export const OrgMemberDetail = () => {
             <AlertDialogTitle>
               {`Are you sure you want to deactivate member with username ${user.username}?`}
             </AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+            <AlertDialogDescription>They lose access until reactivated.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

@@ -12,7 +12,7 @@ import {
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
 import { Button } from "@app/components/v4/ui/button";
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from "@app/components/v4/ui/empty";
-import { Field, FieldDescription } from "@app/components/v4/ui/field";
+import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -51,7 +51,7 @@ const connectionFields = [
     type: "secret",
     label: "CA (SSL)",
     placeholder: "-----BEGIN CERTIFICATE----- ...",
-    description: "Optionally needed for self-signed certificates.",
+    description: "Needed for self-signed certificates.",
     isOptional: true
   }
 ] satisfies readonly TDynamicSecretProviderField<TClickHouseFormValues>[];
@@ -208,7 +208,6 @@ const ClickHouseFields = () => {
         presentation="collapse"
         title="Password Configuration (optional)"
       >
-        <FieldDescription>Set constraints on the generated database password.</FieldDescription>
         <ProviderFields fields={passwordRequirementFields} />
       </ProviderGroup>
 

@@ -41,7 +41,7 @@ const connectionFields = [
     label: "Programmatic Access Token",
     placeholder: "Enter programmatic access token",
     description:
-      "The programmatic access token used to authenticate with Snowflake. A user password is still accepted, but Snowflake is phasing out password authentication.",
+      "A user password also works, but Snowflake is phasing out password authentication.",
     autoComplete: "new-password",
     layout: "half"
   }

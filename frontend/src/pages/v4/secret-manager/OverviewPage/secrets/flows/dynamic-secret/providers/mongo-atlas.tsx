@@ -55,7 +55,7 @@ const mongoAtlasCredentialFields = [
     type: "text",
     label: "Group/Project ID",
     placeholder: "507f1f77bcf86cd799439011",
-    description: "Unique 24-hexadecimal digit string that identifies your project."
+    description: "24-character hexadecimal string."
   }
 ] satisfies readonly TDynamicSecretProviderField<TMongoAtlasCreateValues>[];
 
@@ -84,7 +84,7 @@ function MongoAtlasFields() {
         presentation="panel"
         surface
         title="Roles"
-        description="A role may be custom or built in: atlasAdmin, backup, clusterMonitor, dbAdmin, dbAdminAnyDatabase, enableSharding, read, readAnyDatabase, readWrite, or readWriteAnyDatabase."
+        description="Built-in roles, such as atlasAdmin or readWrite, or custom ones."
       >
         <Stack gap={12} align="start">
           {roleFields.fields.map(({ id }, index) => (
@@ -157,8 +157,7 @@ function MongoAtlasFields() {
         <FieldSet>
           <FieldLegend variant="label">Scopes (optional)</FieldLegend>
           <FieldDescription>
-            Limit this database user to selected clusters, MongoDB Atlas Data Lakes, or MongoDB
-            Atlas Streams instances. If omitted, MongoDB Cloud grants access to all of them in the
+            Leave empty to grant access to every cluster, Data Lake, and Streams instance in the
             project.
           </FieldDescription>
           <Stack gap={12} align="start">
@@ -171,7 +170,7 @@ function MongoAtlasFields() {
                     <Field
                       wide
                       label="Label"
-                      description="Human-readable label for the cluster or MongoDB Atlas Data Lake this user can access."
+                      description="Name of the cluster or Data Lake."
                       error={fieldError(error)}
                     >
                       <Input

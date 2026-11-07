@@ -108,7 +108,7 @@ function ConnectionField({ onChange }: { onChange?: () => void }) {
 }
 
 const STS_REGION_TIP =
-  "If the app connection being used has a custom STS endpoint configured, the selected region must match the STS region configured on the app connection.";
+  "If the connection has a custom STS endpoint, this must match its STS region.";
 
 function AwsRegionField() {
   const { control } = useSyncForm();
@@ -148,10 +148,9 @@ function AwsParameterStoreDestination() {
         placeholder="Path..."
         tooltip={
           <>
-            The path is required and will be prepended to the key schema. For example, if you have a
-            path of <code>/demo/path/</code> and a key schema of{" "}
-            <code>{"INFISICAL_{{secretKey}}"}</code>, then the result will be{" "}
-            <code>{"/demo/path/INFISICAL_{{secretKey}}"}</code>
+            Prepended to the key schema. For example, <code>/demo/path/</code> with{" "}
+            <code>{"INFISICAL_{{secretKey}}"}</code> gives{" "}
+            <code>{"/demo/path/INFISICAL_{{secretKey}}"}</code>.
           </>
         }
       />
@@ -175,15 +174,8 @@ function AwsSecretsManagerDestination() {
             error={error?.message}
             tooltip={
               <Stack gap={8}>
-                <span>Specify how Infisical should map secrets to AWS Secrets Manager:</span>
-                <span>
-                  One-to-one: Each Infisical secret will be mapped to a separate AWS Secrets Manager
-                  secret.
-                </span>
-                <span>
-                  Many-to-one: All Infisical secrets will be mapped to a single AWS Secrets Manager
-                  secret.
-                </span>
+                <span>One-to-one: each secret becomes its own AWS secret.</span>
+                <span>Many-to-one: all secrets go into a single AWS secret.</span>
               </Stack>
             }
           >
@@ -441,7 +433,7 @@ function GcpDestination() {
         render={({ field, fieldState: { error } }) => (
           <SyncField
             label="Project"
-            tooltip="Ensure that you've enabled the Secret Manager API, Cloud Resource Manager API, and Service Usage API on your GCP project. Additionally, make sure that the service account is assigned the appropriate GCP roles."
+            tooltip="Requires the Secret Manager, Cloud Resource Manager, and Service Usage APIs, and the right roles on the service account."
             error={error?.message}
           >
             <Combobox
@@ -472,10 +464,6 @@ function GcpDestination() {
             error={error?.message}
             tooltip={
               <Stack gap={8}>
-                <span>
-                  Specify how Infisical should sync secrets to GCP. The following options are
-                  available:
-                </span>
                 {Object.values(GCP_SYNC_SCOPES).map(({ name, description }) => (
                   <span key={name}>
                     {name}: {description}
@@ -532,7 +520,7 @@ function GcpDestination() {
                   <Stack gap={8}>
                     <SyncField
                       label="Replica regions"
-                      tooltip="When set, secrets are replicated only in the selected regions. When empty, GCP automatically manages replication."
+                      tooltip="Leave empty to let GCP manage replication."
                       error={error?.message}
                     >
                       <Combobox
@@ -548,9 +536,8 @@ function GcpDestination() {
                     </SyncField>
                     {Boolean(field.value?.length) && (
                       <Alert tone="warn" title="Replica regions can't be changed after creation">
-                        Replica regions are fixed when the sync is created and cannot be changed
-                        later, since GCP does not support it. It is still possible to change the
-                        scope to Region and specify a region for the secret.
+                        GCP does not support changing them. You can still switch the scope to Region
+                        later.
                       </Alert>
                     )}
                   </Stack>
@@ -573,11 +560,10 @@ function AzureKeyVaultDestination() {
         name="destinationConfig.vaultBaseUrl"
         label="Vault base URL"
         placeholder="https://example.vault.azure.net"
-        tooltip="Enter your Azure Key Vault URL. This is the base URL for your Azure Key Vault, e.g. https://example.vault.azure.net."
       />
       <Alert tone="info" title="Key naming">
-        Secret keys with underscores (_) will be converted to hyphens (-) when syncing to Azure Key
-        Vault. Secrets imported from Azure Key Vault keep hyphens in the secret name.
+        Underscores (_) in keys become hyphens (-) in Azure Key Vault. Imported secrets keep their
+        hyphens.
       </Alert>
     </Stack>
   );
@@ -725,7 +711,6 @@ function VercelDestination() {
           <SwitchField
             name="destinationConfig.applyToAllCustomEnvironments"
             label="Apply to all custom environments"
-            description="Shared environment variables will be applied to all custom environments in the Vercel team."
           />
         </>
       )}
@@ -740,14 +725,8 @@ function VercelDestination() {
                 error={error?.message}
                 tooltip={
                   <Stack gap={8}>
-                    <span>
-                      Ensure the project exists and the API token scope for this connection includes
-                      the desired project.
-                    </span>
-                    <span>
-                      Use the search bar to filter projects by name. By default only 10 projects are
-                      shown, but you can search for more projects by name.
-                    </span>
+                    <span>The connection&apos;s API token scope must include the project.</span>
+                    <span>Only 10 projects show by default. Search by name to find others.</span>
                   </Stack>
                 }
               >
@@ -834,7 +813,7 @@ function VercelDestination() {
               ref={field.ref}
               layout="row"
               label="Mark secrets as sensitive in Vercel"
-              description="When enabled, secrets will be created in Vercel as Sensitive. Sensitive environment variables cannot be read back via the Vercel API after creation."
+              description="Sensitive variables cannot be read back through the Vercel API."
               checked={Boolean(field.value) && !isProjectDevTargeted}
               disabled={isProjectDevTargeted}
               onCheckedChange={(checked) => {
@@ -844,11 +823,10 @@ function VercelDestination() {
             {error?.message && <FieldDescription>{error.message}</FieldDescription>}
             {(isProjectDevTargeted || (isTeamDevTargeted && Boolean(field.value))) && (
               <Alert tone="warn" title="Sensitive not supported for Development">
-                Marking secrets as sensitive in Vercel is not supported for development
-                environments.
+                Vercel does not allow sensitive variables in development environments.
                 {isTeamDevTargeted &&
                   Boolean(field.value) &&
-                  " Sensitive secrets will only be applied to your other selected environments."}
+                  " They apply only to your other selected environments."}
               </Alert>
             )}
           </Stack>
@@ -970,7 +948,6 @@ function AwsAdvancedOptions({ destination }: { destination: SecretSync }) {
       { enabled: Boolean(connectionId && region) }
     ).data ?? []
   ).map((key) => key.alias);
-  const noun = isSecretsManager ? "secrets" : "parameters";
   const kmsPermissions = (
     <>
       Custom keys require <code>kms:ListAliases</code>, <code>kms:DescribeKey</code>,{" "}
@@ -997,18 +974,7 @@ function AwsAdvancedOptions({ destination }: { destination: SecretSync }) {
               control={control}
               name="syncOptions.keyId"
               render={({ field, fieldState: { error } }) => (
-                <SyncField
-                  label="KMS key"
-                  tooltip={
-                    isSecretsManager ? (
-                      <>The AWS KMS key to encrypt secrets with. {kmsPermissions}</>
-                    ) : (
-                      "The AWS KMS key to encrypt parameters with."
-                    )
-                  }
-                  description={isSecretsManager ? undefined : kmsPermissions}
-                  error={error?.message}
-                >
+                <SyncField label="KMS key" description={kmsPermissions} error={error?.message}>
                   <Combobox
                     label="KMS key"
                     value={field.value ?? ""}
@@ -1029,14 +995,14 @@ function AwsAdvancedOptions({ destination }: { destination: SecretSync }) {
               <SwitchField
                 name="syncOptions.syncSecretMetadataAsTags"
                 label="Sync secret metadata as resource tags"
-                description={`Metadata attached to secrets is added as resource tags on ${noun} synced by Infisical. Manually configured tags take precedence when keys conflict.`}
+                description="Manually configured tags win when keys conflict."
               />
             )}
             <Stack gap={12}>
               <Switch
                 layout="row"
                 label="Configure resource tags"
-                description={`Static tags applied to every synced ${isSecretsManager ? "secret" : "parameter"}. Overwrites AWS resource tags on synced ${noun} with the values defined below.`}
+                description={`Applied to every synced ${isSecretsManager ? "secret" : "parameter"}, overwriting existing AWS resource tags.`}
                 checked={hasTags}
                 onCheckedChange={(checked) =>
                   setValue("syncOptions.tags", checked ? [{ key: "", value: "" }] : undefined, {
@@ -1058,7 +1024,7 @@ function AzureKeyVaultOptions() {
     <SwitchField
       name="syncOptions.disableCertificateImport"
       label="Disable certificate import"
-      description="When enabled, Infisical will not import certificate objects from Azure Key Vault when syncing secrets. Use this to keep your secrets project free of certificate objects that Azure Key Vault exposes through the secrets API."
+      description="Skips certificate objects that Azure Key Vault exposes through its secrets API."
     />
   );
 }

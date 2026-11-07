@@ -24,6 +24,8 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v4/ui/sheet";
+import { Meta } from "@app/components/v4/ui/text";
+import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { FabDock, Gate, ListToolbar, Muted } from "../ui";
 import type { PermissionSubject } from "./catalog";
@@ -105,14 +107,13 @@ const RuleSheet = ({
         <SheetHeader>
           <SheetTitle>{isNew ? "Add rule" : "Edit rule"}</SheetTitle>
           <SheetDescription>
-            A rule allows or forbids actions on one policy, optionally only where its conditions
-            match.
+            Allow or forbid actions on one policy, optionally only where conditions match.
           </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <Stack gap={16}>
             <div className={styles.ruleSheetRow}>
-              <Field label="Policy" error={policyError}>
+              <Field label="Policy" error={policyError} description={config?.description}>
                 <Combobox
                   label="Policy"
                   placeholder="Select a policy..."
@@ -294,8 +295,18 @@ export const RuleTable = (props: RuleTableProps) => {
       grow: true,
       text: (row) => row.config.title,
       render: (row) => (
-        <Inline gap={8} wrap={false}>
-          <span>{row.config.title}</span>
+        <Inline gap={8} wrap={false} style={{ minWidth: 0 }}>
+          <span style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{row.config.title}</span>
+          {row.config.description && (
+            <Tooltip content={row.config.description}>
+              <Meta
+                mono={false}
+                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {row.config.description}
+              </Meta>
+            </Tooltip>
+          )}
           {errors?.[row.config.subject]?.[row.index] && <Badge tone="bad">Needs attention</Badge>}
         </Inline>
       )
@@ -422,16 +433,7 @@ export const RuleTable = (props: RuleTableProps) => {
         onSelectionChange={setSelected}
         selectionDisabledReason={() => (editable ? undefined : reason)}
         empty={
-          <EmptyState
-            size="sm"
-            icon="lock"
-            title={filtering ? "No rules match" : "No rules yet"}
-            description={
-              filtering
-                ? "Adjust your search or policy filter."
-                : "Add a rule for any policy to grant this role access."
-            }
-          />
+          <EmptyState size="sm" icon="lock" title={filtering ? "No rules match" : "No rules yet"} />
         }
       />
       <p className={styles.legend}>

@@ -111,7 +111,7 @@ export const NewConnection = () => {
       variant="sheet"
       size="lg"
       title="New connection"
-      description="Connect a third-party app once and reuse it across your projects."
+      description="Connect a third-party app once and reuse it across projects."
       trigger={
         <Button variant="accent" icon="plus">
           New connection
@@ -134,8 +134,6 @@ export const NewConnection = () => {
         {
           title: "App",
           heading: "Pick an app",
-          description:
-            "Infisical reads from or writes to this app with the credentials you add next.",
           summary: appName,
           validate: () => {
             if (app) return true;
@@ -256,7 +254,6 @@ export const NewConnection = () => {
         {
           title: "Review",
           heading: "Review the connection",
-          description: "Infisical checks the credentials before it saves the connection.",
           content: (
             <DataList
               variant="props"

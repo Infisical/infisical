@@ -461,19 +461,9 @@ export const OrgMembersTab = () => {
           selectionDisabledReason={(member) => (member.membership ? undefined : GROUP_ONLY)}
           empty={
             searching ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title="No organization users match search"
-                description="Adjust your search or filter criteria."
-              />
+              <EmptyState size="sm" icon="search" title="No organization users match search" />
             ) : (
-              <EmptyState
-                size="sm"
-                icon="user"
-                title="No organization users found"
-                description="Invite users to get started."
-              />
+              <EmptyState size="sm" icon="user" title="No organization users found" />
             )
           }
         />
@@ -515,7 +505,7 @@ export const OrgMembersTab = () => {
             <AlertDialogTitle>
               {`Are you sure you want to remove member with username ${removing ? usernameOf(removing) : ""}?`}
             </AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+            <AlertDialogDescription>They lose access to the organization.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -544,7 +534,7 @@ export const OrgMembersTab = () => {
             <AlertDialogTitle>
               {`Are you sure you want to deactivate member with username ${deactivating ? usernameOf(deactivating) : ""}?`}
             </AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+            <AlertDialogDescription>They lose access until reactivated.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -574,10 +564,9 @@ export const OrgMembersTab = () => {
             <AlertDialogTitle>
               Are you sure you want to remove the following members?
             </AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+            <AlertDialogDescription>They lose access to the organization.</AlertDialogDescription>
           </AlertDialogHeader>
           <Stack gap={8}>
-            <Muted>The following members will be removed:</Muted>
             <ul className={styles.removeList}>
               {bulkRemoving?.map((member) => {
                 const self = isSelf(member.user);

@@ -100,7 +100,7 @@ export function WizardSheet({
               <div className={styles.wizardMain}>
                 <div className={styles.stepHead}>
                   <h3 className={styles.stepHeading}>{heading}</h3>
-                  <p className={styles.stepSubtitle}>{subtitle}</p>
+                  {subtitle && <p className={styles.stepSubtitle}>{subtitle}</p>}
                 </div>
                 {children}
               </div>

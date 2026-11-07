@@ -127,8 +127,7 @@ function TotpFields() {
             />
           </div>
           <FieldDescription>
-            The period, digits, and algorithm values can remain at their defaults unless your TOTP
-            provider specifies otherwise.
+            Keep the defaults unless your TOTP provider says otherwise.
           </FieldDescription>
         </>
       )}

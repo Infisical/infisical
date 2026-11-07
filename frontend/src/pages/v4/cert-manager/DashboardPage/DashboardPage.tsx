@@ -163,7 +163,7 @@ export const DashboardPage = () => {
         <AttentionList stats={stats} />
         <Stack gap={16}>
           <Heading level={2}>Inventory health</Heading>
-          <Grid gap={16} style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 2fr)" }}>
+          <Grid gap={16} columns="1:2">
             <InventoryCard stats={stats} />
             <TrendCard
               title="Certificate activity"

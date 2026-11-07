@@ -2,14 +2,14 @@ export type PermissionAction = { value: string; label: string; description?: str
 export type PermissionSubject = {
   subject: string;
   title: string;
-  description: string;
+  description?: string;
   actions: PermissionAction[];
   conditional?: boolean;
 };
 export type PolicyTemplate = {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   icon: string;
   permissions: { subject: string; title: string; actions: PermissionAction[] }[];
 };
@@ -18,788 +18,666 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "member",
     title: "User management",
-    description: "Manage organization member access and role assignments",
     actions: [
       {
         value: "read",
-        label: "View all members",
-        description: "View organization members and their roles"
+        label: "View all members"
       },
       {
         value: "create",
-        label: "Invite members",
-        description: "Invite new users to join the organization"
+        label: "Invite members"
       },
       {
         value: "edit",
         label: "Edit members",
-        description: "Update member attributes and activation status"
+        description: "Includes activating and deactivating members"
       },
       {
         value: "delete",
-        label: "Remove members",
-        description: "Remove members from the organization"
+        label: "Remove members"
       },
       {
         value: "grant-privileges",
         label: "Grant privileges",
-        description: "Assign and change the roles held by organization members"
+        description: "Change the roles members hold"
       }
     ]
   },
   {
     subject: "role",
     title: "Role management",
-    description: "Define and configure custom organization-level permission roles",
     actions: [
       {
         value: "read",
-        label: "View",
-        description: "View organization roles and their permissions"
+        label: "View"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new custom organization roles"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update role permissions and settings"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete organization roles"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "incident-contact",
     title: "Incident contacts",
-    description: "Manage contacts notified during security incidents",
+    description: "Notified during security incidents",
     actions: [
       {
         value: "read",
-        label: "View contacts",
-        description: "View contacts notified during security incidents"
+        label: "View contacts"
       },
       {
         value: "create",
-        label: "Add new contacts",
-        description: "Add new contacts for incident notifications"
+        label: "Add new contacts"
       },
       {
         value: "edit",
-        label: "Edit contacts",
-        description: "Update existing contact information"
+        label: "Edit contacts"
       },
       {
         value: "delete",
-        label: "Remove contacts",
-        description: "Remove contacts from incident notifications"
+        label: "Remove contacts"
       }
     ]
   },
   {
     subject: "settings",
     title: "Organization profile",
-    description: "Configure organization-wide settings and preferences",
+    description: "Organization-wide settings",
     actions: [
       {
         value: "read",
-        label: "View",
-        description: "View organization settings and configuration"
+        label: "View"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Configure new organization settings"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update organization profile and settings"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove organization configuration entries"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "secret-scanning",
     title: "Secret scanning",
-    description: "Configure automated scanning for leaked secrets",
     actions: [
       {
         value: "read",
-        label: "View risks",
-        description: "View detected leaked secret risks"
+        label: "View risks"
       },
       {
         value: "create",
-        label: "Add integrations",
-        description: "Connect new secret scanning integrations"
+        label: "Add integrations"
       },
       {
         value: "edit",
-        label: "Edit risk status",
-        description: "Update the status of detected risks"
+        label: "Edit risk status"
       },
       {
         value: "delete",
-        label: "Remove integrations",
-        description: "Disconnect secret scanning integrations"
+        label: "Remove integrations"
       }
     ]
   },
   {
     subject: "ldap",
     title: "LDAP",
-    description: "Configure LDAP directory integration for authentication",
     actions: [
       {
         value: "read",
-        label: "View",
-        description: "View LDAP directory configuration"
+        label: "View"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Configure LDAP integration"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update LDAP settings"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove LDAP configuration"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "scim",
     title: "SCIM",
-    description: "Manage SCIM provisioning for automated user lifecycle management",
     actions: [
       {
         value: "read",
-        label: "View",
-        description: "View SCIM provisioning configuration"
+        label: "View"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Set up SCIM provisioning"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update SCIM settings"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove SCIM configuration"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "github-org-sync",
     title: "GitHub organization sync",
-    description: "Sync GitHub organization teams with Infisical groups",
+    description: "Syncs GitHub teams to Infisical groups",
     actions: [
       {
         value: "read",
-        label: "View",
-        description: "View GitHub organization sync configuration"
+        label: "View"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Set up GitHub organization team sync"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update sync configuration"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove GitHub organization sync"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "kms",
     title: "External KMS",
-    description: "Configure external key management systems for encryption",
+    description: "Your own key management system for encryption",
     actions: [
       {
         value: "read",
-        label: "View",
-        description: "View external KMS configuration"
+        label: "View"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Configure external key management systems"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update KMS settings"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove external KMS configuration"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "project-templates",
     title: "Secrets management project templates",
-    description: "Manage reusable templates applied when creating new projects",
+    description: "Applied when creating projects",
     actions: [
       {
         value: "read",
-        label: "View & apply",
-        description: "View and apply templates when creating projects"
+        label: "View & apply"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new project templates"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update existing project templates"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete project templates"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "sso",
     title: "SSO",
-    description: "Configure and enforce single sign-on authentication for the organization",
     actions: [
       {
         value: "read",
-        label: "View",
-        description: "View SSO configuration"
+        label: "View"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Set up new SSO providers"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update SSO configuration"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove SSO providers"
+        label: "Remove"
       },
       {
         value: "bypass-sso-enforcement",
         label: "Bypass SSO enforcement",
-        description: "Allow login without SSO when enforcement is enabled"
+        description: "Log in without SSO while SSO is enforced"
       }
     ]
   },
   {
     subject: "audit-logs",
     title: "Audit logs",
-    description: "View organization activity and audit trail, and choose which events are recorded",
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View organization activity and audit events"
+        label: "Read"
       },
       {
         value: "edit",
         label: "Edit",
-        description: "Choose which audit log event classes the organization records"
+        description: "Choose which events are recorded"
       }
     ]
   },
   {
     subject: "identity",
     title: "Machine identity management",
-    description: "Manage machine identities and their access within the organization",
     actions: [
       {
         value: "read",
-        label: "Read identities",
-        description: "View machine identities and their configuration"
+        label: "Read identities"
       },
       {
         value: "create",
-        label: "Create identities",
-        description: "Create new machine identities"
+        label: "Create identities"
       },
       {
         value: "edit",
-        label: "Edit identities",
-        description: "Update machine identity settings"
+        label: "Edit identities"
       },
       {
         value: "delete",
-        label: "Delete identities",
-        description: "Delete machine identities"
+        label: "Delete identities"
       },
       {
         value: "grant-privileges",
         label: "Grant privileges",
-        description: "Assign roles and additional privileges to machine identities"
+        description: "Assign roles and additional privileges"
       },
       {
         value: "revoke-auth",
-        label: "Revoke auth",
-        description: "Revoke authentication for a machine identity"
+        label: "Revoke auth"
       },
       {
         value: "edit-auth",
-        label: "Configure auth",
-        description: "Add or update authentication methods for a machine identity"
+        label: "Configure auth"
       },
       {
         value: "create-token",
-        label: "Create token",
-        description: "Generate access tokens for machine identities"
+        label: "Create token"
       },
       {
         value: "get-token",
-        label: "Get token",
-        description: "View existing access tokens"
+        label: "Get token"
       },
       {
         value: "delete-token",
-        label: "Delete token",
-        description: "Revoke access tokens"
+        label: "Delete token"
       }
     ]
   },
   {
     subject: "groups",
     title: "Group management",
-    description: "Organize users into groups for bulk permission management",
     actions: [
       {
         value: "read",
-        label: "Read groups",
-        description: "View groups and their members"
+        label: "Read groups"
       },
       {
         value: "create",
-        label: "Create groups",
-        description: "Create new user groups"
+        label: "Create groups"
       },
       {
         value: "edit",
-        label: "Edit groups",
-        description: "Update group membership and settings"
+        label: "Edit groups"
       },
       {
         value: "delete",
-        label: "Delete groups",
-        description: "Delete groups"
+        label: "Delete groups"
       },
       {
         value: "grant-privileges",
         label: "Grant privileges",
-        description: "Assign roles and additional privileges to groups"
+        description: "Assign roles and additional privileges"
       },
       {
         value: "add-members",
-        label: "Add members",
-        description: "Add users to a group"
+        label: "Add members"
       },
       {
         value: "remove-members",
-        label: "Remove members",
-        description: "Remove users from a group"
+        label: "Remove members"
       }
     ]
   },
   {
     subject: "app-connections",
     title: "App connections",
-    description: "Manage connections to external platforms and services",
+    description: "Credentials for external platforms and services",
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View configured app connections"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new connections to external platforms and services"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Modify app connection settings"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove app connections"
+        label: "Remove"
       },
       {
         value: "connect",
         label: "Connect",
-        description: "Use this connection when configuring syncs and integrations"
+        description: "Use connections in syncs and integrations"
       },
       {
         value: "rotate-credentials",
-        label: "Rotate credentials",
-        description: "Rotate credentials for app connections"
+        label: "Rotate credentials"
       }
     ]
   },
   {
     subject: "gateway",
     title: "Gateways",
-    description: "Manage gateways that securely connect Infisical to your infrastructure",
+    description: "Connect Infisical to private infrastructure",
     actions: [
       {
         value: "list-gateways",
-        label: "List gateways",
-        description: "View available gateways"
+        label: "List gateways"
       },
       {
         value: "create-gateways",
-        label: "Create gateways",
-        description:
-          "Register new gateways that securely proxy Infisical traffic into your infrastructure"
+        label: "Create gateways"
       },
       {
         value: "edit-gateways",
-        label: "Edit gateways",
-        description: "Update gateway configuration"
+        label: "Edit gateways"
       },
       {
         value: "delete-gateways",
-        label: "Delete gateways",
-        description: "Remove gateways"
+        label: "Delete gateways"
       },
       {
         value: "attach-gateways",
-        label: "Attach gateways",
-        description: "Attach gateways to organization resources"
+        label: "Attach gateways"
       },
       {
         value: "revoke-gateway-access",
-        label: "Revoke gateway access",
-        description: "Revoke access to gateways"
+        label: "Revoke gateway access"
       }
     ]
   },
   {
     subject: "gateway-pool",
     title: "Gateway pools",
-    description: "Manage gateway pools for grouping gateways",
+    description: "Groups of gateways",
     actions: [
       {
         value: "list-gateway-pools",
-        label: "List gateway pools",
-        description: "View available gateway pools"
+        label: "List gateway pools"
       },
       {
         value: "create-gateway-pools",
-        label: "Create gateway pools",
-        description: "Create new gateway pools"
+        label: "Create gateway pools"
       },
       {
         value: "edit-gateway-pools",
-        label: "Edit gateway pools",
-        description: "Update gateway pool configuration"
+        label: "Edit gateway pools"
       },
       {
         value: "delete-gateway-pools",
-        label: "Delete gateway pools",
-        description: "Remove gateway pools"
+        label: "Delete gateway pools"
       },
       {
         value: "attach-gateway-pools",
-        label: "Attach gateway pools",
-        description: "Attach gateway pools to organization resources"
+        label: "Attach gateway pools"
       }
     ]
   },
   {
     subject: "relay",
     title: "Relays",
-    description: "Manage relay servers used for secure network tunneling",
+    description: "Servers that tunnel gateway traffic",
     actions: [
       {
         value: "list-relays",
-        label: "List relays",
-        description: "View available relay servers"
+        label: "List relays"
       },
       {
         value: "create-relays",
-        label: "Create relays",
-        description: "Add new relay servers for network tunneling"
+        label: "Create relays"
       },
       {
         value: "edit-relays",
-        label: "Edit relays",
-        description: "Update relay server configuration"
+        label: "Edit relays"
       },
       {
         value: "delete-relays",
-        label: "Delete relays",
-        description: "Remove relay servers"
+        label: "Delete relays"
       },
       {
         value: "revoke-relay-access",
-        label: "Revoke relay access",
-        description: "Revoke access to relay servers"
+        label: "Revoke relay access"
       }
     ]
   },
   {
     subject: "kmip-server",
     title: "KMIP servers",
-    description: "Manage KMIP servers that proxy KMIP requests to Infisical KMS",
+    description: "Proxy KMIP requests to Infisical KMS",
     actions: [
       {
         value: "list-kmip-servers",
-        label: "List KMIP servers",
-        description: "View available KMIP servers"
+        label: "List KMIP servers"
       },
       {
         value: "create-kmip-servers",
-        label: "Create KMIP servers",
-        description: "Add new KMIP servers"
+        label: "Create KMIP servers"
       },
       {
         value: "edit-kmip-servers",
-        label: "Edit KMIP servers",
-        description: "Update KMIP server configuration and auth method"
+        label: "Edit KMIP servers"
       },
       {
         value: "delete-kmip-servers",
-        label: "Delete KMIP servers",
-        description: "Remove KMIP servers"
+        label: "Delete KMIP servers"
       },
       {
         value: "revoke-kmip-server-access",
-        label: "Revoke KMIP server access",
-        description: "Revoke access to KMIP servers"
+        label: "Revoke KMIP server access"
       }
     ]
   },
   {
     subject: "billing",
     title: "Billing",
-    description: "View and manage billing details, invoices, and payment methods",
     actions: [
       {
         value: "read",
-        label: "View bills",
-        description: "View invoices and billing history"
+        label: "View bills"
       },
       {
         value: "manage-billing",
-        label: "Manage billing",
-        description: "Update payment methods and billing settings"
+        label: "Manage billing"
       }
     ]
   },
   {
     subject: "email-domains",
     title: "Email domains",
-    description: "Manage organization email domain verification and configuration",
     actions: [
       {
         value: "read",
-        label: "View domains",
-        description: "View organization email domains"
+        label: "View domains"
       },
       {
         value: "create",
-        label: "Add domains",
-        description: "Add new email domains to the organization"
+        label: "Add domains"
       },
       {
         value: "verify-domain",
-        label: "Verify domains",
-        description: "Verify ownership of email domains"
+        label: "Verify domains"
       },
       {
         value: "delete",
-        label: "Delete domains",
-        description: "Remove email domains from the organization"
+        label: "Delete domains"
       }
     ]
   },
   {
     subject: "secret-share",
     title: "Secrets management secret sharing",
-    description: "Configure settings for sharing secrets externally",
+    description: "Settings for sharing secrets externally",
     actions: [
       {
         value: "manage-settings",
-        label: "Manage settings",
-        description: "Configure settings for sharing secrets externally"
+        label: "Manage settings"
       }
     ]
   },
   {
     subject: "secrets-management-insights",
     title: "Secrets management insights",
-    description: "View organization-wide secrets management insights and reports",
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View secrets management insights"
+        label: "Read"
       },
       {
         value: "generate-report",
-        label: "Generate report",
-        description: "Generate new secrets management insight reports"
+        label: "Generate report"
       },
       {
         value: "delete-report",
-        label: "Delete report",
-        description: "Delete secrets management insight reports"
+        label: "Delete report"
       },
       {
         value: "search-all-secret-values",
         label: "Search all secret values",
-        description:
-          "Locate secrets that share a value in any project, including projects the user isn't a member of"
+        description: "Includes projects the user isn't a member of"
       }
     ]
   },
   {
     subject: "honey-tokens",
     title: "Secrets management honey tokens",
-    description: "Configure honey token setup for the organization",
+    description: "Decoy credentials that alert when used",
     actions: [
       {
         value: "setup",
-        label: "Setup",
-        description: "Set up honey tokens for the organization"
+        label: "Setup"
       }
     ]
   },
   {
     subject: "project",
     title: "Project",
-    description: "Create new projects within the organization",
+    description: "Creating projects and requesting access",
     actions: [
       {
         value: "create",
-        label: "Create projects",
-        description: "Create new projects within the organization"
+        label: "Create projects"
       },
       {
         value: "request-access",
-        label: "Request access",
-        description: "Request access to projects in the organization"
+        label: "Request access"
       }
     ]
   },
   {
     subject: "organization-admin-console",
     title: "Organization admin console",
-    description: "Bypass project membership to access all projects in the organization",
+    description: "Access to every project without membership",
     actions: [
       {
         value: "access-all-projects",
         label: "Access all organization projects",
-        description: "Bypass project membership to access all projects in the organization"
+        description: "Bypasses project membership"
       }
     ]
   },
   {
     subject: "machine-identity-auth-template",
     title: "Machine identity auth templates",
-    description: "Manage reusable authentication configuration templates for machine identities",
+    description: "Reusable auth configurations for identities",
     actions: [
       {
         value: "list-templates",
-        label: "List templates",
-        description: "View available authentication templates"
+        label: "List templates"
       },
       {
         value: "create-templates",
-        label: "Create templates",
-        description: "Create reusable authentication configuration templates"
+        label: "Create templates"
       },
       {
         value: "edit-templates",
-        label: "Edit templates",
-        description: "Update authentication template settings"
+        label: "Edit templates"
       },
       {
         value: "delete-templates",
-        label: "Delete templates",
-        description: "Remove authentication templates"
+        label: "Delete templates"
       },
       {
         value: "unlink-templates",
-        label: "Unlink templates",
-        description: "Detach authentication templates from machine identities"
+        label: "Unlink templates"
       },
       {
         value: "attach-templates",
-        label: "Attach templates",
-        description: "Apply authentication templates to machine identities"
+        label: "Attach templates"
       }
     ]
   },
   {
     subject: "sub-organization",
     title: "Sub-organizations",
-    description: "Create and manage namespaces within the organization",
+    description: "Namespaces within the organization",
     actions: [
       {
         value: "create",
-        label: "Create",
-        description: "Create new sub-organizations"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Edit",
-        description: "Update sub-organization settings"
+        label: "Edit"
       },
       {
         value: "delete",
-        label: "Delete",
-        description: "Remove sub-organizations"
+        label: "Delete"
       },
       {
         value: "direct-access",
         label: "Direct access",
-        description: "Access sub-organizations directly without membership"
+        description: "Without being a member"
       },
       {
         value: "link-group",
-        label: "Link group",
-        description: "Link organization groups to sub-organizations"
+        label: "Link group"
       }
     ]
   }
@@ -809,906 +687,767 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "secrets",
     title: "Secrets",
-    description: "Manage secret values, metadata, and access within project environments",
     conditional: true,
     actions: [
       {
         value: "read",
         label: "Read (legacy)",
-        description:
-          "This is a legacy action and will be removed in the future. Use Describe Secret and Read Value instead."
+        description: "Legacy. Use Describe secret and Read value instead."
       },
       {
         value: "describeSecret",
         label: "Describe secret",
-        description:
-          "View secret metadata (name, tags, access insights, etc.) without revealing the actual secret value"
+        description: "Name, tags, and metadata only. Does not reveal the value."
       },
       {
         value: "readValue",
-        label: "Read value",
-        description: "Access and view the actual secret value"
+        label: "Read value"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Edit existing secrets and their values"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete secrets from the project"
+        label: "Remove"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new secrets in the project"
+        label: "Create"
       }
     ]
   },
   {
     subject: "secret-folders",
     title: "Secret folders",
-    description: "Organize secrets into hierarchical folder structures",
     conditional: true,
     actions: [
       {
         value: "create",
-        label: "Create",
-        description: "Create new folders to organize secrets"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Rename or modify folder properties"
+        label: "Modify"
       },
       {
         value: "delete",
         label: "Remove",
-        description: "Delete folders and their contents"
+        description: "Also deletes everything in the folder"
       }
     ]
   },
   {
     subject: "secret-imports",
     title: "Secret imports",
-    description: "Import and reference secrets from other environments or projects",
+    description: "Reference secrets from other environments or folders",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View imported secrets from other projects"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Set up new secret imports"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Change import configuration"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove secret imports"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "dynamic-secrets",
     title: "Dynamic secrets",
-    description: "Configure auto-rotating credentials for databases and services",
+    description: "On-demand credentials for databases and services",
     conditional: true,
     actions: [
       {
         value: "read-root-credential",
-        label: "Read root credentials",
-        description: "View the root credentials used for dynamic secret generation"
+        label: "Read root credentials"
       },
       {
         value: "create-root-credential",
-        label: "Create root credentials",
-        description: "Configure new root credentials for dynamic secrets"
+        label: "Create root credentials"
       },
       {
         value: "edit-root-credential",
-        label: "Modify root credentials",
-        description: "Update existing root credentials configuration"
+        label: "Modify root credentials"
       },
       {
         value: "delete-root-credential",
-        label: "Remove root credentials",
-        description: "Delete root credentials configuration"
+        label: "Remove root credentials"
       },
       {
         value: "lease",
-        label: "Manage leases",
-        description: "Create and revoke dynamic secret leases"
+        label: "Manage leases"
       }
     ]
   },
   {
     subject: "kms",
     title: "Project KMS configuration",
-    description: "Configure key management system settings for the project",
+    description: "Key used to encrypt this project's data",
     conditional: false,
     actions: [
       {
         value: "edit",
-        label: "Modify",
-        description: "Change KMS configuration settings for the project"
+        label: "Modify"
       }
     ]
   },
   {
     subject: "integrations",
     title: "Native integrations",
-    description: "Connect secrets to third-party services and platforms",
+    description: "Push secrets to third-party services",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View configured integrations"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Set up new integrations with external services"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update integration configuration"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete integrations"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "workspace",
     title: "Project",
-    description: "Manage project settings, details, and lifecycle",
     conditional: false,
     actions: [
       {
         value: "edit",
-        label: "Update project details",
-        description: "Modify project name, description, and settings"
+        label: "Update project details"
       },
       {
         value: "delete",
         label: "Delete project",
-        description: "Permanently delete the entire project"
+        description: "Permanently deletes the project"
       }
     ]
   },
   {
     subject: "role",
     title: "Roles",
-    description: "Define and configure custom permission roles",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View roles and their permissions"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new custom roles"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update role permissions and policies"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete custom roles"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "member",
     title: "User management",
-    description: "Manage project member access and role assignments",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View project members and their roles"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Add",
-        description: "Invite new users to the project"
+        label: "Add"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Change user roles and permissions"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove users from the project"
+        label: "Remove"
       },
       {
         value: "grant-privileges",
         label: "Grant privileges (legacy)",
-        description:
-          "Legacy action that combines role assignment and additional privileges granting without any conditions. Use Assign Roles and Assign Additional Privileges instead."
+        description: "Legacy. Use Assign roles and Assign additional privileges instead."
       },
       {
         value: "assign-role",
-        label: "Assign roles",
-        description: "Assign or update roles for project members"
+        label: "Assign roles"
       },
       {
         value: "assign-additional-privileges",
-        label: "Assign additional privileges",
-        description: "Grant additional privileges to project members"
+        label: "Assign additional privileges"
       },
       {
         value: "assume-privileges",
         label: "Assume privileges",
-        description: "Temporarily assume another user's privileges"
+        description: "Temporarily act with another member's privileges"
       }
     ]
   },
   {
     subject: "identity",
     title: "Machine identity management",
-    description: "Manage machine identities and their access to secrets",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View machine identities and their configuration"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Add",
-        description: "Create new machine identities for automation"
+        label: "Add"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update machine identity settings"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete machine identities"
+        label: "Remove"
       },
       {
         value: "grant-privileges",
         label: "Grant privileges (legacy)",
-        description:
-          "Legacy action that combines role assignment and additional privileges granting without any conditions. Use Assign Roles and Assign Additional Privileges instead."
+        description: "Legacy. Use Assign roles and Assign additional privileges instead."
       },
       {
         value: "assign-role",
-        label: "Assign roles",
-        description: "Assign or update roles for machine identities"
+        label: "Assign roles"
       },
       {
         value: "assign-additional-privileges",
-        label: "Assign additional privileges",
-        description: "Grant additional privileges to machine identities"
+        label: "Assign additional privileges"
       },
       {
         value: "assume-privileges",
         label: "Assume privileges",
-        description: "Temporarily assume another identity's privileges"
+        description: "Temporarily act with a machine identity's privileges"
       },
       {
         value: "revoke-auth",
-        label: "Revoke auth",
-        description: "Revoke authentication for a machine identity"
+        label: "Revoke auth"
       },
       {
         value: "edit-auth",
-        label: "Configure auth methods",
-        description: "Add or update authentication methods for a machine identity"
+        label: "Configure auth methods"
       },
       {
         value: "create-token",
-        label: "Create token",
-        description: "Generate access tokens for machine identities"
+        label: "Create token"
       },
       {
         value: "get-token",
-        label: "Get token",
-        description: "View existing access tokens"
+        label: "Get token"
       },
       {
         value: "delete-token",
-        label: "Delete token",
-        description: "Revoke access tokens"
+        label: "Delete token"
       }
     ]
   },
   {
     subject: "groups",
     title: "Group management",
-    description: "Organize users into groups for bulk permission management",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View groups and their members"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new user groups"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update group membership and settings"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete groups"
+        label: "Remove"
       },
       {
         value: "grant-privileges",
         label: "Grant privileges (legacy)",
-        description: "Legacy action. Use Assign Roles instead."
+        description: "Legacy. Use Assign roles instead."
       },
       {
         value: "assign-role",
-        label: "Assign roles",
-        description: "Assign project roles to groups"
+        label: "Assign roles"
       }
     ]
   },
   {
     subject: "webhooks",
     title: "Webhooks",
-    description: "Configure automated notifications for secret events",
+    description: "Notifications for secret events",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View configured webhooks"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Set up new webhooks for event notifications"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update webhook configuration and triggers"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete webhooks"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "service-tokens",
     title: "Service tokens",
-    description: "Create and manage tokens for programmatic access",
+    description: "Tokens for programmatic access",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View service tokens"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Generate new service tokens for API access"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update service token configuration"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Revoke service tokens"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "honey-tokens",
     title: "Honey tokens",
-    description: "Create and manage honey tokens and triggered events",
+    description: "Decoy credentials that alert when used",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View honey tokens and events"
+        label: "Read"
       },
       {
         value: "read-credentials",
-        label: "Read credentials",
-        description: "Reveal honey token credentials"
+        label: "Read credentials"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create honey tokens"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update honey token metadata and mappings"
+        label: "Modify"
       },
       {
         value: "reset",
-        label: "Reset",
-        description: "Reset triggered honey tokens"
+        label: "Reset"
       },
       {
         value: "revoke",
-        label: "Revoke",
-        description: "Revoke honey tokens and credentials"
+        label: "Revoke"
       }
     ]
   },
   {
     subject: "proxied-services",
     title: "Proxied services",
-    description: "Manage proxied services and route agent traffic through them",
+    description: "Services agent traffic is routed through",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View proxied services"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create proxied services"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update proxied service configuration"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete proxied services"
+        label: "Remove"
       },
       {
         value: "proxy",
         label: "Proxy",
-        description: "Route traffic through proxied services (for agent identities)"
+        description: "For agent identities routing traffic"
       },
       {
         value: "report-usage",
         label: "Report usage",
-        description: "Record last-used timestamps for proxied services (for the agent proxy)"
+        description: "For the agent proxy recording last use"
       }
     ]
   },
   {
     subject: "settings",
     title: "Settings",
-    description: "Configure project-level settings and preferences",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View project settings"
+        label: "Read"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Change project settings and configuration"
+        label: "Modify"
       }
     ]
   },
   {
     subject: "secret-validation-rules",
     title: "Secret validation rules",
-    description: "Define the constraints secrets and generated credentials must satisfy",
+    description: "Constraints secrets must meet",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View validation rules"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Add validation rules"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Change validation rules"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete validation rules"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "environments",
     title: "Environment management",
-    description: "Create and manage project environments",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View environments (dev, staging, prod, etc.)"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new environments"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update environment configuration"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete environments"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "commits",
     title: "Commits",
-    description: "View and manage secret version history",
+    description: "Secret version history and rollbacks",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "View",
-        description: "View secret change history and commits"
+        label: "View"
       },
       {
         value: "perform-rollback",
-        label: "Perform rollback",
-        description: "Rollback secrets to a previous commit"
+        label: "Perform rollback"
       }
     ]
   },
   {
     subject: "tags",
     title: "Tags",
-    description: "Organize and categorize secrets with labels",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View secret tags"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new tags for organizing secrets"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update tag properties"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete tags"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "audit-logs",
     title: "Audit logs",
-    description: "View project activity and audit trail, and choose which events are recorded",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View audit logs and security events"
+        label: "Read"
       },
       {
         value: "edit",
         label: "Edit",
-        description:
-          "Choose which audit log event classes the project records and how long it keeps its audit logs"
+        description: "Choose which events are recorded and how long logs are kept"
       }
     ]
   },
   {
     subject: "insights",
     title: "Insights",
-    description: "View project analytics and insights dashboards, and generate reports",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description:
-          "View secret access volume, locations, auth methods, calendar insights, and reports"
+        label: "Read"
       },
       {
         value: "generate-report",
-        label: "Generate report",
-        description: "Generate new reports"
+        label: "Generate report"
       },
       {
         value: "delete-report",
-        label: "Delete report",
-        description: "Delete reports"
+        label: "Delete report"
       }
     ]
   },
   {
     subject: "ip-allowlist",
     title: "IP allowlist",
-    description: "Restrict project access by IP address",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View IP allowlist configuration"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Add IP addresses to the allowlist"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update IP allowlist entries"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Remove IP addresses from the allowlist"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "secret-approval",
     title: "Approval policies",
-    description: "Define approval workflows for secret changes and access requests",
+    description: "Approvals for secret changes and access requests",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View approval policies"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Create new approval policies"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update approval policy rules"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete approval policies"
+        label: "Remove"
       }
     ]
   },
   {
     subject: "secret-rotation",
     title: "Secret rotation",
-    description: "Configure automatic secret rotation policies",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "Read config",
-        description: "View secret rotation configurations"
+        label: "Read config"
       },
       {
         value: "read-generated-credentials",
-        label: "Read generated credentials",
-        description: "Access rotated credential values"
+        label: "Read generated credentials"
       },
       {
         value: "create",
-        label: "Create config",
-        description: "Create new secret rotation configuration"
+        label: "Create config"
       },
       {
         value: "edit",
-        label: "Modify config",
-        description: "Update rotation configuration"
+        label: "Modify config"
       },
       {
         value: "delete",
-        label: "Remove config",
-        description: "Delete rotation configurations"
+        label: "Remove config"
       },
       {
         value: "rotate-secrets",
-        label: "Rotate secrets",
-        description: "Manually trigger secret rotation"
+        label: "Rotate secrets"
       }
     ]
   },
   {
     subject: "secret-syncs",
     title: "Secret syncs",
-    description: "Sync secrets across environments and projects",
+    description: "Push secrets to external destinations",
     conditional: true,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View secret sync configurations"
+        label: "Read"
       },
       {
         value: "create",
-        label: "Create",
-        description: "Set up new secret syncs to external destinations"
+        label: "Create"
       },
       {
         value: "edit",
-        label: "Modify",
-        description: "Update sync configuration"
+        label: "Modify"
       },
       {
         value: "delete",
-        label: "Remove",
-        description: "Delete secret sync configurations"
+        label: "Remove"
       },
       {
         value: "sync-secrets",
-        label: "Trigger syncs",
-        description: "Manually trigger secret synchronization"
+        label: "Trigger syncs"
       },
       {
         value: "import-secrets",
-        label: "Import secrets from destination",
-        description: "Import secrets from the sync destination"
+        label: "Import secrets from destination"
       },
       {
         value: "remove-secrets",
-        label: "Remove secrets from destination",
-        description: "Remove synced secrets from the destination"
+        label: "Remove secrets from destination"
       }
     ]
   },
   {
     subject: "secret-event-subscriptions",
     title: "Secret event subscriptions",
-    description: "Subscribe to secret lifecycle events",
+    description: "Receive secret lifecycle events",
     conditional: true,
     actions: [
       {
         value: "subscribe-to-creation-events",
-        label: "Subscribe to creation events",
-        description: "Receive notifications when secrets are created"
+        label: "Subscribe to creation events"
       },
       {
         value: "subscribe-to-deletion-events",
-        label: "Subscribe to deletion events",
-        description: "Receive notifications when secrets are deleted"
+        label: "Subscribe to deletion events"
       },
       {
         value: "subscribe-to-update-events",
-        label: "Subscribe to update events",
-        description: "Receive notifications when secrets are updated"
+        label: "Subscribe to update events"
       },
       {
         value: "subscribe-to-import-mutation-events",
-        label: "Subscribe to import mutation events",
-        description: "Receive notifications when secret imports change"
+        label: "Subscribe to import mutation events"
       }
     ]
   },
   {
     subject: "app-connections",
     title: "App connections",
-    description: "Manage connections to external platforms and services",
+    description: "Credentials for external platforms and services",
     conditional: true,
     actions: [
       {
         value: "read-app-connections",
-        label: "Read",
-        description: "View configured app connections"
+        label: "Read"
       },
       {
         value: "create-app-connections",
-        label: "Create",
-        description: "Create new connections to external platforms and services"
+        label: "Create"
       },
       {
         value: "edit-app-connections",
-        label: "Update",
-        description: "Modify app connection settings"
+        label: "Update"
       },
       {
         value: "delete-app-connections",
-        label: "Delete",
-        description: "Remove app connections"
+        label: "Delete"
       },
       {
         value: "connect-app-connections",
         label: "Connect",
-        description: "Establish connections to external platforms and services"
+        description: "Use connections in syncs and integrations"
       },
       {
         value: "rotate-credentials",
-        label: "Rotate credentials",
-        description: "Rotate credentials for app connections"
+        label: "Rotate credentials"
       }
     ]
   },
   {
     subject: "project-folder-grant",
     title: "Project folder grants",
-    description: "Grant or revoke access to secrets in specific environments and paths",
+    description: "Access to secrets in specific environments and paths",
     conditional: true,
     actions: [
       {
         value: "read-grant",
-        label: "Read",
-        description: "View existing project folder grants"
+        label: "Read"
       },
       {
         value: "create-grant",
-        label: "Create grant",
-        description: "Grant access to secrets in specified environments and secret paths"
+        label: "Create grant"
       },
       {
         value: "revoke-grant",
-        label: "Revoke grant",
-        description: "Revoke previously granted access to secrets"
+        label: "Revoke grant"
       }
     ]
   },
   {
     subject: "secret-approval-request",
     title: "Secret approval requests",
-    description: "View secret change requests pending approval",
+    description: "Secret changes pending approval",
     conditional: false,
     actions: [
       {
         value: "read",
-        label: "Read",
-        description: "View pending secret change requests"
+        label: "Read"
       }
     ]
   }
@@ -1718,7 +1457,6 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
   {
     id: "secret-viewer",
     name: "Secret viewing policies",
-    description: "Grants read access to secrets and related resources",
     icon: "Eye",
     permissions: [
       {
@@ -1727,8 +1465,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "View",
-            description: "View rollback history"
+            label: "View"
           }
         ]
       },
@@ -1738,8 +1475,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View imported secrets from other projects"
+            label: "Read"
           }
         ]
       },
@@ -1750,13 +1486,11 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
           {
             value: "describeSecret",
             label: "Describe secret",
-            description:
-              "View secret metadata (name, tags, access insights, etc.) without revealing the actual secret value"
+            description: "Name, tags, and metadata only. Does not reveal the value."
           },
           {
             value: "readValue",
-            label: "Read value",
-            description: "Access and view the actual secret value"
+            label: "Read value"
           }
         ]
       },
@@ -1766,8 +1500,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read-root-credential",
-            label: "Read root credentials",
-            description: "View the root credentials used for dynamic secret generation"
+            label: "Read root credentials"
           }
         ]
       },
@@ -1777,8 +1510,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View environments (dev, staging, prod, etc.)"
+            label: "Read"
           }
         ]
       },
@@ -1788,8 +1520,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View secret tags"
+            label: "Read"
           }
         ]
       },
@@ -1799,8 +1530,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read config",
-            description: "View secret rotation configurations"
+            label: "Read config"
           }
         ]
       },
@@ -1810,8 +1540,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View configured integrations"
+            label: "Read"
           }
         ]
       },
@@ -1821,8 +1550,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View secret sync configurations"
+            label: "Read"
           }
         ]
       },
@@ -1832,8 +1560,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "View",
-            description: "View secret change history and commits"
+            label: "View"
           }
         ]
       },
@@ -1843,8 +1570,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View honey tokens and events"
+            label: "Read"
           }
         ]
       },
@@ -1854,8 +1580,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View proxied services"
+            label: "Read"
           }
         ]
       }
@@ -1864,7 +1589,6 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
   {
     id: "secret-editor",
     name: "Secret editing policies",
-    description: "Grants read and edit access to secrets and related resources",
     icon: "Pencil",
     permissions: [
       {
@@ -1873,23 +1597,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View environments (dev, staging, prod, etc.)"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create new environments"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update environment configuration"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete environments"
+            label: "Remove"
           }
         ]
       },
@@ -1899,28 +1619,23 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read-root-credential",
-            label: "Read root credentials",
-            description: "View the root credentials used for dynamic secret generation"
+            label: "Read root credentials"
           },
           {
             value: "create-root-credential",
-            label: "Create root credentials",
-            description: "Configure new root credentials for dynamic secrets"
+            label: "Create root credentials"
           },
           {
             value: "edit-root-credential",
-            label: "Modify root credentials",
-            description: "Update existing root credentials configuration"
+            label: "Modify root credentials"
           },
           {
             value: "delete-root-credential",
-            label: "Remove root credentials",
-            description: "Delete root credentials configuration"
+            label: "Remove root credentials"
           },
           {
             value: "lease",
-            label: "Manage leases",
-            description: "Create and revoke dynamic secret leases"
+            label: "Manage leases"
           }
         ]
       },
@@ -1931,28 +1646,23 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
           {
             value: "describeSecret",
             label: "Describe secret",
-            description:
-              "View secret metadata (name, tags, access insights, etc.) without revealing the actual secret value"
+            description: "Name, tags, and metadata only. Does not reveal the value."
           },
           {
             value: "readValue",
-            label: "Read value",
-            description: "Access and view the actual secret value"
+            label: "Read value"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Edit existing secrets and their values"
+            label: "Modify"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create new secrets in the project"
+            label: "Create"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete secrets from the project"
+            label: "Remove"
           }
         ]
       },
@@ -1962,13 +1672,11 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "View",
-            description: "View rollback history"
+            label: "View"
           },
           {
             value: "create",
-            label: "Perform rollback",
-            description: "Rollback secrets to a previous version"
+            label: "Perform rollback"
           }
         ]
       },
@@ -1978,23 +1686,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View secret tags"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create new tags for organizing secrets"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update tag properties"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete tags"
+            label: "Remove"
           }
         ]
       },
@@ -2004,23 +1708,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View imported secrets from other projects"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Set up new secret imports"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Change import configuration"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Remove secret imports"
+            label: "Remove"
           }
         ]
       },
@@ -2030,33 +1730,27 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read config",
-            description: "View secret rotation configurations"
+            label: "Read config"
           },
           {
             value: "read-generated-credentials",
-            label: "Read generated credentials",
-            description: "Access rotated credential values"
+            label: "Read generated credentials"
           },
           {
             value: "create",
-            label: "Create config",
-            description: "Create new secret rotation configuration"
+            label: "Create config"
           },
           {
             value: "edit",
-            label: "Modify config",
-            description: "Update rotation configuration"
+            label: "Modify config"
           },
           {
             value: "delete",
-            label: "Remove config",
-            description: "Delete rotation configurations"
+            label: "Remove config"
           },
           {
             value: "rotate-secrets",
-            label: "Rotate secrets",
-            description: "Manually trigger secret rotation"
+            label: "Rotate secrets"
           }
         ]
       },
@@ -2066,18 +1760,16 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "create",
-            label: "Create",
-            description: "Create new folders to organize secrets"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Rename or modify folder properties"
+            label: "Modify"
           },
           {
             value: "delete",
             label: "Remove",
-            description: "Delete folders and their contents"
+            description: "Also deletes everything in the folder"
           }
         ]
       },
@@ -2087,23 +1779,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View configured integrations"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Set up new integrations with external services"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update integration configuration"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete integrations"
+            label: "Remove"
           }
         ]
       },
@@ -2113,38 +1801,31 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View secret sync configurations"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Set up new secret syncs to external destinations"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update sync configuration"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete secret sync configurations"
+            label: "Remove"
           },
           {
             value: "sync-secrets",
-            label: "Trigger syncs",
-            description: "Manually trigger secret synchronization"
+            label: "Trigger syncs"
           },
           {
             value: "import-secrets",
-            label: "Import secrets from destination",
-            description: "Import secrets from the sync destination"
+            label: "Import secrets from destination"
           },
           {
             value: "remove-secrets",
-            label: "Remove secrets from destination",
-            description: "Remove synced secrets from the destination"
+            label: "Remove secrets from destination"
           }
         ]
       },
@@ -2154,13 +1835,11 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "View",
-            description: "View secret change history and commits"
+            label: "View"
           },
           {
             value: "perform-rollback",
-            label: "Perform rollback",
-            description: "Rollback secrets to a previous commit"
+            label: "Perform rollback"
           }
         ]
       },
@@ -2170,33 +1849,27 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View honey tokens and events"
+            label: "Read"
           },
           {
             value: "read-credentials",
-            label: "Read credentials",
-            description: "Reveal honey token credentials"
+            label: "Read credentials"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create honey tokens"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update honey token metadata and mappings"
+            label: "Modify"
           },
           {
             value: "reset",
-            label: "Reset",
-            description: "Reset triggered honey tokens"
+            label: "Reset"
           },
           {
             value: "revoke",
-            label: "Revoke",
-            description: "Revoke honey tokens and credentials"
+            label: "Revoke"
           }
         ]
       },
@@ -2206,33 +1879,29 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View proxied services"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create proxied services"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update proxied service configuration"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete proxied services"
+            label: "Remove"
           },
           {
             value: "proxy",
             label: "Proxy",
-            description: "Route traffic through proxied services (for agent identities)"
+            description: "For agent identities routing traffic"
           },
           {
             value: "report-usage",
             label: "Report usage",
-            description: "Record last-used timestamps for proxied services (for the agent proxy)"
+            description: "For the agent proxy recording last use"
           }
         ]
       }
@@ -2241,7 +1910,6 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
   {
     id: "project-manager",
     name: "Project management policies",
-    description: "Grants access to manage project members and settings",
     icon: "Users",
     permissions: [
       {
@@ -2250,8 +1918,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View audit logs and security events"
+            label: "Read"
           }
         ]
       },
@@ -2261,28 +1928,23 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View groups and their members"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create new user groups"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update group membership and settings"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete groups"
+            label: "Remove"
           },
           {
             value: "assign-role",
-            label: "Assign roles",
-            description: "Assign project roles to groups"
+            label: "Assign roles"
           }
         ]
       },
@@ -2292,38 +1954,32 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View project members and their roles"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Add",
-            description: "Invite new users to the project"
+            label: "Add"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Change user roles and permissions"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Remove users from the project"
+            label: "Remove"
           },
           {
             value: "assign-role",
-            label: "Assign roles",
-            description: "Assign or update roles for project members"
+            label: "Assign roles"
           },
           {
             value: "assign-additional-privileges",
-            label: "Assign additional privileges",
-            description: "Grant additional privileges to project members"
+            label: "Assign additional privileges"
           },
           {
             value: "assume-privileges",
             label: "Assume privileges",
-            description: "Temporarily assume another user's privileges"
+            description: "Temporarily act with another member's privileges"
           }
         ]
       },
@@ -2333,63 +1989,52 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View machine identities and their configuration"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Add",
-            description: "Create new machine identities for automation"
+            label: "Add"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update machine identity settings"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete machine identities"
+            label: "Remove"
           },
           {
             value: "assign-role",
-            label: "Assign roles",
-            description: "Assign or update roles for machine identities"
+            label: "Assign roles"
           },
           {
             value: "assign-additional-privileges",
-            label: "Assign additional privileges",
-            description: "Grant additional privileges to machine identities"
+            label: "Assign additional privileges"
           },
           {
             value: "assume-privileges",
             label: "Assume privileges",
-            description: "Temporarily assume another identity's privileges"
+            description: "Temporarily act with a machine identity's privileges"
           },
           {
             value: "revoke-auth",
-            label: "Revoke auth",
-            description: "Revoke authentication for a machine identity"
+            label: "Revoke auth"
           },
           {
             value: "edit-auth",
-            label: "Configure auth methods",
-            description: "Add or update authentication methods for a machine identity"
+            label: "Configure auth methods"
           },
           {
             value: "create-token",
-            label: "Create token",
-            description: "Generate access tokens for machine identities"
+            label: "Create token"
           },
           {
             value: "get-token",
-            label: "Get token",
-            description: "View existing access tokens"
+            label: "Get token"
           },
           {
             value: "delete-token",
-            label: "Delete token",
-            description: "Revoke access tokens"
+            label: "Delete token"
           }
         ]
       },
@@ -2399,13 +2044,12 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "edit",
-            label: "Update project details",
-            description: "Modify project name, description, and settings"
+            label: "Update project details"
           },
           {
             value: "delete",
             label: "Delete project",
-            description: "Permanently delete the entire project"
+            description: "Permanently deletes the project"
           }
         ]
       },
@@ -2415,23 +2059,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View roles and their permissions"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create new custom roles"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update role permissions and policies"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete custom roles"
+            label: "Remove"
           }
         ]
       },
@@ -2441,13 +2081,11 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View project settings"
+            label: "Read"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Change project settings and configuration"
+            label: "Modify"
           }
         ]
       },
@@ -2457,23 +2095,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View IP allowlist configuration"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Add IP addresses to the allowlist"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update IP allowlist entries"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Remove IP addresses from the allowlist"
+            label: "Remove"
           }
         ]
       },
@@ -2483,8 +2117,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "edit",
-            label: "Modify",
-            description: "Change KMS configuration settings for the project"
+            label: "Modify"
           }
         ]
       },
@@ -2494,23 +2127,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View approval policies"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create new approval policies"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update approval policy rules"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete approval policies"
+            label: "Remove"
           }
         ]
       },
@@ -2520,23 +2149,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View service tokens"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Generate new service tokens for API access"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update service token configuration"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Revoke service tokens"
+            label: "Remove"
           }
         ]
       },
@@ -2546,33 +2171,27 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View honey tokens and events"
+            label: "Read"
           },
           {
             value: "read-credentials",
-            label: "Read credentials",
-            description: "Reveal honey token credentials"
+            label: "Read credentials"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create honey tokens"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update honey token metadata and mappings"
+            label: "Modify"
           },
           {
             value: "reset",
-            label: "Reset",
-            description: "Reset triggered honey tokens"
+            label: "Reset"
           },
           {
             value: "revoke",
-            label: "Revoke",
-            description: "Revoke honey tokens and credentials"
+            label: "Revoke"
           }
         ]
       },
@@ -2582,33 +2201,29 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View proxied services"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Create proxied services"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update proxied service configuration"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete proxied services"
+            label: "Remove"
           },
           {
             value: "proxy",
             label: "Proxy",
-            description: "Route traffic through proxied services (for agent identities)"
+            description: "For agent identities routing traffic"
           },
           {
             value: "report-usage",
             label: "Report usage",
-            description: "Record last-used timestamps for proxied services (for the agent proxy)"
+            description: "For the agent proxy recording last use"
           }
         ]
       },
@@ -2618,23 +2233,19 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "read",
-            label: "Read",
-            description: "View configured webhooks"
+            label: "Read"
           },
           {
             value: "create",
-            label: "Create",
-            description: "Set up new webhooks for event notifications"
+            label: "Create"
           },
           {
             value: "edit",
-            label: "Modify",
-            description: "Update webhook configuration and triggers"
+            label: "Modify"
           },
           {
             value: "delete",
-            label: "Remove",
-            description: "Delete webhooks"
+            label: "Remove"
           }
         ]
       }
@@ -2643,7 +2254,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
   {
     id: "agent-proxy",
     name: "Agent proxy policies",
-    description: "Reads secret values, mints dynamic secret leases, and reports service usage",
+    description: "For the agent proxy: reads secret values, leases dynamic secrets, reports usage",
     icon: "Share2",
     permissions: [
       {
@@ -2653,13 +2264,11 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
           {
             value: "describeSecret",
             label: "Describe secret",
-            description:
-              "View secret metadata (name, tags, access insights, etc.) without revealing the actual secret value"
+            description: "Name, tags, and metadata only. Does not reveal the value."
           },
           {
             value: "readValue",
-            label: "Read value",
-            description: "Access and view the actual secret value"
+            label: "Read value"
           }
         ]
       },
@@ -2669,8 +2278,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
         actions: [
           {
             value: "lease",
-            label: "Manage leases",
-            description: "Create and revoke dynamic secret leases"
+            label: "Manage leases"
           }
         ]
       },
@@ -2681,7 +2289,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
           {
             value: "report-usage",
             label: "Report usage",
-            description: "Record last-used timestamps for proxied services (for the agent proxy)"
+            description: "For the agent proxy recording last use"
           }
         ]
       }
@@ -2690,7 +2298,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
   {
     id: "agent",
     name: "Agent policies",
-    description: "Routes traffic through proxied services",
+    description: "For agent identities: routes traffic through proxied services",
     icon: "Bot",
     permissions: [
       {
@@ -2700,7 +2308,7 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
           {
             value: "proxy",
             label: "Proxy",
-            description: "Route traffic through proxied services (for agent identities)"
+            description: "For agent identities routing traffic"
           }
         ]
       }

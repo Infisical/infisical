@@ -86,7 +86,7 @@ function MongoDbFields() {
         presentation="panel"
         surface
         title="Roles"
-        description="A role may be custom or built in: atlasAdmin, backup, clusterMonitor, dbAdmin, dbAdminAnyDatabase, enableSharding, read, readAnyDatabase, readWrite, or readWriteAnyDatabase."
+        description="Built-in roles, such as read or readWrite, or custom ones."
       >
         <Stack gap={12} align="start">
           {roles.fields.map(({ id }, index) => (

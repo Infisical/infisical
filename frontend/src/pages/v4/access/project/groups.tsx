@@ -127,19 +127,9 @@ export const ProjectGroupsTab = () => {
           onRowActivate={(row) => go(accessLinks.projectGroup(scope, row.group.id))}
           empty={
             list.search.trim() ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title="No project groups match search"
-                description="Adjust your search criteria."
-              />
+              <EmptyState size="sm" icon="search" title="No project groups match search" />
             ) : (
-              <EmptyState
-                size="sm"
-                icon="user"
-                title="No project groups found"
-                description="Add a group to get started."
-              />
+              <EmptyState size="sm" icon="user" title="No project groups found" />
             )
           }
         />

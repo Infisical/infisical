@@ -1,5 +1,4 @@
-import type { MouseEvent } from "react";
-import { useNavigate, useParams, useRouter } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 
 import { Badge } from "@app/components/v4/ui/badge";
 import { Inline } from "@app/components/v4/ui/layout";
@@ -54,8 +53,6 @@ const attentionItems = (stats: TDashboardStats): AttentionItem[] => {
 
 export const AttentionList = ({ stats }: { stats: TDashboardStats }) => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
-  const router = useRouter();
-  const navigate = useNavigate();
   const items = attentionItems(stats);
 
   if (items.length === 0)
@@ -64,12 +61,6 @@ export const AttentionList = ({ stats }: { stats: TDashboardStats }) => {
         No certificates need attention
       </StatusText>
     );
-
-  const open = (event: MouseEvent, filters: InventoryFilters) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-    event.preventDefault();
-    navigate({ to: inventory, params: { orgId }, search: filters });
-  };
 
   return (
     <List
@@ -83,10 +74,7 @@ export const AttentionList = ({ stats }: { stats: TDashboardStats }) => {
           value={item.key}
           label={item.label}
           title={item.label}
-          href={
-            router.buildLocation({ to: inventory, params: { orgId }, search: item.filters }).href
-          }
-          onClick={(event) => open(event, item.filters)}
+          link={{ to: inventory, params: { orgId }, search: item.filters }}
           meta={item.count}
           badge={
             item.badges.length > 0 && (

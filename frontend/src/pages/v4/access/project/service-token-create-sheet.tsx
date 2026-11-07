@@ -137,10 +137,7 @@ export const ServiceTokenCreateSheet = ({
           <SheetTitle>
             {project.data ? `Add a service token for ${project.data.name}` : "Add a service token"}
           </SheetTitle>
-          <SheetDescription>
-            When a token is generated, you will only be able to see it once before it disappears.
-            Make sure to save it somewhere.
-          </SheetDescription>
+          <SheetDescription>The token is shown once. Save it somewhere safe.</SheetDescription>
         </SheetHeader>
         {token ? (
           <SheetBody>

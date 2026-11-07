@@ -4,7 +4,6 @@ import { Button } from "@app/components/v4/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -51,7 +50,6 @@ export function EditFolderDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit folder</DialogTitle>
-          <DialogDescription>Update the folder name and description.</DialogDescription>
         </DialogHeader>
         <form
           id="edit-folder-dialog"
@@ -79,7 +77,7 @@ export function EditFolderDialog({
             label="Description"
             description={
               showDescriptionOverwriteWarning
-                ? "Warning: Any changes made here will overwrite any custom edits in individual environment folders."
+                ? "Overwrites custom descriptions in each environment's folder."
                 : undefined
             }
           >
