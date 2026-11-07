@@ -393,12 +393,7 @@ const LimitAction = ({
   <span className="flex flex-col items-end gap-0.5 text-xs">
     <span className={cn("text-muted", titleClassName)}>{title}</span>
     {action && (
-      <Button
-        variant="link"
-        size="xs"
-        className={cn("h-auto p-0 text-xs underline", titleClassName)}
-        onClick={action.onClick}
-      >
+      <Button variant="link" size="xs" onClick={action.onClick}>
         {action.label}
       </Button>
     )}
