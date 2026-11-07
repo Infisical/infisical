@@ -412,6 +412,9 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
+    if (!groupApprovers.length && (approvals ?? secretApprovalPolicy.approvals) > approvers.length)
+      throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
+
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
 
@@ -451,18 +454,24 @@ export const secretApprovalPolicyServiceFactory = ({
     }
 
     const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
-      const doc = await secretApprovalPolicyDAL.updateById(
-        secretApprovalPolicy.id,
-        {
-          approvals,
-          secretPath,
-          name,
-          enforcementLevel,
-          allowedSelfApprovals,
-          bypassForMachineIdentities
-        },
-        tx
-      );
+      // Lock the policy row so concurrent updates serialize their delete-then-insert of approvers and bypassers.
+      const lockedPolicy = await secretApprovalPolicyDAL.findByIdForUpdate(secretApprovalPolicy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({ message: `Secret approval policy with ID '${secretPolicyId}' not found` });
+      }
+
+      const policyUpdate = {
+        approvals,
+        secretPath,
+        name,
+        enforcementLevel,
+        allowedSelfApprovals,
+        bypassForMachineIdentities
+      };
+      // an approvers-only update leaves every column undefined, and knex rejects an empty update
+      const doc = Object.values(policyUpdate).some((value) => value !== undefined)
+        ? await secretApprovalPolicyDAL.updateById(secretApprovalPolicy.id, policyUpdate, tx)
+        : lockedPolicy;
 
       await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
