@@ -69,6 +69,8 @@ In a new project, you can fill the dashboard in one go by dropping a `.env`, `.j
 
 To upload more secrets later, select **Add New** > **Upload Secrets**, then upload a file or paste its contents.
 
+In the review step, Infisical marks each key that already exists in a selected environment. With **Overwrite Existing Secrets** off, these keys show a **Conflict** badge, and when you upload, a dialog lists them. Select **Overwrite conflicts** to update them with the uploaded values, or **Skip conflicts** to upload only the new keys. With the toggle on, these keys show an **Overwrite** badge and Infisical updates them without asking.
+
 To delete a secret, hover over it, select the three dot menu on the right, then select **Delete Secret**.
 
 ![Three dot menu open on a secret row, showing Delete Secret](/images/platform/project/delete-secret-2.png)
@@ -86,7 +88,7 @@ If you turn the toggle on:
 - Each nested object becomes a folder inside the path you're uploading into (Infisical reuses folders that already exist)
 - Each value in a nested object that isn't itself an object becomes a secret in that object's folder
 - Arrays are stored as JSON strings, `null` as an empty value, and numbers and booleans as text
-- **Overwrite Existing Secrets** still decides whether secrets that already exist are updated or skipped
+- Secrets that already exist in a folder are flagged and handled the same way as in [other uploads](#secrets)
 
 For example, `{"data": {"item1": {"item2": "some-value"}}}` creates the secret `item2` with the value `some-value` in the folder `/data/item1`.
 
