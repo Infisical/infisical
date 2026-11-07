@@ -25,6 +25,8 @@ import {
 } from "./navigation";
 import { ProjectGate } from "./project-gate";
 
+import styles from "./shell.module.css";
+
 const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) => void) => {
   const anchor = (event.target as HTMLElement).closest("a");
   if (
@@ -220,7 +222,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         announcements={chrome.announcements}
       />
       <AppInset>
-        <PageGutter>
+        <PageGutter className={styles.content}>
           {at.projectId ? (
             <ProjectGate key={at.projectId} projectId={at.projectId}>
               {children}
