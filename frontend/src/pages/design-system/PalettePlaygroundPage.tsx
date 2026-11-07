@@ -37,9 +37,16 @@ const themeOverridden = new Set(v4Themes.flatMap((theme) => Object.keys(theme.ov
 const colorControls = tokens.color.tokens
   .filter((token) => v4Themes.every((theme) => hex.test(resolveColorToken(token.name, theme.id))))
   .map((token): Control => ({ kind: "color", name: token.name }));
-const appearanceValue = (name: string, theme: string) => {
+const appearanceValue = (name: string, theme: string): string => {
   const token = tokens.appearance.tokens.find((entry) => entry.name === name);
-  return token ? v4ThemedValue(v4Themes, theme, name, token.value as Record<string, string>) : "";
+  if (!token) return "";
+  return v4ThemedValue(v4Themes, theme, name, token.value as Record<string, string>).replace(
+    /\{([a-z0-9-]+)\}/g,
+    (reference: string, inner: string) => {
+      const resolved = appearanceValue(inner, theme);
+      return percent.test(resolved) ? resolved : reference;
+    }
+  );
 };
 const appearanceControls = tokens.appearance.tokens.flatMap((token): Control[] => {
   const values = v4Themes.map((theme) => appearanceValue(token.name, theme.id));
