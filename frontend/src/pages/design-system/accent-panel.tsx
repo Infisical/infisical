@@ -224,8 +224,8 @@ export const AccentPanelProvider = ({ children }: { children: ReactNode }) => {
           <SheetHeader>
             <SheetTitle>Accent</SheetTitle>
             <SheetDescription>
-              Workbench only. Picks a base and derives accent-2, accent-wash and accent-line from
-              how today&apos;s tokens relate to it. On-accent stays ink.
+              Workbench only. accent-2, accent-wash and accent-line derive from the base; on-accent
+              stays ink.
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-col gap-6 px-4 pb-6">

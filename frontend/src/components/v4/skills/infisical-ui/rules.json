@@ -137,6 +137,18 @@
       "category": "Interaction"
     },
     {
+      "id": "strategic-descriptions",
+      "title": "Use descriptions strategically",
+      "instruction": "Descriptions are optional, and a good one carries information the title cannot. Use them where they help: a one-sentence page lede, optionally ending in a Docs link; a one-line dialog or sheet subtitle that scopes its content; short lines that tell the cards in a set apart; and secondary row lines that carry a state or a value. Keep flavor that orients people. Do not write text that restates the title, a lede longer than one sentence, or a marketing tagline, and trim existing copy, including copy ported from main, to that standard rather than deleting it wholesale.",
+      "good": "Billing with Manage your plan, payment method and invoices. as its one-line subtitle; plan cards whose short lines say who each plan is for; a row reading Visa ending in 6008.",
+      "avoid": "Group details under a Details title, a three-sentence page intro, or a tagline such as Your team's complete security toolkit.",
+      "detect": {
+        "by": "review",
+        "how": "Read each description: keep it if it scopes, distinguishes, states a value or orients in one sentence; cut it if it restates the title or sells."
+      },
+      "category": "Copy"
+    },
+    {
       "id": "plain-task-copy",
       "title": "Name the action and consequence",
       "instruction": "In authored labels and operational feedback, name the action, object and result in sentence case with straight quotes, so people can predict the change. Keep the operation's name through the action, its confirmation and its result. Cut em dashes, promotional adjectives, three-beat slogans, setup-then-correct phrasing, decorative emoji and celebratory filler because they replace task information.",

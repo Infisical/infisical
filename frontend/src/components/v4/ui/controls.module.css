@@ -292,6 +292,11 @@
   display: flex;
   flex-direction: column;
 }
+.card > .cardBody,
+.card > .cardInset,
+.cardInset > .cardBody {
+  flex-grow: 1;
+}
 .card[data-variant="framed"] > .cardHeader {
   align-items: first baseline;
 }

@@ -9,10 +9,7 @@ export default function Example() {
   const [value, setValue] = useState("dev");
   return (
     <ExampleStack>
-      <Field
-        label="Single environment"
-        description="Choose an existing environment. Creation is unavailable."
-      >
+      <Field label="Single environment" description="Creation is unavailable.">
         <Combobox
           label="Single environment"
           options={[

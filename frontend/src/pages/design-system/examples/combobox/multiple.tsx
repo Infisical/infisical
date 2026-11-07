@@ -11,7 +11,7 @@ export default function Example() {
     <ExampleStack>
       <Field
         label="Visible environments"
-        description="Audit is required by policy, so Clear all keeps it. Creation is unavailable."
+        description="Audit is required by policy, so Clear all keeps it."
       >
         <Combobox
           label="Visible environments"

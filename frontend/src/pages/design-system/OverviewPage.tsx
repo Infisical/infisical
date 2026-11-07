@@ -52,9 +52,8 @@ export const OverviewPage = () => {
         className="text-muted-foreground text-sm leading-6"
         style={{ maxWidth: "var(--v4-size-measure-prose)" }}
       >
-        The v4 tokens, components and patterns behind Infisical v4, each with working examples and
-        its contract. Every product page below is rebuilt from them and compared with the current
-        app on main.
+        The tokens, components and patterns behind Infisical v4, with each product page rebuilt from
+        them and compared with main.
       </p>
       <DocSection title="Compare with main">
         <Grid min="card">

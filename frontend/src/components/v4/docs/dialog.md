@@ -1,6 +1,6 @@
 # Dialog
 
-Edit or inspect a task in a modal with a title and description.
+Edit or inspect a task in a modal with a title and, only when it adds information, a short description.
 
 ## Choose this component
 
@@ -75,12 +75,12 @@ Exports: Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 
 ## Accessibility
 
-- Title and Description name the dialog. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog.
+- DialogTitle names the dialog. DialogDescription is optional: use it as a one-line subtitle that scopes the dialog, never to restate the title. Radix links aria-describedby only while a Description is mounted, so a title-only dialog needs nothing extra and logs no warning. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog.
 - A focus ring is never clipped by the scroll region under the pinned header or above the pinned footer: the content pad clears the ring of the first and last control, and Tab scrolls a control the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) inside either edge.
 
 ## Use cases
 
-- Keep a named DialogTitle and useful description, let the task owner manage pending/error/open state and keep the failed draft inside the dialog.
+- Keep a named DialogTitle, add a one-line scoping description where it helps, let the task owner manage pending/error/open state and keep the failed draft inside the dialog.
 
 ## Avoid
 

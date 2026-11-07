@@ -8,7 +8,7 @@ interface ApprovalRequestBase {
   id: string;
   object: string;
   title: React.ReactNode;
-  description: React.ReactNode;
+  description?: React.ReactNode;
   age: string;
   href?: string;
 }

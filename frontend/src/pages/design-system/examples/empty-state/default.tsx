@@ -9,7 +9,7 @@ export default function Example() {
       <EmptyState
         icon="key"
         title="No secrets in staging yet"
-        description="Add one, or copy them from development in one step. Syncs pick them up on the next push."
+        description="Add one, or copy them from development in one step."
         actions={<Button icon="plus">Add secret</Button>}
       />
     </ExampleCell>
