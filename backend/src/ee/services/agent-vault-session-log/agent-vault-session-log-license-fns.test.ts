@@ -1,22 +1,22 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { getDefaultOnPremFeatures, TPlan as TLicensePlan } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
-import {
-  getSessionLogEntitlement,
-  getSessionLogRetentionDays,
-  TSessionLogLicenseService
-} from "./agent-vault-session-log-license-fns";
+import { getSessionLogEntitlement, getSessionLogRetentionDays } from "./agent-vault-session-log-license-fns";
 
 vi.mock("@app/lib/logger", () => ({ logger: { warn: () => {} } }));
 
 describe("getSessionLogEntitlement", () => {
   type TPlan = { hasExternal: boolean; hasDefault: boolean; retentionDays?: number | null };
-  const toPlan = ({ hasExternal, hasDefault, retentionDays = null }: TPlan) => ({
-    agentVaultByoS3: hasExternal,
-    agentVaultManagedStorage: hasDefault,
-    agentVaultSessionLogRetentionDays: retentionDays
-  });
+  const toPlan = ({ hasExternal, hasDefault, retentionDays = null }: TPlan) =>
+    ({
+      ...getDefaultOnPremFeatures(),
+      agentVaultByoS3: hasExternal,
+      agentVaultManagedStorage: hasDefault,
+      agentVaultSessionLogRetentionDays: retentionDays
+    }) as TLicensePlan;
   const licenseService = ({
     plan,
     fallback = false,
@@ -25,13 +25,13 @@ describe("getSessionLogEntitlement", () => {
     plan: TPlan;
     fallback?: boolean;
     lastKnown?: { plan: TPlan; ageMs: number } | null;
-  }) =>
-    ({
-      getPlan: async () => toPlan(plan),
-      isServingFallbackPlan: async () => fallback,
-      getLastKnownPlan: async () =>
-        lastKnown ? { plan: toPlan(lastKnown.plan), fetchedAt: Date.now() - lastKnown.ageMs } : null
-    }) as unknown as TSessionLogLicenseService;
+  }) => {
+    const fake = new FakeLicenseService().setPlan("org-1", toPlan(plan));
+    if (fallback) fake.fallbackOrgs.add("org-1");
+    if (lastKnown)
+      fake.lastKnown.set("org-1", { plan: toPlan(lastKnown.plan), fetchedAt: Date.now() - lastKnown.ageMs });
+    return fake;
+  };
 
   const free = { hasExternal: false, hasDefault: true };
   const paid = { hasExternal: true, hasDefault: true, retentionDays: 365 };

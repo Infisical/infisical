@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { conditionsMatcher } from "@app/lib/casl";
 import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -58,7 +59,7 @@ const buildService = ({
   const deps = {
     projectDAL: { findById: vi.fn().mockResolvedValue({ id: PROJECT_ID, version: projectVersion }) },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: allowAll }) },
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) },
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretApproval: true as false }),
     projectEnvDAL: {
       find: vi.fn().mockResolvedValue([ENV_DEV]),
       findOne: vi.fn(({ slug }: { slug: string }) => Promise.resolve(slug === ENV_DEV.slug ? ENV_DEV : undefined))

@@ -1,3 +1,4 @@
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { ForbiddenRequestError } from "@app/lib/errors";
 
 import { licenseV2ServiceFactory } from "./license-v2-service";
@@ -50,7 +51,7 @@ const buildService = () => {
       findProjectNames: vi.fn(async () => []),
       findAllRootOrgs: vi.fn(async () => ({ orgs: [{ id: ROOT_ORG, name: "Root", slug: "root" }], totalCount: 1 }))
     },
-    licenseService: { countUsage: vi.fn(async () => null), billing: {} }
+    licenseService: new FakeLicenseService()
   } as unknown as Parameters<typeof licenseV2ServiceFactory>[0]);
 
   return { service, getOrgPermission };

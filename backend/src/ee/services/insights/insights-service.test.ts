@@ -2,7 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
-import { TFeatureSet } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -126,9 +126,7 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    licenseService: {
-      getPlan: async () => ({ secretAccessInsights: true }) as unknown as TFeatureSet
-    } as TInsightsServiceFactoryDep["licenseService"],
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true as false }),
     keyStore: {
       getItem: async () => null,
       setItemWithExpiry: async () => "OK",
@@ -266,9 +264,7 @@ describe("project access insights audit log store", () => {
         }),
         getOrgPermission: unreachable("permissionService.getOrgPermission")
       } as unknown as TInsightsServiceFactoryDep["permissionService"],
-      licenseService: {
-        getPlan: async () => ({ secretAccessInsights: true }) as unknown as TFeatureSet
-      } as TInsightsServiceFactoryDep["licenseService"],
+      licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true as false }),
       keyStore: {
         getItem: async () => null,
         setItemWithExpiry: async () => "OK",

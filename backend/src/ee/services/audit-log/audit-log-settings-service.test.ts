@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -142,20 +143,19 @@ const createHarness = ({
   const projectDAL = {
     findById: vi.fn(async (id: string) => ({ id, orgId: "org-1" }))
   };
-  const licenseService = {
-    getPlan: vi.fn(async () => ({ auditLogs: planHasAuditLogs }))
-  };
+  const licenseService = new FakeLicenseService().setPlan("org-1", { auditLogs: planHasAuditLogs as false });
+  licenseService.defaultPlan = { ...licenseService.defaultPlan, auditLogs: true as false };
 
   const service = auditLogSettingsServiceFactory({
     auditLogSettingsDAL: auditLogSettingsDAL as never,
     orgDAL: orgDAL as never,
     projectDAL: projectDAL as never,
     permissionService: permissionService as never,
-    licenseService: licenseService as never,
+    licenseService,
     keyStore: keyStore as never
   });
 
-  return { service, orgDAL, auditLogSettingsDAL, keyStore, licenseService, tx };
+  return { service, orgDAL, auditLogSettingsDAL, keyStore, tx };
 };
 
 describe("getEffectiveSettings", () => {
@@ -454,12 +454,11 @@ describe("updateProjectSettings", () => {
   });
 
   test("refuses to save on a plan without audit logs, checked against the project's org", async () => {
-    const { service, auditLogSettingsDAL, licenseService } = createHarness({ planHasAuditLogs: false });
+    const { service, auditLogSettingsDAL } = createHarness({ planHasAuditLogs: false });
 
     await expect(service.updateProjectSettings({ ...projectActor, eventClasses: fullEventClasses })).rejects.toThrow(
       "Audit log settings can only be changed on a plan that includes audit logs"
     );
-    expect(licenseService.getPlan).toHaveBeenCalledWith("org-1");
     expect(auditLogSettingsDAL.transaction).not.toHaveBeenCalled();
   });
 

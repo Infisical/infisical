@@ -2,6 +2,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import {
@@ -157,6 +158,8 @@ const buildService = ({
 } = {}) => {
   let requestCounter = 0;
   const hasRole = vi.fn().mockReturnValue(false);
+  const licenseService = new FakeLicenseService().setPlan("org-1", { secretApproval: true as false });
+  vi.spyOn(licenseService, "getPlan");
   const deps = {
     approvalRequestDAL: {
       findById: vi.fn().mockResolvedValue(APPROVAL_REQUEST),
@@ -225,7 +228,7 @@ const buildService = ({
         { id: "user-1", email: "alice@example.com", username: "alice", firstName: "Alice", lastName: "Smith" }
       ])
     },
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) },
+    licenseService,
     userGroupMembershipDAL: {
       findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]),
       find: vi.fn().mockResolvedValue([])
@@ -564,7 +567,7 @@ describe("secretChangeGlobalRequestBridge reviewSecretChangeRequest", () => {
 
   test("reviews an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService();
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(review(service)).resolves.toMatchObject({ status: ApprovalStatus.APPROVED });
     expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
@@ -887,7 +890,7 @@ describe("secretChangeGlobalRequestBridge mergeSecretChangeRequest", () => {
 
   test("merges an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService({ requestSteps: [stepWith({ approvals: approvedBy("approver-1") })] });
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(merge(service)).resolves.toMatchObject({ isMergedViaBypass: false });
     expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
@@ -1084,7 +1087,7 @@ describe("secretChangeGlobalRequestBridge updateSecretChangeRequestStatus", () =
 
   test("closes a request when the plan lacks secret approvals and refuses reopening one", async () => {
     const { service, deps } = buildService();
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(setStatus(service, { status: RequestState.Open })).rejects.toThrow("plan restriction");
     expect(deps.approvalRequestDAL.findById).not.toHaveBeenCalled();
