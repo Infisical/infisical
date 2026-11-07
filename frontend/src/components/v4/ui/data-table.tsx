@@ -11,6 +11,7 @@ import { Skeleton } from "./skeleton";
 import {
   rowActionSlots,
   RowActions,
+  RowContextMenu,
   Table,
   TableActionsCell,
   TableActionsHead,
@@ -106,6 +107,8 @@ interface DataTableBaseProps<Row> {
   actionBar?: React.ReactNode;
   /** Persistent row actions in the sticky tail column: inline icon actions, then the More menu. */
   rowActions?: DataTableRowActions<Row>;
+  /** Right-click (and Shift+F10 or the Menu key) on a data row opens its inline actions and More menu items. On by default with rowActions. */
+  rowContextMenu?: boolean;
   /** The scroll container (vertical and horizontal), for ports that read scrollTop or observe it. */
   containerRef?: React.Ref<HTMLDivElement>;
   /** Layout classes for the scroll container, such as a flex-fill height. */
@@ -152,6 +155,7 @@ export function DataTable<Row>({
   loadingRows = 5,
   actionBar,
   rowActions,
+  rowContextMenu = true,
   containerRef,
   containerClassName
 }: DataTableProps<Row>) {
@@ -309,95 +313,109 @@ export function DataTable<Row>({
   ) : (
     rows.length > 0 && end
   );
+  const rowInline = (row: Row) =>
+    rowActions?.inline?.map((action) => ({
+      label: typeof action.label === "string" ? action.label : action.label(row),
+      icon: action.icon,
+      disabledReason: action.disabledReason?.(row),
+      onSelect: () => action.onSelect(row)
+    })) as UpToThree<RowAction> | undefined;
   const renderRow = (
     { row, depth }: { row: Row; depth: number },
     position: number,
     rowIndex: number
-  ) => (
-    <TableRow
-      key={getRowId(row)}
-      aria-rowindex={rowIndex}
-      data-row-index={position}
-      tabIndex={onRowActivate ? 0 : position === focusRow ? -1 : undefined}
-      onBlur={position === focusRow ? () => setFocusRow(null) : undefined}
-      data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
-      data-activatable={onRowActivate ? "" : undefined}
-      onClick={onRowActivate ? () => onRowActivate(row) : undefined}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
-        if (event.key === "Enter" && onRowActivate) {
-          event.preventDefault();
-          onRowActivate(row);
-        } else if (event.key === " " && selectable && isSelectable(row)) {
-          event.preventDefault();
-          toggle(getRowId(row));
-        }
-      }}
-      style={{ height: effectiveRowHeight }}
-    >
-      {selectable && (
-        <TableCell selection>
-          <SelectionBox
-            label={`Select ${rowLabel(row)}`}
-            checked={selected.includes(getRowId(row))}
-            disabled={!isSelectable(row)}
-            reason={selectionDisabledReason?.(row)}
-            onToggle={() => toggle(getRowId(row))}
-          />
-        </TableCell>
-      )}
-      {columns.map((column) => (
-        <TableCell
-          key={column.id}
-          className={column.actions ? styles.tableActions : undefined}
-          style={columnStyle(column)}
-          data-actions={column.actions || undefined}
-          data-pin={column.pin ?? column.actions}
-          data-row-interactive={column.actions || column.toggle ? true : undefined}
-        >
-          {column.toggle ? (
-            <ToggleCell
-              toggle={column.toggle}
-              row={row}
-              label={`${column.header} for ${rowLabel(row)}`}
-              rowId={getRowId(row)}
+  ) => {
+    const tableRow = (
+      <TableRow
+        key={getRowId(row)}
+        aria-rowindex={rowIndex}
+        data-row-index={position}
+        tabIndex={onRowActivate ? 0 : position === focusRow ? -1 : undefined}
+        onBlur={position === focusRow ? () => setFocusRow(null) : undefined}
+        data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
+        data-activatable={onRowActivate ? "" : undefined}
+        onClick={onRowActivate ? () => onRowActivate(row) : undefined}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" && onRowActivate) {
+            event.preventDefault();
+            onRowActivate(row);
+          } else if (event.key === " " && selectable && isSelectable(row)) {
+            event.preventDefault();
+            toggle(getRowId(row));
+          }
+        }}
+        style={{ height: effectiveRowHeight }}
+      >
+        {selectable && (
+          <TableCell selection>
+            <SelectionBox
+              label={`Select ${rowLabel(row)}`}
+              checked={selected.includes(getRowId(row))}
+              disabled={!isSelectable(row)}
+              reason={selectionDisabledReason?.(row)}
+              onToggle={() => toggle(getRowId(row))}
             />
-          ) : column.actions ? (
-            <TableRowActions style={{ maxWidth: column.maxWidth }}>
-              {column.render?.(row, position)}
-            </TableRowActions>
-          ) : (
-            <div
-              className={column.primary ? styles.tablePrimary : styles.tableValue}
-              data-depth={depth > 0 && column.id === indentColumn ? depth : undefined}
-              style={{ maxWidth: column.maxWidth }}
-              title={column.text?.(row)}
-            >
-              {column.render?.(row, position)}
-            </div>
-          )}
-        </TableCell>
-      ))}
-      {rowActions && (
-        <TableActionsCell slots={slots} data-pin="true">
-          <RowActions
-            label={rowLabel(row)}
-            inline={
-              rowActions.inline?.map((action) => ({
-                label: typeof action.label === "string" ? action.label : action.label(row),
-                icon: action.icon,
-                disabledReason: action.disabledReason?.(row),
-                onSelect: () => action.onSelect(row)
-              })) as UpToThree<RowAction> | undefined
-            }
-            menu={rowActions.renderMenu?.(row)}
-            menuLabel={rowActions.menuLabel}
-            menuDisabledReason={rowActions.menuDisabledReason?.(row)}
-          />
-        </TableActionsCell>
-      )}
-    </TableRow>
-  );
+          </TableCell>
+        )}
+        {columns.map((column) => (
+          <TableCell
+            key={column.id}
+            className={column.actions ? styles.tableActions : undefined}
+            style={columnStyle(column)}
+            data-actions={column.actions || undefined}
+            data-pin={column.pin ?? column.actions}
+            data-row-interactive={column.actions || column.toggle ? true : undefined}
+          >
+            {column.toggle ? (
+              <ToggleCell
+                toggle={column.toggle}
+                row={row}
+                label={`${column.header} for ${rowLabel(row)}`}
+                rowId={getRowId(row)}
+              />
+            ) : column.actions ? (
+              <TableRowActions style={{ maxWidth: column.maxWidth }}>
+                {column.render?.(row, position)}
+              </TableRowActions>
+            ) : (
+              <div
+                className={column.primary ? styles.tablePrimary : styles.tableValue}
+                data-depth={depth > 0 && column.id === indentColumn ? depth : undefined}
+                style={{ maxWidth: column.maxWidth }}
+                title={column.text?.(row)}
+              >
+                {column.render?.(row, position)}
+              </div>
+            )}
+          </TableCell>
+        ))}
+        {rowActions && (
+          <TableActionsCell slots={slots} data-pin="true">
+            <RowActions
+              label={rowLabel(row)}
+              inline={rowInline(row)}
+              menu={rowActions.renderMenu?.(row)}
+              menuLabel={rowActions.menuLabel}
+              menuDisabledReason={rowActions.menuDisabledReason?.(row)}
+            />
+          </TableActionsCell>
+        )}
+      </TableRow>
+    );
+    if (!rowActions || rowContextMenu === false) return tableRow;
+    return (
+      <RowContextMenu
+        key={getRowId(row)}
+        label={rowLabel(row)}
+        inline={rowInline(row)}
+        menu={rowActions.renderMenu?.(row)}
+        menuDisabledReason={rowActions.menuDisabledReason?.(row)}
+      >
+        {tableRow}
+      </RowContextMenu>
+    );
+  };
   const scrollFrame = (
     <div
       ref={attachScroll}

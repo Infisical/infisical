@@ -5,7 +5,14 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "../lib/utils";
 import { Button } from "./button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "./dropdown-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "./context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "./dropdown-menu";
 import { Icon, type IconName } from "./icon";
 import { Tooltip } from "./tooltip";
 
@@ -330,11 +337,84 @@ function RowActions({
 }
 RowActions.displayName = "RowActions";
 
+const editableTarget = (target: EventTarget) =>
+  target instanceof Element &&
+  Boolean(
+    target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
+  );
+
+/**
+ * Opens a row's actions as a right-click menu on the whole row: the inline actions first, then the
+ * More menu items after a separator, from the same nodes RowActions renders. Shift+F10 and the Menu key
+ * open it on a focused row; inputs and editable cells keep the browser's own menu.
+ */
+function RowContextMenu({
+  label,
+  inline = [],
+  menu,
+  menuDisabledReason,
+  children
+}: {
+  label: string;
+  inline?: RowActionList;
+  menu?: React.ReactNode;
+  menuDisabledReason?: string;
+  children: React.ReactElement<React.ComponentProps<"tr">>;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const row = React.useRef<HTMLTableRowElement>(null);
+  const showMenu = menu !== undefined && !menuDisabledReason;
+  const rowProps = children.props as Record<string, unknown>;
+  const nonData = rowProps["data-row-kind"] || rowProps["data-loading"] || rowProps["data-spacer"];
+  if (nonData || (!inline.length && !showMenu)) return children;
+  const { onContextMenuCapture, tabIndex } = children.props;
+  return (
+    <ContextMenu onOpenChange={setOpen}>
+      <ContextMenuTrigger ref={row} asChild className="select-text">
+        {React.cloneElement(children, {
+          tabIndex: tabIndex ?? -1,
+          "data-menu-open": open || undefined,
+          onContextMenuCapture: (event: React.MouseEvent<HTMLTableRowElement>) => {
+            onContextMenuCapture?.(event);
+            if (editableTarget(event.target)) event.stopPropagation();
+          }
+        } as React.ComponentProps<"tr">)}
+      </ContextMenuTrigger>
+      <ContextMenuContent
+        aria-label={`Actions for ${label}`}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          row.current?.focus({ preventScroll: true });
+        }}
+      >
+        {inline.map((action) => (
+          <DropdownMenuItem
+            key={action.label}
+            disabled={Boolean(action.disabledReason)}
+            description={action.disabledReason}
+            onSelect={action.onSelect}
+          >
+            <Icon
+              name={typeof action.icon === "string" ? action.icon : undefined}
+              icon={typeof action.icon === "string" ? undefined : action.icon}
+            />
+            {action.label}
+          </DropdownMenuItem>
+        ))}
+        {inline.length > 0 && showMenu && <DropdownMenuSeparator />}
+        {showMenu && menu}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+RowContextMenu.displayName = "RowContextMenu";
+
 const rowActionSlots = (inline: number, menu: boolean) => Math.max(1, inline + (menu ? 1 : 0));
 
 export {
   rowActionSlots,
   RowActions,
+  RowContextMenu,
   Table,
   TableActionsCell,
   TableActionsHead,

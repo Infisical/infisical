@@ -12,6 +12,7 @@ import { Inline } from "@app/components/v4/ui/layout";
 import {
   type RowActionList,
   RowActions as RowActionsGroup,
+  RowContextMenu,
   Table,
   TableActionsCell,
   TableActionsHead,
@@ -136,7 +137,10 @@ export default function RowActions() {
             />
           </ExampleCell>
         ))}
-        <ExampleCell align="stretch" label="Mixed counts in one table, each row end-aligned">
+        <ExampleCell
+          align="stretch"
+          label="Mixed counts in one table, each row end-aligned; right-click a row for the same actions"
+        >
           <Table aria-label="Example folders and secrets, mixed action counts">
             <TableHeader>
               <TableRow>
@@ -145,23 +149,29 @@ export default function RowActions() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mixed.map((row) => (
-                <TableRow key={row.name}>
-                  <TableCell>{row.name}</TableCell>
-                  <TableActionsCell slots={4}>
-                    <RowActionsGroup
-                      label={row.name}
-                      inline={row.inline}
-                      menu={
-                        <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
-                          <Icon name="eye" />
-                          Open
-                        </DropdownMenuItem>
-                      }
-                    />
-                  </TableActionsCell>
-                </TableRow>
-              ))}
+              {mixed.map((row) => {
+                const rowMenu = (
+                  <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+                    <Icon name="eye" />
+                    Open
+                  </DropdownMenuItem>
+                );
+                return (
+                  <RowContextMenu
+                    key={row.name}
+                    label={row.name}
+                    inline={row.inline}
+                    menu={rowMenu}
+                  >
+                    <TableRow>
+                      <TableCell>{row.name}</TableCell>
+                      <TableActionsCell slots={4}>
+                        <RowActionsGroup label={row.name} inline={row.inline} menu={rowMenu} />
+                      </TableActionsCell>
+                    </TableRow>
+                  </RowContextMenu>
+                );
+              })}
             </TableBody>
           </Table>
         </ExampleCell>

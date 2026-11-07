@@ -4,6 +4,7 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
 import { ListHighlight } from "../lib/list-highlight";
+import { useMenuPrimitive } from "../lib/menu-kind";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Icon } from "./icon";
@@ -88,7 +89,8 @@ function DropdownMenuGroup({
   ref,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
-  return <DropdownMenuPrimitive.Group ref={ref} data-slot="dropdown-menu-group" {...props} />;
+  const Primitive = useMenuPrimitive();
+  return <Primitive.Group ref={ref} data-slot="dropdown-menu-group" {...props} />;
 }
 DropdownMenuGroup.displayName = "DropdownMenuGroup";
 
@@ -105,8 +107,9 @@ function DropdownMenuItem({
   variant?: "default" | "destructive";
   description?: React.ReactNode;
 } & { ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.Item>> }) {
+  const Primitive = useMenuPrimitive();
   return (
-    <DropdownMenuPrimitive.Item
+    <Primitive.Item
       ref={ref}
       data-slot="dropdown-menu-item"
       data-inset={inset}
@@ -126,7 +129,7 @@ function DropdownMenuItem({
               child
             )
           )}
-    </DropdownMenuPrimitive.Item>
+    </Primitive.Item>
   );
 }
 DropdownMenuItem.displayName = "DropdownMenuItem";
@@ -145,8 +148,9 @@ function DropdownMenuCheckboxItem({
 } & {
   inset?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.CheckboxItem>> }) {
+  const Primitive = useMenuPrimitive();
   return (
-    <DropdownMenuPrimitive.CheckboxItem
+    <Primitive.CheckboxItem
       ref={ref}
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
@@ -159,12 +163,12 @@ function DropdownMenuCheckboxItem({
       }}
     >
       <span className={menu.indicator} data-slot="dropdown-menu-checkbox-item-indicator">
-        <DropdownMenuPrimitive.ItemIndicator>
+        <Primitive.ItemIndicator>
           <Icon name="check" />
-        </DropdownMenuPrimitive.ItemIndicator>
+        </Primitive.ItemIndicator>
       </span>
       {menuRowContent(children)}
-    </DropdownMenuPrimitive.CheckboxItem>
+    </Primitive.CheckboxItem>
   );
 }
 DropdownMenuCheckboxItem.displayName = "DropdownMenuCheckboxItem";
@@ -173,9 +177,8 @@ function DropdownMenuRadioGroup({
   ref,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
-  return (
-    <DropdownMenuPrimitive.RadioGroup ref={ref} data-slot="dropdown-menu-radio-group" {...props} />
-  );
+  const Primitive = useMenuPrimitive();
+  return <Primitive.RadioGroup ref={ref} data-slot="dropdown-menu-radio-group" {...props} />;
 }
 DropdownMenuRadioGroup.displayName = "DropdownMenuRadioGroup";
 
@@ -192,8 +195,9 @@ function DropdownMenuRadioItem({
 } & {
   inset?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.RadioItem>> }) {
+  const Primitive = useMenuPrimitive();
   return (
-    <DropdownMenuPrimitive.RadioItem
+    <Primitive.RadioItem
       ref={ref}
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
@@ -205,12 +209,12 @@ function DropdownMenuRadioItem({
       }}
     >
       <span className={menu.indicator} data-slot="dropdown-menu-radio-item-indicator">
-        <DropdownMenuPrimitive.ItemIndicator>
+        <Primitive.ItemIndicator>
           <Icon name="check" />
-        </DropdownMenuPrimitive.ItemIndicator>
+        </Primitive.ItemIndicator>
       </span>
       {menuRowContent(children)}
-    </DropdownMenuPrimitive.RadioItem>
+    </Primitive.RadioItem>
   );
 }
 DropdownMenuRadioItem.displayName = "DropdownMenuRadioItem";
@@ -223,8 +227,9 @@ function DropdownMenuLabel({
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
   inset?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.Label>> }) {
+  const Primitive = useMenuPrimitive();
   return (
-    <DropdownMenuPrimitive.Label
+    <Primitive.Label
       ref={ref}
       data-slot="dropdown-menu-label"
       data-inset={inset}
@@ -240,8 +245,9 @@ function DropdownMenuSeparator({
   ref,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+  const Primitive = useMenuPrimitive();
   return (
-    <DropdownMenuPrimitive.Separator
+    <Primitive.Separator
       ref={ref}
       data-slot="dropdown-menu-separator"
       className={cn(menu.separator, className)}
@@ -271,7 +277,8 @@ function DropdownMenuShortcut({
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
 function DropdownMenuSub({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
-  return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />;
+  const Primitive = useMenuPrimitive();
+  return <Primitive.Sub data-slot="dropdown-menu-sub" {...props} />;
 }
 
 function DropdownMenuSubTrigger({
@@ -283,8 +290,9 @@ function DropdownMenuSubTrigger({
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
   inset?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.SubTrigger>> }) {
+  const Primitive = useMenuPrimitive();
   return (
-    <DropdownMenuPrimitive.SubTrigger
+    <Primitive.SubTrigger
       ref={ref}
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
@@ -293,7 +301,7 @@ function DropdownMenuSubTrigger({
     >
       {menuRowContent(children)}
       <Icon name="chev-right" className={menu.trail} />
-    </DropdownMenuPrimitive.SubTrigger>
+    </Primitive.SubTrigger>
   );
 }
 DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
@@ -307,9 +315,10 @@ function DropdownMenuSubContent({
   ref,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+  const Primitive = useMenuPrimitive();
   return (
-    <DropdownMenuPrimitive.Portal container={useV4PortalContainer()}>
-      <DropdownMenuPrimitive.SubContent
+    <Primitive.Portal container={useV4PortalContainer()}>
+      <Primitive.SubContent
         ref={ref}
         data-slot="dropdown-menu-sub-content"
         collisionPadding={collisionPadding}
@@ -330,8 +339,8 @@ function DropdownMenuSubContent({
       >
         {children}
         <ListHighlight />
-      </DropdownMenuPrimitive.SubContent>
-    </DropdownMenuPrimitive.Portal>
+      </Primitive.SubContent>
+    </Primitive.Portal>
   );
 }
 DropdownMenuSubContent.displayName = "DropdownMenuSubContent";

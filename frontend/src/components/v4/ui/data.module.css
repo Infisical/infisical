@@ -1283,7 +1283,7 @@ button.rowTitle::after {
 .tableScroll thead > .nativeTableRow {
   background-color: transparent;
 }
-.nativeTableRow:is(:hover, :has([aria-expanded="true"])):not(
+.nativeTableRow:is(:hover, :has([aria-expanded="true"]), [data-menu-open]):not(
     thead > *,
     [data-loading],
     [data-spacer],

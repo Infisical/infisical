@@ -4,6 +4,7 @@ import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
 import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
 import { ListHighlight } from "../lib/list-highlight";
+import { MenuKindContext } from "../lib/menu-kind";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 import { menuRowContent, menuShortcutContent } from "./menu-content";
@@ -98,7 +99,7 @@ function ContextMenuContent({
         data-scroll-fade="y"
         {...props}
       >
-        {children}
+        <MenuKindContext value="context">{children}</MenuKindContext>
         <ListHighlight />
       </ContextMenuPrimitive.Content>
     </ContextMenuPrimitive.Portal>
@@ -186,7 +187,7 @@ function ContextMenuSubContent({
         data-scroll-fade="y"
         {...props}
       >
-        {children}
+        <MenuKindContext value="context">{children}</MenuKindContext>
         <ListHighlight />
       </ContextMenuPrimitive.SubContent>
     </ContextMenuPrimitive.Portal>
