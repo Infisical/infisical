@@ -1,6 +1,13 @@
-import { index, route } from "@tanstack/virtual-file-routes";
+import { index, layout, route } from "@tanstack/virtual-file-routes";
 
 export const v4Routes = route("/v4", "v4/route.tsx", [
+  layout("v4-auth", "v4/auth/route.tsx", [
+    route("/login", [
+      index("v4/auth/LoginPage/route.tsx"),
+      route("/select-organization", "v4/auth/SelectOrgPage/route.tsx")
+    ]),
+    route("/signup", [index("v4/auth/SignUpPage/route.tsx")])
+  ]),
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
