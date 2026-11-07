@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "toggle-on",
+    title: "Toggles show their selection",
+    description:
+      "A toggle wrapped in a tooltip shows its selected item again, with the same indicator as segmented Tabs.",
+    date: "2026-11-07",
+    commit: "82f79f402f",
+    page: "toggle-group"
+  },
+  {
     id: "secret-input-rowlink",
     title: "Quiet secret inputs and row chevrons",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "dca88d2ce5",
     page: "list"
-  },
-  {
-    id: "strategic-descriptions",
-    title: "Strategic descriptions",
-    description:
-      "Descriptions are optional and earn their place: a one-sentence lede, a scoping subtitle or a line that tells cards apart.",
-    date: "2026-11-07",
-    commit: "88efc85d88",
-    page: "rules"
   }
 ];
