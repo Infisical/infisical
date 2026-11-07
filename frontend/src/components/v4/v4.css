@@ -658,11 +658,7 @@
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 
-/* Keyboard focus on a selected row sits 1px further in, so selection plus focus never reads as a heavy box. */
-.v4
-  :is([role="row"], [role="treeitem"], [role="option"], [data-slot="list-row"]):is(
-    [aria-selected="true"],
-    [data-selected]
-  ):focus-visible {
+/* Keyboard focus on a selected option sits 1px further in, so selection plus focus never reads as a heavy box. */
+.v4 [role="option"]:is([aria-selected="true"], [data-selected]):focus-visible {
   outline-offset: calc(-1 * var(--v4-size-focus-ring) - var(--v4-size-control-border));
 }

@@ -87,6 +87,33 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "context-menu-release",
+    title: "Safer context menus",
+    description:
+      "Releasing the right button that opened a context menu can no longer pick the item that lands under the cursor.",
+    date: "2026-11-07",
+    commit: "a843510f1d",
+    page: "context-menu"
+  },
+  {
+    id: "error-state",
+    title: "Error and 404 pages",
+    description:
+      "ErrorState gives v4 a quiet Page not found and Something went wrong, inside the shell or full-page when the shell fails.",
+    date: "2026-11-07",
+    commit: "522e7b336a",
+    page: "error-state"
+  },
+  {
+    id: "row-ring",
+    title: "Even, keyboard-only row rings",
+    description:
+      "Row focus rings appear only after keyboard focus and draw the same width on all four edges, above pinned cells.",
+    date: "2026-11-07",
+    commit: "73aa450373",
+    page: "table"
+  },
+  {
     id: "row-context-menu",
     title: "Right-click row actions",
     description:
@@ -193,32 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "7ff23542fa",
     page: "button"
-  },
-  {
-    id: "dark-alt-two-colors",
-    title: "Dark alt, two colors",
-    description:
-      "Dark alt now differs from Dark only in its sidebar and inset; every other color inherits.",
-    date: "2026-11-07",
-    commit: "4da1f58249",
-    page: "colors"
-  },
-  {
-    id: "tooltip-pass-through",
-    title: "Pass-through tooltips",
-    description:
-      "Tooltips close as the pointer leaves, never catch clicks, and no longer reopen when focus returns from a menu, dialog or sheet.",
-    date: "2026-11-07",
-    commit: "7371831b2f",
-    page: "tooltip"
-  },
-  {
-    id: "no-nested-frames",
-    title: "No frames in frames",
-    description:
-      "A table, list or card inside a framed container drops its own frame, and a plain Card pads its content like a framed one.",
-    date: "2026-11-07",
-    commit: "0e62ac760f",
-    page: "card"
   }
 ];

@@ -26,7 +26,11 @@ import {
 } from "@app/components/v4/ui/sheet";
 import { Switch } from "@app/components/v4/ui/switch";
 import {
+  RowActions,
+  RowContextMenu,
   Table,
+  TableActionsCell,
+  TableActionsHead,
   TableBody,
   TableCell,
   TableHead,
@@ -40,7 +44,7 @@ import { useV4Adapter } from "../../../../data/adapters";
 import type { TSecretAccessList } from "../../../../data/secrets/contract-flows";
 import type { Secret } from "../../secrets-model";
 import { Gate } from "../flows/shared";
-import { NEXT_PHASE } from "../overview-cells";
+import { NEXT_PHASE, type RowActionProps } from "../overview-cells";
 
 import styles from "./row-actions.module.css";
 
@@ -239,83 +243,86 @@ export function AccessInsightsSheet({
                         {column.label}
                       </TableHead>
                     ))}
-                    <TableHead className={styles.menuColumn}>
-                      <span className="sr-only">Actions</span>
-                    </TableHead>
+                    <TableActionsHead slots={1} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <span className={styles.typeCell}>
-                          <Icon name={typeConfig[row.type].name} icon={typeConfig[row.type].icon} />
-                          {typeConfig[row.type].label}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={styles.typeCell}>
-                          <span className={styles.truncate}>{row.name}</span>
-                          {row.groups && (
-                            <Tooltip content={`Access through group: ${row.groups.join(", ")}`}>
-                              <span className={styles.groupCount}>
-                                <Icon icon={UsersIcon} size={12} />
-                                {row.groups.length}
-                              </span>
-                            </Tooltip>
-                          )}
-                        </span>
-                      </TableCell>
-                      {columns.map((column) => {
-                        let mark = (
-                          <span className={styles.permissionNone}>
-                            <Icon icon={BanIcon} label="No access" />
-                          </span>
-                        );
-                        if (row.inherited?.includes(column.action))
-                          mark = (
-                            <Tooltip content="Inherited from group">
-                              <span className={styles.permissionYes}>
-                                <Icon icon={UsersIcon} label="Inherited from group" />
-                              </span>
-                            </Tooltip>
-                          );
-                        if (row.actions.includes(column.action))
-                          mark = (
-                            <span className={styles.permissionYes}>
-                              <Icon name="check" label="Allowed" />
-                            </span>
-                          );
-                        return (
-                          <TableCell key={column.action} className={styles.permissionColumn}>
-                            {mark}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className={styles.menuColumn}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-xs" iconOnly>
-                              <Icon name="more" />
-                              <span className="sr-only">{`Access actions for ${row.name}`}</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {row.type !== "group" && (
-                              <DropdownMenuItem disabled description={NEXT_PHASE}>
-                                <Icon name="plus" />
-                                Add additional privilege
-                              </DropdownMenuItem>
-                            )}
+                  {rows.map((row) => {
+                    const rowActions: RowActionProps = {
+                      label: row.name,
+                      menu: (
+                        <>
+                          {row.type !== "group" && (
                             <DropdownMenuItem disabled description={NEXT_PHASE}>
-                              <Icon name="external" />
-                              Manage access
+                              <Icon name="plus" />
+                              Add additional privilege
                             </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          )}
+                          <DropdownMenuItem disabled description={NEXT_PHASE}>
+                            <Icon name="external" />
+                            Manage access
+                          </DropdownMenuItem>
+                        </>
+                      )
+                    };
+                    return (
+                      <RowContextMenu key={row.id} {...rowActions}>
+                        <TableRow>
+                          <TableCell>
+                            <span className={styles.typeCell}>
+                              <Icon
+                                name={typeConfig[row.type].name}
+                                icon={typeConfig[row.type].icon}
+                              />
+                              {typeConfig[row.type].label}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className={styles.typeCell}>
+                              <span className={styles.truncate}>{row.name}</span>
+                              {row.groups && (
+                                <Tooltip content={`Access through group: ${row.groups.join(", ")}`}>
+                                  <span className={styles.groupCount}>
+                                    <Icon icon={UsersIcon} size={12} />
+                                    {row.groups.length}
+                                  </span>
+                                </Tooltip>
+                              )}
+                            </span>
+                          </TableCell>
+                          {columns.map((column) => {
+                            let mark = (
+                              <span className={styles.permissionNone}>
+                                <Icon icon={BanIcon} label="No access" />
+                              </span>
+                            );
+                            if (row.inherited?.includes(column.action))
+                              mark = (
+                                <Tooltip content="Inherited from group">
+                                  <span className={styles.permissionYes}>
+                                    <Icon icon={UsersIcon} label="Inherited from group" />
+                                  </span>
+                                </Tooltip>
+                              );
+                            if (row.actions.includes(column.action))
+                              mark = (
+                                <span className={styles.permissionYes}>
+                                  <Icon name="check" label="Allowed" />
+                                </span>
+                              );
+                            return (
+                              <TableCell key={column.action} className={styles.permissionColumn}>
+                                {mark}
+                              </TableCell>
+                            );
+                          })}
+                          <TableActionsCell slots={1}>
+                            <RowActions {...rowActions} />
+                          </TableActionsCell>
+                        </TableRow>
+                      </RowContextMenu>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

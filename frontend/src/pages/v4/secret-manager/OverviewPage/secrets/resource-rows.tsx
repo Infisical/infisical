@@ -21,6 +21,7 @@ import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   type RowActionList,
   RowActions,
+  RowContextMenu,
   Table,
   TableActionsCell,
   TableActionsHead,
@@ -56,6 +57,7 @@ import {
   PendingMenuItems,
   presenceOf,
   ROW_ACTION_SLOTS,
+  type RowActionProps,
   type RowContext,
   SelectCell,
   StatusCell,
@@ -523,7 +525,7 @@ function EnvironmentTable({
   ctx: RowContext;
   entries: Resource[];
   render: (entry: Resource) => ReactNode;
-  actions: (entry: Resource) => ReactNode;
+  actions: (entry: Resource) => RowActionProps;
   valueHeader?: ReactNode;
 }) {
   return (
@@ -545,13 +547,18 @@ function EnvironmentTable({
               )
               .map((environment) => {
                 const entry = entries.find((item) => item.environment === environment.value)!;
+                const rowActions = actions(entry);
                 return (
-                  <TableRow key={environment.value} className={styles.row}>
-                    <TableCell selection divider={false} />
-                    <TableCell className={styles.envName}>{environment.label}</TableCell>
-                    <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
-                    <TableActionsCell slots={ROW_ACTION_SLOTS}>{actions(entry)}</TableActionsCell>
-                  </TableRow>
+                  <RowContextMenu key={environment.value} {...rowActions}>
+                    <TableRow className={styles.row}>
+                      <TableCell selection divider={false} />
+                      <TableCell className={styles.envName}>{environment.label}</TableCell>
+                      <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
+                      <TableActionsCell slots={ROW_ACTION_SLOTS}>
+                        <RowActions {...rowActions} />
+                      </TableActionsCell>
+                    </TableRow>
+                  </RowContextMenu>
                 );
               })}
           </TableBody>
@@ -581,35 +588,37 @@ export function KindRow({
       {spec.details(entry)}
     </div>
   );
-  const actions = (entry: Resource) => (
-    <RowActions
-      label={
-        ctx.single
-          ? entry.name
-          : `${entry.name} in ${environments.find((environment) => environment.value === entry.environment)?.label ?? entry.environment}`
-      }
-      {...spec.actions(entry, ctx)}
-    />
-  );
-  if (ctx.single)
+  const actions = (entry: Resource): RowActionProps => ({
+    label: ctx.single
+      ? entry.name
+      : `${entry.name} in ${environments.find((environment) => environment.value === entry.environment)?.label ?? entry.environment}`,
+    ...spec.actions(entry, ctx)
+  });
+  if (ctx.single) {
+    const rowActions = actions(first);
     return (
-      <TableRow
-        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
-        className={styles.row}
-      >
-        <SelectCell
-          kind={kind}
-          rowKey={rowKey}
-          label={first.name}
-          ctx={ctx}
-          selectable={kind === "rotation"}
-        />
-        <TableCell colSpan={2} className={styles.nameCell}>
-          {line(first, true)}
-        </TableCell>
-        <TableActionsCell slots={ROW_ACTION_SLOTS}>{actions(first)}</TableActionsCell>
-      </TableRow>
+      <RowContextMenu {...rowActions}>
+        <TableRow
+          data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+          className={styles.row}
+        >
+          <SelectCell
+            kind={kind}
+            rowKey={rowKey}
+            label={first.name}
+            ctx={ctx}
+            selectable={kind === "rotation"}
+          />
+          <TableCell colSpan={2} className={styles.nameCell}>
+            {line(first, true)}
+          </TableCell>
+          <TableActionsCell slots={ROW_ACTION_SLOTS}>
+            <RowActions {...rowActions} />
+          </TableActionsCell>
+        </TableRow>
+      </RowContextMenu>
     );
+  }
   return (
     <>
       <TableRow
@@ -691,96 +700,95 @@ export function FolderRow({
         "manage access to this folder"
       ) ?? planBlock)
     : "Select a single environment to manage folder access.";
+  const rowActions: RowActionProps = {
+    label: first.name,
+    menu: (
+      <>
+        <PendingMenuItems id={first.id} ctx={ctx} />
+        <DropdownMenuItem
+          disabled={Boolean(editBlock)}
+          description={editBlock}
+          onSelect={() => ctx.onAction({ kind: "folder", action: "move", entry: first, entries })}
+        >
+          <Icon icon={FolderInputIcon} />
+          Move folder
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={Boolean(accessBlock)}
+          description={accessBlock}
+          onSelect={() => ctx.onAction({ kind: "folder", action: "access", entry: first, entries })}
+        >
+          <Icon icon={UsersIcon} />
+          Manage access
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={Boolean(editBlock)}
+          description={editBlock}
+          onSelect={() => onEdit(first)}
+        >
+          <Icon icon={EditIcon} />
+          Edit folder
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={Boolean(deleteBlock)}
+          description={deleteBlock}
+          onSelect={() => onDelete(first)}
+        >
+          <Icon name="trash" />
+          Delete folder
+        </DropdownMenuItem>
+      </>
+    )
+  };
   return (
-    <TableRow
-      data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
-      data-pending={ctx.pending?.[first.id]}
-      className={styles.row}
-    >
-      <SelectCell kind="folder" rowKey={rowKey} label={first.name} ctx={ctx} selectable />
-      <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
-        <div className={styles.nameLine}>
-          <RowLink
-            from={OVERVIEW_ROUTE}
-            to="."
-            search={(previous) =>
-              withoutDefaults(
-                { ...previous, secretPath, search: "" },
-                { secretPath: "/", search: "", environments: [] }
-              )
-            }
-            title={first.name}
-          >
-            {first.name}
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "var(--v4-space-8)",
-                marginInlineStart: "var(--v4-space-8)",
-                verticalAlign: "middle"
-              }}
+    <RowContextMenu {...rowActions}>
+      <TableRow
+        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+        data-pending={ctx.pending?.[first.id]}
+        className={styles.row}
+      >
+        <SelectCell kind="folder" rowKey={rowKey} label={first.name} ctx={ctx} selectable />
+        <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
+          <div className={styles.nameLine}>
+            <RowLink
+              from={OVERVIEW_ROUTE}
+              to="."
+              search={(previous) =>
+                withoutDefaults(
+                  { ...previous, secretPath, search: "" },
+                  { secretPath: "/", search: "", environments: [] }
+                )
+              }
+              title={first.name}
             >
-              {first.description && <InfoHint text={first.description} />}
-              <PendingBadge type={ctx.pending?.[first.id]} />
-            </span>
-          </RowLink>
-        </div>
-      </TableCell>
-      {!ctx.single &&
-        ctx.environments.map((environment) => (
-          <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
-        ))}
-      <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
-        <RowActions
-          label={first.name}
-          menu={
-            <>
-              <PendingMenuItems id={first.id} ctx={ctx} />
-              <DropdownMenuItem
-                disabled={Boolean(editBlock)}
-                description={editBlock}
-                onSelect={() =>
-                  ctx.onAction({ kind: "folder", action: "move", entry: first, entries })
-                }
+              {first.name}
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "var(--v4-space-8)",
+                  marginInlineStart: "var(--v4-space-8)",
+                  verticalAlign: "middle"
+                }}
               >
-                <Icon icon={FolderInputIcon} />
-                Move folder
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={Boolean(accessBlock)}
-                description={accessBlock}
-                onSelect={() =>
-                  ctx.onAction({ kind: "folder", action: "access", entry: first, entries })
-                }
-              >
-                <Icon icon={UsersIcon} />
-                Manage access
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={Boolean(editBlock)}
-                description={editBlock}
-                onSelect={() => onEdit(first)}
-              >
-                <Icon icon={EditIcon} />
-                Edit folder
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={Boolean(deleteBlock)}
-                description={deleteBlock}
-                onSelect={() => onDelete(first)}
-              >
-                <Icon name="trash" />
-                Delete folder
-              </DropdownMenuItem>
-            </>
-          }
-        />
-      </TableActionsCell>
-    </TableRow>
+                {first.description && <InfoHint text={first.description} />}
+                <PendingBadge type={ctx.pending?.[first.id]} />
+              </span>
+            </RowLink>
+          </div>
+        </TableCell>
+        {!ctx.single &&
+          ctx.environments.map((environment) => (
+            <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
+          ))}
+        <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
+          <RowActions {...rowActions} />
+        </TableActionsCell>
+      </TableRow>
+    </RowContextMenu>
   );
 }
 
@@ -911,33 +919,31 @@ export function ImportRow({
     (entry.replicated ? undefined : "Only replicated imports resync");
   const deleteBlock = (entry: Of<"import">) =>
     importGate(entry, ProjectPermissionActions.Delete, "remove this secret import");
-  const actions = (entry: Of<"import">) => (
-    <RowActions
-      label={`secret import ${entry.source.path}`}
-      menu={
-        <>
-          <DropdownMenuItem
-            disabled={Boolean(resyncBlock(entry))}
-            description={resyncBlock(entry)}
-            onSelect={() => ctx.onAction({ kind: "import", action: "resync", entry })}
-          >
-            <Icon name="sync" />
-            Resync
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            disabled={Boolean(deleteBlock(entry))}
-            description={deleteBlock(entry)}
-            onSelect={() => ctx.onAction({ kind: "import", action: "delete", entry })}
-          >
-            <Icon name="trash" />
-            Delete
-          </DropdownMenuItem>
-        </>
-      }
-    />
-  );
+  const rowActions: RowActionProps = {
+    label: `secret import ${first.source.path}`,
+    menu: ctx.single ? (
+      <>
+        <DropdownMenuItem
+          disabled={Boolean(resyncBlock(first))}
+          description={resyncBlock(first)}
+          onSelect={() => ctx.onAction({ kind: "import", action: "resync", entry: first })}
+        >
+          <Icon name="sync" />
+          Resync
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={Boolean(deleteBlock(first))}
+          description={deleteBlock(first)}
+          onSelect={() => ctx.onAction({ kind: "import", action: "delete", entry: first })}
+        >
+          <Icon name="trash" />
+          Delete
+        </DropdownMenuItem>
+      </>
+    ) : undefined
+  };
   const toggle = (
     <ExpandToggle
       expanded={expanded}
@@ -948,55 +954,57 @@ export function ImportRow({
   const keys = ctx.single && expanded ? sourceSecrets(first) : [];
   return (
     <>
-      <TableRow
-        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
-        className={styles.row}
-        data-expanded={expanded || undefined}
-        onClick={() => setExpanded(!expanded)}
-      >
-        <SelectCell
-          kind="import"
-          rowKey={rowKey}
-          label={first.name}
-          ctx={ctx}
-          selectable={false}
-          pinned={expanded}
-          alternate={toggle}
-        />
-        <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
-          <div className={styles.nameLine}>
-            {label}
-            {first.revoked && (
-              <span className={styles.push}>
-                <Badge tone="bad">
-                  <Icon icon={XIcon} />
-                  Secret share revoked
-                </Badge>
-              </span>
-            )}
-            {ctx.single && <TableRowIndicators>{replication(first)}</TableRowIndicators>}
-          </div>
-        </TableCell>
-        {!ctx.single && expanded && (
-          <TableCell colSpan={ctx.environments.length} className={styles.importedInCell}>
-            <ImportedIn
-              labels={entries.map(
-                (entry) =>
-                  environments.find((environment) => environment.value === entry.environment)
-                    ?.label ?? entry.environment
+      <RowContextMenu {...rowActions}>
+        <TableRow
+          data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+          className={styles.row}
+          data-expanded={expanded || undefined}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <SelectCell
+            kind="import"
+            rowKey={rowKey}
+            label={first.name}
+            ctx={ctx}
+            selectable={false}
+            pinned={expanded}
+            alternate={toggle}
+          />
+          <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
+            <div className={styles.nameLine}>
+              {label}
+              {first.revoked && (
+                <span className={styles.push}>
+                  <Badge tone="bad">
+                    <Icon icon={XIcon} />
+                    Secret share revoked
+                  </Badge>
+                </span>
               )}
-            />
+              {ctx.single && <TableRowIndicators>{replication(first)}</TableRowIndicators>}
+            </div>
           </TableCell>
-        )}
-        {!ctx.single &&
-          !expanded &&
-          ctx.environments.map((environment) => (
-            <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
-          ))}
-        <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
-          {ctx.single && actions(first)}
-        </TableActionsCell>
-      </TableRow>
+          {!ctx.single && expanded && (
+            <TableCell colSpan={ctx.environments.length} className={styles.importedInCell}>
+              <ImportedIn
+                labels={entries.map(
+                  (entry) =>
+                    environments.find((environment) => environment.value === entry.environment)
+                      ?.label ?? entry.environment
+                )}
+              />
+            </TableCell>
+          )}
+          {!ctx.single &&
+            !expanded &&
+            ctx.environments.map((environment) => (
+              <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
+            ))}
+          <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
+            {ctx.single && <RowActions {...rowActions} />}
+          </TableActionsCell>
+        </TableRow>
+      </RowContextMenu>
       {ctx.single && expanded && !first.revoked && (
         <TableRow className={styles.nestedHead}>
           <TableCell selection divider={false} />

@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 
+import { keyboardModality } from "../lib/input-modality";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "./context-menu";
@@ -102,7 +103,15 @@ const activatesRow = (event: React.MouseEvent<HTMLTableRowElement>) => {
   return !(selection && !selection.isCollapsed && row.contains(selection.anchorNode));
 };
 
-function TableRow({ className, onClick, ref, ...props }: React.ComponentProps<"tr">) {
+/** A row draws its focus ring only when the keyboard moved focus to it, never after a pointer interaction. */
+function TableRow({
+  className,
+  onClick,
+  onFocus,
+  onBlur,
+  ref,
+  ...props
+}: React.ComponentProps<"tr">) {
   return (
     <tr
       ref={ref}
@@ -118,6 +127,16 @@ function TableRow({ className, onClick, ref, ...props }: React.ComponentProps<"t
           if (activatesRow(event)) onClick(event);
         })
       }
+      onFocus={(event) => {
+        onFocus?.(event);
+        if (event.target === event.currentTarget && keyboardModality())
+          event.currentTarget.setAttribute("data-focus-ring", "");
+      }}
+      onBlur={(event) => {
+        onBlur?.(event);
+        if (event.target === event.currentTarget)
+          event.currentTarget.removeAttribute("data-focus-ring");
+      }}
       {...props}
     />
   );
