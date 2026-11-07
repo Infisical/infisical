@@ -15,7 +15,6 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
-import { jwtDecode } from "jwt-decode";
 import {
   ArrowDownZAIcon,
   ArrowUpAZIcon,
@@ -202,7 +201,6 @@ import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/m
 import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
-import { getAuthToken } from "@app/hooks/api/reactQuery";
 import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests
@@ -317,6 +315,7 @@ import {
   overviewResponsePhase,
   withOverviewTelemetry
 } from "./OverviewTelemetry";
+import { getAuthSessionMarker, getSecretSortValue, overviewRowKey } from "./OverviewPage.utils";
 import { useNotifySecretsCreated } from "./useNotifySecretsCreated";
 
 export enum EntryType {
@@ -355,41 +354,6 @@ const LEGACY_OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 const OVERVIEW_REVEAL_ALL_KEY = "overview-reveal-all-values";
 // Keys travel in the query string, so batch them to stay under proxy request-line limits.
 const SECRET_VALUE_PREFETCH_BATCH_SIZE = 50;
-
-// Identifies the signed-in session and organization. Refreshing the access token, here or in
-// another tab, replaces the token but keeps these claims. Signing in again from the same browser
-// reuses the token session, so accessVersion, which logout increments, is what tells them apart.
-const getAuthSessionMarker = () => {
-  try {
-    const { userId, tokenVersionId, accessVersion, organizationId, subOrganizationId } = jwtDecode<{
-      userId?: string;
-      tokenVersionId?: string;
-      accessVersion?: number;
-      organizationId?: string;
-      subOrganizationId?: string;
-    }>(getAuthToken());
-    return JSON.stringify([
-      userId,
-      tokenVersionId,
-      accessVersion,
-      organizationId,
-      subOrganizationId
-    ]);
-  } catch {
-    return null;
-  }
-};
-
-// Every overview row type is rendered into the same TableBody, so their React keys share one
-// namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
-// proxied service named "foo" and a secret named "ps-foo" both produce "overview-ps-foo". Encoding
-// the row type and the name as a JSON array instead is injective, because JSON.stringify escapes
-// the separators and quotes it emits, so two rows collide only when their type and name are equal.
-const overviewRowKey = (rowType: string, ...parts: (string | number)[]) =>
-  JSON.stringify([rowType, ...parts]);
-
-const getSecretSortValue = (orderBy: DashboardSecretsOrderBy, orderDirection: OrderByDirection) =>
-  `${orderBy}:${orderDirection}`;
 
 const SECRET_SORT_OPTIONS = [
   {
