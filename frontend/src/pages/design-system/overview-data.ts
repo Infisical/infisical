@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "palette-playground",
+    title: "Palette playground",
+    description:
+      "Tune any theme token live on a sample shell, share the view by link and copy the overrides as tokens.json.",
+    date: "2026-11-07",
+    commit: "d054fdfef6",
+    page: "palette"
+  },
+  {
     id: "card-pairs",
     title: "Bands, xs Input and flush SettingsCard",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "7ba6dacc87",
     page: "list"
-  },
-  {
-    id: "crumb-cursor",
-    title: "Crumbs and cursors",
-    description:
-      "Combined crumbs are one button with no dead pixels, and only links take the pointer cursor.",
-    date: "2026-11-06",
-    commit: "02076b65ee",
-    page: "breadcrumb"
   }
 ];
