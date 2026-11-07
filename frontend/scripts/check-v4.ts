@@ -22,6 +22,21 @@ export type V4Check = {
 };
 
 const isUi = (file: string) => file.startsWith("src/components/v4/");
+/**
+ * Modules allowed to spell the /v4 prefix: the v4 link helpers and path registries. Moving v4 to
+ * the root changes these, the route definitions and the resolver in src/helpers/v4Bridge.ts, which
+ * sits outside the scanned folders.
+ */
+const v4PathModules = [
+  "src/pages/v4/links.ts",
+  "src/pages/v4/auth/paths.ts",
+  "src/pages/v4/access/links.ts",
+  "src/pages/v4/liveReady.ts",
+  "src/pages/v4/resolveV4Href.ts",
+  "src/components/v4/lib/boot-theme-keys.ts"
+];
+const isRouteDefinition = (file: string) =>
+  file.endsWith("/route.tsx") || file === "src/routes.ts" || file === "src/pages/v4/routes.ts";
 const pageScrollerFiles = ["src/components/v4/ui/top-bar.module.css"];
 const isExample = (file: string) =>
   file.startsWith("src/pages/design-system/") || file.startsWith("src/pages/v4/");
@@ -818,6 +833,21 @@ export const v4Checks: readonly V4Check[] = [
       'A FloatingActionBar is contained, its default: it sits in the content column above the table it acts on. Drop placement="fixed", which floats it over the whole viewport.',
     appliesTo: isMarkup,
     source: fixedBulkBars
+  },
+  {
+    id: "v4-path-literal",
+    rule: "v4-path-helper",
+    message:
+      "Build v4 links through the v4 path helpers, not a literal /v4 path, so moving v4 to the root at launch changes one module. Route definitions and the modules in v4PathModules may spell the prefix.",
+    appliesTo: (file) =>
+      isMarkup(file) &&
+      (isUi(file) || file.startsWith("src/pages/v4/")) &&
+      !isRouteDefinition(file) &&
+      !v4PathModules.includes(file),
+    markup: [
+      /(?<!\bfrom\s*:\s*|\bgetRouteApi\(\s*)(["'`])\/v4(?=\/|\?|#|\$\{|\1)/g,
+      /\/\^?\\\/v4(?![\w-])/g
+    ]
   },
   {
     id: "suspense-fallback",

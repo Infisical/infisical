@@ -15,6 +15,7 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
+import { DataList } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
@@ -193,34 +194,17 @@ export const ProjectMemberDetail = () => {
               <CardTitle>Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <dl className={styles.details}>
-                <div>
-                  <dt>Name</dt>
-                  <dd>{personName(user) ?? <Muted>-</Muted>}</dd>
-                </div>
-                <div>
-                  <dt>ID</dt>
-                  <dd>
-                    <CopyValue value={user.id} what="User ID" />
-                  </dd>
-                </div>
-                <div>
-                  <dt>Email</dt>
-                  <dd>
-                    <CopyValue value={user.email} what="User email" />
-                  </dd>
-                </div>
-                {user.username !== user.email && (
-                  <div>
-                    <dt>Username</dt>
-                    <dd>{user.username}</dd>
-                  </div>
-                )}
-                <div>
-                  <dt>Joined project</dt>
-                  <dd>{formatDate(member.createdAt)}</dd>
-                </div>
-              </dl>
+              <DataList
+                variant="props"
+                density="compact"
+                items={[
+                  ["Name", personName(user) ?? <Muted>-</Muted>],
+                  ["ID", <CopyValue key="id" value={user.id} what="User ID" />],
+                  ["Email", <CopyValue key="email" value={user.email} what="User email" />],
+                  ...(user.username !== user.email ? ([["Username", user.username]] as const) : []),
+                  ["Joined project", formatDate(member.createdAt)]
+                ]}
+              />
             </CardContent>
           </Card>
         }

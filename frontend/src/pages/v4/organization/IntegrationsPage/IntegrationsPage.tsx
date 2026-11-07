@@ -2,19 +2,12 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 
+import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import { Banner } from "@app/components/v4/ui/alert";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
@@ -105,7 +98,8 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
   const deleteConnection = integrations.useDeleteConnection();
   const [scope, setScope] = useState("org");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<AppConnection[]>([]);
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const filter = (filters.find((entry) => entry.field === "app")?.values ?? []) as AppConnection[];
   const [banner, setBanner] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -198,18 +192,24 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
           here.
         </Banner>
       )}
-      <Inline gap={8} align="center">
-        <Tabs
-          variant="segmented"
-          label="Connection scope"
-          value={scope}
-          onChange={setScope}
-          tabs={[
-            { value: "org", label: "Organization", count: orgRows.length },
-            { value: "all", label: "All", count: rows.length }
-          ]}
-        />
-        <div style={{ flex: 1 }}>
+      <FilterBar
+        label="App connection filters"
+        fields={[
+          {
+            key: "app",
+            label: "App",
+            type: "multi-select",
+            options: [...new Set(rows.map((r) => r.app))]
+              .sort((a, b) => APP_CONNECTION_MAP[a].name.localeCompare(APP_CONNECTION_MAP[b].name))
+              .map((id) => ({ value: id, label: APP_CONNECTION_MAP[id].name }))
+          }
+        ]}
+        value={filters}
+        onChange={(next) => {
+          setFilters(next);
+          setPage(1);
+        }}
+        search={
           <Input
             icon="search"
             aria-label="Search app connections"
@@ -221,32 +221,20 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
               setPage(1);
             }}
           />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" icon="apps">
-              {filter.length ? `Apps (${filter.length})` : "Apps"}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Filter by app</DropdownMenuLabel>
-            {[...new Set(rows.map((r) => r.app))]
-              .sort((a, b) => APP_CONNECTION_MAP[a].name.localeCompare(APP_CONNECTION_MAP[b].name))
-              .map((id) => (
-                <DropdownMenuCheckboxItem
-                  key={id}
-                  checked={filter.includes(id)}
-                  onCheckedChange={(on) => {
-                    setFilter((all) => (on ? [...all, id] : all.filter((x) => x !== id)));
-                    setPage(1);
-                  }}
-                >
-                  {APP_CONNECTION_MAP[id].name}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </Inline>
+        }
+        actions={
+          <Tabs
+            variant="segmented"
+            label="Connection scope"
+            value={scope}
+            onChange={setScope}
+            tabs={[
+              { value: "org", label: "Organization", count: orgRows.length },
+              { value: "all", label: "All", count: rows.length }
+            ]}
+          />
+        }
+      />
       <DataTable
         label="App connections"
         rows={visible.slice((current - 1) * pageSize, current * pageSize)}
@@ -290,7 +278,7 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
                   variant="link"
                   onClick={() => {
                     setQuery("");
-                    setFilter([]);
+                    setFilters([]);
                   }}
                 >
                   Clear filters

@@ -165,6 +165,7 @@ export const usePagedList = <Row,>({
     pagination:
       filtered.length > 0 ? (
         <Pagination
+          variant="compact"
           page={current}
           total={filtered.length}
           pageSize={perPage}
@@ -237,10 +238,4 @@ export const FormSkeleton = ({ label, fields = 4 }: { label: string; fields?: nu
 
 export const Muted = ({ children }: { children: ReactNode }) => (
   <span className={styles.muted}>{children}</span>
-);
-
-export const FabDock = ({ active, children }: { active: boolean; children: ReactNode }) => (
-  <div className={styles.fabDock} data-active={active || undefined}>
-    {children}
-  </div>
 );

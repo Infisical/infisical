@@ -48,7 +48,7 @@ Exports: ErrorState. Source TypeScript defines the API.
 ## Behavior
 
 - preset not-found shows Page not found, one line, an accent Go to organization home link and Go back. preset forbidden shows You don't have access, one line, an accent Go to organization home link and Go back, with no Reload. preset crash shows Something went wrong, one line, an accent Reload, Go to organization home and a closed Error details disclosure.
-- layout auto renders in the content area when an AppShell is above it, so the sidebar and top bar stay, and full-page when there is none, such as when the shell itself failed. full-page is fixed over its containing block: the viewport in the app, the stage in the workbench. Pass in-shell or full-page to force one.
+- layout auto renders in the content area when an AppShell is above it, so the sidebar and top bar stay, and full-page when there is none, such as when the shell itself failed. full-page is fixed over its containing block: the viewport in the app, the stage in the workbench. Both center with safe alignment, so content taller than the space, such as an open stack in a short window, starts at the top and scrolls instead of being clipped above it. Pass in-shell or full-page to force one.
 - Error details holds one mono block with the error name and message, each details line (request id, status, route, time) and, in development builds or with showStack, the stack. Its Copy details button copies that same text.
 - A quiet cell mark sits above the title: for not-found one cell is a dashed gap, for forbidden one cell is hatched shut, for crash one accent cell is knocked out of the grid.
 - actions holds the page's own flows, such as Request access for a project the person is not a member of. They render after the preset's primary action and before its secondary one (Go back, or Go to organization home on crash), so the preset keeps its order and its one accent; pass outline Buttons.
@@ -199,6 +199,56 @@ export default function Example() {
           </div>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"crash, full-page"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Tall content in a short space
+
+Save this example at `src/pages/design-system/examples/error-state/long-stack.tsx`; its relative imports are generated for that exact path. States: error.
+
+Registry items used: @infisical/error-state. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { ErrorState } from "../../../../components/v4/patterns/error-state";
+
+const frames = Array.from(
+  { length: 28 },
+  (_, index) =>
+    `    at Component${index + 1} (src/pages/v4/secret-manager/OverviewPage/OverviewPage.tsx:${200 + index * 7}:${10 + index})`
+);
+const longError = Object.assign(
+  new TypeError("Cannot read properties of undefined (reading 'environments')"),
+  {
+    stack: [
+      `TypeError: Cannot read properties of undefined (reading 'environments')`,
+      ...frames
+    ].join("\n")
+  }
+);
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="relative isolate h-60 w-full min-w-0 [transform:translateZ(0)] overflow-auto">
+            <ErrorState
+              preset="crash"
+              layout="full-page"
+              homeHref="#error-state"
+              error={longError}
+              details={[{ label: "request", value: "req-5f3a9c2e81b4" }]}
+              showStack
+              onReload={() => {}}
+            />
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"crash, full-page, long stack in a short stage"}
+        </figcaption>
       </figure>
     </div>
   );

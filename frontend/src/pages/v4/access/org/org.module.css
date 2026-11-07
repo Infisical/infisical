@@ -102,9 +102,6 @@
   padding: 0;
   list-style: none;
 }
-.toolbarTabs {
-  flex: none;
-}
 .end {
   align-self: flex-end;
 }

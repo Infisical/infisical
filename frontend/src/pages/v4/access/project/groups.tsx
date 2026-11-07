@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { UserRoundXIcon } from "lucide-react";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import { Button } from "@app/components/v4/ui/button";
 import {
   DataTable,
@@ -10,7 +11,9 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
@@ -22,17 +25,15 @@ import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { formatDate } from "../roles";
-import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
+import { Gate, RESTRICTED, usePagedList } from "../ui";
 import { GroupModal, RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
 import { useProjectScope } from "./scope";
 
-import styles from "../access.module.css";
-
 export const ProjectGroupsTab = () => {
+  const go = useGo();
   const scope = useProjectScope();
   const { projectId } = scope;
-  const go = useGo();
   const { permission } = useProjectPermission(projectId);
   const groups = useV4Adapter("access").useProjectGroups(projectId, scope.projectType);
   const [adding, setAdding] = useState(false);
@@ -56,7 +57,11 @@ export const ProjectGroupsTab = () => {
       header: "Name",
       sortable: true,
       grow: true,
-      render: (row) => <span>{row.group.name}</span>
+      render: (row) => (
+        <RowLink {...go.link(accessLinks.projectGroup(scope, row.group.id))} title={row.group.name}>
+          {row.group.name}
+        </RowLink>
+      )
     },
     {
       id: "role",
@@ -93,48 +98,53 @@ export const ProjectGroupsTab = () => {
 
   return (
     <Stack gap={16}>
-      <div className={styles.toolbar}>
-        <div className={styles.grow}>
-          <ListToolbar
-            search={list.search}
-            onSearch={list.setSearch}
+      <FilterBar
+        label="Project group filters"
+        fields={[]}
+        value={[]}
+        onChange={() => undefined}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search project groups..."
             placeholder="Search project groups..."
+            value={list.search}
+            onChange={(event) => list.setSearch(event.target.value)}
           />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button
-            variant="accent"
-            icon="plus"
-            disabled={!canCreate}
-            onClick={() => setAdding(true)}
-          >
-            Add group to project
-          </Button>
-        </Gate>
-      </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Project groups"
-          rows={list.pageRows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(row) => row.group.id}
-          rowLabel={(row) => row.group.name}
-          loading={groups.isPending}
-          loadingRows={10}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          onRowActivate={(row) => go(accessLinks.projectGroup(scope, row.group.id))}
-          empty={
-            list.search.trim() ? (
-              <EmptyState size="sm" icon="search" title="No project groups match search" />
-            ) : (
-              <EmptyState size="sm" icon="user" title="No project groups found" />
-            )
-          }
-        />
-        {!groups.isPending && list.pagination}
-      </Stack>
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => setAdding(true)}
+            >
+              Add group to project
+            </Button>
+          </Gate>
+        }
+      />
+      <DataTable
+        label="Project groups"
+        rows={list.pageRows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(row) => row.group.id}
+        rowLabel={(row) => row.group.name}
+        loading={groups.isPending}
+        loadingRows={10}
+        sort={list.sort}
+        onSortChange={list.setSort}
+        empty={
+          list.search.trim() ? (
+            <EmptyState size="sm" icon="search" title="No project groups match search" />
+          ) : (
+            <EmptyState size="sm" icon="user" title="No project groups found" />
+          )
+        }
+        pagination={groups.isPending ? undefined : list.pagination}
+      />
       <GroupModal projectId={projectId} open={adding} onOpenChange={setAdding} />
       <RemoveGroupDialog
         projectId={projectId}
