@@ -26,13 +26,13 @@ If you run a shared proxy, we recommend keeping it on the same private network a
 
 ## Supported connections
 
-Agents connect to the proxy as an HTTP proxy. If you turn on the [SOCKS5 port](#accept-connections-over-socks5), clients such as E2B can also connect over SOCKS5 over TLS.
+Agents connect to the proxy as an HTTP proxy. If you turn on the [SOCKS5 port](#accept-connections-over-socks5), clients such as E2B can also connect over SOCKS5 over TLS. To reach [databases and SSH servers](/documentation/platform/agent-vault/databases-and-ssh), agents run `infisical agent-vault connect`, which connects to the proxy's HTTP port over TLS.
 
 Over either connection, the proxy attaches credentials to HTTP/1.1 requests, over both HTTPS and plain HTTP. These connections fail through the proxy:
 
 - WebSocket connections, such as to a `wss://` URL
 - Clients that only speak HTTP/2, such as gRPC clients
-- Other TCP traffic through the SOCKS5 port, such as SSH
+- Other TCP traffic through the SOCKS5 port, such as an `ssh` or `psql` client that connects directly
 
 If an API offers both WebSocket connections and plain HTTPS requests, configure the agent to use the HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
 

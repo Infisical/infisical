@@ -301,26 +301,30 @@ Before the agent starts, the command installs the [skills](/documentation/platfo
     { name: "service", usage: "[service...]", required: false, description: "The names of the database or SSH services to open ports for. Required unless you pass `--all`." },
   ]}
   flags={[
-    { name: "--all", type: "bool", description: "Open a port for every database and SSH service in the session. Can't be combined with service names." },
-    { name: "--ca-fingerprint", value: "<string>", type: "string", description: "The SHA256 fingerprint of the proxy's certificate authority, from the **Proxies** page. The command trusts the proxy only if it serves this certificate authority." },
-    { name: "--proxy", value: "<string>", type: "string", description: "The Agent Vault proxy's address as `host:port`, such as `10.0.1.5:17323`. Required unless `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` is set." },
+    { name: "--all", type: "bool", description: "Open a port for every database and SSH service in the session, skipping any the proxy refuses. Can't be combined with service names." },
+    { name: "--ca-fingerprint", value: "<string>", type: "string", description: "The SHA256 fingerprint of the proxy's certificate authority, from the **Certificate Authority** column on the **Proxies** page. The command trusts the proxy only if it serves this certificate authority, and checks nothing else. Accepted with or without the `SHA256:` prefix and colons." },
+    { name: "--port", value: "<int>", type: "int", description: "The local port to open. Works only with one named service. Without it, the command picks a free port." },
+    { name: "--proxy", value: "<string>", type: "string", description: "The Agent Vault proxy's address as `host:port`, such as `10.0.1.5:17323`. A leading `http://` or `https://` is dropped. Required unless `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` is set." },
     { name: "--session-token", value: "<string>", type: "string", description: "The session token. Can also be set with `INFISICAL_AGENT_VAULT_SESSION_TOKEN`." },
   ]}
   env={[
-    { name: "INFISICAL_AGENT_VAULT_CA_FILE", description: "The proxy's certificate authority file that `infisical agent-vault run` wrote, which the command trusts the proxy by." },
+    { name: "INFISICAL_AGENT_VAULT_CA_FILE", description: "The proxy's certificate authority file that `infisical agent-vault run` wrote. The command trusts the proxy if it serves a certificate authority in this file." },
     { name: "INFISICAL_AGENT_VAULT_PROXY_ADDRESS", description: "The Agent Vault proxy's address as `host:port`. Used if `--proxy` isn't passed." },
     { name: "INFISICAL_AGENT_VAULT_SESSION_TOKEN", description: "The session token. Used if `--session-token` isn't passed." },
   ]}
   examples={[
     { title: "Open ports for two services", code: "infisical agent-vault connect analytics bastion" },
     { title: "Open ports for every database and SSH service in the session", code: "infisical agent-vault connect --all" },
+    { title: "Open a service on a fixed local port", code: "infisical agent-vault connect analytics --port 5432" },
     { title: "Connect outside infisical agent-vault run", code: "infisical agent-vault connect analytics --session-token=<session-token> --proxy=10.0.1.5:17323 --ca-fingerprint=SHA256:9F:2C:..." },
   ]}
 >
 
-Open a port on `127.0.0.1` for each [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh) you name, or for every one in the session with `--all`, and print a command that reaches each port. Each connection goes to the Agent Vault proxy over TLS, and the proxy logs in with the service's account, so the client uses any username and no password. The ports stay open until the command stops.
+Open a port on `127.0.0.1` for each [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh) you name, or for every one in the session with `--all`. Each connection goes to the Agent Vault proxy over TLS, and the proxy logs in with the service's account, so the client uses any username and no password. The command keeps running. Once the ports are open, it prints each service's address and an example command, and the ports stay open until you stop the command with Ctrl+C.
 
-Under [infisical agent-vault run](/cli/reference#agent-vault-run), the command reads the session token, the proxy's address, and the proxy's certificate authority from the variables `run` sets, so it needs no flags. Before it sends the session token, it checks the proxy's certificate authority against the file `run` wrote, else against the fingerprints Infisical lists for the session's proxies, else against `--ca-fingerprint`. If none of them matches, it refuses to connect.
+Before it opens any port, the command checks each service with the proxy. If the proxy refuses a service you named, the command stops with the proxy's reason. With `--all`, it skips each refused service and prints its name and the reason. It stops only if the proxy refuses every service.
+
+Under [infisical agent-vault run](/cli/reference#agent-vault-run), the command reads the session token, the proxy's address, and the proxy's certificate authority from the variables `run` sets, so it needs no flags. Before it sends the session token to the proxy, it checks the proxy's certificate authority. If you pass `--ca-fingerprint`, it checks against that fingerprint only. Otherwise, it checks against the file `run` wrote, then against the fingerprints Infisical lists for the session's proxies. If none of them matches, it refuses to connect.
 
 </CLICommand>
 
