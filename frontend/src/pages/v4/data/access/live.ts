@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { AxiosError } from "axios";
 
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import { useAssumeProjectPrivileges } from "@app/hooks/api/assumePrivileges/mutations";
@@ -90,7 +89,6 @@ import {
 } from "@app/hooks/api/projects/mutations";
 import {
   useDeleteUserFromWorkspace,
-  fetchProjectById,
   useGetAvailableProjectUsers,
   useGetWorkspaceGroupMembershipDetails,
   useGetWorkspaceUserDetails,
@@ -98,7 +96,6 @@ import {
   useListWorkspaceGroups,
   useUpdateUserWorkspaceRole
 } from "@app/hooks/api/projects/queries";
-import { projectKeys } from "@app/hooks/api/projects/query-keys";
 import {
   useCreateOrgRole,
   useCreateProjectRole,
@@ -133,6 +130,7 @@ import {
   useUpdateOrgMembership
 } from "@app/hooks/api/users/queries";
 
+import { useProjectById } from "../projectQuery";
 import type { AccessAdapter } from "./contract";
 
 const useOrgId = () => useParams({ from: "/v4/organizations/$orgId" }).orgId;
@@ -142,15 +140,7 @@ export const accessLive: AccessAdapter = {
   useProjectPermission: useGetUserProjectPermissions,
   useOrganization: useGetOrganizationById,
   useUpdateOrganization: useUpdateOrg,
-  useProject: (projectId: string) =>
-    useQuery({
-      queryKey: projectKeys.getProjectById(projectId),
-      queryFn: () => fetchProjectById(projectId),
-      enabled: Boolean(projectId),
-      retry: (failureCount, error) =>
-        !(error instanceof AxiosError && [403, 404].includes(error.response?.status ?? 0)) &&
-        failureCount < 1
-    }),
+  useProject: useProjectById,
 
   useOrgUsers: useGetOrgUserAccess,
   useOrgMembership: useGetOrgMembership,

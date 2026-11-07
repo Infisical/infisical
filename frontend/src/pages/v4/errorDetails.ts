@@ -5,7 +5,7 @@ import { AxiosError } from "axios";
 import type { ErrorStateDetail } from "@app/components/v4/patterns/error-state";
 
 export const useErrorContext = (error?: unknown) => {
-  const { orgId } = useParams({ strict: false });
+  const { orgId, projectId } = useParams({ strict: false });
   const [time] = useState(() => `${new Date().toISOString().slice(0, 19).replace("T", " ")} UTC`);
   const axios = error instanceof AxiosError ? error : undefined;
   const status = axios ? (axios.status ?? axios.response?.status) : undefined;
@@ -22,6 +22,7 @@ export const useErrorContext = (error?: unknown) => {
     projectAccessDenied:
       status === 403 && axios?.response?.data?.error === "ProjectMembershipNotFound",
     details,
+    projectId,
     homeHref: orgId ? `/v4/organizations/${orgId}` : undefined
   };
 };
