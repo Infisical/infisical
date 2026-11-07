@@ -192,21 +192,64 @@ func TestExpand_AbsoluteReference_DeepPath(t *testing.T) {
 func TestExpand_AbsoluteReference_WithNestedRelative(t *testing.T) {
 	secrets := []*ProcessedSecret{
 		newTestSecret("LOCAL_VAR", "local-resolved", "dev", "/"),
-		newTestSecret("A", "${prod.USES_LOCAL}", "dev", "/"),
+		newTestSecret("A", "${prod.config.USES_LOCAL}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
 		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
-			return []*ProcessedSecret{
-				newTestSecret("USES_LOCAL", "prefix-${LOCAL_VAR}-suffix", "prod", "/"),
+			var fetched []*ProcessedSecret
+			for _, ref := range refs {
+				switch {
+				case ref.Env == "prod" && ref.Path == "/config" && ref.Key == "USES_LOCAL":
+					fetched = append(fetched, newTestSecret("USES_LOCAL", "prefix-${LOCAL_VAR}-suffix", "prod", "/config"))
+				case ref.Env == "prod" && ref.Path == "/config" && ref.Key == "LOCAL_VAR":
+					fetched = append(fetched, newTestSecret("LOCAL_VAR", "prod-resolved", "prod", "/config"))
+				}
 			}
+			return fetched
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
 
-	assert.Equal(t, "prefix-local-resolved-suffix", secrets[1].Value)
+	// The nested relative reference resolves in the referenced folder, not in
+	// the requesting board's same-named key.
+	assert.Equal(t, "prefix-prod-resolved-suffix", secrets[1].Value)
+}
+
+func TestExpand_AbsoluteReference_NestedRelativeResolvesInReferencedBoard(t *testing.T) {
+	// A relative reference inside a secret reached through an absolute reference
+	// belongs to the referenced environment/path, not to the requesting board.
+	// See https://github.com/Infisical/infisical/issues/7459
+	secrets := []*ProcessedSecret{
+		newTestSecret("HOST", "dev-host", "dev", "/"),
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	var fetchedRefs []AbsoluteSecretRef
+	opts := ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			fetchedRefs = append(fetchedRefs, refs...)
+
+			var fetched []*ProcessedSecret
+			for _, ref := range refs {
+				switch {
+				case ref.Env == "prod" && ref.Path == "/" && ref.Key == "URL":
+					fetched = append(fetched, newTestSecret("URL", "https://${HOST}/api", "prod", "/"))
+				case ref.Env == "prod" && ref.Path == "/" && ref.Key == "HOST":
+					fetched = append(fetched, newTestSecret("HOST", "prod-host", "prod", "/"))
+				}
+			}
+			return fetched
+		},
+	}
+
+	expander := NewSecretExpander(secrets, opts)
+	expander.Expand()
+
+	assert.Contains(t, fetchedRefs, AbsoluteSecretRef{Env: "prod", Path: "/", Key: "HOST"})
+	assert.Equal(t, "https://prod-host/api", secrets[1].Value)
 }
 
 func TestExpand_AbsoluteReference_ChainedAbsolute(t *testing.T) {
