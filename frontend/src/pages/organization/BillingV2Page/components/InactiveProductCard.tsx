@@ -8,7 +8,6 @@ import { Badge, Button, Card, CardTitle } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { BillingV2CatalogProduct } from "@app/hooks/api";
 
-import { ProductMenu } from "./ProductMenu";
 import { ProductIcon } from "./shared";
 
 export const InactiveProductCard = ({
@@ -58,9 +57,6 @@ export const InactiveProductCard = ({
             {prod.addon && <Badge variant="neutral">Add-on</Badge>}
           </div>
         </div>
-        {!canActivate && (
-          <ProductMenu prod={prod} canChangePlan={false} hasBreakdown={false} onManage={onManage} />
-        )}
       </div>
       <span className="flex-1 text-xs text-muted">
         {canActivate || canContactSales ? (prod.tagline ?? note) : note}

@@ -1,16 +1,20 @@
-import { CSSProperties, ReactNode, useEffect, useState } from "react";
-import { Box, ChevronDownIcon } from "lucide-react";
+import { CSSProperties, ReactNode, useState } from "react";
+import { Box, ChevronRightIcon } from "lucide-react";
 import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
 import {
-  AnimatedCollapse,
   Badge,
   Button,
   Card,
   CardHeader,
   CardTitle,
-  IconButton,
   rowLinkContainerClassName,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -43,10 +47,9 @@ import {
   productAnnualCommitted,
   tierLabel
 } from "../billing-v2-format";
-import { ProductMenu } from "./ProductMenu";
+import { ProductIcon } from "./shared";
 import { BREAKDOWN_DIMENSIONS, breakdownableDimensions } from "./UsageBreakdownSheet";
 
-const COLLAPSED_METERS = 3;
 const NEAR_LIMIT_PCT = 80;
 
 const productTint = "color-mix(in srgb, var(--product-color-resolved) 85%, transparent)";
@@ -223,7 +226,7 @@ const IdentityMeter = ({
   const split = useIdentitySplit(dim, breakdown);
   return (
     <IdentitySplitTooltip dim={dim} split={split}>
-      <span className="flex w-32 shrink-0 flex-col gap-0.5">
+      <span className="flex w-full min-w-0 flex-col gap-0.5">
         <MeterLabel dim={dim} />
         <span className="flex h-4 items-center">
           {split ? (
@@ -240,7 +243,7 @@ const IdentityMeter = ({
 const Meter = ({ dim, breakdown }: { dim: BillingV2EntitlementDim; breakdown: Breakdown }) => {
   if (isIdentityDim(dim)) return <IdentityMeter dim={dim} breakdown={breakdown} />;
   return (
-    <span className="flex w-36 min-w-0 shrink flex-col gap-0.5">
+    <span className="flex w-full min-w-0 flex-col gap-0.5">
       <MeterLabel dim={dim} />
       <span className="flex h-4 items-center">
         <UsageBar dim={dim} className="h-[3px]" />
@@ -390,7 +393,7 @@ const LimitAction = ({
   titleClassName?: string;
   action?: { label: string; onClick: () => void };
 }) => (
-  <span className="flex flex-col items-end gap-0.5 text-xs">
+  <span className="flex items-baseline justify-between gap-3 text-xs">
     <span className={cn("text-muted", titleClassName)}>{title}</span>
     {action && (
       <Button variant="link" size="xs" onClick={action.onClick}>
@@ -478,10 +481,21 @@ const LimitRow = ({
   }
 
   return (
-    <div className="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)_5rem_minmax(0,11rem)] items-center gap-6 border-b border-border py-3 last:border-b-0">
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate text-sm leading-[18px]">{dimDisplayLabel(dim)}</span>
-        {subtext && <span className="truncate text-xs text-muted">{subtext}</span>}
+    <div className="flex flex-col gap-2.5 border-b border-border py-4 first:pt-0 last:border-b-0">
+      <span className="flex items-start justify-between gap-4">
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-sm leading-[18px]">{dimDisplayLabel(dim)}</span>
+          {subtext && <span className="truncate text-xs text-muted">{subtext}</span>}
+        </span>
+        <span className="flex h-[18px] shrink-0 items-baseline gap-1 text-sm whitespace-nowrap tabular-nums">
+          <span className={cn(overage > 0 && "text-warning")}>
+            {dim.used.toLocaleString()}
+            {isIdentity && "x"}
+          </span>
+          {allowance !== null && (
+            <span className="text-xs text-muted">/ {allowance.toLocaleString()}</span>
+          )}
+        </span>
       </span>
       {isIdentity ? (
         <IdentitySplitTooltip dim={dim} split={split}>
@@ -496,52 +510,130 @@ const LimitRow = ({
       ) : (
         <UsageBar dim={dim} className="h-1" />
       )}
-      <span className="flex items-baseline justify-end gap-1 text-sm whitespace-nowrap tabular-nums">
-        <span className={cn(overage > 0 && "text-warning")}>
-          {dim.used.toLocaleString()}
-          {isIdentity && "x"}
-        </span>
-        {allowance !== null && (
-          <span className="text-xs text-muted">/ {allowance.toLocaleString()}</span>
-        )}
-      </span>
-      <span className="flex justify-end">{action}</span>
+      {action}
     </div>
   );
 };
 
-const COLLAPSE_MS = 200;
-
 const ROW_GRID =
-  "grid grid-cols-[16rem_minmax(0,1fr)_10rem_11rem_7rem_2rem] items-center gap-x-6 px-5";
+  "grid grid-cols-[14rem_minmax(13.5rem,1fr)_9rem_9rem_6rem_1rem] items-center gap-x-6 px-5";
 
-const ExpandedPanel = ({
-  id,
-  isOpen,
-  onClosed,
-  children
-}: {
-  id: string;
-  isOpen: boolean;
-  onClosed: () => void;
-  children: ReactNode;
-}) => {
-  const [isShown, setIsShown] = useState(false);
-  useEffect(() => {
-    if (isOpen) {
-      const frame = requestAnimationFrame(() => setIsShown(true));
-      return () => cancelAnimationFrame(frame);
-    }
-    setIsShown(false);
-    const timer = setTimeout(onClosed, COLLAPSE_MS);
-    return () => clearTimeout(timer);
-  }, [isOpen]);
-  return (
-    <AnimatedCollapse id={id} isOpen={isShown} variant="subtle">
-      <div className="flex flex-col pr-5 pb-2 pl-11">{children}</div>
-    </AnimatedCollapse>
-  );
+const USAGE_SLOTS = 3;
+
+const slotRem = (count: number, hasBadge: boolean) =>
+  count * 9 + (count - 1) * 1.5 + (hasBadge ? 4 : 0);
+
+const SHOW_AT: Record<string, string> = {
+  "19.5": "hidden @min-[19.5rem]:flex",
+  "23.5": "hidden @min-[23.5rem]:flex",
+  "30": "hidden @min-[30rem]:flex",
+  "34": "hidden @min-[34rem]:flex"
 };
+
+const HIDE_AT: Record<string, string> = {
+  "19.5": "@min-[19.5rem]:hidden",
+  "23.5": "@min-[23.5rem]:hidden",
+  "30": "@min-[30rem]:hidden",
+  "34": "@min-[34rem]:hidden"
+};
+
+const slotThreshold = (count: number, total: number) => String(slotRem(count, total > count));
+
+const meterSlotClass = (index: number, total: number) =>
+  index === 0 ? "flex" : SHOW_AT[slotThreshold(index + 1, total)];
+
+const badgeClass = (shown: number, total: number) => {
+  const showFrom = shown === 1 ? "flex" : SHOW_AT[slotThreshold(shown, total)];
+  const hideFrom = shown < USAGE_SLOTS ? HIDE_AT[slotThreshold(shown + 1, total)] : "";
+  return cn(showFrom, hideFrom);
+};
+
+const SubscriptionSheet = ({
+  prod,
+  ent,
+  dims,
+  planName,
+  canChangePlan,
+  breakdown,
+  commitmentLabel,
+  hasBreakdown,
+  onClose,
+  onManage,
+  onSetCommitment,
+  onViewBreakdown
+}: {
+  prod: BillingV2CatalogProduct;
+  ent: BillingV2Entitlement;
+  dims: BillingV2EntitlementDim[];
+  planName: string;
+  canChangePlan: boolean;
+  breakdown: Breakdown;
+  commitmentLabel: string | null;
+  hasBreakdown: boolean;
+  onClose: () => void;
+  onManage: () => void;
+  onSetCommitment: () => void;
+  onViewBreakdown: () => void;
+}) => (
+  <Sheet open onOpenChange={(open) => !open && onClose()}>
+    <SheetContent
+      side="right"
+      className="product-color flex w-full flex-col p-0 sm:max-w-xl"
+      style={{ "--product-color": prod.color } as CSSProperties}
+    >
+      <SheetHeader className="flex-row items-center gap-3 pr-12">
+        <ProductIcon product={prod} />
+        <div className="min-w-0">
+          <SheetTitle className="text-base">{prod.name}</SheetTitle>
+          <SheetDescription className="mt-0.5">Usage and limits on {planName}</SheetDescription>
+        </div>
+      </SheetHeader>
+      <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
+        {dims.length === 0 && (
+          <span className="text-sm text-muted">This plan has no usage-based limits.</span>
+        )}
+        {dims.map((dim) => (
+          <LimitRow
+            key={dim.key}
+            dim={dim}
+            prod={prod}
+            ent={ent}
+            canChangePlan={canChangePlan}
+            breakdown={breakdown}
+            onManage={onManage}
+            onSetCommitment={onSetCommitment}
+          />
+        ))}
+      </div>
+      <SheetFooter className="flex-row items-center justify-between border-t">
+        <span className="flex items-center gap-2">
+          {hasBreakdown && (
+            <Button variant="outline" size="sm" onClick={onViewBreakdown}>
+              Usage Breakdown
+            </Button>
+          )}
+        </span>
+        <span className="flex items-center gap-2">
+          {canChangePlan && commitmentLabel === "Adjust Commitment" && (
+            <Button variant="outline" size="sm" onClick={onSetCommitment}>
+              {commitmentLabel}
+            </Button>
+          )}
+          {canChangePlan && (
+            <Button variant="org" size="sm" onClick={onManage}>
+              Manage Plan
+            </Button>
+          )}
+          {!canChangePlan && (
+            <Button variant="org" size="sm" onClick={onClose}>
+              Done
+            </Button>
+          )}
+        </span>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
+);
 
 type SubscriptionsTableProps = {
   products: BillingV2CatalogProduct[];
@@ -568,8 +660,7 @@ export const SubscriptionsTable = ({
   onSetCommitment,
   onViewBreakdown
 }: SubscriptionsTableProps) => {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [mountedId, setMountedId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const canChangePlan = !readOnly && selfServe;
   const breakdown = { orgId: breakdownOrgId, scope: breakdownScope };
 
@@ -579,7 +670,7 @@ export const SubscriptionsTable = ({
         <CardTitle>Subscriptions</CardTitle>
       </CardHeader>
       <div className="-mx-5 -mb-5 thin-scrollbar overflow-x-auto rounded-b-card">
-        <div role="table" aria-label="Subscriptions" className="min-w-[76rem]">
+        <div role="table" aria-label="Subscriptions" className="min-w-[62.5rem]">
           <div
             role="row"
             className={cn(
@@ -599,10 +690,7 @@ export const SubscriptionsTable = ({
             if (!ent) return null;
             const dims = visibleDims(ent);
             const ordered = collapsedOrder(dims);
-            const hidden = ordered.length - COLLAPSED_METERS;
-            const isExpanded = expandedId === prod.id;
-            const isMounted = mountedId === prod.id;
-            const canExpand = dims.length > 0;
+            const visible = ordered.slice(0, USAGE_SLOTS);
             const planName = ent.planTier
               ? (prod.plans.find((plan) => plan.tier === ent.planTier)?.name ??
                 tierLabel(ent.planTier))
@@ -613,15 +701,6 @@ export const SubscriptionsTable = ({
             else if (dims.some(dimCommitted) && dims.some(dimCommitManageable)) {
               commitmentLabel = "Adjust Commitment";
             }
-            const toggle = () => {
-              if (isExpanded) {
-                setExpandedId(null);
-                return;
-              }
-              setExpandedId(prod.id);
-              setMountedId(prod.id);
-            };
-            const panelId = `billing-subscription-${prod.id}`;
             const productIcon = (
               <DynamicIcon
                 name={prod.icon.replace(/_/g, "-") as IconName}
@@ -634,10 +713,7 @@ export const SubscriptionsTable = ({
             return (
               <div
                 key={prod.id}
-                className={cn(
-                  "product-color border-b border-border last:border-b-0",
-                  isMounted && "bg-container-hover"
-                )}
+                className="product-color border-b border-border last:border-b-0"
                 style={{ "--product-color": prod.color } as CSSProperties}
               >
                 <div
@@ -645,34 +721,20 @@ export const SubscriptionsTable = ({
                   className={cn(
                     ROW_GRID,
                     "min-h-16 py-3 transition-colors duration-75",
-                    canExpand && cn(rowLinkContainerClassName, "hover:bg-container-hover")
+                    rowLinkContainerClassName,
+                    "hover:bg-container-hover",
+                    openId === prod.id && "bg-container-hover"
                   )}
                 >
-                  {canExpand && (
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      aria-hidden
-                      className="absolute inset-0 z-[1] cursor-pointer"
-                      onClick={toggle}
-                    />
-                  )}
+                  <button
+                    type="button"
+                    aria-label={`View ${prod.name} usage and limits`}
+                    className="absolute inset-0 z-[1] cursor-pointer outline-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    onClick={() => setOpenId(prod.id)}
+                  />
                   <span role="cell" className="flex min-w-0 items-start gap-2">
                     <span className="flex h-[18px] w-4 shrink-0 items-center justify-center">
-                      {canExpand ? (
-                        <IconButton
-                          size="2xs"
-                          variant="ghost-muted"
-                          aria-expanded={isExpanded}
-                          aria-controls={isMounted ? panelId : undefined}
-                          aria-label={`${isExpanded ? "Hide" : "Show"} ${prod.name} usage and limits`}
-                          onClick={toggle}
-                        >
-                          {isExpanded ? <ChevronDownIcon /> : productIcon}
-                        </IconButton>
-                      ) : (
-                        productIcon
-                      )}
+                      {productIcon}
                     </span>
                     <Stacked
                       primary={
@@ -688,56 +750,54 @@ export const SubscriptionsTable = ({
                       }
                     />
                   </span>
-                  <span role="cell" className="flex min-w-0 items-center gap-6 overflow-hidden">
-                    {ordered.slice(0, COLLAPSED_METERS).map((dim) => (
-                      <Meter key={dim.key} dim={dim} breakdown={breakdown} />
-                    ))}
-                    {hidden > 0 && (
-                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-[14px] text-accent tabular-nums">
-                        +{hidden}
-                      </span>
-                    )}
-                    {dims.length === 0 && (
+                  <span role="cell" className="@container min-w-0 overflow-hidden">
+                    {dims.length === 0 ? (
                       <span className="text-xs text-muted">No usage-based limits</span>
+                    ) : (
+                      <span className="grid auto-cols-[9rem] grid-flow-col items-center justify-start gap-x-6">
+                        {visible.map((dim, index) => (
+                          <span key={dim.key} className={meterSlotClass(index, ordered.length)}>
+                            <Meter dim={dim} breakdown={breakdown} />
+                          </span>
+                        ))}
+                        {visible.map((dim, index) =>
+                          ordered.length > index + 1 ? (
+                            <span
+                              key={`more-${dim.key}`}
+                              className={cn(
+                                "w-fit rounded-full border border-border px-2 py-0.5 text-[11px] leading-[14px] text-accent tabular-nums",
+                                badgeClass(index + 1, ordered.length)
+                              )}
+                            >
+                              +{ordered.length - index - 1}
+                            </span>
+                          ) : null
+                        )}
+                      </span>
                     )}
                   </span>
                   <span role="cell">{priceCell(ent, dims, isManaged)}</span>
                   <span role="cell">{dateCell(prod, ent, isManaged)}</span>
                   <span role="cell">{statusBadge(ent)}</span>
                   <span role="cell" className="flex justify-end">
-                    <ProductMenu
-                      prod={prod}
-                      currentTier={ent.planTier}
-                      canChangePlan={canChangePlan}
-                      hasBreakdown={breakdownDims.length > 0}
-                      commitmentLabel={commitmentLabel}
-                      onManage={onManage}
-                      onSetCommitment={() => onSetCommitment(prod.id)}
-                      onViewBreakdown={() => onViewBreakdown(prod.id, breakdownDims[0]?.key)}
-                    />
+                    <ChevronRightIcon className="size-4 text-muted" />
                   </span>
                 </div>
-                {isMounted && (
-                  <ExpandedPanel
-                    id={panelId}
-                    isOpen={isExpanded}
-                    onClosed={() =>
-                      setMountedId((current) => (current === prod.id ? null : current))
-                    }
-                  >
-                    {dims.map((dim) => (
-                      <LimitRow
-                        key={dim.key}
-                        dim={dim}
-                        prod={prod}
-                        ent={ent}
-                        canChangePlan={canChangePlan}
-                        breakdown={breakdown}
-                        onManage={() => onManage(prod.id)}
-                        onSetCommitment={() => onSetCommitment(prod.id)}
-                      />
-                    ))}
-                  </ExpandedPanel>
+                {openId === prod.id && (
+                  <SubscriptionSheet
+                    prod={prod}
+                    ent={ent}
+                    dims={dims}
+                    planName={planName}
+                    canChangePlan={canChangePlan}
+                    breakdown={breakdown}
+                    commitmentLabel={commitmentLabel}
+                    hasBreakdown={breakdownDims.length > 0}
+                    onClose={() => setOpenId(null)}
+                    onManage={() => onManage(prod.id)}
+                    onSetCommitment={() => onSetCommitment(prod.id)}
+                    onViewBreakdown={() => onViewBreakdown(prod.id, breakdownDims[0]?.key)}
+                  />
                 )}
               </div>
             );
