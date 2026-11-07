@@ -324,6 +324,161 @@ export const classStringLiterals = (text: string) => {
   return found;
 };
 
+const isPage = (file: string) => file.startsWith("src/pages/v4/");
+const isComposition = (file: string) => isMarkup(file) && (isExample(file) || isPage(file));
+
+const braceEnd = (text: string, open: number) => {
+  let depth = 0;
+  for (let index = open; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"' || char === "'" || char === "`") {
+      let end = index + 1;
+      while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+      index = end;
+    } else if (char === "{" || char === "(" || char === "[") depth += 1;
+    else if (char === "}" || char === ")" || char === "]") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return text.length;
+};
+
+const definitionOf = (text: string, name: string) => {
+  const start = text.search(new RegExp(`(?:const|let|function)\\s+${name}\\b`));
+  if (start < 0) return "";
+  let depth = 0;
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"' || char === "'" || char === "`") {
+      let end = index + 1;
+      while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+      index = end;
+    } else if (char === "{" || char === "(" || char === "[") depth += 1;
+    else if (char === "}" || char === ")" || char === "]") {
+      depth -= 1;
+      if (depth === 0 && /^\s*(?:;|\n)/.test(text.slice(index + 1, index + 3)))
+        return text.slice(start, index + 1);
+    } else if (char === ";" && depth === 0) return text.slice(start, index);
+  }
+  return text.slice(start);
+};
+
+const navigationCall =
+  /\b(?:navigate|go)\s*\(|\brouter\.(?:navigate|push|history)\b|\bhistory\.push\s*\(|\bwindow\.location\b/;
+
+/** onRowActivate handlers that navigate, inline or through a function defined in the same file. */
+export const navigatingRowActivations = (text: string) =>
+  [...text.matchAll(/\bonRowActivate=\{/g)].flatMap((match) => {
+    const open = (match.index ?? 0) + match[0].length - 1;
+    const value = text.slice(open + 1, braceEnd(text, open));
+    const called = [...value.matchAll(/(?:^\s*|\b)([A-Za-z_$][\w$]*)\s*(?:\(|$)/g)].map(
+      (call) => call[1]
+    );
+    const bodies = [value, ...called.map((name) => definitionOf(text, name))];
+    return bodies.some((body) => navigationCall.test(body))
+      ? [{ index: match.index ?? 0, text: `onRowActivate={${value.trim().split("\n")[0]}}` }]
+      : [];
+  });
+
+const compactVariant = /\svariant=(?:"compact"|\{\s*["'`]compact["'`]\s*\})/;
+
+/** A Pagination rendered right after a DataTable instead of in its pagination slot, or a slot Pagination that is not compact. */
+export const paginationOutsideFrames = (text: string) =>
+  [...text.matchAll(/<DataTable(?=[\s>/])/g)].flatMap((match) => {
+    const start = match.index ?? 0;
+    const found: { index: number; text: string }[] = [];
+    const tag = text.slice(start, jsxTagEnd(text, start) + 1);
+    const slot = tag.match(/\spagination=\{/);
+    if (slot) {
+      const open = start + (slot.index ?? 0) + slot[0].length - 1;
+      const value = text.slice(open, braceEnd(text, open));
+      [...value.matchAll(/<Pagination(?=[\s>/])/g)].forEach((pagination) => {
+        const at = open + (pagination.index ?? 0);
+        const paginationTag = text.slice(at, jsxTagEnd(text, at) + 1);
+        if (!compactVariant.test(paginationTag))
+          found.push({ index: at, text: paginationTag.split("\n")[0].trim() });
+      });
+    }
+    const end = elementEnd(text, "DataTable", start);
+    const after = text[end] === ">" ? end + 1 : end + "</DataTable>".length;
+    const sibling = text
+      .slice(after, after + 300)
+      .match(/^\s*(?:<Pagination\b|\{[^{}<]*<Pagination\b|\{[^{}<]*?[\w.]*[pP]agination\s*\})/);
+    if (sibling) {
+      const offset = sibling[0].length - sibling[0].trimStart().length;
+      found.push({ index: after + offset, text: sibling[0].trim().split("\n")[0] });
+    }
+    return found;
+  });
+
+const elementsNamed = (text: string, pattern: RegExp) =>
+  [...text.matchAll(pattern)].map((match) => {
+    const start = match.index ?? 0;
+    return { start, end: elementEnd(text, match[1], start) };
+  });
+
+/** Hand-built TableRows that hold RowActions or a TableActionsCell without a RowContextMenu around them. */
+export const rowsWithoutContextMenu = (text: string) => {
+  const rows = elementsNamed(text, /<(TableRow)(?=[\s>/])/g);
+  const menus = elementsNamed(text, /<(RowContextMenu)(?=[\s>/])/g);
+  const found = new Map<number, string>();
+  [...text.matchAll(/<(?:RowActions|TableActionsCell)(?=[\s>/])/g)].forEach((actions) => {
+    const at = actions.index ?? 0;
+    const row = rows.filter((candidate) => candidate.start < at && candidate.end > at).pop();
+    if (!row) return;
+    if (menus.some((menu) => menu.start < row.start && menu.end > row.end)) return;
+    const variable = text.slice(0, row.start).match(/(?:const|let)\s+(\w+)\s*=\s*\(?\s*$/)?.[1];
+    if (
+      variable &&
+      new RegExp(`<RowContextMenu[^]*?\\{\\s*${variable}\\s*\\}[^]*?</RowContextMenu>`).test(text)
+    )
+      return;
+    found.set(
+      row.start,
+      text
+        .slice(row.start, jsxTagEnd(text, row.start) + 1)
+        .split("\n")[0]
+        .trim()
+    );
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
+/** A native Table inside a Card or SettingsCard that is not inside a dialog, sheet or popover. */
+export const rawTablesInCards = (text: string) => {
+  const cards = elementsNamed(text, /<(Card|SettingsCard)(?=[\s>/])/g);
+  const overlays = elementsNamed(
+    text,
+    /<(Dialog|DialogContent|AlertDialogContent|Sheet|SheetContent|Popover|PopoverContent|HoverCardContent)(?=[\s>/])/g
+  );
+  const inside = (at: number, elements: { start: number; end: number }[]) =>
+    elements.some((element) => element.start < at && element.end > at);
+  return [...text.matchAll(/<Table(?=[\s>/])/g)].flatMap((match) => {
+    const at = match.index ?? 0;
+    if (!inside(at, cards) || inside(at, overlays)) return [];
+    return [
+      {
+        index: at,
+        text: text
+          .slice(at, jsxTagEnd(text, at) + 1)
+          .split("\n")[0]
+          .trim()
+      }
+    ];
+  });
+};
+
+/** FloatingActionBars placed fixed over the viewport instead of contained in the content column. */
+export const fixedBulkBars = (text: string) =>
+  [...text.matchAll(/<FloatingActionBar(?=[\s>/])/g)].flatMap((match) => {
+    const at = match.index ?? 0;
+    const tag = text.slice(at, jsxTagEnd(text, at) + 1);
+    return /\splacement=(?:"fixed"|\{\s*["'`]fixed["'`]\s*\})/.test(tag)
+      ? [{ index: at, text: tag.split("\n")[0].trim() }]
+      : [];
+  });
+
 export const v4Checks: readonly V4Check[] = [
   {
     id: "raw-color",
@@ -621,6 +776,47 @@ export const v4Checks: readonly V4Check[] = [
         text: match[0]
       }))
     ]
+  },
+  {
+    id: "row-activate-navigates",
+    rule: "row-navigation-link",
+    message:
+      "A row that navigates puts RowLink in its primary cell. onRowActivate is for opening a sheet or dialog in place; navigating from it loses new tab, copy link and the named link screen readers meet.",
+    appliesTo: isComposition,
+    source: navigatingRowActivations
+  },
+  {
+    id: "pagination-outside-frame",
+    rule: "pagination-in-frame",
+    message:
+      'A DataTable takes its Pagination through the pagination slot, with variant="compact", so it sits inside the frame below the rows. Never render it as a sibling after the table.',
+    appliesTo: isComposition,
+    source: paginationOutsideFrames
+  },
+  {
+    id: "row-actions-without-context-menu",
+    rule: "row-context-menu",
+    message:
+      "A hand-built TableRow with RowActions or a TableActionsCell is wrapped in RowContextMenu with the same label, inline actions and menu, so right-click and Shift+F10 open the row's actions like every DataTable row.",
+    appliesTo: isComposition,
+    source: rowsWithoutContextMenu
+  },
+  {
+    id: "raw-table-in-card",
+    rule: "detail-card-data-table",
+    message:
+      "A table inside a Card or SettingsCard is a DataTable, which embeds frameless and brings loading, empty and sort. The native Table is for the secrets matrix and for dialog and sheet internals.",
+    appliesTo: (file) =>
+      isComposition(file) && !file.startsWith("src/pages/v4/secret-manager/OverviewPage/"),
+    source: rawTablesInCards
+  },
+  {
+    id: "fixed-bulk-bar",
+    rule: "selection-floating-action-bar",
+    message:
+      'A FloatingActionBar is contained, its default: it sits in the content column above the table it acts on. Drop placement="fixed", which floats it over the whole viewport.',
+    appliesTo: isMarkup,
+    source: fixedBulkBars
   },
   {
     id: "suspense-fallback",

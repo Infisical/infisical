@@ -25,6 +25,24 @@ Checked by: review only. Look for: Run Delete in the example and check that the 
 Source evidence:
 - src/pages/design-system/examples/floating-action-bar/default.tsx
 
+### floating-action-bar-contained
+
+Owner: floating-action-bar.
+
+When a list or table page shows bulk actions for its selection.
+
+Do: Pass the bar to DataTable's actionBar and keep the default contained placement, so it sits in the table's column and the table holds room for it.
+
+Avoid: Set placement="fixed", which floats the bar over the whole viewport, or render the bar outside the table that holds the selection.
+
+Why: One placement on every page keeps the bar over the rows it acts on, and only a bar hosted by the table makes the table reserve room for it.
+
+Checked by: review only. Look for: Select rows on each list page: the bar sits centered on the table, not the viewport. ui:lint fixed-bulk-bar flags a literal placement="fixed".
+
+Source evidence:
+- src/components/v4/ui/floating-action-bar.tsx
+- src/components/v4/ui/data-table.tsx
+
 ### floating-action-bar-order
 
 Owner: floating-action-bar.
@@ -68,8 +86,8 @@ Exports: FloatingActionBar, FloatingActionBarHostContext. Source TypeScript defi
 - The bar shows while count is above zero and keeps the last count while it leaves. It enters and leaves on the motion springs; reduced motion jumps.
 - Select all appears while fewer than total are selected.
 - moreActions always sit in the More menu. Under 400px wide, Select all hides and the noun after the count moves to screen readers only.
-- fixed sits space-action-bar-offset (24px) above the viewport's bottom; contained sits space-action-bar-offset-contained (16px) above the nearest positioned ancestor's bottom. The bar is size-action-bar (48px) tall.
-- Passed to a DataTable through actionBar, the bar tells the table while it shows, and the table reserves the bar's height plus its offset below its rows so the last row can scroll clear of it.
+- placement defaults to contained, which sits space-action-bar-offset-contained (16px) above the nearest positioned ancestor's bottom. fixed sits space-action-bar-offset (24px) above the viewport's bottom and remains only for pages not yet moved to contained. The bar is size-action-bar (48px) tall.
+- Passed to a DataTable through actionBar, the bar tells the table while it shows. A contained bar then rides the scroll container's bottom edge, centered on the table, while the table is in view, and rests space-action-bar-offset-contained below the frame, so the last row can scroll clear of it.
 
 ## Accessibility
 
@@ -95,7 +113,7 @@ Source declarations and review criteria only. Generation checks references and c
 ### placement
 
 - contained: example `default`, visible label "contained, two of five selected".
-- fixed: omitted. Fixed placement would float over the whole workbench; contained shows the same bar inside its stage.
+- fixed: omitted. Fixed placement would float over the whole workbench, and it is no longer used for new pages; contained, the default, shows the same bar inside its stage.
 
 ## Executable examples
 
