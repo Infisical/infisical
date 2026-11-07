@@ -47,7 +47,7 @@ Exports: ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuGr
 
 ## Behavior
 
-- Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.
+- Highlighted, open and active rows use a translucent ink overlay at the shared hover token, so the menu surface behind shows through; they never take an opaque fill.
 - Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.
 - ContextMenu opens from its trigger's context action. Action items call onSelect and close; checkbox/radio items stay open unless closeOnSelect is true.
 - ContextMenuSubContent portals into the V4Scope container like the root menu, never inside its parent panel, so the parent's overflow and entry motion cannot clip or hide it. It opens beside its SubTrigger row: sideOffset 4 (space-4) and alignOffset -3 (the menu inset) line its first row up with the trigger, and when the trailing side has no room within the collision padding (8, space-8) it flips to the leading side, still beside the parent and never over it.

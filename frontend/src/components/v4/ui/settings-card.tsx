@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { FrameScope } from "../lib/frame-context";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Icon } from "./icon";
@@ -30,6 +31,8 @@ export type SettingsCardProps = Omit<
   saveLabel?: string;
   tone?: "default" | "danger";
   actions?: React.ReactNode;
+  /** Renders the body edge to edge without the form and footer, for content that is not saved here, such as an embedded DataTable. */
+  flush?: boolean;
 };
 
 export function SettingsCard({
@@ -45,6 +48,7 @@ export function SettingsCard({
   saveLabel = "Save",
   tone = "default",
   actions,
+  flush = false,
   children,
   className,
   ref,
@@ -104,6 +108,35 @@ export function SettingsCard({
         Unsaved changes
       </>
     );
+  const header = (
+    <div className={styles.header}>
+      <div className={styles.copy}>
+        <h3 id={titleId} className={styles.title}>
+          {title}
+        </h3>
+        {description && <p className={styles.description}>{description}</p>}
+      </div>
+      {action && <div className={styles.action}>{action}</div>}
+    </div>
+  );
+  const body = loading ? <Skeleton lines={2} height={32} /> : children;
+  if (flush)
+    return (
+      <section
+        ref={ref}
+        data-slot="settings-card"
+        data-tone={tone}
+        data-flush=""
+        aria-labelledby={titleId}
+        className={cn(styles.card, className)}
+        {...props}
+      >
+        {header}
+        <FrameScope framed>
+          <div className={styles.flushContent}>{body}</div>
+        </FrameScope>
+      </section>
+    );
   return (
     <section
       ref={ref}
@@ -120,18 +153,12 @@ export function SettingsCard({
           save();
         }}
       >
-        <div className={styles.header}>
-          <div className={styles.copy}>
-            <h3 id={titleId} className={styles.title}>
-              {title}
-            </h3>
-            {description && <p className={styles.description}>{description}</p>}
-          </div>
-          {action && <div className={styles.action}>{action}</div>}
-        </div>
-        <fieldset className={styles.content} disabled={Boolean(locked) || saving}>
-          {loading ? <Skeleton lines={2} height={32} /> : children}
-        </fieldset>
+        {header}
+        <FrameScope framed>
+          <fieldset className={styles.content} disabled={Boolean(locked) || saving}>
+            {body}
+          </fieldset>
+        </FrameScope>
         <div className={styles.footer}>
           <p className={styles.status} role="status">
             {status}

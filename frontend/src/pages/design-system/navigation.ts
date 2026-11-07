@@ -8,6 +8,7 @@ import { type IconName } from "@app/components/v4/ui/icon";
 
 export const foundationPages = [
   { id: "colors", slug: "color", title: "Color" },
+  { id: "palette", slug: "palette", title: "Palette playground" },
   { id: "typography", slug: "typography", title: "Typography" },
   { id: "spacing-shape", slug: "spacing-shape", title: "Spacing and shape" },
   { id: "motion", slug: "motion", title: "Motion" },

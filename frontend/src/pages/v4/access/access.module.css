@@ -13,6 +13,10 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+.bandSearch {
+  width: 280px;
+  max-width: 100%;
+}
 .roles {
   display: flex;
   align-items: center;

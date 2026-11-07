@@ -87,6 +87,42 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "pinned-cells",
+    title: "Pinned cells match their row",
+    description:
+      "Pinned columns now paint exactly the row's color at rest, on hover, selected and expanded, and scrolled tables keep their actions tail.",
+    date: "2026-11-07",
+    commit: "4cf899bbbe",
+    page: "table"
+  },
+  {
+    id: "palette-playground",
+    title: "Palette playground",
+    description:
+      "Tune any theme token live on a sample shell, share the view by link and copy the overrides as tokens.json.",
+    date: "2026-11-07",
+    commit: "d054fdfef6",
+    page: "palette"
+  },
+  {
+    id: "card-pairs",
+    title: "Bands, xs Input and flush SettingsCard",
+    description:
+      "Framed band labels sit at one height, Input gains a 24px xs size, and a flush SettingsCard embeds a table.",
+    date: "2026-11-07",
+    commit: "45ad1c70c1",
+    page: "settings-card"
+  },
+  {
+    id: "shared-hover",
+    title: "Shared hover",
+    description:
+      "Every hover and press is one ink overlay tuned by hover-mix and press-mix, darker in light themes and brighter in dark ones.",
+    date: "2026-11-07",
+    commit: "b7593b3735",
+    page: "colors"
+  },
+  {
     id: "button-corner-badge",
     title: "Button corner badge",
     description:
@@ -184,41 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "cdb1507383",
     page: "list"
-  },
-  {
-    id: "list-meta",
-    title: "List row timestamps",
-    description:
-      "A list row's title ellipsizes on one line, so its timestamp stays pinned beside it.",
-    date: "2026-11-06",
-    commit: "7ba6dacc87",
-    page: "list"
-  },
-  {
-    id: "crumb-cursor",
-    title: "Crumbs and cursors",
-    description:
-      "Combined crumbs are one button with no dead pixels, and only links take the pointer cursor.",
-    date: "2026-11-06",
-    commit: "02076b65ee",
-    page: "breadcrumb"
-  },
-  {
-    id: "draggable-popover",
-    title: "Draggable Popover",
-    description:
-      "A Popover can opt in to a Move handle, with keyboard steps, a viewport clamp and a reset when it reopens.",
-    date: "2026-11-06",
-    commit: "82721e1d76",
-    page: "popover"
-  },
-  {
-    id: "selection-column",
-    title: "Selection column",
-    description:
-      "Native tables and DataTable share one selection hook, and icon columns that double as selection can drop the divider.",
-    date: "2026-11-06",
-    commit: "75c373c9f0",
-    page: "table"
   }
 ];

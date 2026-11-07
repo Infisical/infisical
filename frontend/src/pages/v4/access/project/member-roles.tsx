@@ -179,7 +179,7 @@ export const MemberRolesSection = ({
         variant="framed"
         title="Project roles"
         flush={hasRoles}
-        action={hasRoles && !isSelf ? addButton : undefined}
+        action={isSelf ? undefined : addButton}
       >
         {hasRoles ? (
           <DataTable
@@ -192,7 +192,7 @@ export const MemberRolesSection = ({
             onRowActivate={(grant) => go(accessLinks.projectRole(scope, grantSlug(grant)))}
           />
         ) : (
-          <EmptyState size="sm" title="This user doesn't have any roles" actions={addButton} />
+          <EmptyState size="sm" title="This user doesn't have any roles" />
         )}
       </Card>
       <AddRoleSheet

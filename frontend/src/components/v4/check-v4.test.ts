@@ -277,6 +277,20 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       ]
     ]
   },
+  "flat-hover": {
+    bad: [
+      [css, ".row:hover {\n  background: var(--v4-tint);\n}"],
+      [css, ".tool:is(:hover, :focus-visible) {\n  background-color: var(--v4-line-soft);\n}"],
+      [css, ".item:hover {\n  background: #eeeae3;\n}"]
+    ],
+    good: [
+      [css, ".row:hover {\n  background: var(--v4-hover);\n}"],
+      [css, ".row[data-current]:hover {\n  background: var(--v4-sidebar-current);\n}"],
+      [css, ".row:not(:hover) > td {\n  background-color: var(--v4-surface);\n}"],
+      [css, '.item[aria-pressed="true"]:hover {\n  background-color: var(--v4-pop);\n}'],
+      [css, ".resize:hover::after {\n  background: var(--v4-control);\n}"]
+    ]
+  },
   "disabled-in-tooltip": {
     bad: [
       [

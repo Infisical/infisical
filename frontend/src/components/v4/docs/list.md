@@ -104,7 +104,7 @@ Exports: List, ListRow, ListSection, ListHeader, ListFooter, DataList. Source Ty
 
 ## Behavior
 
-- Interactive rows use a translucent ink overlay on hover and press (opacity-hover and opacity-press tokens), so tinted surfaces behind the list show through.
+- Interactive rows use a translucent ink overlay on hover and press (the shared hover and press tokens), so tinted surfaces behind the list show through.
 - Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface), bare, segmented (no container, each row a borderless tint card with a gap between) or divided (no container, rows split by line-soft rules); md/sm, static/link/button rows and actions below.
 - Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.
 - A list embedded in a framed card is frameless. Inside a framed Card, a DataTable or another framed List, a List that would be framed (the default, or ApprovalQueue's default) drops its tint frame and inset and sits on the parent's surface, with its header in the plain list header style.

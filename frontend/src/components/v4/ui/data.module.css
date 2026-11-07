@@ -198,12 +198,8 @@
   position: relative;
 }
 :global(.v4) {
-  --overlay-hover: var(--v4-opacity-hover);
-  --overlay-press: var(--v4-opacity-press);
-}
-:global(.v4[data-scheme="dark"]) {
-  --overlay-hover: var(--v4-opacity-hover-dark);
-  --overlay-press: var(--v4-opacity-press-dark);
+  --overlay-hover: var(--v4-hover-mix);
+  --overlay-press: var(--v4-press-mix);
 }
 .gridRow:hover > .gridCell:not([data-selected], [data-dirty]) {
   background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
@@ -1281,10 +1277,11 @@ button.rowTitle::after {
   --v4-table-row-layers:
     linear-gradient(var(--v4-table-row-hover), var(--v4-table-row-hover)),
     linear-gradient(var(--v4-table-row-state), var(--v4-table-row-state));
+  background-color: var(--v4-table-row-ground);
   background-image: var(--v4-table-row-layers);
 }
 .nativeTableRow:is(:hover, :has([aria-expanded="true"])):not(thead > *) {
-  --v4-table-row-hover: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+  --v4-table-row-hover: var(--v4-hover);
 }
 .nativeTableRow[data-state="selected"] {
   --v4-table-row-state: var(--v4-selected-surface);

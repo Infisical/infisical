@@ -22,7 +22,14 @@ const attach = (element: HTMLElement) => {
   let frame = 0;
   const update = () => {
     frame = 0;
+    const style = getComputedStyle(element);
     axesOf(element).forEach((axis) => {
+      const overflow = axis === "y" ? style.overflowY : style.overflowX;
+      if (overflow === "visible" || overflow === "clip") {
+        element.removeAttribute(`data-scroll-start-${axis}`);
+        element.removeAttribute(`data-scroll-end-${axis}`);
+        return;
+      }
       const offset = axis === "y" ? element.scrollTop : Math.abs(element.scrollLeft);
       const size = axis === "y" ? element.clientHeight : element.clientWidth;
       const total = axis === "y" ? element.scrollHeight : element.scrollWidth;

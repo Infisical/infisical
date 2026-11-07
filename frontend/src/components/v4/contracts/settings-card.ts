@@ -15,7 +15,9 @@ export const settingsCardDefinition = {
     "The footer shows one status at a time: the hint, Unsaved changes, Saving, Saved for three seconds, the failure message, or the lock reason.",
     "Save runs from the button or Enter in a field. A returned promise shows Saving; a rejection shows the Error's message and keeps the typed values.",
     "Discard appears only while there are changes and calls onDiscard.",
-    "locked disables the fields, hides the buttons and shows the reason. tone danger draws the bad line and wash and shows your own actions."
+    "locked disables the fields, hides the buttons and shows the reason. tone danger draws the bad line and wash and shows your own actions.",
+    "flush renders the same header with the body edge to edge under a line-soft rule and no form or footer, for content that is not saved by the card, such as a list of incident contacts in a DataTable.",
+    "The body is a frame scope, so a DataTable, List or CodeBlock inside embeds frameless and a framed Card drops to plain instead of nesting a second frame."
   ],
   accessibility: [
     "The card is a section named by its title, and the footer status is a polite live region.",
@@ -31,6 +33,12 @@ export const settingsCardDefinition = {
       title: "Save, locked and danger",
       module: "./examples/settings-card/default.tsx",
       states: ["default", "editing", "loading", "success", "error", "read-only"]
+    },
+    {
+      id: "embedded-table",
+      title: "Embedded table",
+      module: "./examples/settings-card/embedded-table.tsx",
+      states: ["default"]
     }
   ],
   coverage: [

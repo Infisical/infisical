@@ -73,7 +73,8 @@ Exports: Input. Source TypeScript defines the API.
 
 ## Behavior
 
-- Input forwards its native ref and supports sm/md/lg at 32/36/40px, defaulting to sm32, with icon, mono, a read-only lock and trailing content while retaining native editing. A native numeric size is a width hint and retains the default 32px density.
+- Input forwards its native ref and supports xs/sm/md/lg at 24/32/36/40px, defaulting to sm32, with icon, mono, a read-only lock and trailing content while retaining native editing. A native numeric size is a width hint and retains the default 32px density.
+- xs matches the 24px xs Button: caption type, a 12px icon and a 6px inset. Use it for a search beside xs Buttons, such as in a framed Card band, not for a form field. InputGroup takes xs too.
 
 ## Accessibility
 
@@ -93,6 +94,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### size
 
+- xs: example `sizes`, visible label "xs".
 - sm: example `sizes`, visible label "sm".
 - md: example `sizes`, visible label "md".
 - lg: example `sizes`, visible label "lg".
@@ -167,9 +169,10 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/input/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
+import { Button } from "../../../../components/v4/ui/button";
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
 
@@ -179,6 +182,25 @@ export default function Example() {
       aria-label="Input sizes"
       className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8"
     >
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="flex items-center gap-2">
+            <Input
+              size="xs"
+              icon="search"
+              placeholder="Search members"
+              aria-label="Search members"
+            />
+            <Button variant="outline" size="xs">
+              Export
+            </Button>
+            <Button variant="outline" size="xs" icon="plus">
+              Invite
+            </Button>
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"xs"}</figcaption>
+      </figure>
       {(["sm", "md", "lg"] as const).map((size) => (
         <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
           <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">

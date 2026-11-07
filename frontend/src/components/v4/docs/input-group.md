@@ -72,7 +72,7 @@ Exports: InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGr
 ## Behavior
 
 - The default host is sm32; explicit md36 and lg40 retain 24/28/32px nested action slots. Nested buttons fit the host slot even when a larger standalone size is requested.
-- InputGroup supports sm/md/lg, joined addons and actions, plus Field association. Addons do not become a second input.
+- InputGroup supports xs/sm/md/lg, joined addons and actions, plus Field association. Addons do not become a second input.
 
 ## Accessibility
 
@@ -95,6 +95,7 @@ Source declarations and review criteria only. Generation checks references and c
 - sm: example `sizes`, visible label "sm".
 - md: example `sizes`, visible label "md".
 - lg: example `sizes`, visible label "lg".
+- xs: omitted. 24px, matching the xs Input for a search beside xs Buttons; its nested slot is 16px. Input's Sizes example shows it.
 
 ### InputGroupAddon.align
 
