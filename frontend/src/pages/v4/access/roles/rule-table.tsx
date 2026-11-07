@@ -297,7 +297,12 @@ export const RuleTable = (props: RuleTableProps) => {
       text: (row) => row.config.title,
       render: (row) => (
         <Inline gap={8} wrap={false} style={{ minWidth: 0 }}>
-          <Button variant="link" style={{ flexShrink: 0 }} onClick={() => edit(row)}>
+          <Button
+            variant="link"
+            underline="hover"
+            style={{ flexShrink: 0 }}
+            onClick={() => edit(row)}
+          >
             {row.config.title}
           </Button>
           {row.config.description && (
