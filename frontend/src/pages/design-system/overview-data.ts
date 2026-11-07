@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "secret-input-rowlink",
+    title: "Quiet secret inputs and row chevrons",
+    description:
+      "Secret value fields use the UI sans and the same muted placeholder as Input, and navigable rows end in a chevron.",
+    date: "2026-11-07",
+    commit: "c47e88f745",
+    page: "row-link"
+  },
+  {
     id: "trigger-layout",
     title: "Start-aligned triggers",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "88efc85d88",
     page: "rules"
-  },
-  {
-    id: "container-defaults",
-    title: "Container defaults",
-    description:
-      "Tables and lists stay framed, and a standalone Card is plain by default, framed only for emphasis or as a section card.",
-    date: "2026-11-07",
-    commit: "aab51e979e",
-    page: "card"
   }
 ];
