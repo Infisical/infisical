@@ -111,3 +111,35 @@
   background: var(--v4-surface);
   pointer-events: none;
 }
+.triggerLayout {
+  justify-content: flex-start;
+  text-align: start;
+}
+.triggerLayout.regular {
+  --v4-action-inset: var(--v4-space-control-inline-md);
+}
+.triggerLayout.large {
+  --v4-action-inset: var(--v4-space-control-inline);
+}
+[data-v4-button].triggerLayout > [data-press],
+.triggerLayout > [data-press] > [data-slot="button-label-group"] {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  width: 100%;
+}
+.triggerLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.triggerLayout svg.triggerChevron {
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+}
+.triggerLayout:is([data-variant="outline"], [data-variant="secondary"], [data-variant="ghost"])
+  .triggerChevron {
+  color: var(--v4-muted);
+}

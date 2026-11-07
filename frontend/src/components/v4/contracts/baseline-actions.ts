@@ -19,6 +19,7 @@ export const baselineActions = [
       "Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the light accent face (one yellow in both themes) with owned inset illumination and an on-accent label in both themes, for a page's one primary create action in its header or toolbar and for approval and grant moments, never as a second primary. Ghost hover is the shared hover overlay (ink at hover-mix: 6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad-fill fill and border with a white on-bad label at 600 in both themes, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.",
       "The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. icon-row is the table row action: a size-target-row (28px) box with a size-glyph (16px) glyph, separate from icon-sm so field and nested actions keep their 12 and 14px glyphs. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target.",
       "Every variant except link keeps the default cursor, also when asChild renders an anchor: its fill, border or hover ground already shows that it acts. link takes the pointer cursor, like any text link.",
+      "layout trigger is for a Button that opens a menu, popover or picker and shows its current value: the label sits at the start and truncates with an ellipsis, and a 16px chevron (chev-down, or iconRight) sits at the end, muted on outline, secondary and ghost. Insets match SelectTrigger at each size (10, 12 and 14px at default, md and lg) with the same 6px gap, so a picker Button and a Select read as one family. Give it a width; without one it hugs its label.",
       "cornerBadge pins a small Badge to the top-right corner: its end edge sits on the button's end edge and its middle on the top border, so it straddles the border without changing the button's size or hit area. It takes no pointer events, stays put while the label presses or loads, and sits on a surface ground so a translucent tone never shows the border through it."
     ],
     accessibility: [
@@ -63,6 +64,12 @@ export const baselineActions = [
         title: "Inside a form",
         module: "./examples/button/form-type.tsx",
         states: ["default", "success"]
+      },
+      {
+        id: "trigger-layout",
+        title: "Trigger layout",
+        module: "./examples/button/trigger-layout.tsx",
+        states: ["default"]
       },
       {
         id: "corner-badge",
@@ -292,6 +299,24 @@ export const baselineActions = [
           detect: {
             by: "review",
             how: "Measure a row action and a field action on the same page: the row action is a 28px box with a 16px glyph, the field action keeps its 24 or 28px box with a 12 or 14px glyph."
+          }
+        },
+        {
+          id: "button-trigger-layout",
+          when: "A Button opens a menu, popover or picker and shows a value with a chevron, such as an environment picker or an account menu.",
+          do: 'Pass layout="trigger" and give the Button its width; the label starts, truncates and the chevron sits at the end.',
+          avoid:
+            'Put iconRight="chev-down" on a plain Button, or add justify-content: space-between to its class.',
+          reason:
+            "A plain Button centers its content, so in a fixed width the value and chevron float in the middle while a Select beside it starts its label at the edge.",
+          evidence: [
+            "src/components/v4/ui/button.tsx",
+            "src/components/v4/ui/button-geometry.module.css",
+            "src/pages/design-system/examples/button/trigger-layout.tsx"
+          ],
+          detect: {
+            by: "review",
+            how: "Open the menu in the Trigger layout example at a fixed width: the value starts at the same inset as the Select beside it and the chevron ends at its edge. npm run ui:lint (trigger-start-aligned) flags the plain Button form."
           }
         },
         {

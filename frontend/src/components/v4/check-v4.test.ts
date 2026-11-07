@@ -319,6 +319,37 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, '<Button disabled>Save</Button>\n<Tooltip content="Help" />']
     ]
   },
+  "trigger-start-aligned": {
+    bad: [
+      [
+        example,
+        '<PopoverTrigger asChild>\n  <Button variant="outline" iconRight="chev-down" className="w-56">\n    Production\n  </Button>\n</PopoverTrigger>'
+      ],
+      [
+        example,
+        '<DropdownMenuTrigger asChild>\n  <Button variant="outline">\n    <span>{text}</span>\n    <Icon name="chev-down" />\n  </Button>\n</DropdownMenuTrigger>'
+      ],
+      [
+        ui,
+        '<PopoverTrigger asChild>\n  <Button variant="ghost">\n    Region\n    <ChevronDown />\n  </Button>\n</PopoverTrigger>'
+      ]
+    ],
+    good: [
+      [
+        example,
+        '<PopoverTrigger asChild>\n  <Button variant="outline" layout="trigger" className="w-56">\n    Production\n  </Button>\n</PopoverTrigger>'
+      ],
+      [
+        example,
+        '<DropdownMenuTrigger asChild>\n  <Button variant="ghost" size="icon-xs" icon="chev-down" iconOnly>\n    Expand\n  </Button>\n</DropdownMenuTrigger>'
+      ],
+      [
+        example,
+        '<PopoverTrigger asChild>\n  <Button variant="outline" icon="plus">Add</Button>\n</PopoverTrigger>'
+      ],
+      [example, '<Button variant="outline" iconRight="chev-right">Continue</Button>']
+    ]
+  },
   "dot-separator": {
     bad: [[example, "<span>Primary · alias of default</span>"]],
     good: [[example, "<span>Primary, alias of default</span>"]]

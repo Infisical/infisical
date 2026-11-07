@@ -9,5 +9,15 @@
   },
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
+  },
+  "trigger-start-aligned": {
+    "src/pages/v4/access/project/temporary-access.tsx": 1,
+    "src/pages/v4/access/roles/role-detail.tsx": 1,
+    "src/pages/v4/cert-manager/CertificateDetailsByIDPage/CertificateDetailsByIDPage.tsx": 2,
+    "src/pages/v4/organization/ProjectsPage/ProjectTypePage/ProjectTypePage.tsx": 1,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/commits/commit-history-sheet.tsx": 3,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/environment-picker.tsx": 1,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/row-actions/folder-access-sheet.tsx": 3,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/toolbar.tsx": 1
   }
 }

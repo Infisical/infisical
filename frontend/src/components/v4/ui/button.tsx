@@ -82,6 +82,7 @@ function Button({
   selected,
   disabledReason,
   cornerBadge,
+  layout,
   children,
   onClickCapture,
   onPointerDownCapture,
@@ -110,6 +111,8 @@ function Button({
     disabledReason?: string;
     /** A small Badge pinned to the top-right corner, straddling the border. It is part of the accessible name and never changes the button's size or hit area. */
     cornerBadge?: React.ReactNode;
+    /** trigger: the label sits at the start and truncates and a chevron (iconRight, chev-down by default) sits at the end, with SelectTrigger's padding, for a Button that opens a menu, popover or picker. */
+    layout?: "trigger";
   } & { ref?: React.Ref<React.ComponentRef<"button">> }) {
   const Comp = asChild ? MotionSlot : MotionButton;
   const loading = loadingProp ?? false;
@@ -140,8 +143,21 @@ function Button({
   if (size === "xs" || size === "icon-xs") iconSize = 12;
   else if (size === "md" || size === "lg") iconSize = 16;
   else if (size === "icon-row") iconSize = undefined;
+  const trigger = layout === "trigger";
   const content = (label: React.ReactNode) => {
-    const labelGroup = (
+    const labelGroup = trigger ? (
+      <>
+        {icon && <Icon name={icon} size={iconSize} data-button-icon="" />}
+        <span data-slot="button-label" className={geometry.triggerLabel}>
+          {label}
+        </span>
+        <Icon
+          name={iconRight ?? "chev-down"}
+          data-slot="button-chevron"
+          className={geometry.triggerChevron}
+        />
+      </>
+    ) : (
       <>
         {icon && <Icon name={icon} size={iconSize} data-button-icon="" />}
         {iconOnly && (icon || iconRight) ? <span className="sr-only">{label}</span> : label}
@@ -151,7 +167,9 @@ function Button({
     if (loadingProp === undefined) return labelGroup;
     return (
       <>
-        <span className={styles.labelGroup}>{labelGroup}</span>
+        <span data-slot="button-label-group" className={styles.labelGroup}>
+          {labelGroup}
+        </span>
         {progress}
       </>
     );
@@ -199,6 +217,7 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      data-layout={layout}
       type={asChild ? type : (type ?? "button")}
       {...props}
       disabled={reason ? undefined : props.disabled}
@@ -215,6 +234,7 @@ function Button({
         buttonVariants({ variant, size }),
         iconOnly && geometry.iconOnly,
         badge && geometry.badged,
+        trigger && geometry.triggerLayout,
         loadingProp !== undefined && !iconOnly && styles.pendable,
         loading && styles.pending,
         className

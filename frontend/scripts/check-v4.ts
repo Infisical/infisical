@@ -141,6 +141,31 @@ export const disabledButtonsInTooltips = (text: string) => {
   return [...found].map(([index, match]) => ({ index, text: match }));
 };
 
+const chevronGlyph =
+  /\b(?:iconRight|icon|name)=(?:"chev-(?:down|ud)"|\{\s*["'`]chev-(?:down|ud)["'`]\s*\})|<(?:ChevronDown|ChevronsUpDown)\b|\{(?:ChevronDown|ChevronsUpDown)(?:Icon)?\}/;
+
+/** Buttons with a chevron inside a PopoverTrigger or DropdownMenuTrigger that do not use layout="trigger", so their label and chevron center instead of sitting at the start and end. */
+export const chevronTriggersWithoutLayout = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(/<(PopoverTrigger|DropdownMenuTrigger)(?=[\s>])/g)].forEach((open) => {
+    const start = jsxTagEnd(text, open.index ?? 0);
+    if (text[start - 1] === "/") return;
+    const close = text.indexOf(`</${open[1]}>`, start);
+    if (close < 0) return;
+    [...text.slice(start, close).matchAll(/<Button(?=[\s>])/g)].forEach((button) => {
+      const at = start + (button.index ?? 0);
+      const tagEnd = jsxTagEnd(text, at);
+      const tag = text.slice(at, tagEnd + 1);
+      if (/\slayout=(?:"trigger"|\{\s*["'`]trigger["'`]\s*\})/.test(tag)) return;
+      if (/\siconOnly\b/.test(tag) || /\ssize=(?:"icon|\{\s*["'`]icon)/.test(tag)) return;
+      const bodyEnd = tag.endsWith("/>") ? tagEnd : text.indexOf("</Button>", tagEnd);
+      const element = text.slice(at, bodyEnd < 0 ? tagEnd : bodyEnd);
+      if (chevronGlyph.test(element)) found.set(at, tag.split("\n")[0].trim());
+    });
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
 const framedParents = /<(Card|List|ApprovalQueue|DataTable|CodeBlock)(?=[\s>/])/g;
 const framedChildren = /<(Card|List|ApprovalQueue)(?=[\s>/])/g;
 const variantValue = /\svariant=(?:"(\w+)"|\{\s*["'`](\w+)["'`]\s*\})/;
@@ -528,6 +553,14 @@ export const v4Checks: readonly V4Check[] = [
       "A natively disabled Button gets no pointer or focus events, so a Tooltip around it never opens. Pass the reason as disabledReason, which keeps the Button focusable and shows the reason in its own tooltip.",
     appliesTo: isAuthored,
     source: disabledButtonsInTooltips
+  },
+  {
+    id: "trigger-start-aligned",
+    rule: "trigger-start-aligned",
+    message:
+      'A Button that opens a menu, popover or picker with a chevron uses layout="trigger": its label sits at the start and truncates and the chevron sits at the end, like SelectTrigger. Pass layout="trigger" and drop iconRight="chev-down" (the layout draws the chevron).',
+    appliesTo: isAuthored,
+    source: chevronTriggersWithoutLayout
   },
   {
     id: "nested-frame",

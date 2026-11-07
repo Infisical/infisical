@@ -386,7 +386,7 @@ const AccountMenu = ({ account }: { account: TopBarAccount }) => {
           variant="ghost"
           size="sm"
           icon="user"
-          iconRight="chev-down"
+          layout="trigger"
           aria-label={`${account.label ?? "Account"}, ${account.name}`}
         >
           {account.name}

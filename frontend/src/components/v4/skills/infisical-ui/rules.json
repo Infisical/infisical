@@ -1123,6 +1123,19 @@
       "exceptions": "The check reads Tooltip content props and TooltipContent bodies in the same file. A long or copyable value with no interactive element is reviewed by hand."
     },
     {
+      "id": "trigger-start-aligned",
+      "title": "Triggers start-align their value",
+      "instruction": "Every trigger that shows a value and a chevron (Select, Combobox, MultiSelect, and a Button that opens a menu, popover or picker) puts its label at the start, truncates it, and puts the chevron at the end. A Button acting as that trigger passes layout=\"trigger\", which draws the chevron and takes SelectTrigger's insets; never center the value or add a chevron to a plain Button.",
+      "good": "Button variant=\"outline\" layout=\"trigger\" at a fixed width inside a PopoverTrigger, showing Production at the start and the chevron at the end, beside a Select of the same width.",
+      "avoid": "Button iconRight=\"chev-down\" at a fixed width, which centers Production and its chevron in the middle of the box.",
+      "detect": {
+        "by": "lint",
+        "check": "trigger-start-aligned"
+      },
+      "category": "Visual",
+      "exceptions": "Icon-only chevron Buttons have no label to align. The check reads Buttons written inside a PopoverTrigger or DropdownMenuTrigger in the same file; a trigger Button rendered by a child component is reviewed by hand."
+    },
+    {
       "id": "selection-floating-action-bar",
       "title": "Bulk selection uses the floating action bar",
       "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content.",

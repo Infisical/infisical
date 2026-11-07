@@ -80,6 +80,25 @@ Source evidence:
 - src/components/v4/ui/button.tsx
 - src/components/v4/ui/button-geometry.module.css
 
+### button-trigger-layout
+
+Owner: button.
+
+When a Button opens a menu, popover or picker and shows a value with a chevron, such as an environment picker or an account menu.
+
+Do: Pass layout="trigger" and give the Button its width; the label starts, truncates and the chevron sits at the end.
+
+Avoid: Put iconRight="chev-down" on a plain Button, or add justify-content: space-between to its class.
+
+Why: A plain Button centers its content, so in a fixed width the value and chevron float in the middle while a Select beside it starts its label at the edge.
+
+Checked by: review only. Look for: Open the menu in the Trigger layout example at a fixed width: the value starts at the same inset as the Select beside it and the chevron ends at its edge. npm run ui:lint (trigger-start-aligned) flags the plain Button form.
+
+Source evidence:
+- src/components/v4/ui/button.tsx
+- src/components/v4/ui/button-geometry.module.css
+- src/pages/design-system/examples/button/trigger-layout.tsx
+
 ### button-disabled-reason
 
 Owner: button.
@@ -127,6 +146,7 @@ Exports: Button, buttonVariants. Source TypeScript defines the API.
 - Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the light accent face (one yellow in both themes) with owned inset illumination and an on-accent label in both themes, for a page's one primary create action in its header or toolbar and for approval and grant moments, never as a second primary. Ghost hover is the shared hover overlay (ink at hover-mix: 6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad-fill fill and border with a white on-bad label at 600 in both themes, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.
 - The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. icon-row is the table row action: a size-target-row (28px) box with a size-glyph (16px) glyph, separate from icon-sm so field and nested actions keep their 12 and 14px glyphs. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target.
 - Every variant except link keeps the default cursor, also when asChild renders an anchor: its fill, border or hover ground already shows that it acts. link takes the pointer cursor, like any text link.
+- layout trigger is for a Button that opens a menu, popover or picker and shows its current value: the label sits at the start and truncates with an ellipsis, and a 16px chevron (chev-down, or iconRight) sits at the end, muted on outline, secondary and ghost. Insets match SelectTrigger at each size (10, 12 and 14px at default, md and lg) with the same 6px gap, so a picker Button and a Select read as one family. Give it a width; without one it hugs its label.
 - cornerBadge pins a small Badge to the top-right corner: its end edge sits on the button's end edge and its middle on the top border, so it straddles the border without changing the button's size or hit area. It takes no pointer events, stays put while the label presses or loads, and sits on a surface ground so a translucent tone never shows the border through it.
 
 ## Accessibility
@@ -455,6 +475,87 @@ export default function Example() {
         {"Generate keeps the default type; Save sets type submit"}
       </figcaption>
     </figure>
+  );
+}
+```
+
+### Trigger layout
+
+Save this example at `src/pages/design-system/examples/button/trigger-layout.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/button, @infisical/dropdown-menu, @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger
+} from "../../../../components/v4/ui/dropdown-menu";
+import { Select } from "../../../../components/v4/ui/select";
+
+const environments = [
+  { value: "production", label: "Production" },
+  { value: "staging", label: "Staging" },
+  { value: "preview", label: "Preview for pull request 4821, payments-api checkout redesign" }
+];
+
+function EnvironmentMenu({ initial }: { initial: string }) {
+  const [value, setValue] = useState(initial);
+  const label = environments.find((environment) => environment.value === value)?.label;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          layout="trigger"
+          className="w-56"
+          aria-label={`Environment: ${label}`}
+        >
+          {label}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuRadioGroup value={value} onValueChange={setValue}>
+          {environments.map((environment) => (
+            <DropdownMenuRadioItem key={environment.value} value={environment.value}>
+              {environment.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <EnvironmentMenu initial="production" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Button layout trigger"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="w-56">
+            <Select aria-label="Environment" options={environments} defaultValue="production" />
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"SelectTrigger"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <EnvironmentMenu initial="preview" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Long value truncates"}</figcaption>
+      </figure>
+    </div>
   );
 }
 ```

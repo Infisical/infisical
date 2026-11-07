@@ -76,6 +76,7 @@ Exports: Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScro
 - Default and sm are 32px aliases; md is 36px and lg is 40px.
 - Select accepts grouped options, disabled entries, label/placeholder, size and invalid state, or retained Radix parts. value/defaultValue and onChange/onValueChange use the selected string.
 - The selected trigger contains the option label only. Option descriptions remain readable in the menu and are associated through aria-describedby; they do not change the stored value.
+- The trigger label sits at the start and truncates, and the chevron sits at the end, inset like a field (10, 12 and 14px at default, md and lg, with a 6px gap). Every select-like trigger follows it: Combobox and MultiSelect share the trigger recipe, and a Button that opens a picker uses layout trigger to match.
 - The trigger fills its Field like an Input, and the menu opens at the trigger's width. menuWidth overrides the menu width; keep it at least the trigger's width.
 - Each option is one 32px row: the label on the left, its description muted and right-aligned on the same row, and the check for the chosen option at the end. A long label or description truncates.
 
