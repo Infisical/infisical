@@ -5,19 +5,12 @@ import { ApprovalQueue, type ApprovalRequest } from "@app/components/v4/patterns
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import { Detail, DetailLabel, DetailValue } from "@app/components/v4/ui/detail";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { DetailLayout, Inline, Stack } from "@app/components/v4/ui/layout";
 import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@app/components/v4/ui/table";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { StatusText } from "@app/components/v4/ui/text";
 import {
@@ -118,6 +111,41 @@ const reviewLabel: Record<ApprovalStatus, string> = {
   [ApprovalStatus.REVOKED]: "Revoked"
 };
 
+type Commit = TSecretApprovalRequest["commits"][number];
+type Approver = TSecretApprovalRequest["policy"]["approvers"][number];
+
+const approverName = (approver: Approver) =>
+  [approver.firstName, approver.lastName].filter(Boolean).join(" ") || approver.email;
+
+const changeColumns: DataTableColumn<Commit>[] = [
+  {
+    id: "change",
+    header: "Change",
+    width: 120,
+    render: (commit) => (
+      <Badge tone={opTone[commit.op]}>
+        {verbs[commit.op].charAt(0).toUpperCase() + verbs[commit.op].slice(1)}
+      </Badge>
+    )
+  },
+  {
+    id: "secret",
+    header: "Secret",
+    grow: true,
+    text: (commit) => commit.secretKey,
+    render: (commit) => <code>{commit.secretKey}</code>
+  },
+  {
+    id: "version",
+    header: "Version",
+    width: 96,
+    render: (commit) =>
+      (commit.secret?.version ?? commit.version) === undefined
+        ? "New"
+        : `v${commit.secret?.version ?? commit.version}`
+  }
+];
+
 const RequestDetail = ({
   projectId,
   requestId,
@@ -144,6 +172,19 @@ const RequestDetail = ({
       setNotice(failure instanceof Error ? failure.message : "The action failed. Try again.");
     }
   };
+  const reviewerColumns: DataTableColumn<Approver>[] = [
+    { id: "approver", header: "Approver", grow: true, text: approverName, render: approverName },
+    {
+      id: "review",
+      header: "Review",
+      width: 160,
+      render: (approver) =>
+        reviewLabel[
+          request?.reviewers.find((entry) => entry.userId === approver.userId)?.status ??
+            ApprovalStatus.PENDING
+        ]
+    }
+  ];
   const back = (
     <div>
       <Button variant="link" size="sm" icon="chev-left" asChild>
@@ -251,62 +292,22 @@ const RequestDetail = ({
       >
         <Stack gap={24}>
           <Card variant="framed" title="Changes" flush>
-            <Table aria-label="Secret changes">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Change</TableHead>
-                  <TableHead>Secret</TableHead>
-                  <TableHead>Version</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {request.commits.map((commit) => (
-                  <TableRow key={commit.id}>
-                    <TableCell>
-                      <Badge tone={opTone[commit.op]}>
-                        {verbs[commit.op].charAt(0).toUpperCase() + verbs[commit.op].slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <code>{commit.secretKey}</code>
-                    </TableCell>
-                    <TableCell>
-                      {(commit.secret?.version ?? commit.version) === undefined
-                        ? "New"
-                        : `v${commit.secret?.version ?? commit.version}`}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              label="Secret changes"
+              rows={request.commits}
+              columns={changeColumns}
+              getRowId={(commit) => commit.id}
+              rowLabel={(commit) => commit.secretKey}
+            />
           </Card>
           <Card variant="framed" title="Reviewers" flush>
-            <Table aria-label="Reviewers">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Approver</TableHead>
-                  <TableHead>Review</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {request.policy.approvers.map((approver) => {
-                  const reviewer = request.reviewers.find(
-                    (entry) => entry.userId === approver.userId
-                  );
-                  return (
-                    <TableRow key={approver.userId}>
-                      <TableCell>
-                        {[approver.firstName, approver.lastName].filter(Boolean).join(" ") ||
-                          approver.email}
-                      </TableCell>
-                      <TableCell>
-                        {reviewLabel[reviewer?.status ?? ApprovalStatus.PENDING]}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <DataTable
+              label="Reviewers"
+              rows={request.policy.approvers}
+              columns={reviewerColumns}
+              getRowId={(approver) => approver.userId}
+              rowLabel={approverName}
+            />
           </Card>
           {open && (
             <Inline gap={8}>

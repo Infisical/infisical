@@ -308,6 +308,7 @@ const GroupMembersCard = ({
             pagination={
               !query.isPending && totalCount > 0 ? (
                 <Pagination
+                  variant="compact"
                   page={page}
                   total={totalCount}
                   pageSize={perPage}
@@ -452,6 +453,7 @@ export const ProjectGroupDetail = () => {
           <Card variant="framed" title="Details">
             <DataList
               variant="props"
+              density="compact"
               items={[
                 ["Name", group.name],
                 [

@@ -15,7 +15,7 @@ import { format } from "oxfmt";
 import { z } from "zod";
 
 import type { ComponentDefinition, RuleDetect } from "../src/components/v4/contracts/types";
-import { v4LiveOrgPath, v4ThemeStorage } from "../src/components/v4/lib/boot-theme";
+import { v4LiveOrgPath, v4ThemeStorage } from "../src/components/v4/lib/boot-theme-keys";
 import { defaultV4Theme } from "../src/components/v4/lib/theme-registry";
 import { legacyV4Themes } from "../src/components/v4/lib/themes";
 import { v4Checks } from "./check-v4";

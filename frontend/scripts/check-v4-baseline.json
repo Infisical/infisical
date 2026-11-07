@@ -10,42 +10,10 @@
   "fixed-bulk-bar": {
     "src/pages/v4/kms/OverviewPage/OverviewPage.tsx": 1
   },
-  "pagination-outside-frame": {
-    "src/pages/v4/access/org/auth-templates.tsx": 1,
-    "src/pages/v4/access/org/group-detail.tsx": 1,
-    "src/pages/v4/access/org/groups.tsx": 1,
-    "src/pages/v4/access/org/identities.tsx": 1,
-    "src/pages/v4/access/org/members.tsx": 1,
-    "src/pages/v4/access/org/project-memberships.tsx": 1,
-    "src/pages/v4/access/org/roles.tsx": 1,
-    "src/pages/v4/access/project/group-detail.tsx": 1,
-    "src/pages/v4/access/project/groups.tsx": 1,
-    "src/pages/v4/access/project/identities.tsx": 1,
-    "src/pages/v4/access/project/members.tsx": 1,
-    "src/pages/v4/access/project/roles.tsx": 1,
-    "src/pages/v4/access/project/service-tokens.tsx": 1
-  },
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
   },
-  "raw-table-in-card": {
-    "src/pages/v4/cert-manager/DashboardPage/components/DonutCard.tsx": 1,
-    "src/pages/v4/secret-manager/SecretApprovalsPage/SecretApprovalsPage.tsx": 2
-  },
   "row-activate-navigates": {
-    "src/pages/v4/access/org/auth-templates.tsx": 1,
-    "src/pages/v4/access/org/groups.tsx": 1,
-    "src/pages/v4/access/org/identities.tsx": 1,
-    "src/pages/v4/access/org/member-detail.tsx": 1,
-    "src/pages/v4/access/org/members.tsx": 1,
-    "src/pages/v4/access/org/project-memberships.tsx": 1,
-    "src/pages/v4/access/org/roles.tsx": 1,
-    "src/pages/v4/access/project/groups.tsx": 1,
-    "src/pages/v4/access/project/identities.tsx": 1,
-    "src/pages/v4/access/project/identity-roles.tsx": 1,
-    "src/pages/v4/access/project/member-roles.tsx": 1,
-    "src/pages/v4/access/project/members.tsx": 1,
-    "src/pages/v4/access/project/roles.tsx": 1,
     "src/pages/v4/cert-manager/InventoryPage/InventoryPage.tsx": 1
   }
 }

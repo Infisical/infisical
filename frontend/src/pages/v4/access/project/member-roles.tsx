@@ -27,6 +27,7 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { useV4Adapter } from "../../data/adapters";
@@ -92,8 +93,8 @@ export const MemberRolesSection = ({
   projectId: string;
   isSelf: boolean;
 }) => {
-  const scope = useProjectScope();
   const go = useGo();
+  const scope = useProjectScope();
   const updateRoles = useV4Adapter("access").useUpdateProjectUserRoles();
   const { canEdit, assignable } = useMemberRoleAccess(projectId, member.user.email);
   const [adding, setAdding] = useState<number>();
@@ -141,7 +142,14 @@ export const MemberRolesSection = ({
       id: "role",
       header: "Role",
       grow: true,
-      render: (grant) => <span>{grantLabel(grant)}</span>
+      render: (grant) => (
+        <RowLink
+          {...go.link(accessLinks.projectRole(scope, grantSlug(grant)))}
+          title={grantLabel(grant)}
+        >
+          {grantLabel(grant)}
+        </RowLink>
+      )
     },
     {
       id: "duration",
@@ -189,7 +197,6 @@ export const MemberRolesSection = ({
             rowActions={isSelf ? undefined : rowActions}
             getRowId={(grant) => grant.id}
             rowLabel={(grant) => grantLabel(grant)}
-            onRowActivate={(grant) => go(accessLinks.projectRole(scope, grantSlug(grant)))}
           />
         ) : (
           <EmptyState size="sm" title="This user doesn't have any roles" />

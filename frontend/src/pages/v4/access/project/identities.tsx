@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import { Button } from "@app/components/v4/ui/button";
 import {
   DataTable,
@@ -15,8 +16,10 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Input } from "@app/components/v4/ui/input";
+import { Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
@@ -28,7 +31,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
-import { Gate, ListToolbar, RESTRICTED, RoleBadges, type Sort } from "../ui";
+import { Gate, RESTRICTED, RoleBadges, type Sort } from "../ui";
 import { AddProjectIdentitySheet } from "./identity-add-sheet";
 import { useAuthMethodFlows } from "./identity-auth";
 import {
@@ -57,15 +60,19 @@ const useDebounced = <T,>(value: T, delay = 300) => {
 };
 
 export const ProjectIdentitiesTab = () => {
+  const go = useGo();
   const scope = useProjectScope();
   const { orgId, projectId } = scope;
   const access = useV4Adapter("access");
-  const go = useGo();
   const { permission } = useProjectPermission(projectId);
   const { data: projectRoles = [] } = access.useProjectRoles(projectId);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search);
-  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const roleFilter = useMemo(
+    () => filters.find((filter) => filter.field === "role")?.values ?? [],
+    [filters]
+  );
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -111,10 +118,17 @@ export const ProjectIdentitiesTab = () => {
       render: (row) => {
         const lockout = lockoutText(row.identity);
         return (
-          <Inline gap={8} wrap={false}>
-            <span>{row.identity.name}</span>
-            {lockout && <LockedBadge label={lockout} />}
-          </Inline>
+          <RowLink
+            {...go.link(accessLinks.projectIdentity(scope, row.identity.id))}
+            title={row.identity.name}
+          >
+            {row.identity.name}
+            {lockout && (
+              <span className={accessStyles.linkBadges}>
+                <LockedBadge label={lockout} />
+              </span>
+            )}
+          </RowLink>
         );
       }
     },
@@ -212,81 +226,89 @@ export const ProjectIdentitiesTab = () => {
 
   return (
     <Stack gap={16}>
-      <div className={accessStyles.toolbar}>
-        <div className={accessStyles.grow}>
-          <ListToolbar
-            search={search}
-            onSearch={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-            placeholder="Search project machine identities by name..."
-            filter={{
-              label: "Filter by project role",
-              options: projectRoles.map((role) => ({ value: role.slug, label: role.name })),
-              selected: roleFilter,
-              onToggle: (slug) => {
-                setRoleFilter((current) =>
-                  current.includes(slug) ? current.filter((r) => r !== slug) : [...current, slug]
-                );
-                setPage(1);
-              }
-            }}
-          />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button
-            variant="accent"
-            icon="plus"
-            disabled={!canCreate}
-            onClick={() => setAdding(true)}
-          >
-            Add machine identity to project
-          </Button>
-        </Gate>
-      </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Project machine identities"
-          rows={rows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(row) => row.identity.id}
-          rowLabel={(row) => row.identity.name}
-          loading={isPending}
-          loadingRows={10}
-          sort={sort}
-          onSortChange={(next) => {
-            setSort(next);
-            setPage(1);
-          }}
-          onRowActivate={(row) => go(accessLinks.projectIdentity(scope, row.identity.id))}
-          empty={
-            searching ? (
-              <EmptyState size="sm" icon="search" title="No machine identities match search" />
-            ) : (
-              <EmptyState
-                size="sm"
-                icon="machine"
-                title="No machine identities have been added to this project"
-              />
-            )
+      <FilterBar
+        label="Project machine identity filters"
+        fields={[
+          {
+            key: "role",
+            label: "Project role",
+            type: "multi-select",
+            options: projectRoles.map((role) => ({ value: role.slug, label: role.name }))
           }
-        />
-        {!isPending && totalCount > 0 && (
-          <Pagination
-            page={page}
-            total={totalCount}
-            pageSize={perPage}
-            pageSizeOptions={[10, 20, 50, 100]}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPerPage(size);
+        ]}
+        value={filters}
+        onChange={(next) => {
+          setFilters(next);
+          setPage(1);
+        }}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search project machine identities by name..."
+            placeholder="Search project machine identities by name..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
               setPage(1);
             }}
           />
-        )}
-      </Stack>
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => setAdding(true)}
+            >
+              Add machine identity to project
+            </Button>
+          </Gate>
+        }
+      />
+      <DataTable
+        label="Project machine identities"
+        rows={rows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(row) => row.identity.id}
+        rowLabel={(row) => row.identity.name}
+        loading={isPending}
+        loadingRows={10}
+        sort={sort}
+        onSortChange={(next) => {
+          setSort(next);
+          setPage(1);
+        }}
+        empty={
+          searching ? (
+            <EmptyState size="sm" icon="search" title="No machine identities match search" />
+          ) : (
+            <EmptyState
+              size="sm"
+              icon="machine"
+              title="No machine identities have been added to this project"
+            />
+          )
+        }
+        pagination={
+          !isPending && totalCount > 0 ? (
+            <Pagination
+              label="Machine identity pages"
+              variant="compact"
+              page={page}
+              total={totalCount}
+              pageSize={perPage}
+              pageSizeOptions={[10, 20, 50, 100]}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPerPage(size);
+                setPage(1);
+              }}
+            />
+          ) : undefined
+        }
+      />
       <AddProjectIdentitySheet
         orgId={orgId}
         projectId={projectId}

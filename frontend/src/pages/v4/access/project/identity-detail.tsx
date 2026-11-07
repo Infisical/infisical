@@ -299,6 +299,7 @@ const DetailsCard = ({
     >
       <DataList
         variant="props"
+        density="compact"
         items={[
           ["Name", identity.name],
           [

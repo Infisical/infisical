@@ -1242,8 +1242,8 @@
       "id": "sheet-row-open",
       "title": "Rows that open a sheet use onRowActivate and a named button",
       "category": "Interaction",
-      "instruction": "When activating a row opens the record in a Sheet or Dialog on the same page, pass onRowActivate and render the primary cell's name as a link Button that runs the same handler, so keyboard and screen reader users meet a named control. That cell is not a RowLink, so no chevron is drawn: a chevron says the row leaves the page. Add no inline Open or chevron action for the same sheet.",
-      "good": "A findings table whose row opens the finding's sheet on click or Enter, with the finding's name as a link Button in the primary cell and More alone in the actions tail.",
+      "instruction": "When activating a row opens the record in a Sheet or Dialog on the same page, pass onRowActivate and render the primary cell's name as a quiet link Button, variant=\"link\" with underline=\"hover\", that runs the same handler. The name reads as plain text at rest and underlines on hover and keyboard focus, and keyboard and screen reader users meet a named control. That cell is not a RowLink, so no chevron is drawn: a chevron says the row leaves the page. Add no inline Open or chevron action for the same sheet.",
+      "good": "A findings table whose row opens the finding's sheet on click or Enter, with the finding's name as a quiet link Button that underlines on hover in the primary cell and More alone in the actions tail.",
       "avoid": "A chevron button column that opens the sheet, an inline Open action that repeats the row's own target, or a RowLink with its chevron on a row that never leaves the page.",
       "detect": {
         "by": "review",

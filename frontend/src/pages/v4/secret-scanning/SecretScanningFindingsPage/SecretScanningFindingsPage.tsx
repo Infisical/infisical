@@ -182,7 +182,11 @@ const Findings = ({ projectId }: { projectId: string }) => {
         <Inline gap={12} align="center" wrap={false}>
           <Media icon="git" size="sm" />
           <Stack gap={0} style={{ minWidth: 0 }}>
-            <code>{row.resourceName}</code>
+            <div>
+              <Button variant="link" underline="hover" onClick={() => setOpened(row)}>
+                <code>{row.resourceName}</code>
+              </Button>
+            </div>
             <Meta style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
               {row.details.file}:{row.details.startLine}
             </Meta>
@@ -313,9 +317,6 @@ const Findings = ({ projectId }: { projectId: string }) => {
           setSelected([]);
         }}
         rowActions={{
-          inline: [
-            { label: "Open finding", icon: "chev-right", onSelect: (row) => setOpened(row) }
-          ],
           menuLabel: "Status actions",
           renderMenu: (row) => (
             <>
@@ -386,6 +387,7 @@ const Findings = ({ projectId }: { projectId: string }) => {
         }
         actionBar={
           <FloatingActionBar
+            placement="contained"
             count={selected.length}
             total={findings.length}
             onSelectAll={() => setSelected(findings.map((row) => row.id))}
