@@ -12,6 +12,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
+import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Select } from "@app/components/v4/ui/select";
 import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
@@ -32,6 +33,7 @@ import {
 
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { orgHref } from "../../links";
 
 export const daysLeft = (date: string) =>
   Math.round((new Date(date).getTime() - Date.now()) / 864e5);
@@ -146,6 +148,18 @@ export const useCertManagerProjectId = (orgId: string) => {
     : null;
   return { projectId, isPending };
 };
+
+export const CertManagerNotSetUp = ({ orgId }: { orgId: string }) => (
+  <EmptyState
+    icon="cert"
+    title="Certificate Manager is not set up"
+    actions={
+      <Button variant="outline" asChild>
+        <a href={orgHref(orgId, "/projects/cert-manager")}>Set up</a>
+      </Button>
+    }
+  />
+);
 
 export const RevokeCertificateDialog = ({
   cert,

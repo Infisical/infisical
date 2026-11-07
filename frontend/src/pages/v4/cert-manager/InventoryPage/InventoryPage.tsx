@@ -34,7 +34,7 @@ import type { TCertificate } from "@app/hooks/api/certificates/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import type { TListCertificatesDTO } from "../../data/certificates/contract";
-import { orgHref, v4Path } from "../../links";
+import { v4Path } from "../../links";
 import {
   certificateBlocks,
   certificateName,
@@ -43,6 +43,7 @@ import {
   ExpiryBadge,
   RevokeCertificateDialog,
   shortDate,
+  CertManagerNotSetUp,
   useCertManagerProjectId
 } from "../components/certificate";
 
@@ -177,18 +178,7 @@ export const InventoryPage = () => {
   });
 
   if (isResolving) return <Loader size="page" label="Loading certificates" />;
-  if (!projectId)
-    return (
-      <EmptyState
-        icon="cert"
-        title="Certificate Manager is not set up"
-        actions={
-          <Button variant="outline" asChild>
-            <a href={orgHref(orgId, "/projects/cert-manager")}>Set up</a>
-          </Button>
-        }
-      />
-    );
+  if (!projectId) return <CertManagerNotSetUp orgId={orgId} />;
 
   const rows = data?.certificates ?? [];
   const totalCount = data?.totalCount ?? 0;
