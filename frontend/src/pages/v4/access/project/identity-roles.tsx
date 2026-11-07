@@ -26,19 +26,7 @@ import {
 } from "@app/components/v4/ui/dialog";
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@app/components/v4/ui/sheet";
 import { ProjectPermissionIdentityActions } from "@app/context/ProjectPermissionContext/types";
 import type { TProjectRole } from "@app/hooks/api/roles/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared/types";
@@ -51,21 +39,14 @@ import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
 import { identitySubject, type ProjectIdentityMembership } from "./identity-common";
+import { AddRoleSheet, RoleGrantRow } from "./role-grant";
 import { useProjectScope } from "./scope";
-import {
-  draftOf,
-  DurationBadge,
-  DurationPicker,
-  type GrantDraft,
-  permanent,
-  toRolesDto
-} from "./temporary-access";
-
-import styles from "./identity.module.css";
+import { draftOf, DurationBadge, type GrantDraft, permanent, toRolesDto } from "./temporary-access";
 
 type ProjectRoleOption = Pick<TProjectRole, "slug" | "name">;
 
 const EDIT_ROLES_REASON = "You don't have permission to edit this identity's roles";
+const ALL_ASSIGNED = "This machine identity already has every project role";
 
 type Grant = ProjectIdentityMembership["roles"][number];
 
@@ -79,161 +60,6 @@ const useSetRoles = (projectId: string, identityId: string) => {
         role.isTemporary ? { ...role, temporaryMode: TemporaryPermissionMode.Relative } : role
       )
     });
-};
-
-const RoleAssignmentRow = ({
-  draft,
-  roles,
-  showLabels,
-  removable = false,
-  onChange,
-  onRemove
-}: {
-  draft: GrantDraft;
-  roles: readonly ProjectRoleOption[];
-  showLabels: boolean;
-  removable?: boolean;
-  onChange: (next: GrantDraft) => void;
-  onRemove?: () => void;
-}) => (
-  <div className={styles.roleRow}>
-    <div className={styles.roleField}>
-      <Field label={showLabels ? "Role" : undefined}>
-        <Select
-          label="Role"
-          value={draft.role}
-          onChange={(role) => onChange({ ...draft, role })}
-          options={roles.map((role) => ({ value: role.slug, label: role.name }))}
-        />
-      </Field>
-    </div>
-    <div className={styles.durationField}>
-      <Field label={showLabels ? "Duration" : undefined}>
-        <DurationPicker grant={draft} label="Duration" onChange={onChange} />
-      </Field>
-    </div>
-    {removable && (
-      <Button
-        type="button"
-        variant="danger-ghost"
-        icon="trash"
-        iconOnly
-        disabled={!onRemove}
-        onClick={onRemove}
-      >
-        Remove role
-      </Button>
-    )}
-  </div>
-);
-
-const EditRolesSheet = ({
-  projectId,
-  membership,
-  roles,
-  canEdit,
-  open,
-  onOpenChange
-}: {
-  projectId: string;
-  membership: ProjectIdentityMembership;
-  roles: readonly ProjectRoleOption[];
-  canEdit: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) => {
-  const setRoles = useSetRoles(projectId, membership.identity.id);
-  const initial = membership.roles.map(draftOf);
-  const [drafts, setDrafts] = useState(() =>
-    membership.roles.map((grant) => ({ key: grant.id, grant: draftOf(grant) }))
-  );
-  const [pending, setPending] = useState(false);
-  const dirty = JSON.stringify(drafts.map((draft) => draft.grant)) !== JSON.stringify(initial);
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent pending={pending}>
-        <SheetHeader>
-          <SheetTitle>Roles</SheetTitle>
-          <SheetDescription>Pick one or more built-in or custom project roles.</SheetDescription>
-        </SheetHeader>
-        <SheetBody>
-          <form
-            id="project-identity-roles"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              setPending(true);
-              try {
-                await setRoles(drafts.map((draft) => draft.grant));
-                saved("Successfully updated roles");
-                onOpenChange(false);
-              } catch (error) {
-                failed("Failed to update roles", error);
-              } finally {
-                setPending(false);
-              }
-            }}
-          >
-            <Stack gap={12}>
-              {drafts.map((draft, index) => (
-                <RoleAssignmentRow
-                  key={draft.key}
-                  draft={draft.grant}
-                  roles={roles}
-                  showLabels={index === 0}
-                  removable
-                  onChange={(grant) =>
-                    setDrafts((current) =>
-                      current.map((item) => (item.key === draft.key ? { ...item, grant } : item))
-                    )
-                  }
-                  onRemove={
-                    drafts.length > 1
-                      ? () =>
-                          setDrafts((current) => current.filter((item) => item.key !== draft.key))
-                      : undefined
-                  }
-                />
-              ))}
-              <div>
-                <Gate allowed={canEdit}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    icon="plus"
-                    disabled={!canEdit || roles.length === 0}
-                    onClick={() =>
-                      setDrafts((current) => [
-                        ...current,
-                        { key: crypto.randomUUID(), grant: permanent(roles[0].slug) }
-                      ])
-                    }
-                  >
-                    Add role
-                  </Button>
-                </Gate>
-              </div>
-            </Stack>
-          </form>
-        </SheetBody>
-        <SheetFooter>
-          <Inline gap={8} justify="end">
-            <Button variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              type="submit"
-              form="project-identity-roles"
-              loading={pending}
-              disabled={!dirty || !canEdit || drafts.length === 0}
-            >
-              Save roles
-            </Button>
-          </Inline>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
-  );
 };
 
 const EditRoleDialog = ({
@@ -261,7 +87,7 @@ const EditRoleDialog = ({
         <DialogHeader>
           <DialogTitle>Edit role</DialogTitle>
         </DialogHeader>
-        <RoleAssignmentRow draft={draft} roles={roles} showLabels onChange={setDraft} />
+        <RoleGrantRow grant={draft} options={roles} onChange={setDraft} />
         <DialogFooter>
           <Button
             variant="primary"
@@ -302,7 +128,7 @@ export const IdentityRoleDetailsSection = ({
   const { permission } = useProjectPermission(projectId);
   const { data: roles = [] } = useV4Adapter("access").useProjectRoles(projectId);
   const setRoles = useSetRoles(projectId, membership.identity.id);
-  const [editing, setEditing] = useState<number>();
+  const [adding, setAdding] = useState<number>();
   const [modifying, setModifying] = useState<Grant>();
   const [removing, setRemoving] = useState<Grant>();
   const [removePending, setRemovePending] = useState(false);
@@ -310,16 +136,22 @@ export const IdentityRoleDetailsSection = ({
     ProjectPermissionIdentityActions.Edit,
     identitySubject(membership.identity.id)
   );
-  const editButton = (variant: "outline" | "primary") => (
-    <Gate allowed={canEdit} reason={EDIT_ROLES_REASON}>
+  const addable = roles.filter(
+    (role) => !membership.roles.some((grant) => grantSlug(grant) === role.slug)
+  );
+  let addReason: string | undefined;
+  if (!canEdit) addReason = EDIT_ROLES_REASON;
+  else if (!addable.length) addReason = ALL_ASSIGNED;
+  const addButton = (
+    <Gate allowed={!addReason} reason={addReason}>
       <Button
-        variant={variant}
+        variant="accent"
         size="xs"
-        icon="settings"
-        disabled={!canEdit}
-        onClick={() => setEditing(Date.now())}
+        icon="plus"
+        disabled={Boolean(addReason)}
+        onClick={() => setAdding(Date.now())}
       >
-        Edit roles
+        Add role
       </Button>
     </Gate>
   );
@@ -368,7 +200,7 @@ export const IdentityRoleDetailsSection = ({
         variant="framed"
         title="Project roles"
         flush={hasRoles}
-        action={hasRoles ? editButton("outline") : undefined}
+        action={hasRoles ? addButton : undefined}
       >
         {hasRoles ? (
           <DataTable
@@ -385,18 +217,25 @@ export const IdentityRoleDetailsSection = ({
             size="sm"
             icon="user"
             title="This machine identity doesn't have any roles"
-            actions={editButton("primary")}
+            actions={addButton}
           />
         )}
       </Card>
-      <EditRolesSheet
-        key={editing}
-        projectId={projectId}
-        membership={membership}
-        roles={roles}
-        canEdit={canEdit}
-        open={editing !== undefined}
-        onOpenChange={(open) => !open && setEditing(undefined)}
+      <AddRoleSheet
+        key={adding}
+        open={adding !== undefined}
+        options={addable}
+        onOpenChange={(open) => !open && setAdding(undefined)}
+        onAdd={async (grant) => {
+          try {
+            await setRoles([...membership.roles.map(draftOf), grant]);
+            saved("Successfully added role");
+            return true;
+          } catch (error) {
+            failed("Failed to add role", error);
+            return false;
+          }
+        }}
       />
       <EditRoleDialog
         key={modifying?.id}
