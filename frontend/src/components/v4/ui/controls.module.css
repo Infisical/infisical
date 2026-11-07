@@ -953,10 +953,10 @@
   box-shadow: var(--v4-shadow-raised);
   color: var(--v4-ink);
 }
-:global(.v4[data-theme="dark"])
+:global(.v4[data-scheme="dark"])
   .toggleGroup[data-spacing="0"]:not([data-indicator])
   > [data-slot="toggle-group-item"].toggle:is([aria-pressed="true"], [data-state="on"]),
-:global(.v4[data-theme="dark"])
+:global(.v4[data-scheme="dark"])
   .toggleGroup[data-spacing="0"]:not([data-indicator])
   > [data-slot="toggle-group-item"].toggle:is([aria-pressed="true"], [data-state="on"]):hover {
   background-color: var(--v4-selected-surface);
@@ -1002,7 +1002,7 @@
   box-shadow: var(--v4-shadow-raised);
   border-radius: 0;
 }
-:global(.v4[data-theme="dark"]) .indicator {
+:global(.v4[data-scheme="dark"]) .indicator {
   background: var(--v4-selected-surface);
   border-color: var(--v4-selected-border);
   box-shadow: none;

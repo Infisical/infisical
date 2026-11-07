@@ -5,7 +5,7 @@ import type { TooltipValueType } from "recharts";
 import * as RechartsPrimitive from "recharts";
 
 import { cn } from "../lib/utils";
-import { useV4Theme } from "../scope";
+import { useV4Scheme } from "../scope";
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
 
@@ -62,7 +62,7 @@ function ChartContainer({
   };
 }) {
   const uniqueId = React.useId();
-  const theme = useV4Theme() ?? "light";
+  const theme = useV4Scheme() ?? "light";
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
 
   return (
@@ -90,7 +90,7 @@ function ChartContainer({
 }
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const theme = useV4Theme() ?? "light";
+  const theme = useV4Scheme() ?? "light";
   const colorConfig = Object.entries(config).filter(([, config]) => config.theme ?? config.color);
 
   if (!colorConfig.length) {

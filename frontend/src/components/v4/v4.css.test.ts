@@ -37,7 +37,7 @@ describe("v4 stylesheet compilation", () => {
     expect(scope).toContain("--radius: var(--radius-lg)");
     expect(rules.has(":root, :host")).toBe(false);
     expect(rules.has('[data-theme="dark"] .v4')).toBe(false);
-    expect(rules.get('.v4[data-theme="dark"]')).toContain("color-scheme: dark");
+    expect(rules.get('.v4[data-scheme="dark"]')).toContain("color-scheme: dark");
     expect(result.css).toContain("--v4-focus-ring:");
     expect(result.css).not.toContain("--v4-control-invalid-ring");
     expect(result.css).not.toContain(':where([data-theme="dark"], [data-theme="dark"] *)');

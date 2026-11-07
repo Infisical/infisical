@@ -2,35 +2,72 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 
 import {
-  type Theme,
   type ThemeChangeSource,
   useTheme
 } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
+import { defaultV4Theme, toV4Theme, v4ThemeScheme } from "@app/components/v4/lib/theme-registry";
+import type { V4Scheme } from "@app/components/v4/lib/themes";
 
 import { V4_DEMO_ORG_ID } from "./mode";
 
-type Override = "light" | "dark";
+export type V4ThemeChoice = string;
 
 const KEY = "v4-theme-override";
+const PREFERRED_KEY = "v4-theme";
 const listeners = new Set<() => void>();
 
-const readStored = (): Override | undefined => {
+const readStored = (): string | undefined => {
   try {
-    const value = window.sessionStorage.getItem(KEY);
-    return value === "light" || value === "dark" ? value : undefined;
+    return toV4Theme(window.sessionStorage.getItem(KEY));
   } catch {
     return undefined;
   }
 };
 
-const writeStored = (value: Override | undefined) => {
+const notify = () => listeners.forEach((listener) => listener());
+
+const writeStored = (value: string | undefined) => {
   try {
     if (value) window.sessionStorage.setItem(KEY, value);
     else window.sessionStorage.removeItem(KEY);
   } catch {
     return;
   }
-  listeners.forEach((listener) => listener());
+  notify();
+};
+
+const readPreferredRaw = () => {
+  try {
+    return window.localStorage.getItem(PREFERRED_KEY) ?? "";
+  } catch {
+    return "";
+  }
+};
+
+// The live app keeps light, dark or system in the shared theme preference; this remembers which
+// named theme of each scheme the person picked, so System and the scheme can resolve to it.
+const parsePreferred = (raw: string): Record<V4Scheme, string> => {
+  let stored: Partial<Record<V4Scheme, unknown>> = {};
+  try {
+    stored = raw ? (JSON.parse(raw) as typeof stored) : {};
+  } catch {
+    stored = {};
+  }
+  const pick = (scheme: V4Scheme) => {
+    const theme = toV4Theme(stored[scheme]);
+    return theme && v4ThemeScheme(theme) === scheme ? theme : defaultV4Theme[scheme];
+  };
+  return { light: pick("light"), dark: pick("dark") };
+};
+
+const writePreferred = (theme: string) => {
+  try {
+    const next = { ...parsePreferred(readPreferredRaw()), [v4ThemeScheme(theme)]: theme };
+    window.localStorage.setItem(PREFERRED_KEY, JSON.stringify(next));
+  } catch {
+    return;
+  }
+  notify();
 };
 
 const subscribe = (listener: () => void) => {
@@ -40,12 +77,13 @@ const subscribe = (listener: () => void) => {
   };
 };
 
+const usePreferred = () =>
+  parsePreferred(useSyncExternalStore(subscribe, readPreferredRaw, () => ""));
+
 const useUrlOverride = () =>
   useRouterState({
-    select: (state): Override | undefined => {
-      const value = (state.location.search as { theme?: unknown }).theme;
-      return value === "light" || value === "dark" ? value : undefined;
-    }
+    select: (state): string | undefined =>
+      toV4Theme((state.location.search as { theme?: unknown }).theme)
   });
 
 const useIsLiveOrg = () => {
@@ -70,6 +108,7 @@ const useClearThemeOverride = () => {
 // Live mode always follows the user's saved theme and drops any preview it inherits.
 export const useV4AppTheme = () => {
   const { resolvedTheme } = useTheme();
+  const preferred = usePreferred();
   const isLive = useIsLiveOrg();
   const fromUrl = useUrlOverride();
   const stored = useSyncExternalStore(subscribe, readStored, () => undefined);
@@ -81,23 +120,33 @@ export const useV4AppTheme = () => {
     }
     if (fromUrl && fromUrl !== readStored()) writeStored(fromUrl);
   }, [fromUrl, isLive, clearThemeOverride]);
-  if (isLive) return resolvedTheme;
-  return fromUrl ?? stored ?? resolvedTheme;
+  if (isLive) return preferred[resolvedTheme];
+  return fromUrl ?? stored ?? preferred[resolvedTheme];
 };
 
 export const useV4ThemeChoice = (source: ThemeChangeSource) => {
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const preferred = usePreferred();
   const isLive = useIsLiveOrg();
   const fromUrl = useUrlOverride();
   const stored = useSyncExternalStore(subscribe, readStored, () => undefined);
   const clearThemeOverride = useClearThemeOverride();
   const choose = useCallback(
-    (next: Theme) => {
+    (next: V4ThemeChoice) => {
       clearThemeOverride();
-      if (isLive) setTheme(next, source);
-      else if (next !== "system") writeStored(next);
+      if (next === "system") {
+        if (isLive) setTheme("system", source);
+        return;
+      }
+      const named = toV4Theme(next);
+      if (!named) return;
+      if (isLive) {
+        writePreferred(named);
+        setTheme(v4ThemeScheme(named), source);
+      } else writeStored(named);
     },
     [clearThemeOverride, isLive, setTheme, source]
   );
-  return { theme: isLive ? theme : (fromUrl ?? stored ?? theme), setTheme: choose };
+  const saved = theme === "system" ? "system" : preferred[resolvedTheme];
+  return { theme: isLive ? saved : (fromUrl ?? stored ?? saved), setTheme: choose };
 };

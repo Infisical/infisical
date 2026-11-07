@@ -81,7 +81,7 @@
   height: 40px;
   flex: 0 0 auto;
   color: var(--v4-ink, var(--foreground));
-  background: var(--v4-surface);
+  background: var(--v4-media-ground);
   border: var(--v4-size-control-border) solid var(--v4-line-soft);
   border-radius: 0;
 }

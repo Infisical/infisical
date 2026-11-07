@@ -139,6 +139,16 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       ]
     ]
   },
+  "theme-name-branch": {
+    bad: [
+      [css, ':global(.v4[data-theme="dark"]) .row { color: var(--v4-ink); }'],
+      [ui, '<div className="[[data-theme=light]_&]:hidden" />']
+    ],
+    good: [
+      [css, ':global(.v4[data-scheme="dark"]) .row { color: var(--v4-ink); }'],
+      [css, ".v4[data-theme-switching] * { transition: none; }"]
+    ]
+  },
   "line-on-edge": {
     bad: [
       [css, ".card { border: var(--v4-size-control-border) solid var(--v4-line); }"],

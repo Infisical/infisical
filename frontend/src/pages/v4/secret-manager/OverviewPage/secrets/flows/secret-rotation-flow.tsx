@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Controller, type FieldValues, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useV4Theme } from "@app/components/v4/scope";
+import { useV4Scheme } from "@app/components/v4/scope";
 import { Alert } from "@app/components/v4/ui/alert";
 import {
   AlertDialog,
@@ -154,7 +154,7 @@ const LIGHT_LOGOS: Record<string, string> = {
 };
 
 function ProviderLogo({ type, size = "md" }: { type: SecretRotation; size?: "sm" | "md" }) {
-  const theme = useV4Theme();
+  const theme = useV4Scheme();
   const { image, name } = SECRET_ROTATION_MAP[type];
   const source = theme === "light" ? (LIGHT_LOGOS[image] ?? image) : image;
   return (

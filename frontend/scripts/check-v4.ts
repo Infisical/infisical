@@ -231,6 +231,15 @@ export const v4Checks: readonly V4Check[] = [
     classString: (value) => bareBorders(value)
   },
   {
+    id: "theme-name-branch",
+    rule: "theme-scheme",
+    message:
+      "Select light or dark by scheme, [data-scheme], not by theme name: a [data-theme] light or dark selector misses every other theme of that scheme.",
+    appliesTo: isAuthored,
+    css: [/\[data-theme=["']?(?:light|dark)["']?\]/g],
+    markup: [/\[data-theme=["']?(?:light|dark)["']?\]/g]
+  },
+  {
     id: "line-on-edge",
     rule: "line-roles",
     message:

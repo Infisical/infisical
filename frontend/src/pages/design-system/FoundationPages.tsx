@@ -7,12 +7,14 @@ import { Input } from "@app/components/v4/ui/input";
 import { AccentPanelButton, useAccentPanel } from "./accent-panel";
 import { DocDisclosure, DocSection, PageHeading, PreviewFrame } from "./doc-parts";
 import {
-  type ColorMode,
   resolveColorToken,
+  themeGroups,
   tokens,
   typeSpecimenStyle,
   typographyStyles
 } from "./foundation-data";
+
+type ThemeGroup = (typeof themeGroups)[number];
 
 const colorRoles = [
   {
@@ -53,13 +55,13 @@ const colorRoles = [
   }
 ];
 
-const ColorSwatch = ({ name, mode }: { name: string; mode: ColorMode }) => {
-  const value = resolveColorToken(name, mode);
+const ColorSwatch = ({ name, group }: { name: string; group: ThemeGroup }) => {
+  const value = resolveColorToken(name, group.theme);
   return (
     <div className="min-w-0">
       <div className="h-16 border border-border" style={{ backgroundColor: value }} />
       <p className="text-muted-foreground mt-2 text-xs">
-        {mode === "light" ? "Light" : "Dark"} <code>{value}</code>
+        {group.label} <code>{value}</code>
       </p>
     </div>
   );
@@ -81,15 +83,15 @@ const LiveValue = ({ name }: { name: string }) => {
 };
 
 const LivePair = ({
-  mode,
+  group,
   background,
   foreground
 }: {
-  mode: "light" | "dark";
+  group: ThemeGroup;
   background: string;
   foreground: string;
 }) => (
-  <V4Scope theme={mode}>
+  <V4Scope theme={group.theme}>
     <div
       className="flex min-h-32 flex-col justify-between gap-5 p-4"
       style={{
@@ -97,7 +99,7 @@ const LivePair = ({
         color: `var(--v4-${foreground})`
       }}
     >
-      <p className="text-sm font-medium">{mode === "light" ? "Light" : "Dark"}</p>
+      <p className="text-sm font-medium">{group.label}</p>
       <div className="text-xs leading-5">
         <LiveValue name={background} />
         <LiveValue name={foreground} />
@@ -106,21 +108,20 @@ const LivePair = ({
   </V4Scope>
 );
 
-const AccentSwatch = ({ mode }: { mode: "light" | "dark" }) => {
+const AccentSwatch = ({ group }: { group: ThemeGroup }) => {
   const panel = useAccentPanel();
+  const scheme = group.scheme === "dark" ? "dark" : "light";
   return (
-    <V4Scope theme={mode}>
+    <V4Scope theme={group.theme}>
       <div
         className="flex min-h-40 flex-col justify-between gap-6 p-5"
         style={{ backgroundColor: "var(--v4-accent)", color: "var(--v4-on-accent)" }}
       >
-        <p className="text-sm font-medium">
-          {mode === "light" ? "Light" : "Dark"} Infisical yellow
-        </p>
+        <p className="text-sm font-medium">{group.label} Infisical yellow</p>
         <div>
           <p style={typeSpecimenStyle("title-lg")}>Infisical</p>
           <code className="mt-2 block text-xs">
-            {panel?.choice[mode] ?? resolveColorToken("accent", mode)}
+            {panel?.choice[scheme] ?? resolveColorToken("accent", group.theme)}
           </code>
         </div>
       </div>
@@ -139,9 +140,9 @@ export const ColorPage = () => (
       </p>
       <AccentPanelButton />
     </div>
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {(["light", "dark"] as const).map((mode) => (
-        <AccentSwatch key={mode} mode={mode} />
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {themeGroups.map((group) => (
+        <AccentSwatch key={group.theme} group={group} />
       ))}
     </div>
     <p className="text-muted-foreground mt-4 text-sm leading-6">
@@ -179,9 +180,9 @@ export const ColorPage = () => (
         ].map((pair) => (
           <div key={pair.background}>
             <h3 className="mb-3 text-sm font-medium">{pair.label}</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(["light", "dark"] as const).map((mode) => (
-                <LivePair key={mode} mode={mode} {...pair} />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {themeGroups.map((group) => (
+                <LivePair key={group.theme} group={group} {...pair} />
               ))}
             </div>
           </div>
@@ -198,8 +199,9 @@ export const ColorPage = () => (
               <p className="text-muted-foreground mt-2 text-sm leading-6">{role.description}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <ColorSwatch name={role.name} mode="light" />
-              <ColorSwatch name={role.name} mode="dark" />
+              {themeGroups.map((group) => (
+                <ColorSwatch key={group.theme} name={role.name} group={group} />
+              ))}
             </div>
           </div>
         ))}
@@ -230,8 +232,9 @@ export const ColorPage = () => (
               {role.label} <code className="text-muted-foreground">{role.name}</code>
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <ColorSwatch name={role.name} mode="light" />
-              <ColorSwatch name={role.name} mode="dark" />
+              {themeGroups.map((group) => (
+                <ColorSwatch key={group.theme} name={role.name} group={group} />
+              ))}
             </div>
           </div>
         ))}
