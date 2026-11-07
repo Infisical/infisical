@@ -4717,11 +4717,11 @@ export const AGENT_VAULT = {
     sshPrivateKey:
       "The SSH private key, in OpenSSH or PEM format and without a passphrase. Never returned once saved. Omit on update to keep the stored key.",
     sshCertificate:
-      "An SSH certificate for the key, in the format of an `-cert.pub` file. Never returned once saved. Omit on update to keep the stored certificate; send null to remove it.",
+      "An SSH certificate for the key: the contents of its `-cert.pub` file. Never returned once saved. Omit on update to keep the stored certificate; send null to remove it.",
     sshHasCertificate: "Whether an SSH certificate is stored with the key.",
     serverUrlRead: "The MCP server's full URL. Null for every other type.",
     transportRead:
-      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for an `http` service.",
+      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for every other type.",
     serverUrl:
       "The MCP server's URL, such as `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment.",
     transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
@@ -4741,7 +4741,9 @@ export const AGENT_VAULT = {
     oauthAuthorizedAt: "When the connection was last authorized. Not returned to Agent Vault members.",
     oauthLastError: "The last refresh failure, if any. Never contains a token. Not returned to Agent Vault members.",
     hostPattern:
-      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported. Null for a `postgres`, `mysql` or `ssh` service, whose server is set with `host` and `port`.",
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
+    hostPatternRead:
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). Null for a `postgres`, `mysql` or `ssh` service, whose server is set with `host` and `port`.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
@@ -4870,7 +4872,8 @@ export const AGENT_VAULT = {
       "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. For a personal variable, the services whose personal values, as you set them, use it. A variable in use can't be deleted.",
     usedByServiceId: "The ID of a service that uses this variable.",
     usedByServiceName: "The name of the service.",
-    usedByServiceHostPattern: "The host pattern of the service.",
+    usedByServiceType: "The service's type: `http`, `mcp`, `postgres`, `mysql` or `ssh`.",
+    usedByServiceHostPattern: "The host pattern of the service. Null for a `postgres`, `mysql` or `ssh` service.",
     usedByServiceAccessBundleId: "The ID of the access bundle the service belongs to.",
     usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
     createdAt: "When the variable was added.",

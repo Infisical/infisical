@@ -25,12 +25,26 @@ export const AGENT_VAULT_NATIVE_DEFAULT_PORTS: Record<TAgentVaultNativeServiceTy
   [AgentVaultServiceType.Ssh]: 22
 };
 
-const MAX_HOST_LENGTH = 253;
+export const AGENT_VAULT_NATIVE_MAX_HOST_LENGTH = 253;
 // Postgres caps a database name at 63 bytes and MySQL at 64 characters.
-const MAX_DATABASE_LENGTH = 64;
-const MAX_CA_LENGTH = 16384;
+export const AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH = 64;
+export const AGENT_VAULT_NATIVE_MAX_CA_LENGTH = 16384;
 
-const HOSTNAME_RE = new RE2(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i);
+export const AGENT_VAULT_NATIVE_MESSAGES = {
+  hostRequired: "Enter the server's host name or IP address.",
+  hostTooLong: `The host can be at most ${AGENT_VAULT_NATIVE_MAX_HOST_LENGTH} characters.`,
+  hostVariable: "Variables aren't supported in the host yet. Enter the host itself.",
+  portWhole: "The port must be a whole number.",
+  portRange: "The port must be between 1 and 65535.",
+  databaseRequired: "Enter the database to connect to.",
+  databaseTooLong: `The database name can be at most ${AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH} characters.`,
+  databaseControlChars: "The database name can't contain control characters.",
+  databaseVariable: "Variables aren't supported in the database name yet. Enter the name itself.",
+  caTooLong: `The certificate authority can be at most ${AGENT_VAULT_NATIVE_MAX_CA_LENGTH} characters.`
+} as const;
+
+// Underscores are allowed because Docker Compose service names use them and Go's resolver accepts them.
+const HOSTNAME_RE = new RE2(/^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?)*$/i);
 const IPV6_SCHEMA = z.string().ip({ version: "v6" });
 // eslint-disable-next-line no-control-regex
 const NO_CONTROL_CHARS_RE = new RE2(/^[^\x00-\x1f\x7f]*$/);
@@ -42,8 +56,8 @@ const PEM_BLOCK_RE = new RE2(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIF
 const nativeHostSchema = z
   .string()
   .trim()
-  .min(1, "Enter the server's host name or IP address.")
-  .max(MAX_HOST_LENGTH, `The host can be at most ${MAX_HOST_LENGTH} characters.`)
+  .min(1, AGENT_VAULT_NATIVE_MESSAGES.hostRequired)
+  .max(AGENT_VAULT_NATIVE_MAX_HOST_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.hostTooLong)
   .transform((raw) => {
     const unbracketed = raw.startsWith("[") && raw.endsWith("]") ? raw.slice(1, -1) : raw;
     return unbracketed.replace(/\.$/, "").toLowerCase();
@@ -51,6 +65,7 @@ const nativeHostSchema = z
   .superRefine((host, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
     if (!NO_CONTROL_CHARS_RE.test(host)) return fail("The host can't contain spaces or control characters.");
+    if (host.includes("{{")) return fail(AGENT_VAULT_NATIVE_MESSAGES.hostVariable);
     if (IPV6_SCHEMA.safeParse(host).success) return;
     if (host.includes("://")) return fail("Enter only the host, without a scheme such as postgres://.");
     if (host.includes("/")) return fail("Enter only the host, without a path.");
@@ -62,22 +77,23 @@ const nativeHostSchema = z
 const nativePortSchema = (fallback: number) =>
   z.coerce
     .number()
-    .int("The port must be a whole number.")
-    .min(1, "The port must be between 1 and 65535.")
-    .max(65535, "The port must be between 1 and 65535.")
+    .int(AGENT_VAULT_NATIVE_MESSAGES.portWhole)
+    .min(1, AGENT_VAULT_NATIVE_MESSAGES.portRange)
+    .max(65535, AGENT_VAULT_NATIVE_MESSAGES.portRange)
     .default(fallback);
 
 const nativeDatabaseSchema = z
   .string()
   .trim()
-  .min(1, "Enter the database to connect to.")
-  .max(MAX_DATABASE_LENGTH, `The database name can be at most ${MAX_DATABASE_LENGTH} characters.`)
-  .refine((value) => NO_CONTROL_CHARS_RE.test(value), "The database name can't contain control characters.");
+  .min(1, AGENT_VAULT_NATIVE_MESSAGES.databaseRequired)
+  .max(AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.databaseTooLong)
+  .refine((value) => NO_CONTROL_CHARS_RE.test(value), AGENT_VAULT_NATIVE_MESSAGES.databaseControlChars)
+  .refine((value) => !value.includes("{{"), AGENT_VAULT_NATIVE_MESSAGES.databaseVariable);
 
 const certificateAuthoritySchema = z
   .string()
   .trim()
-  .max(MAX_CA_LENGTH, `The certificate authority can be at most ${MAX_CA_LENGTH} characters.`)
+  .max(AGENT_VAULT_NATIVE_MAX_CA_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.caTooLong)
   .superRefine((pem, ctx) => {
     if (!pem) return;
     const fail = () =>
@@ -138,6 +154,26 @@ export const toNativeTlsConfigInput = (
   tls: { enabled?: boolean; verify?: boolean; ca?: string | null } | undefined
 ): { enabled?: boolean; verify?: boolean; ca?: string } | undefined =>
   tls && { ...tls, ca: tls.ca === null ? "" : tls.ca };
+
+export type TAgentVaultNativeTlsCaChange = "set" | "removed" | "replaced";
+
+const storedCaOf = (config: unknown) => {
+  const ca = (config as TAgentVaultNativeServiceConfig | null)?.tls?.ca;
+  return ca ? ca.replace(/\s+/g, "") : null;
+};
+
+// Line endings and indentation don't change which CA is trusted, so a re-pasted copy of the same PEM isn't reported.
+export const describeNativeTlsCaChange = (
+  storedConfig: unknown,
+  nextConfig: unknown
+): TAgentVaultNativeTlsCaChange | undefined => {
+  const stored = storedCaOf(storedConfig);
+  const next = storedCaOf(nextConfig);
+  if (stored === next) return undefined;
+  if (!stored) return "set";
+  if (!next) return "removed";
+  return "replaced";
+};
 
 // Only what the proxy needs to reach the server: config may also hold fields of other types, which stay off the wire.
 export const toResolvedNativeTarget = (type: string, config: unknown): TResolvedNativeTarget | null => {

@@ -51,7 +51,18 @@ const SSH_KEY_PARTS = ["username", "privateKey", "certificate"] as const;
 
 type TSshKeyUpdate = Extract<TAgentVaultCredentialUpdate, { type: AgentVaultCredentialType.SshKey }>;
 
-const sendsSshKeyPart = (credential: TSshKeyUpdate) => SSH_KEY_PARTS.some((part) => credential[part] !== undefined);
+const storedHasCertificate = (stored: TAgentVaultServices) =>
+  stored.credentialType === AgentVaultCredentialType.SshKey &&
+  Boolean((stored.credentialConfig as { hasCertificate?: boolean } | null)?.hasCertificate);
+
+// Removing a certificate that isn't stored changes nothing. The edit form sends `certificate: null` on every save of a
+// key with no certificate, so counting it would rewrite the secret and audit a replaced credential on a port change.
+const sendsSshKeyPart = (credential: TSshKeyUpdate, stored: TAgentVaultServices) =>
+  SSH_KEY_PARTS.some((part) =>
+    part === "certificate" && credential.certificate === null
+      ? storedHasCertificate(stored)
+      : credential[part] !== undefined
+  );
 
 const assertNoSshKeyMemberFields = (credential: TSshKeyUpdate) => {
   if (credential.memberProvidedFields?.length) {
@@ -91,7 +102,7 @@ export const isStoredSecretReplaced = (
   if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.OAuth) {
     return false;
   }
-  if (credential.type === AgentVaultCredentialType.SshKey) return sendsSshKeyPart(credential);
+  if (credential.type === AgentVaultCredentialType.SshKey) return sendsSshKeyPart(credential, stored);
 
   const previousMemberFields = (stored.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
   const keyOfField: readonly (readonly [TAgentVaultMemberProvidedField, string])[] =
@@ -238,7 +249,7 @@ export const mergeCredential = (
 
   if (credential.type === AgentVaultCredentialType.SshKey) {
     assertNoSshKeyMemberFields(credential);
-    if (!sendsSshKeyPart(credential)) {
+    if (!sendsSshKeyPart(credential, stored)) {
       return {
         config: stored.credentialConfig as TAgentVaultCredentialConfig,
         secret: undefined,
@@ -336,7 +347,7 @@ export const needsStoredSecretFor = (credential: TAgentVaultCredentialUpdate, se
     return (
       service.credentialType === AgentVaultCredentialType.SshKey &&
       Boolean(service.encryptedCredential) &&
-      sendsSshKeyPart(credential) &&
+      sendsSshKeyPart(credential, service) &&
       SSH_KEY_PARTS.some((part) => credential[part] === undefined)
     );
   }

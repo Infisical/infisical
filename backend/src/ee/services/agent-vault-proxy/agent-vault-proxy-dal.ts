@@ -135,12 +135,14 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Only the fingerprint: the row also holds the CA's sealed private key, which never leaves this module.
+  // Only the fingerprint: the row also holds the CA's sealed private key, which never leaves this module. Revoke and
+  // rotate clear the heartbeat and there is no revoked flag, so a proxy without one isn't trusted until it reports in.
   const findCaFingerprintsByProjectId = async (projectId: string, tx?: Knex): Promise<string[]> => {
     try {
       const rows = (await (tx || db.replicaNode())(TableName.AgentVaultProxy)
         .where({ projectId })
         .whereNotNull("rootCaFingerprint")
+        .whereNotNull("heartbeat")
         .select("rootCaFingerprint")) as { rootCaFingerprint: string }[];
       return rows.map((row) => row.rootCaFingerprint);
     } catch (error) {

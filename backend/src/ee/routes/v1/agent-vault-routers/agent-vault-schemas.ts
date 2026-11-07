@@ -27,7 +27,13 @@ import {
   TAgentVaultMemberProvidedField
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
-import { AGENT_VAULT_MAX_NATIVE_SERVICE_NAME_LENGTH } from "@app/ee/services/agent-vault/agent-vault-native-config-schemas";
+import {
+  AGENT_VAULT_MAX_NATIVE_SERVICE_NAME_LENGTH,
+  AGENT_VAULT_NATIVE_MAX_CA_LENGTH,
+  AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH,
+  AGENT_VAULT_NATIVE_MAX_HOST_LENGTH,
+  AGENT_VAULT_NATIVE_MESSAGES
+} from "@app/ee/services/agent-vault/agent-vault-native-config-schemas";
 import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix-schemas";
 import { agentVaultMcpServerUrlSchema } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
 import { agentVaultAllowedToolsSchema } from "@app/ee/services/agent-vault/agent-vault-tool-name-schemas";
@@ -112,7 +118,9 @@ const checkCredentialFields =
       });
     }
 
-    // A member-provided field has no admin value: each member sends their own.
+    // A member-provided field has no admin value: each member sends their own. An SSH key can't be member-provided
+    // at all, which the service says by name, so telling the caller to leave the username out would only mislead.
+    if (data.type === AgentVaultCredentialType.SshKey) return;
     (["value", "username", "password"] as const).forEach((field) => {
       if (data[field] !== undefined && memberProvided.has(MEMBER_FIELD_OF_INPUT[field])) {
         ctx.addIssue({
@@ -244,7 +252,15 @@ const nativeCredentialInputSchema = ({ ssh }: { ssh: boolean }) =>
     .describe(AGENT_VAULT.SERVICE.nativeCredential);
 
 // Not derived from the create schema: its `.default()`s would turn an omitted field into a reset on a PATCH.
-const credentialUpdateSchema = ({ mcp, native = false }: { mcp: boolean; native?: boolean }) =>
+const credentialUpdateSchema = ({
+  mcp,
+  native = false,
+  ssh = false
+}: {
+  mcp: boolean;
+  native?: boolean;
+  ssh?: boolean;
+}) =>
   z
     .discriminatedUnion("type", [
       z
@@ -298,7 +314,7 @@ const credentialUpdateSchema = ({ mcp, native = false }: { mcp: boolean; native?
             .optional()
             .describe(openApiHidden())
         })
-        .describe(docsTitle("SSH Key", !native))
+        .describe(docsTitle("SSH Key", !ssh))
     ])
     .superRefine((data, ctx) => {
       checkCredentialFields({ requireValues: false, mcp })(data, ctx);
@@ -321,9 +337,8 @@ const credentialUpdateSchema = ({ mcp, native = false }: { mcp: boolean; native?
 
 export const AgentVaultCredentialUpdateSchema = credentialUpdateSchema({ mcp: false });
 export const AgentVaultMcpCredentialUpdateSchema = credentialUpdateSchema({ mcp: true });
-const AgentVaultNativeCredentialUpdateSchema = credentialUpdateSchema({ mcp: false, native: true }).describe(
-  AGENT_VAULT.SERVICE.nativeCredential
-);
+const nativeCredentialUpdateSchema = ({ ssh }: { ssh: boolean }) =>
+  credentialUpdateSchema({ mcp: false, native: true, ssh }).describe(AGENT_VAULT.SERVICE.nativeCredential);
 
 export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
   z
@@ -408,14 +423,33 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
   .describe(AGENT_VAULT.SERVICE.substitutions);
 
 // Checked fully when the service builds its config; bounded here so nothing unreasonable reaches it.
-const AgentVaultNativeHostSchema = z.string().trim().min(1).max(253);
-const AgentVaultNativePortSchema = z.number().int().min(1).max(65535);
-const AgentVaultNativeDatabaseSchema = z.string().trim().min(1).max(64);
-const AgentVaultNativeTlsSchema = z.object({
-  enabled: z.boolean().optional(),
-  verify: z.boolean().optional(),
-  ca: z.string().max(16384).nullable().optional()
-});
+const AgentVaultNativeHostSchema = z
+  .string()
+  .trim()
+  .min(1, AGENT_VAULT_NATIVE_MESSAGES.hostRequired)
+  .max(AGENT_VAULT_NATIVE_MAX_HOST_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.hostTooLong);
+const AgentVaultNativePortSchema = z
+  .number()
+  .int(AGENT_VAULT_NATIVE_MESSAGES.portWhole)
+  .min(1, AGENT_VAULT_NATIVE_MESSAGES.portRange)
+  .max(65535, AGENT_VAULT_NATIVE_MESSAGES.portRange);
+const nativeDatabaseSchema = (params?: z.RawCreateParams) =>
+  z
+    .string(params)
+    .trim()
+    .min(1, AGENT_VAULT_NATIVE_MESSAGES.databaseRequired)
+    .max(AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.databaseTooLong);
+const AgentVaultNativeDatabaseSchema = nativeDatabaseSchema();
+const nativeTlsSchema = (params?: z.RawCreateParams) =>
+  z.object(
+    {
+      enabled: z.boolean().optional(),
+      verify: z.boolean().optional(),
+      ca: z.string().max(AGENT_VAULT_NATIVE_MAX_CA_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.caTooLong).nullable().optional()
+    },
+    params
+  );
+const AgentVaultNativeTlsSchema = nativeTlsSchema();
 
 const nativeCreateFields = {
   host: AgentVaultNativeHostSchema.describe(AGENT_VAULT.SERVICE.host),
@@ -502,13 +536,24 @@ const nativeUpdateArm = <
       name: AgentVaultNativeNameSchema.optional().describe(AGENT_VAULT.SERVICE.nativeName),
       host: AgentVaultNativeHostSchema.optional().describe(AGENT_VAULT.SERVICE.host),
       port: AgentVaultNativePortSchema.optional().describe(AGENT_VAULT.SERVICE.port),
-      database: AgentVaultNativeDatabaseSchema.nullable()
-        .optional()
-        .describe(type === AgentVaultServiceType.Ssh ? openApiHidden() : AGENT_VAULT.SERVICE.database),
-      tls: AgentVaultNativeTlsSchema.nullable()
-        .optional()
-        .describe(type === AgentVaultServiceType.Ssh ? openApiHidden() : AGENT_VAULT.SERVICE.tls),
-      credential: AgentVaultNativeCredentialUpdateSchema.optional()
+      // Null is only the read-back of an SSH service, which has neither. A database always has both, so null there
+      // would silently change nothing.
+      ...(type === AgentVaultServiceType.Ssh
+        ? { database: hiddenNativeUpdateFields.database, tls: hiddenNativeUpdateFields.tls }
+        : {
+            database: nativeDatabaseSchema({
+              invalid_type_error: `A ${nativeServiceTitles[type]} always has a database. Send its name, or leave 'database' out to keep it.`
+            })
+              .optional()
+              .describe(AGENT_VAULT.SERVICE.database),
+            tls: nativeTlsSchema({
+              invalid_type_error:
+                "Send the TLS settings to change, or leave 'tls' out to keep them. To turn TLS off, send 'tls': { 'enabled': false }."
+            })
+              .optional()
+              .describe(AGENT_VAULT.SERVICE.tls)
+          }),
+      credential: nativeCredentialUpdateSchema({ ssh: type === AgentVaultServiceType.Ssh }).optional()
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -603,7 +648,15 @@ export const AgentVaultUpdateServiceBodySchema = z
 // service refuses them by name rather than zod dropping a field silently.
 const inlineMemberProvidedFieldsSchema = z.string().max(64).array().max(2).optional().describe(openApiHidden());
 
-const inlineCredentialInputSchema = ({ mcp }: { mcp: boolean }) =>
+const inlineCredentialInputSchema = ({
+  mcp,
+  native = false,
+  ssh = false
+}: {
+  mcp: boolean;
+  native?: boolean;
+  ssh?: boolean;
+}) =>
   z
     .discriminatedUnion("type", [
       z
@@ -616,7 +669,7 @@ const inlineCredentialInputSchema = ({ mcp }: { mcp: boolean }) =>
           ).describe(AGENT_VAULT.SESSION.inlineServiceValue),
           memberProvidedFields: inlineMemberProvidedFieldsSchema
         })
-        .describe(docsTitle("Bearer")),
+        .describe(docsTitle("Bearer", native)),
       z
         .object({
           type: z.literal(AgentVaultCredentialType.Basic),
@@ -632,8 +685,8 @@ const inlineCredentialInputSchema = ({ mcp }: { mcp: boolean }) =>
             .describe(AGENT_VAULT.SESSION.inlineServicePassword),
           memberProvidedFields: inlineMemberProvidedFieldsSchema
         })
-        .describe(docsTitle("Basic Auth", mcp)),
-      passthroughCredentialInput.describe(docsTitle("Pass-through", mcp)),
+        .describe(docsTitle(native ? "Username and Password" : "Basic Auth", mcp)),
+      passthroughCredentialInput.describe(docsTitle("Pass-through", mcp || native)),
       z
         .object({
           type: z.literal(AgentVaultCredentialType.OAuth),
@@ -650,7 +703,7 @@ const inlineCredentialInputSchema = ({ mcp }: { mcp: boolean }) =>
             .describe(AGENT_VAULT.SERVICE.sshCertificate),
           memberProvidedFields: inlineMemberProvidedFieldsSchema
         })
-        .describe(docsTitle("SSH Key", true))
+        .describe(docsTitle("SSH Key", !ssh))
     ])
     .superRefine((data, ctx) => {
       if (data.type === AgentVaultCredentialType.Basic && !data.username && !data.password) {
@@ -696,7 +749,11 @@ const nativeInlineArm = <
       // Required: the agent connects to the service by name.
       name: AgentVaultNativeNameSchema.describe(AGENT_VAULT.SERVICE.nativeName),
       ...nativeCreateFields,
-      credential: inlineCredentialInputSchema({ mcp: false }).describe(AGENT_VAULT.SERVICE.nativeCredential)
+      credential: inlineCredentialInputSchema({
+        mcp: false,
+        native: true,
+        ssh: type === AgentVaultServiceType.Ssh
+      }).describe(AGENT_VAULT.SERVICE.nativeCredential)
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -776,7 +833,7 @@ export const AgentVaultInlineServiceSchema = z.object({
     .object({ enabled: z.boolean(), verify: z.boolean(), ca: z.string().nullable() })
     .nullable()
     .describe(AGENT_VAULT.SERVICE.tlsRead),
-  hostPattern: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostPattern),
+  hostPattern: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostPatternRead),
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
   allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),
   credential: z.discriminatedUnion("type", [
@@ -869,7 +926,7 @@ export const AgentVaultServiceSchema = z.object({
     .object({ enabled: z.boolean(), verify: z.boolean(), ca: z.string().nullable() })
     .nullable()
     .describe(AGENT_VAULT.SERVICE.tlsRead),
-  hostPattern: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostPattern),
+  hostPattern: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostPatternRead),
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
   allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),
   allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
@@ -920,6 +977,7 @@ export const AgentVaultVariableSchema = z.object({
     .object({
       id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceId),
       name: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceName),
+      type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.VARIABLE.usedByServiceType),
       hostPattern: z.string().nullable().describe(AGENT_VAULT.VARIABLE.usedByServiceHostPattern),
       accessBundleId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleId),
       accessBundleName: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleName)

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { AgentVaultCredentialType, AgentVaultMcpTransport, AgentVaultServiceType } from "./agent-vault-enums";
+import { describeNativeTlsCaChange } from "./agent-vault-native-config-schemas";
 import {
   AGENT_VAULT_SERVICE_TYPES,
   agentVaultMcpServerUrlSchema,
@@ -246,6 +247,19 @@ describe("database and SSH services", () => {
     expect(() => buildServiceConfig(postgres, { host, database: "app" })).toThrow(message);
   });
 
+  test.each(["my_db", "db_1.internal", "_db"])("take the host %s with an underscore", (host) => {
+    expect(buildServiceConfig(postgres, { host, database: "app" })).toMatchObject({ host });
+  });
+
+  test("refuse a variable in the host or the database name", () => {
+    expect(() => buildServiceConfig(postgres, { host: "{{DB_HOST}}", database: "app" })).toThrow(
+      "Variables aren't supported in the host yet. Enter the host itself."
+    );
+    expect(() => buildServiceConfig(mysql, { host: "db.internal", database: "{{DB_NAME}}" })).toThrow(
+      "Variables aren't supported in the database name yet. Enter the name itself."
+    );
+  });
+
   test("take an IPv6 host with or without brackets", () => {
     expect(buildServiceConfig(ssh, { host: "[2001:db8::1]" })).toMatchObject({ host: "2001:db8::1" });
     expect(buildServiceConfig(ssh, { host: "2001:db8::1" })).toMatchObject({ host: "2001:db8::1" });
@@ -270,7 +284,7 @@ describe("database and SSH services", () => {
 
   test("are named with the right article", () => {
     expect(() => assertCredentialTypeSupported(postgres, AgentVaultCredentialType.SshKey)).toThrow(
-      "A PostgreSQL service can't use an SSH key as its credential. Use basic auth."
+      "A PostgreSQL service can't use an SSH key as its credential. Use a username and password."
     );
     expect(() => assertServiceFieldsSupported(ssh, { allowedMethods: ["GET"] })).toThrow(
       "An SSH service doesn't take 'allowedMethods'."
@@ -287,5 +301,28 @@ describe("database and SSH services", () => {
     expect(
       dropReadBackServiceFields(ssh, { hostPattern: null, serverUrl: null, customHeaders: [], database: null }, null)
     ).toEqual({ hostPattern: undefined, serverUrl: undefined, customHeaders: undefined, database: undefined });
+  });
+});
+
+describe("the audit's CA change", () => {
+  const withCa = (ca?: string) => ({
+    host: "db.internal",
+    port: 5432,
+    database: "app",
+    tls: { enabled: true, verify: true, ca }
+  });
+  const PEM = "-----BEGIN CERTIFICATE-----\nAAAA\nBBBB\n-----END CERTIFICATE-----";
+
+  test.each([
+    ["set", withCa(), withCa(PEM)],
+    ["removed", withCa(PEM), withCa()],
+    ["replaced", withCa(PEM), withCa(PEM.replace("AAAA", "CCCC"))]
+  ])("reports %s", (change, stored, next) => {
+    expect(describeNativeTlsCaChange(stored, next)).toBe(change);
+  });
+
+  test("reports nothing for the same CA pasted with other line endings", () => {
+    expect(describeNativeTlsCaChange(withCa(PEM), withCa(PEM.replace(/\n/g, "\r\n")))).toBeUndefined();
+    expect(describeNativeTlsCaChange(withCa(), withCa())).toBeUndefined();
   });
 });

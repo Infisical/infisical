@@ -382,14 +382,10 @@ describe("database and SSH services sent with a session", () => {
     });
   });
 
-  test("need a name, since the agent connects to them by name", () => {
-    expect(() => prepareInlineServices([postgres({ name: undefined })])).toThrow("needs a name");
-  });
-
   test("need a username to log in as", () => {
     expect(() =>
       prepareInlineServices([postgres({ credential: { type: AgentVaultCredentialType.Basic, password: "p" } })])
-    ).toThrow("needs a username to log in as");
+    ).toThrow("A PostgreSQL service needs a username to log in as. Set one in the credential.");
   });
 
   test("never overlap an HTTP service on the same host", () => {

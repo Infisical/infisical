@@ -308,6 +308,24 @@ describe("an SSH key credential", () => {
     expect(written.config).toEqual({ type: SSH_KEY, hasCertificate: false });
   });
 
+  test("removing a certificate that isn't stored leaves the sealed secret alone", () => {
+    const stored = storedSshKey(false);
+    const update = credential({ type: SSH_KEY, certificate: null });
+    expect(needsStoredSecretFor(update, stored)).toBe(false);
+    const written = mergeCredential(update, stored, null);
+    expect(written.secret).toBeUndefined();
+    expect(isStoredSecretReplaced(update, stored, written.secret)).toBe(false);
+  });
+
+  test("removing a stored certificate replaces the sealed secret", () => {
+    const stored = storedSshKey(true);
+    const update = credential({ type: SSH_KEY, certificate: null });
+    expect(needsStoredSecretFor(update, stored)).toBe(true);
+    const written = mergeCredential(update, stored, { username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.secret).toEqual({ username: "agent", privateKey: KEY });
+    expect(isStoredSecretReplaced(update, stored, written.secret)).toBe(true);
+  });
+
   test("an update with no part of it leaves the sealed secret alone", () => {
     const written = mergeCredential(credential({ type: SSH_KEY }), storedSshKey(false), null);
     expect(written.secret).toBeUndefined();

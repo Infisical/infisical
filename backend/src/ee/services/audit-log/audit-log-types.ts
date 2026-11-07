@@ -6683,6 +6683,8 @@ interface AgentVaultServiceCreateEvent {
     database?: string;
     tlsEnabled?: boolean;
     tlsVerify?: boolean;
+    // Whether the proxy checks the server's certificate against a CA stored on the service rather than the system's.
+    hasTlsCa?: boolean;
     // Absent for a database or SSH service.
     hostPattern?: string;
     credentialType: string;
@@ -6720,6 +6722,8 @@ interface AgentVaultServiceUpdateEvent {
     database?: string;
     tlsEnabled?: boolean;
     tlsVerify?: boolean;
+    // Present only when the update changed the stored CA the proxy checks the server's certificate against.
+    tlsCaChanged?: "set" | "removed" | "replaced";
     hostPattern?: string;
     credentialType?: string;
     // Present when the update connected or reauthorized an OAuth credential.

@@ -74,6 +74,7 @@ import {
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import {
+  describeNativeTlsCaChange,
   isNativeServiceType,
   TAgentVaultNativeServiceConfig,
   toNativeTlsConfigInput
@@ -1537,6 +1538,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         );
         if (!locked) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
         const reconciled = reconcileWithLockedRow(locked);
+        const tlsCaChanged = reconciled.serviceConfig
+          ? describeNativeTlsCaChange(locked.config, reconciled.serviceConfig)
+          : undefined;
 
         // Only when the pattern actually changes, against the siblings read under the lock.
         if (reconciled.hostPattern && reconciled.hostPattern !== locked.hostPattern) {
@@ -1708,7 +1712,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         await insertReferenceRows(rest.projectId, referenceRows, tx);
         const variableReferences = await agentVaultServiceVariableReferenceDAL.findByServiceIds([service.id], tx);
 
-        return { updatedService, updatedCustomHeaders, updatedSubstitutions, variableReferences };
+        return { updatedService, updatedCustomHeaders, updatedSubstitutions, variableReferences, tlsCaChanged };
       });
 
     let result;
@@ -1751,6 +1755,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         database,
         tlsEnabled: tls?.enabled,
         tlsVerify: tls?.verify,
+        tlsCaChanged: result.tlsCaChanged,
         allowedMethods,
         allowedPathPrefixes,
         allowedTools,

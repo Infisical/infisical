@@ -14,6 +14,7 @@ import {
   AgentVaultMysqlServiceConfigSchema,
   AgentVaultPostgresServiceConfigSchema,
   AgentVaultSshServiceConfigSchema,
+  isNativeServiceType,
   TAgentVaultNativeServiceConfig
 } from "./agent-vault-native-config-schemas";
 
@@ -282,9 +283,14 @@ export const assertCredentialTypeSupported = (
   allowedCredentialTypes: AgentVaultCredentialType[] = definition.allowedCredentialTypes
 ) => {
   if (allowedCredentialTypes.includes(credentialType)) return;
-  const allowed = allowedCredentialTypes.map((type) => CREDENTIAL_LABELS[type]);
+  // The UI and API docs call a database or SSH service's basic credential "Username and Password".
+  const labelOf = (type: AgentVaultCredentialType) =>
+    type === AgentVaultCredentialType.Basic && isNativeServiceType(definition.type)
+      ? "a username and password"
+      : CREDENTIAL_LABELS[type];
+  const allowed = allowedCredentialTypes.map(labelOf);
   throw new BadRequestError({
-    message: `${describeServiceType(definition)} can't use ${CREDENTIAL_LABELS[credentialType]} as its credential. Use ${allowed.join(" or ")}.`
+    message: `${describeServiceType(definition)} can't use ${labelOf(credentialType)} as its credential. Use ${allowed.join(" or ")}.`
   });
 };
 

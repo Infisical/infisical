@@ -297,7 +297,8 @@ The proxy then runs PAM's protocol handler, which logs in as the service's accou
   unknown type as `http`, matches nothing. Host-overlap checks skip NULL patterns (`findHostPatternConflicts`), so a
   database never conflicts with an HTTP service on the same host. Every reader of `hostPattern` handles NULL.
 - **The name is how the agent connects**, so it is at most 63 characters (one DNS label) and an inline one must be
-  given. Postgres pins `database` (PAM's handler overwrites the client's); MySQL only starts in it, and the account's
+  given (the router requires it). `host` takes a host name (letters, digits, `-` and `_`, which Docker Compose names
+  use) or an IP. `host` and `database` refuse `{{`: variables aren't expanded there yet. Postgres pins `database` (PAM's handler overwrites the client's); MySQL only starts in it, and the account's
   grants decide which other databases the agent can `USE`.
 - **Resolve sends `native: { host, port, database, tls }`**, built by `toResolvedNativeTarget`, never the raw config,
   so fields of other types stay off the wire. HTTP and MCP services send `native: null`. The proxy prefers an inline
@@ -306,14 +307,19 @@ The proxy then runs PAM's protocol handler, which logs in as the service's accou
 - **Credentials.** `basic` for all three, and it must have a username (set, or left to members). `ssh-key` (username,
   private key, optional certificate) for `ssh` only, enforced by a CHECK too. Its parts span lines, so it takes no
   member-provided field and no `{{variable}}` yet: personal values and variables refuse line breaks. A partial update
-  keeps the parts it leaves out, and `certificate: null` removes the certificate. Keys are not checked on save, as in
-  PAM; the proxy refuses an unusable one when a connection is requested.
+  keeps the parts it leaves out, and `certificate: null` removes the certificate; when none is stored it changes nothing,
+  so it neither rewrites the secret nor audits a replaced credential. Keys are not checked on save, as in PAM; the proxy
+  refuses an unusable one when a connection is requested.
 - **TLS to the database** is `{ enabled, verify, ca }`, defaulting to enabled and verified, merged one level deep on
-  update. A `ca` is parsed on save. It applies only to the proxy's leg to the database.
+  update. A `ca` is parsed on save. It applies only to the proxy's leg to the database. An update can't send
+  `database: null` or `tls: null` for these two types (null is only an SSH service's read-back). The create event
+  records `hasTlsCa`, and an update records `tlsCaChanged` (`set`, `removed` or `replaced`) only when the stored CA
+  changed, compared ignoring whitespace.
 - **`GET /api/v1/agent-vault/session/proxy-ca-fingerprints`** (session-token auth, like `/session/skills`) returns
   the `rootCaFingerprint` of every proxy in the session's project, so `connect` can pin the proxy's CA without
   trusting the proxy for it. It never returns the fingerprint of a stored certificate that differs from it: that is a
-  CA no proxy serves.
+  CA no proxy serves. It skips proxies whose `heartbeat` is NULL: revoke and rotate clear it and there is no revoked
+  flag, so a revoked proxy's CA stops being trusted (a rotated one returns at its first heartbeat).
 
 ## Proxies
 

@@ -3,7 +3,6 @@ import { z } from "zod";
 import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
-import { NATIVE_BASIC_NEEDS_USERNAME_MESSAGE } from "../agent-vault-access-bundle/agent-vault-credential-write-fns";
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
 import { TResolvedService } from "../agent-vault-proxy/agent-vault-proxy-types";
 import { findHostPatternConflicts, TConflictCandidate } from "../agent-vault/agent-vault-conflict-fns";
@@ -134,11 +133,6 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     tls: input.tls,
     allowedTools: input.allowedTools
   });
-  if (isNativeServiceType(definition.type) && !input.name) {
-    throw new BadRequestError({
-      message: `${describeServiceType(definition)} needs a name, since the agent connects to it by name.`
-    });
-  }
   if (input.allowedTools?.length) {
     throw new BadRequestError({
       message:
@@ -181,7 +175,9 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     credentialConfig.type === AgentVaultCredentialType.Basic &&
     !(secret && "username" in secret && secret.username)
   ) {
-    throw new BadRequestError({ message: NATIVE_BASIC_NEEDS_USERNAME_MESSAGE });
+    throw new BadRequestError({
+      message: `${describeServiceType(definition)} needs a username to log in as. Set one in the credential.`
+    });
   }
   const customHeaders = input.customHeaders ?? [];
   const substitutions = input.substitutions ?? [];

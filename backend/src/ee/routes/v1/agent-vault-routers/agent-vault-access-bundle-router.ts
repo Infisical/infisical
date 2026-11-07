@@ -380,6 +380,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             database: service.database ?? undefined,
             tlsEnabled: service.tls?.enabled,
             tlsVerify: service.tls?.verify,
+            hasTlsCa: service.tls ? Boolean(service.tls.ca) : undefined,
             hostPattern: service.hostPattern ?? undefined,
             credentialType: service.credential.type,
             headerName:
@@ -478,6 +479,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             database: update.database,
             tlsEnabled: update.tlsEnabled,
             tlsVerify: update.tlsVerify,
+            tlsCaChanged: update.tlsCaChanged,
             // Derived from the server URL for an MCP service, so it is reported whenever that changed.
             hostPattern: update.hostPattern ?? (update.serverUrl ? (service.hostPattern ?? undefined) : undefined),
             credentialType: req.body.credential?.type,
