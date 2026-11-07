@@ -144,7 +144,7 @@ const makeColumns = (onOpen: (log: AuditLog) => void): DataTableColumn<AuditLog>
             variant="link"
             underline="hover"
             onClick={() => onOpen(row)}
-            style={{ minWidth: 0 }}
+            style={{ minWidth: 0, flexShrink: 1 }}
           >
             <code style={truncate}>{row.event.type}</code>
           </Button>

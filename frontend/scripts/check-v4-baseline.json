@@ -7,13 +7,7 @@
   "decorative-effect": {
     "src/components/v4/ui/chart.tsx": 1
   },
-  "fixed-bulk-bar": {
-    "src/pages/v4/kms/OverviewPage/OverviewPage.tsx": 1
-  },
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
-  },
-  "row-activate-navigates": {
-    "src/pages/v4/cert-manager/InventoryPage/InventoryPage.tsx": 1
   }
 }
