@@ -90,11 +90,13 @@ function ToggleGroupItem({
     ref?: React.Ref<React.ComponentRef<typeof ToggleGroupPrimitive.Item>>;
   }) {
   const context = React.useContext(ToggleGroupContext);
+  const { "data-state": _wrapperState, ...itemProps } = props as typeof props & {
+    "data-state"?: string;
+  };
 
   return (
     <ToggleGroupPrimitive.Item
       ref={ref}
-      data-slot="toggle-group-item"
       data-variant={
         (context.variant || variant) === "default" ? "outline" : context.variant || variant
       }
@@ -107,7 +109,8 @@ function ToggleGroupItem({
         }),
         className
       )}
-      {...props}
+      {...itemProps}
+      data-slot="toggle-group-item"
     >
       <span data-press="">{children}</span>
     </ToggleGroupPrimitive.Item>

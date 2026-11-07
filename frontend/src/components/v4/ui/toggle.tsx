@@ -57,14 +57,17 @@ function Toggle({
     /** Toggle is a pressed button, not the v3 Toggle (a switch). Use Switch for checked and onCheckedChange, or onPressedChange here. */
     onCheckedChange?: never;
   }) {
+  const { "data-state": _wrapperState, ...toggleProps } = props as typeof props & {
+    "data-state"?: string;
+  };
   return (
     <TogglePrimitive.Root
       ref={ref}
-      data-slot="toggle"
       data-variant={variant === "default" ? "outline" : variant}
       data-size={size}
       className={cn(toggleVariants({ variant, size, className }))}
-      {...props}
+      {...toggleProps}
+      data-slot="toggle"
     >
       <span data-press="">{children}</span>
     </TogglePrimitive.Root>
