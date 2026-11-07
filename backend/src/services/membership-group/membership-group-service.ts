@@ -76,7 +76,7 @@ type TMembershipGroupServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
@@ -111,7 +111,7 @@ export const membershipGroupServiceFactory = ({
   orgDAL,
   permissionService,
   groupDAL,
-  licenseService,
+  license,
   applicationMembershipCleanupService,
   projectDAL,
   usageMeteringService,
@@ -168,7 +168,7 @@ export const membershipGroupServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseService,
+      license,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -183,7 +183,7 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseService.getPlan(scopeData.orgId);
+      const plan = await license.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -278,7 +278,7 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseService.getPlan(scopeData.orgId);
+      const plan = await license.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -307,7 +307,7 @@ export const membershipGroupServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseService,
+      license,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,

@@ -79,7 +79,7 @@ vi.mock("@app/lib/logger", () => ({
 
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
-  let licenseService: FakeLicenseService;
+  let license: FakeLicenseService;
 
   const mockTelemetryService = {
     sendPostHogEvents: vi.fn().mockResolvedValue(undefined)
@@ -258,9 +258,9 @@ describe("CertificateV3Service", () => {
     mockKeyStore.getItem.mockResolvedValue(null);
     mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
     mockKeyStore.deleteItem.mockResolvedValue(1);
-    licenseService = new FakeLicenseService();
-    licenseService.instance = { ...licenseService.instance, instanceType: InstanceType.OnPrem };
-    licenseService.defaultPlan = { ...licenseService.defaultPlan, pkiPqc: true as false };
+    license = new FakeLicenseService();
+    license.instance = { ...license.instance, instanceType: InstanceType.OnPrem };
+    license.defaultPlan = { ...license.defaultPlan, pkiPqc: true as false };
     vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
       return callback(mockTx);
@@ -406,7 +406,7 @@ describe("CertificateV3Service", () => {
       },
       certManager: mockUsageCounterDAL,
       keyStore: mockKeyStore,
-      licenseService,
+      license,
       telemetryService: mockTelemetryService,
       auditLogService: mockAuditLogService
     });
@@ -1487,7 +1487,7 @@ describe("CertificateV3Service", () => {
         defaults: { subjectAltNames: [{ type: "dns_name", value: "profile-default.example.com" }] }
       };
 
-      licenseService.defaultPlan = { ...licenseService.defaultPlan, maxCertificates: 5, maxWildcardCertificates: null };
+      license.defaultPlan = { ...license.defaultPlan, maxCertificates: 5, maxWildcardCertificates: null };
       vi.mocked(mockPermissionService.getProjectPermission).mockResolvedValue({
         permission: {
           throwUnlessCan: vi.fn(),
@@ -2560,7 +2560,7 @@ describe("CertificateV3Service", () => {
 
       const atCap = (plan: Partial<TPlan> = AT_CAP, total = 5, wildcard = 0) => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
-        licenseService.defaultPlan = { ...licenseService.defaultPlan, ...plan };
+        license.defaultPlan = { ...license.defaultPlan, ...plan };
         vi.mocked(mockUsageCounterDAL.countActiveCertificateQuota).mockResolvedValue({ total, wildcard });
         vi.mocked(mockUsageCounterDAL.isCertificateQuotaKeyActive).mockResolvedValue(false);
       };

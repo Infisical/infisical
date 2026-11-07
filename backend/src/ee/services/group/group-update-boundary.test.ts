@@ -73,7 +73,7 @@ const createUpdate = ({
         .fn()
         .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
     } as never,
-    licenseService: new FakeLicenseService().setPlan(ORG_ID, { groups: true as false }),
+    license: new FakeLicenseService().setPlan(ORG_ID, { groups: true as false }),
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     groupDAL: {
       transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => unknown) => cb({}))

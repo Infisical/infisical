@@ -174,7 +174,7 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
-  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   certManager: Pick<
     TCertManagerService,
     "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
@@ -215,7 +215,7 @@ export const certificateServiceFactory = ({
   apiEnrollmentConfigDAL,
   digicertFns,
   certificatePolicyService,
-  licenseService,
+  license,
   certManager,
   keyStore,
   usageMeteringService,
@@ -744,7 +744,7 @@ export const certificateServiceFactory = ({
         keyAlgorithm: ca.internalCa.keyAlgorithm,
         projectId: ca.projectId,
         projectDAL,
-        licenseService
+        license
       });
     }
 
@@ -1405,7 +1405,7 @@ export const certificateServiceFactory = ({
       projectId,
       commonName,
       altNames,
-      deps: { projectDAL, licenseService, certManager, keyStore }
+      deps: { projectDAL, license, certManager, keyStore }
     });
 
     let renewBeforeDays: number | undefined;

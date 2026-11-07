@@ -57,7 +57,7 @@ type TGitHubAppServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -75,7 +75,7 @@ export const gitHubAppServiceFactory = ({
   permissionService,
   kmsService,
   keyStore,
-  licenseService,
+  license,
   gatewayV2Service,
   gatewayPoolService,
   gatewayV2DAL,
@@ -124,7 +124,7 @@ export const gitHubAppServiceFactory = ({
   // Lets the manifest exchange route through a gateway when the GitHub host (e.g. a private
   // GitHub Enterprise Server) isn't directly reachable from the Infisical backend.
   const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(orgPermission.orgId);
+    const plan = await license.getPlan(orgPermission.orgId);
     if (!plan.gateway) {
       throw new BadRequestError({
         message:

@@ -74,8 +74,8 @@ const buildService = ({
     })
   };
 
-  const licenseService = new FakeLicenseService().setPlan(ACTOR_ORG_ID, plan as Partial<TPlan>);
-  vi.spyOn(licenseService, "getPlan");
+  const license = new FakeLicenseService().setPlan(ACTOR_ORG_ID, plan as Partial<TPlan>);
+  vi.spyOn(license, "getPlan");
 
   const deps = {
     caSigningConfigDAL,
@@ -102,7 +102,7 @@ const buildService = ({
         ])
       }))
     },
-    licenseService,
+    license,
     appConnectionService,
     caAutoRenewalQueue: {
       queueVenafiInstall: vi.fn(),
@@ -112,7 +112,7 @@ const buildService = ({
   };
 
   const service = caSigningConfigServiceFactory(deps as unknown as Parameters<typeof caSigningConfigServiceFactory>[0]);
-  return { service, caSigningConfigDAL, appConnectionService, licenseService };
+  return { service, caSigningConfigDAL, appConnectionService, license };
 };
 
 describe("createSigningConfig connection checks", () => {
@@ -159,7 +159,7 @@ describe("createSigningConfig connection checks", () => {
   });
 
   test.each(EXTERNAL_TYPES)("%s still requires the CA integrations licence", async (type) => {
-    const { service, caSigningConfigDAL, licenseService } = buildService({
+    const { service, caSigningConfigDAL, license } = buildService({
       plan: { pkiEnterpriseCaIntegrations: false }
     });
 
@@ -173,12 +173,12 @@ describe("createSigningConfig connection checks", () => {
       })
     ).rejects.toThrow(/plan restriction/);
 
-    expect(licenseService.getPlan).toHaveBeenCalled();
+    expect(license.getPlan).toHaveBeenCalled();
     expect(caSigningConfigDAL.create).not.toHaveBeenCalled();
   });
 
   test("switching between external types skips the licence check", async () => {
-    const { service, licenseService } = buildService({
+    const { service, license } = buildService({
       existing: { id: "cfg-old", type: CaSigningConfigType.Venafi },
       plan: { pkiEnterpriseCaIntegrations: false }
     });
@@ -191,13 +191,13 @@ describe("createSigningConfig connection checks", () => {
       ...actorFields
     });
 
-    expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(license.getPlan).not.toHaveBeenCalled();
   });
 
   test.each([CaSigningConfigType.Internal, CaSigningConfigType.Manual])(
     "%s does not check a connection or the licence",
     async (type) => {
-      const { service, appConnectionService, licenseService, caSigningConfigDAL } = buildService();
+      const { service, appConnectionService, license, caSigningConfigDAL } = buildService();
 
       await service.createSigningConfig({
         caId: "ca-1",
@@ -207,7 +207,7 @@ describe("createSigningConfig connection checks", () => {
       });
 
       expect(appConnectionService.validateAppConnectionUsageById).not.toHaveBeenCalled();
-      expect(licenseService.getPlan).not.toHaveBeenCalled();
+      expect(license.getPlan).not.toHaveBeenCalled();
       expect(caSigningConfigDAL.create).toHaveBeenCalledWith(
         expect.objectContaining({ type, appConnectionId: undefined, destinationConfig: undefined }),
         expect.anything()

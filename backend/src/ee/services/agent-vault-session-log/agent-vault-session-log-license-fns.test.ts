@@ -17,7 +17,7 @@ describe("getSessionLogEntitlement", () => {
       agentVaultManagedStorage: hasDefault,
       agentVaultSessionLogRetentionDays: retentionDays
     }) as TLicensePlan;
-  const licenseService = ({
+  const license = ({
     plan,
     fallback = false,
     lastKnown = null
@@ -57,9 +57,9 @@ describe("getSessionLogEntitlement", () => {
     },
     { why: "a fallback with no real answer on record", service: { plan: free, fallback: true }, expected: "unknown" }
   ])("external storage: reads $why as $expected", async ({ service, expected }) => {
-    expect(
-      (await getSessionLogEntitlement(licenseService(service), "org-1", ObjectStorageType.External)).entitlement
-    ).toBe(expected);
+    expect((await getSessionLogEntitlement(license(service), "org-1", ObjectStorageType.External)).entitlement).toBe(
+      expected
+    );
   });
 
   test.each([
@@ -76,14 +76,14 @@ describe("getSessionLogEntitlement", () => {
       expected: "licensed"
     }
   ])("default storage: reads $why as $expected", async ({ service, expected }) => {
-    expect(
-      (await getSessionLogEntitlement(licenseService(service), "org-1", ObjectStorageType.Default)).entitlement
-    ).toBe(expected);
+    expect((await getSessionLogEntitlement(license(service), "org-1", ObjectStorageType.Default)).entitlement).toBe(
+      expected
+    );
   });
 
   test("during an outage, uploads keep the retention of the last real plan", async () => {
     const { plan } = await getSessionLogEntitlement(
-      licenseService({ plan: free, fallback: true, lastKnown: { plan: paid, ageMs: 10 * 60_000 } }),
+      license({ plan: free, fallback: true, lastKnown: { plan: paid, ageMs: 10 * 60_000 } }),
       "org-1",
       ObjectStorageType.Default
     );
@@ -92,7 +92,7 @@ describe("getSessionLogEntitlement", () => {
 
   test("after the first hour of an outage, retention still comes from the last real plan", async () => {
     const { entitlement, plan } = await getSessionLogEntitlement(
-      licenseService({ plan: free, fallback: true, lastKnown: { plan: paid, ageMs: 3 * 60 * 60_000 } }),
+      license({ plan: free, fallback: true, lastKnown: { plan: paid, ageMs: 3 * 60 * 60_000 } }),
       "org-1",
       ObjectStorageType.Default
     );

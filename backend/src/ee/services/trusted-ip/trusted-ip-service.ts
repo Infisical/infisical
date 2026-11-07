@@ -16,14 +16,14 @@ import { TTrustedIpServiceFactory } from "./trusted-ip-types";
 type TTrustedIpServiceFactoryDep = {
   trustedIpDAL: TTrustedIpDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const trustedIpServiceFactory = ({
   trustedIpDAL,
   permissionService,
-  licenseService,
+  license,
   projectDAL
 }: TTrustedIpServiceFactoryDep): TTrustedIpServiceFactory => {
   const listIpsByProjectId: TTrustedIpServiceFactory["listIpsByProjectId"] = async ({
@@ -71,7 +71,7 @@ export const trustedIpServiceFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
-    const plan = await licenseService.getPlan(project.orgId);
+    const plan = await license.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
@@ -119,7 +119,7 @@ export const trustedIpServiceFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
-    const plan = await licenseService.getPlan(project.orgId);
+    const plan = await license.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
@@ -167,7 +167,7 @@ export const trustedIpServiceFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
-    const plan = await licenseService.getPlan(project.orgId);
+    const plan = await license.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."

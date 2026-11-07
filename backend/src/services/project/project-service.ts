@@ -196,7 +196,7 @@ type TProjectServiceFactoryDep = {
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseService, "getPlan" | "refreshPlan" | "invalidatePlan">;
+  license: Pick<TLicenseService, "getPlan" | "refreshPlan" | "invalidatePlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
@@ -252,7 +252,7 @@ export const projectServiceFactory = ({
   folderDAL,
   projectMembershipDAL,
   projectEnvDAL,
-  licenseService,
+  license,
   certificateAuthorityDAL,
   certificateDAL,
   certificateTemplateDAL,
@@ -343,7 +343,7 @@ export const projectServiceFactory = ({
     }
 
     // Read before the transaction: a plan cache miss queries on its own connection.
-    const plan = await licenseService.getPlan(organization.id);
+    const plan = await license.getPlan(organization.id);
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
@@ -805,7 +805,7 @@ export const projectServiceFactory = ({
 
       // The plan carries the project count, so a capped org's cached plan is refreshed once the project commits.
       if (plan.workspaceLimit) {
-        sealKnexTransaction(tx).afterCommit(() => licenseService.refreshPlan(organization.id));
+        sealKnexTransaction(tx).afterCommit(() => license.refreshPlan(organization.id));
       }
       return {
         ...project,
@@ -832,7 +832,7 @@ export const projectServiceFactory = ({
       };
     });
 
-    await licenseService.invalidatePlan(actorOrgId);
+    await license.invalidatePlan(actorOrgId);
     // A new project seeds its creator (plus any template members/identities); emit so a new
     // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
     // the just-committed row; the counter filters by project type.
@@ -949,7 +949,7 @@ export const projectServiceFactory = ({
 
       // refresh the cached plan so the freed workspace slot is reflected immediately
       // (countOfOrgProjects now excludes soft-deleted projects)
-      await licenseService.invalidatePlan(actorOrgId);
+      await license.invalidatePlan(actorOrgId);
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
@@ -1043,7 +1043,7 @@ export const projectServiceFactory = ({
       let restoredProject: TProjects;
       try {
         // Read before the transaction: a plan cache miss queries on its own connection.
-        const plan = await licenseService.getPlan(project.orgId);
+        const plan = await license.getPlan(project.orgId);
 
         // A deleted project's honey tokens and syncs don't count toward their limits, so restoring it can
         // exceed them.
@@ -1103,7 +1103,7 @@ export const projectServiceFactory = ({
         throw error;
       }
 
-      await licenseService.invalidatePlan(project.orgId);
+      await license.invalidatePlan(project.orgId);
       // Cached reads from before the deletion can hold imports from projects deleted since.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
@@ -1293,7 +1293,7 @@ export const projectServiceFactory = ({
         });
       }
 
-      const plan = await licenseService.getPlan(project.orgId);
+      const plan = await license.getPlan(project.orgId);
 
       if (!plan.auditLogs) {
         throw new BadRequestError({
@@ -1457,7 +1457,7 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.AuditLogs
     );
 
-    const plan = await licenseService.getPlan(project.orgId);
+    const plan = await license.getPlan(project.orgId);
     if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
@@ -2057,7 +2057,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
@@ -2087,7 +2087,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."

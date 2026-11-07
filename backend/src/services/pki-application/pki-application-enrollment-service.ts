@@ -111,7 +111,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -136,7 +136,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   acmeEnrollmentConfigDAL,
   scepEnrollmentConfigDAL,
   appConnectionService,
-  licenseService,
+  license,
   approvalPolicyService,
   certificateProfileDAL,
   certificateAuthorityDAL,
@@ -405,7 +405,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
 
     // Runtime enrollment is already gated in the EST service, so this only moves the refusal to where
     // an admin can act on it instead of surfacing as a device that silently fails to enroll.
-    const estPlan = await licenseService.getPlan(actorOrgId);
+    const estPlan = await license.getPlan(actorOrgId);
     if (!estPlan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to enable EST enrollment due to plan restriction. Upgrade plan to use EST."
@@ -683,7 +683,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorOrgId
     );
 
-    const scepPlan = await licenseService.getPlan(actorOrgId);
+    const scepPlan = await license.getPlan(actorOrgId);
     if (!scepPlan.pkiScep) {
       throw new BadRequestError({
         message: "Failed to enable SCEP enrollment due to plan restriction. Upgrade plan to use SCEP."

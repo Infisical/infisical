@@ -43,7 +43,7 @@ type TCertificateAuthorityCrossSignedCertServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
 };
 
 export type TCertificateAuthorityCrossSignedCertServiceFactory = ReturnType<
@@ -57,7 +57,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
   projectDAL,
   kmsService,
   permissionService,
-  licenseService
+  license
 }: TCertificateAuthorityCrossSignedCertServiceFactoryDep) => {
   const $toCrossSignedCertMetadata = (crossSignedCert: TCertificateAuthorityCrossSignedCerts) => ({
     caId: crossSignedCert.caId,
@@ -130,7 +130,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
 
     $assertCanManageCrossSignedCert(permission, ca.name);
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.pkiCrossSignedCa) {
       throw new BadRequestError({
         message:

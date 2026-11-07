@@ -12,7 +12,7 @@ type TQuotaCounts = { total: number; wildcard: number };
 
 export type TCertificateQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   certManager: Pick<
     TCertManagerService,
     "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
@@ -95,7 +95,7 @@ export const assertCertificateQuota = async ({
 }): Promise<{ quotaKey: string; isNewQuotaKey: boolean; quotaOrgId: string; isWildcard: boolean }> => {
   const quotaKey = buildCertificateQuotaKey({ commonName, altNames });
   const isWildcard = certificateHasWildcard({ commonName, altNames });
-  const plan = await deps.licenseService.getPlan(orgId);
+  const plan = await deps.license.getPlan(orgId);
   const unlimited = { quotaKey, isNewQuotaKey: false, quotaOrgId: orgId, isWildcard };
 
   const { maxCertificates, maxWildcardCertificates } = plan;
@@ -105,7 +105,7 @@ export const assertCertificateQuota = async ({
   // Correctness, not an optimization: reissuing names already held in the counted scope cannot raise
   // either count, and this is what lets an org sitting at its cap keep renewing. Remove it and its
   // certs expire.
-  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseService);
+  const isInstanceWide = isInstanceWidePkiQuota(deps.license);
   const isAlreadyActive = await deps.certManager.isCertificateQuotaKeyActive(
     isInstanceWide ? undefined : orgId,
     quotaKey

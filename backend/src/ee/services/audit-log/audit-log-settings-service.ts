@@ -40,7 +40,7 @@ type TAuditLogSettingsServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "getItems" | "setItemWithExpiry" | "deleteItem">;
 };
 
@@ -121,11 +121,11 @@ export const auditLogSettingsServiceFactory = ({
   orgDAL,
   projectDAL,
   permissionService,
-  licenseService,
+  license,
   keyStore
 }: TAuditLogSettingsServiceFactoryDep) => {
   const assertPlanAllowsAuditLogs = async (orgId: string) => {
-    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
+    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => license.getPlan(orgId));
     if (!plan.auditLogs) {
       throw new BadRequestError({
         message:

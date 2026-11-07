@@ -24,7 +24,7 @@ type TSubOrgServiceFactoryDep = {
     "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
@@ -37,7 +37,7 @@ export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
 export const subOrgServiceFactory = ({
   orgDAL,
   permissionService,
-  licenseService,
+  license,
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
@@ -59,7 +59,7 @@ export const subOrgServiceFactory = ({
       OrgPermissionSubjects.SubOrganization
     );
 
-    const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
+    const orgLicensePlan = await license.getPlan(permission.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
@@ -241,7 +241,7 @@ export const subOrgServiceFactory = ({
   };
 
   const joinSubOrg = async ({ subOrgId, permission }: TJoinSubOrgDTO) => {
-    const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
+    const orgLicensePlan = await license.getPlan(permission.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message:

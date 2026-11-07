@@ -659,8 +659,4 @@ export type TLicenseServerBilling = {
   getTrials: (orgId: string) => Promise<TTrialsResponse>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
   resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
-  // After a billing change the License Server settles asynchronously, so the cached plan keeps serving while
-  // a background refresh converges on the new answer.
-  markEntitlementsStale: (orgId: string, opts?: { checkout?: boolean }) => Promise<void>;
-  refreshEntitlements: (org: TEntitlementOrg) => Promise<void>;
 };

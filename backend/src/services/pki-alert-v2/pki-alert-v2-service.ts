@@ -74,7 +74,7 @@ type TPkiAlertV2ServiceFactoryDep = {
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -90,7 +90,7 @@ export const pkiAlertV2ServiceFactory = ({
   pkiAlertChannelDAL,
   pkiAlertHistoryDAL,
   permissionService,
-  licenseService,
+  license,
   smtpService,
   kmsService,
   notificationService,
@@ -254,7 +254,7 @@ export const pkiAlertV2ServiceFactory = ({
 
     const nonEmailChannel = channels.find((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (nonEmailChannel) {
-      const plan = await licenseService.getPlan(actorOrgId);
+      const plan = await license.getPlan(actorOrgId);
       if (!plan.pkiEnterpriseAlerting) {
         throw new BadRequestError({
           message: `Failed to create alert with a ${nonEmailChannel.channelType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
@@ -445,7 +445,7 @@ export const pkiAlertV2ServiceFactory = ({
     // email-only alert and patch Slack into it. Keeping the types it already has stays allowed.
     const addedChannelTypes = channels?.filter((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (addedChannelTypes?.length) {
-      const plan = await licenseService.getPlan(actorOrgId);
+      const plan = await license.getPlan(actorOrgId);
       if (!plan.pkiEnterpriseAlerting) {
         const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId);
         const existingTypes = new Set(existingChannels.map((channel) => channel.channelType));

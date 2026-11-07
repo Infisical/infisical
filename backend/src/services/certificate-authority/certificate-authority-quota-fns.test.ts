@@ -18,11 +18,11 @@ const buildDeps = ({
   instanceType?: InstanceType;
   countedOrgIds?: (string | null)[];
 }) => {
-  const licenseService = new FakeLicenseService().setPlan("org-1", { maxCas, maxInternalCas });
-  licenseService.instance = { ...licenseService.instance, instanceType };
+  const license = new FakeLicenseService().setPlan("org-1", { maxCas, maxInternalCas });
+  license.instance = { ...license.instance, instanceType };
   return {
     projectDAL: { findById: async () => ({ id: "project-1", orgId: "org-1" }) },
-    licenseService,
+    license,
     certificateAuthorityDAL: {
       countCasByOrgId: async (orgId: string | null) => {
         countedOrgIds.push(orgId);

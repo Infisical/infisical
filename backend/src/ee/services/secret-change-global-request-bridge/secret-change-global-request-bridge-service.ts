@@ -131,7 +131,7 @@ type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
     "findSecretChangePolicyById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
@@ -190,7 +190,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   membershipUserDAL,
   secretChangeGlobalPolicyBridgeService,
   permissionService,
-  licenseService,
+  license,
   userGroupMembershipDAL,
   folderDAL,
   projectDAL,
@@ -858,7 +858,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
 
   const updateSecretChangeRequestStatus: TSecretChangeGlobalRequestBridgeMethods["updateSecretChangeRequestStatus"] =
     async ({ approvalId, actor, actorId, actorAuthMethod, actorOrgId, status }) => {
-      const plan = await licenseService.getPlan(actorOrgId);
+      const plan = await license.getPlan(actorOrgId);
       if (!plan.secretApproval && status === RequestState.Open) {
         throw new BadRequestError({
           message:

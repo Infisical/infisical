@@ -57,13 +57,13 @@ const assertValidApplicationId = (applicationId: string) => {
 export type TCertManagerApplicationAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
 };
 
 export const certManagerApplicationAlertProviderFactory = ({
   certManagerCertificateAlertDAL,
   permissionService,
-  licenseService
+  license
 }: TCertManagerApplicationAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
   IEventAlertProvider<TAlertCertificate> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> => {
@@ -202,7 +202,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     dedupWindowHours: expiryDedupWindowHours,
     assertPermission,
     assertResourceInScope,
-    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
+    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(license, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getWebhookSource,

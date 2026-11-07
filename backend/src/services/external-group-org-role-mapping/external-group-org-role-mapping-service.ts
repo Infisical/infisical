@@ -24,7 +24,7 @@ import { TExternalGroupOrgRoleMappingDALFactory } from "./external-group-org-rol
 type TExternalGroupOrgRoleMappingServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: TLicenseService;
+  license: TLicenseService;
   roleDAL: TRoleDALFactory;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
@@ -33,7 +33,7 @@ export type TExternalGroupOrgRoleMappingServiceFactory = ReturnType<typeof exter
 
 export const externalGroupOrgRoleMappingServiceFactory = ({
   externalGroupOrgRoleMappingDAL,
-  licenseService,
+  license,
   permissionService,
   roleDAL,
   orgDAL
@@ -86,7 +86,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
     const mappings = await constructGroupOrgMembershipRoleMappings({
       mappingsDTO: dto.mappings,
       roleDAL,
-      licenseService,
+      license,
       orgId: actor.orgId
     });
 

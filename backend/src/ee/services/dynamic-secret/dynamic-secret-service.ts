@@ -41,7 +41,7 @@ type TDynamicSecretServiceFactoryDep = {
     TDynamicSecretLeaseQueueServiceFactory,
     "pruneDynamicSecret" | "unsetLeaseRevocation"
   >;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findById" | "findSecretPathByFolderIds"
@@ -86,7 +86,7 @@ const getUpdatedFieldPaths = (
 export const dynamicSecretServiceFactory = ({
   dynamicSecretDAL,
   dynamicSecretLeaseDAL,
-  licenseService,
+  license,
   folderDAL,
   dynamicSecretProviders,
   permissionService,
@@ -131,7 +131,7 @@ export const dynamicSecretServiceFactory = ({
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path, metadata })
     );
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to create dynamic secret due to plan restriction. Upgrade plan to create dynamic secret."
@@ -288,7 +288,7 @@ export const dynamicSecretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to update dynamic secret due to plan restriction. Upgrade plan to create dynamic secret."

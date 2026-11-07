@@ -51,7 +51,7 @@ type TAuditLogServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -74,7 +74,7 @@ export const auditLogServiceFactory = ({
   clickhouseAuditLogDAL,
   auditLogQueue,
   auditLogSettingsService,
-  licenseService,
+  license,
   permissionService,
   queueService,
   keyStore,
@@ -311,7 +311,7 @@ export const auditLogServiceFactory = ({
 
       if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;
 
-      const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
+      const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => license.getPlan(orgId));
       if (!plan || !hasAuditLogRetention(plan)) return;
 
       const actorIdKey = ACTOR_TYPE_TO_METADATA_ID_KEY[auditLogInfo.actor.type];

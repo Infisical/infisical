@@ -205,7 +205,7 @@ type TSignerServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
 };
 
 export type TSignerServiceFactory = ReturnType<typeof signerServiceFactory>;
@@ -377,7 +377,7 @@ export const signerServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   hsmConnectorService,
-  licenseService,
+  license,
   orgDAL
 }: TSignerServiceFactoryDep) => {
   const hsmCertIssuanceDeps = {
@@ -640,7 +640,7 @@ export const signerServiceFactory = ({
       ProjectPermissionSub.CodeSigners
     );
 
-    const plan = await licenseService.getPlan(dto.actorOrgId);
+    const plan = await license.getPlan(dto.actorOrgId);
     if (!plan.pkiCodeSigning) {
       throw new BadRequestError({
         message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."

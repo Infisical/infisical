@@ -102,12 +102,12 @@ const scopes = {
 
 const scopeList = Object.values(scopes);
 
-const { permissionService, licenseService, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
+const { permissionService, license, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
   permissionService,
-  licenseService,
+  license,
   orgDAL: orgDALFactory(testDb),
   identityOrgMembershipDAL: identityOrgDALFactory(testDb),
   dynamicSecretLeaseDAL: dynamicSecretLeaseDALFactory(testDb),

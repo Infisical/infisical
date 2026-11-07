@@ -130,9 +130,9 @@ export const buildOrgInsightsGateStubs = () => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    licenseService: {
+    license: {
       getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
-    } as TInsightsServiceFactoryDep["licenseService"],
+    } as TInsightsServiceFactoryDep["license"],
     setCanReadInsights: (canRead: boolean) => {
       canReadInsights = canRead;
     },

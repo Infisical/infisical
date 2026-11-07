@@ -50,7 +50,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "update">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
@@ -68,7 +68,7 @@ export const dynamicSecretLeaseServiceFactory = ({
   permissionService,
   dynamicSecretQueueService,
   projectDAL,
-  licenseService,
+  license,
   kmsService,
   userDAL,
   identityDAL,
@@ -106,7 +106,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to create lease due to plan restriction. Upgrade plan to create dynamic secret."
@@ -280,7 +280,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       projectId
     });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to renew lease due to plan restriction. Upgrade plan to create dynamic secret."

@@ -58,7 +58,7 @@ type TIdentityAliCloudAuthServiceFactoryDep = {
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
@@ -79,7 +79,7 @@ export const identityAliCloudAuthServiceFactory = ({
   identityAliCloudAuthDAL,
   membershipIdentityDAL,
   keyStore,
-  licenseService,
+  license,
   permissionService,
   orgDAL,
   identityAccessTokenService,
@@ -304,7 +304,7 @@ export const identityAliCloudAuthServiceFactory = ({
     );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -409,7 +409,7 @@ export const identityAliCloudAuthServiceFactory = ({
     );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&

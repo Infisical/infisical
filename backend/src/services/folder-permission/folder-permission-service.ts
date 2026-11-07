@@ -58,7 +58,7 @@ type TFolderPermissionServiceFactoryDep = {
     | "hasProjectAccess"
     | "isProjectAdmin"
   >;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
@@ -81,11 +81,11 @@ export const folderPermissionServiceFactory = ({
   secretFolderDAL,
   permissionService,
   folderPermissionDAL,
-  licenseService,
+  license,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
   const assertFolderRbacLicensed = async (orgId: string) => {
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.secretsFolderRbac) {
       throw new BadRequestError({
         message: "Failed to access folder access controls due to plan restriction. Upgrade your Infisical plan."

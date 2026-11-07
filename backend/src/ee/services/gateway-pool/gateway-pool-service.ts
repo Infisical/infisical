@@ -42,7 +42,7 @@ type TGatewayPoolServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
@@ -57,7 +57,7 @@ export const gatewayPoolServiceFactory = ({
   gatewayV2DAL,
   gatewayV2Service,
   permissionService,
-  licenseService,
+  license,
   identityKubernetesAuthDAL,
   pkiDiscoveryConfigDAL,
   appConnectionDAL,
@@ -76,7 +76,7 @@ export const gatewayPoolServiceFactory = ({
   };
 
   const $checkLicense = async (orgId: string) => {
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.gatewayPool) {
       throw new BadRequestError({
         message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."

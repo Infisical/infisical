@@ -36,7 +36,7 @@ const MAX_EMAIL_RECIPIENTS = 20;
 
 type TAuditReportServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   auditReportDAL: TAuditReportDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -49,7 +49,7 @@ export type TAuditReportServiceFactory = ReturnType<typeof auditReportServiceFac
 
 export const auditReportServiceFactory = ({
   permissionService,
-  licenseService,
+  license,
   auditReportDAL,
   projectDAL,
   projectBotService,
@@ -136,7 +136,7 @@ export const auditReportServiceFactory = ({
   };
 
   const generateReport = async (dto: TRequestAuditReportDTO, actor: TAuditReportServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
@@ -233,7 +233,7 @@ export const auditReportServiceFactory = ({
   };
 
   const listReports = async (dto: TListAuditReportsDTO, actor: TAuditReportServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
@@ -263,7 +263,7 @@ export const auditReportServiceFactory = ({
   };
 
   const getReportById = async (auditReportId: string, projectId: string, actor: TAuditReportServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
@@ -334,7 +334,7 @@ export const auditReportServiceFactory = ({
   };
 
   const generateOrgReport = async (dto: TRequestOrgAuditReportDTO, actor: TAuditReportServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
@@ -427,7 +427,7 @@ export const auditReportServiceFactory = ({
   };
 
   const listOrgReports = async (dto: TListOrgAuditReportsDTO, actor: TAuditReportServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."

@@ -101,13 +101,13 @@ const buildProvider = (opts?: {
       hasRole: (role: string) => (opts?.projectRoles ?? []).includes(role)
     }))
   };
-  const licenseService = new FakeLicenseService().setPlan("org-1", {
+  const license = new FakeLicenseService().setPlan("org-1", {
     pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false
   });
   const provider = certManagerAlertProviderFactory({
     certManagerCertificateAlertDAL: dal,
     permissionService,
-    licenseService,
+    license,
     certManagerProjectResolver: {
       getActiveProjectId: async (orgId: string) => (orgId === "org-1" ? "proj-1" : null)
     }

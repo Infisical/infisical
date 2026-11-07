@@ -73,7 +73,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseService, "getPlan" | "getSeatUsage" | "syncSeats">;
+  license: Pick<TLicenseService, "getPlan" | "getSeatUsage" | "syncSeats">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -95,7 +95,7 @@ export const identityV2ServiceFactory = ({
   identityDAL,
   identityMembershipV2DAL,
   permissionService,
-  licenseService,
+  license,
   membershipIdentityDAL,
   membershipRoleDAL,
   identityMetadataDAL,
@@ -129,10 +129,10 @@ export const identityV2ServiceFactory = ({
 
     await factory.onCreateIdentityGuard(dto);
 
-    const plan = await licenseService.getPlan(dto.permission.orgId);
+    const plan = await license.getPlan(dto.permission.orgId);
     const identityLimit = Plan.restore(plan).enforcedIdentityLimit;
     if (identityLimit) {
-      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
+      const { identitiesUsed } = await license.getSeatUsage(dto.permission.orgId);
       if (identitiesUsed >= identityLimit) {
         // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
         throw new BadRequestError({
@@ -321,7 +321,7 @@ export const identityV2ServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.syncSeats(dto.permission.orgId);
+    await license.syncSeats(dto.permission.orgId);
 
     // A new identity always adds an org membership; a project-scoped one also joins that project, so
     // it counts toward the secret-manager and PAM identity meters too.
@@ -450,7 +450,7 @@ export const identityV2ServiceFactory = ({
     });
     await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
 
-    await licenseService.syncSeats(scopeData.orgId);
+    await license.syncSeats(scopeData.orgId);
 
     // Deleting the identity cascades its org + project + group memberships, so all meters change.
     usageMeteringService.emit(scopeData.orgId, IdentitiesMeter.key);

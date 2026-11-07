@@ -140,7 +140,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: TSessionLogLicenseService;
+  license: TSessionLogLicenseService;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
 };
@@ -199,7 +199,7 @@ export const agentVaultProxyServiceFactory = ({
   userDAL,
   permissionService,
   kmsService,
-  licenseService,
+  license,
   resourceAuthMethodService,
   agentVaultOauthService
 }: TAgentVaultProxyServiceFactoryDep) => {
@@ -1073,7 +1073,7 @@ export const agentVaultProxyServiceFactory = ({
     });
     const entitlement =
       sessionLogConfig?.enabled && Boolean(session.encryptedSessionLogKey)
-        ? (await getSessionLogEntitlement(licenseService, proxy.orgId, sessionLogConfig.storage.type)).entitlement
+        ? (await getSessionLogEntitlement(license, proxy.orgId, sessionLogConfig.storage.type)).entitlement
         : "unlicensed";
     // While the plan can't be confirmed, a proxy that already holds the key keeps recording, and no key goes out.
     const sessionLogsEnabled = entitlement === "licensed" || (entitlement === "unknown" && hasSessionLogKey);

@@ -75,7 +75,7 @@ const createHarness = (payloads: Record<string, unknown>[]) => {
 
   const telemetryService = telemetryServiceFactory({
     keyStore: keyStore as never,
-    licenseService: new FakeLicenseService(),
+    license: new FakeLicenseService(),
     orgDAL: { findOrgById: vi.fn() } as never,
     emailDomainDAL: { find: vi.fn(async () => []) } as never
   });

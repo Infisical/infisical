@@ -46,7 +46,7 @@ type TProxiedServiceServiceFactoryDep = {
   >;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "getSecrets">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findWithMetadata">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
@@ -80,13 +80,13 @@ export const proxiedServiceServiceFactory = ({
   folderDAL,
   secretV2BridgeService,
   permissionService,
-  licenseService,
+  license,
   dynamicSecretDAL,
   projectDAL,
   keyStore
 }: TProxiedServiceServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.secretsBrokering) {
       throw new BadRequestError({
         message: "Failed to use secrets brokering due to plan restriction. Upgrade your plan to use proxied services."
@@ -182,7 +182,7 @@ export const proxiedServiceServiceFactory = ({
     const dynamicCreds = credentials.filter((c) => Boolean(c.dynamicSecretName));
     if (!dynamicCreds.length) return;
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.dynamicSecret) {
       throw new BadRequestError({
         message:
@@ -561,7 +561,7 @@ export const proxiedServiceServiceFactory = ({
     { projectId, environments, secretPath, search }: TProxiedServiceDashboardCountDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
     if (!plan.secretsBrokering) return 0;
 
     const { permission } = await permissionService.getProjectPermission({
@@ -598,7 +598,7 @@ export const proxiedServiceServiceFactory = ({
     { projectId, environments, secretPath, search, orderDirection, limit, offset }: TProxiedServiceDashboardListDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
     if (!plan.secretsBrokering) return [];
 
     const { permission } = await permissionService.getProjectPermission({

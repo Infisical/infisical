@@ -24,7 +24,7 @@ export type TAgentProxyCaServiceFactory = ReturnType<typeof agentProxyCaServiceF
 type TAgentProxyCaServiceFactoryDep = {
   orgAgentProxyConfigDAL: TOrgAgentProxyConfigDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
@@ -35,11 +35,11 @@ const ROOT_CA_VALIDITY_YEARS = 10;
 export const agentProxyCaServiceFactory = ({
   orgAgentProxyConfigDAL,
   kmsService,
-  licenseService,
+  license,
   permissionService
 }: TAgentProxyCaServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.secretsBrokering) {
       throw new BadRequestError({
         message: "Failed to use secrets brokering due to plan restriction. Upgrade your plan to use the agent proxy."

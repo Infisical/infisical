@@ -21,7 +21,5 @@ export const dormantBilling: TLicenseServerBilling = {
   confirmTrialPayment: notConfigured,
   getTrials: async () => ({ trials: [] }),
   cancelSubscription: notConfigured,
-  resumeSubscription: notConfigured,
-  markEntitlementsStale: async () => undefined,
-  refreshEntitlements: async () => undefined
+  resumeSubscription: notConfigured
 };

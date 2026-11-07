@@ -42,7 +42,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
   secretApprovalPolicyEnvironmentDAL: TSecretApprovalPolicyEnvironmentDALFactory;
   secretChangeGlobalPolicyBridgeService: Pick<
@@ -69,7 +69,7 @@ export const secretApprovalPolicyServiceFactory = ({
   projectEnvDAL,
   projectDAL,
   userDAL,
-  licenseService,
+  license,
   secretApprovalRequestDAL,
   secretChangeGlobalPolicyBridgeService
 }: TSecretApprovalPolicyServiceFactoryDep) => {
@@ -155,7 +155,7 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:
@@ -404,7 +404,7 @@ export const secretApprovalPolicyServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:

@@ -144,7 +144,7 @@ type TOrgServiceFactoryDep = {
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats" | "cancelSubscription">;
+  license: Pick<TLicenseService, "getPlan" | "syncSeats" | "cancelSubscription">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
@@ -178,7 +178,7 @@ export const orgServiceFactory = ({
   projectMembershipDAL,
   orgMembershipDAL,
   tokenService,
-  licenseService,
+  license,
   samlConfigDAL,
   oidcConfigDAL,
   ldapConfigDAL,
@@ -549,7 +549,7 @@ export const orgServiceFactory = ({
       );
     }
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     const currentOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
       orgDAL.findOrgById(actorOrgId)
     );
@@ -862,9 +862,9 @@ export const orgServiceFactory = ({
 
     // Seat sync calls the License Server, so it waits for the org to commit, including a caller's transaction.
     if (trx) {
-      sealKnexTransaction(trx).afterCommit(() => licenseService.syncSeats(organization.id));
+      sealKnexTransaction(trx).afterCommit(() => license.syncSeats(organization.id));
     } else {
-      await licenseService.syncSeats(organization.id);
+      await license.syncSeats(organization.id);
     }
 
     usageMeteringService.emit(organization.id, PamIdentities.key);
@@ -925,7 +925,7 @@ export const orgServiceFactory = ({
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     // if root org null = this is a root org then cancel the subscription.
     if (!org.rootOrgId) {
-      await licenseService.cancelSubscription(orgId);
+      await license.cancelSubscription(orgId);
     }
 
     // Outside the transaction: the cleanup runs its own queries per project, and inside it each
@@ -1049,7 +1049,7 @@ export const orgServiceFactory = ({
       const customRole = await roleDAL.findOne({ slug: role, orgId });
       if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
 
-      const plan = await licenseService.getPlan(orgId);
+      const plan = await license.getPlan(orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
@@ -1435,7 +1435,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      license,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1489,7 +1489,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      license,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,

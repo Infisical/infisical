@@ -109,7 +109,7 @@ type TSamlConfigServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
+  license: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -151,7 +151,7 @@ export const samlConfigServiceFactory = ({
   eventEmitter,
   additionalPrivilegeDAL,
   permissionService,
-  licenseService,
+  license,
   tokenService,
   smtpService,
   identityMetadataDAL,
@@ -364,7 +364,7 @@ export const samlConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.samlSSO)
       throw new BadRequestError({
         message:
@@ -442,7 +442,7 @@ export const samlConfigServiceFactory = ({
       actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.samlSSO)
       throw new BadRequestError({
         message:
@@ -697,7 +697,7 @@ export const samlConfigServiceFactory = ({
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
 
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
     const identityLimit = Plan.restore(plan).enforcedIdentityLimit;
 
@@ -832,7 +832,7 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await licenseService.within(sealKnexTransaction(tx)).assertSeatAvailable({
+          await license.within(sealKnexTransaction(tx)).assertSeatAvailable({
             orgId,
             identityLimit,
             via: UserAliasType.SAML
@@ -905,7 +905,7 @@ export const samlConfigServiceFactory = ({
     }
     sendPamCancellations();
 
-    await licenseService.syncSeats(organization.id);
+    await license.syncSeats(organization.id);
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 

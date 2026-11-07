@@ -78,7 +78,7 @@ const createService = ({
         .fn()
         .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
     } as never,
-    licenseService: new FakeLicenseService().setPlan(ORG_ID, { rbac: true as false }),
+    license: new FakeLicenseService().setPlan(ORG_ID, { rbac: true as false }),
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }),
       findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, scopeOrgId: ORG_ID })

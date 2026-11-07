@@ -91,13 +91,13 @@ const buildProvider = (opts?: {
   const permissionService = {
     getResourcePermission: vi.fn(async () => ({ permission: ability() }))
   };
-  const licenseService = new FakeLicenseService().setPlan("org-1", {
+  const license = new FakeLicenseService().setPlan("org-1", {
     pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false
   });
   const provider = certManagerApplicationAlertProviderFactory({
     certManagerCertificateAlertDAL: dal,
     permissionService,
-    licenseService
+    license
   } as unknown as TCertManagerApplicationAlertProviderDep);
   return { provider, permissionService };
 };

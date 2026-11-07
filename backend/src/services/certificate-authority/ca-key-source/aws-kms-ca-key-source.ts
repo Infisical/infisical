@@ -56,7 +56,7 @@ type TAwsKmsCaKeySourceDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
 };
 
 const requireAwsKmsInput = (input: TExternalCaKeyInput) => {
@@ -73,7 +73,7 @@ export const awsKmsCaKeySourceFactory = ({
   appConnectionService,
   kmsService,
   projectDAL,
-  licenseService
+  license
 }: TAwsKmsCaKeySourceDep): TExternalCaKeyProvider => {
   const ephemeralKeys = createEphemeralKeyCache();
 
@@ -128,7 +128,7 @@ export const awsKmsCaKeySourceFactory = ({
 
       const project = await projectDAL.findById(projectId);
       if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-      const plan = await licenseService.getPlan(project.orgId);
+      const plan = await license.getPlan(project.orgId);
       if (!plan.pkiAwsKmsSigning) {
         throw new BadRequestError({
           message:

@@ -32,7 +32,7 @@ import { TProjectTemplateIdentityMembershipDALFactory } from "./project-template
 import { TProjectTemplateUserMembershipDALFactory } from "./project-template-user-membership-dal";
 
 type TProjectTemplatesServiceFactoryDep = {
-  licenseService: TLicenseService;
+  license: TLicenseService;
   permissionService: TPermissionServiceFactory;
   projectTemplateDAL: TProjectTemplateDALFactory;
   projectTemplateUserMembershipDAL: TProjectTemplateUserMembershipDALFactory;
@@ -87,7 +87,7 @@ const $unpackProjectTemplate = (
 });
 
 export const projectTemplateServiceFactory = ({
-  licenseService,
+  license,
   permissionService,
   orgMembershipDAL,
   projectTemplateDAL,
@@ -132,7 +132,7 @@ export const projectTemplateServiceFactory = ({
     actor,
     type
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -183,7 +183,7 @@ export const projectTemplateServiceFactory = ({
     name,
     actor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -221,7 +221,7 @@ export const projectTemplateServiceFactory = ({
   };
 
   const findProjectTemplateById: TProjectTemplateServiceFactory["findProjectTemplateById"] = async (id, actor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -262,7 +262,7 @@ export const projectTemplateServiceFactory = ({
     { roles, environments, users, groups, identities, projectManagedIdentities, type, ...params },
     actor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -514,7 +514,7 @@ export const projectTemplateServiceFactory = ({
     { roles, environments, users, groups, identities, projectManagedIdentities, ...params },
     actor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -847,7 +847,7 @@ export const projectTemplateServiceFactory = ({
   };
 
   const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({

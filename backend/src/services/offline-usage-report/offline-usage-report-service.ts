@@ -7,14 +7,14 @@ import { TOfflineUsageReportDALFactory } from "./offline-usage-report-dal";
 
 type TOfflineUsageReportServiceFactoryDep = {
   offlineUsageReportDAL: TOfflineUsageReportDALFactory;
-  licenseService: Pick<TLicenseService, "getLicenseId" | "hasOfflineLicenseKey">;
+  license: Pick<TLicenseService, "getLicenseId" | "hasOfflineLicenseKey">;
 };
 
 export type TOfflineUsageReportServiceFactory = ReturnType<typeof offlineUsageReportServiceFactory>;
 
 export const offlineUsageReportServiceFactory = ({
   offlineUsageReportDAL,
-  licenseService
+  license
 }: TOfflineUsageReportServiceFactoryDep) => {
   const signReportContent = (content: string, licenseId: string): string => {
     const contentHash = crypto.createHash("sha256").update(content).digest("hex");
@@ -29,7 +29,7 @@ export const offlineUsageReportServiceFactory = ({
   };
 
   const generateUsageReportCSV = async () => {
-    const hasOfflineLicense = licenseService.hasOfflineLicenseKey();
+    const hasOfflineLicense = license.hasOfflineLicenseKey();
 
     if (!hasOfflineLicense) {
       throw new BadRequestError({
@@ -38,7 +38,7 @@ export const offlineUsageReportServiceFactory = ({
       });
     }
 
-    const licenseId = licenseService.getLicenseId();
+    const licenseId = license.getLicenseId();
 
     const [
       userMetrics,

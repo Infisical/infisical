@@ -98,7 +98,7 @@ type TPkiScepServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   certManager: Pick<
     TCertManagerService,
     "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
@@ -134,7 +134,7 @@ export const pkiScepServiceFactory = ({
   kmsService,
   appConnectionDAL,
   keyStore,
-  licenseService,
+  license,
   certManager,
   certificatePolicyDAL,
   certificatePolicyService,
@@ -197,7 +197,7 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await licenseService.getPlan(project.orgId);
+    const plan = await license.getPlan(project.orgId);
     if (!plan.pkiScep) {
       throw new BadRequestError({
         message: "Failed to perform SCEP operation due to plan restriction. Upgrade to the Enterprise plan."
@@ -968,8 +968,8 @@ export const pkiScepServiceFactory = ({
       altNames: (certRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      licenseService,
-      quotaDeps: { projectDAL, licenseService, certManager, keyStore }
+      license,
+      quotaDeps: { projectDAL, license, certManager, keyStore }
     });
 
     const newCertRequest = await certificateRequestService.createCertificateRequest({
@@ -1302,7 +1302,7 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await licenseService.getPlan(project.orgId);
+    const plan = await license.getPlan(project.orgId);
     if (!plan.pkiScep) {
       throw new BadRequestError({
         message: "Failed to generate SCEP challenge due to plan restriction. Upgrade to the Enterprise plan."

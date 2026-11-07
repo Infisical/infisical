@@ -85,7 +85,7 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  licenseService: Pick<TLicenseService, "getInstanceType" | "getPlan" | "getSeatUsage">;
+  license: Pick<TLicenseService, "getInstanceType" | "getPlan" | "getSeatUsage">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
@@ -136,12 +136,7 @@ const getDeploymentType = (
   return DeploymentType.SelfHosted;
 };
 
-export const telemetryServiceFactory = ({
-  keyStore,
-  licenseService,
-  orgDAL,
-  emailDomainDAL
-}: TTelemetryServiceFactoryDep) => {
+export const telemetryServiceFactory = ({ keyStore, license, orgDAL, emailDomainDAL }: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
 
   let instanceIdPromise: Promise<string | undefined> | undefined;
@@ -206,7 +201,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     lastName?: string,
     hubspotUtk?: string
   ) => {
-    const instanceType = licenseService.getInstanceType();
+    const instanceType = license.getInstanceType();
     if (
       appCfg.isProductionMode &&
       instanceType === InstanceType.Cloud &&
@@ -263,7 +258,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       properties.name = orgName;
     }
 
-    const instanceType = licenseService.getInstanceType();
+    const instanceType = license.getInstanceType();
     properties.is_cloud = instanceType === InstanceType.Cloud;
     properties.instance_type = instanceType;
     properties.deployment_type = getDeploymentType(instanceType, appCfg);
@@ -284,7 +279,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const [plan, seatUsage] = await Promise.all([licenseService.getPlan(orgId), licenseService.getSeatUsage(orgId)]);
+      const [plan, seatUsage] = await Promise.all([license.getPlan(orgId), license.getSeatUsage(orgId)]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
       properties.has_secret_scanning = Boolean(plan.secretScanning);

@@ -63,7 +63,7 @@ type TIdentityAuthTemplateServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
@@ -81,12 +81,12 @@ export const identityAuthTemplateServiceFactory = ({
   orgDAL,
   permissionService,
   kmsService,
-  licenseService,
+  license,
   auditLogService
 }: TIdentityAuthTemplateServiceFactoryDep) => {
   // Plan check
   const $checkPlan = async (orgId: string) => {
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.machineIdentityAuthTemplates)
       throw new BadRequestError({
         message:

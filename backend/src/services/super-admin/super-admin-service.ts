@@ -113,7 +113,7 @@ type TSuperAdminServiceFactoryDep = {
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<TLicenseService, "getInstanceEntitlements" | "syncSeats" | "within">;
+  license: Pick<TLicenseService, "getInstanceEntitlements" | "syncSeats" | "within">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -171,7 +171,7 @@ export const superAdminServiceFactory = ({
   keyStore,
   kmsRootConfigDAL,
   kmsService,
-  licenseService,
+  license,
   identityAccessTokenService,
   identityTokenAuthDAL,
   microsoftTeamsService,
@@ -913,7 +913,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const identityLimit = Plan.restore(licenseService.getInstanceEntitlements().features).enforcedIdentityLimit;
+    const identityLimit = Plan.restore(license.getInstanceEntitlements().features).enforcedIdentityLimit;
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -942,7 +942,7 @@ export const superAdminServiceFactory = ({
       const org = await orgService.createOrganization({ orgName: name }, tx);
 
       if (identityLimit) {
-        const { identitiesUsed } = await licenseService.within(sealKnexTransaction(tx)).getSeatUsage(org.id);
+        const { identitiesUsed } = await license.within(sealKnexTransaction(tx)).getSeatUsage(org.id);
         if (identitiesUsed >= identityLimit) {
           throw new BadRequestError({
             name: "InviteUser",
@@ -1012,7 +1012,7 @@ export const superAdminServiceFactory = ({
       return { organization: org, users };
     });
 
-    await licenseService.syncSeats(organization.id);
+    await license.syncSeats(organization.id);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {
@@ -1098,7 +1098,7 @@ export const superAdminServiceFactory = ({
       orgId: organizationId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      license,
       userId: actorType === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1234,7 +1234,7 @@ export const superAdminServiceFactory = ({
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
-    if (!licenseService.getInstanceEntitlements().features.instanceUserManagement) {
+    if (!license.getInstanceEntitlements().features.instanceUserManagement) {
       throw new BadRequestError({
         message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
       });
@@ -1277,7 +1277,7 @@ export const superAdminServiceFactory = ({
   };
 
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
-    if (!licenseService.getInstanceEntitlements().features.hsm) {
+    if (!license.getInstanceEntitlements().features.hsm) {
       throw new BadRequestError({
         message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
       });
@@ -1343,7 +1343,7 @@ export const superAdminServiceFactory = ({
 
     const config = getConfig();
     if (!config.isCloud) {
-      const plan = licenseService.getInstanceEntitlements().features;
+      const plan = license.getInstanceEntitlements().features;
       const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
       if (!canEmailDomainVerification) {
         throw new BadRequestError({

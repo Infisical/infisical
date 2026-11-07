@@ -86,7 +86,7 @@ type TMembershipUserServiceFactoryDep = {
     | "getOrgPermissionByRoles"
     | "getResourcePermission"
   >;
-  licenseService: TLicenseService;
+  license: TLicenseService;
   userAliasDAL: TUserAliasDALFactory;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
@@ -118,7 +118,7 @@ export const membershipUserServiceFactory = ({
   permissionService,
   orgDAL,
   userAliasDAL,
-  licenseService,
+  license,
   smtpService,
   tokenService,
   userGroupMembershipDAL,
@@ -138,7 +138,7 @@ export const membershipUserServiceFactory = ({
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
       permissionService,
-      licenseService,
+      license,
       smtpService,
       orgDAL,
       tokenService,
@@ -307,7 +307,7 @@ export const membershipUserServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseService,
+      license,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -372,7 +372,7 @@ export const membershipUserServiceFactory = ({
     const customInputRoles = rolesToUse.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseService.getPlan(scopeData.orgId);
+      const plan = await license.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -457,7 +457,7 @@ export const membershipUserServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseService.getPlan(scopeData.orgId);
+      const plan = await license.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -486,7 +486,7 @@ export const membershipUserServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseService,
+      license,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -623,7 +623,7 @@ export const membershipUserServiceFactory = ({
           orgId: dto.permission.orgId,
           orgDAL,
           userAliasDAL,
-          licenseService,
+          license,
           userId: dto.permission.id,
           membershipUserDAL,
           userGroupMembershipDAL,

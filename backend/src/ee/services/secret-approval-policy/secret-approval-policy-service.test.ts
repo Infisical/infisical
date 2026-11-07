@@ -59,7 +59,7 @@ const buildService = ({
   const deps = {
     projectDAL: { findById: vi.fn().mockResolvedValue({ id: PROJECT_ID, version: projectVersion }) },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: allowAll }) },
-    licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretApproval: true as false }),
+    license: new FakeLicenseService().setPlan(ORG_ID, { secretApproval: true as false }),
     projectEnvDAL: {
       find: vi.fn().mockResolvedValue([ENV_DEV]),
       findOne: vi.fn(({ slug }: { slug: string }) => Promise.resolve(slug === ENV_DEV.slug ? ENV_DEV : undefined))

@@ -25,8 +25,8 @@ type TListOCIVaultKeysDTO = {
 };
 
 // Enterprise check
-export const checkPlan = async (licenseService: Pick<TLicenseService, "getPlan">, orgId: string) => {
-  const plan = await licenseService.getPlan(orgId);
+export const checkPlan = async (license: Pick<TLicenseService, "getPlan">, orgId: string) => {
+  const plan = await license.getPlan(orgId);
   if (!plan.enterpriseAppConnections)
     throw new BadRequestError({
       message:
@@ -36,10 +36,10 @@ export const checkPlan = async (licenseService: Pick<TLicenseService, "getPlan">
 
 export const ociConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  licenseService: Pick<TLicenseService, "getPlan">
+  license: Pick<TLicenseService, "getPlan">
 ) => {
   const listCompartments = async (connectionId: string, actor: OrgServiceActor) => {
-    await checkPlan(licenseService, actor.orgId);
+    await checkPlan(license, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -53,7 +53,7 @@ export const ociConnectionService = (
   };
 
   const listVaults = async ({ connectionId, compartmentOcid }: TListOCIVaultsDTO, actor: OrgServiceActor) => {
-    await checkPlan(licenseService, actor.orgId);
+    await checkPlan(license, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -70,7 +70,7 @@ export const ociConnectionService = (
     { connectionId, compartmentOcid, vaultOcid }: TListOCIVaultKeysDTO,
     actor: OrgServiceActor
   ) => {
-    await checkPlan(licenseService, actor.orgId);
+    await checkPlan(license, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 

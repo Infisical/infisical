@@ -61,7 +61,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -79,7 +79,7 @@ export const identityGcpAuthServiceFactory = ({
   keyStore,
   identityAccessTokenDAL,
   permissionService,
-  licenseService,
+  license,
   orgDAL,
   identityAccessTokenService,
   eventEmitter
@@ -370,7 +370,7 @@ export const identityGcpAuthServiceFactory = ({
     );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -489,7 +489,7 @@ export const identityGcpAuthServiceFactory = ({
     );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&

@@ -23,7 +23,7 @@ type TCertificateEstServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
 };
 
 export type TCertificateEstServiceFactory = ReturnType<typeof certificateEstServiceFactory>;
@@ -36,7 +36,7 @@ export const certificateEstServiceFactory = ({
   certificateAuthorityDAL,
   projectDAL,
   kmsService,
-  licenseService
+  license
 }: TCertificateEstServiceFactoryDep) => {
   const simpleReenroll = async ({
     csr,
@@ -52,7 +52,7 @@ export const certificateEstServiceFactory = ({
       certificateTemplateId
     });
 
-    const plan = await licenseService.getPlan(estConfig.orgId);
+    const plan = await license.getPlan(estConfig.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message:
@@ -153,7 +153,7 @@ export const certificateEstServiceFactory = ({
       certificateTemplateId
     });
 
-    const plan = await licenseService.getPlan(estConfig.orgId);
+    const plan = await license.getPlan(estConfig.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message:
@@ -214,7 +214,7 @@ export const certificateEstServiceFactory = ({
       certificateTemplateId
     });
 
-    const plan = await licenseService.getPlan(estConfig.orgId);
+    const plan = await license.getPlan(estConfig.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."

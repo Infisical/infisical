@@ -96,7 +96,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "unwrapKey">;
-  licenseService: TSessionLogLicenseService;
+  license: TSessionLogLicenseService;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamRange">;
   objectStorage: Pick<TObjectStorageServiceFactory, "at">;
 };
@@ -132,7 +132,7 @@ export const agentVaultSessionLogServiceFactory = ({
   appConnectionService,
   permissionService,
   kmsService,
-  licenseService,
+  license,
   keyStore,
   objectStorage
 }: TAgentVaultSessionLogServiceFactoryDep) => {
@@ -209,7 +209,7 @@ export const agentVaultSessionLogServiceFactory = ({
       });
     }
 
-    const { entitlement, plan } = await getSessionLogEntitlement(licenseService, proxy.orgId, config.storage.type);
+    const { entitlement, plan } = await getSessionLogEntitlement(license, proxy.orgId, config.storage.type);
     if (entitlement === "unlicensed") {
       throw new BadRequestError({
         name: AgentVaultSessionLogErrorName.Disabled,
@@ -317,7 +317,7 @@ export const agentVaultSessionLogServiceFactory = ({
     let disabledReason: TAgentVaultSessionLogDisabledReason | null = null;
     if (!config?.enabled) disabledReason = "off";
     else if (
-      (await getSessionLogEntitlement(licenseService, ctx.actorOrgId, config.storage.type)).entitlement === "unlicensed"
+      (await getSessionLogEntitlement(license, ctx.actorOrgId, config.storage.type)).entitlement === "unlicensed"
     ) {
       disabledReason = "not-on-plan";
     }
@@ -492,7 +492,7 @@ export const agentVaultSessionLogServiceFactory = ({
   const $isExternalStorageInUse = async (config: TEffectiveSessionLogConfig, orgId: string) =>
     config.storage.type === ObjectStorageType.External &&
     config.enabled &&
-    (await getSessionLogEntitlement(licenseService, orgId, config.storage.type)).entitlement !== "unlicensed";
+    (await getSessionLogEntitlement(license, orgId, config.storage.type)).entitlement !== "unlicensed";
 
   const getSessionLogHealth = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
     await $requireAdmin({ projectId, ctx });
@@ -578,7 +578,7 @@ export const agentVaultSessionLogServiceFactory = ({
     const isStorageChange = !isSameSessionLogStorage(nextStorage, current?.storage);
     const isTurningOn = !(current?.isSaved && current.enabled);
     if (isStorageChange || isTurningOn) {
-      const { entitlement } = await getSessionLogEntitlement(licenseService, ctx.actorOrgId, nextStorage.type);
+      const { entitlement } = await getSessionLogEntitlement(license, ctx.actorOrgId, nextStorage.type);
       if (entitlement === "unknown") {
         throw new InternalServerError({
           message: "Infisical couldn't confirm your plan right now. Try again in a few minutes."

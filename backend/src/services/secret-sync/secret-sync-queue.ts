@@ -135,7 +135,7 @@ type TSecretSyncQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -191,7 +191,7 @@ export const secretSyncQueueFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   eventEmitter,
-  licenseService,
+  license,
   gatewayV2Service,
   gatewayPoolService,
   notificationService,
@@ -400,7 +400,7 @@ export const secretSyncQueueFactory = ({
     } = secretSync;
 
     await enterpriseSyncCheck(
-      licenseService,
+      license,
       destination,
       orgId,
       "Failed to import secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
@@ -512,7 +512,7 @@ export const secretSyncQueueFactory = ({
     } = job;
 
     await enterpriseSyncCheck(
-      licenseService,
+      license,
       secretSync.destination as SecretSync,
       secretSync.connection.orgId,
       "Failed to sync secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
@@ -846,7 +846,7 @@ export const secretSyncQueueFactory = ({
     } = job;
 
     await enterpriseSyncCheck(
-      licenseService,
+      license,
       secretSync.destination as SecretSync,
       secretSync.connection.orgId,
       "Failed to remove secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."

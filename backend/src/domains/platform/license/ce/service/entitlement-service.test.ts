@@ -269,3 +269,35 @@ describe("LicenseModule without EE hooks", () => {
     expect((await module.service.getPlan(ROOT.id)).slug).toBeNull();
   });
 });
+
+describe("EntitlementService.refreshPlan after a billing change", () => {
+  test("should keep serving the cached plan and refresh it in the background once", async () => {
+    // Setup
+    const { license, hooks } = await buildLicense();
+    await license.getPlan(ROOT.id);
+    hooks.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
+
+    // Action
+    await license.refreshPlan(SUB_ORG_ID, { afterBillingChange: { checkout: true } });
+    const served = await license.getPlan(ROOT.id);
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+
+    // Assert
+    expect(served.slug).toBe("enterprise");
+    expect((await license.getPlan(ROOT.id)).slug).toBe("pro");
+    expect(hooks.planFetches).toHaveLength(2);
+  });
+
+  test("should do nothing on self-hosted", async () => {
+    // Setup
+    const { license, hooks } = await buildLicense({ hooks: selfHostedHooks() });
+
+    // Action
+    await license.refreshPlan(ROOT.id, { afterBillingChange: {} });
+
+    // Assert
+    expect(hooks.planFetches).toEqual([]);
+  });
+});

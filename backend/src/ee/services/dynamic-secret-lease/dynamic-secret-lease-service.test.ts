@@ -77,7 +77,7 @@ const createService = ({ revocationFailing = false } = {}) => {
       unsetLeaseRevocation: vi.fn(async () => undefined),
       queueFailedRevocation: vi.fn(async () => undefined)
     } as never,
-    licenseService: new FakeLicenseService().setPlan("org-1", { dynamicSecret: true as false }),
+    license: new FakeLicenseService().setPlan("org-1", { dynamicSecret: true as false }),
     folderDAL: { findBySecretPath: vi.fn(async () => ({ id: "folder-1", envId: "env-1" })) } as never,
     permissionService: {
       getProjectPermission: vi.fn(async () => ({

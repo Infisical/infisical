@@ -57,7 +57,7 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
+  license: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   usageMeteringService: Pick<TLicenseService, "emit">;
@@ -76,7 +76,7 @@ export const identityServiceFactory = ({
   identityOrgMembershipDAL,
   identityProjectDAL,
   permissionService,
-  licenseService,
+  license,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -114,7 +114,7 @@ export const identityServiceFactory = ({
     );
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (isCustomRole) {
-      const plan = await licenseService.getPlan(orgId);
+      const plan = await license.getPlan(orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -141,7 +141,7 @@ export const identityServiceFactory = ({
         });
     }
 
-    const identityLimit = Plan.restore(await licenseService.getPlan(orgId)).enforcedIdentityLimit;
+    const identityLimit = Plan.restore(await license.getPlan(orgId)).enforcedIdentityLimit;
 
     const identity = await identityDAL.transaction(async (tx) => {
       // Acquire advisory lock to prevent race conditions when checking identity limits
@@ -150,7 +150,7 @@ export const identityServiceFactory = ({
 
       // Count seats inside the transaction, after the lock, so a concurrent create can't slip past
       if (identityLimit) {
-        const { identitiesUsed } = await licenseService.within(sealKnexTransaction(tx)).getSeatUsage(orgId);
+        const { identitiesUsed } = await license.within(sealKnexTransaction(tx)).getSeatUsage(orgId);
         if (identitiesUsed >= identityLimit) {
           throw new BadRequestError({
             message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
@@ -200,7 +200,7 @@ export const identityServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.syncSeats(orgId);
+    await license.syncSeats(orgId);
     usageMeteringService.emit(orgId, IdentitiesMeter.key);
 
     return identity;
@@ -244,7 +244,7 @@ export const identityServiceFactory = ({
 
       const isCustomRole = Boolean(rolePermissionDetails?.role);
       if (isCustomRole) {
-        const plan = await licenseService.getPlan(actorOrgId);
+        const plan = await license.getPlan(actorOrgId);
         if (!plan?.rbac)
           throw new BadRequestError({
             message:
@@ -442,7 +442,7 @@ export const identityServiceFactory = ({
         return identityDAL.deleteById(id, tx);
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
-      await licenseService.syncSeats(identityOrgMembership.scopeOrgId);
+      await license.syncSeats(identityOrgMembership.scopeOrgId);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);

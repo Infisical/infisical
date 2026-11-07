@@ -1,6 +1,13 @@
 import { InstanceType, TFeatureSet } from "../model/license-types";
 import { Plan, TInstanceEntitlements, TPlan, TPlanFeature } from "../model/plan";
-import { isCloud, refreshPlanFor, resolvePlan, rootOrgOf, TLicenseContext } from "./license-context";
+import {
+  isCloud,
+  refreshPlanFor,
+  resolvePlan,
+  rootOrgOf,
+  TLicenseContext,
+  TRefreshPlanOptions
+} from "./license-context";
 
 export class EntitlementService {
   constructor(private readonly ctx: TLicenseContext) {}
@@ -33,8 +40,8 @@ export class EntitlementService {
     Plan.restore(await resolvePlan(this.ctx, orgId)).assert(feature);
   }
 
-  refreshPlan(orgId: string): Promise<void> {
-    return refreshPlanFor(this.ctx, orgId);
+  refreshPlan(orgId: string, opts?: TRefreshPlanOptions): Promise<void> {
+    return refreshPlanFor(this.ctx, orgId, opts);
   }
 
   async invalidatePlan(orgId: string): Promise<void> {

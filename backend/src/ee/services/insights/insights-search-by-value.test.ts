@@ -39,7 +39,7 @@ const buildService = ({
         generateSecretBlindIndex: async () => "digest"
       }))
     },
-    licenseService: new FakeLicenseService().setPlan("org", { secretAccessInsights: hasInsightsPlan as false }),
+    license: new FakeLicenseService().setPlan("org", { secretAccessInsights: hasInsightsPlan as false }),
     permissionService: {
       getOrgPermission: vi.fn(async () => ({
         permission: createMongoAbility<OrgPermissionSet>(

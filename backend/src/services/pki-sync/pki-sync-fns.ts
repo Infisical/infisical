@@ -109,11 +109,11 @@ const PKI_SYNC_LIST_OPTIONS = {
 
 // Creation path only, never pki-sync-queue, so existing syncs keep running after a downgrade.
 export const assertPkiSyncLicense = async (
-  licenseService: Pick<TLicenseService, "getPlan">,
+  license: Pick<TLicenseService, "getPlan">,
   orgId: string,
   errorMessage?: string
 ) => {
-  const plan = await licenseService.getPlan(orgId);
+  const plan = await license.getPlan(orgId);
 
   if (!plan.pkiSyncs) {
     throw new BadRequestError({

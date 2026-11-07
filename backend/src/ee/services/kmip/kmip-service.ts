@@ -74,7 +74,7 @@ type TKmipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   kmipOrgConfigDAL: TKmipOrgConfigDALFactory;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
 };
 
 export type TKmipServiceFactory = ReturnType<typeof kmipServiceFactory>;
@@ -107,7 +107,7 @@ export const kmipServiceFactory = ({
   kmipOrgConfigDAL,
   kmsService,
   kmipOrgServerCertificateDAL,
-  licenseService
+  license
 }: TKmipServiceFactoryDep) => {
   const DEFAULT_CA_KEY_ALGORITHM = CertKeyAlgorithm.RSA_2048;
 
@@ -333,7 +333,7 @@ export const kmipServiceFactory = ({
       ProjectPermissionSub.Kmip
     );
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.kmip)
       throw new BadRequestError({
         message: "Failed to create KMIP client. Upgrade your plan to enterprise."
@@ -367,7 +367,7 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.kmip)
       throw new BadRequestError({
         message: "Failed to update KMIP client. Upgrade your plan to enterprise."
@@ -487,7 +487,7 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.kmip)
       throw new BadRequestError({
         message: "Failed to create KMIP client. Upgrade your plan to enterprise."
@@ -700,7 +700,7 @@ export const kmipServiceFactory = ({
     altNames,
     keyAlgorithm
   }: TGenerateOrgKmipServerCertificateDTO) => {
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.kmip)
       throw new BadRequestError({
         message: "Failed to generate KMIP server certificate. Upgrade your plan to enterprise."
@@ -854,7 +854,7 @@ export const kmipServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
     }
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.kmip)
       throw new BadRequestError({
         message: "Failed to register KMIP server. Upgrade your plan to enterprise."

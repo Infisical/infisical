@@ -117,7 +117,7 @@ type TOidcConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
-  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
+  license: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -157,7 +157,7 @@ export const oidcConfigServiceFactory = ({
   orgDAL,
   userDAL,
   userAliasDAL,
-  licenseService,
+  license,
   additionalPrivilegeDAL,
   permissionService,
   tokenService,
@@ -340,7 +340,7 @@ export const oidcConfigServiceFactory = ({
     } else {
       let isNewUser = false;
       let adoptedFromUsername: string | null = null;
-      const identityLimit = Plan.restore(await licenseService.getPlan(orgId)).enforcedIdentityLimit;
+      const identityLimit = Plan.restore(await license.getPlan(orgId)).enforcedIdentityLimit;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -413,7 +413,7 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await licenseService.within(sealKnexTransaction(tx)).assertSeatAvailable({
+          await license.within(sealKnexTransaction(tx)).assertSeatAvailable({
             orgId,
             identityLimit,
             via: UserAliasType.OIDC
@@ -571,7 +571,7 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    await licenseService.syncSeats(organization.id);
+    await license.syncSeats(organization.id);
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
@@ -670,7 +670,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(org.id);
+    const plan = await license.getPlan(org.id);
     if (!plan.oidcSSO)
       throw new BadRequestError({
         message:
@@ -800,7 +800,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(org.id);
+    const plan = await license.getPlan(org.id);
     if (!plan.oidcSSO)
       throw new BadRequestError({
         message:

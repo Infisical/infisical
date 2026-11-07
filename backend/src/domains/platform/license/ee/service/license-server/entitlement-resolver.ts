@@ -2,7 +2,7 @@ import type { TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 
 import { TEntitlementOrg, TEntitlementsResponse, TLicenseClientBackend } from "../../../ce/model/license-server-types";
-import { LicenseKeys, LicenseKeyTtls } from "../../../ce/model/plan-cache-keys";
+import { LicenseKeys } from "../../../ce/model/plan-cache-keys";
 
 type TEntitlementResolverDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
@@ -27,27 +27,9 @@ export const entitlementResolverFactory = ({ keyStore, backend }: TEntitlementRe
     }
   };
 
-  // Flag the org's license caches for stale-while-revalidate instead of dropping them. After a billing
-  // mutation the license server reconciles asynchronously (Stripe webhook), so an immediate hard bust
-  // would just re-cache the pre-reconciliation value for a full TTL. With the marker set, reads keep
-  // serving the cached value while a background refresh converges the cache once reconciliation lands.
-  // checkout uses a longer window because the change only applies once the customer finishes the
-  // Stripe-hosted checkout/card-setup, which can take several minutes.
-  const markPassThrough = async (orgId: string, opts?: { checkout?: boolean }): Promise<void> => {
-    try {
-      await keyStore.setItemWithExpiry(
-        LicenseKeys.passThrough(orgId),
-        opts?.checkout ? LicenseKeyTtls.passThroughCheckoutInSeconds : LicenseKeyTtls.passThroughInSeconds,
-        "1"
-      );
-    } catch (error) {
-      logger.error(error, `license-client: failed to mark entitlements for revalidation [orgId=${orgId}]`);
-    }
-  };
-
   // Hard-drop the projected plan cache so the next read reflects a just-committed change instead of
   // waiting out the TTL. Used by the explicit refresh path (refreshEntitlements); billing mutations use
-  // markPassThrough for stale-while-revalidate instead.
+  // refreshPlan with afterBillingChange for stale-while-revalidate instead.
   const invalidateEntitlements = async (orgId: string): Promise<void> => {
     try {
       await keyStore.deleteItem(LicenseKeys.cloudPlan(orgId));
@@ -56,5 +38,5 @@ export const entitlementResolverFactory = ({ keyStore, backend }: TEntitlementRe
     }
   };
 
-  return { getEntitlements, invalidateEntitlements, markPassThrough };
+  return { getEntitlements, invalidateEntitlements };
 };

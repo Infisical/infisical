@@ -122,8 +122,24 @@ export const resolvePlan = async (ctx: TLicenseContext, orgId: string): Promise<
   }
 };
 
-export const refreshPlanFor = async (ctx: TLicenseContext, orgId: string) => {
+export type TRefreshPlanOptions = {
+  // Set after a billing change: the plan keeps serving and refreshes in the background, instead of being
+  // fetched now, before the License Server has applied the change.
+  afterBillingChange?: { checkout?: boolean };
+};
+
+export const refreshPlanFor = async (ctx: TLicenseContext, orgId: string, opts: TRefreshPlanOptions = {}) => {
   const instance = ctx.state.instance.get();
+  if (opts.afterBillingChange) {
+    if (instance.instanceType !== InstanceType.Cloud) return;
+    const root = await rootOrgOf(ctx, orgId);
+    try {
+      await ctx.state.planCache.markForRevalidation(root?.id ?? orgId, Boolean(opts.afterBillingChange.checkout));
+    } catch (error) {
+      logger.error(error, `refreshPlan: failed to mark the plan for revalidation [orgId=${orgId}]`);
+    }
+    return;
+  }
   if (instance.instanceType === InstanceType.Cloud) {
     const root = await rootOrgOf(ctx, orgId);
     await ctx.state.planCache.invalidate(root?.id ?? orgId);

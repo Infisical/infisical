@@ -49,6 +49,17 @@ export class PlanCache {
     return raw ? (JSON.parse(raw) as { plan: TPlan; fetchedAt: number }) : null;
   }
 
+  // After a billing change the License Server settles asynchronously (a Stripe webhook), so reads keep the
+  // cached plan while a background refresh converges. A hosted checkout applies only once the customer
+  // finishes it, so it gets the longer window.
+  async markForRevalidation(rootOrgId: string, checkout: boolean) {
+    await this.keyStore.setItemWithExpiry(
+      LicenseKeys.passThrough(rootOrgId),
+      checkout ? LicenseKeyTtls.passThroughCheckoutInSeconds : LicenseKeyTtls.passThroughInSeconds,
+      "1"
+    );
+  }
+
   async invalidate(rootOrgId: string) {
     await this.keyStore.deleteItem(LicenseKeys.cloudPlan(rootOrgId));
   }

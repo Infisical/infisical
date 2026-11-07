@@ -170,7 +170,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   usageMeteringService: Pick<TLicenseService, "emit">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
-  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -204,7 +204,7 @@ export const certificateAuthorityServiceFactory = ({
   usageMeteringService,
   caKeySourceService,
   certificateAuthoritySecretDAL,
-  licenseService,
+  license,
   pkiAlertV2Queue,
   certificateAlertEventEmitter,
   auditLogService
@@ -340,7 +340,7 @@ export const certificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name })
     );
 
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await license.getPlan(actor.orgId);
 
     if (typeof plan.certManager === "boolean" && !plan.certManager) {
       throw new BadRequestError({
@@ -360,7 +360,7 @@ export const certificateAuthorityServiceFactory = ({
       await assertCertificateAuthorityQuota({
         projectId,
         isInternal: false,
-        deps: { projectDAL, licenseService, certificateAuthorityDAL }
+        deps: { projectDAL, license, certificateAuthorityDAL }
       });
     }
 
@@ -676,8 +676,8 @@ export const certificateAuthorityServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    const plan = await licenseService.getPlan(project.orgId);
-    const countOrgId = isInstanceWidePkiQuota(licenseService) ? null : project.orgId;
+    const plan = await license.getPlan(project.orgId);
+    const countOrgId = isInstanceWidePkiQuota(license) ? null : project.orgId;
     const [totalUsed, internalUsed] = await Promise.all([
       certificateAuthorityDAL.countCasByOrgId(countOrgId),
       certificateAuthorityDAL.countInternalCasByOrgId(countOrgId)

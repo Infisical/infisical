@@ -40,16 +40,16 @@ const buildService = () => {
     updateById: vi.fn(async (id: string) => ({ id, orgId: ORG_ID, provider: LogProvider.Splunk }))
   };
 
-  const licenseService = new FakeLicenseService();
-  licenseService.defaultPlan = {
-    ...licenseService.defaultPlan,
+  const license = new FakeLicenseService();
+  license.defaultPlan = {
+    ...license.defaultPlan,
     auditLogStreams: true as false,
     auditLogStreamLimit: 5 as 3
   };
 
   const deps = {
     auditLogStreamDAL,
-    licenseService,
+    license,
     permissionService: {
       getOrgPermission: vi.fn(async () => ({ permission: { relevantRuleFor: () => ({ inverted: false }) } }))
     },

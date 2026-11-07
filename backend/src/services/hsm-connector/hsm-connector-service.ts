@@ -52,7 +52,7 @@ export type THsmConnectorServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
 };
 
 export type THsmConnectorServiceFactory = ReturnType<typeof hsmConnectorServiceFactory>;
@@ -74,7 +74,7 @@ export const hsmConnectorServiceFactory = ({
   gatewayV2DAL,
   gatewayPoolDAL,
   orgDAL,
-  licenseService
+  license
 }: THsmConnectorServiceFactoryDep) => {
   const routing = hsmConnectorRoutingFactory({ gatewayV2Service, gatewayV2DAL, gatewayPoolService });
 
@@ -100,7 +100,7 @@ export const hsmConnectorServiceFactory = ({
   };
 
   const assertLicense = async (orgId: string) => {
-    const plan = await licenseService.getPlan(orgId);
+    const plan = await license.getPlan(orgId);
     if (!plan.hsm) {
       throw new BadRequestError({
         message: "Your plan does not include HSM support. Please upgrade to use HSM Connectors."

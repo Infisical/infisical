@@ -110,7 +110,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   certManager: Pick<
     TCertManagerService,
     "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
@@ -224,7 +224,7 @@ export const certificateApprovalServiceFactory = (
     certificateSecretDAL,
     kmsService,
     projectDAL,
-    licenseService,
+    license,
     certManager,
     keyStore,
     certificatePolicyService,
@@ -604,7 +604,7 @@ export const certificateApprovalServiceFactory = (
       altNames: (mappedReconstructedRequest.subjectAlternativeNames ?? [])
         .map((san: { value: string }) => san.value)
         .join(","),
-      deps: { projectDAL, licenseService, certManager, keyStore },
+      deps: { projectDAL, license, certManager, keyStore },
       isApprovedRequest: true
     });
 
@@ -762,7 +762,7 @@ export const certificateApprovalServiceFactory = (
       projectId: profile.projectId,
       commonName: certRequest.commonName,
       altNames: (altNames ?? []).map((san) => san.value).join(","),
-      deps: { projectDAL, licenseService, certManager, keyStore },
+      deps: { projectDAL, license, certManager, keyStore },
       isApprovedRequest: true
     });
 
@@ -1271,7 +1271,7 @@ export const certificateApprovalServiceFactory = (
         projectId: targetProfile.projectId,
         commonName: certificateRequestInput.commonName,
         altNames: (altNames ?? []).map((san) => san.value).join(","),
-        deps: { projectDAL, licenseService, certManager, keyStore },
+        deps: { projectDAL, license, certManager, keyStore },
         isApprovedRequest: true
       });
 

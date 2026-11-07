@@ -10,14 +10,14 @@ export const constructGroupOrgMembershipRoleMappings = async ({
   mappingsDTO,
   orgId,
   roleDAL,
-  licenseService
+  license
 }: {
   mappingsDTO: TExternalGroupOrgMembershipRoleMappingDTO[];
   roleDAL: TRoleDALFactory;
-  licenseService: TLicenseService;
+  license: TLicenseService;
   orgId: string;
 }) => {
-  const plan = await licenseService.getPlan(orgId);
+  const plan = await license.getPlan(orgId);
 
   // prevent setting custom values if not in plan
   if (mappingsDTO.some((map) => isCustomOrgRole(map.roleSlug)) && !plan?.rbac)

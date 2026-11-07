@@ -30,7 +30,7 @@ const buildDeps = (projectType: ProjectType) => ({
   projectKeyDAL: {},
   projectBotDAL: {},
   smtpService: {},
-  licenseService: new FakeLicenseService()
+  license: new FakeLicenseService()
 });
 
 const dto = (role: string) => ({

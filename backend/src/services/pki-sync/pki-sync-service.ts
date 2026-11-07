@@ -150,7 +150,7 @@ type TPkiSyncServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -184,7 +184,7 @@ export const pkiSyncServiceFactory = ({
   pkiApplicationDAL,
   appConnectionService,
   permissionService,
-  licenseService,
+  license,
   keyStore,
   kmsService,
   pkiSyncQueue,
@@ -685,7 +685,7 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    await assertPkiSyncLicense(licenseService, actor.orgId);
+    await assertPkiSyncLicense(license, actor.orgId);
 
     let subscriber;
     if (subscriberId) {

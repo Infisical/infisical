@@ -131,7 +131,7 @@ const createService = ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       })
     },
-    licenseService: new FakeLicenseService().setPlan(ORG_ID, {
+    license: new FakeLicenseService().setPlan(ORG_ID, {
       machineIdentityAuthTemplates: true as false,
       gateway: true as false,
       gatewayPool: true as false

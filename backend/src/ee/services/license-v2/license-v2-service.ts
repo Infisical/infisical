@@ -71,7 +71,7 @@ type TLicenseV2ServiceFactoryDep = {
   breakdownDAL: TLicenseV2BreakdownDALFactory;
   // countUsage seeds a purchase's initial per_resource quantities with the org's present provisioned count,
   // so the previewed and charged figures are truthful. billing is the License Server's billing surface.
-  licenseService: Pick<TLicenseService, "countUsage" | "billing">;
+  license: Pick<TLicenseService, "countUsage" | "billing" | "refreshPlan">;
 };
 
 export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory>;
@@ -411,12 +411,12 @@ export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
   permissionService,
-  licenseService,
+  license,
   organizationsProjects,
   certManager,
   breakdownDAL
 }: TLicenseV2ServiceFactoryDep) => {
-  const licenseClient = licenseService.billing;
+  const licenseClient = license.billing;
 
   const buildProductLineItem = async (
     product: TCatalogProduct,
@@ -451,7 +451,7 @@ export const licenseV2ServiceFactory = ({
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
-        const present = await licenseService.countUsage(orgId, price.dimensionKey);
+        const present = await license.countUsage(orgId, price.dimensionKey);
         return { dimensionKey: price.dimensionKey, present, included: price.includedQuantity ?? 0 };
       })
     );
@@ -1198,7 +1198,7 @@ export const licenseV2ServiceFactory = ({
   // next overview read pulls the latest and re-populates the cache. Exposed as a manual refresh button.
   const refreshEntitlements = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
     await ensureBillingRead(orgId, actor);
-    await licenseClient.refreshEntitlements({ id: orgId });
+    await license.refreshPlan(orgId);
     return { success: true as const };
   };
 
@@ -1227,7 +1227,7 @@ export const licenseV2ServiceFactory = ({
         details: { code: "payment_action_required" }
       });
     }
-    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    await license.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return { outcome: "payment_action_required" as const, paymentUrl: url };
   };
 
@@ -1305,7 +1305,7 @@ export const licenseV2ServiceFactory = ({
     }
 
     if (result.outcome === "subscription_updated") {
-      await licenseClient.markEntitlementsStale(orgId);
+      await license.refreshPlan(orgId, { afterBillingChange: {} });
       return {
         outcome: "subscription_updated" as const,
         subscriptionId: result.subscriptionId,
@@ -1318,7 +1318,7 @@ export const licenseV2ServiceFactory = ({
     if (!result.checkoutUrl) {
       throw new InternalServerError({ message: "Checkout session did not return a URL" });
     }
-    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    await license.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return {
       outcome: "checkout_created" as const,
       checkoutUrl: result.checkoutUrl,
@@ -1447,7 +1447,7 @@ export const licenseV2ServiceFactory = ({
     if (result.outcome === "payment_action_required") {
       return paymentActionRequired(orgId, result.paymentUrl);
     }
-    await licenseClient.markEntitlementsStale(orgId);
+    await license.refreshPlan(orgId, { afterBillingChange: {} });
     return {
       outcome: result.outcome,
       subscriptionId: result.subscriptionId,
@@ -1473,10 +1473,10 @@ export const licenseV2ServiceFactory = ({
         throw new InternalServerError({ message: "Checkout session did not return a URL" });
       }
       // Longer window: the change only applies once the customer completes the hosted checkout.
-      await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+      await license.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
       return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
     }
-    await licenseClient.markEntitlementsStale(orgId);
+    await license.refreshPlan(orgId, { afterBillingChange: {} });
     return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
@@ -1506,7 +1506,7 @@ export const licenseV2ServiceFactory = ({
     });
     // awaiting_card redirects to a Stripe card-setup checkout; the trial is granted by webhook only
     // after it's completed, so hold the revalidation window open longer than an immediate trial_started.
-    await licenseClient.markEntitlementsStale(orgId, { checkout: result.outcome === "awaiting_card" });
+    await license.refreshPlan(orgId, { afterBillingChange: { checkout: result.outcome === "awaiting_card" } });
     return { outcome: result.outcome, cardSetupUrl: result.cardSetupUrl };
   };
 
@@ -1515,7 +1515,7 @@ export const licenseV2ServiceFactory = ({
   const cancelTrial = async ({ orgId, actor, productId }: TCancelBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
-    await licenseClient.markEntitlementsStale(orgId);
+    await license.refreshPlan(orgId, { afterBillingChange: {} });
     return { outcome: result.outcome };
   };
 
@@ -1529,7 +1529,7 @@ export const licenseV2ServiceFactory = ({
       return { outcome: result.outcome, redirectUrl: paymentUrl };
     }
     if (result.outcome === "upgraded") {
-      await licenseClient.markEntitlementsStale(orgId);
+      await license.refreshPlan(orgId, { afterBillingChange: {} });
       return { outcome: result.outcome };
     }
     const checkoutUrl = toHttpsUrl(result.checkoutUrl);
@@ -1538,7 +1538,7 @@ export const licenseV2ServiceFactory = ({
         message: "We couldn't get a secure checkout link. Please try again or contact support."
       });
     }
-    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    await license.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return { outcome: result.outcome, redirectUrl: checkoutUrl };
   };
 
@@ -1547,21 +1547,21 @@ export const licenseV2ServiceFactory = ({
   const removeProduct = async ({ orgId, actor, productId }: TRemoveBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.removeProduct(orgId, productId);
-    await licenseClient.markEntitlementsStale(orgId);
+    await license.refreshPlan(orgId, { afterBillingChange: {} });
     return { subscriptionId: result.subscriptionId };
   };
 
   const cancelSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.cancelSubscription(orgId);
-    await licenseClient.markEntitlementsStale(orgId);
+    await license.refreshPlan(orgId, { afterBillingChange: {} });
     return { subscriptionId: result.subscriptionId };
   };
 
   const resumeSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.resumeSubscription(orgId);
-    await licenseClient.markEntitlementsStale(orgId);
+    await license.refreshPlan(orgId, { afterBillingChange: {} });
     return { subscriptionId: result.subscriptionId };
   };
 

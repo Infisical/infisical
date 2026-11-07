@@ -127,7 +127,7 @@ const createService = ({
       getProjectPermission: vi.fn(),
       getActorGrantAbilities: vi.fn().mockResolvedValue([])
     },
-    licenseService: new FakeLicenseService().setPlan(ORG_ID, {
+    license: new FakeLicenseService().setPlan(ORG_ID, {
       machineIdentityAuthTemplates: true as false,
       gateway: true as false,
       gatewayPool: true as false,

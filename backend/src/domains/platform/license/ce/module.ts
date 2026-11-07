@@ -16,7 +16,12 @@ import { CounterRegistry } from "./service/counter-registry";
 import { dormantBilling } from "./service/dormant-billing";
 import { EntitlementService } from "./service/entitlement-service";
 import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
-import { SELF_HOSTED_LICENSE_ORG_ID, TLicenseContext, TLicenseState } from "./service/license-context";
+import {
+  SELF_HOSTED_LICENSE_ORG_ID,
+  TLicenseContext,
+  TLicenseState,
+  TRefreshPlanOptions
+} from "./service/license-context";
 import { TLicenseHooks } from "./service/license-hooks";
 import { PlanCache } from "./service/plan-cache";
 import { RootOrgCache } from "./service/root-org-cache";
@@ -31,6 +36,7 @@ export * from "./model/plan";
 export type { TRootOrg } from "./model/root-org";
 export type { TUsageCounter, TUsageCounterScope } from "./model/usage-counter";
 export * from "./model/usage-report";
+export type { TRefreshPlanOptions } from "./service/license-context";
 export type { TLicenseHooks } from "./service/license-hooks";
 export type { TMeteringEventInput } from "./service/usage-service";
 export { SELF_HOSTED_LICENSE_ORG_ID };
@@ -45,7 +51,8 @@ export type TLicenseService = {
   hasFeature: (orgId: string, feature: TPlanFeature) => Promise<boolean>;
   // Refuses with a message naming the feature when the org's plan does not include it.
   assertFeature: (orgId: string, feature: TPlanFeature) => Promise<void>;
-  refreshPlan: (orgId: string) => Promise<void>;
+  // Fetches the plan again now; after a billing change, pass afterBillingChange to refresh in the background.
+  refreshPlan: (orgId: string, opts?: TRefreshPlanOptions) => Promise<void>;
   // Drops the cached plan so the next read fetches it, without fetching now.
   invalidatePlan: (orgId: string) => Promise<void>;
   isServingFallbackPlan: (orgId: string) => Promise<boolean>;
@@ -198,7 +205,7 @@ export class LicenseModule {
       getPlan: (orgId) => entitlements.getPlan(orgId),
       hasFeature: (orgId, feature) => entitlements.hasFeature(orgId, feature),
       assertFeature: (orgId, feature) => entitlements.assertFeature(orgId, feature),
-      refreshPlan: (orgId) => entitlements.refreshPlan(orgId),
+      refreshPlan: (orgId, opts) => entitlements.refreshPlan(orgId, opts),
       invalidatePlan: (orgId) => entitlements.invalidatePlan(orgId),
       isServingFallbackPlan: (orgId) => entitlements.isServingFallbackPlan(orgId),
       getLastKnownPlan: (orgId) => entitlements.getLastKnownPlan(orgId),

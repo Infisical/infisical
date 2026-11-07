@@ -111,7 +111,7 @@ type TApprovalPolicyServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
   >;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -156,7 +156,7 @@ export const approvalPolicyServiceFactory = ({
   kmsService,
   notificationService,
   permissionService,
-  licenseService,
+  license,
   projectMembershipDAL,
   membershipDAL,
   pkiApplicationDAL,
@@ -672,7 +672,7 @@ export const approvalPolicyServiceFactory = ({
 
     // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
     if (policyType === ApprovalPolicyType.CertRequest) {
-      const plan = await licenseService.getPlan(actor.orgId);
+      const plan = await license.getPlan(actor.orgId);
       if (!plan.pkiApprovals) {
         throw new BadRequestError({
           message:

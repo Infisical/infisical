@@ -87,7 +87,7 @@ vi.mock("../../ee/services/certificate-est/certificate-est-fns", () => ({
 
 describe("CertificateEstV3Service", () => {
   let service: TCertificateEstV3ServiceFactory;
-  let licenseService: FakeLicenseService;
+  let license: FakeLicenseService;
 
   const mockCertificateV3Service = {
     signCertificateFromProfile: vi.fn()
@@ -171,7 +171,7 @@ describe("CertificateEstV3Service", () => {
   const mockPkiApplicationDAL = { findById: vi.fn() };
 
   beforeEach(async () => {
-    licenseService = new FakeLicenseService().setPlan(mockProject.orgId, mockPlan);
+    license = new FakeLicenseService().setPlan(mockProject.orgId, mockPlan);
     service = certificateEstV3ServiceFactory({
       certificateV3Service: mockCertificateV3Service,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
@@ -179,7 +179,7 @@ describe("CertificateEstV3Service", () => {
       certificateDAL: mockCertificateDAL,
       projectDAL: mockProjectDAL,
       kmsService: mockKmsService,
-      licenseService,
+      license,
       certificateProfileDAL: mockCertificateProfileDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
       certificatePolicyDAL: mockCertificatePolicyDAL,
@@ -287,7 +287,7 @@ describe("CertificateEstV3Service", () => {
     });
 
     it("should throw error when PKI EST is not available in plan", async () => {
-      licenseService.setPlan(mockProject.orgId, { pkiEst: false });
+      license.setPlan(mockProject.orgId, { pkiEst: false });
 
       await expect(
         service.simpleEnrollByProfile({

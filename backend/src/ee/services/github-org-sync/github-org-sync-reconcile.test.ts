@@ -106,7 +106,7 @@ const createService = () => {
   };
   const identityGroupMembershipDAL = { find: vi.fn() };
   const agentVaultPersonalValueDAL = { deleteForActorsWithoutGrant: vi.fn(), findProjectIdsWithValues: vi.fn() };
-  const licenseService = new FakeLicenseService().setPlan(ORG_ID, { githubOrgSync: true as false });
+  const license = new FakeLicenseService().setPlan(ORG_ID, { githubOrgSync: true as false });
 
   const service = githubOrgSyncServiceFactory({
     githubOrgSyncDAL: {
@@ -126,10 +126,10 @@ const createService = () => {
     membershipGroupDAL: membershipGroupDAL as never,
     identityGroupMembershipDAL: identityGroupMembershipDAL as never,
     agentVaultPersonalValueDAL: agentVaultPersonalValueDAL as never,
-    licenseService,
+    license,
     orgMembershipDAL: orgMembershipDAL as never,
     userAliasDAL: userAliasDAL as never,
-    usageMeteringService: licenseService,
+    usageMeteringService: license,
     alertChannelRecipientDAL: { pruneOutOfScopeRecipients: vi.fn().mockResolvedValue(undefined) } as never,
     auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) } as never,
     membershipDAL: {} as never,

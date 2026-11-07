@@ -145,7 +145,7 @@ type TPamAccountServiceFactoryDep = {
     | "cleanupAccountResources"
     | "checkGrant"
   >;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
 };
 
 const assertOraclePasswordIsUsable = (accountType: PamAccountType, credentials: unknown) => {
@@ -219,7 +219,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayPoolService,
     gatewayPoolMembershipDAL,
     gatewayV2DAL,
-    licenseService
+    license
   } = deps;
 
   const getProjectCipher = async (projectId: string) =>
@@ -707,7 +707,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ResourcePermissionSub.PamResource
     );
 
-    const plan = await licenseService.getPlan(ctx.actorOrgId);
+    const plan = await license.getPlan(ctx.actorOrgId);
     if (typeof plan.pam === "boolean" && !plan.pam) {
       throw new BadRequestError({
         message: "PAM is not available on your current plan. Please upgrade to continue."

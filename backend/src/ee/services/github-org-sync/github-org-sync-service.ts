@@ -392,7 +392,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany" | "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
   usageMeteringService: Pick<TLicenseService, "emit">;
@@ -415,7 +415,7 @@ export const githubOrgSyncServiceFactory = ({
   kmsService,
   userGroupMembershipDAL,
   groupDAL,
-  licenseService,
+  license,
   orgMembershipDAL,
   userAliasDAL,
   membershipRoleDAL,
@@ -472,7 +472,7 @@ export const githubOrgSyncServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
-    const plan = await licenseService.getPlan(orgPermission.orgId);
+    const plan = await license.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -531,7 +531,7 @@ export const githubOrgSyncServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
-    const plan = await licenseService.getPlan(orgPermission.orgId);
+    const plan = await license.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -597,7 +597,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
-    const plan = await licenseService.getPlan(orgPermission.orgId);
+    const plan = await license.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -877,7 +877,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
-    const plan = await licenseService.getPlan(orgPermission.orgId);
+    const plan = await license.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -967,7 +967,7 @@ export const githubOrgSyncServiceFactory = ({
       OrgPermissionSubjects.GithubOrgSyncManual
     );
 
-    const plan = await licenseService.getPlan(orgPermission.orgId);
+    const plan = await license.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:

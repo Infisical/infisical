@@ -39,14 +39,14 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
   };
   const userDAL = { findOne: vi.fn().mockResolvedValue({ id: "user-id", username: USERNAME }) };
   const membershipDAL = { findOne: vi.fn().mockResolvedValue({ id: "identity-membership-id" }) };
-  const licenseService = new FakeLicenseService().setPlan(ORG_ID, { groups: true as false });
+  const license = new FakeLicenseService().setPlan(ORG_ID, { groups: true as false });
 
   const service = groupServiceFactory({
     permissionService: {
       getOrgPermission: vi.fn().mockResolvedValue({ permission: admin }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: admin }])
     } as never,
-    licenseService,
+    license,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
       findMembership: vi.fn().mockResolvedValue([])
@@ -70,7 +70,7 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
     identityDAL: { find: vi.fn().mockResolvedValue([]) } as never,
     membershipDAL: membershipDAL as never,
     identityAccessTokenService: { bumpIdentityRevocationVersion: vi.fn() } as never,
-    usageMeteringService: licenseService,
+    usageMeteringService: license,
     projectDAL: { find: vi.fn().mockResolvedValue([]) } as never,
     projectKeyDAL: { find: vi.fn().mockResolvedValue([]), delete: vi.fn() } as never,
     projectBotDAL: { findOne: vi.fn().mockResolvedValue(undefined) } as never,

@@ -124,7 +124,7 @@ type TGroupServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TLicenseService, "emit">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
@@ -152,7 +152,7 @@ export const groupServiceFactory = ({
   projectKeyDAL,
   additionalPrivilegeDAL,
   permissionService,
-  licenseService,
+  license,
   oidcConfigDAL,
   membershipGroupDAL,
   membershipRoleDAL,
@@ -181,7 +181,7 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.groups)
       throw new BadRequestError({
         message: "Failed to create group due to plan restriction. Upgrade plan to create group."
@@ -283,7 +283,7 @@ export const groupServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
     if (!plan.groups)
       throw new BadRequestError({
         message: "Failed to update group due to plan restriction Upgrade plan to update group."
@@ -488,7 +488,7 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await license.getPlan(actorOrgId);
 
     if (!plan.groups)
       throw new BadRequestError({

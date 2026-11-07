@@ -32,15 +32,15 @@ const setup = () => {
   const permissionService = {
     getOrgPermission: vi.fn().mockResolvedValue({ permission: { cannot: () => false } })
   };
-  const licenseService = new FakeLicenseService();
+  const license = new FakeLicenseService();
   const service = projectServiceFactory({
     orgDAL,
     projectDAL,
     permissionService,
-    licenseService
+    license
   } as unknown as Parameters<typeof projectServiceFactory>[0]);
 
-  return { service, orgDAL, projectDAL, permissionService, licenseService, memberships, tx };
+  return { service, orgDAL, projectDAL, permissionService, license, memberships, tx };
 };
 
 describe("project navigation across sub-organizations", () => {

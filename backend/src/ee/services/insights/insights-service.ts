@@ -71,7 +71,7 @@ import {
 
 export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseService, "getPlan">;
+  license: Pick<TLicenseService, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
   clickhouseAuditLogDAL?: Pick<
     TClickHouseAuditLogDALFactory,
@@ -115,11 +115,8 @@ export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
 
 // Both halves of the product (the per-project dashboard and the org-wide aggregates) are gated on the
 // same entitlement, so the check and its message live in one place.
-const assertInsightsPlanEnabled = async (
-  licenseService: TInsightsServiceFactoryDep["licenseService"],
-  orgId: string
-) => {
-  const plan = await licenseService.getPlan(orgId);
+const assertInsightsPlanEnabled = async (license: TInsightsServiceFactoryDep["license"], orgId: string) => {
+  const plan = await license.getPlan(orgId);
   if (!plan.secretAccessInsights) {
     throw new BadRequestError({
       message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
@@ -129,11 +126,11 @@ const assertInsightsPlanEnabled = async (
 
 export const checkInsightsPermission = async (
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
-  licenseService: TInsightsServiceFactoryDep["licenseService"],
+  license: TInsightsServiceFactoryDep["license"],
   projectId: string,
   actor: OrgServiceActor
 ) => {
-  await assertInsightsPlanEnabled(licenseService, actor.orgId);
+  await assertInsightsPlanEnabled(license, actor.orgId);
 
   const { permission } = await permissionService.getProjectPermission({
     actor: actor.type,
@@ -157,7 +154,7 @@ const SECRET_VALUE_SEARCH_LIMIT = 1000;
 
 export const insightsServiceFactory = ({
   permissionService,
-  licenseService,
+  license,
   auditLogDAL,
   clickhouseAuditLogDAL,
   secretRotationV2DAL,
@@ -192,7 +189,7 @@ export const insightsServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.SecretsManagementInsights);
 
-    await assertInsightsPlanEnabled(licenseService, orgId);
+    await assertInsightsPlanEnabled(license, orgId);
   };
 
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
@@ -219,7 +216,7 @@ export const insightsServiceFactory = ({
   };
 
   const getCalendar = async (dto: TGetInsightsCalendarDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, license, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `calendar:${dto.year}-${dto.month}`);
     return withCache({
@@ -269,7 +266,7 @@ export const insightsServiceFactory = ({
     getConfig().CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL ? clickhouseAuditLogDAL : undefined;
 
   const getAccessVolume = async (dto: TGetAccessVolumeDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, license, dto.projectId, actorDto);
 
     const clickhouseDAL = $getClickHouseAuditLogDAL();
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "access-volume");
@@ -327,7 +324,7 @@ export const insightsServiceFactory = ({
   };
 
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, license, dto.projectId, actorDto);
 
     const clickhouseDAL = $getClickHouseAuditLogDAL();
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
@@ -413,7 +410,7 @@ export const insightsServiceFactory = ({
   };
 
   const getSummary = async (dto: TGetInsightsSummaryDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, license, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(
       dto.projectId,
@@ -664,7 +661,7 @@ export const insightsServiceFactory = ({
   };
 
   const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, license, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "secrets-duplication");
 
@@ -729,7 +726,7 @@ export const insightsServiceFactory = ({
   };
 
   const getCounts = async (dto: TGetInsightsCountsDTO, actorDto: OrgServiceActor) => {
-    const { permission } = await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+    const { permission } = await checkInsightsPermission(permissionService, license, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "counts");
     const counts = await withCache({
@@ -741,7 +738,7 @@ export const insightsServiceFactory = ({
         if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
         // Honey tokens are a separately licensed feature; return null when unavailable so the UI hides the stat.
-        const plan = await licenseService.getPlan(actorDto.orgId);
+        const plan = await license.getPlan(actorDto.orgId);
 
         const [secretCount, folderCount, dynamicSecretCount, secretRotationCount, honeyTokenCount] = await Promise.all([
           secretV2BridgeDAL.countByProject(dto.projectId),

@@ -159,10 +159,10 @@ const build = (overrides: TOverrides = {}) => {
   });
   const findSession = vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()));
   const streamRange = vi.fn(async () => overrides.feed ?? []);
-  const licenseService = new FakeLicenseService().setPlan("org-1", toPlan(overrides.plan));
-  if (overrides.planFallback) licenseService.fallbackOrgs.add("org-1");
+  const license = new FakeLicenseService().setPlan("org-1", toPlan(overrides.plan));
+  if (overrides.planFallback) license.fallbackOrgs.add("org-1");
   if (overrides.lastKnownPlan) {
-    licenseService.lastKnown.set("org-1", {
+    license.lastKnown.set("org-1", {
       plan: toPlan(overrides.lastKnownPlan.plan),
       fetchedAt: Date.now() - overrides.lastKnownPlan.ageMs
     });
@@ -187,7 +187,7 @@ const build = (overrides: TOverrides = {}) => {
       }))
     } as never,
     kmsService: {} as never,
-    licenseService,
+    license,
     keyStore: { streamAdd, streamRange } as never,
     objectStorage: { at } as never
   });
