@@ -396,7 +396,8 @@ export const baselineForms = [
     exports: ["Input"],
     referenceNames: ["Input"],
     behavior: [
-      "Input forwards its native ref and supports sm/md/lg at 32/36/40px, defaulting to sm32, with icon, mono, a read-only lock and trailing content while retaining native editing. A native numeric size is a width hint and retains the default 32px density."
+      "Input forwards its native ref and supports xs/sm/md/lg at 24/32/36/40px, defaulting to sm32, with icon, mono, a read-only lock and trailing content while retaining native editing. A native numeric size is a width hint and retains the default 32px density.",
+      "xs matches the 24px xs Button: caption type, a 12px icon and a 6px inset. Use it for a search beside xs Buttons, such as in a framed Card band, not for a form field. InputGroup takes xs too."
     ],
     accessibility: [
       "Associate a label using Field or explicit htmlFor/id; use readOnly when the value must remain selectable."
@@ -427,8 +428,13 @@ export const baselineForms = [
     coverage: [
       {
         axis: "size",
-        expected: ["sm", "md", "lg"],
+        expected: ["xs", "sm", "md", "lg"],
         shown: [
+          {
+            value: "xs",
+            exampleId: "sizes",
+            label: "xs"
+          },
           {
             value: "sm",
             exampleId: "sizes",
@@ -597,7 +603,7 @@ export const baselineForms = [
     referenceNames: ["InputGroup"],
     behavior: [
       "The default host is sm32; explicit md36 and lg40 retain 24/28/32px nested action slots. Nested buttons fit the host slot even when a larger standalone size is requested.",
-      "InputGroup supports sm/md/lg, joined addons and actions, plus Field association. Addons do not become a second input."
+      "InputGroup supports xs/sm/md/lg, joined addons and actions, plus Field association. Addons do not become a second input."
     ],
     accessibility: [
       "Keep one named editable control in each input group. Action buttons need separate names."
@@ -634,7 +640,14 @@ export const baselineForms = [
     coverage: [
       {
         axis: "size",
-        expected: ["sm", "md", "lg"],
+        expected: ["xs", "sm", "md", "lg"],
+        omitted: [
+          {
+            value: "xs",
+            reason:
+              "24px, matching the xs Input for a search beside xs Buttons; its nested slot is 16px. Input's Sizes example shows it."
+          }
+        ],
         shown: [
           {
             value: "sm",

@@ -73,6 +73,9 @@
 .inputGroup {
   --v4-nested-action-height: var(--v4-size-nested-default);
 }
+.inputGroup[data-size="xs"] {
+  --v4-nested-action-height: var(--v4-field-nested);
+}
 .inputGroup[data-size="sm"] {
   --v4-nested-action-height: var(--v4-size-nested-sm);
 }
