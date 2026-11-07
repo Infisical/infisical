@@ -72,7 +72,7 @@ const locate = (path: string, isSubOrganization: boolean): Omit<ShellLocation, "
   if (/^\/(settings|sso|oauth-applications|networking)(\/|$)/.test(path)) {
     return { level: "settings", sections: settingsSections(isSubOrganization) };
   }
-  return { level: "org", sections: orgSections };
+  return { level: "org", sections: orgSections(isSubOrganization) };
 };
 
 export const resolveShellLocation = (

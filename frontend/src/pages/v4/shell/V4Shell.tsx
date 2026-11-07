@@ -117,7 +117,9 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     {
       id: "org",
       label: organization.name,
-      sections: toSidebar("org", orgSections, { settings: "settings" })
+      sections: toSidebar("org", orgSections(session.organization.isSubOrganization), {
+        settings: "settings"
+      })
     },
     {
       id: "settings",

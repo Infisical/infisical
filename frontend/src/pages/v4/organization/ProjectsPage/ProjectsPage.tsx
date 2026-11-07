@@ -13,6 +13,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { productHome, productOf, products, projectBase } from "../../shell/navigation";
+import { useBlockedProducts } from "../../shell/product-access";
 
 const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][] => {
   switch (type) {
@@ -61,6 +62,7 @@ export const ProjectsPage = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { organization, projects } = useV4Session();
   const { data: stats } = useV4Adapter("org").useProductStats(organization.id);
+  const blocked = useBlockedProducts(orgId);
   const demoProject =
     useV4Mode() === "demo"
       ? projects.find((project) => project.type === ProjectType.SecretManager)
@@ -97,6 +99,12 @@ export const ProjectsPage = () => {
               <Inline gap={8} align="center">
                 <Icon name={product.icon} size={18} />
                 <CardLink
+                  disabled={blocked.has(product.type)}
+                  title={
+                    blocked.has(product.type)
+                      ? `You don't have access to ${product.label}. Ask an organization admin for access.`
+                      : undefined
+                  }
                   to="/v4/organizations/$orgId/$"
                   params={{ orgId, _splat: productHome(product).slice(1) }}
                 >

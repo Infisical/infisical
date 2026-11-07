@@ -31,6 +31,7 @@ import {
   settingsSections,
   type ShellNavSection
 } from "./navigation";
+import { useBlockedProducts } from "./product-access";
 
 export const CommandPalette = ({
   orgId,
@@ -58,6 +59,7 @@ export const CommandPalette = ({
   const go = (path: string, search?: Record<string, string>) =>
     navigate({ to: resolve(`${base}${path}`) as never, search: search as never });
   const project = session.projects.find((entry) => entry.id === projectId);
+  const blocked = useBlockedProducts(orgId);
 
   const groups = useMemo(() => {
     const pageItems = (prefix: string, sections: readonly ShellNavSection[], scope?: string) =>
@@ -104,7 +106,7 @@ export const CommandPalette = ({
     result.push({
       label: "Organization",
       items: [
-        ...pageItems("org", orgSections),
+        ...pageItems("org", orgSections(session.organization.isSubOrganization)),
         ...pageItems(
           "settings",
           settingsSections(session.organization.isSubOrganization),
@@ -114,16 +116,18 @@ export const CommandPalette = ({
     });
     result.push({
       label: "Products",
-      items: products.flatMap((product) => [
-        {
-          id: `product:${product.slug}`,
-          label: product.label,
-          icon: product.icon,
-          kind: "page" as const,
-          onSelect: () => go(productHome(product))
-        },
-        ...pageItems(`product-${product.slug}`, productPages(product), product.label)
-      ]),
+      items: products
+        .filter((product) => !blocked.has(product.type))
+        .flatMap((product) => [
+          {
+            id: `product:${product.slug}`,
+            label: product.label,
+            icon: product.icon,
+            kind: "page" as const,
+            onSelect: () => go(productHome(product))
+          },
+          ...pageItems(`product-${product.slug}`, productPages(product), product.label)
+        ]),
       searchOnly: true,
       limit: 12
     });
@@ -196,7 +200,7 @@ export const CommandPalette = ({
       ]
     });
     return result;
-  }, [base, groupData, project, session, orgId, navigate, resolve, setTheme]);
+  }, [base, blocked, groupData, project, session, orgId, navigate, resolve, setTheme]);
 
   return (
     <CommandMenu

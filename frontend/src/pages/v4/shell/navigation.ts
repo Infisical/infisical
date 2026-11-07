@@ -112,7 +112,7 @@ const settings = (path: string): ShellNavItem => ({
   path: `${path}/settings`
 });
 
-export const orgSections: readonly ShellNavSection[] = [
+export const orgSections = (isSubOrganization: boolean): readonly ShellNavSection[] => [
   {
     items: [
       { id: "home", label: "Home", icon: "home", path: "/projects" },
@@ -123,7 +123,9 @@ export const orgSections: readonly ShellNavSection[] = [
     label: "Administration",
     items: [
       access(""),
-      { id: "billing", label: "Usage & billing", icon: "file", path: "/billing" },
+      ...(isSubOrganization
+        ? []
+        : [{ id: "billing", label: "Usage & billing", icon: "file" as const, path: "/billing" }]),
       audit(""),
       { ...settings(""), drillIn: true, search: { selectedTab: "tab-org-general" } }
     ]

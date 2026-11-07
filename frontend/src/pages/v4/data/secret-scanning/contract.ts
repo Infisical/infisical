@@ -1,3 +1,4 @@
+import type { TSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2/queries";
 import type {
   TDeleteSecretScanningDataSourceDTO,
   TGetSecretScanningDataSource,
@@ -15,6 +16,7 @@ import type { V4Mutation, V4QueryResult } from "../contract";
 
 export type SecretScanningAdapter = {
   useProjectId: (orgId: string) => V4QueryResult<string>;
+  useInstanceState: (orgId: string) => V4QueryResult<TSecretScanningInstanceState>;
   useFindings: (
     dto: TListSecretScanningFindingsDTO
   ) => V4QueryResult<TListSecretScanningFindingsResponse> & { isPlaceholderData: boolean };

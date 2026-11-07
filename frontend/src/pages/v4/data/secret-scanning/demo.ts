@@ -363,6 +363,11 @@ const sortKey: Record<SecretScanningFindingOrderBy, (entry: TSecretScanningFindi
 
 export const secretScanningDemo: SecretScanningAdapter = {
   useProjectId: () => ({ data: projectId, isPending: false, error: null }),
+  useInstanceState: () => ({
+    data: { activeProjectId: projectId, projects: [], isMultiInstance: false },
+    isPending: false,
+    error: null
+  }),
   useFindings: ({ status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit }) => {
     const direction = orderDirection === OrderByDirection.ASC ? 1 : -1;
     const matched = store
