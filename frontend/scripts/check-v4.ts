@@ -22,12 +22,18 @@ export type V4Check = {
 };
 
 const isUi = (file: string) => file.startsWith("src/components/v4/");
-/** Modules allowed to spell the /v4 prefix: the v4 path helpers and resolvers. Moving v4 to the root changes these and the route definitions only. */
+/**
+ * Modules allowed to spell the /v4 prefix: the v4 link helpers and path registries. Moving v4 to
+ * the root changes these, the route definitions and the resolver in src/helpers/v4Bridge.ts, which
+ * sits outside the scanned folders.
+ */
 const v4PathModules = [
+  "src/pages/v4/links.ts",
   "src/pages/v4/auth/paths.ts",
   "src/pages/v4/access/links.ts",
   "src/pages/v4/liveReady.ts",
-  "src/pages/v4/resolveV4Href.ts"
+  "src/pages/v4/resolveV4Href.ts",
+  "src/components/v4/lib/boot-theme-keys.ts"
 ];
 const isRouteDefinition = (file: string) =>
   file.endsWith("/route.tsx") || file === "src/routes.ts" || file === "src/pages/v4/routes.ts";
@@ -838,7 +844,10 @@ export const v4Checks: readonly V4Check[] = [
       (isUi(file) || file.startsWith("src/pages/v4/")) &&
       !isRouteDefinition(file) &&
       !v4PathModules.includes(file),
-    markup: [/(["'`])\/v4(?=\/|\?|#|\$\{|\1)/g, /\/\^?\\\/v4(?![\w-])/g]
+    markup: [
+      /(?<!\bfrom\s*:\s*|\bgetRouteApi\(\s*)(["'`])\/v4(?=\/|\?|#|\$\{|\1)/g,
+      /\/\^?\\\/v4(?![\w-])/g
+    ]
   },
   {
     id: "suspense-fallback",

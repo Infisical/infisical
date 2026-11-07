@@ -523,6 +523,12 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [page, "<RowLink href={accessLinks.orgMember(orgId, id)} />"],
       [page, 'const flag = "v4-app";'],
       [page, 'fetch("/api/v4/secrets");'],
+      [page, 'const { orgId } = useParams({ from: "/v4/organizations/$orgId" });'],
+      [page, 'const routeApi = getRouteApi("/v4/organizations/$orgId/audit-logs");'],
+      [
+        "src/components/v4/lib/boot-theme-keys.ts",
+        "export const live = /^\\/v4\\/organizations\\//;"
+      ],
       ["src/pages/v4/kms/route.tsx", 'redirect({ to: "/v4/organizations/$orgId" });'],
       ["src/pages/v4/access/links.ts", "const org = (id: string) => `/v4/organizations/` + id;"],
       [
