@@ -15,6 +15,8 @@ const hasLocalOverride = () => {
   }
 };
 
+export const canPreviewV4States = () => !isPostHogEnabled();
+
 export const isV4AppEnabled = () =>
   new Promise<boolean>((resolve) => {
     if (hasLocalOverride()) {

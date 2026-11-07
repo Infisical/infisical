@@ -15,12 +15,11 @@ export const Route = createFileRoute("/v4/organizations/$orgId")({
     if (!(await isV4AppEnabled()) || liveHref(location.pathname) !== location.pathname) {
       throw redirect({ href: location.href.replace(/^\/v4/, ""), replace: true });
     }
-    const session = await authenticateSession({ context, location });
-    const { organizationId } = await injectOrgDetails({
-      context: { ...context, ...session },
-      params,
-      location
-    });
+    const { withV4Redirects } = await import("../auth/paths");
+    const session = await withV4Redirects(() => authenticateSession({ context, location }));
+    const { organizationId } = await withV4Redirects(() =>
+      injectOrgDetails({ context: { ...context, ...session }, params, location })
+    );
     const { liveAdapters } = await import("../data/live");
     return { ...session, organizationId, v4Mode: "live" as const, adapters: liveAdapters };
   },

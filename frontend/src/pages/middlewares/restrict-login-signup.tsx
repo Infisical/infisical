@@ -1,27 +1,16 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { createFileRoute, Outlet, redirect, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, Outlet, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { addSeconds, formatISO } from "date-fns";
 import DOMPurify from "dompurify";
 import rehypeRaw from "rehype-raw";
-import { z } from "zod";
 
-import {
-  getSignupTrialBillingSearch,
-  parseSignupTrialSearch
-} from "@app/components/auth/signupTrialIntent";
 import { Button } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
-import { setAuthToken } from "@app/hooks/api/reactQuery";
+import { LoginSignupQueryParamsSchema, restrictLoginSignup } from "@app/helpers/authRouteGuards";
 import { GtmHead } from "@app/hooks/useGtm";
-
-const QueryParamsSchema = z.object({
-  callback_port: z.coerce.number().optional().catch(undefined),
-  force: z.boolean().optional(),
-  org_id: z.string().optional().catch(undefined)
-});
 
 export const AuthConsentWrapper = () => {
   const { config } = useServerConfig();
@@ -75,63 +64,10 @@ export const AuthConsentWrapper = () => {
 };
 
 export const Route = createFileRoute("/_restrict-login-signup")({
-  validateSearch: zodValidator(QueryParamsSchema),
+  validateSearch: zodValidator(LoginSignupQueryParamsSchema),
   search: {
     middlewares: [stripSearchParams({ callback_port: undefined, force: undefined })]
   },
-  beforeLoad: async ({ context, location, search }) => {
-    if (!context.serverConfig.initialized) {
-      if (location.pathname.endsWith("/admin/signup")) return;
-      throw redirect({ to: "/admin/signup" });
-    }
-
-    const data = context.authToken;
-    if (!data) return;
-
-    setAuthToken(data.token);
-
-    if (location.pathname === "/signupinvite") return;
-
-    const isOnSelectOrg = location.pathname.endsWith("select-organization");
-    const needsOrgSelection =
-      search?.callback_port || search?.force || search?.org_id || !data.organizationId;
-
-    if (needsOrgSelection) {
-      if (isOnSelectOrg || (!data.organizationId && location.pathname.endsWith("verify-email")))
-        return;
-
-      // org_id makes the select-org page auto-select, so a CLI login must not inherit
-      // this browser's org: it would skip the picker the user is waiting on.
-      const inheritedOrgId = search?.callback_port ? undefined : data.organizationId;
-
-      throw redirect({
-        to: "/login/select-organization",
-        search: {
-          org_id: search?.org_id || inheritedOrgId,
-          callback_port: search?.callback_port
-        }
-      });
-    }
-
-    const orgId = data.subOrganizationId || data.organizationId;
-    if (orgId) {
-      // A signed-in visitor from a pricing-page trial button lands on their organization's billing page
-      // with that product's upgrade dialog open on the plan they picked.
-      const trialIntent =
-        location.pathname.replace(/\/$/, "") === "/signup"
-          ? parseSignupTrialSearch(location.searchStr)
-          : null;
-      if (trialIntent) {
-        const billingSearch = new URLSearchParams(getSignupTrialBillingSearch(trialIntent));
-        throw redirect({
-          href: `/organizations/${data.organizationId ?? orgId}/billing?${billingSearch.toString()}`
-        });
-      }
-      throw redirect({
-        to: "/organizations/$orgId/projects",
-        params: { orgId }
-      });
-    }
-  },
+  beforeLoad: ({ context, location, search }) => restrictLoginSignup({ context, location, search }),
   component: AuthConsentWrapper
 });
