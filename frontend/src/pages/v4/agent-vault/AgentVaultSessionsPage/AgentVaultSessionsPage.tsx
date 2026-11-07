@@ -401,6 +401,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           getRowId={(row) => row.id}
           rowLabel={(row) => row.label ?? displayName(row.actor)}
           rowActions={rowActions}
+          // v4-check-ignore row-activate-navigates -- opens the session sheet in place; the search param only keeps it addressable
           onRowActivate={(row) => setSessionId(row.id)}
           empty={
             isFiltered ? (
