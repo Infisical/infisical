@@ -893,12 +893,10 @@ button.rowTitle::after {
 .nativeTableRow:is(:focus, :focus-visible) {
   outline: none;
 }
-.nativeTableRow[data-focus-ring],
 .tree [role="treeitem"]:focus-visible > .treeRow {
   position: relative;
 }
 /* One row focus ring: an overlay inside the row box, above pinned cells and clear of neighbouring rows' borders. */
-.nativeTableRow[data-focus-ring]::after,
 .tree [role="treeitem"]:focus-visible > .treeRow::after,
 .listRow:has(.rowTitle:focus-visible)::after {
   content: "";
@@ -907,6 +905,27 @@ button.rowTitle::after {
   z-index: 6;
   border: var(--v4-size-focus-ring) solid var(--v4-ink);
   pointer-events: none;
+}
+/* A table row draws the same ring from its cells: a box on the tr itself becomes an extra column in table layout. Zero specificity keeps pinned cells sticky. */
+:where(.nativeTableRow[data-focus-ring]) > :where(td, th) {
+  position: relative;
+}
+.nativeTableRow[data-focus-ring] > :is(td, th)::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0 calc(-1 * var(--v4-size-control-border));
+  z-index: 6;
+  border: 0 solid var(--v4-ink);
+  border-block-width: var(--v4-size-focus-ring);
+  pointer-events: none;
+}
+.nativeTableRow[data-focus-ring] > :is(td, th):first-child::after {
+  border-inline-start-width: var(--v4-size-focus-ring);
+}
+.nativeTableRow[data-focus-ring] > :is(td, th):last-child::after {
+  inset-inline-end: 0;
+  border-inline-end-width: var(--v4-size-focus-ring);
 }
 /* v4-check-ignore cursor-pointer -- an activatable row opens its record like a RowLink row, so the two read the same */
 .tableScroll tbody tr[data-activatable] {
@@ -987,8 +1006,14 @@ button.rowTitle::after {
 .tableShell[data-action-bar="fixed"] {
   padding-bottom: calc(var(--v4-size-action-bar) + var(--v4-space-action-bar-offset));
 }
-.tableShell[data-action-bar="contained"] {
-  padding-bottom: calc(var(--v4-size-action-bar) + var(--v4-space-action-bar-offset-contained));
+/* A contained bar hosted by the table rides the scroller's bottom edge while the table is in view and rests in the room it holds below the frame. */
+.tableShell > [data-slot="floating-action-bar"][data-placement="contained"] {
+  position: sticky;
+  bottom: var(--v4-space-action-bar-offset-contained);
+  left: auto;
+  width: fit-content;
+  margin-top: var(--v4-space-action-bar-offset-contained);
+  translate: none;
 }
 .tableScroll table {
   position: relative;

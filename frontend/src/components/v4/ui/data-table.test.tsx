@@ -262,9 +262,9 @@ it("reserves room for a hosted floating action bar only while it shows", async (
   await render(table(0));
   expect(shell().dataset.actionBar).toBeUndefined();
   await render(table(2));
-  expect(shell().dataset.actionBar).toBe("fixed");
-  await render(table(2, "contained"));
   expect(shell().dataset.actionBar).toBe("contained");
+  await render(table(2, "fixed"));
+  expect(shell().dataset.actionBar).toBe("fixed");
   await render(table(0, "contained"));
   expect(shell().dataset.actionBar).toBeUndefined();
 });

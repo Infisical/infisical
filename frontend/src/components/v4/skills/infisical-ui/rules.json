@@ -45,7 +45,7 @@
     {
       "id": "container-defaults",
       "title": "Frame tables and lists; keep standalone cards plain",
-      "instruction": "Tables are framed: a standalone DataTable sits in the tint frame, and a DataTable inside a framed Card, List or other frame drops its frame and embeds on the card's inset surface. The frameless native Table is for a table inside another surface. Lists default to framed and change case by case. A standalone Card is plain, the default, or no card at all; set variant=\"framed\" only for emphasis, such as the org overview product cards, or for a section card that heads part of a page, such as a detail sidecar or a settings section. A plain Card pads raw children by the same inset as a framed Card body.",
+      "instruction": "Tables are framed: a standalone DataTable sits in the tint frame, and a DataTable inside a framed Card, List or other frame drops its frame and embeds on the card's inset surface. The frameless native Table is for the secrets overview matrix and for a table inside a Dialog, Sheet or Popover; a table inside a Card is an embedded DataTable (rule/detail-card-data-table). Lists default to framed and change case by case. A standalone Card is plain, the default, or no card at all; set variant=\"framed\" only for emphasis, such as the org overview product cards, or for a section card that heads part of a page, such as a detail sidecar or a settings section. A plain Card pads raw children by the same inset as a framed Card body.",
       "good": "A DataTable in its frame on a list page, a plain Card for a standalone summary, and <Card variant=\"framed\" title=\"Details\"> in a DetailLayout sidecar.",
       "avoid": "A framed Card wrapped around every block on a page, or a standalone Card set to variant framed with no emphasis or section role.",
       "detect": {
@@ -1138,14 +1138,15 @@
     {
       "id": "selection-floating-action-bar",
       "title": "Bulk selection uses the floating action bar",
-      "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content.",
-      "good": "Selecting three secrets raises the floating action bar over the bottom of the view with the count, Clear and the bulk actions, and the table stays where it was.",
+      "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content. The bar is contained, its default, in every product: pass it to DataTable's actionBar so the table reserves room below its last row, and never set placement fixed, which floats it over the whole viewport.",
+      "good": "Selecting three secrets raises the contained floating action bar at the bottom of the table's column with the count, Clear and the bulk actions, and the table stays where it was.",
       "avoid": "An inline '3 selected, Clear selection, Bulk actions' row that pushes the table down when the first row is selected.",
       "detect": {
-        "by": "review",
-        "how": "Select a row and check that nothing above or below the list moves, and that the actions appear in the floating action bar."
+        "by": "lint",
+        "check": "fixed-bulk-bar"
       },
-      "category": "Interaction"
+      "category": "Interaction",
+      "exceptions": "The check reads a literal placement on FloatingActionBar. An inline bar, or selection that moves content, is caught only in review: select a row and check that nothing above or below the list moves."
     },
     {
       "id": "translucent-hover",
@@ -1210,6 +1211,107 @@
         "by": "lint",
         "check": "row-action-destructive-inline"
       }
+    },
+    {
+      "id": "row-navigation-link",
+      "title": "Rows that navigate use RowLink",
+      "category": "Interaction",
+      "instruction": "When activating a table row goes to another page, put RowLink in the primary cell with the record's route. It stretches over the row, keeps its chevron and gives the row a real href. Never navigate from onRowActivate with a router call (navigate, router.navigate or a helper such as useGo), and never set RowLink and onRowActivate on the same table.",
+      "good": "A members table whose name cell is a RowLink to the member's page, so the row opens in a new tab on a modified click and its link can be copied.",
+      "avoid": "onRowActivate={(row) => go(links.member(row.id))} over plain text in the name cell, or a certificates table that sets a RowLink and an onRowActivate that navigates to the same page.",
+      "detect": {
+        "by": "lint",
+        "check": "row-activate-navigates"
+      },
+      "exceptions": "The check reads the inline handler and any function it calls that is defined in the same file. A handler imported from another module is not followed, so review those by hand."
+    },
+    {
+      "id": "pagination-in-frame",
+      "title": "Pagination sits in the table frame, compact",
+      "category": "Interaction",
+      "instruction": "Pass a paged DataTable's Pagination through its pagination slot with variant=\"compact\", so it renders in the frame's foot below the rows and stays in view while the table scrolls. Never render Pagination as a sibling after the table, and never put the numbered variant in the slot. A helper that builds the pagination returns that compact node for the slot.",
+      "good": "A roles list whose DataTable gets pagination={<Pagination variant=\"compact\" ... />}, with the range and arrows inside the frame under the last row.",
+      "avoid": "A Stack holding the DataTable and then {list.pagination}, a numbered Pagination drawn below the frame.",
+      "detect": {
+        "by": "lint",
+        "check": "pagination-outside-frame"
+      },
+      "exceptions": "A grid of cards or another collection that is not a DataTable renders its own Pagination below it. A slot value built in a variable or helper is not read, so check its variant by hand."
+    },
+    {
+      "id": "sheet-row-open",
+      "title": "Rows that open a sheet use onRowActivate and a named button",
+      "category": "Interaction",
+      "instruction": "When activating a row opens the record in a Sheet or Dialog on the same page, pass onRowActivate and render the primary cell's name as a link Button that runs the same handler, so keyboard and screen reader users meet a named control. That cell is not a RowLink, so no chevron is drawn: a chevron says the row leaves the page. Add no inline Open or chevron action for the same sheet.",
+      "good": "A findings table whose row opens the finding's sheet on click or Enter, with the finding's name as a link Button in the primary cell and More alone in the actions tail.",
+      "avoid": "A chevron button column that opens the sheet, an inline Open action that repeats the row's own target, or a RowLink with its chevron on a row that never leaves the page.",
+      "detect": {
+        "by": "review",
+        "how": "Open a row by click, by Enter and by its name button. All three open the same sheet, and the row shows no chevron and no Open action."
+      },
+      "exceptions": "A sheet that is addressable by URL may use a RowLink to that URL in the primary cell; pass chevron={false} there, since the person stays on the page."
+    },
+    {
+      "id": "row-context-menu",
+      "title": "Hand-built rows with actions take the row context menu",
+      "category": "Interaction",
+      "instruction": "A hand-built native Table row that shows RowActions or a TableActionsCell wraps itself in RowContextMenu, passing the same label, inline actions, menu and menuDisabledReason it passes RowActions. Right-click, Shift+F10 and the Menu key then open the row's actions exactly as on a DataTable row with rowActions.",
+      "good": "A secrets overview environment row wrapped in RowContextMenu with Copy value and Edit inline and the same More items, so right-clicking it lists those actions with Delete last.",
+      "avoid": "A nested Table row with RowActions in its actions tail and no RowContextMenu, so right-clicking it opens the browser's menu.",
+      "detect": {
+        "by": "lint",
+        "check": "row-actions-without-context-menu"
+      },
+      "exceptions": "A row assigned to a variable counts as wrapped when that variable sits inside a RowContextMenu in the same file. A row built in one file and wrapped in another is flagged, so wrap it where it is built."
+    },
+    {
+      "id": "detail-facts-compact",
+      "title": "Detail-page facts cards are compact",
+      "category": "Visual",
+      "instruction": "The facts card on a detail page, the DetailLayout sidecar or the details Card that heads a record page, renders its DataList with density=\"compact\" and pairs short values with span half. A DataList inside a Sheet or Dialog keeps the default density.",
+      "good": "A group detail sidecar whose Details card lists Name, Slug, Role and Created as compact 32px rows, with Created and Updated paired on one row.",
+      "avoid": "One detail page with a compact facts card and the next with default-density rows that spread the same facts twice as tall.",
+      "detect": {
+        "by": "review",
+        "how": "Open each record detail page and check its facts card uses compact density, while DataLists in sheets keep the default."
+      }
+    },
+    {
+      "id": "row-actions-inline-primary",
+      "title": "Resource rows inline their one most-used action",
+      "category": "Interaction",
+      "instruction": "On a table of resources, inline the single most-used non-destructive action for that resource, such as Edit, Rotate or View logs, then More for everything else. A resource with no clearly most-used action shows More alone. Never inline an action that repeats the row's own target, and keep destructive actions in More (rule/row-actions-destructive-in-more).",
+      "good": "A roles table with Edit role inline and Duplicate, Export and Delete in More, and a KMS keys table with More alone because no key action dominates.",
+      "avoid": "Edit, Duplicate and Copy ID inline on every row of a resource list, or an inline Open or Access project action beside a row that already opens it.",
+      "detect": {
+        "by": "review",
+        "how": "For each resource list, name the action people use most. It is the only inline action, it is not destructive and it does not repeat the row's target."
+      }
+    },
+    {
+      "id": "list-page-filter-bar",
+      "title": "List pages search and filter with FilterBar",
+      "category": "Interaction",
+      "instruction": "A full list page puts its search and filters in FilterBar: the search Input in its search slot, filter fields in fields, and list tools such as Columns, Export or one always-used Select in actions. A page with nothing to filter still uses FilterBar with no fields, which draws search and actions without Add filter. A search box with an icon-only filter menu is only for search inside a Card header.",
+      "good": "A KMS keys page with FilterBar holding the key search, no Add filter and a usage Select in actions, the same shape as the certificates inventory.",
+      "avoid": "A bare Input above one list page, an Input and a Select row on the next and a toolbar with an icon-only filter menu on a third.",
+      "detect": {
+        "by": "review",
+        "how": "Compare the toolbar above each full list page: every one is a FilterBar, and only search inside a Card header uses the compact toolbar."
+      }
+    },
+    {
+      "id": "detail-card-data-table",
+      "title": "Tables inside cards are DataTables",
+      "category": "Visual",
+      "instruction": "A table inside a Card or SettingsCard on a page is a DataTable, which embeds frameless on the card's inset and brings sorting, loading rows and the empty state. The native Table is reserved for the secrets overview matrix and for tables inside a Dialog, Sheet or Popover, where the Table contract already allows it.",
+      "good": "A secret approval's Changes and Reviewers cards each holding an embedded DataTable with its own empty state.",
+      "avoid": "A native Table with hand-written rows inside a framed Card on a detail page, beside another card that uses DataTable for the same kind of list.",
+      "detect": {
+        "by": "lint",
+        "check": "raw-table-in-card"
+      },
+      "exceptions": "A chart legend laid out as a table beside its chart is not a list of records; keep it a native Table and mark it with v4-check-ignore raw-table-in-card and that reason."
     },
     {
       "id": "skeleton-for-known-shape",

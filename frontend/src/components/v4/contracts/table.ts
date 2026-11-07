@@ -416,10 +416,10 @@ export const tableDefinition = {
       },
       {
         id: "table-row-activation",
-        when: "Each row opens one detail page or sheet for its resource.",
-        do: "Pass onRowActivate (or, in a native Table, TableRow onClick) with the same destination as the link or button in the primary cell, and keep selection on the checkbox and Space.",
+        when: "Each row opens its resource in a sheet or dialog on the same page.",
+        do: "Pass onRowActivate (or, in a native Table, TableRow onClick) and render the primary cell's name as a link Button that runs the same handler. The cell holds no RowLink, so no chevron is drawn, and the actions tail adds no Open or chevron action. Keep selection on the checkbox and Space.",
         avoid:
-          "Navigate from a cell's own onClick, give the row a button or link role, let a row click change the selection, or add stopPropagation to the row's controls and menus to keep them from activating it.",
+          "Navigate from onRowActivate or a cell's own onClick, give the row a button or link role, let a row click change the selection, or add stopPropagation to the row's controls and menus to keep them from activating it.",
         reason:
           "One handler keeps pointer, Enter and the named control in agreement, while the row's own controls keep their clicks and the row keeps native table semantics.",
         evidence: [
@@ -432,6 +432,90 @@ export const tableDefinition = {
           by: "test",
           test: "src/components/v4/ui/data-table.test.tsx",
           how: "Clicks a cell, the row menu, the selection cell and a text selection, then presses Enter and Space on a focused row; only the cell click and Enter activate, and Space selects. A native TableRow onClick ignores a click on a portaled menu item opened from the row and runs for a click on a cell."
+        }
+      },
+      {
+        id: "table-row-navigation",
+        when: "Activating a row goes to the record's own page.",
+        do: "Put RowLink in the primary cell with the record's route and leave onRowActivate unset; RowLink stretches over the row and keeps its chevron.",
+        avoid:
+          "Pass onRowActivate={(row) => go(...)} or any handler that calls navigate, or set RowLink and onRowActivate on the same table.",
+        reason:
+          "A row with an href opens in a new tab, copies as a link and reads as a named link to screen readers; a click handler that navigates does none of that.",
+        evidence: [
+          "src/components/v4/ui/data-table.tsx",
+          "src/pages/design-system/examples/table/row-activation.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "ui:lint row-activate-navigates flags an onRowActivate whose inline body, or a function it calls from the same file, navigates. Check imported handlers by hand."
+        }
+      },
+      {
+        id: "table-pagination-slot",
+        when: "A DataTable shows one page of a longer result.",
+        do: 'Pass Pagination through the pagination slot with variant="compact", so the range and arrows sit in the frame below the rows.',
+        avoid:
+          "Render Pagination, or a helper's pagination node, as a sibling after the table, or put the numbered variant in the slot.",
+        reason:
+          "Inside the frame the controls stay with the rows they page and in view while the table scrolls; one variant keeps every paged table the same.",
+        evidence: [
+          "src/components/v4/ui/data-table.tsx",
+          "src/pages/design-system/examples/table/pagination.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "ui:lint pagination-outside-frame flags a Pagination right after a DataTable and a slot Pagination without the compact variant. A slot node built in a helper is checked by hand."
+        }
+      },
+      {
+        id: "table-row-context-menu",
+        when: "A native Table row shows RowActions or a TableActionsCell.",
+        do: "Wrap the row in RowContextMenu with the same label, inline actions, menu and menuDisabledReason it passes RowActions.",
+        avoid: "Leave a hand-built row with actions in its tail and no RowContextMenu around it.",
+        reason:
+          "Right-click, Shift+F10 and the Menu key open a row's actions on every DataTable row, so a hand-built row without them behaves differently from the table beside it.",
+        evidence: [
+          "src/components/v4/ui/table.tsx",
+          "src/pages/design-system/examples/table/row-actions.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "ui:lint row-actions-without-context-menu flags a TableRow holding RowActions or TableActionsCell with no RowContextMenu around it in the same file."
+        }
+      },
+      {
+        id: "table-inline-primary-action",
+        when: "A table lists resources of one type with row actions.",
+        do: "Inline the one most-used non-destructive action, such as Edit, Rotate or View logs, and put the rest in More. Show More alone when no action is clearly most used.",
+        avoid:
+          "Inline several actions on every row of a resource list, or inline an action that repeats the row's own target, such as Open.",
+        reason:
+          "One inline action keeps the frequent task one click away without turning the tail into a toolbar, and the same shape on every resource list reads as one product.",
+        evidence: [
+          "src/components/v4/ui/data-table.tsx",
+          "src/pages/design-system/examples/table/row-actions.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Name the most-used action for each resource list and check it is the only inline action, is not destructive and does not repeat the row's target."
+        }
+      },
+      {
+        id: "table-in-card",
+        when: "A detail or settings page lists records inside a Card or SettingsCard.",
+        do: "Use DataTable, which embeds frameless on the card's inset with its sort, loading rows and empty state.",
+        avoid:
+          "Hand-build a native Table in the card. Keep the native Table for the secrets overview matrix and for dialog, sheet and popover internals.",
+        reason:
+          "Every table in a card then sorts, loads and reads empty the same way, and the native Table stays for layouts DataTable cannot express.",
+        evidence: [
+          "src/components/v4/ui/data-table.tsx",
+          "src/pages/design-system/examples/table/semantic.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "ui:lint raw-table-in-card flags a native Table inside a Card or SettingsCard outside an overlay and the secrets overview."
         }
       },
       {
