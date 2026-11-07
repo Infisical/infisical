@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import {
   BanIcon,
   ChevronsLeftRightEllipsisIcon,
@@ -17,7 +17,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { TableCell } from "@app/components/v4/ui/table";
+import { type RowContextMenu, TableCell } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { Resource, ResourceKind } from "../secrets-model";
@@ -30,6 +30,7 @@ import styles from "./overview.module.css";
 export const NEXT_PHASE = "Ported in the next phase";
 export const ROW_ACTION_SLOTS = 2;
 export const stopRowClick = (event: MouseEvent) => event.stopPropagation();
+export type RowActionProps = Omit<ComponentProps<typeof RowContextMenu>, "children">;
 export type EnvironmentOption = { value: string; label: string };
 export type RowContext = {
   environments: EnvironmentOption[];

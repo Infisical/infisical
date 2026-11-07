@@ -32,6 +32,7 @@ import { Input } from "@app/components/v4/ui/input";
 import { Spinner } from "@app/components/v4/ui/spinner";
 import {
   RowActions,
+  RowContextMenu,
   Table,
   TableActionsCell,
   TableActionsHead,
@@ -45,6 +46,7 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { DynamicSecretResource } from "../flows/dynamic-secret-flow";
 import { Gate } from "../flows/shared";
+import type { RowActionProps } from "../overview-cells";
 
 import styles from "./dynamic-secret-actions.module.css";
 
@@ -204,84 +206,89 @@ export function DynamicSecretLeaseList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {leases.map(({ id, expireAt, status, statusDetails }) => (
-            <TableRow key={id}>
-              <TableCell>
-                <div className={styles.leaseId}>
-                  <span className={styles.truncate}>{id}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                {status ? (
-                  <Tooltip content={statusDetails || "The provider could not revoke this lease."}>
-                    <Badge tone="bad">
-                      <Icon name="alert" />
-                      Deletion failed
-                    </Badge>
-                  </Tooltip>
-                ) : (
-                  <Badge tone="ok">Active</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <Tooltip content={format(new Date(expireAt), "yyyy-MM-dd, hh:mm aaa")}>
-                  <span className="capitalize">
-                    {formatDistance(new Date(expireAt), new Date())}
-                  </span>
-                </Tooltip>
-              </TableCell>
-              <TableActionsCell slots={canRenew ? 2 : 1}>
-                <RowActions
-                  label={id}
-                  inline={
-                    canRenew
-                      ? [
-                          {
-                            label: "Renew lease",
-                            icon: "sync",
-                            disabledReason: leaseBlock,
-                            onSelect: () => setRenewLeaseId(id)
-                          }
-                        ]
-                      : []
-                  }
-                  menu={
-                    <>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        disabled={Boolean(leaseBlock)}
-                        description={leaseBlock}
-                        onSelect={() => {
-                          setRevoke({ leaseId: id, isForced: false });
-                          setRevokeOpen(true);
-                        }}
+          {leases.map(({ id, expireAt, status, statusDetails }) => {
+            const rowActions: RowActionProps = {
+              label: id,
+              inline: canRenew
+                ? [
+                    {
+                      label: "Renew lease",
+                      icon: "sync",
+                      disabledReason: leaseBlock,
+                      onSelect: () => setRenewLeaseId(id)
+                    }
+                  ]
+                : [],
+              menu: (
+                <>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={Boolean(leaseBlock)}
+                    description={leaseBlock}
+                    onSelect={() => {
+                      setRevoke({ leaseId: id, isForced: false });
+                      setRevokeOpen(true);
+                    }}
+                  >
+                    <Icon name="trash" />
+                    Revoke lease
+                  </DropdownMenuItem>
+                  {status === "failed-deletion" && (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={Boolean(leaseBlock)}
+                      description={
+                        leaseBlock ??
+                        "Removes it from Infisical without revoking it in the provider."
+                      }
+                      onSelect={() => {
+                        setRevoke({ leaseId: id, isForced: true });
+                        setRevokeOpen(true);
+                      }}
+                    >
+                      <Icon name="trash" />
+                      Force delete lease
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )
+            };
+            return (
+              <RowContextMenu key={id} {...rowActions}>
+                <TableRow>
+                  <TableCell>
+                    <div className={styles.leaseId}>
+                      <span className={styles.truncate}>{id}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {status ? (
+                      <Tooltip
+                        content={statusDetails || "The provider could not revoke this lease."}
                       >
-                        <Icon name="trash" />
-                        Revoke lease
-                      </DropdownMenuItem>
-                      {status === "failed-deletion" && (
-                        <DropdownMenuItem
-                          variant="destructive"
-                          disabled={Boolean(leaseBlock)}
-                          description={
-                            leaseBlock ??
-                            "Removes it from Infisical without revoking it in the provider."
-                          }
-                          onSelect={() => {
-                            setRevoke({ leaseId: id, isForced: true });
-                            setRevokeOpen(true);
-                          }}
-                        >
-                          <Icon name="trash" />
-                          Force delete lease
-                        </DropdownMenuItem>
-                      )}
-                    </>
-                  }
-                />
-              </TableActionsCell>
-            </TableRow>
-          ))}
+                        <Badge tone="bad">
+                          <Icon name="alert" />
+                          Deletion failed
+                        </Badge>
+                      </Tooltip>
+                    ) : (
+                      <Badge tone="ok">Active</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip content={format(new Date(expireAt), "yyyy-MM-dd, hh:mm aaa")}>
+                      <span className="capitalize">
+                        {formatDistance(new Date(expireAt), new Date())}
+                      </span>
+                    </Tooltip>
+                  </TableCell>
+                  <TableActionsCell slots={canRenew ? 2 : 1}>
+                    <RowActions {...rowActions} />
+                  </TableActionsCell>
+                </TableRow>
+              </RowContextMenu>
+            );
+          })}
         </TableBody>
       </Table>
     );
