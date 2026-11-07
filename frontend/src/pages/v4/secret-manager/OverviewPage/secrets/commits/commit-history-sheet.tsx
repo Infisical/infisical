@@ -382,9 +382,8 @@ export function CommitHistorySheet({
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline">
+            <Button layout="trigger" variant="outline">
               <span className={styles.authorLabel}>{`Author: ${author ?? "Anyone"}`}</span>
-              <Icon name="chev-down" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -398,9 +397,8 @@ export function CommitHistorySheet({
         </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline">
+            <Button layout="trigger" variant="outline">
               {sort === "desc" ? "Newest first" : "Oldest first"}
-              <Icon name="chev-down" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -484,9 +482,8 @@ export function CommitHistorySheet({
           <DropdownMenu>
             <Gate reason={rollbackBlock}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={Boolean(rollbackBlock)}>
+                <Button layout="trigger" variant="outline" disabled={Boolean(rollbackBlock)}>
                   Restore options
-                  <Icon name="chev-down" />
                 </Button>
               </DropdownMenuTrigger>
             </Gate>

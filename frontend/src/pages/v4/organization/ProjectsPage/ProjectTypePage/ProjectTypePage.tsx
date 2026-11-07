@@ -644,10 +644,11 @@ const AllProjects = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          layout="trigger"
           variant="outline"
           size="xs"
           icon="check"
-          iconRight="chev-down"
+
           aria-label={`Membership options for ${project.name}`}
         >
           Joined
