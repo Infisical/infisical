@@ -365,22 +365,22 @@ export const Navbar = () => {
     handleOrgSelection({ organizationId: org?.id });
   };
 
+  // Class names must stay as full literals so Tailwind can detect them
+  const getGradientClass = () => {
+    if (isServerAdminPanel) return "from-admin/5";
+    if (isPamScope) return "from-product-pam/5";
+    if (isAgentVaultScope) return "from-product-av/5";
+    if (isSecretScanningScope) return "from-product-ss/5";
+    if (isProjectScope) return "from-project/5";
+    if (isSubOrganization) return "from-sub-org/5";
+    return "from-org/5";
+  };
+
   return (
     <div
       className={twMerge(
         "z-10 flex min-h-12 items-center border-b border-border-soft bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
-        isServerAdminPanel && "from-admin/5",
-        !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
-        !isServerAdminPanel && isSecretScanningScope && "from-product-ss/5",
-        !isServerAdminPanel &&
-          isProjectScope &&
-          !isPamScope &&
-          !isSecretScanningScope &&
-          !isAgentVaultScope &&
-          "from-project/5",
-        !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
-        !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
+        getGradientClass()
       )}
     >
       <SidebarTrigger variant="ghost" className="ml-2 lg:hidden" />
