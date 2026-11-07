@@ -69,8 +69,7 @@ type TabbedOverviewProps = {
   breakdownOrgId: string;
   breakdownScope: BillingV2BreakdownScopeKind;
   onManage: (productId: string) => void;
-  onSetCommitment: (productId: string) => void;
-  onViewBreakdown: (productId: string, dimensionKey?: string) => void;
+  onRemove: (productId: string) => void;
   onUpdatePayment: () => void;
   onEditDetails: () => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
@@ -197,8 +196,7 @@ export const TabbedOverview = ({
   breakdownOrgId,
   breakdownScope,
   onManage,
-  onSetCommitment,
-  onViewBreakdown,
+  onRemove,
   onUpdatePayment,
   onEditDetails,
   onContact
@@ -480,9 +478,8 @@ export const TabbedOverview = ({
               isManaged={isManaged}
               breakdownOrgId={breakdownOrgId}
               breakdownScope={breakdownScope}
-              onManage={onManage}
-              onSetCommitment={onSetCommitment}
-              onViewBreakdown={onViewBreakdown}
+              onRemove={onRemove}
+              onContact={onContact}
             />
           )}
           {inactiveProducts.length > 0 && (

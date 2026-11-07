@@ -1,217 +1,41 @@
 import { CSSProperties, ReactNode, useState } from "react";
-import { Box, ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
-import {
-  Badge,
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  rowLinkContainerClassName,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3";
+import { Badge, Card, CardHeader, CardTitle, rowLinkContainerClassName } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import {
   BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2Entitlement,
-  BillingV2EntitlementDim,
-  useGetBillingV2UsageBreakdown
+  BillingV2EntitlementDim
 } from "@app/hooks/api";
 
 import {
-  byDisplayOrder,
-  commitSavingsNudge,
-  dimBarSegments,
-  dimCommitManageable,
-  dimCommitted,
-  dimDisplayLabel,
   dimDisplayNoun,
-  dimHasCeiling,
   dimMonthlyRate,
-  dimOnDemandQuantity,
   fmtMoney,
   fmtMoneyCents,
   isIdentityDim,
-  meteredUsageCaption,
   pluralizeUnit,
   productAnnualCommitted,
   tierLabel
 } from "../billing-v2-format";
-import { ProductIcon } from "./shared";
-import { BREAKDOWN_DIMENSIONS, breakdownableDimensions } from "./UsageBreakdownSheet";
-
-const NEAR_LIMIT_PCT = 80;
-
-const productTint = "color-mix(in srgb, var(--product-color-resolved) 85%, transparent)";
-const productStripes = `repeating-linear-gradient(-45deg, ${productTint} 0 2px, color-mix(in srgb, var(--product-color-resolved) 25%, transparent) 2px 4px)`;
-
-const ProductIconFallback = () => <Box className="size-full" />;
-
-type Breakdown = { orgId: string; scope: BillingV2BreakdownScopeKind };
-
-const visibleDims = (ent: BillingV2Entitlement) => {
-  const dims = ent.dimensions ?? [];
-  return dims.filter(
-    (dim) => dim.key !== "user_identities" || !dims.some((other) => other.key === "identities")
-  );
-};
-
-const dimAllowance = (dim: BillingV2EntitlementDim) =>
-  dimCommitted(dim) ? dim.committed : dim.limit;
-
-const dimFillPct = (dim: BillingV2EntitlementDim) => {
-  const allowance = dimAllowance(dim);
-  if (!dimHasCeiling(dim) || !allowance) return null;
-  return (dim.used / allowance) * 100;
-};
-
-const isNearLimit = (dim: BillingV2EntitlementDim) =>
-  !dimCommitted(dim) && (dimFillPct(dim) ?? 0) >= NEAR_LIMIT_PCT;
-
-const collapsedOrder = (dims: BillingV2EntitlementDim[]) =>
-  [...dims].sort((a, b) => {
-    if (isIdentityDim(a) !== isIdentityDim(b)) return isIdentityDim(a) ? -1 : 1;
-    return (dimFillPct(b) ?? -1) - (dimFillPct(a) ?? -1);
-  });
-
-const UsageBar = ({ dim, className }: { dim: BillingV2EntitlementDim; className?: string }) => {
-  const { committedPct, onDemandPct } = dimBarSegments(dim);
-  return (
-    <span className={cn("flex w-full gap-0.5 overflow-hidden rounded-xs bg-border", className)}>
-      {dimHasCeiling(dim) && (
-        <span
-          className={cn(
-            "h-full rounded-xs",
-            onDemandPct > 0 && "rounded-r-none",
-            isNearLimit(dim) && "bg-warning/85"
-          )}
-          style={{
-            width: `${committedPct}%`,
-            background: isNearLimit(dim) ? undefined : productTint
-          }}
-        />
-      )}
-      {onDemandPct > 0 && (
-        <span
-          className="h-full rounded-xs rounded-l-none bg-warning/85"
-          style={{ width: `${onDemandPct}%` }}
-        />
-      )}
-    </span>
-  );
-};
-
-const IdentityBar = ({
-  users,
-  machines,
-  className
-}: {
-  users: number;
-  machines: number;
-  className?: string;
-}) => (
-  <span className={cn("flex w-full gap-0.5 overflow-hidden rounded-xs bg-border", className)}>
-    {users > 0 && (
-      <span className="h-full rounded-xs" style={{ flexGrow: users, background: productTint }} />
-    )}
-    {machines > 0 && (
-      <span
-        className="h-full rounded-xs"
-        style={{ flexGrow: machines, background: productStripes }}
-      />
-    )}
-  </span>
-);
-
-const useIdentitySplit = (dim: BillingV2EntitlementDim | null, breakdown: Breakdown) => {
-  const dimensionKey = dim && BREAKDOWN_DIMENSIONS.has(dim.key) ? dim.key : null;
-  const { data } = useGetBillingV2UsageBreakdown(breakdown.orgId, dimensionKey, breakdown.scope);
-  if (!dim || !data || data.total === 0 || data.userCount + data.scopedCount !== dim.used) {
-    return null;
-  }
-  return { users: data.userCount, machines: data.scopedCount };
-};
-
-const committedSeatRate = (dim: BillingV2EntitlementDim) =>
-  dimCommitted(dim) && dim.committedRate ? dim.committedRate : null;
-
-const seatRateLines = (dim: BillingV2EntitlementDim): string[] => {
-  const committedRate = committedSeatRate(dim);
-  const monthlyRate = dimMonthlyRate(dim);
-  if (committedRate !== null) {
-    return [
-      `Committed seats billed at ${fmtMoneyCents(committedRate)} per seat / yr`,
-      ...(monthlyRate > 0
-        ? [`Seats past the commitment billed at ${fmtMoneyCents(monthlyRate)} per seat / mo`]
-        : [])
-    ];
-  }
-  return monthlyRate > 0 ? [`All identities billed at ${fmtMoneyCents(monthlyRate)} per seat`] : [];
-};
-
-const IdentitySplitTooltip = ({
-  color,
-  dim,
-  split,
-  children
-}: {
-  color: string;
-  dim: BillingV2EntitlementDim;
-  split: { users: number; machines: number } | null;
-  children: ReactNode;
-}) => {
-  const rateLines = seatRateLines(dim);
-  if (!split && rateLines.length === 0) return children;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent
-        className="product-color flex min-w-48 flex-col gap-1.5 whitespace-nowrap"
-        style={{ "--product-color": color } as CSSProperties}
-      >
-        {split && (
-          <>
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-3 shrink-0 rounded-xs" style={{ background: productTint }} />
-              <span className="flex-1">Users</span>
-              <span className="tabular-nums">{split.users.toLocaleString()}</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <span
-                className="h-1.5 w-3 shrink-0 rounded-xs"
-                style={{ background: productStripes }}
-              />
-              <span className="flex-1">Machines</span>
-              <span className="tabular-nums">{split.machines.toLocaleString()}</span>
-            </span>
-          </>
-        )}
-        {rateLines.length > 0 && (
-          <span
-            className={cn(
-              "flex flex-col gap-0.5 text-muted",
-              split && "border-t border-border pt-1.5"
-            )}
-          >
-            {rateLines.map((line) => (
-              <span key={line}>{line}</span>
-            ))}
-          </span>
-        )}
-      </TooltipContent>
-    </Tooltip>
-  );
-};
+import { ProductDetailsSheet } from "./ProductDetailsSheet";
+import {
+  Breakdown,
+  collapsedOrder,
+  committedSeatRate,
+  dimAllowance,
+  IdentityBar,
+  IdentitySplitTooltip,
+  ProductIconFallback,
+  productTint,
+  trialPlanName,
+  UsageBar,
+  useIdentitySplit,
+  visibleDims
+} from "./subscription-shared";
 
 const MeterLabel = ({ dim }: { dim: BillingV2EntitlementDim }) => {
   const allowance = dimAllowance(dim);
@@ -347,13 +171,6 @@ const priceCell = (
 const cadenceCycle = (ent: BillingV2Entitlement) =>
   ent.cadence === "annual" ? "Annual cycle" : "Monthly cycle";
 
-const trialPlanName = (prod: BillingV2CatalogProduct, ent: BillingV2Entitlement) =>
-  ent.trialPlan
-    ? (ent.trialPlanName ??
-      prod.plans.find((plan) => plan.tier === ent.trialPlan)?.name ??
-      tierLabel(ent.trialPlan))
-    : null;
-
 const dateCell = (prod: BillingV2CatalogProduct, ent: BillingV2Entitlement, isManaged: boolean) => {
   const upgradeTrial = trialPlanName(prod, ent);
   if (upgradeTrial && ent.trialPlanPaymentDueAt) {
@@ -409,137 +226,6 @@ const statusBadge = (ent: BillingV2Entitlement) => {
   return <Badge variant="success">Active</Badge>;
 };
 
-const LimitAction = ({
-  title,
-  titleClassName,
-  action
-}: {
-  title: string;
-  titleClassName?: string;
-  action?: { label: string; onClick: () => void };
-}) => (
-  <span className="flex items-baseline justify-between gap-3 text-xs">
-    <span className={cn("text-muted", titleClassName)}>{title}</span>
-    {action && (
-      <Button variant="link" size="xs" onClick={action.onClick}>
-        {action.label}
-      </Button>
-    )}
-  </span>
-);
-
-const LimitRow = ({
-  dim,
-  prod,
-  ent,
-  canChangePlan,
-  breakdown,
-  onManage,
-  onSetCommitment
-}: {
-  dim: BillingV2EntitlementDim;
-  prod: BillingV2CatalogProduct;
-  ent: BillingV2Entitlement;
-  canChangePlan: boolean;
-  breakdown: Breakdown;
-  onManage: () => void;
-  onSetCommitment: () => void;
-}) => {
-  const isIdentity = isIdentityDim(dim);
-  const split = useIdentitySplit(isIdentity ? dim : null, breakdown);
-  const allowance = dimAllowance(dim);
-  const overage = dimOnDemandQuantity(dim);
-  const rate = dimMonthlyRate(dim);
-  const nudge = canChangePlan ? commitSavingsNudge(ent) : null;
-  const plans = [...prod.plans].sort(byDisplayOrder);
-  const currentIndex = plans.findIndex((plan) => plan.tier === ent.planTier);
-  const nextPlan = plans.slice(currentIndex + 1).find((plan) => plan.upgradeable);
-
-  let subtext: ReactNode = meteredUsageCaption(dim);
-  if (isIdentity) {
-    const noLimit = allowance === null ? ", no limit" : "";
-    subtext = split
-      ? `${split.users.toLocaleString()} ${split.users === 1 ? "user" : "users"} · ${split.machines.toLocaleString()} ${split.machines === 1 ? "machine" : "machines"}${noLimit}`
-      : `Billed per identity${noLimit}`;
-  } else if (dimCommitted(dim)) {
-    subtext = `Committed annually${dim.renewalDate ? ` · renews ${dim.renewalDate}` : ""}`;
-  } else if (!subtext && allowance !== null) {
-    subtext = `${Math.max(0, allowance - dim.used).toLocaleString()} left on ${tierLabel(ent.planTier ?? "")}`;
-  }
-
-  let action: ReactNode = null;
-  if (overage > 0) {
-    action = (
-      <LimitAction
-        title={`+${overage.toLocaleString()} over commitment`}
-        titleClassName="text-warning"
-        action={
-          canChangePlan ? { label: "Adjust Commitment", onClick: onSetCommitment } : undefined
-        }
-      />
-    );
-  } else if (isIdentity && nudge && nudge.label === dim.label) {
-    action = (
-      <LimitAction
-        title={`Save ${fmtMoney(nudge.monthlyAnnualized - nudge.annualCommitted)}/year`}
-        action={{ label: "Switch to Annual", onClick: onSetCommitment }}
-      />
-    );
-  } else if (isIdentity && committedSeatRate(dim) !== null) {
-    action = (
-      <LimitAction title={`${fmtMoneyCents(committedSeatRate(dim) ?? 0)} each / yr committed`} />
-    );
-  } else if (isIdentity && rate > 0) {
-    action = <LimitAction title={`${fmtMoneyCents(rate)} each / mo`} />;
-  } else if (isNearLimit(dim)) {
-    action = (
-      <LimitAction
-        title={allowance !== null && dim.used > allowance ? "Over limit" : "Approaching limit"}
-        titleClassName="text-warning"
-        action={
-          canChangePlan && nextPlan
-            ? { label: `Upgrade to ${nextPlan.name}`, onClick: onManage }
-            : undefined
-        }
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2.5 border-b border-border py-4 first:pt-0 last:border-b-0">
-      <span className="flex items-start justify-between gap-4">
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate text-sm leading-[18px]">{dimDisplayLabel(dim)}</span>
-          {subtext && <span className="truncate text-xs text-muted">{subtext}</span>}
-        </span>
-        <span className="flex h-[18px] shrink-0 items-baseline gap-1 text-sm whitespace-nowrap tabular-nums">
-          <span className={cn(overage > 0 && "text-warning")}>
-            {dim.used.toLocaleString()}
-            {isIdentity && "x"}
-          </span>
-          {allowance !== null && (
-            <span className="text-xs text-muted">/ {allowance.toLocaleString()}</span>
-          )}
-        </span>
-      </span>
-      {isIdentity ? (
-        <IdentitySplitTooltip color={prod.color} dim={dim} split={split}>
-          <span className="flex h-4 items-center">
-            {split ? (
-              <IdentityBar users={split.users} machines={split.machines} className="h-1" />
-            ) : (
-              <span className="h-1 w-full rounded-xs" style={{ background: productTint }} />
-            )}
-          </span>
-        </IdentitySplitTooltip>
-      ) : (
-        <UsageBar dim={dim} className="h-1" />
-      )}
-      {action}
-    </div>
-  );
-};
-
 const ROW_GRID =
   "grid grid-cols-[14rem_minmax(13.5rem,1fr)_9rem_9rem_6rem_1rem] items-center gap-x-6 px-5";
 
@@ -573,95 +259,6 @@ const badgeClass = (shown: number, total: number) => {
   return cn(showFrom, hideFrom);
 };
 
-const SubscriptionSheet = ({
-  prod,
-  ent,
-  dims,
-  planName,
-  canChangePlan,
-  breakdown,
-  commitmentLabel,
-  hasBreakdown,
-  onClose,
-  onManage,
-  onSetCommitment,
-  onViewBreakdown
-}: {
-  prod: BillingV2CatalogProduct;
-  ent: BillingV2Entitlement;
-  dims: BillingV2EntitlementDim[];
-  planName: string;
-  canChangePlan: boolean;
-  breakdown: Breakdown;
-  commitmentLabel: string | null;
-  hasBreakdown: boolean;
-  onClose: () => void;
-  onManage: () => void;
-  onSetCommitment: () => void;
-  onViewBreakdown: () => void;
-}) => (
-  <Sheet open onOpenChange={(open) => !open && onClose()}>
-    <SheetContent
-      side="right"
-      className="product-color"
-      style={{ "--product-color": prod.color } as CSSProperties}
-    >
-      <SheetHeader>
-        <div className="flex items-center gap-3 pr-8">
-          <ProductIcon product={prod} />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <SheetTitle>{prod.name}</SheetTitle>
-            <SheetDescription>Usage and limits on {planName}</SheetDescription>
-          </div>
-        </div>
-      </SheetHeader>
-      <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
-        {dims.length === 0 && (
-          <span className="text-sm text-muted">This plan has no usage-based limits.</span>
-        )}
-        {dims.map((dim) => (
-          <LimitRow
-            key={dim.key}
-            dim={dim}
-            prod={prod}
-            ent={ent}
-            canChangePlan={canChangePlan}
-            breakdown={breakdown}
-            onManage={onManage}
-            onSetCommitment={onSetCommitment}
-          />
-        ))}
-      </div>
-      <SheetFooter>
-        <div className="flex w-full flex-wrap items-center justify-end gap-2">
-          {hasBreakdown && (
-            <span className="mr-auto">
-              <Button variant="outline" size="sm" onClick={onViewBreakdown}>
-                Usage Breakdown
-              </Button>
-            </span>
-          )}
-          {canChangePlan && commitmentLabel === "Adjust Commitment" && (
-            <Button variant="outline" size="sm" onClick={onSetCommitment}>
-              {commitmentLabel}
-            </Button>
-          )}
-          {canChangePlan && (
-            <Button variant="org" size="sm" onClick={onManage}>
-              Manage Plan
-            </Button>
-          )}
-          {!canChangePlan && (
-            <Button variant="org" size="sm" onClick={onClose}>
-              Done
-            </Button>
-          )}
-        </div>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>
-);
-
 type SubscriptionsTableProps = {
   products: BillingV2CatalogProduct[];
   entitlements: Record<string, BillingV2Entitlement>;
@@ -670,9 +267,8 @@ type SubscriptionsTableProps = {
   isManaged: boolean;
   breakdownOrgId: string;
   breakdownScope: BillingV2BreakdownScopeKind;
-  onManage: (productId: string) => void;
-  onSetCommitment: (productId: string) => void;
-  onViewBreakdown: (productId: string, dimensionKey?: string) => void;
+  onRemove: (productId: string) => void;
+  onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
 export const SubscriptionsTable = ({
@@ -683,9 +279,8 @@ export const SubscriptionsTable = ({
   isManaged,
   breakdownOrgId,
   breakdownScope,
-  onManage,
-  onSetCommitment,
-  onViewBreakdown
+  onRemove,
+  onContact
 }: SubscriptionsTableProps) => {
   const [openId, setOpenId] = useState<string | null>(null);
   const canChangePlan = !readOnly && selfServe;
@@ -722,12 +317,6 @@ export const SubscriptionsTable = ({
               ? (prod.plans.find((plan) => plan.tier === ent.planTier)?.name ??
                 tierLabel(ent.planTier))
               : "Included";
-            const breakdownDims = breakdownableDimensions(ent);
-            let commitmentLabel: string | null = null;
-            if (commitSavingsNudge(ent)) commitmentLabel = "Switch to Annual";
-            else if (dims.some(dimCommitted) && dims.some(dimCommitManageable)) {
-              commitmentLabel = "Adjust Commitment";
-            }
             const productIcon = (
               <DynamicIcon
                 name={prod.icon.replace(/_/g, "-") as IconName}
@@ -811,19 +400,17 @@ export const SubscriptionsTable = ({
                   </span>
                 </div>
                 {openId === prod.id && (
-                  <SubscriptionSheet
+                  <ProductDetailsSheet
+                    orgId={breakdownOrgId}
                     prod={prod}
                     ent={ent}
-                    dims={dims}
-                    planName={planName}
-                    canChangePlan={canChangePlan}
                     breakdown={breakdown}
-                    commitmentLabel={commitmentLabel}
-                    hasBreakdown={breakdownDims.length > 0}
+                    canChangePlan={canChangePlan}
+                    selfServe={selfServe}
+                    isManaged={isManaged}
                     onClose={() => setOpenId(null)}
-                    onManage={() => onManage(prod.id)}
-                    onSetCommitment={() => onSetCommitment(prod.id)}
-                    onViewBreakdown={() => onViewBreakdown(prod.id, breakdownDims[0]?.key)}
+                    onRemove={onRemove}
+                    onContact={onContact}
                   />
                 )}
               </div>
