@@ -62,7 +62,12 @@ export const CommandPalette = ({
   const blocked = useBlockedProducts(orgId);
 
   const groups = useMemo(() => {
-    const pageItems = (prefix: string, sections: readonly ShellNavSection[], scope?: string) =>
+    const pageItems = (
+      prefix: string,
+      sections: readonly ShellNavSection[],
+      scope?: string,
+      aliases: readonly string[] = []
+    ) =>
       sections.flatMap((section) =>
         section.items.map((item): CommandMenuItem => ({
           id: `${prefix}:${item.id}`,
@@ -70,7 +75,7 @@ export const CommandPalette = ({
           icon: item.icon,
           kind: "page",
           description: scope,
-          keywords: [item.id, ...(section.label ? [section.label] : [])],
+          keywords: [item.id, ...(section.label ? [section.label] : []), ...aliases],
           onSelect: () => go(item.path, item.search)
         }))
       );
@@ -124,9 +129,15 @@ export const CommandPalette = ({
             label: product.label,
             icon: product.icon,
             kind: "page" as const,
+            keywords: [...product.keywords],
             onSelect: () => go(productHome(product))
           },
-          ...pageItems(`product-${product.slug}`, productPages(product), product.label)
+          ...pageItems(
+            `product-${product.slug}`,
+            productPages(product),
+            product.label,
+            product.keywords
+          )
         ]),
       searchOnly: true,
       limit: 12

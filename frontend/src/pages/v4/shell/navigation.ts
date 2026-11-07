@@ -28,6 +28,7 @@ export const products = [
   {
     type: ProjectType.SecretManager,
     slug: "secret-management",
+    keywords: ["sm", "secrets", "secret manager"],
     label: "Secrets Management",
     icon: "key",
     blurb: "Store, sync, and rotate secrets across environments."
@@ -35,6 +36,7 @@ export const products = [
   {
     type: ProjectType.CertificateManager,
     slug: "cert-manager",
+    keywords: ["cert", "certs", "certificates", "pki", "tls"],
     label: "Certificate Manager",
     icon: "cert",
     blurb: "Issue and renew certificates for TLS and code signing."
@@ -42,6 +44,7 @@ export const products = [
   {
     type: ProjectType.KMS,
     slug: "kms",
+    keywords: ["key management", "keys", "encryption"],
     label: "KMS",
     icon: "lock",
     blurb: "Manage keys to encrypt, decrypt, and sign data."
@@ -49,6 +52,7 @@ export const products = [
   {
     type: ProjectType.SecretScanning,
     slug: "secret-scanning",
+    keywords: ["scanning", "leaks", "findings"],
     label: "Secret Scanning",
     icon: "search",
     blurb: "Find leaked secrets in repositories and other sources."
@@ -56,6 +60,7 @@ export const products = [
   {
     type: ProjectType.PAM,
     slug: "pam",
+    keywords: ["pam", "privileged access"],
     label: "Privileged Access Manager",
     icon: "terminal",
     blurb: "Broker and record access to databases and servers."
@@ -63,6 +68,7 @@ export const products = [
   {
     type: ProjectType.AgentVault,
     slug: "agent-vault",
+    keywords: ["ai", "agents"],
     label: "Agent Vault",
     icon: "agent",
     blurb: "Give AI agents scoped access to secrets and services."
@@ -73,6 +79,7 @@ export const products = [
   label: string;
   icon: IconName;
   blurb: string;
+  keywords: readonly string[];
 }[];
 
 export type ShellProduct = (typeof products)[number];

@@ -7,6 +7,7 @@ import { Item } from "@app/components/v4/ui/item";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
+import { TooltipProvider, TooltipText } from "@app/components/v4/ui/tooltip";
 import type { TOrgProductStats } from "@app/hooks/api/organization/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -68,69 +69,79 @@ export const ProjectsPage = () => {
       ? projects.find((project) => project.type === ProjectType.SecretManager)
       : undefined;
   return (
-    <Stack gap={32}>
-      <PageHeader
-        title={`${organization.isSubOrganization ? "Sub-organization" : "Organization"} overview`}
-      />
-      {demoProject && (
-        <Item
-          asChild
-          variant="outline"
-          icon={productOf(demoProject.type).icon}
-          title={demoProject.name}
-          mono
-          description={`Continue in ${productOf(demoProject.type).label}`}
-          actions={<Icon name="chev-right" size={16} />}
-        >
-          <a
-            href={`/v4/organizations/${orgId}${projectBase(demoProject.type, demoProject.id)}/overview`}
+    <TooltipProvider>
+      <Stack gap={32}>
+        <PageHeader
+          title={`${organization.isSubOrganization ? "Sub-organization" : "Organization"} overview`}
+        />
+        {demoProject && (
+          <Item
+            asChild
+            variant="outline"
+            icon={productOf(demoProject.type).icon}
+            title={demoProject.name}
+            mono
+            description={`Continue in ${productOf(demoProject.type).label}`}
+            actions={<Icon name="chev-right" size={16} />}
           >
-            {demoProject.name}
-          </a>
-        </Item>
-      )}
-      <Grid columns={2} gap={32}>
-        {products.map((product) => (
-          <Card
-            variant="framed"
-            key={product.type}
-            footerPlacement="frame"
-            title={
-              <Inline gap={8} align="center">
-                <Icon name={product.icon} size={18} />
-                <CardLink
-                  disabled={blocked.has(product.type)}
-                  title={
-                    blocked.has(product.type)
-                      ? `You don't have access to ${product.label}. Ask an organization admin for access.`
-                      : undefined
-                  }
-                  to="/v4/organizations/$orgId/$"
-                  params={{ orgId, _splat: productHome(product).slice(1) }}
-                >
-                  {product.label}
-                </CardLink>
-                {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
-              </Inline>
-            }
-            description={product.blurb}
-            footer={
-              stats ? (
-                <Inline gap={24}>
-                  {statsFor(product.type, stats).map(([value, label]) => (
-                    <span key={label}>
-                      <strong>{value.toLocaleString()}</strong>{" "}
-                      {value === 1 ? label.replace(/s$/, "") : label}
-                    </span>
-                  ))}
-                </Inline>
-              ) : (
-                <Skeleton width={240} height={12} />
-              )
-            }
-          />
-        ))}
-      </Grid>
-    </Stack>
+            <a
+              href={`/v4/organizations/${orgId}${projectBase(demoProject.type, demoProject.id)}/overview`}
+            >
+              {demoProject.name}
+            </a>
+          </Item>
+        )}
+        <Grid columns={2} gap={32}>
+          {products.map((product) => {
+            const card = (
+              <Card
+                variant="framed"
+                key={product.type}
+                footerPlacement="frame"
+                title={
+                  <Inline gap={8} align="center">
+                    <Icon name={product.icon} size={18} />
+                    <CardLink
+                      disabled={blocked.has(product.type)}
+                      to="/v4/organizations/$orgId/$"
+                      params={{ orgId, _splat: productHome(product).slice(1) }}
+                    >
+                      {product.label}
+                    </CardLink>
+                    {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
+                  </Inline>
+                }
+                description={product.blurb}
+                footer={
+                  stats ? (
+                    <Inline gap={24}>
+                      {statsFor(product.type, stats).map(([value, label]) => (
+                        <span key={label}>
+                          <strong>{value.toLocaleString()}</strong>{" "}
+                          {value === 1 ? label.replace(/s$/, "") : label}
+                        </span>
+                      ))}
+                    </Inline>
+                  ) : (
+                    <Skeleton width={240} height={12} />
+                  )
+                }
+              />
+            );
+            return blocked.has(product.type) ? (
+              <TooltipText
+                asChild
+                key={product.type}
+                content={`You don't have access to ${product.label}. Ask an organization admin for access.`}
+              >
+                {card}
+              </TooltipText>
+            ) : (
+              card
+            );
+          })}
+        </Grid>
+      </Stack>
+    </TooltipProvider>
   );
 };
