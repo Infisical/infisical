@@ -7,64 +7,7 @@
   "decorative-effect": {
     "src/components/v4/ui/chart.tsx": 1
   },
-  "fixed-bulk-bar": {
-    "src/pages/v4/kms/OverviewPage/OverviewPage.tsx": 1
-  },
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
-  },
-  "row-activate-navigates": {
-    "src/pages/v4/cert-manager/InventoryPage/InventoryPage.tsx": 1
-  },
-  "v4-path-literal": {
-    "src/pages/v4/access/org/identities.tsx": 1,
-    "src/pages/v4/access/org/project-memberships.tsx": 1,
-    "src/pages/v4/agent-vault/AgentVaultSessionsPage/AgentVaultSessionsPage.tsx": 3,
-    "src/pages/v4/auth/AccountRecoveryEmailPage/AccountRecoveryEmailPage.tsx": 1,
-    "src/pages/v4/auth/AccountRecoveryResetPage/AccountRecoveryResetPage.tsx": 2,
-    "src/pages/v4/auth/components/AuthPage.tsx": 1,
-    "src/pages/v4/auth/components/Mfa.tsx": 1,
-    "src/pages/v4/auth/EmailNotVerifiedPage/EmailNotVerifiedPage.tsx": 1,
-    "src/pages/v4/auth/LdapLoginPage/LdapLoginPage.tsx": 2,
-    "src/pages/v4/auth/LoginPage/LoginPage.tsx": 6,
-    "src/pages/v4/auth/NoOrgPage/NoOrgPage.tsx": 4,
-    "src/pages/v4/auth/OrgOnboardingPage/OrgNameStep.tsx": 1,
-    "src/pages/v4/auth/OrgOnboardingPage/OrgOnboardingPage.tsx": 3,
-    "src/pages/v4/auth/PasswordSetupPage/PasswordSetupPage.tsx": 1,
-    "src/pages/v4/auth/ProviderErrorPage/ProviderErrorPage.tsx": 1,
-    "src/pages/v4/auth/RequestNewInvitePage/RequestNewInvitePage.tsx": 1,
-    "src/pages/v4/auth/SelectOrgPage/SelectOrgPage.tsx": 3,
-    "src/pages/v4/auth/SignUpInvitePage/SignUpInvitePage.tsx": 1,
-    "src/pages/v4/auth/SignUpPage/EmailStep.tsx": 1,
-    "src/pages/v4/auth/SignUpPage/SignUpPage.tsx": 6,
-    "src/pages/v4/auth/SignUpPage/VerifyCodeStep.tsx": 1,
-    "src/pages/v4/auth/SignUpSsoPage/SignUpSsoPage.tsx": 5,
-    "src/pages/v4/auth/SsoLoginPage/SsoLoginPage.tsx": 2,
-    "src/pages/v4/cert-manager/CertificateDetailsByIDPage/CertificateDetailsByIDPage.tsx": 4,
-    "src/pages/v4/cert-manager/DashboardPage/components/AttentionList.tsx": 1,
-    "src/pages/v4/cert-manager/DashboardPage/components/DonutCard.tsx": 1,
-    "src/pages/v4/cert-manager/DashboardPage/components/InventoryCard.tsx": 1,
-    "src/pages/v4/cert-manager/DashboardPage/DashboardPage.tsx": 1,
-    "src/pages/v4/cert-manager/IndexPage/IndexPage.tsx": 2,
-    "src/pages/v4/cert-manager/InventoryPage/InventoryPage.tsx": 4,
-    "src/pages/v4/errorDetails.ts": 1,
-    "src/pages/v4/organization/AuditLogsPage/AuditLogsPage.tsx": 1,
-    "src/pages/v4/organization/IntegrationsPage/IntegrationsPage.tsx": 2,
-    "src/pages/v4/organization/NotPortedPage/NotPortedPage.tsx": 2,
-    "src/pages/v4/organization/ProjectsPage/ProjectsPage.tsx": 2,
-    "src/pages/v4/organization/ProjectsPage/ProjectTypePage/ProjectTypePage.tsx": 5,
-    "src/pages/v4/organization/SettingsPage/SettingsPage.tsx": 1,
-    "src/pages/v4/pam/PamAccountsPage/PamAccountsPage.tsx": 3,
-    "src/pages/v4/redirects/AgentVaultIndexRedirect/AgentVaultIndexRedirect.tsx": 1,
-    "src/pages/v4/redirects/PamAccessRedirect/PamAccessRedirect.tsx": 1,
-    "src/pages/v4/redirects/SecretScanningIndexRedirect/SecretScanningIndexRedirect.tsx": 1,
-    "src/pages/v4/secret-manager/OverviewPage/OverviewPage.tsx": 1,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/resource-rows.tsx": 1,
-    "src/pages/v4/secret-manager/SecretApprovalsPage/SecretApprovalsPage.tsx": 2,
-    "src/pages/v4/secret-manager/SecretDashboardPage/SecretDashboardPage.tsx": 1,
-    "src/pages/v4/secret-scanning/SecretScanningDataSourcesPage/SecretScanningDataSourcesPage.tsx": 2,
-    "src/pages/v4/secret-scanning/SecretScanningFindingsPage/SecretScanningFindingsPage.tsx": 1,
-    "src/pages/v4/shell/command-palette.tsx": 2,
-    "src/pages/v4/shell/V4Shell.tsx": 2
   }
 }

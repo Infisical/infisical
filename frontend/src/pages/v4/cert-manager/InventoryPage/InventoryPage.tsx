@@ -34,6 +34,7 @@ import type { TCertificate } from "@app/hooks/api/certificates/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import type { TListCertificatesDTO } from "../../data/certificates/contract";
+import { orgHref, v4Path } from "../../links";
 import {
   certificateBlocks,
   certificateName,
@@ -45,7 +46,7 @@ import {
   useCertManagerProjectId
 } from "../components/certificate";
 
-const routeId = "/v4/organizations/$orgId/cert-manager/inventory";
+const routeId = v4Path("/organizations/$orgId/cert-manager/inventory");
 
 const options = (entries: Record<string, string>) =>
   Object.entries(entries).map(([value, label]) => ({ value, label }));
@@ -183,7 +184,7 @@ export const InventoryPage = () => {
         title="Certificate Manager is not set up"
         actions={
           <Button variant="outline" asChild>
-            <a href={`/v4/organizations/${orgId}/projects/cert-manager`}>Set up</a>
+            <a href={orgHref(orgId, "/projects/cert-manager")}>Set up</a>
           </Button>
         }
       />
@@ -195,7 +196,7 @@ export const InventoryPage = () => {
   const caType = (cert: TCertificate) => authorities.find((ca) => ca.id === cert.caId)?.type;
   const open = (id: string) =>
     navigate({
-      to: "/v4/organizations/$orgId/cert-manager/certificates/$certificateId",
+      to: v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId"),
       params: { orgId, certificateId: id }
     });
   const revoking = rows.find((cert) => cert.id === revokeId);
@@ -281,7 +282,7 @@ export const InventoryPage = () => {
         return (
           <Inline gap={8} align="center" wrap={false}>
             <RowLink
-              to="/v4/organizations/$orgId/cert-manager/certificates/$certificateId"
+              to={v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId")}
               params={{ orgId, certificateId: r.id }}
             >
               {certificateName(r)}

@@ -22,11 +22,12 @@ import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnect
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { useV4Adapter } from "../../data/adapters";
+import { orgHref, v4Path } from "../../links";
 import { projectBase } from "../../shell/navigation";
 import { AppLogo } from "./AppLogo";
 import { NewConnection } from "./NewConnection";
 
-const route = "/v4/organizations/$orgId/integrations";
+const route = v4Path("/organizations/$orgId/integrations");
 const workflowTab = "workflow-integrations";
 const migrationsTab = "external-migrations";
 const sections = [IntegrationsListPageTabs.AppConnections, workflowTab, migrationsTab] as string[];
@@ -172,7 +173,7 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
         r.project ? (
           <Button variant="link" asChild>
             <a
-              href={`/v4/organizations/${orgId}${projectBase(r.project.type, r.project.id)}/app-connections`}
+              href={orgHref(orgId, `${projectBase(r.project.type, r.project.id)}/app-connections`)}
             >
               <code>{r.project.name}</code>
             </a>

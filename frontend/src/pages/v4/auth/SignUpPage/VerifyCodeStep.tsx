@@ -13,6 +13,7 @@ import { Text } from "@app/components/v4/ui/text";
 import { envConfig } from "@app/config/env";
 import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { CodeForm } from "../components/CodeForm";
 
@@ -156,7 +157,11 @@ export const VerifyCodeStep = ({
       bottom={
         <span>
           Already have an account?{" "}
-          <Link to="/v4/login" search={{ callback_port: callbackPort }} className={styles.link}>
+          <Link
+            to={v4Path("/login")}
+            search={{ callback_port: callbackPort }}
+            className={styles.link}
+          >
             Log in
           </Link>
         </span>

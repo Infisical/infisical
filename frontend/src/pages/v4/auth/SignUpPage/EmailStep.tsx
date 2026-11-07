@@ -15,6 +15,7 @@ import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendVerificationEmail } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { ProviderButton, ProviderMark } from "../components/ProviderButton";
 import { RegionSelect } from "../components/RegionSelect";
@@ -116,7 +117,11 @@ export const EmailStep = ({
       footer={
         <span>
           Already have an account?{" "}
-          <Link to="/v4/login" search={{ callback_port: callbackPort }} className={styles.link}>
+          <Link
+            to={v4Path("/login")}
+            search={{ callback_port: callbackPort }}
+            className={styles.link}
+          >
             Log in
           </Link>
         </span>

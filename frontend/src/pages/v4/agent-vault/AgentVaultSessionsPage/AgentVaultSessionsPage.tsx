@@ -49,8 +49,9 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useV4Adapter } from "../../data/adapters";
+import { v4Path } from "../../links";
 
-const route = "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions";
+const route = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/sessions");
 const NOT_PORTED = "Not available in v4 yet";
 const TABLE = "agentVaultSessionsTable";
 
@@ -113,7 +114,7 @@ const Access = ({
       {accessBundle?.id && (
         <Badge tone="outline" asChild>
           <Link
-            to="/v4/organizations/$orgId/projects/$"
+            to={v4Path("/organizations/$orgId/projects/$")}
             params={{
               orgId,
               _splat: `agent-vault/${projectId}/access-bundles/${accessBundle.id}`
@@ -222,7 +223,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
 
   const openPlaceholder = (path: string) =>
-    navigate({ to: "/v4/organizations/$orgId/$", params: { orgId, _splat: path } });
+    navigate({ to: v4Path("/organizations/$orgId/$"), params: { orgId, _splat: path } });
 
   const columns: DataTableColumn<TAgentVaultSession>[] = [
     {

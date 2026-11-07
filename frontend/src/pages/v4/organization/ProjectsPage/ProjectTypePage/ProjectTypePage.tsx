@@ -82,6 +82,7 @@ import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { TSearchedProject } from "../../../data/projects/contract";
+import { v4Path } from "../../../links";
 import { productHome, productOf } from "../../../shell/navigation";
 
 enum ProjectListView {
@@ -99,10 +100,11 @@ type Sort = { columnId: string; direction: "asc" | "desc" };
 const LIST_ONLY = "Disabled across All Project view.";
 
 const homeRoute = (type: ProjectType) => {
-  if (type === ProjectType.KMS) return "/v4/organizations/$orgId/projects/kms/$projectId/overview";
+  if (type === ProjectType.KMS)
+    return v4Path("/organizations/$orgId/projects/kms/$projectId/overview");
   if (type === ProjectType.AgentVault)
-    return "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions";
-  return "/v4/organizations/$orgId/projects/secret-management/$projectId/overview";
+    return v4Path("/organizations/$orgId/projects/agent-vault/$projectId/sessions");
+  return v4Path("/organizations/$orgId/projects/secret-management/$projectId/overview");
 };
 
 const sortBy = (sort: Sort) => sort.columnId as SearchProjectSortBy;
@@ -1150,7 +1152,7 @@ export const ProjectTypePage = () => {
   const { orgId, type } = useParams({ from: "/v4/organizations/$orgId/projects/$type/" });
   const projectType = urlSlugToProjectType(type);
   if (!projectType)
-    return <Navigate replace to="/v4/organizations/$orgId/projects" params={{ orgId }} />;
+    return <Navigate replace to={v4Path("/organizations/$orgId/projects")} params={{ orgId }} />;
   if (
     projectType !== ProjectType.SecretManager &&
     projectType !== ProjectType.KMS &&
@@ -1159,7 +1161,7 @@ export const ProjectTypePage = () => {
     return (
       <Navigate
         replace
-        to="/v4/organizations/$orgId/$"
+        to={v4Path("/organizations/$orgId/$")}
         params={{ orgId, _splat: productHome(productOf(projectType)).slice(1) }}
       />
     );

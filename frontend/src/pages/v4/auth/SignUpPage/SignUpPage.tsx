@@ -16,6 +16,7 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
+import { v4Path } from "../../links";
 import { useAuthPreview } from "../preview";
 import { CompleteStep } from "./CompleteStep";
 import { EmailStep } from "./EmailStep";
@@ -84,7 +85,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   useEffect(() => {
     if (!isPreview && !isInvite && !config.allowSignUp) {
       toast("Sign up is disabled");
-      navigate({ to: "/v4/login" });
+      navigate({ to: v4Path("/login") });
     }
   }, [config.allowSignUp]);
 
@@ -108,26 +109,29 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
       const userOrgs = await fetchOrganizations();
       const inviteOrgId = userOrgs[0]?.id;
       if (!inviteOrgId) {
-        navigate({ to: "/v4/login" });
+        navigate({ to: v4Path("/login") });
         return;
       }
       const { isMfaEnabled } = await selectOrganization({ organizationId: inviteOrgId });
       if (isMfaEnabled) {
-        navigate({ to: "/v4/login/select-organization", search: { org_id: inviteOrgId } });
+        navigate({ to: v4Path("/login/select-organization"), search: { org_id: inviteOrgId } });
         return;
       }
-      navigate({ to: "/v4/organizations/$orgId/projects", params: { orgId: inviteOrgId } });
+      navigate({ to: v4Path("/organizations/$orgId/projects"), params: { orgId: inviteOrgId } });
       return;
     }
 
     if (callbackPort) {
       if (newOrgId) {
         navigate({
-          to: "/v4/login/select-organization",
+          to: v4Path("/login/select-organization"),
           search: { org_id: newOrgId, callback_port: callbackPort }
         });
       } else {
-        navigate({ to: "/v4/organizations/onboarding", search: { callback_port: callbackPort } });
+        navigate({
+          to: v4Path("/organizations/onboarding"),
+          search: { callback_port: callbackPort }
+        });
       }
       return;
     }

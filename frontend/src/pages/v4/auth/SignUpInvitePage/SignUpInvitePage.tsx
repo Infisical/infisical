@@ -2,6 +2,7 @@ import { Link, useRouteContext } from "@tanstack/react-router";
 
 import { Button } from "@app/components/v4/ui/button";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { SignUpPage } from "../SignUpPage/SignUpPage";
 
@@ -19,7 +20,7 @@ export const SignUpInvitePage = () => {
         description="Ask your organization administrator to send you a new invitation."
       >
         <Button asChild variant="outline" size="lg" className="w-full">
-          <Link to="/v4/login">Back to login</Link>
+          <Link to={v4Path("/login")}>Back to login</Link>
         </Button>
       </AuthPage>
     );

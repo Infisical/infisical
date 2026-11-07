@@ -3,6 +3,7 @@ import { Navigate, useParams } from "@tanstack/react-router";
 import { Loader } from "@app/components/v4/ui/loader";
 
 import { useV4Adapter } from "../../data/adapters";
+import { v4Path } from "../../links";
 import { useCertManagerProjectId } from "../components/certificate";
 
 export const IndexPage = () => {
@@ -18,12 +19,16 @@ export const IndexPage = () => {
   );
   if (isAdmin)
     return (
-      <Navigate replace to="/v4/organizations/$orgId/cert-manager/overview" params={{ orgId }} />
+      <Navigate
+        replace
+        to={v4Path("/organizations/$orgId/cert-manager/overview")}
+        params={{ orgId }}
+      />
     );
   return (
     <Navigate
       replace
-      to="/v4/organizations/$orgId/$"
+      to={v4Path("/organizations/$orgId/$")}
       params={{ orgId, _splat: "cert-manager/applications" }}
     />
   );

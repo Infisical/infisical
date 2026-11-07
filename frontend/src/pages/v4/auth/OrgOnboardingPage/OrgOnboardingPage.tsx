@@ -15,6 +15,7 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
+import { v4Path } from "../../links";
 import { CompleteStep } from "../SignUpPage/CompleteStep";
 import { InviteStep } from "../SignUpPage/InviteStep";
 import { ProductsStep } from "../SignUpPage/ProductsStep";
@@ -56,7 +57,7 @@ export const OrgOnboardingPage = () => {
 
   const handOffToCli = (targetOrgId: string) =>
     navigate({
-      to: "/v4/login/select-organization",
+      to: v4Path("/login/select-organization"),
       search: { org_id: targetOrgId, callback_port: callbackPort }
     });
 
@@ -81,14 +82,14 @@ export const OrgOnboardingPage = () => {
         }
         const { isMfaEnabled } = await selectOrganization({ organizationId: existingOrgId });
         if (isMfaEnabled) {
-          navigate({ to: "/v4/login/select-organization", search: { org_id: existingOrgId } });
+          navigate({ to: v4Path("/login/select-organization"), search: { org_id: existingOrgId } });
           return;
         }
         localStorage.setItem("orgData.id", existingOrgId);
         setOrgId(existingOrgId);
         setSection(OnboardingSection.ProductSelect);
       } catch {
-        navigate({ to: "/v4/login/select-organization" });
+        navigate({ to: v4Path("/login/select-organization") });
       }
     };
 

@@ -22,6 +22,7 @@ import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { getSsoEnforcementError } from "@app/pages/auth/SelectOrgPage/SelectOrg.utils";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { Mfa } from "../components/Mfa";
 import { useAuthPreview } from "../preview";
@@ -29,7 +30,7 @@ import { PREVIEW_ORGS } from "./preview";
 
 import styles from "../auth.module.css";
 
-const ROUTE_ID = "/v4/_v4-auth/login/select-organization";
+const ROUTE_ID = v4Path("/_v4-auth/login/select-organization");
 
 type ViewProps = {
   username: string;
@@ -221,7 +222,7 @@ const LiveSelectOrg = () => {
   const handleLogout = async () => {
     try {
       await logout.mutateAsync();
-      navigate({ to: "/v4/login" });
+      navigate({ to: v4Path("/login") });
     } catch (error) {
       console.error(error);
     }
@@ -308,7 +309,7 @@ const LiveSelectOrg = () => {
       return;
     }
     localStorage.setItem("orgData.id", targetOrgId);
-    navigate({ to: "/v4/organizations/$orgId/projects", params: { orgId: targetOrgId } });
+    navigate({ to: v4Path("/organizations/$orgId/projects"), params: { orgId: targetOrgId } });
   };
 
   const toastedError = useRef<string | null>(null);

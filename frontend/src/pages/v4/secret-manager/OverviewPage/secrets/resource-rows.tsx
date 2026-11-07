@@ -43,6 +43,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
+import { v4Path } from "../../../links";
 import { withoutDefaults } from "../../search-defaults";
 import {
   environments,
@@ -70,7 +71,9 @@ import styles from "./overview.module.css";
 
 type Of<K extends ResourceKind> = Extract<Resource, { kind: K }>;
 
-const OVERVIEW_ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/overview";
+const OVERVIEW_ROUTE = v4Path(
+  "/organizations/$orgId/projects/secret-management/$projectId/overview"
+);
 
 const gate = (
   ctx: RowContext,

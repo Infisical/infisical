@@ -51,6 +51,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
+import { orgHref } from "../../links";
 import { projectBase } from "../../shell/navigation";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
@@ -183,7 +184,10 @@ export const OrgIdentitiesTab = () => {
         { orgId, projectId: row.project.id, projectType: row.project.type },
         row.identity.id
       );
-    return `/v4/organizations/${orgId}${projectBase(row.project.type, row.project.id)}/access-management?selectedTab=${ProjectAccessControlTabs.Identities}`;
+    return orgHref(
+      orgId,
+      `${projectBase(row.project.type, row.project.id)}/access-management?selectedTab=${ProjectAccessControlTabs.Identities}`
+    );
   };
   const isProjectScoped = (row: Row) => row.scope === SearchIdentitiesScope.ProjectScope;
   const openDetail = (row: Row) =>

@@ -4,6 +4,8 @@ import { AxiosError } from "axios";
 
 import type { ErrorStateDetail } from "@app/components/v4/patterns/error-state";
 
+import { orgHref } from "./links";
+
 export const useErrorContext = (error?: unknown) => {
   const { orgId, projectId } = useParams({ strict: false });
   const [time] = useState(() => `${new Date().toISOString().slice(0, 19).replace("T", " ")} UTC`);
@@ -23,6 +25,6 @@ export const useErrorContext = (error?: unknown) => {
       status === 403 && axios?.response?.data?.error === "ProjectMembershipNotFound",
     details,
     projectId,
-    homeHref: orgId ? `/v4/organizations/${orgId}` : undefined
+    homeHref: orgId ? orgHref(orgId) : undefined
   };
 };

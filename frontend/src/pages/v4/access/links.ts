@@ -1,10 +1,11 @@
 import { OrgAccessControlTabSections } from "@app/types/org";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { orgHref } from "../links";
 import { projectBase } from "../shell/navigation";
 import type { ProjectScope } from "./project/scope";
 
-const org = (orgId: string) => `/v4/organizations/${orgId}`;
+const org = (orgId: string) => orgHref(orgId);
 const project = ({ orgId, projectId, projectType }: ProjectScope) =>
   `${org(orgId)}${projectBase(projectType, projectId)}`;
 

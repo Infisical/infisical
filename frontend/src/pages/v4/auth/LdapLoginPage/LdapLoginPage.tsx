@@ -11,6 +11,7 @@ import { LoginMethod } from "@app/hooks/api/admin/types";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
 import { getLastLoginOrganizationSlug, useLastLogin } from "@app/hooks/useLastLogin";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { PasswordInput } from "../components/PasswordInput";
 import { ProviderMark } from "../components/ProviderButton";
@@ -69,7 +70,7 @@ export const LdapLoginPage = () => {
         <Button
           type="button"
           variant="link"
-          onClick={() => navigate({ to: isAdminLogin ? "/v4/login/admin" : "/v4/login" })}
+          onClick={() => navigate({ to: isAdminLogin ? v4Path("/login/admin") : v4Path("/login") })}
         >
           Back
         </Button>

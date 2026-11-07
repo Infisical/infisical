@@ -21,6 +21,7 @@ import { certKeyAlgorithmToNameMap, isPqcAlgorithm } from "@app/hooks/api/certif
 import type { TDashboardDistribution, TDashboardStats } from "@app/hooks/api/certificates/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { v4Path } from "../../links";
 import { useCertManagerProjectId } from "../components/certificate";
 import { AttentionList } from "./components/AttentionList";
 import { CodeSigningSection } from "./components/CodeSigningSection";
@@ -136,7 +137,7 @@ export const DashboardPage = () => {
     return (
       <Navigate
         replace
-        to="/v4/organizations/$orgId/$"
+        to={v4Path("/organizations/$orgId/$")}
         params={{ orgId, _splat: "cert-manager/applications" }}
       />
     );

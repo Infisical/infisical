@@ -12,6 +12,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { orgHref, v4Path } from "../../links";
 import { productHome, productOf, products, projectBase } from "../../shell/navigation";
 
 const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][] => {
@@ -80,9 +81,7 @@ export const ProjectsPage = () => {
           description={`Continue in ${productOf(demoProject.type).label}`}
           actions={<Icon name="chev-right" size={16} />}
         >
-          <a
-            href={`/v4/organizations/${orgId}${projectBase(demoProject.type, demoProject.id)}/overview`}
-          >
+          <a href={orgHref(orgId, `${projectBase(demoProject.type, demoProject.id)}/overview`)}>
             {demoProject.name}
           </a>
         </Item>
@@ -97,7 +96,7 @@ export const ProjectsPage = () => {
               <Inline gap={8} align="center">
                 <Icon name={product.icon} size={18} />
                 <CardLink
-                  to="/v4/organizations/$orgId/$"
+                  to={v4Path("/organizations/$orgId/$")}
                   params={{ orgId, _splat: productHome(product).slice(1) }}
                 >
                   {product.label}
