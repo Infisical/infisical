@@ -1,9 +1,4 @@
-import {
-  createFileRoute,
-  lazyRouteComponent,
-  redirect,
-  stripSearchParams
-} from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 
 import {
@@ -25,11 +20,8 @@ export const Route = createFileRoute("/v4/_v4-auth/login/select-organization")({
       })
     ]
   },
-  beforeLoad: async ({ context, location, search }) => {
+  beforeLoad: async ({ context, search }) => {
     if (context.authPreview) return { autoSelectErrorMessage: undefined };
-    if (search.mfa_method) {
-      throw redirect({ href: location.href.replace(/^\/v4/, ""), replace: true });
-    }
     const { withV4Redirects } = await import("../paths");
     return withV4Redirects(() => autoSelectOrganization({ context, search }));
   },

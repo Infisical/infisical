@@ -2,7 +2,17 @@ import { isRedirect, type ParsedLocation } from "@tanstack/react-router";
 
 import { isLiveReady } from "../liveReady";
 
-const AUTH_PATHS = new Set(["/login", "/login/select-organization", "/signup"]);
+const AUTH_PATHS = new Set([
+  "/login",
+  "/login/admin",
+  "/login/select-organization",
+  "/login/ldap",
+  "/login/oidc",
+  "/login/saml",
+  "/login/provider/error",
+  "/signup",
+  "/signup/sso"
+]);
 
 const pathOf = (href: string) => href.split(/[?#]/)[0].replace(/(.)\/$/, "$1");
 

@@ -114,7 +114,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   const handleOrganizationLogin = (method: OrgLoginMethod) => {
     if (method === LoginMethod.LDAP) {
       navigate({
-        to: "/login/ldap",
+        to: "/v4/login/ldap",
         search: {
           callback_port: callbackPort ? Number(callbackPort) : undefined,
           is_admin_login: isAdmin || undefined,
@@ -133,7 +133,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
     }
 
     navigate({
-      to: method === LoginMethod.OIDC ? "/login/oidc" : "/login/saml",
+      to: method === LoginMethod.OIDC ? "/v4/login/oidc" : "/v4/login/saml",
       search: {
         callback_port: callbackPort ? Number(callbackPort) : undefined,
         is_admin_login: isAdmin || undefined,
