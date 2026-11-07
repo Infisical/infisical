@@ -16,7 +16,7 @@ export const baselineActions = [
     exports: ["Button", "buttonVariants"],
     referenceNames: ["Button"],
     behavior: [
-      "Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the light accent face (one yellow in both themes) with owned inset illumination and an on-accent label in both themes, for a page's one primary create action in its header or toolbar and for approval and grant moments, never as a second primary. Ghost hover is the shared hover overlay (ink at hover-mix: 6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad-fill fill and border with a white on-bad label at 600 in both themes, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.",
+      "Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the light accent face (one yellow in both themes) with owned inset illumination and an on-accent label in both themes, for a page's one primary create action in its header or toolbar and for approval and grant moments, never as a second primary. Ghost hover is the shared hover overlay (ink at hover-mix: 6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad-fill fill and border with a white on-bad label at 600 in both themes, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. underline hover makes a quiet link: no underline at rest, and the same underline on hover and on keyboard focus-visible; the default, always, keeps it at rest. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.",
       "The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. icon-row is the table row action: a size-target-row (28px) box with a size-glyph (16px) glyph, separate from icon-sm so field and nested actions keep their 12 and 14px glyphs. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target.",
       "Every variant except link keeps the default cursor, also when asChild renders an anchor: its fill, border or hover ground already shows that it acts. link takes the pointer cursor, like any text link.",
       "layout trigger is for a Button that opens a menu, popover or picker and shows its current value: the label sits at the start and truncates with an ellipsis, and a 16px chevron (chev-down, or iconRight) sits at the end, muted on outline, secondary and ghost. Insets match SelectTrigger at each size (10, 12 and 14px at default, md and lg) with the same 6px gap, so a picker Button and a Select read as one family. Give it a width; without one it hugs its label.",
@@ -115,6 +115,14 @@ export const baselineActions = [
             reason:
               "The quiet form of destructive for a row action next to other ghost actions. Same red text as destructive without the fill."
           }
+        ]
+      },
+      {
+        axis: "link underline",
+        expected: ["always", "hover"],
+        shown: [
+          { value: "always", exampleId: "default", label: "link" },
+          { value: "hover", exampleId: "default", label: "link, underline on hover" }
         ]
       },
       {
@@ -266,6 +274,23 @@ export const baselineActions = [
             "src/components/v4/ui/button.tsx",
             "src/pages/design-system/examples/button/default.tsx"
           ]
+        },
+        {
+          id: "button-quiet-link",
+          when: "A link Button names a record inside a table row that opens it in a sheet or dialog, among many such names.",
+          do: 'Pass variant="link" with underline="hover", so the name reads as plain text at rest and underlines on hover and keyboard focus.',
+          avoid:
+            "Underline every row's name at rest, or drop the link variant for a ghost or plain button that never shows it can be opened.",
+          reason:
+            "A column of underlined names turns the table into a wall of links; the quiet link keeps rows calm and still signals the target when the pointer or focus reaches it.",
+          evidence: [
+            "src/components/v4/ui/button.tsx",
+            "src/pages/design-system/examples/button/default.tsx"
+          ],
+          detect: {
+            by: "review",
+            how: "Hover and Tab to a row's name in a sheet-opening table: no underline at rest, an underline on hover and on keyboard focus."
+          }
         },
         {
           id: "button-cursor",
