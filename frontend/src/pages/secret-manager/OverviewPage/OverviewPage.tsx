@@ -15,7 +15,6 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import {
-  ArrowUpDownIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -178,7 +177,6 @@ import {
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
-import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/migration";
 import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
@@ -301,6 +299,7 @@ import {
   SECRET_SORT_OPTIONS
 } from "./OverviewPage.utils";
 import { useNotifySecretsCreated } from "./useNotifySecretsCreated";
+import { useSecretSort } from "./useSecretSort";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -446,7 +445,6 @@ const OverviewPageContent = () => {
   } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name, {
     initPerPage: getUserTablePreference("secretOverviewTable", PreferenceKey.PerPage, 100)
   });
-  const [sortEnvironment, setSortEnvironment] = useState<string>();
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -631,70 +629,24 @@ const OverviewPageContent = () => {
     [userAvailableEnvs]
   );
 
-  const shouldClearSortEnvironment = Boolean(
-    sortEnvironment &&
-    (visibleEnvs.length === 1 ||
-      !visibleEnvs.some((environment) => environment.slug === sortEnvironment))
-  );
-  const isTimestampSort =
-    orderBy === DashboardSecretsOrderBy.CreatedAt || orderBy === DashboardSecretsOrderBy.UpdatedAt;
-  const shouldResetTimestampSort =
-    isTimestampSort && visibleEnvs.length > 1 && (!sortEnvironment || shouldClearSortEnvironment);
-
-  useEffect(() => {
-    if (shouldClearSortEnvironment) {
-      setSortEnvironment(undefined);
-    }
-
-    if (shouldResetTimestampSort) {
-      setOrderBy(DashboardSecretsOrderBy.Name);
-      setOrderDirection(OrderByDirection.ASC);
-    }
-
-    if (shouldClearSortEnvironment || shouldResetTimestampSort) {
-      setPage(1);
-    }
-  }, [
+  const {
+    sortEnvironment,
     shouldClearSortEnvironment,
+    timestampSortField,
     shouldResetTimestampSort,
+    handleSecretSortChange,
+    activeSecretSort,
+    ActiveSecretSortIcon,
+    isNameHeaderSortActive,
+    activeSecretSortScope
+  } = useSecretSort({
+    visibleEnvs,
+    orderBy,
+    orderDirection,
     setOrderBy,
     setOrderDirection,
     setPage
-  ]);
-
-  const handleSecretSortChange = useCallback(
-    (value: string, environment?: string) => {
-      const option = SECRET_SORT_OPTIONS.find(
-        ({ orderBy: nextOrderBy, orderDirection: nextOrderDirection }) =>
-          getSecretSortValue(nextOrderBy, nextOrderDirection) === value
-      );
-
-      if (!option) return;
-
-      setOrderBy(option.orderBy);
-      setOrderDirection(option.orderDirection);
-      setSortEnvironment(environment);
-      setPage(1);
-    },
-    [setOrderBy, setOrderDirection, setPage]
-  );
-
-  const activeSecretSort = SECRET_SORT_OPTIONS.find(
-    (option) =>
-      getSecretSortValue(option.orderBy, option.orderDirection) ===
-      getSecretSortValue(orderBy, orderDirection)
-  );
-  const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
-  const isNameHeaderSortActive =
-    !sortEnvironment &&
-    !(orderBy === DashboardSecretsOrderBy.Name && orderDirection === OrderByDirection.ASC);
-  let activeSecretSortScope = "";
-  if (sortEnvironment) {
-    activeSecretSortScope = ` in ${
-      visibleEnvs.find((environment) => environment.slug === sortEnvironment)?.name ??
-      sortEnvironment
-    }`;
-  }
+  });
 
   const relevantPendingApprovalsCount = useMemo(() => {
     // Reviewers see project-wide pending requests (existing behavior).
@@ -3666,7 +3618,7 @@ const OverviewPageContent = () => {
       }
       activityId={getTableRowActivityId("secret", getSecretRowKey(key, rowKey))}
       onActivityChange={handleTableRowActivityChange}
-      timestampSortField={isTimestampSort ? orderBy : undefined}
+      timestampSortField={timestampSortField}
     />
   );
 
