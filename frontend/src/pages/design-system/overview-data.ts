@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "loading-rows",
+    title: "Loading rows and queues",
+    description:
+      "Native tables and ApprovalQueue get the same skeleton loading as DataTable, and a tall error page no longer clips at the top.",
+    date: "2026-11-07",
+    commit: "11c4467d3c",
+    page: "table"
+  },
+  {
     id: "boot-loader",
     title: "Boot loader and route progress",
     description:
@@ -210,15 +219,6 @@ export const recentChanges: {
       "Hover, current and selected are about a third softer, and peach mixes them from a warm ink so they blend into its ground.",
     date: "2026-11-07",
     commit: "1a59816ab6",
-    page: "palette"
-  },
-  {
-    id: "current-selected-mix",
-    title: "Softer current and selected",
-    description:
-      "The current sidebar item and dark selected rows sit just past hover, tuned by current-mix and selected-mix in the palette playground.",
-    date: "2026-11-07",
-    commit: "c58b6c81ec",
     page: "palette"
   }
 ];
