@@ -27,6 +27,7 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { ProjectPermissionIdentityActions } from "@app/context/ProjectPermissionContext/types";
 import type { TProjectRole } from "@app/hooks/api/roles/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared/types";
@@ -123,8 +124,8 @@ export const IdentityRoleDetailsSection = ({
   projectId: string;
   membership: ProjectIdentityMembership;
 }) => {
-  const scope = useProjectScope();
   const go = useGo();
+  const scope = useProjectScope();
   const { permission } = useProjectPermission(projectId);
   const { data: roles = [] } = useV4Adapter("access").useProjectRoles(projectId);
   const setRoles = useSetRoles(projectId, membership.identity.id);
@@ -156,7 +157,19 @@ export const IdentityRoleDetailsSection = ({
     </Gate>
   );
   const columns: DataTableColumn<Grant>[] = [
-    { id: "role", header: "Role", grow: true, render: (grant) => <span>{grantLabel(grant)}</span> },
+    {
+      id: "role",
+      header: "Role",
+      grow: true,
+      render: (grant) => (
+        <RowLink
+          {...go.link(accessLinks.projectRole(scope, grantSlug(grant)))}
+          title={grantLabel(grant)}
+        >
+          {grantLabel(grant)}
+        </RowLink>
+      )
+    },
     {
       id: "duration",
       header: "Duration",
@@ -205,7 +218,6 @@ export const IdentityRoleDetailsSection = ({
             rowActions={rowActions}
             getRowId={(grant) => grant.id}
             rowLabel={grantLabel}
-            onRowActivate={(grant) => go(accessLinks.projectRole(scope, grantSlug(grant)))}
           />
         ) : (
           <EmptyState size="sm" icon="user" title="This machine identity doesn't have any roles" />

@@ -28,7 +28,7 @@ import {
 import { Meta } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import { FabDock, Gate, ListToolbar, Muted } from "../ui";
+import { Gate, ListToolbar, Muted } from "../ui";
 import type { PermissionSubject } from "./catalog";
 import { ConditionsFields } from "./conditions";
 import {
@@ -297,7 +297,14 @@ export const RuleTable = (props: RuleTableProps) => {
       text: (row) => row.config.title,
       render: (row) => (
         <Inline gap={8} wrap={false} style={{ minWidth: 0 }}>
-          <span style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{row.config.title}</span>
+          <Button
+            variant="link"
+            underline="hover"
+            style={{ flexShrink: 0 }}
+            onClick={() => edit(row)}
+          >
+            {row.config.title}
+          </Button>
           {row.config.description && (
             <Tooltip content={row.config.description}>
               <Meta
@@ -445,32 +452,32 @@ export const RuleTable = (props: RuleTableProps) => {
             selectable
             selectedIds={selected}
             onSelectionChange={setSelected}
+            actionBar={
+              <FloatingActionBar
+                placement="contained"
+                label="Selected rule actions"
+                count={selected.length}
+                total={rows.length}
+                onSelectAll={() => setSelected(rows.map((row) => row.key))}
+                onClear={() => setSelected([])}
+                noun={selected.length === 1 ? "rule" : "rules"}
+                actions={[
+                  {
+                    label: "Delete",
+                    icon: "trash",
+                    danger: true,
+                    disabled: !editable,
+                    onClick: () => removeRows(selected)
+                  }
+                ]}
+              />
+            }
             selectionDisabledReason={() => (editable ? undefined : reason)}
           />
         ) : (
           <EmptyState size="sm" icon="lock" title={filtering ? "No rules match" : "No rules yet"} />
         )}
       </Card>
-      <FabDock active={selected.length > 0}>
-        <FloatingActionBar
-          placement="contained"
-          label="Selected rule actions"
-          count={selected.length}
-          total={rows.length}
-          onSelectAll={() => setSelected(rows.map((row) => row.key))}
-          onClear={() => setSelected([])}
-          noun={selected.length === 1 ? "rule" : "rules"}
-          actions={[
-            {
-              label: "Delete",
-              icon: "trash",
-              danger: true,
-              disabled: !editable,
-              onClick: () => removeRows(selected)
-            }
-          ]}
-        />
-      </FabDock>
       {editing && (
         <RuleSheet
           key={`${editing.subject ?? "new"}:${editing.index ?? "new"}`}

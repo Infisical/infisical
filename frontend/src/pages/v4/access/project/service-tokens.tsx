@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import {
   ProjectPermissionActions,
@@ -31,11 +33,10 @@ import { useV4Adapter } from "../../data/adapters";
 import { useProjectPermission } from "../permissions";
 import { formatDateTime } from "../roles";
 import { failed, saved } from "../toast";
-import { Gate, ListToolbar, Muted, RESTRICTED, usePagedList } from "../ui";
+import { Gate, Muted, RESTRICTED, usePagedList } from "../ui";
 import { useProjectScope } from "./scope";
 import { ServiceTokenCreateSheet } from "./service-token-create-sheet";
 
-import shared from "../access.module.css";
 import styles from "./tokens-roles.module.css";
 
 const expiryOf = (token: ServiceToken) =>
@@ -137,47 +138,53 @@ export const ServiceTokensTab = () => {
 
   return (
     <Stack gap={16}>
-      <div className={shared.toolbar}>
-        <div className={shared.grow}>
-          <ListToolbar
-            search={list.search}
-            onSearch={list.setSearch}
+      <FilterBar
+        label="Service token filters"
+        fields={[]}
+        value={[]}
+        onChange={() => undefined}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search service tokens by name, environment or secret path..."
             placeholder="Search service tokens by name, environment or secret path..."
+            value={list.search}
+            onChange={(event) => list.setSearch(event.target.value)}
           />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button
-            variant="accent"
-            icon="plus"
-            disabled={!canCreate}
-            onClick={() => setCreating(true)}
-          >
-            Create token
-          </Button>
-        </Gate>
-      </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Service tokens"
-          rows={list.pageRows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(token) => token.id}
-          rowLabel={(token) => token.name}
-          loading={tokens.isPending}
-          loadingRows={10}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          empty={
-            list.search.trim() ? (
-              <EmptyState size="sm" icon="search" title="No service tokens match search" />
-            ) : (
-              <EmptyState size="sm" icon="key" title="No service tokens found" />
-            )
-          }
-        />
-        {!tokens.isPending && list.pagination}
-      </Stack>
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => setCreating(true)}
+            >
+              Create token
+            </Button>
+          </Gate>
+        }
+      />
+      <DataTable
+        label="Service tokens"
+        rows={list.pageRows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(token) => token.id}
+        rowLabel={(token) => token.name}
+        loading={tokens.isPending}
+        loadingRows={10}
+        sort={list.sort}
+        onSortChange={list.setSort}
+        empty={
+          list.search.trim() ? (
+            <EmptyState size="sm" icon="search" title="No service tokens match search" />
+          ) : (
+            <EmptyState size="sm" icon="key" title="No service tokens found" />
+          )
+        }
+        pagination={tokens.isPending ? undefined : list.pagination}
+      />
       <ServiceTokenCreateSheet projectId={projectId} open={creating} onOpenChange={setCreating} />
       <AlertDialog
         open={Boolean(deleting)}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { PencilIcon } from "lucide-react";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +30,9 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { StatusText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -70,7 +72,6 @@ import { CreateIdentitySheet } from "./create-identity-sheet";
 import { useDebounced } from "./use-debounced";
 
 import styles from "../access.module.css";
-import css from "./org.module.css";
 
 type ScopeTab = "organization" | "project" | "all";
 type Row = IdentityMembershipSearchResult;
@@ -198,12 +199,21 @@ export const OrgIdentitiesTab = () => {
       render: (row) => {
         const locked = row.identity.activeLockoutAuthMethods;
         return (
-          <Inline gap={8} wrap={false}>
-            <span>{row.identity.name}</span>
-            {locked.length > 0 && (
-              <LockBadge label={`Locked out: ${locked.map(authMethodName).join(", ")}`} />
+          <RowLink
+            {...go.link(
+              isProjectScoped(row)
+                ? projectHref(row)
+                : accessLinks.orgIdentity(orgId, row.identity.id)
             )}
-          </Inline>
+            title={row.identity.name}
+          >
+            {row.identity.name}
+            {locked.length > 0 && (
+              <span className={styles.linkBadges}>
+                <LockBadge label={`Locked out: ${locked.map(authMethodName).join(", ")}`} />
+              </span>
+            )}
+          </RowLink>
         );
       }
     },
@@ -350,24 +360,12 @@ export const OrgIdentitiesTab = () => {
   return (
     <Stack gap={32}>
       <Stack gap={16}>
-        <div className={styles.toolbar}>
-          <div className={css.toolbarTabs}>
-            <Tabs
-              variant="segmented"
-              label="Machine identity scope"
-              value={scope}
-              onChange={(value) => {
-                setScope(value as ScopeTab);
-                setPage(1);
-              }}
-              tabs={[
-                { value: "organization", label: "Org", count: counts?.organization },
-                { value: "project", label: "Project", count: counts?.project },
-                { value: "all", label: "All", count: allCount }
-              ]}
-            />
-          </div>
-          <div className={styles.grow}>
+        <FilterBar
+          label="Machine identity filters"
+          fields={[]}
+          value={[]}
+          onChange={() => undefined}
+          search={
             <Input
               icon="search"
               placeholder="Search machine identities by name or role..."
@@ -378,63 +376,82 @@ export const OrgIdentitiesTab = () => {
                 setPage(1);
               }}
             />
-          </div>
-          <Gate allowed={canCreate}>
-            <Button
-              variant="accent"
-              icon="plus"
-              disabled={!canCreate}
-              onClick={() => setCreating(true)}
-            >
-              Create
-            </Button>
-          </Gate>
-        </div>
-        <Stack gap={8}>
-          <DataTable
-            label="Organization machine identities"
-            rows={rows}
-            columns={columns}
-            rowActions={rowActions}
-            getRowId={(row) => row.id}
-            rowLabel={(row) => row.identity.name}
-            loading={isPending}
-            loadingRows={perPage}
-            sort={sort}
-            onSortChange={(next) => {
-              setSort(next);
-              setPage(1);
-            }}
-            onRowActivate={openDetail}
-            empty={
-              <EmptyState
-                size="sm"
-                icon={searching ? "search" : "machine"}
-                title={empty.title}
-                actions={
-                  searching ? (
-                    <Button variant="link" onClick={() => setSearch("")}>
-                      Clear search
-                    </Button>
-                  ) : undefined
-                }
+          }
+          actions={
+            <>
+              <Tabs
+                variant="segmented"
+                label="Machine identity scope"
+                value={scope}
+                onChange={(value) => {
+                  setScope(value as ScopeTab);
+                  setPage(1);
+                }}
+                tabs={[
+                  { value: "organization", label: "Org", count: counts?.organization },
+                  { value: "project", label: "Project", count: counts?.project },
+                  { value: "all", label: "All", count: allCount }
+                ]}
               />
-            }
-          />
-          {!isPending && totalCount > 0 && (
-            <Pagination
-              page={page}
-              total={totalCount}
-              pageSize={perPage}
-              pageSizeOptions={[10, 20, 50, 100]}
-              onPageChange={setPage}
-              onPageSizeChange={(size) => {
-                setPerPage(size);
-                setPage(1);
-              }}
+              <Gate allowed={canCreate}>
+                <Button
+                  variant="accent"
+                  icon="plus"
+                  disabled={!canCreate}
+                  onClick={() => setCreating(true)}
+                >
+                  Create
+                </Button>
+              </Gate>
+            </>
+          }
+        />
+        <DataTable
+          label="Organization machine identities"
+          rows={rows}
+          columns={columns}
+          rowActions={rowActions}
+          getRowId={(row) => row.id}
+          rowLabel={(row) => row.identity.name}
+          loading={isPending}
+          loadingRows={perPage}
+          sort={sort}
+          onSortChange={(next) => {
+            setSort(next);
+            setPage(1);
+          }}
+          empty={
+            <EmptyState
+              size="sm"
+              icon={searching ? "search" : "machine"}
+              title={empty.title}
+              actions={
+                searching ? (
+                  <Button variant="link" onClick={() => setSearch("")}>
+                    Clear search
+                  </Button>
+                ) : undefined
+              }
             />
-          )}
-        </Stack>
+          }
+          pagination={
+            !isPending && totalCount > 0 ? (
+              <Pagination
+                label="Machine identity pages"
+                variant="compact"
+                page={page}
+                total={totalCount}
+                pageSize={perPage}
+                pageSizeOptions={[10, 20, 50, 100]}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPerPage(size);
+                  setPage(1);
+                }}
+              />
+            ) : undefined
+          }
+        />
       </Stack>
       <AuthTemplatesSection />
       <CreateIdentitySheet open={creating} onOpenChange={setCreating} />
