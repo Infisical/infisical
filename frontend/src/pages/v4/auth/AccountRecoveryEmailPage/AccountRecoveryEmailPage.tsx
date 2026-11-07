@@ -11,6 +11,7 @@ import { envConfig } from "@app/config/env";
 import { useSendAccountRecoveryEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { EmailServiceDialog } from "../components/EmailServiceDialog";
 import { useAuthPreview } from "../preview";
@@ -58,7 +59,7 @@ export const AccountRecoveryEmailPage = () => {
   };
 
   const backToLogin = (
-    <Link to="/v4/login" className={styles.link}>
+    <Link to={v4Path("/login")} className={styles.link}>
       Back to login
     </Link>
   );

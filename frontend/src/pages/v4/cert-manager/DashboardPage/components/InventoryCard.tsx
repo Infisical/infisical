@@ -8,6 +8,7 @@ import { Progress } from "@app/components/v4/ui/progress";
 import { Heading } from "@app/components/v4/ui/text";
 import type { TDashboardStats } from "@app/hooks/api/certificates/types";
 
+import { v4Path } from "../../../links";
 import { formatShare } from "./dashboard.utils";
 
 export const InventoryCard = ({ stats }: { stats: TDashboardStats }) => {
@@ -18,7 +19,7 @@ export const InventoryCard = ({ stats }: { stats: TDashboardStats }) => {
       variant="framed"
       className="relative"
       title={
-        <CardLink to="/v4/organizations/$orgId/cert-manager/inventory" params={{ orgId }}>
+        <CardLink to={v4Path("/organizations/$orgId/cert-manager/inventory")} params={{ orgId }}>
           Certificates
         </CardLink>
       }

@@ -23,6 +23,7 @@ import { queryClient } from "@app/hooks/api/reactQuery";
 import { userKeys } from "@app/hooks/api/users";
 import { useLastLogin } from "@app/hooks/useLastLogin";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { PasswordInput } from "../components/PasswordInput";
 import { ProviderButton, ProviderMark } from "../components/ProviderButton";
@@ -114,7 +115,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   const handleOrganizationLogin = (method: OrgLoginMethod) => {
     if (method === LoginMethod.LDAP) {
       navigate({
-        to: "/v4/login/ldap",
+        to: v4Path("/login/ldap"),
         search: {
           callback_port: callbackPort ? Number(callbackPort) : undefined,
           is_admin_login: isAdmin || undefined,
@@ -133,7 +134,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
     }
 
     navigate({
-      to: method === LoginMethod.OIDC ? "/v4/login/oidc" : "/v4/login/saml",
+      to: method === LoginMethod.OIDC ? v4Path("/login/oidc") : v4Path("/login/saml"),
       search: {
         callback_port: callbackPort ? Number(callbackPort) : undefined,
         is_admin_login: isAdmin || undefined,
@@ -218,7 +219,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
         saveLastLogin({ method: LoginMethod.EMAIL });
         if (!config.defaultAuthOrgId) queryClient.invalidateQueries({ queryKey: userKeys.getUser });
         navigate({
-          to: "/v4/login/select-organization",
+          to: v4Path("/login/select-organization"),
           search: {
             callback_port: callbackPort ? Number(callbackPort) : undefined,
             org_id: config.defaultAuthOrgId,
@@ -328,7 +329,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
         canUseEmail ? (
           <span>
             Help me{" "}
-            <Link to="/v4/account-recovery" className={styles.link}>
+            <Link to={v4Path("/account-recovery")} className={styles.link}>
               recover my account
             </Link>
           </span>
@@ -339,7 +340,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
           <span>
             Don&apos;t have an account?{" "}
             <Link
-              to="/v4/signup"
+              to={v4Path("/signup")}
               search={{ callback_port: callbackPort ? Number(callbackPort) : undefined }}
               className={styles.link}
             >

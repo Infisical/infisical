@@ -1,5 +1,6 @@
 import { Navigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { v4Path } from "../../links";
 import { withoutDefaults } from "../search-defaults";
 
 export const SecretDashboardPage = () => {
@@ -12,7 +13,7 @@ export const SecretDashboardPage = () => {
   return (
     <Navigate
       replace
-      to="/v4/organizations/$orgId/projects/secret-management/$projectId/overview"
+      to={v4Path("/organizations/$orgId/projects/secret-management/$projectId/overview")}
       params={{ orgId: params.orgId, projectId: params.projectId }}
       search={withoutDefaults(
         {

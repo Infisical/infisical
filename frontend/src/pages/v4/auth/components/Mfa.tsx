@@ -23,6 +23,7 @@ import { getMfaTempToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "./AuthPage";
 import { CodeForm } from "./CodeForm";
 import { MfaEnrollment } from "./MfaEnrollment";
@@ -169,7 +170,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
     SecurityClient.setToken("");
     SecurityClient.setSignupToken("");
     await logout.mutateAsync();
-    navigate({ to: "/v4/login" });
+    navigate({ to: v4Path("/login") });
   };
 
   const countFailedAttempt = async (lockoutText: string) => {

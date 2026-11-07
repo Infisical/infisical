@@ -21,6 +21,7 @@ import {
   TableRow
 } from "@app/components/v4/ui/table";
 
+import { v4Path } from "../../../links";
 import { formatShare, type InventoryFilters } from "./dashboard.utils";
 
 export type DonutSlice = {
@@ -31,7 +32,7 @@ export type DonutSlice = {
   filters?: InventoryFilters;
 };
 
-const inventory = "/v4/organizations/$orgId/cert-manager/inventory";
+const inventory = v4Path("/organizations/$orgId/cert-manager/inventory");
 
 export const DonutCard = ({
   title,

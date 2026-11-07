@@ -12,6 +12,7 @@ import { useSendEmailVerificationCode } from "@app/hooks/api";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { CodeForm } from "../components/CodeForm";
 import { useAuthPreview } from "../preview";
@@ -77,13 +78,16 @@ export const SignUpSsoPage = () => {
     if (userOrgs.length > 0) {
       if (callbackPort) {
         navigate({
-          to: "/v4/login/select-organization",
+          to: v4Path("/login/select-organization"),
           search: { org_id: organizationId, callback_port: callbackPort }
         });
       } else if (organizationId) {
-        navigate({ to: "/v4/organizations/$orgId/projects", params: { orgId: organizationId } });
+        navigate({
+          to: v4Path("/organizations/$orgId/projects"),
+          params: { orgId: organizationId }
+        });
       } else {
-        navigate({ to: "/v4/login/select-organization" });
+        navigate({ to: v4Path("/login/select-organization") });
       }
       return;
     }
@@ -93,7 +97,7 @@ export const SignUpSsoPage = () => {
       window.dataLayer.push({ event: "signup_completed" });
     }
 
-    navigate({ to: "/v4/organizations/onboarding", search: { callback_port: callbackPort } });
+    navigate({ to: v4Path("/organizations/onboarding"), search: { callback_port: callbackPort } });
   };
 
   const handleResendCode = async () => {
@@ -123,7 +127,11 @@ export const SignUpSsoPage = () => {
       bottom={
         <span>
           Already have an account?{" "}
-          <Link to="/v4/login" search={{ callback_port: callbackPort }} className={styles.link}>
+          <Link
+            to={v4Path("/login")}
+            search={{ callback_port: callbackPort }}
+            className={styles.link}
+          >
             Log in
           </Link>
         </span>

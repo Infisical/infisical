@@ -31,8 +31,9 @@ import {
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useV4Adapter } from "../../data/adapters";
+import { v4Path } from "../../links";
 
-const route = "/v4/organizations/$orgId/pam/accounts/";
+const route = v4Path("/organizations/$orgId/pam/accounts/");
 const NOT_PORTED = "Not available in v4 yet";
 
 const ISSUE_LABELS: Record<PamAccountAccessibilityIssue, string> = {
@@ -347,7 +348,7 @@ export const PamAccountsPage = () => {
             <Inline gap={8} align="center" wrap={false}>
               <Icon name="folder" />
               <RowLink
-                to="/v4/organizations/$orgId/$"
+                to={v4Path("/organizations/$orgId/$")}
                 params={{ orgId, _splat: `pam/accounts/${folder.id}` }}
               >
                 {folder.name}
@@ -376,7 +377,7 @@ export const PamAccountsPage = () => {
           <Inline gap={8} align="center" wrap={false}>
             {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
             <RowLink
-              to="/v4/organizations/$orgId/$"
+              to={v4Path("/organizations/$orgId/$")}
               params={{
                 orgId,
                 _splat: `pam/accounts/${account.accountType}/${account.id}/access`

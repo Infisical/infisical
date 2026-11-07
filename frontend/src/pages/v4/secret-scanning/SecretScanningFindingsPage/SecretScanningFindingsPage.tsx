@@ -45,8 +45,9 @@ import type {
 } from "@app/hooks/api/secretScanningV2/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { v4Path } from "../../links";
 
-const route = "/v4/organizations/$orgId/secret-scanning/findings";
+const route = v4Path("/organizations/$orgId/secret-scanning/findings");
 
 const statuses: {
   value: SecretScanningFindingStatus;

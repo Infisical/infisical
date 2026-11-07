@@ -11,6 +11,7 @@ import { useCreateOrg } from "@app/hooks/api";
 import { submitSignupOnboarding, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 
 import styles from "../auth.module.css";
@@ -48,7 +49,7 @@ export const OrgNameStep = ({ onComplete, callbackPort, isPreview }: Props) => {
       const { isMfaEnabled } = await selectOrganization({ organizationId: organization.id });
       if (isMfaEnabled) {
         navigate({
-          to: "/v4/login/select-organization",
+          to: v4Path("/login/select-organization"),
           search: { org_id: organization.id, callback_port: callbackPort }
         });
         return;

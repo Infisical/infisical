@@ -16,6 +16,7 @@ import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/to
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 
 import { useV4Session } from "../data/session/contract";
+import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
 import { useShellChrome } from "./chrome";
@@ -74,7 +75,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const organization =
     (switching && session.organizations.find((entry) => entry.id === switchingTo)) ||
     session.organization;
-  const base = `/v4/organizations/${orgId}`;
+  const base = orgHref(orgId);
   const { selectedTab } = location.search as { selectedTab?: string };
   const at = resolveShellLocation(
     location.pathname.slice(base.length),
@@ -168,7 +169,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       onChange: (id: string) => {
         if (id === orgId || orgId === V4_DEMO_ORG_ID) return;
         setSwitchingTo(id);
-        go(`/v4/organizations/${id}/projects`);
+        go(orgHref(id, "/projects"));
       },
       actions: [
         {

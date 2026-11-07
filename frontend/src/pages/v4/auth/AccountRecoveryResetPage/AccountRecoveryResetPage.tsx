@@ -32,6 +32,7 @@ import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { NewPasswordFields } from "../components/NewPasswordFields";
 import { useAuthPreview } from "../preview";
@@ -207,7 +208,7 @@ export const AccountRecoveryResetPage = () => {
       setStep(Steps.SelectRecoveryMethod);
     } catch (err) {
       console.log("ERROR", err);
-      navigate({ to: "/v4/email-not-verified" });
+      navigate({ to: v4Path("/email-not-verified") });
     }
   };
 
@@ -215,7 +216,7 @@ export const AccountRecoveryResetPage = () => {
     return (
       <EnterPasswordStep
         verificationToken={userDetails.verificationToken}
-        onComplete={() => navigate({ to: "/v4/login" })}
+        onComplete={() => navigate({ to: v4Path("/login") })}
         onBack={() => setStep(Steps.SelectRecoveryMethod)}
         isPreview={isPreview}
       />

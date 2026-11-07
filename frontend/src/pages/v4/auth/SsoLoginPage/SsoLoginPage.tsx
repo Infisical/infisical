@@ -9,6 +9,7 @@ import { Stack } from "@app/components/v4/ui/layout";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { getLastLoginIdentifier, useLastLogin } from "@app/hooks/useLastLogin";
 
+import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";
 import { ProviderMark } from "../components/ProviderButton";
 import { useAuthPreview } from "../preview";
@@ -70,7 +71,7 @@ export const SsoLoginPage = ({ type }: { type: "SAML" | "OIDC" }) => {
         <Button
           type="button"
           variant="link"
-          onClick={() => navigate({ to: isAdminLogin ? "/v4/login/admin" : "/v4/login" })}
+          onClick={() => navigate({ to: isAdminLogin ? v4Path("/login/admin") : v4Path("/login") })}
         >
           Back
         </Button>

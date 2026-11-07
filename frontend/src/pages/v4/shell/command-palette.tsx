@@ -11,6 +11,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
+import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
 import { useV4ThemeChoice } from "../useV4Theme";
@@ -54,7 +55,7 @@ export const CommandPalette = ({
     limit: 20,
     search: groupSearch
   });
-  const base = `/v4/organizations/${orgId}`;
+  const base = orgHref(orgId);
   const go = (path: string, search?: Record<string, string>) =>
     navigate({ to: resolve(`${base}${path}`) as never, search: search as never });
   const project = session.projects.find((entry) => entry.id === projectId);
@@ -168,8 +169,7 @@ export const CommandPalette = ({
             id: `org:${entry.id}`,
             label: entry.name,
             kind: "organization" as const,
-            onSelect: () =>
-              navigate({ to: resolve(`/v4/organizations/${entry.id}/projects`) as never })
+            onSelect: () => navigate({ to: resolve(orgHref(entry.id, "/projects")) as never })
           })),
         searchOnly: true,
         limit: 8
