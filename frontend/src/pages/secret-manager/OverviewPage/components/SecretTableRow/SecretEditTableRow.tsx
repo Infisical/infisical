@@ -40,6 +40,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   hasSecretReference,
+  ResolvedReferenceTooltipContent,
   ResolvedSecretValuePopover,
   SecretReferenceTree
 } from "@app/components/secrets/SecretReferenceDetails";
@@ -1690,6 +1691,13 @@ export const SecretEditTableRow = ({
                 isImport={isImportedSecret}
                 canEditButNotView={secretValueHidden && !isManagedSecret}
                 onFocus={() => setIsFieldFocused.on()}
+                renderReferenceTooltip={(reference) => (
+                  <ResolvedReferenceTooltipContent
+                    environment={fetchSharedValueParams.environment}
+                    secretPath={fetchSharedValueParams.secretPath}
+                    reference={reference}
+                  />
+                )}
                 onBlur={() => {
                   field.onBlur();
                   setIsFieldFocused.off();
