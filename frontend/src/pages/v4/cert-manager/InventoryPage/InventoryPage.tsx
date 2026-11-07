@@ -42,6 +42,7 @@ import {
   ExpiryBadge,
   RevokeCertificateDialog,
   shortDate,
+  CertManagerNotSetUp,
   useCertManagerProjectId
 } from "../components/certificate";
 
@@ -176,18 +177,7 @@ export const InventoryPage = () => {
   });
 
   if (isResolving) return <Loader size="page" label="Loading certificates" />;
-  if (!projectId)
-    return (
-      <EmptyState
-        icon="cert"
-        title="Certificate Manager is not set up"
-        actions={
-          <Button variant="outline" asChild>
-            <a href={`/v4/organizations/${orgId}/projects/cert-manager`}>Set up</a>
-          </Button>
-        }
-      />
-    );
+  if (!projectId) return <CertManagerNotSetUp orgId={orgId} />;
 
   const rows = data?.certificates ?? [];
   const totalCount = data?.totalCount ?? 0;

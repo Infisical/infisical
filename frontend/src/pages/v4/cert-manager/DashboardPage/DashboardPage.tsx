@@ -22,7 +22,7 @@ import { certKeyAlgorithmToNameMap, isPqcAlgorithm } from "@app/hooks/api/certif
 import type { TDashboardDistribution, TDashboardStats } from "@app/hooks/api/certificates/types";
 
 import { useV4Adapter } from "../../data/adapters";
-import { useCertManagerProjectId } from "../components/certificate";
+import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { AttentionList } from "./components/AttentionList";
 import { CodeSigningSection } from "./components/CodeSigningSection";
 import {
@@ -123,12 +123,17 @@ export const DashboardPage = () => {
   const [pqcTrendRange, setPqcTrendRange] = useState("30d");
   const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
   const access = adapter.useProjectPermission({ projectId: id });
-  const { data: stats, isPending: isStatsPending } = adapter.useDashboardStats(id);
+  const {
+    data: stats,
+    isPending: isStatsPending,
+    error: statsError
+  } = adapter.useDashboardStats(id);
   const { data: trend } = adapter.useActivityTrend(id, trendRange);
   const { data: pqcTrend } = adapter.usePqcTrend(id, pqcTrendRange);
 
-  if (isProjectPending || !projectId || access.isPending)
-    return <Loader size="page" label="Loading dashboard" />;
+  if (isProjectPending) return <Loader size="page" label="Loading dashboard" />;
+  if (!projectId) return <CertManagerNotSetUp orgId={orgId} />;
+  if (access.isPending) return <Loader size="page" label="Loading dashboard" />;
 
   const isAdmin = access.data?.memberships.some((membership) =>
     membership.roles.some((role) => role.role === "admin")
@@ -154,6 +159,14 @@ export const DashboardPage = () => {
         icon="lock"
         title="You don't have access to certificates"
         description="Ask a project admin for permission to read certificates."
+      />
+    );
+  else if (statsError)
+    body = (
+      <EmptyState
+        icon="alert"
+        title="Certificate stats didn't load"
+        description="Reload the page to try again."
       />
     );
   else if (isStatsPending || !stats)
