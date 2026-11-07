@@ -8,6 +8,10 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { IntegrationsPage } from "./IntegrationsPage";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/integrations")({
+  staticData: {
+    readiness: "partial",
+    missing: ["Add Slack or Microsoft Teams workflow integrations", "External migration imports"]
+  },
   component: IntegrationsPage,
   validateSearch: zodValidator(
     z.object({

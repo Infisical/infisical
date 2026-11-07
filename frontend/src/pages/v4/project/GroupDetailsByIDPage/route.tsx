@@ -7,6 +7,7 @@ import { GroupDetailsByIDPage } from "./GroupDetailsByIDPage";
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId"
 )({
+  staticData: { readiness: "full" },
   component: GroupDetailsByIDPage,
   validateSearch: zodValidator(
     z.object({

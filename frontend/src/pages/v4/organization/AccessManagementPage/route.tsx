@@ -7,6 +7,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 import { AccessManagementPage } from "./AccessManagementPage";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/access-management")({
+  staticData: { readiness: "full" },
   component: AccessManagementPage,
   validateSearch: zodValidator(
     z.object({

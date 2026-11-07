@@ -12,6 +12,7 @@ const SecretApprovalPageQueryParams = z.object({
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/secret-management/$projectId/approval"
 )({
+  staticData: { readiness: "partial", missing: ["Access requests", "Policies"] },
   component: SecretApprovalsPage,
   validateSearch: zodValidator(SecretApprovalPageQueryParams),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

@@ -10,6 +10,7 @@ import { List, ListRow } from "@app/components/v4/ui/list";
 import { Loader } from "@app/components/v4/ui/loader";
 import { toast } from "@app/components/v4/ui/sonner";
 import { SessionStorageKeys } from "@app/const";
+import { toV4Href } from "@app/helpers/v4Bridge";
 import {
   TOrgWithSubOrgs,
   useGetOrganizationsWithSubOrgs,
@@ -23,7 +24,6 @@ import { getSsoEnforcementError } from "@app/pages/auth/SelectOrgPage/SelectOrg.
 
 import { AuthPage } from "../components/AuthPage";
 import { Mfa } from "../components/Mfa";
-import { toV4Href } from "../paths";
 import { useAuthPreview } from "../preview";
 import { PREVIEW_ORGS } from "./preview";
 

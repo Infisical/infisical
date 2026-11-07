@@ -25,6 +25,7 @@ export const Route = createFileRoute("/v4/_v4-auth/login/select-organization")({
     const { withV4Redirects } = await import("../paths");
     return withV4Redirects(() => autoSelectOrganization({ context, search }));
   },
+  staticData: { readiness: "full" },
   component: SelectOrgPage,
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

@@ -9,6 +9,7 @@ const QueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute("/v4/_v4-auth/requestnewinvite")({
+  staticData: { readiness: "full" },
   component: RequestNewInvitePage,
   validateSearch: zodValidator(QueryParamsSchema),
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),

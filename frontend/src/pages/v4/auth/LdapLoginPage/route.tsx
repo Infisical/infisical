@@ -12,6 +12,7 @@ const QueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute("/v4/_v4-auth/login/ldap")({
+  staticData: { readiness: "full" },
   component: LdapLoginPage,
   validateSearch: zodValidator(QueryParamsSchema),
   search: {

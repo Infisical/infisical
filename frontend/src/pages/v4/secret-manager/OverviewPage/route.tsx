@@ -20,6 +20,7 @@ const SecretOverviewPageQuerySchema = z.object({
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/secret-management/$projectId/overview"
 )({
+  staticData: { readiness: "full" },
   component: OverviewPage,
   validateSearch: zodValidator(SecretOverviewPageQuerySchema),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

@@ -9,6 +9,7 @@ import NProgress from "nprogress";
 import { PageTitle } from "./components/PageTitle";
 import { Loader } from "./components/v3/generic/Loader";
 import { initializeTheme } from "./components/v3/platform/ThemeProvider";
+import { registerV4BridgeRouter } from "./helpers/v4Bridge";
 import { queryClient } from "./hooks/api/reactQuery";
 import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
@@ -84,6 +85,7 @@ const router = createRouter({
   defaultNotFoundComponent: NotFoundPage,
   defaultErrorComponent: ErrorPage
 });
+registerV4BridgeRouter(router);
 
 const isV4Path = (pathname: string) => /^\/v4(?:\/|$)/.test(pathname);
 
