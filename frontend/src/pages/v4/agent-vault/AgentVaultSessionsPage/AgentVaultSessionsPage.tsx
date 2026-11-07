@@ -24,7 +24,6 @@ import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
-import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   Sheet,
   SheetBody,
@@ -233,14 +232,9 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       width: 224,
       text: (row) => row.label ?? "",
       render: (row) => (
-        <RowLink
-          to={route}
-          params={{ orgId, projectId }}
-          search={(prev) => ({ ...prev, sessionId: row.id })}
-          title={row.label ?? undefined}
-        >
+        <Button variant="link" onClick={() => setSessionId(row.id)} title={row.label ?? undefined}>
           {row.label ?? <Meta mono={false}>No label</Meta>}
-        </RowLink>
+        </Button>
       )
     },
     {
@@ -287,13 +281,6 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
   ];
 
   const rowActions: DataTableRowActions<TAgentVaultSession> = {
-    inline: [
-      {
-        label: (row) => `View session logs for ${row.label ?? displayName(row.actor)}`,
-        icon: "history",
-        onSelect: (row) => setSessionId(row.id)
-      }
-    ],
     menuLabel: "Session options",
     renderMenu: (row) => {
       const isLabelEditable = row.actor.id !== null && row.onBehalfOf?.id !== null;
@@ -414,6 +401,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           getRowId={(row) => row.id}
           rowLabel={(row) => row.label ?? displayName(row.actor)}
           rowActions={rowActions}
+          onRowActivate={(row) => setSessionId(row.id)}
           empty={
             isFiltered ? (
               <EmptyState

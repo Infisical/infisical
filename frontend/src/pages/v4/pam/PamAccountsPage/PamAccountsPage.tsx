@@ -1,6 +1,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useParams } from "@tanstack/react-router";
 
+import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -274,6 +275,8 @@ export const PamAccountsPage = () => {
   const { orgId } = useParams({ from: route });
   const pam = useV4Adapter("pam");
   const [searchInput, setSearchInput] = useState("");
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const accountType = filters.find((filter) => filter.field === "type")?.values[0];
   const [notice, setNotice] = useState("");
 
   const { data: capabilities } = pam.useAccessCapabilities();
@@ -288,9 +291,9 @@ export const PamAccountsPage = () => {
 
   const [debouncedSearch] = useDebounce(searchInput);
   const query = debouncedSearch.trim();
-  const filterActive = Boolean(query);
+  const filterActive = Boolean(query || accountType);
   const { data: matches = [], isPending: isLoadingMatches } = pam.useAccounts(
-    { search: query || undefined },
+    { search: query || undefined, accountType },
     { enabled: filterActive }
   );
 
@@ -422,10 +425,16 @@ export const PamAccountsPage = () => {
         size="sm"
         media="bare"
         icon="search"
-        title="No accounts match your search"
+        title="No accounts match your filters"
         actions={
-          <Button variant="outline" onClick={() => setSearchInput("")}>
-            Clear search
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearchInput("");
+              setFilters([]);
+            }}
+          >
+            Clear filters
           </Button>
         }
       />
@@ -465,13 +474,28 @@ export const PamAccountsPage = () => {
             </Inline>
           }
         />
-        <Input
-          icon="search"
-          aria-label="Search accounts"
-          placeholder="Search accounts..."
-          kbd="/"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
+        <FilterBar
+          label="Account filters"
+          fields={[
+            {
+              key: "type",
+              label: "Account type",
+              type: "select",
+              options: accountTypes.map((meta) => ({ value: meta.type, label: meta.name }))
+            }
+          ]}
+          value={filters}
+          onChange={setFilters}
+          search={
+            <Input
+              icon="search"
+              aria-label="Search accounts"
+              placeholder="Search accounts..."
+              kbd="/"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+            />
+          }
         />
         <DataTable
           label="Accounts"

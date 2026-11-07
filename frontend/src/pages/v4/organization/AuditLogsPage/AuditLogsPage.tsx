@@ -140,7 +140,9 @@ const makeColumns = (onOpen: (log: AuditLog) => void): DataTableColumn<AuditLog>
           style={{ minWidth: 0, overflow: "hidden" }}
           title={[row.event.type, detail].filter(Boolean).join(", ")}
         >
-          <code style={truncate}>{row.event.type}</code>
+          <Button variant="link" onClick={() => onOpen(row)} style={{ minWidth: 0 }}>
+            <code style={truncate}>{row.event.type}</code>
+          </Button>
           {detail && (
             <Meta
               mono={false}
@@ -162,23 +164,6 @@ const makeColumns = (onOpen: (log: AuditLog) => void): DataTableColumn<AuditLog>
         {sourceOf(row)}
         <Meta>{row.ipAddress}</Meta>
       </Inline>
-    )
-  },
-  {
-    id: "open",
-    header: "Details",
-    actions: true,
-    hideHeader: true,
-    render: (row) => (
-      <Button
-        variant="ghost"
-        size="icon-row"
-        icon="chev-right"
-        iconOnly
-        onClick={() => onOpen(row)}
-      >
-        {`Open ${row.event.type} by ${actorName(row.actor)}`}
-      </Button>
     )
   }
 ];
@@ -394,6 +379,7 @@ const LogsTab = () => {
           loading={isPending}
           getRowId={(row) => row.id}
           rowLabel={(row) => `${row.event.type} by ${actorName(row.actor)}`}
+          onRowActivate={setOpened}
           height={frame}
           rowHeight={rowHeight}
           virtual

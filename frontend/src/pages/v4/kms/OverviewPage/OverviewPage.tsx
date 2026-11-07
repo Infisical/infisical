@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 
+import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -14,7 +15,6 @@ import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
-import { Select } from "@app/components/v4/ui/select";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import { KmsKeyUsage, type TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -32,25 +32,21 @@ const operations: Record<KmsKeyUsage, [string, string]> = {
   [KmsKeyUsage.SIGN_VERIFY]: ["Sign data", "Verify data"],
   [KmsKeyUsage.GENERATE_VERIFY_MAC]: ["Generate MAC", "Verify MAC"]
 };
-const usageOptions = [
-  { value: "all", label: "All key usages" },
-  ...Object.values(KmsKeyUsage).map((value) => ({ value, label: usageLabel[value] }))
-];
+const usageOptions = Object.values(KmsKeyUsage).map((value) => ({
+  value,
+  label: usageLabel[value]
+}));
 const algorithmLabel = (algorithm: TCmek["algorithm"]) =>
   algorithm.replaceAll("_", "-").toUpperCase();
 
-const KeyMenu = ({
-  item,
-  onRotate,
-  onToggle
-}: {
-  item: TCmek;
-  onRotate: () => void;
-  onToggle: () => void;
-}) => {
-  const off = item.isDisabled ? "Enable the key first" : undefined;
-  const rotateBlock =
-    item.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT ? off : "Only encryption keys rotate";
+const disabledBlock = (item: TCmek) => (item.isDisabled ? "Enable the key first" : undefined);
+const rotateBlock = (item: TCmek) =>
+  item.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT
+    ? disabledBlock(item)
+    : "Only encryption keys rotate";
+
+const KeyMenu = ({ item, onToggle }: { item: TCmek; onToggle: () => void }) => {
+  const off = disabledBlock(item);
   const exportBlock = item.isExportable ? off : "Created as non-exportable";
   const deleteBlock = item.hasDeleteProtection ? "Turn off delete protection first" : undefined;
   return (
@@ -64,14 +60,6 @@ const KeyMenu = ({
         {operations[item.keyUsage][1]}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
-      <DropdownMenuItem
-        disabled={Boolean(rotateBlock)}
-        description={rotateBlock}
-        onSelect={onRotate}
-      >
-        <Icon name="sync" />
-        Rotate key
-      </DropdownMenuItem>
       <DropdownMenuItem disabled={Boolean(exportBlock)} description={exportBlock}>
         <Icon name="download" />
         Export key
@@ -133,7 +121,8 @@ export const OverviewPage = () => {
   const { projects } = useV4Session();
   const projectName = projects.find((project) => project.id === projectId)?.name ?? projectId;
   const [search, setSearch] = useState("");
-  const [usage, setUsage] = useState("all");
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const usage = filters.find((filter) => filter.field === "usage")?.values[0] ?? "all";
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState<string[]>([]);
@@ -155,6 +144,7 @@ export const OverviewPage = () => {
   const rows = keys.filter((item) => usage === "all" || item.keyUsage === usage);
   const eligible = (item: TCmek) => !item.isDisabled && item.isExportable;
   const disabledCount = keys.filter((item) => item.isDisabled).length;
+  const filtered = Boolean(search) || usage !== "all";
   const columns: DataTableColumn<TCmek>[] = [
     {
       id: "name",
@@ -231,8 +221,12 @@ export const OverviewPage = () => {
             </>
           }
         />
-        <Inline gap={8}>
-          <div style={{ flex: 1 }}>
+        <FilterBar
+          label="Key filters"
+          fields={[{ key: "usage", label: "Key usage", type: "select", options: usageOptions }]}
+          value={filters}
+          onChange={setFilters}
+          search={
             <Input
               icon="search"
               aria-label="Search keys"
@@ -244,16 +238,8 @@ export const OverviewPage = () => {
                 setPage(1);
               }}
             />
-          </div>
-          <div style={{ width: 232 }}>
-            <Select
-              aria-label="Key usage"
-              options={usageOptions}
-              value={usage}
-              onChange={setUsage}
-            />
-          </div>
-        </Inline>
+          }
+        />
         <DataTable
           label={`Keys in ${projectName}`}
           rows={rows}
@@ -262,12 +248,18 @@ export const OverviewPage = () => {
           getRowId={(r) => r.id}
           rowLabel={(r) => r.name}
           rowActions={{
+            inline: [
+              {
+                label: "Rotate key",
+                icon: "sync",
+                disabledReason: rotateBlock,
+                onSelect: (r) =>
+                  rotateKey.mutateAsync({ keyId: r.id, projectId }).catch(() => undefined)
+              }
+            ],
             renderMenu: (r) => (
               <KeyMenu
                 item={r}
-                onRotate={() =>
-                  rotateKey.mutateAsync({ keyId: r.id, projectId }).catch(() => undefined)
-                }
                 onToggle={() => {
                   updateKey
                     .mutateAsync({ keyId: r.id, projectId, isDisabled: !r.isDisabled })
@@ -284,22 +276,31 @@ export const OverviewPage = () => {
           sort={sort}
           onSortChange={setSort}
           empty={
-            <EmptyState
-              size="sm"
-              icon="search"
-              title="No keys match"
-              actions={
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    setSearch("");
-                    setUsage("all");
-                  }}
-                >
-                  Clear filters
-                </Button>
-              }
-            />
+            filtered ? (
+              <EmptyState
+                size="sm"
+                icon="search"
+                title="No keys match"
+                actions={
+                  <Button
+                    variant="link"
+                    onClick={() => {
+                      setSearch("");
+                      setFilters([]);
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                size="sm"
+                icon="key"
+                title="No keys yet"
+                actions={<Button icon="plus">Create key</Button>}
+              />
+            )
           }
           footer={
             rows.length === totalCount
@@ -322,7 +323,7 @@ export const OverviewPage = () => {
           }
           actionBar={
             <FloatingActionBar
-              placement="fixed"
+              placement="contained"
               count={selected.length}
               total={keys.filter(eligible).length}
               onSelectAll={() => setSelected(keys.filter(eligible).map((item) => item.id))}

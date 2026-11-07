@@ -457,7 +457,6 @@ export const InventoryPage = () => {
           label="Certificates"
           rows={rows}
           loading={isPending}
-          onRowActivate={(row) => open(row.id)}
           columns={columns.filter((column) => !hidden.includes(column.id))}
           getRowId={(r) => r.id}
           rowLabel={(r) => certificateName(r)}
