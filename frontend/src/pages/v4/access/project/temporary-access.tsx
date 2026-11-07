@@ -173,8 +173,10 @@ export const DurationPicker = ({
         disabledReason={disabledReason}
         aria-label={`${label}: ${text}`}
       >
-        {grant.isTemporary && (expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />)}
-        <span className={styles.grow}>{text}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--v4-space-6)" }}>
+          {grant.isTemporary && (expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />)}
+          {text}
+        </span>
       </Button>
     </PopoverTrigger>
   );
