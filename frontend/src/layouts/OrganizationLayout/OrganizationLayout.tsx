@@ -12,6 +12,7 @@ import { Banner } from "@app/components/page-frames/Banner";
 import { PageBannerStack } from "@app/components/page-frames/PageBannerStack";
 import { SidebarInset, SidebarProvider } from "@app/components/v3";
 import { useOrganization, useServerConfig, useSubscription } from "@app/context";
+import { getProductFromPath } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -27,6 +28,12 @@ import { OrgSidebar } from "./components/OrgSidebar";
 import { RedisBanner } from "./components/RedisBanner";
 import { SmtpBanner } from "./components/SmtpBanner";
 import { TrialPaymentFailedBanner } from "./components/TrialPaymentFailedBanner";
+
+// Products whose accent is applied by repointing --color-project (see data-product-accent in index.css).
+const PRODUCT_ACCENT: Record<string, "pki" | "kms" | undefined> = {
+  [ProjectType.CertificateManager]: "pki",
+  [ProjectType.KMS]: "kms"
+};
 
 export const OrganizationLayout = () => {
   const { config } = useServerConfig();
@@ -50,6 +57,9 @@ export const OrganizationLayout = () => {
       )
   });
 
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const productAccent = PRODUCT_ACCENT[getProductFromPath(pathname) ?? ""];
+
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
@@ -71,6 +81,7 @@ export const OrganizationLayout = () => {
   return (
     <>
       <Banner />
+      {productAccent && <span hidden data-product-accent={productAccent} />}
       <SidebarProvider
         className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-page transition-all`}
       >
