@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "container-defaults",
+    title: "Container defaults",
+    description:
+      "Tables and lists stay framed, and a standalone Card is plain by default, framed only for emphasis or as a section card.",
+    date: "2026-11-07",
+    commit: "aab51e979e",
+    page: "card"
+  },
+  {
     id: "themes",
     title: "Four themes",
     description:
@@ -210,14 +219,5 @@ export const recentChanges: {
     date: "2026-11-04",
     commit: "35dce26df3",
     page: "field-mapping"
-  },
-  {
-    id: "focus-clearance",
-    title: "Focus rings",
-    description:
-      "Focus rings clear overlay, table cell and scroll edges through a shared clearance.",
-    date: "2026-11-04",
-    commit: "d83fdd0dfc",
-    page: "rules"
   }
 ];
