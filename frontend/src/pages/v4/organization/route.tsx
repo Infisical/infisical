@@ -1,6 +1,7 @@
 import { createFileRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 
 import { authenticateSession, injectOrgDetails } from "@app/helpers/routeGuards";
+import { fetchOrganizations, organizationKeys } from "@app/hooks/api/organization/queries";
 
 import { V4OrganizationLayout } from "./V4OrganizationLayout";
 
@@ -24,10 +25,15 @@ export const Route = createFileRoute("/v4/organizations/$orgId")({
     const { organizationId } = await withV4Redirects(() =>
       injectOrgDetails({ context: { ...context, ...session }, params, location })
     );
+    await context.queryClient.ensureQueryData({
+      queryKey: organizationKeys.getUserOrganizations,
+      queryFn: fetchOrganizations
+    });
     const { liveAdapters } = await import("../data/live");
     return { ...session, organizationId, v4Mode: "live" as const, adapters: liveAdapters };
   },
   component: V4OrganizationLayout,
+  pendingMs: Infinity,
   pendingComponent: lazyRouteComponent(() => import("../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../V4ErrorPage"), "V4ErrorPage"),
   notFoundComponent: lazyRouteComponent(() => import("../V4NotFoundPage"), "V4NotFoundPage")
