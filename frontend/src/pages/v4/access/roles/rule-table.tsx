@@ -295,7 +295,7 @@ export const RuleTable = (props: RuleTableProps) => {
       text: (row) => row.config.title,
       render: (row) => (
         <Inline gap={8} wrap={false} style={{ minWidth: 0 }}>
-          <span>{row.config.title}</span>
+          <span style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{row.config.title}</span>
           {row.config.description && (
             <Meta
               mono={false}
