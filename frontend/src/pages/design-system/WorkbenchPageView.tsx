@@ -7,6 +7,7 @@ import { ColorPage, SpacingShapePage, TypographyPage } from "./FoundationPages";
 import { MotionPage } from "./InteractionPages";
 import { type ComparisonPage, fallbackLink, routePage, workbenchPage } from "./navigation";
 import { OverviewPage } from "./OverviewPage";
+import { PalettePlaygroundPage } from "./PalettePlaygroundPage";
 import { RulesPage } from "./RulesPage";
 
 const WorkbenchPageView = ({ page }: { page: string }) => {
@@ -15,6 +16,8 @@ const WorkbenchPageView = ({ page }: { page: string }) => {
       return <OverviewPage />;
     case "colors":
       return <ColorPage />;
+    case "palette":
+      return <PalettePlaygroundPage />;
     case "typography":
       return <TypographyPage />;
     case "spacing-shape":
