@@ -4,7 +4,7 @@ Stacked label and value pairs for a resource's details, optionally grouped under
 
 ## Choose this component
 
-Choose Detail when labels sit above values and values hold arbitrary nodes, which is how main's details cards and sheets read. Choose DataList for compact right-aligned term and value rows built from data.
+Choose Detail when labels sit above values and values hold arbitrary nodes, which is how main's details cards and sheets read. Choose DataList for compact right-aligned term and value rows built from data; a detail page's facts card is a DataList with density compact.
 
 ## Usage rules
 

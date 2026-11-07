@@ -6,6 +6,7 @@ import {
   type FilterBarFilter
 } from "@app/components/v4/patterns/filter-bar";
 import { Input } from "@app/components/v4/ui/input";
+import { Select } from "@app/components/v4/ui/select";
 import { Meta } from "@app/components/v4/ui/text";
 
 import { ExampleCell, ExampleStack } from "../../example-presentation";
@@ -24,17 +25,14 @@ const secrets: Secret[] = [
   },
   { key: "LOG_LEVEL", environment: "development", tags: [], updated: "2026-03-30" }
 ];
+const environments = [
+  { value: "production", label: "Production" },
+  { value: "staging", label: "Staging" },
+  { value: "development", label: "Development" }
+];
+const environmentChoices = [{ value: "all", label: "All environments" }, ...environments];
 const fields: FilterBarField[] = [
-  {
-    key: "environment",
-    label: "Environment",
-    type: "select",
-    options: [
-      { value: "production", label: "Production" },
-      { value: "staging", label: "Staging" },
-      { value: "development", label: "Development" }
-    ]
-  },
+  { key: "environment", label: "Environment", type: "select", options: environments },
   {
     key: "tags",
     label: "Tag",
@@ -54,19 +52,29 @@ const matches = (secret: Secret, filter: FilterBarFilter) => {
   return secret.key.toLowerCase().includes(first.toLowerCase());
 };
 
-const Bar = ({ initial, caption }: { initial: FilterBarFilter[]; caption: string }) => {
+const Bar = ({
+  initial,
+  caption,
+  searchOnly = false
+}: {
+  initial: FilterBarFilter[];
+  caption: string;
+  searchOnly?: boolean;
+}) => {
   const [filters, setFilters] = useState(initial);
   const [query, setQuery] = useState("");
+  const [environment, setEnvironment] = useState("all");
   const shown = secrets.filter(
     (secret) =>
       secret.key.toLowerCase().includes(query.trim().toLowerCase()) &&
+      (environment === "all" || secret.environment === environment) &&
       filters.every((filter) => matches(secret, filter))
   );
   return (
     <ExampleCell label={caption} align="stretch">
       <FilterBar
         label="Secret filters"
-        fields={fields}
+        fields={searchOnly ? [] : fields}
         value={filters}
         onChange={setFilters}
         search={
@@ -77,6 +85,16 @@ const Bar = ({ initial, caption }: { initial: FilterBarFilter[]; caption: string
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
+        }
+        actions={
+          searchOnly ? (
+            <Select
+              aria-label="Environment"
+              options={environmentChoices}
+              value={environment}
+              onValueChange={setEnvironment}
+            />
+          ) : undefined
         }
       />
       <Meta
@@ -91,6 +109,11 @@ export default function Example() {
   return (
     <ExampleStack>
       <Bar initial={[]} caption="No filters: search and Add filter only" />
+      <Bar
+        initial={[]}
+        caption="No filter fields: search and an environment Select, no Add filter"
+        searchOnly
+      />
       <Bar
         initial={[
           { field: "environment", values: ["production"] },

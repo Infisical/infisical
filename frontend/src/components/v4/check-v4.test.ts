@@ -12,6 +12,7 @@ import sharedRules from "./skills/infisical-ui/rules.json";
 const ui = "src/components/v4/ui/sample.tsx";
 const css = "src/components/v4/ui/sample.module.css";
 const example = "src/pages/design-system/examples/sample/default.tsx";
+const page = "src/pages/v4/sample/page.tsx";
 
 const checksIn = (file: string, text: string) =>
   scanSource(file, text).map((finding) => finding.check);
@@ -401,6 +402,108 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
     good: [
       [example, '<Suspense fallback={<Loader size="page" label="Loading secrets" />}>'],
       [example, "<Suspense fallback={<Skeleton lines={3} />}>"]
+    ]
+  },
+  "row-activate-navigates": {
+    bad: [
+      [page, "<DataTable onRowActivate={(row) => go(links.member(row.id))} />"],
+      [
+        page,
+        "const openMember = (row: Row) => navigate({ to: row.href });\n<DataTable onRowActivate={openMember} />"
+      ],
+      [
+        example,
+        "function open(id: string) {\n  router.navigate({ to: id });\n}\n<DataTable onRowActivate={(row) => open(row.id)} />"
+      ]
+    ],
+    good: [
+      [page, "<DataTable onRowActivate={(row) => setOpened(row)} />"],
+      [page, "const edit = (row: Row) => setEditing(row.id);\n<DataTable onRowActivate={edit} />"],
+      [ui, "<DataTable onRowActivate={(row) => go(row.href)} />"]
+    ]
+  },
+  "pagination-outside-frame": {
+    bad: [
+      [page, "<Stack>\n  <DataTable rows={rows} />\n  {list.pagination}\n</Stack>"],
+      [
+        page,
+        "<DataTable rows={rows} />\n{!isPending && total > 0 && (\n  <Pagination page={page} total={total} />\n)}"
+      ],
+      [
+        example,
+        "<DataTable\n  rows={rows}\n  pagination={<Pagination page={page} total={total} />}\n/>"
+      ]
+    ],
+    good: [
+      [
+        page,
+        '<DataTable\n  rows={rows}\n  pagination={total > 0 ? <Pagination variant="compact" page={page} total={total} /> : undefined}\n/>'
+      ],
+      [page, "<Grid>{cards}</Grid>\n{pagination}"],
+      [page, "<DataTable rows={rows} />\n<Button>Load older</Button>"]
+    ]
+  },
+  "row-actions-without-context-menu": {
+    bad: [
+      [
+        page,
+        "<TableRow>\n  <TableCell>{name}</TableCell>\n  <TableActionsCell>\n    <RowActions label={name} menu={menu} />\n  </TableActionsCell>\n</TableRow>"
+      ],
+      [
+        example,
+        "<RowContextMenu label={name} menu={menu}>\n  <TableRow />\n</RowContextMenu>\n<TableRow>\n  <TableActionsCell slots={1}>{open}</TableActionsCell>\n</TableRow>"
+      ]
+    ],
+    good: [
+      [
+        page,
+        "<RowContextMenu label={name} menu={menu}>\n  <TableRow>\n    <TableActionsCell>\n      <RowActions label={name} menu={menu} />\n    </TableActionsCell>\n  </TableRow>\n</RowContextMenu>"
+      ],
+      [
+        page,
+        "const row = (\n  <TableRow>\n    <TableActionsCell>\n      <RowActions label={name} />\n    </TableActionsCell>\n  </TableRow>\n);\nreturn <RowContextMenu label={name}>{row}</RowContextMenu>;"
+      ],
+      [
+        page,
+        "<TableHeader>\n  <TableRow>\n    <TableActionsHead>Actions</TableActionsHead>\n  </TableRow>\n</TableHeader>"
+      ]
+    ]
+  },
+  "raw-table-in-card": {
+    bad: [
+      [
+        page,
+        '<Card variant="framed" title="Reviewers">\n  <Table aria-label="Reviewers" />\n</Card>'
+      ],
+      [
+        example,
+        '<SettingsCard title="Contacts">\n  <Table aria-label="Contacts" />\n</SettingsCard>'
+      ]
+    ],
+    good: [
+      [
+        page,
+        '<Card variant="framed" title="Reviewers">\n  <DataTable label="Reviewers" />\n</Card>'
+      ],
+      [
+        page,
+        '<Card>\n  <Sheet>\n    <SheetContent>\n      <Table aria-label="Leases" />\n    </SheetContent>\n  </Sheet>\n</Card>'
+      ],
+      [
+        "src/pages/v4/secret-manager/OverviewPage/OverviewPage.tsx",
+        '<Card>\n  <Table aria-label="Secrets" />\n</Card>'
+      ]
+    ]
+  },
+  "fixed-bulk-bar": {
+    bad: [
+      [page, '<FloatingActionBar placement="fixed" count={2} onClear={clear} />'],
+      [example, '<FloatingActionBar\n  count={2}\n  placement={"fixed"}\n  onClear={clear}\n/>']
+    ],
+    good: [
+      [page, "<FloatingActionBar count={2} onClear={clear} />"],
+      [page, '<FloatingActionBar placement="contained" count={2} onClear={clear} />'],
+      [page, '<Popover placement="fixed" />']
     ]
   }
 };

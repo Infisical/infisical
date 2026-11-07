@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { CodeBlock } from "../ui/code-block";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Icon } from "../ui/icon";
+import { CopyButton } from "../ui/sensitive-editor";
 import { Heading, Text } from "../ui/text";
 import { useAppShell } from "../ui/top-bar";
 
@@ -135,8 +136,11 @@ export function ErrorState({
                 Error details
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CodeBlock label="Error details" code={reportText} copyLabel="Copy details" />
+            <CollapsibleContent className={styles.detailsPanel}>
+              <CodeBlock code={reportText} copyable={false} />
+              <span className={styles.detailsCopy}>
+                <CopyButton value={reportText} label="Copy details" iconOnly />
+              </span>
             </CollapsibleContent>
           </Collapsible>
         )}
