@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "button-corner-badge",
+    title: "Button corner badge",
+    description:
+      "A Button can carry a small Badge on its top-right corner, such as Last used, without changing its size or hit area.",
+    date: "2026-11-07",
+    commit: "7ff23542fa",
+    page: "button"
+  },
+  {
     id: "dark-alt-two-colors",
     title: "Dark alt, two colors",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "75c373c9f0",
     page: "table"
-  },
-  {
-    id: "combobox-creation",
-    title: "Create from a picker",
-    description:
-      "A Combobox can create the entity it picks in a dialog, starting with app connections, so nobody leaves the flow.",
-    date: "2026-11-06",
-    commit: "d1c73789d8",
-    page: "combobox"
   }
 ];
