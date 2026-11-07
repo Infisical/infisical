@@ -376,6 +376,7 @@ export const toResolvedInlineService = (
       ...substitution,
       value: secrets!.substitutions[index]
     })),
-    personalValuesMissing: false
+    personalValuesMissing: false,
+    memberProvided: false
   };
 };

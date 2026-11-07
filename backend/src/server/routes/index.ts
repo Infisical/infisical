@@ -2142,6 +2142,7 @@ export const registerRoutes = async (
     kmsService,
     agentVaultServiceDAL,
     agentVaultAccessBundleDAL,
+    agentVaultPersonalValueDAL,
     permissionService,
     membershipDAL
   });
@@ -2159,6 +2160,7 @@ export const registerRoutes = async (
     agentVaultPersonalValueReferenceDAL,
     agentVaultVariableDAL,
     agentVaultServiceDAL,
+    agentVaultOauthService,
     permissionService,
     membershipDAL,
     kmsService
@@ -3968,6 +3970,7 @@ export const registerRoutes = async (
   const certificateAuthorityQueue = certificateAuthorityQueueFactory({
     certificateAuthorityCrlDAL,
     certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
     certificateAuthoritySecretDAL,
     certificateDAL,
     projectDAL,

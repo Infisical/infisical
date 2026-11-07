@@ -1,5 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { AgentVaultOauthRegistration } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import {
   AgentVaultCredentialType,
@@ -34,14 +35,28 @@ export type TAgentVaultCredentialInput =
       memberProvidedFields?: TAgentVaultBasicMemberField[];
     }
   | { type: AgentVaultCredentialType.Passthrough }
-  | { type: AgentVaultCredentialType.OAuth; authorizationId: string };
+  | {
+      type: AgentVaultCredentialType.OAuth;
+      // The admin's own sign-in. Absent when the sign-in is left to each member.
+      authorizationId?: string;
+      memberProvidedFields?: TAgentVaultBearerMemberField[];
+      // The client every member signs in with, only when the sign-in is left to them.
+      clientId?: string;
+      clientSecret?: string;
+      registration?: AgentVaultOauthRegistration.Dynamic;
+    };
 
 export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
 
 export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;
-  status: AgentVaultOauthStatus;
+  memberProvidedFields: TAgentVaultBearerMemberField[];
+  // Absent when each member signs in: there is no shared connection to describe, and each member reads their own.
+  status?: AgentVaultOauthStatus;
   issuer: string;
+  // Only when each member signs in.
+  registration?: AgentVaultOauthRegistration;
+  clientId?: string | null;
   grantedScopes: string[];
   requiredScopes: string[];
   // Left out for members: they describe the admin's sign-in, not the service's setup.

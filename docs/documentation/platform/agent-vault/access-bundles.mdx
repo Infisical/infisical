@@ -59,7 +59,7 @@ To revoke access from a user, group, or machine identity, open the bundle and se
 
 ## Set up your personal values
 
-Some services ask you for part of their credential, such as your own API key (see [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values)). Until you set up your personal values for one of these services, your sessions can't use it, and the service shows **Requires Setup**. This applies to admins too.
+Some services ask you for part of their credential, such as your own API key (see [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values)), or ask you to connect your own account to an [MCP server](/documentation/platform/agent-vault/mcp-servers#leave-the-credential-to-each-member). Until you set up your personal values for one of these services, your sessions can't use it, and the service shows **Requires Setup**. This applies to admins too.
 
 To set up your personal values:
 
@@ -72,15 +72,19 @@ To set up your personal values:
   </Step>
   <Step>
     Enter each value. To use one of your [personal variables](/documentation/platform/agent-vault/variables#personal-variables), type `{{` or select the arrow at the end of the field, then pick a variable from the list.
+
+    For an MCP service that uses OAuth, select **Connect Account** instead, then sign in to the provider in the pop-up window and approve access. When you approve, Infisical saves the connection, closes the dialog, and the service shows **Configured**.
   </Step>
   <Step>
-    Select **Save**. The service shows **Configured**.
+    If you entered values, select **Save**. The service shows **Configured**.
   </Step>
 </Steps>
+
+If the provider stops accepting your login, the service shows **Requires Setup** again. If an agent needs scopes that your connection doesn't grant, the service shows **Missing Scopes**. In either case, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project [admin](/documentation/platform/agent-vault/access-control) to update the service.
 
 Infisical never shows your personal values to anyone else, admins included.
 
 - To change your personal values, open the service's actions menu, select **Update My Personal Values**, and enter the values you want to change
-- To delete your personal values, select **Remove** in the same dialog, then select **Remove Personal Values**
+- To delete your personal values, select **Remove** in the same dialog, then select **Remove Personal Values** (**Disconnect Account** for an OAuth service)
 
-A machine identity sets up its personal values with [the set personal values endpoint](/api-reference/endpoints/agent-vault-services/set-personal-values), and keeps its own personal variables with [the create variable endpoint](/api-reference/endpoints/agent-vault-variables/create).
+A machine identity sets up its personal values with [the set personal values endpoint](/api-reference/endpoints/agent-vault-services/set-personal-values), and keeps its own personal variables with [the create variable endpoint](/api-reference/endpoints/agent-vault-variables/create). A machine identity can't connect an OAuth account. For an MCP service where each member connects their own account, have the machine identity create the session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users) who has connected theirs.

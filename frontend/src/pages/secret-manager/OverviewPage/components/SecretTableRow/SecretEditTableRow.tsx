@@ -1057,6 +1057,10 @@ export const SecretEditTableRow = ({
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
   );
 
+  useEffect(() => {
+    if (isDirtyState || hasPendingValueChange) setIsResolvedValueOpen.off();
+  }, [isDirtyState, hasPendingValueChange]);
+
   const handleEditSecret = async ({
     secretValue,
     newKey,
@@ -1662,16 +1666,6 @@ export const SecretEditTableRow = ({
           )}
           style={isFieldActive && actionBarWidth ? { paddingRight: actionBarWidth } : undefined}
         >
-          {isFieldActive && !secretValueHidden && !isCreatable && secretHasReference && (
-            <ResolvedSecretValuePopover
-              environment={environment}
-              secretPath={secretPath}
-              secretKey={secretName}
-              open={isResolvedValueOpen}
-              onOpenChange={setIsResolvedValueOpen.toggle}
-              isDisabled={isDirtyState || hasPendingValueChange}
-            />
-          )}
           <Controller
             control={control}
             name="value"
@@ -1696,7 +1690,6 @@ export const SecretEditTableRow = ({
                 isImport={isImportedSecret}
                 canEditButNotView={secretValueHidden && !isManagedSecret}
                 onFocus={() => setIsFieldFocused.on()}
-                containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
                 onBlur={() => {
                   field.onBlur();
                   setIsFieldFocused.off();
@@ -1780,7 +1773,8 @@ export const SecretEditTableRow = ({
             "absolute z-20",
             "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
             TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
-            (isDropdownOpen || isAnnotateMenuOpen) && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
+            (isDropdownOpen || isAnnotateMenuOpen || isResolvedValueOpen) &&
+              TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
@@ -1882,6 +1876,16 @@ export const SecretEditTableRow = ({
                             : "Edit Value"}
             </TooltipContent>
           </Tooltip>
+          {!secretValueHidden && !isCreatable && secretHasReference && (
+            <ResolvedSecretValuePopover
+              environment={environment}
+              secretPath={secretPath}
+              secretKey={secretName}
+              open={isResolvedValueOpen}
+              onOpenChange={setIsResolvedValueOpen.toggle}
+              isDisabled={isDirtyState || hasPendingValueChange}
+            />
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <IconButton

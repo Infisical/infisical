@@ -38,12 +38,12 @@ const credentialPreview = (form: {
 }): string | null => {
   if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
   if (form.credentialType === AgentVaultCredentialType.Basic) return `Authorization: Basic ${MASK}`;
-  if (form.credentialType === AgentVaultCredentialType.OAuth)
-    return `Authorization: Bearer ${MASK}`;
-  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
   const value = form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue)
     ? "<member value>"
     : MASK;
+  if (form.credentialType === AgentVaultCredentialType.OAuth)
+    return `Authorization: Bearer ${value}`;
+  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
   return `${form.headerName || "Authorization"}: ${prefix}${value}`;
 };
 

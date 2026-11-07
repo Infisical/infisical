@@ -700,7 +700,6 @@
                   "documentation/platform/agent-vault/quickstart",
                   "documentation/platform/agent-vault/why-agent-vault",
                   "documentation/platform/agent-vault/how-it-works",
-                  "documentation/platform/agent-vault/projects",
                   "documentation/platform/agent-vault/plan-your-setup"
                 ]
               },
@@ -725,6 +724,7 @@
               {
                 "group": "Concepts",
                 "pages": [
+                  "documentation/platform/agent-vault/projects",
                   "documentation/platform/agent-vault/access-bundles",
                   {
                     "group": "Services",
