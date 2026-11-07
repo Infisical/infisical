@@ -16,6 +16,8 @@ import { useV4Session } from "../../data/session/contract";
 import { productHome, productOf, products, projectBase } from "../../shell/navigation";
 import { useBlockedProducts } from "../../shell/product-access";
 
+import styles from "./ProjectsPage.module.css";
+
 const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][] => {
   switch (type) {
     case ProjectType.SecretManager:
@@ -97,6 +99,7 @@ export const ProjectsPage = () => {
               <Card
                 variant="framed"
                 key={product.type}
+                className={blocked.has(product.type) ? styles.blocked : undefined}
                 footerPlacement="frame"
                 title={
                   <Inline gap={8} align="center">
