@@ -177,6 +177,7 @@ export type TRenewCertificateDTO = {
 };
 
 export type TRenewCertificateResponse = {
+  status: CertificateRequestStatus;
   certificate: string;
   issuingCaCertificate: string;
   certificateChain: string;

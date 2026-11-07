@@ -4361,6 +4361,7 @@ interface RenewCertificate {
     renewalKeySource: CertificateRenewalKeySource;
     externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
     changedAttributes: TRenewalAuditChange[];
+    status?: CertificateRequestStatus;
   };
 }
 

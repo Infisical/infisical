@@ -183,6 +183,7 @@ export interface TCreateRequestFromPolicyDTO {
   requesterName: string;
   requesterEmail: string;
   skipApproverNotification?: boolean;
+  deferApproverNotification?: boolean;
   autoApprovalEvidence?: TAutoApprovalEvidence | null;
   tx?: Knex;
 }
