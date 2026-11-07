@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "strategic-descriptions",
+    title: "Strategic descriptions",
+    description:
+      "Descriptions are optional and earn their place: a one-sentence lede, a scoping subtitle or a line that tells cards apart.",
+    date: "2026-11-07",
+    commit: "88efc85d88",
+    page: "rules"
+  },
+  {
     id: "container-defaults",
     title: "Container defaults",
     description:
@@ -210,14 +219,5 @@ export const recentChanges: {
     date: "2026-11-05",
     commit: "3a41c65e00",
     page: "dropdown-menu"
-  },
-  {
-    id: "badge-field-mapping",
-    title: "Badges and FieldMapping",
-    description:
-      "Badges that share a row with controls take control height, and FieldMapping pairs source and destination fields.",
-    date: "2026-11-04",
-    commit: "35dce26df3",
-    page: "field-mapping"
   }
 ];
