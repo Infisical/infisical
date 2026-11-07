@@ -1,5 +1,4 @@
-import { type ReactNode, useState } from "react";
-import { PencilIcon } from "lucide-react";
+import { useState } from "react";
 
 import {
   AlertDialog,
@@ -12,7 +11,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@app/components/v4/ui/card";
+import { Card } from "@app/components/v4/ui/card";
 import {
   DataTable,
   type DataTableColumn,
@@ -27,19 +26,7 @@ import {
 } from "@app/components/v4/ui/dialog";
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Inline } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@app/components/v4/ui/sheet";
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { useV4Adapter } from "../../data/adapters";
@@ -48,165 +35,15 @@ import { useGo } from "../navigation";
 import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
-import { type ProjectRoleOption, useMemberRoleAccess } from "./member-access";
+import { useMemberRoleAccess } from "./member-access";
+import { AddRoleSheet, RoleGrantRow } from "./role-grant";
 import { useProjectScope } from "./scope";
-import {
-  draftOf,
-  DurationBadge,
-  DurationPicker,
-  type GrantDraft,
-  permanent,
-  toRolesDto
-} from "./temporary-access";
-
-import styles from "./project.module.css";
+import { draftOf, DurationBadge, type GrantDraft, toRolesDto } from "./temporary-access";
 
 type Grant = TWorkspaceUser["roles"][number];
 
 const NO_EDIT = "You don't have permission to edit this user's roles";
-
-const RoleGrantRow = ({
-  grant,
-  index,
-  labels,
-  disabled,
-  options,
-  action,
-  onChange
-}: {
-  grant: GrantDraft;
-  index: number;
-  labels: boolean;
-  disabled: boolean;
-  options: readonly ProjectRoleOption[];
-  action?: ReactNode;
-  onChange: (next: GrantDraft) => void;
-}) => (
-  <div className={styles.grantRow} data-labels={labels || undefined}>
-    <div className={styles.grow}>
-      <Field label={labels ? "Role" : undefined}>
-        <Select
-          label={`Role ${index + 1}`}
-          value={grant.role}
-          disabled={disabled}
-          options={options.map((role) => ({ value: role.slug, label: role.name }))}
-          onChange={(role) => onChange({ ...grant, role })}
-        />
-      </Field>
-    </div>
-    <div className={styles.durationCell}>
-      <Field label={labels ? "Duration" : undefined}>
-        <DurationPicker
-          label={`Duration for role ${index + 1}`}
-          grant={grant}
-          disabledReason={disabled ? NO_EDIT : undefined}
-          onChange={onChange}
-        />
-      </Field>
-    </div>
-    {action}
-  </div>
-);
-
-const EditRolesSheet = ({
-  member,
-  projectId,
-  open,
-  onOpenChange,
-  onSave
-}: {
-  member: TWorkspaceUser;
-  projectId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (drafts: GrantDraft[]) => Promise<void>;
-}) => {
-  const { canEdit, assignable, optionsFor } = useMemberRoleAccess(projectId, member.user.email);
-  const disabled = !canEdit;
-  const [initial] = useState(() => member.roles.map(draftOf));
-  const [drafts, setDrafts] = useState(initial);
-  const [pending, setPending] = useState(false);
-  const dirty = JSON.stringify(drafts) !== JSON.stringify(initial);
-  const save = async () => {
-    setPending(true);
-    await onSave(drafts);
-    setPending(false);
-  };
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className={styles.wideSheet} pending={pending}>
-        <SheetHeader>
-          <SheetTitle>Roles</SheetTitle>
-          <SheetDescription>Pick one or more built-in or custom project roles.</SheetDescription>
-        </SheetHeader>
-        <SheetBody>
-          <div className={styles.grantList}>
-            {drafts.map((grant, index) => (
-              <RoleGrantRow
-                // oxlint-disable-next-line no-array-index-key -- rows have no id until saved
-                key={index}
-                grant={grant}
-                index={index}
-                labels={index === 0}
-                disabled={disabled}
-                options={optionsFor(grant.role)}
-                onChange={(next) =>
-                  setDrafts((current) => current.map((item, i) => (i === index ? next : item)))
-                }
-                action={
-                  <Button
-                    variant="outline"
-                    icon="trash"
-                    iconOnly
-                    disabled={disabled || drafts.length === 1}
-                    onClick={() => setDrafts((current) => current.filter((_, i) => i !== index))}
-                  >
-                    Remove role
-                  </Button>
-                }
-              />
-            ))}
-            <span>
-              <Gate allowed={!disabled}>
-                <Button
-                  variant="outline"
-                  icon="plus"
-                  disabled={disabled || !assignable.length}
-                  onClick={() =>
-                    setDrafts((current) => [
-                      ...current,
-                      permanent(
-                        assignable.find((role) => role.slug === "member")?.slug ??
-                          assignable[0].slug
-                      )
-                    ])
-                  }
-                >
-                  Add role
-                </Button>
-              </Gate>
-            </span>
-          </div>
-        </SheetBody>
-        <SheetFooter>
-          <Inline gap={8} justify="end">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              disabled={!dirty || disabled || !drafts.length}
-              loading={pending}
-              onClick={save}
-            >
-              Save roles
-            </Button>
-          </Inline>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
-  );
-};
+const ALL_ASSIGNED = "This user already has every role you can assign";
 
 const EditRoleDialog = ({
   grant,
@@ -232,10 +69,8 @@ const EditRoleDialog = ({
         </DialogHeader>
         <RoleGrantRow
           grant={draft}
-          index={0}
-          labels
-          disabled={!canEdit}
           options={optionsFor(draft.role)}
+          disabledReason={canEdit ? undefined : NO_EDIT}
           onChange={setDraft}
         />
         <DialogFooter>
@@ -260,11 +95,13 @@ export const MemberRolesSection = ({
   const scope = useProjectScope();
   const go = useGo();
   const updateRoles = useV4Adapter("access").useUpdateProjectUserRoles();
-  const { canEdit } = useMemberRoleAccess(projectId, member.user.email);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetKey, setSheetKey] = useState(0);
+  const { canEdit, assignable } = useMemberRoleAccess(projectId, member.user.email);
+  const [adding, setAdding] = useState<number>();
   const [editing, setEditing] = useState<Grant>();
   const [removing, setRemoving] = useState<Grant>();
+  const addable = assignable.filter(
+    (role) => !member.roles.some((grant) => grantSlug(grant) === role.slug)
+  );
 
   const setRoles = async (drafts: GrantDraft[], message: string) => {
     try {
@@ -282,16 +119,19 @@ export const MemberRolesSection = ({
     }
   };
 
-  const openSheet = () => {
-    setSheetKey((current) => current + 1);
-    setSheetOpen(true);
-  };
-
-  const editButton = (variant: "outline" | "primary", disabled: boolean) => (
-    <Gate allowed={!disabled} reason={NO_EDIT}>
-      <Button variant={variant} size="xs" disabled={disabled} onClick={openSheet}>
-        <Icon icon={PencilIcon} size={12} />
-        Edit roles
+  let addReason: string | undefined;
+  if (isSelf || !canEdit) addReason = NO_EDIT;
+  else if (!addable.length) addReason = ALL_ASSIGNED;
+  const addButton = (
+    <Gate allowed={!addReason} reason={addReason}>
+      <Button
+        variant="accent"
+        size="xs"
+        icon="plus"
+        disabled={Boolean(addReason)}
+        onClick={() => setAdding(Date.now())}
+      >
+        Add role
       </Button>
     </Gate>
   );
@@ -332,44 +172,37 @@ export const MemberRolesSection = ({
     )
   };
 
+  const hasRoles = member.roles.length > 0;
   return (
     <>
-      <Card variant="framed">
-        <CardHeader>
-          <CardTitle>Project roles</CardTitle>
-          {!isSelf && member.roles.length > 0 && (
-            <CardAction>{editButton("outline", !canEdit)}</CardAction>
-          )}
-        </CardHeader>
-        <CardContent>
-          {member.roles.length ? (
-            <DataTable
-              label="Project roles"
-              rows={member.roles}
-              columns={columns}
-              rowActions={isSelf ? undefined : rowActions}
-              getRowId={(grant) => grant.id}
-              rowLabel={(grant) => grantLabel(grant)}
-              onRowActivate={(grant) => go(accessLinks.projectRole(scope, grantSlug(grant)))}
-            />
-          ) : (
-            <EmptyState
-              size="sm"
-              title="This user doesn't have any roles"
-              actions={editButton("primary", !canEdit || isSelf)}
-            />
-          )}
-        </CardContent>
+      <Card
+        variant="framed"
+        title="Project roles"
+        flush={hasRoles}
+        action={hasRoles && !isSelf ? addButton : undefined}
+      >
+        {hasRoles ? (
+          <DataTable
+            label="Project roles"
+            rows={member.roles}
+            columns={columns}
+            rowActions={isSelf ? undefined : rowActions}
+            getRowId={(grant) => grant.id}
+            rowLabel={(grant) => grantLabel(grant)}
+            onRowActivate={(grant) => go(accessLinks.projectRole(scope, grantSlug(grant)))}
+          />
+        ) : (
+          <EmptyState size="sm" title="This user doesn't have any roles" actions={addButton} />
+        )}
       </Card>
-      <EditRolesSheet
-        key={sheetKey}
-        member={member}
-        projectId={projectId}
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        onSave={async (drafts) => {
-          if (await setRoles(drafts, "Successfully updated roles")) setSheetOpen(false);
-        }}
+      <AddRoleSheet
+        key={adding}
+        open={adding !== undefined}
+        options={addable}
+        onOpenChange={(open) => !open && setAdding(undefined)}
+        onAdd={(grant) =>
+          setRoles([...member.roles.map(draftOf), grant], "Successfully added role")
+        }
       />
       {editing && (
         <EditRoleDialog
