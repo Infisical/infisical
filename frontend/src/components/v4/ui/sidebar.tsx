@@ -687,20 +687,24 @@ const SidebarView = ({
           </button>
         </Tooltip>
       ) : null;
-    const cornerEnd = (unread || help) && (
+    const cornerEnd = (announcements || help) && (
       <span className={styles.cornerEnd}>
-        {announcements && unread && (
+        {announcements && (
           <Tooltip content={announcementsLabel} side={tooltipSide}>
             <span className={styles.marked}>
               <button
                 type="button"
                 className={styles.tool}
-                aria-label={`${announcementsLabel}, ${announcements.unread} unread`}
+                aria-label={
+                  unread
+                    ? `${announcementsLabel}, ${announcements.unread} unread`
+                    : announcementsLabel
+                }
                 onClick={announcements.onClick}
               >
                 <Icon name="megaphone" size={18} />
               </button>
-              <span className={styles.unread} aria-hidden="true" />
+              {unread && <span className={styles.unread} aria-hidden="true" />}
             </span>
           </Tooltip>
         )}
