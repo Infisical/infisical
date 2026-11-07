@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowRightIcon,
+  ChevronRightIcon,
   CircleHelpIcon,
   CircleXIcon,
+  InfoIcon,
   KeyIcon,
   type LucideIcon,
   PlusIcon,
@@ -12,22 +14,18 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { NATIVE_SERVICE_META } from "@app/components/agent-vault/nativeServiceMeta";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Badge,
   Button,
+  CodeBlock,
   TableCell,
   TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  AgentVaultServiceType,
-  AgentVaultSessionLogDecision,
-  isNativeServiceType
-} from "@app/hooks/api/agentVault";
+import { AgentVaultServiceType, AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultSessionLogMcpCall,
   TAgentVaultSessionLogNativeDetail,
@@ -36,15 +34,20 @@ import {
 
 import {
   groupRepeatedMcpCalls,
+  hasNativeSessionLogDetails,
   httpStatusLabel,
   isNativeSessionLogRecord,
   mcpMoreCallsLabel,
+  nativeSessionLogSections,
   nativeSessionLogSummary,
   sessionLogMcpCalls,
-  sessionLogMcpCallsTruncated
+  sessionLogMcpCallsTruncated,
+  sessionLogMethodLabel
 } from "./SessionLogsPanel.utils";
 
 const ARRIVAL_HOLD_MS = 1200;
+
+export const SESSION_LOG_COLUMN_COUNT = 7;
 
 export const DECISION_PRESENTATION: Record<
   AgentVaultSessionLogDecision,
@@ -178,81 +181,139 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
   );
 };
 
-const NativeDetailSection = ({ label, value }: { label: string; value?: string }) =>
-  value ? (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-muted">{label}</span>
-      <pre className="max-h-48 overflow-y-auto font-mono text-xs break-all whitespace-pre-wrap">
-        {value}
-      </pre>
-    </div>
-  ) : null;
+// The row says which service type it is in the Method column, so the summary carries no badge.
+const NativeSummary = ({
+  record,
+  detailId,
+  isExpanded,
+  onToggle
+}: {
+  record: TAgentVaultSessionLogRecord;
+  detailId: string;
+  isExpanded: boolean;
+  onToggle?: () => void;
+}) => {
+  const summary = nativeSessionLogSummary(record);
+  if (!onToggle) {
+    return summary ? (
+      <span className="block truncate font-mono text-xs" title={summary}>
+        {summary}
+      </span>
+    ) : (
+      <span className="text-muted">No details recorded</span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      aria-expanded={isExpanded}
+      aria-controls={isExpanded ? detailId : undefined}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
+      className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <ChevronRightIcon
+        aria-hidden
+        className={twMerge(
+          "size-3.5 shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none",
+          isExpanded && "rotate-90 text-foreground"
+        )}
+      />
+      <span className="min-w-0 truncate font-mono text-xs">
+        {summary || <span className="font-sans text-muted">Show details</span>}
+      </span>
+    </button>
+  );
+};
 
-const NativeDetailContent = ({ native }: { native: TAgentVaultSessionLogNativeDetail }) => (
-  <div className="flex flex-col gap-2">
-    <NativeDetailSection label="Statement" value={native.statement} />
-    <NativeDetailSection label="Command" value={native.command} />
-    {native.shell && !native.command && <span className="text-xs">Interactive shell</span>}
-    <NativeDetailSection label="File" value={native.file} />
-    <NativeDetailSection label="Input" value={native.stdin} />
-    <NativeDetailSection label="Result" value={native.result} />
-    <NativeDetailSection label="Output" value={native.output} />
-    {native.note && <p className="text-xs text-muted">{native.note}</p>}
-    {native.truncated && (
-      <p className="text-xs text-muted">Longer text was cut short when it was recorded.</p>
+const NativeDetailPanel = ({ native }: { native: TAgentVaultSessionLogNativeDetail }) => (
+  <div className="flex min-w-0 flex-col gap-3">
+    {nativeSessionLogSections(native).map((section) => (
+      <CodeBlock
+        key={section.label}
+        label={section.label}
+        value={section.value}
+        className={twMerge(
+          "max-h-80 overflow-y-auto break-words whitespace-pre-wrap",
+          section.isError && "text-danger"
+        )}
+      />
+    ))}
+    {(native.note || native.truncated) && (
+      <div className="flex flex-col gap-1 text-xs text-label">
+        {native.note && (
+          <p className="flex items-start gap-1.5">
+            <InfoIcon aria-hidden className="mt-px size-3.5 shrink-0" />
+            <span>{native.note}</span>
+          </p>
+        )}
+        {native.truncated && (
+          <p className="text-muted">Longer text was cut short when it was recorded.</p>
+        )}
+      </div>
     )}
   </div>
 );
 
-const NativeDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
-  const meta = isNativeServiceType(record.serviceType)
-    ? NATIVE_SERVICE_META[record.serviceType]
-    : null;
-  const BadgeIcon = meta?.icon ?? ServerIcon;
-  const summary = nativeSessionLogSummary(record);
-  const { native } = record;
-
-  return (
-    <span className="flex min-w-0 items-center gap-1.5">
-      <Badge variant="info">
-        <BadgeIcon />
-        {meta?.label ?? record.method}
-      </Badge>
-      {native ? (
-        <Tooltip>
-          <TooltipTrigger className="min-w-0 truncate text-left font-mono text-xs">
-            {summary || <span className="text-muted">No details recorded</span>}
-          </TooltipTrigger>
-          <TooltipContent className="max-w-lg">
-            <NativeDetailContent native={native} />
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        <span className="text-muted">No details recorded</span>
-      )}
-      {native?.truncated && <span className="shrink-0 text-xs text-muted">(truncated)</span>}
-    </span>
-  );
-};
-
-const RequestDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
-  if (isNativeSessionLogRecord(record)) return <NativeDetail record={record} />;
-  return record.serviceType === AgentVaultServiceType.Mcp ? (
+const RequestDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) =>
+  record.serviceType === AgentVaultServiceType.Mcp ? (
     <McpDetail record={record} />
   ) : (
     <PathDetail record={record} />
   );
-};
 
 type Props = {
   record: TAgentVaultSessionLogRecord;
   arrivedAt?: number;
   accessBundleName?: string;
   onAddService?: () => void;
+  /** Whether a database or SSH row shows its recorded details beneath it. */
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
+  /** Told the height of the row and its details while they are open, so the list can make room. */
+  onMeasure?: (height: number) => void;
 };
 
-export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddService }: Props) => {
+export const SessionLogRow = ({
+  record,
+  arrivedAt,
+  accessBundleName,
+  onAddService,
+  isExpanded = false,
+  onToggleExpanded,
+  onMeasure
+}: Props) => {
   const [isArriving, setIsArriving] = useState(false);
+  const isNative = isNativeSessionLogRecord(record);
+  const { native } = record;
+  const isExpandable = isNative && hasNativeSessionLogDetails(native) && Boolean(onToggleExpanded);
+  const isOpen = isExpandable && isExpanded;
+  const detailId = useId();
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  const detailRef = useRef<HTMLTableRowElement>(null);
+  const onMeasureRef = useRef(onMeasure);
+  const wasExpandedRef = useRef(false);
+
+  useLayoutEffect(() => {
+    onMeasureRef.current = onMeasure;
+  });
+
+  // Reported only around an expansion: a collapsed row is the height the list already assumes.
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row || (!isOpen && !wasExpandedRef.current)) return undefined;
+    wasExpandedRef.current = isOpen;
+    const report = () =>
+      onMeasureRef.current?.(row.offsetHeight + (detailRef.current?.offsetHeight ?? 0));
+    report();
+    if (!isOpen) return undefined;
+    const observer = new ResizeObserver(report);
+    observer.observe(row);
+    if (detailRef.current) observer.observe(detailRef.current);
+    return () => observer.disconnect();
+  }, [isOpen]);
 
   useEffect(() => {
     if (arrivedAt === undefined) return undefined;
@@ -264,13 +325,10 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
   }, [arrivedAt]);
 
   const presentation = decisionPresentation(record.decision);
-  const isNative = isNativeSessionLogRecord(record);
   // A database or SSH exchange has no HTTP status: its record carries 0, which is not an error.
   const proxyAnswered = !isNative && isProxyAnswered(record.decision);
   const hasHttpStatus = !isNative && !proxyAnswered && Boolean(record.status);
-  let outcomeDescription: string | null = null;
-  if (proxyAnswered && record.status) outcomeDescription = proxyAnswerDescription(record);
-  else if (isNative && record.native?.note) outcomeDescription = record.native.note;
+  const outcomeDescription = proxyAnswered && record.status ? proxyAnswerDescription(record) : null;
   const outcome = (
     <Badge variant={presentation.variant}>
       <presentation.icon />
@@ -287,77 +345,103 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
   );
 
   return (
-    <TableRow
-      className={twMerge(
-        "transition-colors duration-700 motion-reduce:transition-none",
-        isArriving && "bg-surface-active"
+    <>
+      <TableRow
+        ref={rowRef}
+        onClick={isExpandable ? onToggleExpanded : undefined}
+        className={twMerge(
+          "transition-colors duration-700 motion-reduce:transition-none",
+          isOpen && "bg-container-hover [&>td]:border-b-0",
+          isArriving && "bg-surface-active"
+        )}
+      >
+        <TableCell>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="whitespace-nowrap tabular-nums">
+                {format(new Date(record.ts), "MMM dd, yyyy HH:mm:ss")}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {format(new Date(record.ts), "MMM dd, yyyy HH:mm:ss.SSS (zzz)")}
+            </TooltipContent>
+          </Tooltip>
+        </TableCell>
+        <TableCell className="truncate font-mono text-xs">
+          {sessionLogMethodLabel(record)}
+        </TableCell>
+        <TableCell>
+          {record.service ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{host}</TooltipTrigger>
+              <TooltipContent>{record.service}</TooltipContent>
+            </Tooltip>
+          ) : (
+            host
+          )}
+        </TableCell>
+        <TableCell>
+          {isNative ? (
+            <NativeSummary
+              record={record}
+              detailId={detailId}
+              isExpanded={isOpen}
+              onToggle={isExpandable ? onToggleExpanded : undefined}
+            />
+          ) : (
+            <RequestDetail record={record} />
+          )}
+        </TableCell>
+        <TableCell className="font-mono text-xs">
+          {hasHttpStatus ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={statusTone(record.status)}>{record.status}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {record.host} returned {httpStatusLabel(record.status)}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="text-muted">—</span>
+          )}
+        </TableCell>
+        <TableCell>
+          {outcomeDescription ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{outcome}</TooltipTrigger>
+              <TooltipContent className="max-w-sm">{outcomeDescription}</TooltipContent>
+            </Tooltip>
+          ) : (
+            outcome
+          )}
+        </TableCell>
+        <TableCell variant="action">
+          {onAddService && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="xs" onClick={onAddService}>
+                  <PlusIcon />
+                  Add Service
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Add {record.host} to {accessBundleName}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </TableCell>
+      </TableRow>
+      {isOpen && native && (
+        <TableRow ref={detailRef} id={detailId} className="bg-container-hover">
+          <TableCell
+            colSpan={SESSION_LOG_COLUMN_COUNT}
+            className="h-auto px-3 pt-1 pb-4 whitespace-normal"
+          >
+            <NativeDetailPanel native={native} />
+          </TableCell>
+        </TableRow>
       )}
-    >
-      <TableCell>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="whitespace-nowrap tabular-nums">
-              {format(new Date(record.ts), "MMM dd, yyyy HH:mm:ss")}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            {format(new Date(record.ts), "MMM dd, yyyy HH:mm:ss.SSS (zzz)")}
-          </TooltipContent>
-        </Tooltip>
-      </TableCell>
-      <TableCell className="font-mono text-xs">{record.method}</TableCell>
-      <TableCell>
-        {record.service ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{host}</TooltipTrigger>
-            <TooltipContent>{record.service}</TooltipContent>
-          </Tooltip>
-        ) : (
-          host
-        )}
-      </TableCell>
-      <TableCell>
-        <RequestDetail record={record} />
-      </TableCell>
-      <TableCell className="font-mono text-xs">
-        {hasHttpStatus ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className={statusTone(record.status)}>{record.status}</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              {record.host} returned {httpStatusLabel(record.status)}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <span className="text-muted">—</span>
-        )}
-      </TableCell>
-      <TableCell>
-        {outcomeDescription ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{outcome}</TooltipTrigger>
-            <TooltipContent className="max-w-sm">{outcomeDescription}</TooltipContent>
-          </Tooltip>
-        ) : (
-          outcome
-        )}
-      </TableCell>
-      <TableCell variant="action">
-        {onAddService && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="xs" onClick={onAddService}>
-                <PlusIcon />
-                Add Service
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Add {record.host} to {accessBundleName}
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </TableCell>
-    </TableRow>
+    </>
   );
 };

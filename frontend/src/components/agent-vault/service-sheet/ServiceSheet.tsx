@@ -100,6 +100,13 @@ import {
 import { MCP_SERVICE_STEPS, nativeServiceSteps, SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
+const NATIVE_FIELD_OF_CONFIG_ERROR: [string, keyof TServiceForm][] = [
+  ["'host'", "host"],
+  ["'port'", "port"],
+  ["'database'", "database"],
+  ["'tls.ca'", "tlsCa"]
+];
+
 const BLANK_SERVICE_FORM: TServiceForm = {
   serviceType: AgentVaultServiceType.Http,
   name: "",
@@ -114,6 +121,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   tlsCa: "",
   sshPrivateKey: "",
   sshCertificate: "",
+  sshCertificateRemoved: false,
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -701,6 +709,25 @@ export const ServiceSheet = ({
       ) {
         setError("username", { type: "server", message: serverResponse.message });
         setStep(stepKeys.indexOf(ServiceStep.Credential));
+        return;
+      }
+
+      // The form checks these too, so this only catches a rule it doesn't know yet. The message names the field
+      // as the config schema does, as in `'host': ...`.
+      const nativeField =
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        isNativeServiceType(data.serviceType)
+          ? NATIVE_FIELD_OF_CONFIG_ERROR.find(([prefix]) =>
+              serverResponse.message.startsWith(`${prefix}: `)
+            )
+          : undefined;
+      if (serverResponse?.error === ApiErrorTypes.BadRequestError && nativeField) {
+        const [prefix, field] = nativeField;
+        setError(field, {
+          type: "server",
+          message: serverResponse.message.slice(prefix.length + 2)
+        });
+        setStep(stepKeys.indexOf(ServiceStep.Details));
         return;
       }
 

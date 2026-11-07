@@ -770,6 +770,8 @@ export type TAgentVaultDecryptedSessionLogPage<
 export type TAgentVaultVariableUsedByService = {
   id: string;
   name: string;
+  // Absent from servers that predate it, where a database or SSH service shows the generic icon.
+  type?: AgentVaultServiceType;
   // null for a database or SSH service.
   hostPattern: string | null;
   accessBundleId: string;

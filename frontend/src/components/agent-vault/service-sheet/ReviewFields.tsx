@@ -85,14 +85,18 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
 
   const tlsSummary = () => {
     if (!form.tlsEnabled) return "Off";
-    const verify = form.tlsVerify ? "verifies the certificate" : "doesn't verify the certificate";
-    return form.tlsCa.trim() ? `On, ${verify} with a custom CA` : `On, ${verify}`;
+    if (!form.tlsVerify) return "On, doesn't verify the certificate";
+    return form.tlsCa.trim()
+      ? "On, verifies the certificate with a custom CA"
+      : "On, verifies the certificate";
   };
 
-  const keyOutcome = (value: string, hasStored: boolean) => {
-    if (hasStored && value === UNCHANGED_SECRET) return "Unchanged";
+  // An emptied box keeps what is stored; only Remove Certificate takes a stored value away.
+  const keyOutcome = (value: string, hasStored: boolean, isRemoved = false) => {
+    if (hasStored && isRemoved) return "Removed";
+    if (hasStored && (value === UNCHANGED_SECRET || !value.trim())) return "Unchanged";
     if (value.trim()) return hasStored ? "Replaced" : "Set";
-    return hasStored ? "Removed" : "None";
+    return "None";
   };
   const hasStoredKey = isUpdate && storedType === AgentVaultCredentialType.SshKey;
   const hasStoredCertificate =
@@ -247,7 +251,13 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
               </Detail>
               <Detail>
                 <DetailLabel>Certificate</DetailLabel>
-                <DetailValue>{keyOutcome(form.sshCertificate, hasStoredCertificate)}</DetailValue>
+                <DetailValue>
+                  {keyOutcome(
+                    form.sshCertificate,
+                    hasStoredCertificate,
+                    form.sshCertificateRemoved
+                  )}
+                </DetailValue>
               </Detail>
             </>
           )}

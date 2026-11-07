@@ -36,11 +36,12 @@ const HTTP_SECTION_DESCRIPTION =
 const NATIVE_SECTION_DESCRIPTION =
   "Databases and servers your agent connects to by name. The proxy logs in for it.";
 
+// In the order of the sections under All Types, where HTTP comes last because its category list is long.
 const TYPE_FILTERS: { value: TTypeFilter; label: string }[] = [
   { value: "all", label: "All Types" },
   { value: AgentVaultServiceType.Mcp, label: "MCP Servers" },
-  { value: AgentVaultServiceType.Http, label: "HTTP APIs" },
-  { value: "native", label: "Other Protocols" }
+  { value: "native", label: "Other Protocols" },
+  { value: AgentVaultServiceType.Http, label: "HTTP APIs" }
 ];
 
 // MCP cards sit under the "MCP Servers" heading, so a tag would only repeat it.
@@ -203,9 +204,11 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
       mcp: AGENT_VAULT_MCP_TEMPLATES.filter(matches),
       http: AGENT_VAULT_TEMPLATES.filter(matches),
       native: AGENT_VAULT_NATIVE_SERVICE_TYPES.filter((serviceType) =>
-        [NATIVE_SERVICE_META[serviceType].label, serviceType].some((value) =>
-          value.toLowerCase().includes(term)
-        )
+        [
+          NATIVE_SERVICE_META[serviceType].label,
+          serviceType,
+          ...NATIVE_SERVICE_META[serviceType].aliases
+        ].some((value) => value.toLowerCase().includes(term))
       )
     };
   }, [search]);

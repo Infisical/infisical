@@ -1,3 +1,4 @@
+import { NATIVE_SERVICE_META } from "@app/components/agent-vault/nativeServiceMeta";
 import {
   AgentVaultServiceType,
   isNativeServiceType,
@@ -7,6 +8,7 @@ import {
   TAgentVaultSessionLogGap,
   TAgentVaultSessionLogGapReason,
   TAgentVaultSessionLogMcpCall,
+  TAgentVaultSessionLogNativeDetail,
   TAgentVaultSessionLogRecord
 } from "@app/hooks/api/agentVault/types";
 
@@ -109,6 +111,29 @@ export const sessionLogSearchTerm = (search: string) =>
     .replace(/^https?:\/\//, "")
     .replace(/[?#].*$/, "");
 
+export const isNativeSessionLogRecord = (record: TAgentVaultSessionLogRecord) =>
+  isNativeServiceType(record.serviceType) || record.native !== undefined;
+
+// The proxy writes the type in upper case as the method, as in POSTGRES, so a row whose serviceType is missing can
+// still be named.
+export const sessionLogMethodLabel = (record: TAgentVaultSessionLogRecord) => {
+  if (!isNativeSessionLogRecord(record)) return record.method;
+  const type = isNativeServiceType(record.serviceType)
+    ? record.serviceType
+    : (record.method.toLowerCase() as AgentVaultServiceType);
+  return isNativeServiceType(type) ? NATIVE_SERVICE_META[type].label : record.method;
+};
+
+const NATIVE_SEARCH_FIELDS = [
+  "statement",
+  "command",
+  "file",
+  "stdin",
+  "result",
+  "output",
+  "note"
+] as const satisfies (keyof TAgentVaultSessionLogNativeDetail)[];
+
 export const matchesSessionLogSearch = (record: TAgentVaultSessionLogRecord, search: string) => {
   const term = sessionLogSearchTerm(search);
   if (!term) return true;
@@ -118,30 +143,70 @@ export const matchesSessionLogSearch = (record: TAgentVaultSessionLogRecord, sea
     host,
     path,
     record.method.toLowerCase(),
+    sessionLogMethodLabel(record).toLowerCase(),
     (record.service ?? "").toLowerCase(),
     ...(record.mcp?.calls ?? []).flatMap((call) =>
       [call.method, call.tool ?? ""].map((field) => field.toLowerCase())
     ),
-    ...[record.native?.statement, record.native?.command, record.native?.file].map((field) =>
-      (field ?? "").toLowerCase()
-    ),
+    ...NATIVE_SEARCH_FIELDS.map((field) => (record.native?.[field] ?? "").toLowerCase()),
     `${host}${path}`,
     `${host}:${record.port}${path}`
   ].some((field) => field.includes(term));
 };
 
-export const isNativeSessionLogRecord = (record: TAgentVaultSessionLogRecord) =>
-  isNativeServiceType(record.serviceType) || record.native !== undefined;
+const firstLine = (text?: string) =>
+  text
+    ?.split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .find(Boolean) ?? "";
 
-// One line for the row: what the agent ran, or what kind of exchange it was.
+// One line for the row: what the agent ran, or failing that the first thing it sent or got back.
 export const nativeSessionLogSummary = (record: TAgentVaultSessionLogRecord) => {
   const { native } = record;
   if (!native) return "";
   const text = native.statement ?? native.command ?? native.file;
   if (text) return text.replace(/\s+/g, " ").trim();
   if (native.shell) return "Interactive shell";
-  return native.note ?? "";
+  return (
+    firstLine(native.stdin) ||
+    firstLine(native.output) ||
+    firstLine(native.result) ||
+    native.note ||
+    ""
+  );
 };
+
+export type TNativeSessionLogSection = {
+  label: string;
+  value: string;
+  isError?: boolean;
+};
+
+// PostgreSQL reports a failed statement as `ERROR: ...` and MySQL a statement with no reply as NO_RESPONSE.
+const isFailedResult = (result: string) => /^ERROR\b/.test(result) || result === "NO_RESPONSE";
+
+// What the row expands to, in the order it happened. Empty fields are left out rather than shown blank.
+export const nativeSessionLogSections = (
+  native: TAgentVaultSessionLogNativeDetail
+): TNativeSessionLogSection[] =>
+  (
+    [
+      { label: "Statement", value: native.statement },
+      { label: "Command", value: native.command },
+      { label: "File", value: native.file },
+      { label: "Input", value: native.stdin },
+      {
+        label: "Result",
+        value: native.result,
+        isError: native.result ? isFailedResult(native.result) : false
+      },
+      { label: "Output", value: native.output }
+    ] as { label: string; value?: string; isError?: boolean }[]
+  ).filter((section): section is TNativeSessionLogSection => Boolean(section.value));
+
+// A row with only a note already shows all of it as its summary, so it has nothing to expand.
+export const hasNativeSessionLogDetails = (native?: TAgentVaultSessionLogNativeDetail) =>
+  native !== undefined && nativeSessionLogSections(native).length > 0;
 
 export const sessionLogMcpCalls = (
   record: TAgentVaultSessionLogRecord

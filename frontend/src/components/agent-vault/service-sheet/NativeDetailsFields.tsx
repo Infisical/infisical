@@ -171,9 +171,10 @@ export const NativeDetailsFields = () => {
                   <FieldContent>
                     <FieldTitle>Verify Certificate</FieldTitle>
                     <FieldDescription>
-                      Check that the server&apos;s certificate is valid for the host, signed by the
-                      certificate authority below or a publicly trusted one. Turn this off only for
-                      a server with a self-signed certificate you can&apos;t add below.
+                      Check that the server&apos;s certificate is valid for the host and signed by a
+                      publicly trusted authority, or by the certificate authority below when you add
+                      one. Turn this off only for a server with a self-signed certificate you
+                      can&apos;t add below.
                     </FieldDescription>
                   </FieldContent>
                   <Toggle
@@ -201,7 +202,7 @@ export const NativeDetailsFields = () => {
                       {...field}
                       id={`${baseId}-tls-ca`}
                       rows={4}
-                      className="font-mono text-xs"
+                      className="font-mono"
                       placeholder="-----BEGIN CERTIFICATE-----"
                       spellCheck={false}
                       isError={Boolean(fieldState.error)}

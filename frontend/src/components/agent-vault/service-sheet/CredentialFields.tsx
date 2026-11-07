@@ -77,7 +77,8 @@ export const SecretInput = <TName extends SecretName>({
   hasStoredSecret,
   canBeCleared,
   storedKeys,
-  canInsertVariable
+  canInsertVariable,
+  allowsVariables = true
 }: {
   field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
@@ -95,6 +96,8 @@ export const SecretInput = <TName extends SecretName>({
   storedKeys?: string[];
   /** Joins a chevron button to the input that opens the variable list, for readers who would not know to type {{. */
   canInsertVariable?: boolean;
+  /** Off for a field the API takes only as typed, so typing {{ opens no variable list. */
+  allowsVariables?: boolean;
 }) => {
   const { setFocus } = useFormContext<TServiceForm>();
   const [isVisible, setIsVisible] = useState(false);
@@ -173,11 +176,13 @@ export const SecretInput = <TName extends SecretName>({
                 }}
                 aria-label={ariaLabel}
                 aria-describedby={hasStoredKeys && isStoredValueKept ? descriptionId : undefined}
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={autocomplete.isOpen}
-                aria-controls={autocomplete.isOpen ? autocomplete.listId : undefined}
-                aria-activedescendant={autocomplete.activeOptionId}
+                {...(allowsVariables && {
+                  role: "combobox",
+                  "aria-autocomplete": "list" as const,
+                  "aria-expanded": autocomplete.isOpen,
+                  "aria-controls": autocomplete.isOpen ? autocomplete.listId : undefined,
+                  "aria-activedescendant": autocomplete.activeOptionId
+                })}
                 // Not type="password": that opens the browser's and password managers' autofill menus over
                 // the variable list, so the field is masked in CSS and each manager is told to skip it.
                 className={cn(
@@ -197,13 +202,13 @@ export const SecretInput = <TName extends SecretName>({
                   // An emptied field masks again, since what is typed next may be a real secret.
                   if (!event.target.value) setIsVisible(false);
                   field.onChange(event);
-                  autocomplete.refresh();
+                  if (allowsVariables) autocomplete.refresh();
                 }}
-                onKeyDown={autocomplete.onKeyDown}
+                onKeyDown={allowsVariables ? autocomplete.onKeyDown : undefined}
                 onKeyUp={(event) => {
-                  if (!SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
+                  if (allowsVariables && !SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
                 }}
-                onClick={autocomplete.refresh}
+                onClick={allowsVariables ? autocomplete.refresh : undefined}
                 onSelect={syncOverlay}
                 onScroll={syncOverlay}
                 onFocus={() => {

@@ -1,3 +1,4 @@
+import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
 import {
@@ -69,16 +70,24 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
 };
 
 // A database or SSH login has no HTTP header, so "Basic Auth" would misdescribe it.
-export const NATIVE_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
-  [AgentVaultCredentialType.Basic]: "Username and Password",
+const DATABASE_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
+  [AgentVaultCredentialType.Basic]: "Username and Password"
+};
+
+// Beside SSH Key, "Password" is the choice being made; the username is entered either way.
+const SSH_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
+  [AgentVaultCredentialType.Basic]: "Password",
   [AgentVaultCredentialType.SshKey]: "SSH Key"
 };
+
+export const nativeCredentialLabels = (serviceType: TAgentVaultNativeServiceType) =>
+  serviceType === AgentVaultServiceType.Ssh ? SSH_CREDENTIAL_LABELS : DATABASE_CREDENTIAL_LABELS;
 
 export const credentialLabel = (
   serviceType: AgentVaultServiceType,
   credentialType: AgentVaultCredentialType
 ) =>
-  (isNativeServiceType(serviceType) && NATIVE_CREDENTIAL_LABELS[credentialType]) ||
+  (isNativeServiceType(serviceType) && nativeCredentialLabels(serviceType)[credentialType]) ||
   CREDENTIAL_LABELS[credentialType];
 
 export const NATIVE_CREDENTIAL_TYPES: Record<
@@ -123,10 +132,22 @@ export const hasDatabase = (serviceType: AgentVaultServiceType) =>
 
 // The agent reaches a database or SSH service at `<name>.svc.agent-vault`, and a DNS label stops at 63 bytes.
 export const MAX_NATIVE_SERVICE_NAME_LENGTH = 63;
+
+// Mirrors agent-vault-native-config-schemas.ts on the backend, so a value the API would refuse is marked on its
+// field instead of coming back as a toast on Review.
 const MAX_NATIVE_HOST_LENGTH = 253;
 const MAX_NATIVE_DATABASE_LENGTH = 64;
 const MAX_NATIVE_CA_LENGTH = 16384;
-const MAX_SSH_KEY_LENGTH = 16384;
+const MAX_SSH_KEY_LENGTH = 8192;
+const MAX_SSH_USERNAME_LENGTH = 256;
+
+const NATIVE_HOSTNAME_RE =
+  /^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?)*$/i;
+const IPV6_SCHEMA = z.string().ip({ version: "v6" });
+// A PEM spans lines, so only those control characters are allowed.
+// eslint-disable-next-line no-control-regex
+const PEM_CONTROL_CHARS_RE = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+const PEM_BLOCK_RE = /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g;
 
 const SSH_KEY_VARIABLE_MESSAGE =
   "An SSH key credential can't use variables yet, so this can't contain double braces. Enter the value itself.";
@@ -135,20 +156,26 @@ const SSH_KEY_VARIABLE_MESSAGE =
 const SSH_KEY_TEXT_RE = /^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]*$/;
 
 export const nativeHostError = (value: string): string | null => {
-  const host = value.trim();
-  if (!host) return "Enter the server's host name or IP address.";
-  if (host.length > MAX_NATIVE_HOST_LENGTH) {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the server's host name or IP address.";
+  if (trimmed.length > MAX_NATIVE_HOST_LENGTH) {
     return `The host can be at most ${MAX_NATIVE_HOST_LENGTH} characters.`;
   }
-  if (/\s/.test(host)) return "The host can't contain spaces.";
+  const unbracketed =
+    trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
+  const host = unbracketed.replace(/\.$/, "").toLowerCase();
+  if (/\s/.test(host) || !AGENT_VAULT_NO_CONTROL_CHARS_RE.test(host)) {
+    return "The host can't contain spaces or control characters.";
+  }
+  if (host.includes("{{")) {
+    return "Variables aren't supported in the host yet. Enter the host itself.";
+  }
+  if (IPV6_SCHEMA.safeParse(host).success) return null;
   if (host.includes("://")) return "Enter only the host, without a scheme such as postgres://.";
   if (host.includes("/")) return "Enter only the host, without a path.";
   if (host.includes("*")) return "Enter one specific host. Wildcards aren't supported here.";
-  const unbracketed = host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
-  // More than one colon is an IPv6 address; one alone is a port.
-  if (unbracketed.split(":").length === 2) {
-    return "Enter the port in the Port field, not as part of the host.";
-  }
+  if (host.includes(":")) return "Enter the port in the Port field, not as part of the host.";
+  if (!NATIVE_HOSTNAME_RE.test(host)) return `"${host}" isn't a valid host name or IP address.`;
   return null;
 };
 
@@ -162,26 +189,61 @@ export const nativePortError = (value: string): string | null => {
   return null;
 };
 
-const certificateAuthorityError = (value: string): string | null => {
+export const nativeDatabaseError = (value: string): string | null => {
+  const database = value.trim();
+  if (!database) return "Enter the database to connect to.";
+  if (database.length > MAX_NATIVE_DATABASE_LENGTH) {
+    return `The database name can be at most ${MAX_NATIVE_DATABASE_LENGTH} characters.`;
+  }
+  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(database)) {
+    return "The database name can't contain control characters.";
+  }
+  if (database.includes("{{")) {
+    return "Variables aren't supported in the database name yet. Enter the name itself.";
+  }
+  return null;
+};
+
+export const certificateAuthorityError = (value: string): string | null => {
   const pem = value.trim();
   if (!pem) return null;
   if (pem.length > MAX_NATIVE_CA_LENGTH) {
     return `The certificate authority can be at most ${MAX_NATIVE_CA_LENGTH} characters.`;
   }
-  if (!/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/.test(pem)) {
-    return "Paste the CA certificate in PEM format, starting with -----BEGIN CERTIFICATE-----.";
+  const invalid =
+    "The certificate authority isn't a valid PEM certificate. Paste the CA certificate, starting with -----BEGIN CERTIFICATE-----.";
+  if (PEM_CONTROL_CHARS_RE.test(pem)) return invalid;
+  const blocks = pem.match(PEM_BLOCK_RE);
+  if (!blocks?.length) return invalid;
+  try {
+    blocks.forEach((block) => new x509.X509Certificate(block));
+  } catch {
+    return invalid;
   }
   return null;
 };
 
+const hasSshKeyVariable = (value: string) => value.includes("{{") || value.includes("}}");
+
 const sshKeyTextError = (value: string): string | null => {
-  if (value.includes("{{") || value.includes("}}")) return SSH_KEY_VARIABLE_MESSAGE;
-  if (value.length > MAX_SSH_KEY_LENGTH) {
+  if (hasSshKeyVariable(value)) return SSH_KEY_VARIABLE_MESSAGE;
+  if (value.trim().length > MAX_SSH_KEY_LENGTH) {
     return `This can be at most ${MAX_SSH_KEY_LENGTH} characters.`;
   }
   if (!SSH_KEY_TEXT_RE.test(value)) {
     return "This can't contain control characters other than line breaks. Paste the key file's contents as they are.";
   }
+  return null;
+};
+
+// A username is one line, unlike the key and certificate.
+const sshUsernameError = (value: string): string | null => {
+  if (hasSshKeyVariable(value)) return SSH_KEY_VARIABLE_MESSAGE;
+  const username = value.trim();
+  if (username.length > MAX_SSH_USERNAME_LENGTH) {
+    return `This can be at most ${MAX_SSH_USERNAME_LENGTH} characters.`;
+  }
+  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(username)) return AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE;
   return null;
 };
 
@@ -435,6 +497,8 @@ export const buildServiceSchema = (
       tlsCa: z.string(),
       sshPrivateKey: z.string(),
       sshCertificate: z.string(),
+      // Set only by Remove Certificate: an emptied box keeps the stored certificate, as every other stored value does.
+      sshCertificateRemoved: z.boolean(),
       // In the form rather than component state so the resolver sees it: trigger() wipes anything set with
       // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
@@ -510,14 +574,10 @@ export const buildServiceSchema = (
         const portIssue = nativePortError(data.port);
         if (portIssue) issue("port", portIssue);
         if (hasDatabase(data.serviceType)) {
-          if (!data.database.trim()) issue("database", "Enter the database to connect to.");
-          else if (data.database.trim().length > MAX_NATIVE_DATABASE_LENGTH) {
-            issue(
-              "database",
-              `The database name can be at most ${MAX_NATIVE_DATABASE_LENGTH} characters.`
-            );
-          }
-          const caIssue = certificateAuthorityError(data.tlsCa);
+          const databaseIssue = nativeDatabaseError(data.database);
+          if (databaseIssue) issue("database", databaseIssue);
+          // The CA field is hidden while TLS is off, and nothing sends it then.
+          const caIssue = data.tlsEnabled ? certificateAuthorityError(data.tlsCa) : null;
           if (caIssue) issue("tlsCa", caIssue);
         }
         if (!NATIVE_CREDENTIAL_TYPES[data.serviceType].includes(data.credentialType)) {
@@ -828,7 +888,7 @@ export const buildServiceSchema = (
           if (!username.trim()) {
             if (needsNewValue) issue("username", "Enter the user to log in as.");
           } else {
-            const usernameIssue = sshKeyTextError(username);
+            const usernameIssue = sshUsernameError(username);
             if (usernameIssue) issue("username", usernameIssue);
           }
         }
@@ -840,7 +900,7 @@ export const buildServiceSchema = (
             if (keyIssue) issue("sshPrivateKey", keyIssue);
           }
         }
-        if (data.sshCertificate !== UNCHANGED_SECRET) {
+        if (data.sshCertificate !== UNCHANGED_SECRET && !data.sshCertificateRemoved) {
           const certificateIssue = sshKeyTextError(data.sshCertificate);
           if (certificateIssue) issue("sshCertificate", certificateIssue);
         }

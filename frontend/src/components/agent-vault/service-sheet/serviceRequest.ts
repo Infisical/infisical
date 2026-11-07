@@ -174,33 +174,32 @@ const buildSshKeyCredential = (data: TServiceForm): TAgentVaultSshKeyCredentialI
   ...(data.sshCertificate.trim() ? { certificate: data.sshCertificate.trim() } : {})
 });
 
-// A part left at the sentinel keeps what is stored; an emptied certificate is removed.
+// A part left at the sentinel keeps what is stored. Only Remove Certificate sends null; an emptied box keeps it.
 const buildSshKeyCredentialPatch = (data: TServiceForm): TAgentVaultSshKeyCredentialUpdate => {
-  const certificate = data.sshCertificate.trim();
+  const certificate = data.sshCertificate === UNCHANGED_SECRET ? "" : data.sshCertificate.trim();
+  let certificatePatch: { certificate?: string | null } = {};
+  if (data.sshCertificateRemoved) certificatePatch = { certificate: null };
+  else if (certificate) certificatePatch = { certificate };
   return {
     type: AgentVaultCredentialType.SshKey,
     ...(data.username === UNCHANGED_SECRET ? {} : { username: (data.username ?? "").trim() }),
     ...(data.sshPrivateKey === UNCHANGED_SECRET ? {} : { privateKey: data.sshPrivateKey.trim() }),
-    ...(data.sshCertificate === UNCHANGED_SECRET ? {} : { certificate: certificate || null })
+    ...certificatePatch
   };
 };
 
-const buildNativeConnection = (
-  data: TServiceForm & { serviceType: TAgentVaultNativeServiceType }
-) => ({
+// The CA is left out while TLS is off: its field is hidden then, and leaving it out keeps a stored one for when TLS
+// is turned back on. An emptied CA is null, which clears a stored one and is the same as none on create.
+const buildNativeTls = (data: TServiceForm) =>
+  data.tlsEnabled
+    ? { enabled: true, verify: data.tlsVerify, ca: data.tlsCa.trim() || null }
+    : { enabled: false, verify: data.tlsVerify };
+
+const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativeServiceType) => ({
   name: data.name,
   host: data.host.trim(),
   port: Number(data.port.trim()),
-  ...(hasDatabase(data.serviceType)
-    ? {
-        database: data.database.trim(),
-        tls: {
-          enabled: data.tlsEnabled,
-          verify: data.tlsVerify,
-          ca: data.tlsCa.trim() || null
-        }
-      }
-    : {})
+  ...(hasDatabase(serviceType) ? { database: data.database.trim(), tls: buildNativeTls(data) } : {})
 });
 
 const buildNativeCreateRequest = (
@@ -208,33 +207,23 @@ const buildNativeCreateRequest = (
   data: TServiceForm,
   serviceType: TAgentVaultNativeServiceType
 ): TCreateAgentVaultServiceDTO => {
-  const { name, host, port } = buildNativeConnection({ ...data, serviceType });
+  const connection = buildNativeConnection(data, serviceType);
   if (serviceType === AgentVaultServiceType.Ssh) {
     return {
       accessBundleId,
       type: serviceType,
-      name,
-      host,
-      port,
+      ...connection,
       credential:
         data.credentialType === AgentVaultCredentialType.SshKey
           ? buildSshKeyCredential(data)
           : buildBasicCredential(data)
     };
   }
-  const tlsCa = data.tlsCa.trim();
   return {
     accessBundleId,
     type: serviceType,
-    name,
-    host,
-    port,
+    ...connection,
     database: data.database.trim(),
-    tls: {
-      enabled: data.tlsEnabled,
-      verify: data.tlsVerify,
-      ...(tlsCa ? { ca: tlsCa } : {})
-    },
     credential: buildBasicCredential(data)
   };
 };
@@ -278,7 +267,7 @@ export const buildUpdateServiceRequest = (
       accessBundleId,
       serviceId,
       type: data.serviceType,
-      ...buildNativeConnection({ ...data, serviceType: data.serviceType }),
+      ...buildNativeConnection(data, data.serviceType),
       credential: buildNativeCredentialPatch(data)
     };
   }

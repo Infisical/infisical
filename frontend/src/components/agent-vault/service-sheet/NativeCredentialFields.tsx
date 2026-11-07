@@ -12,7 +12,6 @@ import {
 import { SecretInput as SecretTextArea } from "@app/components/v3/platform/SecretInput/SecretInput";
 import {
   AgentVaultCredentialType,
-  AgentVaultServiceType,
   TAgentVaultMemberProvidedField,
   TAgentVaultNativeServiceType
 } from "@app/hooks/api/agentVault";
@@ -20,15 +19,10 @@ import {
 import { CredentialFields, SecretInput } from "./CredentialFields";
 import {
   NATIVE_CREDENTIAL_TYPES,
-  NATIVE_CREDENTIAL_LABELS,
+  nativeCredentialLabels,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
-
-const SSH_CREDENTIAL_TYPE_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
-  [AgentVaultCredentialType.Basic]: "Password",
-  [AgentVaultCredentialType.SshKey]: "SSH Key"
-};
 
 // A stored key is never returned, so the box stays empty while it is kept and the sentinel never shows as text.
 const KeyTextArea = ({
@@ -90,12 +84,17 @@ export const NativeCredentialFields = ({
   const baseId = useId();
   const credentialType = watch("credentialType");
   const username = watch("username");
-  const sshCertificate = watch("sshCertificate");
+  const sshCertificateRemoved = watch("sshCertificateRemoved");
 
   const isSshKey = credentialType === AgentVaultCredentialType.SshKey;
   const hasStoredKey = storedType === AgentVaultCredentialType.SshKey && isSshKey;
   const hasCertificateToKeep = hasStoredKey && hasStoredCertificate;
-  const isCertificateRemoved = hasCertificateToKeep && sshCertificate === "";
+  const isCertificateRemoved = hasCertificateToKeep && sshCertificateRemoved;
+
+  const setCertificateRemoved = (isRemoved: boolean) => {
+    setValue("sshCertificateRemoved", isRemoved, { shouldDirty: true });
+    setValue("sshCertificate", UNCHANGED_SECRET, { shouldDirty: true, shouldValidate: true });
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -103,11 +102,7 @@ export const NativeCredentialFields = ({
         storedType={storedType}
         storedMemberFields={storedMemberFields}
         credentialTypes={NATIVE_CREDENTIAL_TYPES[serviceType]}
-        typeLabels={
-          serviceType === AgentVaultServiceType.Ssh
-            ? SSH_CREDENTIAL_TYPE_LABELS
-            : NATIVE_CREDENTIAL_LABELS
-        }
+        typeLabels={nativeCredentialLabels(serviceType)}
         showsSendsPreview={false}
       />
 
@@ -128,6 +123,7 @@ export const NativeCredentialFields = ({
                     isUntouched={username === UNCHANGED_SECRET}
                     hasStoredSecret={hasStoredKey}
                     canBeCleared={false}
+                    allowsVariables={false}
                   />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
@@ -169,11 +165,7 @@ export const NativeCredentialFields = ({
                       type="button"
                       variant="ghost"
                       size="xs"
-                      onClick={() =>
-                        setValue("sshCertificate", isCertificateRemoved ? UNCHANGED_SECRET : "", {
-                          shouldDirty: true
-                        })
-                      }
+                      onClick={() => setCertificateRemoved(!isCertificateRemoved)}
                     >
                       {isCertificateRemoved ? "Keep Certificate" : "Remove Certificate"}
                     </Button>

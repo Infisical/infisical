@@ -31,6 +31,7 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   tlsCa: "",
   sshPrivateKey: "",
   sshCertificate: "",
+  sshCertificateRemoved: false,
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -439,7 +440,7 @@ describe("native service requests", () => {
       host: "db.internal",
       port: 5432,
       database: "orders",
-      tls: { enabled: true, verify: true },
+      tls: { enabled: true, verify: true, ca: null },
       credential: {
         type: AgentVaultCredentialType.Basic,
         username: "agent",
@@ -464,7 +465,7 @@ describe("native service requests", () => {
     });
   });
 
-  it("leaves untouched SSH key parts out of an update and removes an emptied certificate", () => {
+  it("leaves untouched SSH key parts out of an update and removes the certificate only when asked", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
@@ -472,10 +473,36 @@ describe("native service requests", () => {
         sshKeyForm({
           username: UNCHANGED_SECRET,
           sshPrivateKey: UNCHANGED_SECRET,
-          sshCertificate: ""
+          sshCertificate: UNCHANGED_SECRET,
+          sshCertificateRemoved: true
         })
       ).credential
     ).toEqual({ type: AgentVaultCredentialType.SshKey, certificate: null });
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        "service-1",
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: "  "
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        "service-1",
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: " ssh-ed25519-cert-v01@openssh.com AAAA "
+        })
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.SshKey,
+      certificate: "ssh-ed25519-cert-v01@openssh.com AAAA"
+    });
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
@@ -511,6 +538,23 @@ describe("native service requests", () => {
         password: undefined,
         memberProvidedFields: []
       }
+    });
+  });
+
+  it("leaves the CA out while TLS is off, so a stored one is kept", () => {
+    const tlsOff = postgresForm({ tlsEnabled: false, tlsVerify: true, tlsCa: "not sent" });
+    expect(buildCreateServiceRequest("bundle-1", tlsOff)).toMatchObject({
+      tls: { enabled: false, verify: true }
+    });
+    expect(buildUpdateServiceRequest("bundle-1", "service-1", tlsOff)).toMatchObject({
+      tls: { enabled: false, verify: true }
+    });
+    expect(buildUpdateServiceRequest("bundle-1", "service-1", tlsOff)).not.toHaveProperty("tls.ca");
+  });
+
+  it("sends a trimmed CA while TLS is on", () => {
+    expect(buildCreateServiceRequest("bundle-1", postgresForm({ tlsCa: " PEM " }))).toMatchObject({
+      tls: { enabled: true, verify: true, ca: "PEM" }
     });
   });
 });
