@@ -38,6 +38,7 @@ export type TGenerateKMSDTO = {
   isReserved?: boolean;
   isExportable?: boolean;
   hasDeleteProtection?: boolean;
+  isPublicKeyPublished?: boolean;
   name?: string;
   description?: string;
   tx?: Knex;
