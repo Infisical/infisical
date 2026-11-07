@@ -14,7 +14,6 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
@@ -256,16 +255,12 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
       render: (row) => new Date(row.createdAt).toISOString().slice(0, 10)
     }
   ];
-  let hint = "No incident contacts yet.";
-  if (contacts.length === 1) hint = "1 incident contact.";
-  else if (contacts.length > 1) hint = `${contacts.length} incident contacts.`;
   return (
     <>
-      <Card
-        variant="framed"
+      <SettingsCard
+        flush
         title="Incident contacts"
         description="Emailed if a severe incident affects your organization."
-        flush={isPending || rows.length > 0}
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar
@@ -279,7 +274,6 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
             </Button>
           </Inline>
         }
-        footer={hint}
       >
         {isPending || rows.length > 0 ? (
           <DataTable
@@ -305,7 +299,7 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
             title={contacts.length ? "No contacts match" : "No incident contacts"}
           />
         )}
-      </Card>
+      </SettingsCard>
       <AddContactDialog orgId={orgId} open={adding} onOpenChange={setAdding} />
       <AlertDialog open={Boolean(removing)} onOpenChange={(open) => !open && setRemoving(null)}>
         <AlertDialogContent tone="danger">

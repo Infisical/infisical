@@ -73,6 +73,7 @@ export const ListToolbar = ({
   <div className={band ? `${styles.toolbar} ${styles.bandSearch}` : styles.toolbar}>
     <div className={styles.grow}>
       <Input
+        size={band ? "xs" : undefined}
         icon="search"
         placeholder={placeholder}
         aria-label={placeholder}
@@ -85,6 +86,7 @@ export const ListToolbar = ({
         {filter.disabledReason ? (
           <Button
             variant="outline"
+            size={band ? "xs" : undefined}
             aria-label={filter.label}
             disabledReason={filter.disabledReason}
           >
@@ -93,7 +95,7 @@ export const ListToolbar = ({
         ) : (
           <Tooltip content={filter.label}>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" aria-label={filter.label}>
+              <Button variant="outline" size={band ? "xs" : undefined} aria-label={filter.label}>
                 <Icon icon={FilterIcon} />
                 {filter.selected.length > 0 && <Count tone="ink">{filter.selected.length}</Count>}
               </Button>
