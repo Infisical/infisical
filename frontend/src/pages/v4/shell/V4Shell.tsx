@@ -1,10 +1,18 @@
 import { type MouseEvent, type ReactNode, useState } from "react";
-import { type LinkOptions, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
+import {
+  type LinkOptions,
+  useMatches,
+  useNavigate,
+  useParams,
+  useRouterState
+} from "@tanstack/react-router";
 
 import type { BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
+import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Sidebar, type SidebarLevel, type SidebarSection } from "@app/components/v4/ui/sidebar";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
+import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 
 import { useV4Session } from "../data/session/contract";
 import { V4_DEMO_ORG_ID } from "../mode";
@@ -38,6 +46,7 @@ const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) =
     event.shiftKey ||
     event.altKey ||
     anchor.target ||
+    anchor.hasAttribute("data-open-classic") ||
     anchor.origin !== window.location.origin ||
     !/^\/(v4|organizations)\//.test(anchor.pathname)
   ) {
@@ -55,6 +64,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const chrome = useShellChrome();
   const resolve = useResolveV4Href();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const readiness = useMatches({ select: (matches) => matches.at(-1)?.staticData.readiness });
   const base = `/v4/organizations/${orgId}`;
   const { selectedTab } = location.search as { selectedTab?: string };
   const at = resolveShellLocation(
@@ -207,10 +217,32 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     ...(at.current ? [{ label: at.current.label }] : [])
   ];
 
+  const classicHref =
+    orgId !== V4_DEMO_ORG_ID && readiness === "partial" ? toV3Href(location.href) : undefined;
+
   return (
     <AppShell style={{ height: "100%" }} onClickCapture={(event) => routeInternalLinks(event, go)}>
       <TopBar
         breadcrumb={breadcrumb}
+        actions={
+          classicHref && (
+            <Button variant="link" underline="hover" asChild>
+              <a
+                href={classicHref}
+                data-open-classic
+                onClick={(event) => {
+                  keepInClassic(classicHref);
+                  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey)
+                    return;
+                  event.preventDefault();
+                  navigate({ href: classicHref });
+                }}
+              >
+                Open in classic
+              </a>
+            </Button>
+          )
+        }
         search={{ onClick: () => setPaletteOpen(true), label: "Search" }}
         account={chrome.account}
       />
