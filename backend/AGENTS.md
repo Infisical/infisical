@@ -401,9 +401,11 @@ In practice that means `GET` keeps `AuthMode.OAUTH` and `POST` / `PATCH` / `PUT`
 method is the test because `CODE_QUALITY.md` already requires `GET` to be safe, so it needs no per-route
 judgment. Two adjustments to that rule, both small enough to enumerate:
 
-- **A `POST` that only reads keeps it.** Five endpoints are `POST` solely because a lookup needs a request
+- **A `POST` that only reads keeps it.** Nine endpoints are `POST` solely because a lookup needs a request
   body: `POST /v1/identities/search`, `POST /v2/identities/search`, `POST /v2/identities/search/count`,
-  and the two `memberships/details` routes. All five check a CASL read ability.
+  the two `memberships/details` routes, and the dashboard's `secrets-overview`, `secrets-details`,
+  `secrets-deep-search` and `secrets-by-metadata`, which carry search terms users paste secret values
+  into and so keep them out of URLs. All nine check a CASL read ability.
 - **A read that hands back credential material loses it**, because the point of closing administration is
   that a third-party application should not end up holding the org's secrets. Five routes:
   `GET /v1/sso/oidc/config` (`clientSecret`), `GET /v1/ldap/config` (`bindPass`),

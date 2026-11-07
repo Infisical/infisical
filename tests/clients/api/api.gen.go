@@ -22863,14 +22863,29 @@ func (e GetSecretsByKeys500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-// Defines values for SearchSecretsByMetadataParamsOperator.
+// Defines values for SearchSecretsByMetadataJSONBodyFiltersOperator.
 const (
-	And SearchSecretsByMetadataParamsOperator = "and"
-	Or  SearchSecretsByMetadataParamsOperator = "or"
+	Is SearchSecretsByMetadataJSONBodyFiltersOperator = "is"
 )
 
-// Valid indicates whether the value is a known member of the SearchSecretsByMetadataParamsOperator enum.
-func (e SearchSecretsByMetadataParamsOperator) Valid() bool {
+// Valid indicates whether the value is a known member of the SearchSecretsByMetadataJSONBodyFiltersOperator enum.
+func (e SearchSecretsByMetadataJSONBodyFiltersOperator) Valid() bool {
+	switch e {
+	case Is:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchSecretsByMetadataJSONBodyOperator.
+const (
+	And SearchSecretsByMetadataJSONBodyOperator = "and"
+	Or  SearchSecretsByMetadataJSONBodyOperator = "or"
+)
+
+// Valid indicates whether the value is a known member of the SearchSecretsByMetadataJSONBodyOperator enum.
+func (e SearchSecretsByMetadataJSONBodyOperator) Valid() bool {
 	switch e {
 	case And:
 		return true
@@ -24867,33 +24882,33 @@ func (e DeepSearchSecrets500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-// Defines values for ListProjectSecretsDetailsParamsOrderBy.
+// Defines values for ListProjectSecretsDetailsJSONBodyOrderBy.
 const (
-	ListProjectSecretsDetailsParamsOrderByName ListProjectSecretsDetailsParamsOrderBy = "name"
+	ListProjectSecretsDetailsJSONBodyOrderByName ListProjectSecretsDetailsJSONBodyOrderBy = "name"
 )
 
-// Valid indicates whether the value is a known member of the ListProjectSecretsDetailsParamsOrderBy enum.
-func (e ListProjectSecretsDetailsParamsOrderBy) Valid() bool {
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetailsJSONBodyOrderBy enum.
+func (e ListProjectSecretsDetailsJSONBodyOrderBy) Valid() bool {
 	switch e {
-	case ListProjectSecretsDetailsParamsOrderByName:
+	case ListProjectSecretsDetailsJSONBodyOrderByName:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for ListProjectSecretsDetailsParamsOrderDirection.
+// Defines values for ListProjectSecretsDetailsJSONBodyOrderDirection.
 const (
-	ListProjectSecretsDetailsParamsOrderDirectionAsc  ListProjectSecretsDetailsParamsOrderDirection = "asc"
-	ListProjectSecretsDetailsParamsOrderDirectionDesc ListProjectSecretsDetailsParamsOrderDirection = "desc"
+	ListProjectSecretsDetailsJSONBodyOrderDirectionAsc  ListProjectSecretsDetailsJSONBodyOrderDirection = "asc"
+	ListProjectSecretsDetailsJSONBodyOrderDirectionDesc ListProjectSecretsDetailsJSONBodyOrderDirection = "desc"
 )
 
-// Valid indicates whether the value is a known member of the ListProjectSecretsDetailsParamsOrderDirection enum.
-func (e ListProjectSecretsDetailsParamsOrderDirection) Valid() bool {
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetailsJSONBodyOrderDirection enum.
+func (e ListProjectSecretsDetailsJSONBodyOrderDirection) Valid() bool {
 	switch e {
-	case ListProjectSecretsDetailsParamsOrderDirectionAsc:
+	case ListProjectSecretsDetailsJSONBodyOrderDirectionAsc:
 		return true
-	case ListProjectSecretsDetailsParamsOrderDirectionDesc:
+	case ListProjectSecretsDetailsJSONBodyOrderDirectionDesc:
 		return true
 	default:
 		return false
@@ -26796,39 +26811,39 @@ func (e ListProjectSecretsDetails500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-// Defines values for ListProjectSecretsOverviewParamsOrderBy.
+// Defines values for ListProjectSecretsOverviewJSONBodyOrderBy.
 const (
-	ListProjectSecretsOverviewParamsOrderByCreatedAt ListProjectSecretsOverviewParamsOrderBy = "createdAt"
-	ListProjectSecretsOverviewParamsOrderByName      ListProjectSecretsOverviewParamsOrderBy = "name"
-	ListProjectSecretsOverviewParamsOrderByUpdatedAt ListProjectSecretsOverviewParamsOrderBy = "updatedAt"
+	ListProjectSecretsOverviewJSONBodyOrderByCreatedAt ListProjectSecretsOverviewJSONBodyOrderBy = "createdAt"
+	ListProjectSecretsOverviewJSONBodyOrderByName      ListProjectSecretsOverviewJSONBodyOrderBy = "name"
+	ListProjectSecretsOverviewJSONBodyOrderByUpdatedAt ListProjectSecretsOverviewJSONBodyOrderBy = "updatedAt"
 )
 
-// Valid indicates whether the value is a known member of the ListProjectSecretsOverviewParamsOrderBy enum.
-func (e ListProjectSecretsOverviewParamsOrderBy) Valid() bool {
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverviewJSONBodyOrderBy enum.
+func (e ListProjectSecretsOverviewJSONBodyOrderBy) Valid() bool {
 	switch e {
-	case ListProjectSecretsOverviewParamsOrderByCreatedAt:
+	case ListProjectSecretsOverviewJSONBodyOrderByCreatedAt:
 		return true
-	case ListProjectSecretsOverviewParamsOrderByName:
+	case ListProjectSecretsOverviewJSONBodyOrderByName:
 		return true
-	case ListProjectSecretsOverviewParamsOrderByUpdatedAt:
+	case ListProjectSecretsOverviewJSONBodyOrderByUpdatedAt:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for ListProjectSecretsOverviewParamsOrderDirection.
+// Defines values for ListProjectSecretsOverviewJSONBodyOrderDirection.
 const (
-	ListProjectSecretsOverviewParamsOrderDirectionAsc  ListProjectSecretsOverviewParamsOrderDirection = "asc"
-	ListProjectSecretsOverviewParamsOrderDirectionDesc ListProjectSecretsOverviewParamsOrderDirection = "desc"
+	ListProjectSecretsOverviewJSONBodyOrderDirectionAsc  ListProjectSecretsOverviewJSONBodyOrderDirection = "asc"
+	ListProjectSecretsOverviewJSONBodyOrderDirectionDesc ListProjectSecretsOverviewJSONBodyOrderDirection = "desc"
 )
 
-// Valid indicates whether the value is a known member of the ListProjectSecretsOverviewParamsOrderDirection enum.
-func (e ListProjectSecretsOverviewParamsOrderDirection) Valid() bool {
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverviewJSONBodyOrderDirection enum.
+func (e ListProjectSecretsOverviewJSONBodyOrderDirection) Valid() bool {
 	switch e {
-	case ListProjectSecretsOverviewParamsOrderDirectionAsc:
+	case ListProjectSecretsOverviewJSONBodyOrderDirectionAsc:
 		return true
-	case ListProjectSecretsOverviewParamsOrderDirectionDesc:
+	case ListProjectSecretsOverviewJSONBodyOrderDirectionDesc:
 		return true
 	default:
 		return false
@@ -99786,22 +99801,32 @@ type GetSecretsByKeys422JSONResponseBodyStatusCode float32
 // GetSecretsByKeys500JSONResponseBodyStatusCode defines parameters for GetSecretsByKeys.
 type GetSecretsByKeys500JSONResponseBodyStatusCode float32
 
-// SearchSecretsByMetadataParams defines parameters for SearchSecretsByMetadata.
-type SearchSecretsByMetadataParams struct {
-	// ProjectId The ID of the project to list secrets/folders from.
-	ProjectId string                                 `form:"projectId" json:"projectId"`
-	Operator  *SearchSecretsByMetadataParamsOperator `form:"operator,omitempty" json:"operator,omitempty"`
+// SearchSecretsByMetadataJSONBody defines parameters for SearchSecretsByMetadata.
+type SearchSecretsByMetadataJSONBody struct {
+	// Environments The slugs of the environments to list secrets/folders from.
+	Environments *[]string `json:"environments,omitempty"`
+	Filters      []struct {
+		Key      string                                          `json:"key"`
+		Operator *SearchSecretsByMetadataJSONBodyFiltersOperator `json:"operator,omitempty"`
+		Value    string                                          `json:"value"`
+	} `json:"filters"`
+	Operator *SearchSecretsByMetadataJSONBodyOperator `json:"operator,omitempty"`
 
-	// Environments The slugs of the environments to list secrets/folders from (comma separated, ie 'environments=dev,staging,prod').
-	Environments *string `form:"environments,omitempty" json:"environments,omitempty"`
+	// ProjectId The ID of the project to list secrets/folders from.
+	ProjectId string `json:"projectId"`
 
 	// SecretPath The root folder to list shared secret metadata from, including all descendant folders.
-	SecretPath *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
-	Tags       *string `form:"tags,omitempty" json:"tags,omitempty"`
+	SecretPath *string `json:"secretPath,omitempty"`
+
+	// Tags Tag slugs that further narrow results to secrets carrying at least one of them.
+	Tags *[]string `json:"tags,omitempty"`
 }
 
-// SearchSecretsByMetadataParamsOperator defines parameters for SearchSecretsByMetadata.
-type SearchSecretsByMetadataParamsOperator string
+// SearchSecretsByMetadataJSONBodyFiltersOperator defines parameters for SearchSecretsByMetadata.
+type SearchSecretsByMetadataJSONBodyFiltersOperator string
+
+// SearchSecretsByMetadataJSONBodyOperator defines parameters for SearchSecretsByMetadata.
+type SearchSecretsByMetadataJSONBodyOperator string
 
 // SearchSecretsByMetadata400JSONResponseBodyStatusCode defines parameters for SearchSecretsByMetadata.
 type SearchSecretsByMetadata400JSONResponseBodyStatusCode float32
@@ -99821,19 +99846,19 @@ type SearchSecretsByMetadata422JSONResponseBodyStatusCode float32
 // SearchSecretsByMetadata500JSONResponseBodyStatusCode defines parameters for SearchSecretsByMetadata.
 type SearchSecretsByMetadata500JSONResponseBodyStatusCode float32
 
-// DeepSearchSecretsParams defines parameters for DeepSearchSecrets.
-type DeepSearchSecretsParams struct {
-	ProjectId    string  `form:"projectId" json:"projectId"`
-	Environments string  `form:"environments" json:"environments"`
-	SecretPath   *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
-	Search       *string `form:"search,omitempty" json:"search,omitempty"`
-	Tags         *string `form:"tags,omitempty" json:"tags,omitempty"`
+// DeepSearchSecretsJSONBody defines parameters for DeepSearchSecrets.
+type DeepSearchSecretsJSONBody struct {
+	Environments []string `json:"environments"`
 
 	// Limit The number of results to return per resource type.
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Limit *int `json:"limit,omitempty"`
 
 	// Offset The offset to start from, applied to each resource type separately.
-	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+	Offset     *int      `json:"offset,omitempty"`
+	ProjectId  string    `json:"projectId"`
+	Search     *string   `json:"search,omitempty"`
+	SecretPath *string   `json:"secretPath,omitempty"`
+	Tags       *[]string `json:"tags,omitempty"`
 }
 
 // DeepSearchSecrets200JSONResponseBodySecretRotations0 defines parameters for DeepSearchSecrets.
@@ -101951,62 +101976,62 @@ type DeepSearchSecrets422JSONResponseBodyStatusCode float32
 // DeepSearchSecrets500JSONResponseBodyStatusCode defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets500JSONResponseBodyStatusCode float32
 
-// ListProjectSecretsDetailsParams defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParams struct {
-	// ProjectId The ID of the project to list secrets/folders from.
-	ProjectId string `form:"projectId" json:"projectId"`
-
+// ListProjectSecretsDetailsJSONBody defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsJSONBody struct {
 	// Environment The slug of the environment to list secrets/folders from.
-	Environment string `form:"environment" json:"environment"`
-
-	// SecretPath The secret path to list secrets/folders from.
-	SecretPath *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
-
-	// Offset The offset to start from. If you enter 10, it will start from the 10th secret/folder.
-	Offset *float32 `form:"offset,omitempty" json:"offset,omitempty"`
-
-	// Limit The number of secrets/folders to return.
-	Limit *float32 `form:"limit,omitempty" json:"limit,omitempty"`
-
-	// OrderBy The column to order secrets/folders by.
-	OrderBy *ListProjectSecretsDetailsParamsOrderBy `form:"orderBy,omitempty" json:"orderBy,omitempty"`
-
-	// OrderDirection The direction to order secrets/folders in.
-	OrderDirection *ListProjectSecretsDetailsParamsOrderDirection `form:"orderDirection,omitempty" json:"orderDirection,omitempty"`
-
-	// Search The text string to filter secret keys and folder names by.
-	Search *string `form:"search,omitempty" json:"search,omitempty"`
-
-	// Tags The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').
-	Tags *string `form:"tags,omitempty" json:"tags,omitempty"`
-
-	// IncludeSecrets Whether to include project secrets in the response.
-	IncludeSecrets *bool `form:"includeSecrets,omitempty" json:"includeSecrets,omitempty"`
-
-	// IncludeFolders Whether to include project folders in the response.
-	IncludeFolders *bool `form:"includeFolders,omitempty" json:"includeFolders,omitempty"`
+	Environment string `json:"environment"`
 
 	// IncludeDynamicSecrets Whether to include dynamic project secrets in the response.
-	IncludeDynamicSecrets *bool `form:"includeDynamicSecrets,omitempty" json:"includeDynamicSecrets,omitempty"`
+	IncludeDynamicSecrets *bool `json:"includeDynamicSecrets,omitempty"`
 
-	// IncludeImports Whether to include project secret imports in the response.
-	IncludeImports *bool `form:"includeImports,omitempty" json:"includeImports,omitempty"`
-
-	// IncludeSecretRotations Whether to include secret rotations in the response.
-	IncludeSecretRotations *bool `form:"includeSecretRotations,omitempty" json:"includeSecretRotations,omitempty"`
+	// IncludeFolders Whether to include project folders in the response.
+	IncludeFolders *bool `json:"includeFolders,omitempty"`
 
 	// IncludeHoneyTokens Whether to include honey tokens in the response.
-	IncludeHoneyTokens *bool `form:"includeHoneyTokens,omitempty" json:"includeHoneyTokens,omitempty"`
+	IncludeHoneyTokens *bool `json:"includeHoneyTokens,omitempty"`
+
+	// IncludeImports Whether to include project secret imports in the response.
+	IncludeImports *bool `json:"includeImports,omitempty"`
 
 	// IncludeProxiedServices Whether to include proxied services in the response.
-	IncludeProxiedServices *bool `form:"includeProxiedServices,omitempty" json:"includeProxiedServices,omitempty"`
+	IncludeProxiedServices *bool `json:"includeProxiedServices,omitempty"`
+
+	// IncludeSecretRotations Whether to include secret rotations in the response.
+	IncludeSecretRotations *bool `json:"includeSecretRotations,omitempty"`
+
+	// IncludeSecrets Whether to include project secrets in the response.
+	IncludeSecrets *bool `json:"includeSecrets,omitempty"`
+
+	// Limit The number of secrets/folders to return.
+	Limit *float32 `json:"limit,omitempty"`
+
+	// Offset The offset to start from. If you enter 10, it will start from the 10th secret/folder.
+	Offset *float32 `json:"offset,omitempty"`
+
+	// OrderBy The column to order secrets/folders by.
+	OrderBy *ListProjectSecretsDetailsJSONBodyOrderBy `json:"orderBy,omitempty"`
+
+	// OrderDirection The direction to order secrets/folders in.
+	OrderDirection *ListProjectSecretsDetailsJSONBodyOrderDirection `json:"orderDirection,omitempty"`
+
+	// ProjectId The ID of the project to list secrets/folders from.
+	ProjectId string `json:"projectId"`
+
+	// Search The text string to filter secret keys and folder names by.
+	Search *string `json:"search,omitempty"`
+
+	// SecretPath The secret path to list secrets/folders from.
+	SecretPath *string `json:"secretPath,omitempty"`
+
+	// Tags The slugs of the tags to filter secrets by.
+	Tags *[]string `json:"tags,omitempty"`
 }
 
-// ListProjectSecretsDetailsParamsOrderBy defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsOrderBy string
+// ListProjectSecretsDetailsJSONBodyOrderBy defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsJSONBodyOrderBy string
 
-// ListProjectSecretsDetailsParamsOrderDirection defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsOrderDirection string
+// ListProjectSecretsDetailsJSONBodyOrderDirection defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsJSONBodyOrderDirection string
 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations0 struct {
@@ -104172,65 +104197,65 @@ type ListProjectSecretsDetails422JSONResponseBodyStatusCode float32
 // ListProjectSecretsDetails500JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails500JSONResponseBodyStatusCode float32
 
-// ListProjectSecretsOverviewParams defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParams struct {
-	// ProjectId The ID of the project to list secrets/folders from.
-	ProjectId string `form:"projectId" json:"projectId"`
-
-	// Environments The slugs of the environments to list secrets/folders from (comma separated, ie 'environments=dev,staging,prod').
-	Environments string `form:"environments" json:"environments"`
-
-	// SecretPath The secret path to list secrets/folders from.
-	SecretPath *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
-
-	// Offset The offset to start from. If you enter 10, it will start from the 10th secret/folder.
-	Offset *float32 `form:"offset,omitempty" json:"offset,omitempty"`
-
-	// Limit The number of secrets/folders to return.
-	Limit *float32 `form:"limit,omitempty" json:"limit,omitempty"`
-
-	// OrderBy The column to order secrets/folders by.
-	OrderBy *ListProjectSecretsOverviewParamsOrderBy `form:"orderBy,omitempty" json:"orderBy,omitempty"`
-
-	// OrderDirection The direction to order secrets/folders in.
-	OrderDirection *ListProjectSecretsOverviewParamsOrderDirection `form:"orderDirection,omitempty" json:"orderDirection,omitempty"`
-
-	// SortEnvironment The environment slug whose secret timestamps determine recency ordering. Required for multi-environment recency sorting.
-	SortEnvironment *string `form:"sortEnvironment,omitempty" json:"sortEnvironment,omitempty"`
-
-	// Search The text string to filter secret keys and folder names by.
-	Search *string `form:"search,omitempty" json:"search,omitempty"`
-
-	// Tags The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').
-	Tags *string `form:"tags,omitempty" json:"tags,omitempty"`
-
-	// IncludeSecrets Whether to include project secrets in the response.
-	IncludeSecrets *bool `form:"includeSecrets,omitempty" json:"includeSecrets,omitempty"`
-
-	// IncludeFolders Whether to include project folders in the response.
-	IncludeFolders *bool `form:"includeFolders,omitempty" json:"includeFolders,omitempty"`
-
-	// IncludeImports Whether to include project secret imports in the response.
-	IncludeImports *bool `form:"includeImports,omitempty" json:"includeImports,omitempty"`
-
-	// IncludeSecretRotations Whether to include project secret rotations in the response.
-	IncludeSecretRotations *bool `form:"includeSecretRotations,omitempty" json:"includeSecretRotations,omitempty"`
+// ListProjectSecretsOverviewJSONBody defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverviewJSONBody struct {
+	// Environments The slugs of the environments to list secrets/folders from.
+	Environments []string `json:"environments"`
 
 	// IncludeDynamicSecrets Whether to include dynamic project secrets in the response.
-	IncludeDynamicSecrets *bool `form:"includeDynamicSecrets,omitempty" json:"includeDynamicSecrets,omitempty"`
+	IncludeDynamicSecrets *bool `json:"includeDynamicSecrets,omitempty"`
+
+	// IncludeFolders Whether to include project folders in the response.
+	IncludeFolders *bool `json:"includeFolders,omitempty"`
 
 	// IncludeHoneyTokens Whether to include honey tokens in the response.
-	IncludeHoneyTokens *bool `form:"includeHoneyTokens,omitempty" json:"includeHoneyTokens,omitempty"`
+	IncludeHoneyTokens *bool `json:"includeHoneyTokens,omitempty"`
+
+	// IncludeImports Whether to include project secret imports in the response.
+	IncludeImports *bool `json:"includeImports,omitempty"`
 
 	// IncludeProxiedServices Whether to include proxied services in the response.
-	IncludeProxiedServices *bool `form:"includeProxiedServices,omitempty" json:"includeProxiedServices,omitempty"`
+	IncludeProxiedServices *bool `json:"includeProxiedServices,omitempty"`
+
+	// IncludeSecretRotations Whether to include project secret rotations in the response.
+	IncludeSecretRotations *bool `json:"includeSecretRotations,omitempty"`
+
+	// IncludeSecrets Whether to include project secrets in the response.
+	IncludeSecrets *bool `json:"includeSecrets,omitempty"`
+
+	// Limit The number of secrets/folders to return.
+	Limit *float32 `json:"limit,omitempty"`
+
+	// Offset The offset to start from. If you enter 10, it will start from the 10th secret/folder.
+	Offset *float32 `json:"offset,omitempty"`
+
+	// OrderBy The column to order secrets/folders by.
+	OrderBy *ListProjectSecretsOverviewJSONBodyOrderBy `json:"orderBy,omitempty"`
+
+	// OrderDirection The direction to order secrets/folders in.
+	OrderDirection *ListProjectSecretsOverviewJSONBodyOrderDirection `json:"orderDirection,omitempty"`
+
+	// ProjectId The ID of the project to list secrets/folders from.
+	ProjectId string `json:"projectId"`
+
+	// Search The text string to filter secret keys and folder names by.
+	Search *string `json:"search,omitempty"`
+
+	// SecretPath The secret path to list secrets/folders from.
+	SecretPath *string `json:"secretPath,omitempty"`
+
+	// SortEnvironment The environment slug whose secret timestamps determine recency ordering. Required for multi-environment recency sorting.
+	SortEnvironment *string `json:"sortEnvironment,omitempty"`
+
+	// Tags The slugs of the tags to filter secrets by.
+	Tags *[]string `json:"tags,omitempty"`
 }
 
-// ListProjectSecretsOverviewParamsOrderBy defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsOrderBy string
+// ListProjectSecretsOverviewJSONBodyOrderBy defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverviewJSONBodyOrderBy string
 
-// ListProjectSecretsOverviewParamsOrderDirection defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsOrderDirection string
+// ListProjectSecretsOverviewJSONBodyOrderDirection defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverviewJSONBodyOrderDirection string
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations0 struct {
@@ -128234,6 +128259,18 @@ type CreateUniversalAuthClientSecretJSONRequestBody CreateUniversalAuthClientSec
 
 // LoginWithUniversalAuthJSONRequestBody defines body for LoginWithUniversalAuth for application/json ContentType.
 type LoginWithUniversalAuthJSONRequestBody LoginWithUniversalAuthJSONBody
+
+// SearchSecretsByMetadataJSONRequestBody defines body for SearchSecretsByMetadata for application/json ContentType.
+type SearchSecretsByMetadataJSONRequestBody SearchSecretsByMetadataJSONBody
+
+// DeepSearchSecretsJSONRequestBody defines body for DeepSearchSecrets for application/json ContentType.
+type DeepSearchSecretsJSONRequestBody DeepSearchSecretsJSONBody
+
+// ListProjectSecretsDetailsJSONRequestBody defines body for ListProjectSecretsDetails for application/json ContentType.
+type ListProjectSecretsDetailsJSONRequestBody ListProjectSecretsDetailsJSONBody
+
+// ListProjectSecretsOverviewJSONRequestBody defines body for ListProjectSecretsOverview for application/json ContentType.
+type ListProjectSecretsOverviewJSONRequestBody ListProjectSecretsOverviewJSONBody
 
 // HandleDelegatedApprovalCallbackJSONRequestBody defines body for HandleDelegatedApprovalCallback for application/json ContentType.
 type HandleDelegatedApprovalCallbackJSONRequestBody HandleDelegatedApprovalCallbackJSONBody
@@ -156698,23 +156735,49 @@ type ClientInterface interface {
 	// GetSecretsByKeys performs a GET /api/v1/dashboard/secrets-by-keys (the `GetSecretsByKeys` operationId) request.
 	GetSecretsByKeys(ctx context.Context, params *GetSecretsByKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// SearchSecretsByMetadata performs a GET /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request.
+	// SearchSecretsByMetadataWithBody performs a POST /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request,
+	// with any type of body and a specified content type.
 	//
-	// Search a project's secrets by their metadata. Filters are supplied as nested querystring params (parsed with qs), e.g. `?projectId=<id>&operator=and&filters[0][key]=env&filters[0][value]=prod&filters[0][operator]=is`. Results are limited to secrets the requester can describe.
-	SearchSecretsByMetadata(ctx context.Context, params *SearchSecretsByMetadataParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.
+	SearchSecretsByMetadataWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeepSearchSecrets performs a GET /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request.
-	DeepSearchSecrets(ctx context.Context, params *DeepSearchSecretsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// SearchSecretsByMetadata performs a POST /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.
+	SearchSecretsByMetadata(ctx context.Context, body SearchSecretsByMetadataJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListProjectSecretsDetails performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+	// DeepSearchSecretsWithBody performs a POST /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request,
+	// with any type of body and a specified content type.
+	DeepSearchSecretsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeepSearchSecrets performs a POST /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request.
+	// Takes a body of the `application/json` content type.
+	DeepSearchSecrets(ctx context.Context, body DeepSearchSecretsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListProjectSecretsDetailsWithBody performs a POST /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request,
+	// with any type of body and a specified content type.
 	//
 	// List project secrets details.
-	ListProjectSecretsDetails(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectSecretsDetailsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListProjectSecretsOverview performs a GET /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request.
+	// ListProjectSecretsDetails performs a POST /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// List project secrets details.
+	ListProjectSecretsDetails(ctx context.Context, body ListProjectSecretsDetailsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListProjectSecretsOverviewWithBody performs a POST /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request,
+	// with any type of body and a specified content type.
 	//
 	// List project secrets overview.
-	ListProjectSecretsOverview(ctx context.Context, params *ListProjectSecretsOverviewParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectSecretsOverviewWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListProjectSecretsOverview performs a POST /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// List project secrets overview.
+	ListProjectSecretsOverview(ctx context.Context, body ListProjectSecretsOverviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// HandleDelegatedApprovalCallbackWithBody performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
 	// with any type of body and a specified content type.
@@ -163942,11 +164005,12 @@ func (c *Client) GetSecretsByKeys(ctx context.Context, params *GetSecretsByKeysP
 	return c.Client.Do(req)
 }
 
-// SearchSecretsByMetadata performs a GET /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request.
+// SearchSecretsByMetadataWithBody performs a POST /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request,
+// with any type of body and a specified content type.
 //
-// Search a project's secrets by their metadata. Filters are supplied as nested querystring params (parsed with qs), e.g. `?projectId=<id>&operator=and&filters[0][key]=env&filters[0][value]=prod&filters[0][operator]=is`. Results are limited to secrets the requester can describe.
-func (c *Client) SearchSecretsByMetadata(ctx context.Context, params *SearchSecretsByMetadataParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchSecretsByMetadataRequest(c.Server, params)
+// Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.
+func (c *Client) SearchSecretsByMetadataWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchSecretsByMetadataRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -163957,9 +164021,12 @@ func (c *Client) SearchSecretsByMetadata(ctx context.Context, params *SearchSecr
 	return c.Client.Do(req)
 }
 
-// DeepSearchSecrets performs a GET /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request.
-func (c *Client) DeepSearchSecrets(ctx context.Context, params *DeepSearchSecretsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeepSearchSecretsRequest(c.Server, params)
+// SearchSecretsByMetadata performs a POST /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.
+func (c *Client) SearchSecretsByMetadata(ctx context.Context, body SearchSecretsByMetadataJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchSecretsByMetadataRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -163970,11 +164037,40 @@ func (c *Client) DeepSearchSecrets(ctx context.Context, params *DeepSearchSecret
 	return c.Client.Do(req)
 }
 
-// ListProjectSecretsDetails performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+// DeepSearchSecretsWithBody performs a POST /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) DeepSearchSecretsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeepSearchSecretsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeepSearchSecrets performs a POST /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) DeepSearchSecrets(ctx context.Context, body DeepSearchSecretsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeepSearchSecretsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListProjectSecretsDetailsWithBody performs a POST /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request,
+// with any type of body and a specified content type.
 //
 // List project secrets details.
-func (c *Client) ListProjectSecretsDetails(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectSecretsDetailsRequest(c.Server, params)
+func (c *Client) ListProjectSecretsDetailsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectSecretsDetailsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -163985,11 +164081,44 @@ func (c *Client) ListProjectSecretsDetails(ctx context.Context, params *ListProj
 	return c.Client.Do(req)
 }
 
-// ListProjectSecretsOverview performs a GET /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request.
+// ListProjectSecretsDetails performs a POST /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// List project secrets details.
+func (c *Client) ListProjectSecretsDetails(ctx context.Context, body ListProjectSecretsDetailsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectSecretsDetailsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListProjectSecretsOverviewWithBody performs a POST /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request,
+// with any type of body and a specified content type.
 //
 // List project secrets overview.
-func (c *Client) ListProjectSecretsOverview(ctx context.Context, params *ListProjectSecretsOverviewParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectSecretsOverviewRequest(c.Server, params)
+func (c *Client) ListProjectSecretsOverviewWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectSecretsOverviewRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListProjectSecretsOverview performs a POST /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// List project secrets overview.
+func (c *Client) ListProjectSecretsOverview(ctx context.Context, body ListProjectSecretsOverviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectSecretsOverviewRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -182449,8 +182578,19 @@ func NewGetSecretsByKeysRequest(server string, params *GetSecretsByKeysParams) (
 	return req, nil
 }
 
-// NewSearchSecretsByMetadataRequest constructs an http.Request for the SearchSecretsByMetadata method
-func NewSearchSecretsByMetadataRequest(server string, params *SearchSecretsByMetadataParams) (*http.Request, error) {
+// NewSearchSecretsByMetadataRequest calls the generic SearchSecretsByMetadata builder with application/json body
+func NewSearchSecretsByMetadataRequest(server string, body SearchSecretsByMetadataJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchSecretsByMetadataRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchSecretsByMetadataRequestWithBody constructs an http.Request for the SearchSecretsByMetadata method, with any body, and a specified content type
+func NewSearchSecretsByMetadataRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -182468,87 +182608,29 @@ func NewSearchSecretsByMetadataRequest(server string, params *SearchSecretsByMet
 		return nil, err
 	}
 
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if params.Operator != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "operator", *params.Operator, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Environments != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environments", *params.Environments, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.SecretPath != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", *params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Tags != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tags", *params.Tags, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
 
+	req.Header.Add("Content-Type", contentType)
+
 	return req, nil
 }
 
-// NewDeepSearchSecretsRequest constructs an http.Request for the DeepSearchSecrets method
-func NewDeepSearchSecretsRequest(server string, params *DeepSearchSecretsParams) (*http.Request, error) {
+// NewDeepSearchSecretsRequest calls the generic DeepSearchSecrets builder with application/json body
+func NewDeepSearchSecretsRequest(server string, body DeepSearchSecretsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDeepSearchSecretsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewDeepSearchSecretsRequestWithBody constructs an http.Request for the DeepSearchSecrets method, with any body, and a specified content type
+func NewDeepSearchSecretsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -182566,107 +182648,29 @@ func NewDeepSearchSecretsRequest(server string, params *DeepSearchSecretsParams)
 		return nil, err
 	}
 
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environments", params.Environments, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if params.SecretPath != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", *params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Search != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search", *params.Search, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Tags != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tags", *params.Tags, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Limit != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Offset != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
 
+	req.Header.Add("Content-Type", contentType)
+
 	return req, nil
 }
 
-// NewListProjectSecretsDetailsRequest constructs an http.Request for the ListProjectSecretsDetails method
-func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecretsDetailsParams) (*http.Request, error) {
+// NewListProjectSecretsDetailsRequest calls the generic ListProjectSecretsDetails builder with application/json body
+func NewListProjectSecretsDetailsRequest(server string, body ListProjectSecretsDetailsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewListProjectSecretsDetailsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewListProjectSecretsDetailsRequestWithBody constructs an http.Request for the ListProjectSecretsDetails method, with any body, and a specified content type
+func NewListProjectSecretsDetailsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -182684,215 +182688,29 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 		return nil, err
 	}
 
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environment", params.Environment, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if params.SecretPath != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", *params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Offset != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Limit != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.OrderBy != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orderBy", *params.OrderBy, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.OrderDirection != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orderDirection", *params.OrderDirection, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Search != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search", *params.Search, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Tags != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tags", *params.Tags, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeSecrets != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecrets", *params.IncludeSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeFolders != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolders", *params.IncludeFolders, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeDynamicSecrets != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeDynamicSecrets", *params.IncludeDynamicSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeImports != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeSecretRotations != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecretRotations", *params.IncludeSecretRotations, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeHoneyTokens != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeHoneyTokens", *params.IncludeHoneyTokens, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeProxiedServices != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeProxiedServices", *params.IncludeProxiedServices, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
 
+	req.Header.Add("Content-Type", contentType)
+
 	return req, nil
 }
 
-// NewListProjectSecretsOverviewRequest constructs an http.Request for the ListProjectSecretsOverview method
-func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecretsOverviewParams) (*http.Request, error) {
+// NewListProjectSecretsOverviewRequest calls the generic ListProjectSecretsOverview builder with application/json body
+func NewListProjectSecretsOverviewRequest(server string, body ListProjectSecretsOverviewJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewListProjectSecretsOverviewRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewListProjectSecretsOverviewRequestWithBody constructs an http.Request for the ListProjectSecretsOverview method, with any body, and a specified content type
+func NewListProjectSecretsOverviewRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -182910,221 +182728,12 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 		return nil, err
 	}
 
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environments", params.Environments, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if params.SecretPath != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", *params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Offset != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Limit != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.OrderBy != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orderBy", *params.OrderBy, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.OrderDirection != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orderDirection", *params.OrderDirection, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.SortEnvironment != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sortEnvironment", *params.SortEnvironment, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Search != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search", *params.Search, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Tags != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tags", *params.Tags, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeSecrets != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecrets", *params.IncludeSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeFolders != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolders", *params.IncludeFolders, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeImports != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeSecretRotations != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecretRotations", *params.IncludeSecretRotations, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeDynamicSecrets != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeDynamicSecrets", *params.IncludeDynamicSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeHoneyTokens != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeHoneyTokens", *params.IncludeHoneyTokens, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.IncludeProxiedServices != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeProxiedServices", *params.IncludeProxiedServices, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -209268,31 +208877,57 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetSecretsByKeysWithResponse(ctx context.Context, params *GetSecretsByKeysParams, reqEditors ...RequestEditorFn) (*GetSecretsByKeysResponse, error)
 
-	// SearchSecretsByMetadataWithResponse performs a GET /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request.
+	// SearchSecretsByMetadataWithBodyWithResponse performs a POST /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request,
+	// with any type of body and a specified content type.
 	//
-	// Search a project's secrets by their metadata. Filters are supplied as nested querystring params (parsed with qs), e.g. `?projectId=<id>&operator=and&filters[0][key]=env&filters[0][value]=prod&filters[0][operator]=is`. Results are limited to secrets the requester can describe.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	SearchSecretsByMetadataWithResponse(ctx context.Context, params *SearchSecretsByMetadataParams, reqEditors ...RequestEditorFn) (*SearchSecretsByMetadataResponse, error)
-
-	// DeepSearchSecretsWithResponse performs a GET /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request.
+	// Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeepSearchSecretsWithResponse(ctx context.Context, params *DeepSearchSecretsParams, reqEditors ...RequestEditorFn) (*DeepSearchSecretsResponse, error)
+	SearchSecretsByMetadataWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchSecretsByMetadataResponse, error)
 
-	// ListProjectSecretsDetailsWithResponse performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+	// SearchSecretsByMetadataWithResponse performs a POST /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.
+	SearchSecretsByMetadataWithResponse(ctx context.Context, body SearchSecretsByMetadataJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSecretsByMetadataResponse, error)
+
+	// DeepSearchSecretsWithBodyWithResponse performs a POST /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeepSearchSecretsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeepSearchSecretsResponse, error)
+
+	// DeepSearchSecretsWithResponse performs a POST /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	DeepSearchSecretsWithResponse(ctx context.Context, body DeepSearchSecretsJSONRequestBody, reqEditors ...RequestEditorFn) (*DeepSearchSecretsResponse, error)
+
+	// ListProjectSecretsDetailsWithBodyWithResponse performs a POST /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request,
+	// with any type of body and a specified content type.
 	//
 	// List project secrets details.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListProjectSecretsDetailsWithResponse(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error)
+	ListProjectSecretsDetailsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error)
 
-	// ListProjectSecretsOverviewWithResponse performs a GET /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request.
+	// ListProjectSecretsDetailsWithResponse performs a POST /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// List project secrets details.
+	ListProjectSecretsDetailsWithResponse(ctx context.Context, body ListProjectSecretsDetailsJSONRequestBody, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error)
+
+	// ListProjectSecretsOverviewWithBodyWithResponse performs a POST /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request,
+	// with any type of body and a specified content type.
 	//
 	// List project secrets overview.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListProjectSecretsOverviewWithResponse(ctx context.Context, params *ListProjectSecretsOverviewParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsOverviewResponse, error)
+	ListProjectSecretsOverviewWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListProjectSecretsOverviewResponse, error)
+
+	// ListProjectSecretsOverviewWithResponse performs a POST /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// List project secrets overview.
+	ListProjectSecretsOverviewWithResponse(ctx context.Context, body ListProjectSecretsOverviewJSONRequestBody, reqEditors ...RequestEditorFn) (*ListProjectSecretsOverviewResponse, error)
 
 	// HandleDelegatedApprovalCallbackWithBodyWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
 	// with any type of body and a specified content type.
@@ -345874,50 +345509,100 @@ func (c *ClientWithResponses) GetSecretsByKeysWithResponse(ctx context.Context, 
 	return ParseGetSecretsByKeysResponse(rsp)
 }
 
-// SearchSecretsByMetadataWithResponse performs a GET /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request.
+// SearchSecretsByMetadataWithBodyWithResponse performs a POST /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request,
+// with any type of body and a specified content type.
 //
-// Search a project's secrets by their metadata. Filters are supplied as nested querystring params (parsed with qs), e.g. `?projectId=<id>&operator=and&filters[0][key]=env&filters[0][value]=prod&filters[0][operator]=is`. Results are limited to secrets the requester can describe.
+// Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) SearchSecretsByMetadataWithResponse(ctx context.Context, params *SearchSecretsByMetadataParams, reqEditors ...RequestEditorFn) (*SearchSecretsByMetadataResponse, error) {
-	rsp, err := c.SearchSecretsByMetadata(ctx, params, reqEditors...)
+func (c *ClientWithResponses) SearchSecretsByMetadataWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchSecretsByMetadataResponse, error) {
+	rsp, err := c.SearchSecretsByMetadataWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSearchSecretsByMetadataResponse(rsp)
 }
 
-// DeepSearchSecretsWithResponse performs a GET /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request.
+// SearchSecretsByMetadataWithResponse performs a POST /api/v1/dashboard/secrets-by-metadata (the `SearchSecretsByMetadata` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Search a project's secrets by their metadata. `filters` holds the metadata conditions and `operator` combines them. Results are limited to secrets the requester can describe.
+func (c *ClientWithResponses) SearchSecretsByMetadataWithResponse(ctx context.Context, body SearchSecretsByMetadataJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSecretsByMetadataResponse, error) {
+	rsp, err := c.SearchSecretsByMetadata(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchSecretsByMetadataResponse(rsp)
+}
+
+// DeepSearchSecretsWithBodyWithResponse performs a POST /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request,
+// with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeepSearchSecretsWithResponse(ctx context.Context, params *DeepSearchSecretsParams, reqEditors ...RequestEditorFn) (*DeepSearchSecretsResponse, error) {
-	rsp, err := c.DeepSearchSecrets(ctx, params, reqEditors...)
+func (c *ClientWithResponses) DeepSearchSecretsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeepSearchSecretsResponse, error) {
+	rsp, err := c.DeepSearchSecretsWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseDeepSearchSecretsResponse(rsp)
 }
 
-// ListProjectSecretsDetailsWithResponse performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+// DeepSearchSecretsWithResponse performs a POST /api/v1/dashboard/secrets-deep-search (the `DeepSearchSecrets` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeepSearchSecretsWithResponse(ctx context.Context, body DeepSearchSecretsJSONRequestBody, reqEditors ...RequestEditorFn) (*DeepSearchSecretsResponse, error) {
+	rsp, err := c.DeepSearchSecrets(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeepSearchSecretsResponse(rsp)
+}
+
+// ListProjectSecretsDetailsWithBodyWithResponse performs a POST /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request,
+// with any type of body and a specified content type.
 //
 // List project secrets details.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListProjectSecretsDetailsWithResponse(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error) {
-	rsp, err := c.ListProjectSecretsDetails(ctx, params, reqEditors...)
+func (c *ClientWithResponses) ListProjectSecretsDetailsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error) {
+	rsp, err := c.ListProjectSecretsDetailsWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseListProjectSecretsDetailsResponse(rsp)
 }
 
-// ListProjectSecretsOverviewWithResponse performs a GET /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request.
+// ListProjectSecretsDetailsWithResponse performs a POST /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// List project secrets details.
+func (c *ClientWithResponses) ListProjectSecretsDetailsWithResponse(ctx context.Context, body ListProjectSecretsDetailsJSONRequestBody, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error) {
+	rsp, err := c.ListProjectSecretsDetails(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListProjectSecretsDetailsResponse(rsp)
+}
+
+// ListProjectSecretsOverviewWithBodyWithResponse performs a POST /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request,
+// with any type of body and a specified content type.
 //
 // List project secrets overview.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListProjectSecretsOverviewWithResponse(ctx context.Context, params *ListProjectSecretsOverviewParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsOverviewResponse, error) {
-	rsp, err := c.ListProjectSecretsOverview(ctx, params, reqEditors...)
+func (c *ClientWithResponses) ListProjectSecretsOverviewWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListProjectSecretsOverviewResponse, error) {
+	rsp, err := c.ListProjectSecretsOverviewWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListProjectSecretsOverviewResponse(rsp)
+}
+
+// ListProjectSecretsOverviewWithResponse performs a POST /api/v1/dashboard/secrets-overview (the `ListProjectSecretsOverview` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// List project secrets overview.
+func (c *ClientWithResponses) ListProjectSecretsOverviewWithResponse(ctx context.Context, body ListProjectSecretsOverviewJSONRequestBody, reqEditors ...RequestEditorFn) (*ListProjectSecretsOverviewResponse, error) {
+	rsp, err := c.ListProjectSecretsOverview(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

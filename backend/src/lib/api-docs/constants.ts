@@ -1647,8 +1647,7 @@ export const DASHBOARD = {
   },
   SECRET_OVERVIEW_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",
-    environments:
-      "The slugs of the environments to list secrets/folders from (comma separated, ie 'environments=dev,staging,prod').",
+    environments: "The slugs of the environments to list secrets/folders from.",
     secretPath: "The secret path to list secrets/folders from.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th secret/folder.",
     limit: "The number of secrets/folders to return.",
@@ -1657,7 +1656,7 @@ export const DASHBOARD = {
     sortEnvironment:
       "The environment slug whose secret timestamps determine recency ordering. Required for multi-environment recency sorting.",
     search: "The text string to filter secret keys and folder names by.",
-    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
+    tags: "The slugs of the tags to filter secrets by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
@@ -1675,7 +1674,7 @@ export const DASHBOARD = {
     orderBy: "The column to order secrets/folders by.",
     orderDirection: "The direction to order secrets/folders in.",
     search: "The text string to filter secret keys and folder names by.",
-    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
+    tags: "The slugs of the tags to filter secrets by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeImports: "Whether to include project secret imports in the response.",
