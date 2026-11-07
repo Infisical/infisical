@@ -87,11 +87,7 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
     { label: "47-day", renewals: Math.ceil((365 / 47) * activeCerts) }
   ];
   return (
-    <Card
-      variant="framed"
-      title="Projected annual renewals"
-      description="Renewals per year at each maximum validity."
-    >
+    <Card variant="framed" title="Projected annual renewals">
       <Stack gap={8}>
         <ChartContainer
           config={renewalConfig}
@@ -145,13 +141,14 @@ export const ValidityReadinessSection = ({ stats }: { stats: TDashboardStats }) 
   if (tlsActiveCerts === 0) return null;
   return (
     <Stack gap={16}>
-      <Heading level={2}>47-day validity readiness</Heading>
+      <Heading level={3} size="subsection">
+        47-day validity readiness
+      </Heading>
       <Grid gap={16} columns={3}>
         <MandateDeadlines />
         <ProjectedRenewals activeCerts={tlsActiveCerts} />
         <DonutCard
-          title="Certificates by validity period"
-          description="Active certificates by issue-to-expiry duration."
+          title="TLS certificates by validity period"
           stacked
           slices={validityBuckets.map((entry) => ({
             label: entry.label,
