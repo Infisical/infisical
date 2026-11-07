@@ -122,11 +122,11 @@ func (a *HTTPAdapter) ListSecretFolders(w http.ResponseWriter, r *http.Request) 
 	query := r.URL.Query()
 	if queryParamProjectIDStr := query.Get("projectId"); queryParamProjectIDStr != "" {
 		queryParamProjectID := queryParamProjectIDStr
-		queryParams.ProjectID = queryParamProjectID
+		queryParams.ProjectID = &queryParamProjectID
 	}
 	if queryParamEnvironmentStr := query.Get("environment"); queryParamEnvironmentStr != "" {
 		queryParamEnvironment := queryParamEnvironmentStr
-		queryParams.Environment = queryParamEnvironment
+		queryParams.Environment = &queryParamEnvironment
 	}
 	if queryParamPathStr := query.Get("path"); queryParamPathStr != "" {
 		queryParamPath := queryParamPathStr
@@ -257,17 +257,16 @@ func NewRouter(svc ServiceInterface, opts ...RouterOption) chi.Router {
 }
 
 type ListSecretFoldersQuery struct {
-	ProjectID   string `json:"projectId" validate:"required"`
-	Environment string `json:"environment" validate:"required"`
+	// ProjectID Required, but presence is checked in the handler so the 422 body matches Node's
+	ProjectID *string `json:"projectId,omitempty"`
+
+	// Environment Required, but presence is checked in the handler so the 422 body matches Node's
+	Environment *string `json:"environment,omitempty"`
 
 	// Path Required, but an empty value is valid and means the root, so presence is checked in the handler
 	Path               *string `json:"path,omitempty"`
 	LastSecretModified *string `json:"lastSecretModified,omitempty"`
 	Recursive          *string `json:"recursive,omitempty"`
-}
-
-func (l ListSecretFoldersQuery) Validate() error {
-	return runtime.ConvertValidatorError(typesValidator.Struct(l))
 }
 
 // ListSecretFoldersResponseData wraps the success response with optional headers and status override.
