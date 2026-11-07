@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Infisical",
+    "slug": "infisical-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.infisical.mobile",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Infisical uses Face ID to confirm approvals."
+      }
+    },
+    "android": {
+      "package": "com.infisical.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E3F047",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Infisical uses Face ID to confirm approvals."
+        }
+      ]
+    ]
+  }
+}
