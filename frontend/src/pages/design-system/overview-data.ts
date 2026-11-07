@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "pinned-cells",
+    title: "Pinned cells match their row",
+    description:
+      "Pinned columns now paint exactly the row's color at rest, on hover, selected and expanded, and scrolled tables keep their actions tail.",
+    date: "2026-11-07",
+    commit: "4cf899bbbe",
+    page: "table"
+  },
+  {
     id: "palette-playground",
     title: "Palette playground",
     description:
@@ -210,15 +219,6 @@ export const recentChanges: {
       "List owns the framed, plain, bare, segmented and divided variants with header, section and footer parts, and ApprovalQueue inherits them.",
     date: "2026-11-06",
     commit: "cdb1507383",
-    page: "list"
-  },
-  {
-    id: "list-meta",
-    title: "List row timestamps",
-    description:
-      "A list row's title ellipsizes on one line, so its timestamp stays pinned beside it.",
-    date: "2026-11-06",
-    commit: "7ba6dacc87",
     page: "list"
   }
 ];
