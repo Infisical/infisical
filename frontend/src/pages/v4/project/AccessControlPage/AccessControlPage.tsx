@@ -2,7 +2,6 @@ import { useSearch } from "@tanstack/react-router";
 
 import { Button } from "@app/components/v4/ui/button";
 import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import {
@@ -26,6 +25,7 @@ import { ProjectRolesTab } from "../../access/project/roles";
 import { useProjectScope } from "../../access/project/scope";
 import { ServiceTokensTab } from "../../access/project/service-tokens";
 import { AccessRestricted } from "../../access/ui";
+import { PageLoader } from "../../shell/project-gate";
 
 const tabs = [
   {
@@ -88,7 +88,7 @@ export const AccessControlPage = () => {
       ProjectPermissionSub.Role
     )
   };
-  if (isPending) return <Loader size="page" label="Loading access control" />;
+  if (isPending) return <PageLoader label="Loading access control" />;
   const visible = tabs.filter(
     (tab) =>
       projectType === ProjectType.SecretManager ||

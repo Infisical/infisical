@@ -22,6 +22,7 @@ import {
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, v4Path } from "../../links";
+import { PageLoader } from "../../shell/project-gate";
 import { withoutDefaults } from "../search-defaults";
 
 const ROUTE = v4Path("/organizations/$orgId/projects/secret-management/$projectId/approval");
@@ -193,7 +194,7 @@ const RequestDetail = ({
       </Button>
     </div>
   );
-  if (isPending && !error) return <Loader size="page" label="Loading change request" />;
+  if (isPending && !error) return <PageLoader label="Loading change request" />;
   if (!request)
     return (
       <Stack gap={16}>

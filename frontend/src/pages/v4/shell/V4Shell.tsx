@@ -10,6 +10,7 @@ import {
 import type { BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Loader } from "@app/components/v4/ui/loader";
 import { Sidebar, type SidebarLevel, type SidebarSection } from "@app/components/v4/ui/sidebar";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
@@ -66,6 +67,14 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const resolve = useResolveV4Href();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const readiness = useMatches({ select: (matches) => matches.at(-1)?.staticData.readiness });
+  const [switchingTo, setSwitchingTo] = useState<string>();
+  const switching =
+    switchingTo !== undefined &&
+    switchingTo !== session.organization.id &&
+    location.pathname.includes(`/organizations/${switchingTo}/`);
+  const organization =
+    (switching && session.organizations.find((entry) => entry.id === switchingTo)) ||
+    session.organization;
   const base = orgHref(orgId);
   const { selectedTab } = location.search as { selectedTab?: string };
   const at = resolveShellLocation(
@@ -107,7 +116,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const levels: SidebarLevel[] = [
     {
       id: "org",
-      label: session.organization.name,
+      label: organization.name,
       sections: toSidebar("org", orgSections, { settings: "settings" })
     },
     {
@@ -142,7 +151,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   }
 
   const orgCrumb: BreadcrumbCrumb = {
-    label: session.organization.name,
+    label: organization.name,
     media: <Icon name="building" />,
     href: resolve(`${base}/projects`),
     switcher: {
@@ -156,9 +165,11 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         group: entry.group,
         media: entry.group === "Sub-organizations" ? undefined : <Icon name="building" />
       })),
-      value: session.organization.id,
+      value: organization.id,
       onChange: (id: string) => {
-        if (id !== orgId && orgId !== V4_DEMO_ORG_ID) go(orgHref(id, "/projects"));
+        if (id === orgId || orgId === V4_DEMO_ORG_ID) return;
+        setSwitchingTo(id);
+        go(orgHref(id, "/projects"));
       },
       actions: [
         {
@@ -220,6 +231,14 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
 
   const classicHref =
     orgId !== V4_DEMO_ORG_ID && readiness === "partial" ? toV3Href(location.href) : undefined;
+  let content = children;
+  if (switching) content = <Loader size="page" label="Loading organization" />;
+  else if (at.projectId)
+    content = (
+      <ProjectGate key={at.projectId} projectId={at.projectId}>
+        {children}
+      </ProjectGate>
+    );
 
   return (
     <AppShell style={{ height: "100%" }} onClickCapture={(event) => routeInternalLinks(event, go)}>
@@ -255,15 +274,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         announcements={chrome.announcements}
       />
       <AppInset>
-        <PageGutter className={styles.content}>
-          {at.projectId ? (
-            <ProjectGate key={at.projectId} projectId={at.projectId}>
-              {children}
-            </ProjectGate>
-          ) : (
-            children
-          )}
-        </PageGutter>
+        <PageGutter className={styles.content}>{content}</PageGutter>
       </AppInset>
       {chrome.dialog}
       <CommandPalette
