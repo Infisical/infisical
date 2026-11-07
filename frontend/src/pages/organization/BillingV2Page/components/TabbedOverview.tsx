@@ -37,6 +37,7 @@ import {
 import {
   byDisplayOrder,
   cadenceLabel,
+  fmtMoney,
   fmtMoneyCents,
   nextChargeProductLabel
 } from "../billing-v2-format";
@@ -305,49 +306,56 @@ export const TabbedOverview = ({
           .join(" · ")
       : "";
     summaryLeft = (
-      <div className="flex flex-col gap-1">
-        <span className="flex items-center gap-2 text-xs text-accent">
-          Next Charge
-          {accountStatus && <Badge variant={accountStatus.variant}>{accountStatus.label}</Badge>}
-        </span>
-        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="text-lg leading-6 font-medium tabular-nums">
-            {nextCharge ? fmtMoneyCents(nextCharge.amount) : "Nothing due"}
+      <div className="flex flex-wrap items-start gap-x-12 gap-y-3">
+        <div className="flex flex-col gap-1">
+          <span className="flex items-center gap-2 text-xs text-accent">
+            Current Bill
+            {accountStatus && <Badge variant={accountStatus.variant}>{accountStatus.label}</Badge>}
           </span>
-          {nextCharge && (nextCharge.estimatedUsage ?? 0) > 0 && (
-            <span className="text-sm text-muted tabular-nums">
-              + est. {fmtMoneyCents(nextCharge.estimatedUsage ?? 0)} usage
+          <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="text-lg leading-6 font-medium tabular-nums">
+              {nextCharge ? fmtMoney(nextCharge.amount, 2, 2) : "Nothing due"}
             </span>
-          )}
-          {nextCharge && <span className="text-xs text-muted">· {nextCharge.at}</span>}
-          {nextCharge && (chargeDetail || overview.onDemandAmount > 0) && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton size="2xs" variant="ghost-muted" aria-label="Next charge details">
-                  <InfoIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span className="flex flex-col gap-0.5">
-                  {chargeDetail && <span>{chargeDetail}</span>}
-                  {nextCharge.hasUsage && (
-                    <span>
-                      {(nextCharge.estimatedUsage ?? 0) > 0
-                        ? "Usage is estimated from this period so far and billed when the period ends"
-                        : "Estimate includes usage to date"}
-                    </span>
-                  )}
-                  {overview.onDemandAmount > 0 && (
-                    <span className="text-warning">
-                      +{fmtMoneyCents(overview.onDemandAmount)} on-demand this period
-                    </span>
-                  )}
-                </span>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </span>
-        {trialNote && <span className="text-xs text-muted">{trialNote}</span>}
+            {nextCharge && (nextCharge.estimatedUsage ?? 0) > 0 && (
+              <span className="text-sm text-muted tabular-nums">
+                + est. {fmtMoneyCents(nextCharge.estimatedUsage ?? 0)} usage
+              </span>
+            )}
+            {nextCharge && (chargeDetail || overview.onDemandAmount > 0) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton size="2xs" variant="ghost-muted" aria-label="Next charge details">
+                    <InfoIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span className="flex flex-col gap-0.5">
+                    {chargeDetail && <span>{chargeDetail}</span>}
+                    {nextCharge.hasUsage && (
+                      <span>
+                        {(nextCharge.estimatedUsage ?? 0) > 0
+                          ? "Usage is estimated from this period so far and billed when the period ends"
+                          : "Estimate includes usage to date"}
+                      </span>
+                    )}
+                    {overview.onDemandAmount > 0 && (
+                      <span className="text-warning">
+                        +{fmtMoneyCents(overview.onDemandAmount)} on-demand this period
+                      </span>
+                    )}
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </span>
+          {trialNote && <span className="text-xs text-muted">{trialNote}</span>}
+        </div>
+        {nextCharge && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-accent">Next Billing Date</span>
+            <span className="text-lg leading-6 font-medium">{nextCharge.at}</span>
+          </div>
+        )}
       </div>
     );
   }
