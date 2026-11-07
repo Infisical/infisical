@@ -89,6 +89,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     }));
 
   const product = at.product ? productOf(at.product) : undefined;
+  const sidebarCurrent = at.current ?? (at.projectId ? at.sections[0]?.items[0] : undefined);
   const project = session.projects.find((entry) => entry.id === at.projectId);
   const levels: SidebarLevel[] = [
     {
@@ -214,7 +215,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       <Sidebar
         label="Main"
         levels={levels}
-        current={at.current ? `${at.level}:${at.current.id}` : undefined}
+        current={sidebarCurrent ? `${at.level}:${sidebarCurrent.id}` : undefined}
         help={chrome.help}
         announcements={chrome.announcements}
       />
