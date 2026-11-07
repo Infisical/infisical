@@ -2,6 +2,7 @@ package organization_test
 
 import (
 	"context"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"net/http"
 	"testing"
 
@@ -277,6 +278,78 @@ func TestOrganization_Delete(t *testing.T) {
 		members, err := member.API.ListOrgMembershipsWithResponse(t.Context(), tn.OrgID.String())
 		require.NoError(t, err)
 		requireStatus(t, http.StatusUnauthorized, members.StatusCode(), members.Body)
+	})
+
+	t.Run("should cancel the subscription once when a root org is deleted", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+
+		// Action
+		res, err := tn.Admin.API.DeleteOrganizationWithResponse(t.Context(), tn.OrgID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Equal(t, 1, root.State(t).Cancellations)
+	})
+
+	t.Run("should cancel no subscription when a sub-org is deleted", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sub := fixture.NewSubOrg(t, tn)
+		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		subScope := license.Open(t, fixture.FakenetAdmin(t, tn), sub.ID.String())
+
+		// Action
+		res, err := tn.Admin.API.DeleteSubOrganizationWithResponse(t.Context(), sub.ID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		root.ExpectNoEvent[license.SubscriptionCanceled](t, nil)
+		subScope.ExpectNoEvent[license.SubscriptionCanceled](t, nil)
+	})
+
+	t.Run("should delete the org when the License Server refuses the cancellation with a 4xx", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root.Fail(t, http.MethodPost, "/v1/organizations/"+tn.OrgID.String()+"/subscription/cancel", http.StatusNotFound,
+			fakenet.Times(1), fakenet.Body(`{"message":"no subscription"}`))
+
+		// Action
+		res, err := tn.Admin.API.DeleteOrganizationWithResponse(t.Context(), tn.OrgID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		after, err := tn.Admin.API.GetOrganizationByIdWithResponse(t.Context(), tn.OrgID.String())
+		require.NoError(t, err)
+		require.NotEqual(t, http.StatusOK, after.StatusCode())
+	})
+
+	t.Run("should keep the org when the License Server fails the cancellation with a 5xx", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root.Fail(t, http.MethodPost, "/v1/organizations/"+tn.OrgID.String()+"/subscription/cancel", http.StatusInternalServerError, fakenet.Times(1))
+
+		// Action
+		res, err := tn.Admin.API.DeleteOrganizationWithResponse(t.Context(), tn.OrgID.String())
+
+		// Assert
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, res.StatusCode(), http.StatusInternalServerError)
+		require.Equal(t, tn.OrgSlug, orgOf(t, tn).Slug)
 	})
 }
 

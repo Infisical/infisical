@@ -100,6 +100,26 @@ func TestMachineIdentity_Create(t *testing.T) {
 		require.NotContains(t, identityNames(t, tn.Admin.API, tn.OrgID.String()), name)
 	})
 
+	t.Run("should allow creation past the identity limit when the plan does not enforce it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		createIdentity(t, tn, api.CreateMachineIdentityJSONRequestBody{})
+		tn.SetPlan(t, license.Enterprise().With(license.MaxIdentityLimit, 1))
+		name := "i-" + id.Short()
+
+		// Action
+		res, err := tn.Admin.API.CreateMachineIdentityWithResponse(t.Context(), api.CreateMachineIdentityJSONRequestBody{
+			Name: name, OrganizationId: tn.OrgID.String(), Role: new("member"),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Contains(t, identityNames(t, tn.Admin.API, tn.OrgID.String()), name)
+	})
+
 	t.Run("should refuse a member without identity create permission", func(t *testing.T) {
 		t.Parallel()
 

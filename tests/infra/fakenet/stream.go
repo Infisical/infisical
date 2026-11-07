@@ -26,8 +26,9 @@ type buffer struct {
 }
 
 type stream struct {
-	adminURL string
-	prefix   string
+	adminURL   string
+	prefix     string
+	wholeHosts []string
 
 	mu      sync.Mutex
 	buffers map[scopeID]*buffer
@@ -43,11 +44,13 @@ var (
 // Listen opens this binary's event stream and keeps it open, resuming after a drop.
 //
 // prefix is the start every credential this binary mints shares, so the server sends
-// only this binary's events. It returns once the first connection is established, so
+// only this binary's events. wholeHosts are services whose scopes are ids the product
+// assigns rather than credentials the binary mints; their events all arrive, and only
+// tracked scopes are kept. It returns once the first connection is established, so
 // an unreachable fakenet fails in TestMain rather than as a timeout in some test.
-func Listen(ctx context.Context, adminURL, prefix string) error {
+func Listen(ctx context.Context, adminURL, prefix string, wholeHosts ...string) error {
 	adminURL = strings.TrimSuffix(adminURL, "/")
-	st := &stream{adminURL: adminURL, prefix: prefix, buffers: map[scopeID]*buffer{}}
+	st := &stream{adminURL: adminURL, prefix: prefix, wholeHosts: wholeHosts, buffers: map[scopeID]*buffer{}}
 
 	streamsMu.Lock()
 	streams[adminURL] = st
@@ -75,6 +78,12 @@ func Track(tt *testing.T, adminURL, host, key string) {
 	id := scopeID{host, key}
 
 	st.mu.Lock()
+	if _, ok := st.buffers[id]; ok {
+		// Already tracked by this test, such as a plan set at tenant creation and a
+		// handle opened later; replacing the buffer would drop what arrived between.
+		st.mu.Unlock()
+		return
+	}
 	st.buffers[id] = &buffer{changed: make(chan struct{})}
 	st.mu.Unlock()
 
@@ -118,8 +127,12 @@ func (st *stream) run(ctx context.Context, connected chan<- error) {
 }
 
 func (st *stream) consume(ctx context.Context, onOpen func()) error {
+	query := url.Values{"prefix": {st.prefix}}
+	for _, h := range st.wholeHosts {
+		query.Add("host", h)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		st.adminURL+AdminPrefix+"/events?prefix="+url.QueryEscape(st.prefix), nil)
+		st.adminURL+AdminPrefix+"/events?"+query.Encode(), nil)
 	if err != nil {
 		return err
 	}

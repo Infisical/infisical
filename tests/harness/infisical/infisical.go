@@ -52,6 +52,7 @@ var OAuthClients = map[string]string{
 type module struct {
 	image    Image
 	env      map[string]string
+	files    []infra.File
 	runModes string
 }
 
@@ -62,6 +63,12 @@ func WithImage(img Image) Option { return func(m *module) { m.image = img } }
 
 // WithEnv overrides or adds an environment variable.
 func WithEnv(k, v string) Option { return func(m *module) { m.env[k] = v } }
+
+// WithFile places a host file in the container before it starts, replacing what the
+// image holds at that path.
+func WithFile(src, dst string) Option {
+	return func(m *module) { m.files = append(m.files, infra.File{Src: src, Dst: dst}) }
+}
 
 // WithRunModes sets INFISICAL_RUN_MODES. A pod that does not include "api" serves
 // /api/status and no product routes, which is a thing worth asserting.
@@ -171,7 +178,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		Image: m.image.Ref,
 		Env:   env,
 		Ports: []int{port},
-		Files: []infra.File{{Src: fn.CAPEMFile(), Dst: fakenet.CAPath}},
+		Files: append([]infra.File{{Src: fn.CAPEMFile(), Dst: fakenet.CAPath}}, m.files...),
 		DNS:   []string{fn.Resolver()},
 		// /api/status is registered before the run-mode guard, so it answers even on
 		// a pod that serves no product routes. It also reports emailConfigured and

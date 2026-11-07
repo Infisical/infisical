@@ -101,7 +101,9 @@ func (l *eventLog) current() uint64 {
 // serveEvents streams events as SSE: history first, then live.
 //
 // One stream per test binary, filtered by credential prefix, so a binary never
-// receives the traffic of packages running beside it.
+// receives the traffic of packages running beside it. A host named in the request is
+// sent whole: its scopes are ids the product assigns, such as an organization id, so
+// they cannot carry the prefix, and the client keeps only the scopes a test tracks.
 func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -109,6 +111,10 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	prefix := r.URL.Query().Get("prefix")
+	wholeHosts := map[string]bool{}
+	for _, h := range r.URL.Query()["host"] {
+		wholeHosts[h] = true
+	}
 
 	var after uint64
 	resuming := false
@@ -132,7 +138,7 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 		resuming = false
 		for _, rec := range records {
 			after = rec.Seq
-			if !strings.HasPrefix(rec.Scope, prefix) {
+			if !strings.HasPrefix(rec.Scope, prefix) && !wholeHosts[rec.Host] {
 				continue
 			}
 			body, _ := json.Marshal(rec)
