@@ -46,6 +46,9 @@ Run both suites from the repo root, which is the same entry point CI uses:
 - `make test-api-unit` — unit tests matching `./src/**/*.test.ts`
 - `make test-api-e2e` — e2e tests matching `./e2e-test/**/*.spec.ts`
 - `make test-api-e2e SPEC=<pattern>` — narrow to one spec, e.g. `SPEC=secret-sync`
+- `make test-api-integration`: integration tests for `src/domains/` matching `./src/**/*.integration.spec.ts`
+  (see "Integration tests" in `src/domains/AGENTS.md`). Runs on the host, not in the FIPS image, because
+  Testcontainers needs Docker; narrow it with `SPEC=` the same way
 - `make up-rotation-databases` — start the databases the secret rotation specs need, required
   only for a full run (`docker-compose.e2e-dbs.yml`, and the Oracle image is large)
 - `make down-test-suite-containers` — stop everything when finished

@@ -304,3 +304,89 @@ claims something a caller depends on, never to raise a coverage number.
   - it fails the test if a second top-level `run` opens while one is active in the same call chain
     (the "forgot to pass `tx`" mistake).
 - Consumers of a domain use its `Fake<Domain>Service` from `testing/`, never a hand-rolled mock.
+
+### Integration tests
+
+The harness lives in `lib/testing/integration/`. It gives a test a real, migrated Postgres and any
+other server it asks for, with no Fastify server, queues or license server. Files run in parallel.
+
+```bash
+npm run test:integration                  # from backend/; needs Docker
+npm run test:integration -- kms-key       # one file
+make test-api-integration SPEC=kms-key    # the same, from the repo root
+```
+
+A test declares what it needs once per `describe` and keeps plain `test(...)`:
+
+```ts
+describe("KmsKeyService.generateKmsKey", () => {
+  const h = setupIntegration();   // this worker's migrated database, plus tenants
+  const ssh = setupSsh();         // only if the claim needs an SSH server
+
+  test("should refuse a duplicate key name in the same org", async () => {
+    // Setup
+    const tn = await h.newTenant();
+    const kms = new KmsCoreModule({ db: h.db, hsm: new FakeHsm() });
+    await kms.service.generateKmsKey({ orgId: tn.org.id, name: "k1" });
+
+    // Action
+    const result = kms.service.generateKmsKey({ orgId: tn.org.id, name: "k1" });
+
+    // Assert
+    await expect(result).rejects.toThrow("already exists");
+  });
+});
+```
+
+| `h.` | Gives |
+| --- | --- |
+| `db` | Knex on this describe's database (`replicaNode()` and `primaryNode()` resolve to it) |
+| `newTenant()` | A new organization, an admin user and one project with dev, staging and prod |
+| `factories` | One more row: `user`, `organization`, `orgMembership`, `project`, `projectMembership` |
+| `newDatabase()` | An empty database on the same server (a rotation target, say), dropped after the test |
+
+Read `h.*` inside tests and hooks; reading it while the describe is being declared throws. Factories
+insert only platform rows no domain owns yet. Create a domain's own rows through its module, so the
+test exercises its rules.
+
+How it is shared:
+
+| Level | Postgres | A server such as SSH |
+| --- | --- | --- |
+| Once per run | the server, and a template database with every migration applied | the container |
+| Once per worker | a clone of the template (`infisical_it_<run>_w<n>`), reused by the worker's later files | nothing |
+| Once per test | a tenant from `h.newTenant()` | a user from `ssh.newUser()` |
+
+- **Nothing starts until a test asks for it.** `startOnce(name, start)` (`harness.ts`) lets the first
+  caller in the run start a server while every other worker waits on a lock and then reuses its
+  address. A run that never calls `setupSsh()` never starts SSH.
+- **Migrations run once, sequentially.** The template is named after a hash of `src/db/migrations`;
+  against a long-lived server (`INTEGRATION_POSTGRES_URL`) an unchanged tree reuses it across runs.
+- **Instance-wide state** (root key, server config) is not per tenant. A describe that changes it uses
+  `setupIntegration({ freshDatabase: true })`, a private clone dropped afterwards.
+- **Postgres** is a Testcontainers container unless `INTEGRATION_POSTGRES_URL` names a server. The
+  harness creates and drops only databases named `infisical_it_*` and refuses any other name.
+- **Cleanup** is the run's: global teardown removes every container labelled with the run id (the worker
+  that started one may exit while others still use it) and drops the run's databases.
+- **Never `initDbConnection()` in an integration test.** It registers `primaryNode()`/`replicaNode()`
+  globally, once per process; the harness's own client supports several databases in one file.
+
+#### Adding a server
+
+Write one file in `lib/testing/integration/servers/`, shaped like `servers/ssh.ts`:
+
+1. `start<Name>()` starts the container with `container(image)` (a Testcontainers builder labelled with
+   the run) and returns a plain JSON address: host, port, container id, credentials. It crosses
+   processes, so never a live client.
+2. `setup<Name>()` calls `startOnce("<name>", start<Name>)` in `beforeAll` and returns `new<Thing>()`,
+   which creates a namespace no other test uses (a Unix user, an LDAP OU, a key prefix) and removes it in
+   `onTestFinished`.
+
+Nothing else registers it. Add per-test options to `new<Thing>()`, not a second server. Pin the image to
+an exact tag, and check it can do what the namespace needs: an sshd running as an unprivileged user, for
+instance, can only log in that one user.
+
+#### Before you call it done
+
+Run the integration suite three times. A failure that only appears on a rerun is state leaking between
+tests or workers.
