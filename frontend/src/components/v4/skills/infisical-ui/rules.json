@@ -1136,14 +1136,16 @@
     },
     {
       "id": "translucent-hover",
-      "title": "Hover and press overlays are translucent",
-      "instruction": "Hover, highlight and press on part of an element that already has content behind it (chart bars and cursors, rows on tinted surfaces, list and menu items) use ink at opacity-hover or opacity-press (6% and 10% in light, 12% and 18% in dark), so what is behind shows through. Never paint an opaque fill over it.",
-      "good": "A chart cursor at ink 6% that keeps the grid lines and bars behind it visible.",
-      "avoid": "A tint or select fill that covers the bars, grid lines or row content under the pointer.",
+      "title": "One translucent hover color",
+      "instruction": "Every neutral hover ground uses var(--v4-hover) and every pressed ground var(--v4-press): sidebar rows and tools, table, list, tree and grid rows, menu and listbox rows, segments, ghost and outline actions and tiles. Both are translucent ink (color-mix(in oklab, ink hover-mix, transparent)), so they land on whatever ground is underneath, shift it darker in light schemes and brighter in dark ones and need no per-theme value. Tune strength only through hover-mix and press-mix. Where the fill must be opaque, such as a pinned cell or a ring that cuts out a dot, mix ink at var(--v4-hover-mix) into that ground with color-mix in srgb, which matches how the overlay composites. Current and selected states keep their own, stronger grounds.",
+      "good": "Background var(--v4-hover) on a hovered sidebar row, table row or menu row, and color-mix(in srgb, var(--v4-ink) var(--v4-hover-mix), var(--v4-surface)) on a pinned actions cell of a hovered row.",
+      "avoid": "A hovered row painted var(--v4-tint), a per-theme flat hover color such as the old sidebar-hover, or an opaque hover that hides the ground underneath.",
       "detect": {
-        "by": "review"
+        "by": "lint",
+        "check": "flat-hover"
       },
-      "category": "Visual"
+      "category": "Visual",
+      "exceptions": "The check reads :hover rules that paint their own element; a hovered element that keeps a pressed, current or selected state keeps that state's ground, and pseudo-element handles such as a resize line are not grounds."
     },
     {
       "id": "pointer-cursor-for-links",

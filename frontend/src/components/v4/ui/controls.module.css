@@ -995,7 +995,7 @@
       [aria-pressed="true"],
       [data-state="on"]
     ) {
-    background-color: var(--v4-segment-hover);
+    background-color: var(--v4-hover);
     color: var(--v4-ink);
   }
 }

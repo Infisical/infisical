@@ -1058,7 +1058,7 @@ export const baselineContent = [
     behavior: [
       "ChartContainer provides Recharts responsive sizing and a ChartConfig mapping series keys to labels, icons and color or light/dark values. Tooltip and legend content consume that context.",
       "The categorical palette is six tokens, chart-1 to chart-6, defined in tokens.json for both themes and exposed as --chart-N and --color-chart-N. chartSeries lists them in order as CSS values; index it (chartSeries[index % chartSeries.length]) instead of keeping a local palette. chart-6 is a blue the other five lack, 5.5:1 on surface in light and 6.7:1 on surface (6.9:1 on inset) in dark, and its nearest series, chart-2, is further from it in OKLab than any two of chart-1 to chart-5 are from each other.",
-      "The hover cursor behind a hovered category is a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible. It never paints an opaque fill over the plot.",
+      "The hover cursor behind a hovered category is a translucent ink overlay at the shared hover token, so grid lines and bars behind it stay visible. It never paints an opaque fill over the plot.",
       "While data loads, the chart region shows Skeleton bars shaped like the chart, with a status that names what is loading."
     ],
     accessibility: [
@@ -1249,7 +1249,7 @@ export const baselineContent = [
         {
           id: "chart-hover-overlay",
           when: "A pointer hovers a bar or category.",
-          do: "Mark the hovered category with a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible.",
+          do: "Mark the hovered category with a translucent ink overlay at the shared hover token, so grid lines and bars behind it stay visible.",
           avoid:
             "Paint the cursor or a hovered bar with an opaque fill that covers the plot behind it.",
           reason: "Hover marks a position; it should not hide the data people are comparing.",

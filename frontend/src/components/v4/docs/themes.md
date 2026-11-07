@@ -12,8 +12,6 @@ Overrides:
 - inset: #ffffff
 - surface: #ffffff
 - tint: #faf8f4
-- sidebar-current: #e6dfd5
-- sidebar-hover: #eeeae3
 - line: #d5cdc2
 - line-soft: #e4ded5
 - faint: #85807a
@@ -24,17 +22,14 @@ Overrides:
 | ink | inset | #010101 on #ffffff | 20.87:1 | 4.5:1 | pass |
 | ink | sidebar | #010101 on #f5f3ee | 18.82:1 | 4.5:1 | pass |
 | ink | tint | #010101 on #faf8f4 | 19.68:1 | 4.5:1 | pass |
-| ink | sidebar-current | #010101 on #e6dfd5 | 15.78:1 | 4.5:1 | pass |
 | text2 | surface | #2f3234 on #ffffff | 12.91:1 | 4.5:1 | pass |
 | text2 | inset | #2f3234 on #ffffff | 12.91:1 | 4.5:1 | pass |
 | text2 | sidebar | #2f3234 on #f5f3ee | 11.64:1 | 4.5:1 | pass |
 | text2 | tint | #2f3234 on #faf8f4 | 12.17:1 | 4.5:1 | pass |
-| text2 | sidebar-current | #2f3234 on #e6dfd5 | 9.76:1 | 4.5:1 | pass |
 | muted | surface | #565654 on #ffffff | 7.36:1 | 4.5:1 | pass |
 | muted | inset | #565654 on #ffffff | 7.36:1 | 4.5:1 | pass |
 | muted | sidebar | #565654 on #f5f3ee | 6.63:1 | 4.5:1 | pass |
 | muted | tint | #565654 on #faf8f4 | 6.93:1 | 4.5:1 | pass |
-| muted | sidebar-current | #565654 on #e6dfd5 | 5.56:1 | 4.5:1 | pass |
 | faint | surface | #85807a on #ffffff | 3.91:1 | 3:1 | pass |
 | faint | inset | #85807a on #ffffff | 3.91:1 | 3:1 | pass |
 | faint | sidebar | #85807a on #f5f3ee | 3.53:1 | 3:1 | pass |
@@ -56,8 +51,6 @@ Overrides:
 - inset: #f9f9fa
 - surface: #ffffff
 - tint: #f3f3f3
-- sidebar-current: #e1e1e2
-- sidebar-hover: #e7e7e9
 - line: #cbcbcf
 - line-soft: #dadadd
 - faint: #828387
@@ -68,17 +61,14 @@ Overrides:
 | ink | inset | #010101 on #f9f9fa | 19.84:1 | 4.5:1 | pass |
 | ink | sidebar | #010101 on #efeff0 | 18.16:1 | 4.5:1 | pass |
 | ink | tint | #010101 on #f3f3f3 | 18.81:1 | 4.5:1 | pass |
-| ink | sidebar-current | #010101 on #e1e1e2 | 15.97:1 | 4.5:1 | pass |
 | text2 | surface | #2f3234 on #ffffff | 12.91:1 | 4.5:1 | pass |
 | text2 | inset | #2f3234 on #f9f9fa | 12.27:1 | 4.5:1 | pass |
 | text2 | sidebar | #2f3234 on #efeff0 | 11.23:1 | 4.5:1 | pass |
 | text2 | tint | #2f3234 on #f3f3f3 | 11.63:1 | 4.5:1 | pass |
-| text2 | sidebar-current | #2f3234 on #e1e1e2 | 9.88:1 | 4.5:1 | pass |
 | muted | surface | #565654 on #ffffff | 7.36:1 | 4.5:1 | pass |
 | muted | inset | #565654 on #f9f9fa | 6.99:1 | 4.5:1 | pass |
 | muted | sidebar | #565654 on #efeff0 | 6.40:1 | 4.5:1 | pass |
 | muted | tint | #565654 on #f3f3f3 | 6.63:1 | 4.5:1 | pass |
-| muted | sidebar-current | #565654 on #e1e1e2 | 5.63:1 | 4.5:1 | pass |
 | faint | surface | #828387 on #ffffff | 3.79:1 | 3:1 | pass |
 | faint | inset | #828387 on #f9f9fa | 3.60:1 | 3:1 | pass |
 | faint | sidebar | #828387 on #efeff0 | 3.30:1 | 3:1 | pass |
@@ -102,17 +92,14 @@ No overrides; it renders exactly like its base.
 | ink | inset | #f1f0ea on #0b0b0b | 17.24:1 | 4.5:1 | pass |
 | ink | sidebar | #f1f0ea on #010101 | 18.28:1 | 4.5:1 | pass |
 | ink | tint | #f1f0ea on #1c1c1c | 14.93:1 | 4.5:1 | pass |
-| ink | sidebar-current | #f1f0ea on #2c2c2b | 12.24:1 | 4.5:1 | pass |
 | text2 | surface | #d8d8d4 on #111111 | 13.21:1 | 4.5:1 | pass |
 | text2 | inset | #d8d8d4 on #0b0b0b | 13.77:1 | 4.5:1 | pass |
 | text2 | sidebar | #d8d8d4 on #010101 | 14.60:1 | 4.5:1 | pass |
 | text2 | tint | #d8d8d4 on #1c1c1c | 11.92:1 | 4.5:1 | pass |
-| text2 | sidebar-current | #d8d8d4 on #2c2c2b | 9.78:1 | 4.5:1 | pass |
 | muted | surface | #b0b0a9 on #111111 | 8.66:1 | 4.5:1 | pass |
 | muted | inset | #b0b0a9 on #0b0b0b | 9.03:1 | 4.5:1 | pass |
 | muted | sidebar | #b0b0a9 on #010101 | 9.57:1 | 4.5:1 | pass |
 | muted | tint | #b0b0a9 on #1c1c1c | 7.81:1 | 4.5:1 | pass |
-| muted | sidebar-current | #b0b0a9 on #2c2c2b | 6.41:1 | 4.5:1 | pass |
 | faint | surface | #8e9291 on #111111 | 6.00:1 | 3:1 | pass |
 | faint | inset | #8e9291 on #0b0b0b | 6.25:1 | 3:1 | pass |
 | faint | sidebar | #8e9291 on #010101 | 6.63:1 | 3:1 | pass |
@@ -139,17 +126,14 @@ Overrides:
 | ink | inset | #f1f0ea on #121213 | 16.40:1 | 4.5:1 | pass |
 | ink | sidebar | #f1f0ea on #09090a | 17.43:1 | 4.5:1 | pass |
 | ink | tint | #f1f0ea on #1c1c1c | 14.93:1 | 4.5:1 | pass |
-| ink | sidebar-current | #f1f0ea on #2c2c2b | 12.24:1 | 4.5:1 | pass |
 | text2 | surface | #d8d8d4 on #111111 | 13.21:1 | 4.5:1 | pass |
 | text2 | inset | #d8d8d4 on #121213 | 13.10:1 | 4.5:1 | pass |
 | text2 | sidebar | #d8d8d4 on #09090a | 13.93:1 | 4.5:1 | pass |
 | text2 | tint | #d8d8d4 on #1c1c1c | 11.92:1 | 4.5:1 | pass |
-| text2 | sidebar-current | #d8d8d4 on #2c2c2b | 9.78:1 | 4.5:1 | pass |
 | muted | surface | #b0b0a9 on #111111 | 8.66:1 | 4.5:1 | pass |
 | muted | inset | #b0b0a9 on #121213 | 8.58:1 | 4.5:1 | pass |
 | muted | sidebar | #b0b0a9 on #09090a | 9.13:1 | 4.5:1 | pass |
 | muted | tint | #b0b0a9 on #1c1c1c | 7.81:1 | 4.5:1 | pass |
-| muted | sidebar-current | #b0b0a9 on #2c2c2b | 6.41:1 | 4.5:1 | pass |
 | faint | surface | #8e9291 on #111111 | 6.00:1 | 3:1 | pass |
 | faint | inset | #8e9291 on #121213 | 5.95:1 | 3:1 | pass |
 | faint | sidebar | #8e9291 on #09090a | 6.32:1 | 3:1 | pass |

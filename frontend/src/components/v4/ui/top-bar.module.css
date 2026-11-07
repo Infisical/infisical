@@ -195,7 +195,7 @@
 }
 .userRow:hover,
 .userRow[aria-expanded="true"] {
-  background: var(--v4-sidebar-hover);
+  background: var(--v4-hover);
 }
 .userRow:focus-visible,
 .sheetRow:focus-visible {
@@ -234,7 +234,7 @@
   cursor: default;
 }
 .sheetRow:hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
+  background: var(--v4-hover);
 }
 .sheetRow:disabled {
   color: var(--v4-faint);
