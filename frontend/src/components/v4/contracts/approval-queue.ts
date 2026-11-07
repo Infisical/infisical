@@ -23,10 +23,12 @@ export const approvalQueueDefinition = {
     "Actions sit in a second row under each request's text, so the age ends every title line in the same place.",
     "Approve is the accent Button in every variant and in the props API: an approval moment keeps the accent (rule/accent-create). It stays accent while pending, with its spinner; View diff and Retry stay outline and Undo stays a link.",
     "New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry.",
-    "onUndo is optional. Without it resolved rows stay in place with no action, for decisions the host cannot take back."
+    "onUndo is optional. Without it resolved rows stay in place with no action, for decisions the host cannot take back.",
+    "loading replaces the items with loadingRows (default 3) skeleton items in the item geometry of the current variant: a 40px media square, a title bar with a short age bar at the end of its line, a description bar and two button-height action bars in the row below. The header (without its count in the props API) and the footer stay. loadingLabel names what loads, Loading requests by default, and is announced with aria-busy on the queue."
   ],
   accessibility: [
     "Each request title links to the request and marks the open one as current. Errors are announced as alerts.",
+    "While loading, the skeleton items are hidden from assistive technology and the queue announces loadingLabel once.",
     "ApprovalQueueList's label names the list (Requests waiting on you by default); the header title is visible text, not a heading."
   ],
   limitations: [
@@ -52,6 +54,12 @@ export const approvalQueueDefinition = {
       title: "Framed, segmented and divided",
       module: "./examples/approval-queue/variants.tsx",
       states: ["default", "loading", "success", "error"]
+    },
+    {
+      id: "loading",
+      title: "Loading in each variant",
+      module: "./examples/approval-queue/loading.tsx",
+      states: ["loading"]
     },
     {
       id: "grouped",

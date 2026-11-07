@@ -13,5 +13,6 @@ export const Route = createFileRoute(
       username: z.string().optional().catch(undefined)
     })
   ),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader")
+  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
+  errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

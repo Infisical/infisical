@@ -33,3 +33,14 @@
 .failure:focus {
   outline: none;
 }
+.queueTitleLine,
+.queueSmallLine {
+  display: flex;
+  align-items: center;
+}
+.queueTitleLine {
+  min-height: var(--v4-type-row-title-line-height);
+}
+.queueSmallLine {
+  min-height: var(--v4-type-small-line-height);
+}
