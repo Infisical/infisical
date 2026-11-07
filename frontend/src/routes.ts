@@ -1,5 +1,7 @@
 import { index, layout, rootRoute, route, VirtualRouteNode } from "@tanstack/virtual-file-routes";
 
+import { v4Routes } from "./pages/v4/routes";
+
 const middleware = (fileName: string, virtualRoutes: VirtualRouteNode[]) =>
   layout(`middlewares/${fileName}`, virtualRoutes);
 
@@ -469,6 +471,15 @@ export const routes = rootRoute("root.tsx", [
   route("/shared/new", "public/ShareSecretPage/route.tsx"),
   route("/secret-request/secret/$secretRequestId", "public/ViewSecretRequestByIDPage/route.tsx"),
   route("/share-secret", "public/ShareSecretPage/legacy-route.tsx"),
+  route("/design-system", "design-system/route.tsx", [
+    index("design-system/routes/overview.tsx"),
+    route("/foundations/$page", "design-system/routes/foundation.tsx"),
+    route("/components/$group/$component", "design-system/routes/component.tsx"),
+    route("/patterns/$pattern", "design-system/routes/pattern.tsx"),
+    route("/comparisons/$comparison", "design-system/routes/comparison.tsx"),
+    route("/$", "design-system/routes/fallback.tsx")
+  ]),
+  v4Routes,
   route("/cli-redirect", "auth/CliRedirectPage/route.tsx"),
   middleware("restrict-login-signup.tsx", [
     route("/admin/signup", "admin/SignUpPage/route.tsx"),

@@ -1,0 +1,35 @@
+.pattern {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-12);
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v4-space-12);
+}
+.toolbarText {
+  margin: 0;
+  color: var(--v4-text2);
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+}
+.stage {
+  position: relative;
+  padding-bottom: calc(var(--v4-space-48) + var(--v4-space-32));
+}
+.statusLine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+}
+.failure {
+  color: var(--v4-bad);
+}
+.statusLine:focus,
+.failure:focus {
+  outline: none;
+}

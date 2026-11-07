@@ -79,6 +79,12 @@ To add a frontend event:
 3. Capture it through the scope-specific analytics method.
 4. Update the PostHog insight or dashboard that consumes it.
 
+Super properties also go through `@app/lib/analytics`, never a direct PostHog
+call. The v4 app registers `ui_version: "v4"` with `analytics.registerUiVersion`
+while a live-mode page is mounted and unregisters it on the way out, so main's
+events compare across the two UIs without new event names. Its demo mode, which
+runs on fixtures with no login, registers and captures nothing.
+
 Legacy frontend telemetry still uses `Telemetry` directly. Migrate it through
 the shared API rather than copying that pattern into new code. Preserve
 existing identity and feature-flag behavior during migration.

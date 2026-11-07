@@ -8,6 +8,8 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import wasm from "vite-plugin-wasm";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+import { v4BundleFence } from "./scripts/v4-bundle-fence";
+
 const virtualRouteFileChangeReloadPlugin: PluginOption = {
   name: "watch-config-restart",
   configureServer(server) {
@@ -127,7 +129,8 @@ export default defineConfig(({ mode }) => {
         virtualRouteConfig: "./src/routes.ts"
       }),
       react(),
-      virtualRouteFileChangeReloadPlugin
+      virtualRouteFileChangeReloadPlugin,
+      v4BundleFence()
     ]
   };
 });

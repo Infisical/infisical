@@ -1,0 +1,319 @@
+# Sonner
+
+Announce a short-lived result through themed toast notifications.
+
+## Choose this component
+
+Choose Toast for a recent operation result that should not move focus. Use Alert for a persistent actionable failure and inline FieldError for invalid input.
+
+## Usage rules
+
+### toast-usage
+
+Owner: toast.
+
+When an asynchronous save finishes after the initiating menu closes.
+
+Do: Await the operation, then announce its actual result; retain a durable recovery route for a failure.
+
+Avoid: Announce Saved on click or make a short-lived toast the only way to retry a failed mutation.
+
+Why: Transient feedback cannot substitute for persistence or a recoverable error state.
+
+Checked by: review only. Look for: Reject an operation and a clipboard write. No success toast appears before fulfillment, and a failure that needs repair remains recoverable after transient feedback disappears.
+
+Source evidence:
+- src/components/v4/ui/sonner.tsx
+- src/pages/design-system/examples/toast/default.tsx
+
+### toast-shell-host
+
+Owner: toast.
+
+When a page inside the v4 shell needs to announce a result.
+
+Do: Call toast from @infisical/sonner and let the AppShell host show it, including from inside an open sheet or dialog.
+
+Avoid: Mount a page-local Toaster or a fixed ToastStack with its own store, or raise a toast's z-index to clear an overlay.
+
+Why: One host on the shared overlay layer keeps one queue and paints above every overlay by DOM order; page-local hosts duplicate the queue and fight the layer model.
+
+Checked by: review only. Look for: Open the sheet in the over-sheet example and save: the toast shows once, above the sheet, in both themes, and dismissing it leaves the sheet open.
+
+Source evidence:
+- src/components/v4/ui/sonner.tsx
+- src/components/v4/ui/top-bar.tsx
+- src/components/v4/scope.tsx
+- src/pages/design-system/examples/toast/over-sheet.tsx
+
+### toast-one-feedback-owner
+
+Owner: toast.
+
+When a recent operation needs transient result feedback.
+
+Do: Choose Toaster or controlled ToastStack as the queue owner, create success after settlement and keep actionable errors reachable.
+
+Avoid: Send the same result to both queues, dismiss a pending operation by timer or use a toast as the only field validation message.
+
+Why: Duplicate or transient feedback can obscure which operation failed and where to recover.
+
+Checked by: review only. Look for: Keep a clipboard promise pending, reject it and retry. One queue reports each outcome, and a failed or loading item does not disappear before the person can act.
+
+Source evidence:
+- src/components/v4/ui/sonner.tsx
+- src/pages/design-system/examples/toast/default.tsx
+
+## State guidance
+
+- pending: Keep the operation pending until it resolves rather than immediately issuing success.
+- error: Use an action only if the host can actually retry or undo the operation.
+
+## Presentation rules
+
+Do: Name the completed object or action in one short sentence.
+
+Avoid: Send the same success message through a toast, banner and inline alert at once.
+
+Why: Repeated announcements interrupt the ongoing task.
+
+## Import and exports
+
+- src/components/v4/ui/sonner.tsx
+- src/components/v4/ui/sonner.module.css
+- src/components/v4/ui/toast-stack.tsx
+- src/components/v4/ui/helpers.module.css
+- src/components/v4/ui/top-bar.tsx
+- src/components/v4/scope.tsx
+
+Exports: Toaster, toast, V4_TOASTER_ID, ToastStack, ToastItem. Source TypeScript defines the API.
+
+## Behavior
+
+- Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist.
+- The v4 Toaster has its own toaster id (V4_TOASTER_ID), and the toast exported beside it routes every call to that id. The app's v3 Toaster only shows toasts without an id, so a v4 toast and a v3 toast never render twice, even when both Toasters are mounted on one page.
+- AppShell mounts the one toast host, so every page inside the v4 shell calls toast() without mounting a Toaster. Toaster is idempotent per toaster id: when a page or example still mounts its own, the first mounted instance renders and the others render nothing, so no toast shows twice; when it unmounts, the next one takes over.
+- Toaster portals into the V4Scope toast layer, a sibling placed right after the overlay container, and sits on the shared overlay layer (z-50). It follows every sheet, dialog and menu in DOM order, so a toast paints above an open sheet or dialog without a higher z-index. Its toasts keep pointer events while a modal turns them off for the page, and a click on one never dismisses the overlay under it. The notifications region is aria-live, so a modal never hides it from assistive technology.
+- Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content.
+
+## Accessibility
+
+- ToastStack exposes status feedback and named action/dismiss buttons. Its auto-dismiss timer pauses while hovered or keyboard-focused, then resumes the remaining duration.
+
+## Use cases
+
+- Use a single notification queue for useful transient results, with durable recovery where a failure needs action.
+
+## Limits
+
+- A modal sheet or dialog traps focus, so while one is open its toasts are reachable by pointer and announced, but Tab does not leave the modal to reach a toast action. Keep any recovery a toast offers reachable from the page as well.
+- Toaster/Sonner and controlled ToastStack are alternative owners, not a shared queue. The host creates results after actual settlement and handles action effects.
+- Call toast from @infisical/sonner, not from the sonner package: a plain sonner toast has no toaster id and goes to the app's v3 Toaster instead.
+
+## Declared example coverage
+
+Source declarations and review criteria only. Generation checks references and completeness, not rendered behavior or API parity.
+
+### tone
+
+- neutral: example `default`, visible label "neutral".
+- ok: example `default`, visible label "ok".
+- bad: example `default`, visible label "bad".
+- loading: example `default`, visible label "loading".
+
+### clipboard lifecycle
+
+
+- pending: omitted. The clipboard lifecycle is a host flow; the toast tones above are what it renders.
+- failed: omitted. The clipboard lifecycle is a host flow; the toast tones above are what it renders.
+- copied: omitted. The clipboard lifecycle is a host flow; the toast tones above are what it renders.
+- retry: omitted. The clipboard lifecycle is a host flow; the toast tones above are what it renders.
+
+### size support
+
+
+- no authored named size: omitted. This family has no authored sm/md/lg size option. Its dimensions follow content or its container; examples preserve that API.
+
+## Executable examples
+
+### One notice per tone
+
+Save this example at `src/pages/design-system/examples/toast/default.tsx`; its relative imports are generated for that exact path. States: default, controlled.
+
+Registry items used: @infisical/button, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useEffect, useId, useState } from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import { type ToastItem, ToastStack } from "../../../../components/v4/ui/sonner";
+
+const tones = {
+  neutral: { id: "neutral", title: "Version available", tone: "neutral" },
+  ok: { id: "ok", title: "Changes saved", tone: "ok" },
+  bad: { id: "bad", title: "Connection failed", tone: "bad" },
+  loading: { id: "loading", title: "Checking provider", tone: "loading" }
+} satisfies Record<string, ToastItem>;
+
+const resolved = { id: "loading", title: "Provider connected", tone: "ok" } satisfies ToastItem;
+
+const ToneDemo = ({ tone }: { tone: keyof typeof tones }) => {
+  const regionId = useId();
+  const [item, setItem] = useState<ToastItem | null>(null);
+  useEffect(() => {
+    if (item?.tone !== "loading") return undefined;
+    const timer = window.setTimeout(() => setItem(resolved), 1800);
+    return () => window.clearTimeout(timer);
+  }, [item]);
+  return (
+    <div className="flex w-full flex-col items-start gap-3">
+      <Button
+        variant="outline"
+        aria-controls={regionId}
+        onClick={() => setItem({ ...tones[tone], duration: 0 })}
+      >
+        Show {tone} notice
+      </Button>
+      <div id={regionId} className="min-h-14 w-full">
+        {item && <ToastStack inline items={[item]} onDismiss={() => setItem(null)} />}
+      </div>
+    </div>
+  );
+};
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(Object.keys(tones) as (keyof typeof tones)[]).map((tone) => (
+        <figure key={tone} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <ToneDemo tone={tone} />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{tone}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+```
+
+### Trigger success and error notifications
+
+Save this example at `src/pages/design-system/examples/toast/parts.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/button, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Button } from "../../../../components/v4/ui/button";
+import * as UI from "../../../../components/v4/ui/sonner";
+import { toast } from "../../../../components/v4/ui/sonner";
+
+export default function Example() {
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <UI.Toaster />
+        <Button
+          onClick={() =>
+            toast.success("Changes saved", {
+              description: "New versions are available to clients."
+            })
+          }
+        >
+          Show success toast
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() =>
+            toast.error("Connection failed", { description: "Reconnect before retrying." })
+          }
+        >
+          Show failure
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() =>
+            toast.warning("Sync paused", {
+              description:
+                "Vercel rejected the last three pushes. Secrets stay on the previous version until you reconnect the integration and retry the sync."
+            })
+          }
+        >
+          Show warning
+        </Button>
+      </div>
+    </div>
+  );
+}
+```
+
+### Toast above an open sheet
+
+Save this example at `src/pages/design-system/examples/toast/over-sheet.tsx`; its relative imports are generated for that exact path. States: default, success.
+
+Registry items used: @infisical/button, @infisical/field, @infisical/input, @infisical/sheet, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import { Field } from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+import * as UI from "../../../../components/v4/ui/sheet";
+import { toast } from "../../../../components/v4/ui/sonner";
+
+export default function Example() {
+  const [saved, setSaved] = useState("30");
+  const [draft, setDraft] = useState(saved);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <UI.Sheet>
+          <UI.SheetTrigger asChild>
+            <Button variant="outline">Edit rotation</Button>
+          </UI.SheetTrigger>
+          <UI.SheetContent>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSaved(draft);
+                toast.success("Rotation schedule saved", {
+                  description: `DATABASE_URL now rotates every ${draft} days.`
+                });
+              }}
+            >
+              <UI.SheetHeader>
+                <UI.SheetTitle>Rotation schedule</UI.SheetTitle>
+                <UI.SheetDescription>The sheet stays open after saving.</UI.SheetDescription>
+              </UI.SheetHeader>
+              <UI.SheetBody>
+                <Field label="Interval in days">
+                  <Input
+                    required
+                    inputMode="numeric"
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                  />
+                </Field>
+              </UI.SheetBody>
+              <UI.SheetFooter>
+                <Button type="submit" disabled={draft === saved}>
+                  Save schedule
+                </Button>
+              </UI.SheetFooter>
+            </form>
+          </UI.SheetContent>
+        </UI.Sheet>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{`Saved interval: ${saved} days`}</figcaption>
+    </figure>
+  );
+}
+```
+
+## Verification recipes
+
+These commands are recipes, not evidence that this component passed.
+
+- static: npm run type:check
+- browser: npm run dev; open /design-system#toast and verify the documented interaction.

@@ -1,0 +1,27 @@
+.dragHandle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: var(--v4-size-control-xs);
+  margin-block-start: calc(var(--v4-focus-clearance) - var(--v4-space-12));
+  border: 0;
+  padding: 0;
+  background-color: transparent;
+  color: var(--v4-muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.dragHandle:hover {
+  background-color: var(--v4-action-ghost-hover);
+  color: var(--v4-ink);
+}
+.dragHandle:active {
+  cursor: grabbing;
+}
+.dragHandle > svg {
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+  stroke-width: var(--v4-stroke-icon);
+}

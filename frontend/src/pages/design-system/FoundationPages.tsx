@@ -1,0 +1,365 @@
+import { useLayoutEffect, useRef, useState } from "react";
+
+import { V4Scope } from "@app/components/v4/scope";
+import { Button } from "@app/components/v4/ui/button";
+import { Input } from "@app/components/v4/ui/input";
+
+import { AccentPanelButton, useAccentPanel } from "./accent-panel";
+import { DocDisclosure, DocSection, PageHeading, PreviewFrame } from "./doc-parts";
+import {
+  resolveColorToken,
+  themeGroups,
+  tokens,
+  typeSpecimenStyle,
+  typographyStyles
+} from "./foundation-data";
+
+type ThemeGroup = (typeof themeGroups)[number];
+
+const colorRoles = [
+  {
+    name: "surface",
+    label: "Surface",
+    utility: "bg-background",
+    description: "The page and content ground."
+  },
+  {
+    name: "tint",
+    label: "Muted surface",
+    utility: "bg-muted",
+    description: "A neutral layer for grouped content."
+  },
+  {
+    name: "select",
+    label: "Selection",
+    utility: "bg-accent",
+    description: "Selected and hovered content, without brand color."
+  },
+  {
+    name: "ink",
+    label: "Primary text",
+    utility: "text-foreground",
+    description: "Text, icons, the global primary role and the primary Button fill."
+  },
+  {
+    name: "muted",
+    label: "Secondary text",
+    utility: "text-muted-foreground",
+    description: "Supporting copy that still needs to be read."
+  },
+  {
+    name: "line",
+    label: "Border",
+    utility: "border-border",
+    description: "Separate surfaces when spacing is not enough."
+  }
+];
+
+const ColorSwatch = ({ name, group }: { name: string; group: ThemeGroup }) => {
+  const value = resolveColorToken(name, group.theme);
+  return (
+    <div className="min-w-0">
+      <div className="h-16 border border-border" style={{ backgroundColor: value }} />
+      <p className="text-muted-foreground mt-2 text-xs">
+        {group.label} <code>{value}</code>
+      </p>
+    </div>
+  );
+};
+
+const LiveValue = ({ name }: { name: string }) => {
+  const panel = useAccentPanel();
+  const ref = useRef<HTMLElement>(null);
+  const [value, setValue] = useState("");
+  useLayoutEffect(() => {
+    if (ref.current)
+      setValue(getComputedStyle(ref.current).getPropertyValue(`--v4-${name}`).trim());
+  }, [name, panel?.choice]);
+  return (
+    <code ref={ref} className="block">
+      {name} {value}
+    </code>
+  );
+};
+
+const LivePair = ({
+  group,
+  background,
+  foreground
+}: {
+  group: ThemeGroup;
+  background: string;
+  foreground: string;
+}) => (
+  <V4Scope theme={group.theme}>
+    <div
+      className="flex min-h-32 flex-col justify-between gap-5 p-4"
+      style={{
+        backgroundColor: `var(--v4-${background})`,
+        color: `var(--v4-${foreground})`
+      }}
+    >
+      <p className="text-sm font-medium">{group.label}</p>
+      <div className="text-xs leading-5">
+        <LiveValue name={background} />
+        <LiveValue name={foreground} />
+      </div>
+    </div>
+  </V4Scope>
+);
+
+const AccentSwatch = ({ group }: { group: ThemeGroup }) => {
+  const panel = useAccentPanel();
+  const scheme = group.scheme === "dark" ? "dark" : "light";
+  return (
+    <V4Scope theme={group.theme}>
+      <div
+        className="flex min-h-40 flex-col justify-between gap-6 p-5"
+        style={{ backgroundColor: "var(--v4-accent)", color: "var(--v4-on-accent)" }}
+      >
+        <p className="text-sm font-medium">{group.label} Infisical yellow</p>
+        <div>
+          <p style={typeSpecimenStyle("title-lg")}>Infisical</p>
+          <code className="mt-2 block text-xs">
+            {panel?.choice[scheme] ?? resolveColorToken("accent", group.theme)}
+          </code>
+        </div>
+      </div>
+    </V4Scope>
+  );
+};
+
+export const ColorPage = () => (
+  <div>
+    <PageHeading title="Color" />
+    <div className="mb-4 flex items-center justify-between gap-4">
+      <p className="text-muted-foreground text-sm leading-6">
+        Compare accents previews another accent family here and keeps it in the URL; the canonical
+        tokens do not change.
+      </p>
+      <AccentPanelButton />
+    </div>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {themeGroups.map((group) => (
+        <AccentSwatch key={group.theme} group={group} />
+      ))}
+    </div>
+    <p className="text-muted-foreground mt-4 text-sm leading-6">
+      Use the yellow as a fill with <code>on-accent</code> ink, which stays ink in both themes
+      because the fill does too. Do not use it as text on a light surface. For a text or icon
+      accent, <code>--v4-accent-fg</code> resolves to ink in light mode and the yellow in dark mode.
+    </p>
+    <DocDisclosure title="Brand accent and neutral accent">
+      <div className="space-y-4 text-sm leading-6">
+        <p>
+          <code>--v4-accent</code> is the yellow brand fill. Its foreground is{" "}
+          <code>--v4-on-accent</code>.
+        </p>
+        <p>
+          <code>bg-accent</code> is the shadcn semantic role for a neutral interaction surface. It
+          maps to the source <code>select</code> token, not the yellow brand color. Keep these roles
+          separate.
+        </p>
+        <p>
+          The primary Button is ink; only the accent Button uses the yellow material, for a
+          page&apos;s create action and for approval and grant moments. Changing the accent does not
+          recolor checked controls or selected rows.
+        </p>
+      </div>
+    </DocDisclosure>
+    <DocSection title="Brand interaction pairs">
+      <p className="text-muted-foreground mb-4 text-sm leading-6">
+        The existing hover fill uses on-accent ink. The quieter accent wash uses primary ink. These
+        specimens show source pairs, not additional button variants.
+      </p>
+      <div className="space-y-5">
+        {[
+          { background: "accent-2", foreground: "on-accent", label: "Hover and pressed fill" },
+          { background: "accent-wash", foreground: "ink", label: "Accent wash" }
+        ].map((pair) => (
+          <div key={pair.background}>
+            <h3 className="mb-3 text-sm font-medium">{pair.label}</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {themeGroups.map((group) => (
+                <LivePair key={group.theme} group={group} {...pair} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </DocSection>
+    <DocSection title="Neutral roles">
+      <div className="divide-y divide-border border-t border-border">
+        {colorRoles.map((role) => (
+          <div key={role.name} className="grid gap-4 py-5 sm:grid-cols-[1fr_1fr]">
+            <div>
+              <h3 className="text-sm font-medium">{role.label}</h3>
+              <code className="text-muted-foreground mt-1 block text-xs">{role.utility}</code>
+              <p className="text-muted-foreground mt-2 text-sm leading-6">{role.description}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {themeGroups.map((group) => (
+                <ColorSwatch key={group.theme} name={role.name} group={group} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </DocSection>
+    <DocDisclosure title="Contrast limits">
+      <p className="text-muted-foreground text-sm leading-6">
+        The source faint role is reserved for inactive content, not ordinary copy. Current
+        control-border pairs are below 3:1 in both themes. Labels, focus indicators and rendered
+        component boundaries still need their own contrast checks; this palette is not a completed
+        accessibility audit.
+      </p>
+    </DocDisclosure>
+    <DocSection title="Status needs a name">
+      <p className="text-muted-foreground mb-4 text-sm leading-6">
+        Use a status color with a word or recognizable icon. A colored border by itself does not
+        explain what happened.
+      </p>
+      <div className="grid gap-5 sm:grid-cols-2">
+        {[
+          { name: "ok", label: "Success" },
+          { name: "warn", label: "Warning" },
+          { name: "bad", label: "Error" },
+          { name: "info", label: "Information" }
+        ].map((role) => (
+          <div key={role.name}>
+            <h3 className="mb-3 text-sm font-medium">
+              {role.label} <code className="text-muted-foreground">{role.name}</code>
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {themeGroups.map((group) => (
+                <ColorSwatch key={group.theme} name={role.name} group={group} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </DocSection>
+  </div>
+);
+
+export const TypographyPage = () => (
+  <div>
+    <PageHeading title="Typography" />
+    <div className="border border-border p-6 sm:p-8">
+      <p style={typeSpecimenStyle("title-lg")}>Production access</p>
+      <p className="text-muted-foreground mt-4" style={typeSpecimenStyle("body")}>
+        Review who can read credentials in this environment.
+      </p>
+      <code className="mt-6 block break-all" style={typeSpecimenStyle("mono")}>
+        /production/payments/api_key
+      </code>
+    </div>
+    <DocSection title="The type scale">
+      <p className="text-muted-foreground mb-4 text-sm leading-6">
+        These specimens read their sizes, weights, line heights and font families directly from{" "}
+        <code>tokens.json</code>. The small eyebrow specimen is an existing source role, not a
+        reason to add uppercase labels elsewhere.
+      </p>
+      <div className="divide-y divide-border border-t border-border">
+        {typographyStyles.map((style) => (
+          <div key={style.name} className="py-6">
+            <div className="text-muted-foreground mb-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <code>{style.name}</code>
+              <span>
+                {style.fontSize} / {style.lineHeight} / {style.fontWeight}
+              </span>
+            </div>
+            <p className="break-words" style={typeSpecimenStyle(style.name)}>
+              {style.sample}
+            </p>
+            <p className="text-muted-foreground mt-3 max-w-prose text-sm leading-6">
+              {style.usage}
+            </p>
+          </div>
+        ))}
+      </div>
+    </DocSection>
+    <DocDisclosure title="Choose a role before a size">
+      <ul className="text-muted-foreground list-disc space-y-2 pl-5 text-sm leading-6">
+        <li>Keep one page title. Use descending heading levels for sections.</li>
+        <li>
+          Use the interface face for prose and labels. Keep monospace for code, commands, paths and
+          literal values.
+        </li>
+        <li>
+          Wrap descriptions. If a technical value must truncate, keep the full value available.
+        </li>
+        <li>Keep field labels visible. A placeholder is only an example.</li>
+      </ul>
+    </DocDisclosure>
+  </div>
+);
+
+export const SpacingShapePage = () => (
+  <div>
+    <PageHeading title="Spacing and shape" />
+    <PreviewFrame label="Control heights">
+      <div className="flex w-full flex-wrap items-end gap-6">
+        {(
+          [
+            { size: "sm", token: "sm" },
+            { size: "md", token: "md" },
+            { size: "lg", token: "lg" }
+          ] as const
+        ).map((control) => (
+          <div key={control.size} className="flex flex-col items-start gap-2">
+            <div className="flex items-center gap-2">
+              <Input
+                size={control.size}
+                defaultValue="staging"
+                aria-label={`${control.token} field`}
+              />
+              <Button type="button" size={control.size}>
+                Save
+              </Button>
+            </div>
+            <p className="text-muted-foreground font-mono text-xs">
+              {
+                tokens.size.tokens.find((token) => token.name === `size-control-${control.token}`)
+                  ?.value
+              }
+            </p>
+          </div>
+        ))}
+      </div>
+    </PreviewFrame>
+    <DocSection title="Spacing steps">
+      <p className="text-muted-foreground mb-4 text-sm leading-6">
+        This source scale describes intended spacing roles. Use component props for implemented
+        sizes; do not force padding through caller classes.
+      </p>
+      <div className="divide-y divide-border border-t border-border">
+        {tokens.spacing.tokens.map((space) => (
+          <div key={space.name} className="grid grid-cols-[5rem_1fr] gap-4 py-3">
+            <div>
+              <code className="text-xs">{space.name}</code>
+              <p className="text-muted-foreground mt-1 text-xs">{space.value}</p>
+            </div>
+            <div>
+              <div
+                className="mb-2 h-3"
+                style={{
+                  width: `var(--v4-${space.name})`,
+                  backgroundColor: "var(--v4-accent)"
+                }}
+              />
+              <p className="text-muted-foreground text-sm leading-6">{space.usage}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </DocSection>
+    <DocSection title="Corners">
+      <p className="text-muted-foreground text-sm leading-6">
+        Every control, surface and portal has square corners. There is no radius scale and no corner
+        mode, so components and callers never set a border radius.
+      </p>
+      <div aria-hidden="true" className="border-input mt-4 h-12 w-16 border bg-muted" />
+    </DocSection>
+  </div>
+);

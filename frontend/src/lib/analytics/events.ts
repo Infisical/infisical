@@ -241,6 +241,8 @@ export type OrganizationAnalyticsEventMap = {
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
 
+export type UiVersion = "v4";
+
 export type ThemePreferenceChangedProperties = {
   source: "command-menu" | "navbar-toggle" | "profile-menu";
   theme: "dark" | "light" | "system";

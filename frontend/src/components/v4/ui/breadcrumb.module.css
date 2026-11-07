@@ -1,0 +1,282 @@
+.root {
+  container-type: inline-size;
+  width: 100%;
+  min-width: 0;
+}
+.trail {
+  --crumb-target: var(--v4-size-nested-sm);
+  --crumb-inset: var(--v4-space-6);
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--v4-text2);
+}
+.entry {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-6);
+  min-width: 0;
+  padding-inline: var(--crumb-inset);
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  font: inherit;
+}
+.link:hover {
+  color: var(--v4-ink);
+}
+.link:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
+}
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.current {
+  color: var(--v4-ink);
+  font-weight: 600;
+}
+.mono {
+  font-family: var(--v4-font-mono);
+}
+.separator {
+  flex: none;
+  inline-size: var(--v4-size-crumb-divider-width);
+  block-size: var(--v4-size-crumb-divider);
+  margin-inline: var(--band-divider-gap, var(--v4-space-crumb-divider));
+  background: var(--v4-crumb-divider);
+}
+.static,
+.link[aria-expanded] {
+  cursor: default;
+}
+.static:hover {
+  color: inherit;
+  background: transparent;
+}
+.media {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-space-20);
+  height: var(--v4-space-20);
+}
+
+.segment {
+  --crumb-press: var(--v4-press);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  min-width: 0;
+  min-height: var(--v4-size-control-sm);
+}
+button.segment {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+/* v4-check-ignore cursor-pointer -- a crumb name always navigates, so it reads as a link even when onNavigate renders it as a button */
+.name {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.name:hover {
+  color: var(--v4-ink);
+}
+.segment[data-name-target="page"] {
+  gap: var(--v4-space-2);
+}
+.segment[data-name-target="page"] > .name::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 100%;
+  inline-size: var(--v4-space-2);
+}
+.segment[data-name-target="page"] > .name {
+  gap: var(--v4-space-4);
+  min-block-size: var(--crumb-target);
+  padding-inline: var(--crumb-inset);
+  transition-property: background-color, color;
+  transition-duration: var(--v4-duration-fast);
+  transition-timing-function: var(--v4-ease-standard);
+}
+.trail > .entry:first-child > .segment[data-name-target="page"] > .name:first-child,
+.trail > .entry:first-child > .segment[data-name-target="switcher"],
+.trail > .entry:first-child > .link {
+  margin-inline-start: calc(-1 * var(--crumb-inset));
+}
+.segment[data-name-target="page"] > .name:hover {
+  background: var(--v4-hover);
+}
+.segment[data-name-target="page"] > .name:active {
+  background: var(--crumb-press);
+}
+.segment[data-name-target="switcher"] {
+  min-height: var(--crumb-target);
+  padding-inline-start: var(--crumb-inset);
+  transition-property: background-color, color;
+  transition-duration: var(--v4-duration-fast);
+  transition-timing-function: var(--v4-ease-standard);
+}
+.segment[data-name-target="switcher"]:hover {
+  background: var(--v4-hover);
+  color: var(--v4-ink);
+}
+.segment[data-name-target="switcher"]:is(:active, [aria-expanded="true"]) {
+  background: var(--crumb-press);
+  color: var(--v4-ink);
+}
+.segment[data-name-target="switcher"] > .chevron:is(:hover, :active) {
+  background: transparent;
+}
+.segment[data-name-target="switcher"][aria-expanded="true"] > .chevron {
+  color: var(--v4-ink);
+}
+.name:focus-visible,
+.segment[data-name-target="switcher"]:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
+}
+.entry[data-current] .segment .label {
+  color: var(--v4-ink);
+  font-weight: 600;
+}
+.chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-nested-sm);
+  height: var(--crumb-target);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--v4-muted);
+  transition-property: background-color, color;
+  transition-duration: var(--v4-duration-fast);
+  transition-timing-function: var(--v4-ease-standard);
+}
+.chevron:hover {
+  background: var(--v4-hover);
+  color: var(--v4-ink);
+}
+.chevron:active,
+.chevron[aria-expanded="true"] {
+  background: var(--crumb-press);
+  color: var(--v4-ink);
+}
+.chevron:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: calc(-1 * var(--v4-size-focus-ring));
+}
+
+.product {
+  --crumb-target: var(--v4-size-shell-target);
+  --crumb-inset: var(--v4-space-control-inline-sm);
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-type-label-font-size);
+  line-height: var(--v4-type-label-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+  letter-spacing: var(--v4-type-label-letter-spacing);
+  flex-wrap: nowrap;
+}
+.product .entry {
+  flex: 0 1 auto;
+}
+.product .link {
+  min-height: var(--crumb-target);
+  border-radius: 0;
+}
+.product .link:not(.static):hover {
+  background: var(--v4-hover);
+}
+.product .label {
+  max-width: 240px;
+}
+.product > .entry:first-child > .segment {
+  min-inline-size: var(--v4-crumb-root-size, 0px);
+  max-inline-size: var(--v4-crumb-root-max, none);
+}
+.root[data-org-zone] .product > .entry:first-child > .segment {
+  interpolate-size: allow-keywords;
+  min-inline-size: 0;
+  inline-size: var(--v4-crumb-root-size, fit-content);
+  transition-property: background-color, color, inline-size;
+  transition-duration: var(--v4-duration-fast), var(--v4-duration-fast), var(--v4-duration-slow);
+  transition-timing-function: var(--v4-ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  .root[data-org-zone] .product > .entry:first-child > .segment {
+    transition-duration: 0s;
+  }
+}
+.root[data-org-zone] .product > .entry:first-child > .segment[data-name-target="switcher"],
+.root[data-org-zone] .product > .entry:first-child > .segment[data-name-target="page"] > .name {
+  gap: var(--v4-space-10);
+  margin-inline-start: 0;
+  padding-inline-start: var(--v4-space-sidebar-row-inset);
+}
+.root[data-org-zone] .product > .entry:first-child .media,
+.root[data-org-zone] .product > .entry:first-child .media > svg {
+  inline-size: var(--v4-size-sidebar-icon);
+  block-size: var(--v4-size-sidebar-icon);
+}
+.product > .entry:first-child[data-switcher] .label {
+  color: var(--v4-ink);
+  font-weight: 600;
+}
+.product > .entry:first-child > .segment > .name,
+.product > .entry:first-child > .segment[data-name-target="switcher"] > .label,
+.root[data-fill] .product > .entry,
+.root[data-fill] .product > .entry > .segment {
+  flex: 1 1 auto;
+}
+.root[data-fill] .product .label {
+  max-width: none;
+}
+
+@container (max-width: 420px) {
+  .trail {
+    --band-divider-gap: var(--v4-space-4);
+  }
+  .product .label {
+    max-width: 100px;
+  }
+}

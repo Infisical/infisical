@@ -1,0 +1,194 @@
+import * as React from "react";
+import { Slot, Tooltip as TooltipPrimitive } from "radix-ui";
+
+import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
+
+import { cn } from "../lib/utils";
+import { Kbd } from "./kbd";
+
+import controls from "./controls.module.css";
+import menu from "./menu.module.css";
+
+const navigationKeys = new Set([
+  "Tab",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End"
+]);
+let lastNavigationKeyAt = -Infinity;
+if (typeof document !== "undefined") {
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      lastNavigationKeyAt = navigationKeys.has(event.key) ? performance.now() : -Infinity;
+    },
+    true
+  );
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      lastNavigationKeyAt = -Infinity;
+    },
+    true
+  );
+}
+const focusedByKeyboard = () => performance.now() - lastNavigationKeyAt < 1000;
+const coveredByOverlay = (trigger: Element) =>
+  trigger.getAttribute("aria-expanded") === "true" ||
+  getComputedStyle(document.body).pointerEvents === "none";
+
+function TooltipProvider({
+  delayDuration = 200,
+  disableHoverableContent = true,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+  return (
+    <TooltipPrimitive.Provider
+      data-slot="tooltip-provider"
+      delayDuration={delayDuration}
+      disableHoverableContent={disableHoverableContent}
+      {...props}
+    />
+  );
+}
+
+function Tooltip({
+  content,
+  shortcut,
+  side = "top",
+  align = "center",
+  wrap: _wrap,
+  disableHoverableContent = true,
+  children,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Root> & {
+  content?: React.ReactNode;
+  shortcut?: string;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  /** @deprecated Tooltips always wrap at size-tooltip-max; this has no effect. */
+  wrap?: boolean;
+}) {
+  return (
+    <TooltipPrimitive.Root
+      data-slot="tooltip"
+      disableHoverableContent={disableHoverableContent}
+      {...props}
+    >
+      {content ? (
+        <>
+          <TooltipTrigger asChild>{children}</TooltipTrigger>
+          <TooltipContent side={side} align={align}>
+            <span className={menu.tooltipText}>{content}</span>
+            {shortcut && <Kbd>{shortcut}</Kbd>}
+          </TooltipContent>
+        </>
+      ) : (
+        children
+      )}
+    </TooltipPrimitive.Root>
+  );
+}
+
+/**
+ * Opens on hover and on keyboard focus only. Focus that a closing menu, dialog or sheet returns to the
+ * trigger never opens it, and after a click it stays closed until the pointer leaves and comes back.
+ */
+function TooltipTrigger({
+  ref,
+  onPointerDown,
+  onPointerMove,
+  onPointerLeave,
+  onFocus,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  const pressed = React.useRef(false);
+  return (
+    <TooltipPrimitive.Trigger
+      ref={ref}
+      data-slot="tooltip-trigger"
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        pressed.current = true;
+      }}
+      onPointerMove={(event) => {
+        onPointerMove?.(event);
+        if (pressed.current) event.preventDefault();
+      }}
+      onPointerLeave={(event) => {
+        onPointerLeave?.(event);
+        if (!coveredByOverlay(event.currentTarget)) pressed.current = false;
+      }}
+      onFocus={(event) => {
+        onFocus?.(event);
+        if (pressed.current || !focusedByKeyboard()) event.preventDefault();
+      }}
+      {...props}
+    />
+  );
+}
+TooltipTrigger.displayName = "TooltipTrigger";
+
+function TooltipContent({
+  className,
+  collisionPadding = 8,
+  sideOffset = 0,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+  return (
+    <TooltipPrimitive.Portal container={useV4PortalContainer()}>
+      <TooltipPrimitive.Content
+        ref={ref}
+        data-slot="tooltip-content"
+        collisionPadding={collisionPadding}
+        collisionBoundary={useV4CollisionBoundary()}
+        sideOffset={sideOffset}
+        className={cn("z-50", menu.tooltip, menu.motion, className)}
+        {...props}
+      >
+        {children}
+        <TooltipPrimitive.Arrow width={10} height={5} className={menu.tooltipArrow} />
+      </TooltipPrimitive.Content>
+    </TooltipPrimitive.Portal>
+  );
+}
+TooltipContent.displayName = "TooltipContent";
+
+function TooltipText({
+  content,
+  side,
+  align,
+  asChild = false,
+  className,
+  ref,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<"span">, "content"> & {
+  /** The supplementary text the tooltip shows on hover and keyboard focus. */
+  content: React.ReactNode;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  /** Make the child element (StatusText, MiddleTruncate) the focusable text instead of a span. */
+  asChild?: boolean;
+  ref?: React.Ref<HTMLSpanElement>;
+}) {
+  const Comp = asChild ? Slot.Root : "span";
+  return (
+    <Tooltip content={content} side={side} align={align}>
+      <Comp
+        ref={ref}
+        data-slot="tooltip-text"
+        tabIndex={0}
+        className={cn(controls.focusOutline, className)}
+        {...props}
+      />
+    </Tooltip>
+  );
+}
+TooltipText.displayName = "TooltipText";
+
+export { Tooltip, TooltipContent, TooltipProvider, TooltipText, TooltipTrigger };

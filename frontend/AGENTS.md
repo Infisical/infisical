@@ -116,6 +116,15 @@ Certificate Manager is org-scoped too (`/organizations/$orgId/cert-manager/...`)
 
 Secret Scanning has one active project per org (see the root `AGENTS.md`). Members are sent straight into it, and UI for orgs with older projects is gated on `isMultiInstance` from `useGetSecretScanningInstanceState`.
 
+### v4 app (`src/pages/v4`)
+
+The v4 app coexists with the current frontend until cutover. It mirrors main's URLs under `/v4` (`routes.ts` builds the subtree).
+- **Modes:** org id `demo` runs on fixtures with no login. Any other org id needs the `v4-app` PostHog flag, reuses main's guards (`helpers/routeGuards.ts`), and redirects to the v3 path when the flag is off.
+- **Data:** pages read data only through `useV4Adapter(domain)` (`pages/v4/data/<domain>`). Each contract is typed from `hooks/api`. `live.ts` assigns main's hooks directly, and `demo.ts` holds fixtures on `createFixtureStore`.
+- **Routes:** add pages as flat leaf routes. A path-only layout node outranks the `/$` placeholder, so its unported siblings would 404. Route files must be named `route.tsx` and hold only `component`, `validateSearch` and the lazy `V4PageLoader` `pendingComponent`. The bundle fence (`scripts/v4-bundle-fence.ts`, CI job **v4 Bundle Fence**) fails the build if anything else from v4 reaches main's entry or a v3 route.
+- **Auth screens** live in `pages/v4/auth` under the same paths as main (`/v4/login`, `/v4/signup`, ...). Main's auth route guards live in `helpers/authRouteGuards.ts` and both trees call them, so change auth redirects there; `pages/v4/auth/paths.ts` sends a redirect to its `/v4` twin when one exists, and a new v4 auth route adds its path to `AUTH_PATHS`.
+- **Import fences** in `.oxlintrc.json`: v4 code never imports v3 or v2 UI, layouts, views or non-v4 pages, and nothing outside v4 and the design system imports it.
+
 ## Conventions
 
 - App browser titles use `PageTitle` from `@app/components/PageTitle`, which applies the localized `common.head-title` format (`Page | Infisical`) without suspending loading/error fallbacks. Pass a page label, not an already branded string. Keep one title mounted per screen, including loading, empty, and denied states; place it outside permission guards when necessary. The static HTML title is handed off before React mounts, preserving a no-JS fallback without duplicates. Custom-branded public sharing keeps its existing native, unbranded title; its loading title must not assume Infisical branding before configuration resolves. Use resource names only, never secret values or tokens.

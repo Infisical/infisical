@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [],
+  "jsPlugins": ["@shadcn/lint"],
+  "categories": {
+    "correctness": "off"
+  },
+  "settings": {
+    "shadcn": {
+      "ui": "@app/components/v4/ui",
+      "componentImports": ["^@app/components/v4/ui(/|$)"],
+      "note": "Tokens live in src/components/v4/tokens.json. Corners are square everywhere."
+    }
+  },
+  "rules": {
+    "shadcn/no-raw-colors": "error",
+    "shadcn/no-restyle": ["error", { "allow": ["layout"] }]
+  }
+}
