@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "quiet-link",
+    title: "Quiet links",
+    description:
+      "A link Button can drop its underline until hover or keyboard focus, and named row buttons that open a sheet now use it.",
+    date: "2026-11-07",
+    commit: "9b822efc12",
+    page: "button"
+  },
+  {
     id: "loading-rows",
     title: "Loading rows and queues",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "c23123067c",
     page: "table"
-  },
-  {
-    id: "mix-ink",
-    title: "Softer states and mix ink",
-    description:
-      "Hover, current and selected are about a third softer, and peach mixes them from a warm ink so they blend into its ground.",
-    date: "2026-11-07",
-    commit: "1a59816ab6",
-    page: "palette"
   }
 ];
