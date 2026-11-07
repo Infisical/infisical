@@ -14,8 +14,14 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/signup", [
       index("v4/auth/SignUpPage/route.tsx"),
       route("/sso", "v4/auth/SignUpSsoPage/route.tsx")
-    ])
+    ]),
+    route("/signupinvite", "v4/auth/SignUpInvitePage/route.tsx"),
+    route("/requestnewinvite", "v4/auth/RequestNewInvitePage/route.tsx"),
+    route("/email-not-verified", "v4/auth/EmailNotVerifiedPage/route.tsx"),
+    route("/account-recovery", "v4/auth/AccountRecoveryEmailPage/route.tsx"),
+    route("/account-recovery-reset", "v4/auth/AccountRecoveryResetPage/route.tsx")
   ]),
+  route("/password-setup", "v4/auth/PasswordSetupPage/route.tsx"),
   route("/mfa-session/$mfaSessionId", "v4/auth/MfaSessionPage/route.tsx"),
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [

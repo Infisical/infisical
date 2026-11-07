@@ -23,6 +23,7 @@ import { Route as indexImport } from './pages/index'
 import { Route as designSystemRoutesFallbackImport } from './pages/design-system/routes/fallback'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
 import { Route as designSystemRoutesOverviewImport } from './pages/design-system/routes/overview'
+import { Route as v4AuthPasswordSetupPageRouteImport } from './pages/v4/auth/PasswordSetupPage/route'
 import { Route as v4AuthRouteImport } from './pages/v4/auth/route'
 import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareSecretPage/route'
 import { Route as authSignUpInvitePageRouteImport } from './pages/auth/SignUpInvitePage/route'
@@ -38,6 +39,11 @@ import { Route as userLayoutImport } from './pages/user/layout'
 import { Route as organizationLayoutImport } from './pages/organization/layout'
 import { Route as v4OrganizationRouteImport } from './pages/v4/organization/route'
 import { Route as v4AuthMfaSessionPageRouteImport } from './pages/v4/auth/MfaSessionPage/route'
+import { Route as v4AuthSignUpInvitePageRouteImport } from './pages/v4/auth/SignUpInvitePage/route'
+import { Route as v4AuthRequestNewInvitePageRouteImport } from './pages/v4/auth/RequestNewInvitePage/route'
+import { Route as v4AuthEmailNotVerifiedPageRouteImport } from './pages/v4/auth/EmailNotVerifiedPage/route'
+import { Route as v4AuthAccountRecoveryResetPageRouteImport } from './pages/v4/auth/AccountRecoveryResetPage/route'
+import { Route as v4AuthAccountRecoveryEmailPageRouteImport } from './pages/v4/auth/AccountRecoveryEmailPage/route'
 import { Route as publicViewSharedSecretByIDPageRouteImport } from './pages/public/ViewSharedSecretByIDPage/route'
 import { Route as publicViewSecretRequestByIDPageRouteImport } from './pages/public/ViewSecretRequestByIDPage/route'
 import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPage/route'
@@ -571,6 +577,13 @@ const designSystemRoutesOverviewRoute = designSystemRoutesOverviewImport.update(
   } as any,
 )
 
+const v4AuthPasswordSetupPageRouteRoute =
+  v4AuthPasswordSetupPageRouteImport.update({
+    id: '/password-setup',
+    path: '/password-setup',
+    getParentRoute: () => v4RouteRoute,
+  } as any)
+
 const v4AuthRouteRoute = v4AuthRouteImport.update({
   id: '/_v4-auth',
   getParentRoute: () => v4RouteRoute,
@@ -686,6 +699,41 @@ const v4AuthMfaSessionPageRouteRoute = v4AuthMfaSessionPageRouteImport.update({
   path: '/mfa-session/$mfaSessionId',
   getParentRoute: () => v4RouteRoute,
 } as any)
+
+const v4AuthSignUpInvitePageRouteRoute =
+  v4AuthSignUpInvitePageRouteImport.update({
+    id: '/signupinvite',
+    path: '/signupinvite',
+    getParentRoute: () => v4AuthRouteRoute,
+  } as any)
+
+const v4AuthRequestNewInvitePageRouteRoute =
+  v4AuthRequestNewInvitePageRouteImport.update({
+    id: '/requestnewinvite',
+    path: '/requestnewinvite',
+    getParentRoute: () => v4AuthRouteRoute,
+  } as any)
+
+const v4AuthEmailNotVerifiedPageRouteRoute =
+  v4AuthEmailNotVerifiedPageRouteImport.update({
+    id: '/email-not-verified',
+    path: '/email-not-verified',
+    getParentRoute: () => v4AuthRouteRoute,
+  } as any)
+
+const v4AuthAccountRecoveryResetPageRouteRoute =
+  v4AuthAccountRecoveryResetPageRouteImport.update({
+    id: '/account-recovery-reset',
+    path: '/account-recovery-reset',
+    getParentRoute: () => v4AuthRouteRoute,
+  } as any)
+
+const v4AuthAccountRecoveryEmailPageRouteRoute =
+  v4AuthAccountRecoveryEmailPageRouteImport.update({
+    id: '/account-recovery',
+    path: '/account-recovery',
+    getParentRoute: () => v4AuthRouteRoute,
+  } as any)
 
 const publicViewSharedSecretByIDPageRouteRoute =
   publicViewSharedSecretByIDPageRouteImport.update({
@@ -3329,6 +3377,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4AuthRouteImport
       parentRoute: typeof v4RouteImport
     }
+    '/v4/password-setup': {
+      id: '/v4/password-setup'
+      path: '/password-setup'
+      fullPath: '/v4/password-setup'
+      preLoaderRoute: typeof v4AuthPasswordSetupPageRouteImport
+      parentRoute: typeof v4RouteImport
+    }
     '/design-system/': {
       id: '/design-system/'
       path: '/'
@@ -3475,6 +3530,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/shared/secret/$secretId'
       preLoaderRoute: typeof publicViewSharedSecretByIDPageRouteImport
       parentRoute: typeof rootRoute
+    }
+    '/v4/_v4-auth/account-recovery': {
+      id: '/v4/_v4-auth/account-recovery'
+      path: '/account-recovery'
+      fullPath: '/v4/account-recovery'
+      preLoaderRoute: typeof v4AuthAccountRecoveryEmailPageRouteImport
+      parentRoute: typeof v4AuthRouteImport
+    }
+    '/v4/_v4-auth/account-recovery-reset': {
+      id: '/v4/_v4-auth/account-recovery-reset'
+      path: '/account-recovery-reset'
+      fullPath: '/v4/account-recovery-reset'
+      preLoaderRoute: typeof v4AuthAccountRecoveryResetPageRouteImport
+      parentRoute: typeof v4AuthRouteImport
+    }
+    '/v4/_v4-auth/email-not-verified': {
+      id: '/v4/_v4-auth/email-not-verified'
+      path: '/email-not-verified'
+      fullPath: '/v4/email-not-verified'
+      preLoaderRoute: typeof v4AuthEmailNotVerifiedPageRouteImport
+      parentRoute: typeof v4AuthRouteImport
+    }
+    '/v4/_v4-auth/requestnewinvite': {
+      id: '/v4/_v4-auth/requestnewinvite'
+      path: '/requestnewinvite'
+      fullPath: '/v4/requestnewinvite'
+      preLoaderRoute: typeof v4AuthRequestNewInvitePageRouteImport
+      parentRoute: typeof v4AuthRouteImport
+    }
+    '/v4/_v4-auth/signupinvite': {
+      id: '/v4/_v4-auth/signupinvite'
+      path: '/signupinvite'
+      fullPath: '/v4/signupinvite'
+      preLoaderRoute: typeof v4AuthSignUpInvitePageRouteImport
+      parentRoute: typeof v4AuthRouteImport
     }
     '/v4/mfa-session/$mfaSessionId': {
       id: '/v4/mfa-session/$mfaSessionId'
@@ -5858,11 +5948,23 @@ const V4V4AuthSignupRouteWithChildren = V4V4AuthSignupRoute._addFileChildren(
 )
 
 interface v4AuthRouteRouteChildren {
+  v4AuthAccountRecoveryEmailPageRouteRoute: typeof v4AuthAccountRecoveryEmailPageRouteRoute
+  v4AuthAccountRecoveryResetPageRouteRoute: typeof v4AuthAccountRecoveryResetPageRouteRoute
+  v4AuthEmailNotVerifiedPageRouteRoute: typeof v4AuthEmailNotVerifiedPageRouteRoute
+  v4AuthRequestNewInvitePageRouteRoute: typeof v4AuthRequestNewInvitePageRouteRoute
+  v4AuthSignUpInvitePageRouteRoute: typeof v4AuthSignUpInvitePageRouteRoute
   V4V4AuthLoginRoute: typeof V4V4AuthLoginRouteWithChildren
   V4V4AuthSignupRoute: typeof V4V4AuthSignupRouteWithChildren
 }
 
 const v4AuthRouteRouteChildren: v4AuthRouteRouteChildren = {
+  v4AuthAccountRecoveryEmailPageRouteRoute:
+    v4AuthAccountRecoveryEmailPageRouteRoute,
+  v4AuthAccountRecoveryResetPageRouteRoute:
+    v4AuthAccountRecoveryResetPageRouteRoute,
+  v4AuthEmailNotVerifiedPageRouteRoute: v4AuthEmailNotVerifiedPageRouteRoute,
+  v4AuthRequestNewInvitePageRouteRoute: v4AuthRequestNewInvitePageRouteRoute,
+  v4AuthSignUpInvitePageRouteRoute: v4AuthSignUpInvitePageRouteRoute,
   V4V4AuthLoginRoute: V4V4AuthLoginRouteWithChildren,
   V4V4AuthSignupRoute: V4V4AuthSignupRouteWithChildren,
 }
@@ -5997,12 +6099,14 @@ const v4OrganizationRouteRouteWithChildren =
 
 interface v4RouteRouteChildren {
   v4AuthRouteRoute: typeof v4AuthRouteRouteWithChildren
+  v4AuthPasswordSetupPageRouteRoute: typeof v4AuthPasswordSetupPageRouteRoute
   v4AuthMfaSessionPageRouteRoute: typeof v4AuthMfaSessionPageRouteRoute
   v4OrganizationRouteRoute: typeof v4OrganizationRouteRouteWithChildren
 }
 
 const v4RouteRouteChildren: v4RouteRouteChildren = {
   v4AuthRouteRoute: v4AuthRouteRouteWithChildren,
+  v4AuthPasswordSetupPageRouteRoute: v4AuthPasswordSetupPageRouteRoute,
   v4AuthMfaSessionPageRouteRoute: v4AuthMfaSessionPageRouteRoute,
   v4OrganizationRouteRoute: v4OrganizationRouteRouteWithChildren,
 }
@@ -7400,6 +7504,7 @@ export interface FileRoutesByFullPath {
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/shared/new': typeof publicShareSecretPageRouteRoute
+  '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
   '/design-system/': typeof designSystemRoutesOverviewRoute
   '/personal-settings': typeof userLayoutRouteWithChildren
   '/login': typeof RestrictLoginSignupLoginRouteWithChildren
@@ -7420,6 +7525,11 @@ export interface FileRoutesByFullPath {
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/v4/account-recovery': typeof v4AuthAccountRecoveryEmailPageRouteRoute
+  '/v4/account-recovery-reset': typeof v4AuthAccountRecoveryResetPageRouteRoute
+  '/v4/email-not-verified': typeof v4AuthEmailNotVerifiedPageRouteRoute
+  '/v4/requestnewinvite': typeof v4AuthRequestNewInvitePageRouteRoute
+  '/v4/signupinvite': typeof v4AuthSignUpInvitePageRouteRoute
   '/v4/mfa-session/$mfaSessionId': typeof v4AuthMfaSessionPageRouteRoute
   '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/admin': typeof adminLayoutRouteWithChildren
@@ -7757,6 +7867,7 @@ export interface FileRoutesByTo {
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/shared/new': typeof publicShareSecretPageRouteRoute
+  '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
   '/design-system': typeof designSystemRoutesOverviewRoute
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/design-system/$': typeof designSystemRoutesFallbackRoute
@@ -7775,6 +7886,11 @@ export interface FileRoutesByTo {
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/v4/account-recovery': typeof v4AuthAccountRecoveryEmailPageRouteRoute
+  '/v4/account-recovery-reset': typeof v4AuthAccountRecoveryResetPageRouteRoute
+  '/v4/email-not-verified': typeof v4AuthEmailNotVerifiedPageRouteRoute
+  '/v4/requestnewinvite': typeof v4AuthRequestNewInvitePageRouteRoute
+  '/v4/signupinvite': typeof v4AuthSignUpInvitePageRouteRoute
   '/v4/mfa-session/$mfaSessionId': typeof v4AuthMfaSessionPageRouteRoute
   '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/admin': typeof adminGeneralPageRouteRoute
@@ -8086,6 +8202,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/shared/new': typeof publicShareSecretPageRouteRoute
   '/v4/_v4-auth': typeof v4AuthRouteRouteWithChildren
+  '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
   '/design-system/': typeof designSystemRoutesOverviewRoute
   '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
@@ -8107,6 +8224,11 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
+  '/v4/_v4-auth/account-recovery': typeof v4AuthAccountRecoveryEmailPageRouteRoute
+  '/v4/_v4-auth/account-recovery-reset': typeof v4AuthAccountRecoveryResetPageRouteRoute
+  '/v4/_v4-auth/email-not-verified': typeof v4AuthEmailNotVerifiedPageRouteRoute
+  '/v4/_v4-auth/requestnewinvite': typeof v4AuthRequestNewInvitePageRouteRoute
+  '/v4/_v4-auth/signupinvite': typeof v4AuthSignUpInvitePageRouteRoute
   '/v4/mfa-session/$mfaSessionId': typeof v4AuthMfaSessionPageRouteRoute
   '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout': typeof organizationLayoutRouteWithChildren
@@ -8456,6 +8578,7 @@ export interface FileRouteTypes {
     | '/requestnewinvite'
     | '/signupinvite'
     | '/shared/new'
+    | '/v4/password-setup'
     | '/design-system/'
     | '/personal-settings'
     | '/login'
@@ -8476,6 +8599,11 @@ export interface FileRouteTypes {
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
+    | '/v4/account-recovery'
+    | '/v4/account-recovery-reset'
+    | '/v4/email-not-verified'
+    | '/v4/requestnewinvite'
+    | '/v4/signupinvite'
     | '/v4/mfa-session/$mfaSessionId'
     | '/v4/organizations/$orgId'
     | '/admin'
@@ -8812,6 +8940,7 @@ export interface FileRouteTypes {
     | '/requestnewinvite'
     | '/signupinvite'
     | '/shared/new'
+    | '/v4/password-setup'
     | '/design-system'
     | '/personal-settings'
     | '/design-system/$'
@@ -8830,6 +8959,11 @@ export interface FileRouteTypes {
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
+    | '/v4/account-recovery'
+    | '/v4/account-recovery-reset'
+    | '/v4/email-not-verified'
+    | '/v4/requestnewinvite'
+    | '/v4/signupinvite'
     | '/v4/mfa-session/$mfaSessionId'
     | '/v4/organizations/$orgId'
     | '/admin'
@@ -9139,6 +9273,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signupinvite'
     | '/shared/new'
     | '/v4/_v4-auth'
+    | '/v4/password-setup'
     | '/design-system/'
     | '/_authenticate/_inject-org-details'
     | '/_authenticate/personal-settings'
@@ -9160,6 +9295,11 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
+    | '/v4/_v4-auth/account-recovery'
+    | '/v4/_v4-auth/account-recovery-reset'
+    | '/v4/_v4-auth/email-not-verified'
+    | '/v4/_v4-auth/requestnewinvite'
+    | '/v4/_v4-auth/signupinvite'
     | '/v4/mfa-session/$mfaSessionId'
     | '/v4/organizations/$orgId'
     | '/_authenticate/_inject-org-details/_org-layout'
@@ -9566,6 +9706,7 @@ export const routeTree = rootRoute
       "filePath": "v4/route.tsx",
       "children": [
         "/v4/_v4-auth",
+        "/v4/password-setup",
         "/v4/mfa-session/$mfaSessionId",
         "/v4/organizations/$orgId"
       ]
@@ -9630,9 +9771,18 @@ export const routeTree = rootRoute
       "filePath": "v4/auth/route.tsx",
       "parent": "/v4",
       "children": [
+        "/v4/_v4-auth/account-recovery",
+        "/v4/_v4-auth/account-recovery-reset",
+        "/v4/_v4-auth/email-not-verified",
+        "/v4/_v4-auth/requestnewinvite",
+        "/v4/_v4-auth/signupinvite",
         "/v4/_v4-auth/login",
         "/v4/_v4-auth/signup"
       ]
+    },
+    "/v4/password-setup": {
+      "filePath": "v4/auth/PasswordSetupPage/route.tsx",
+      "parent": "/v4"
     },
     "/design-system/": {
       "filePath": "design-system/routes/overview.tsx",
@@ -9740,6 +9890,26 @@ export const routeTree = rootRoute
     },
     "/shared/secret/$secretId": {
       "filePath": "public/ViewSharedSecretByIDPage/route.tsx"
+    },
+    "/v4/_v4-auth/account-recovery": {
+      "filePath": "v4/auth/AccountRecoveryEmailPage/route.tsx",
+      "parent": "/v4/_v4-auth"
+    },
+    "/v4/_v4-auth/account-recovery-reset": {
+      "filePath": "v4/auth/AccountRecoveryResetPage/route.tsx",
+      "parent": "/v4/_v4-auth"
+    },
+    "/v4/_v4-auth/email-not-verified": {
+      "filePath": "v4/auth/EmailNotVerifiedPage/route.tsx",
+      "parent": "/v4/_v4-auth"
+    },
+    "/v4/_v4-auth/requestnewinvite": {
+      "filePath": "v4/auth/RequestNewInvitePage/route.tsx",
+      "parent": "/v4/_v4-auth"
+    },
+    "/v4/_v4-auth/signupinvite": {
+      "filePath": "v4/auth/SignUpInvitePage/route.tsx",
+      "parent": "/v4/_v4-auth"
     },
     "/v4/mfa-session/$mfaSessionId": {
       "filePath": "v4/auth/MfaSessionPage/route.tsx",
