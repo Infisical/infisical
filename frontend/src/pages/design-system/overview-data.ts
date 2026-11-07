@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "error-state",
+    title: "Error and 404 pages",
+    description:
+      "ErrorState gives v4 a quiet Page not found and Something went wrong, inside the shell or full-page when the shell fails.",
+    date: "2026-11-07",
+    commit: "522e7b336a",
+    page: "error-state"
+  },
+  {
     id: "row-ring",
     title: "Even, keyboard-only row rings",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "4da1f58249",
     page: "colors"
-  },
-  {
-    id: "tooltip-pass-through",
-    title: "Pass-through tooltips",
-    description:
-      "Tooltips close as the pointer leaves, never catch clicks, and no longer reopen when focus returns from a menu, dialog or sheet.",
-    date: "2026-11-07",
-    commit: "7371831b2f",
-    page: "tooltip"
   }
 ];
