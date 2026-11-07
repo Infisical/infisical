@@ -330,6 +330,7 @@ export const Navbar = () => {
 
   const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
   const isPamScope = orgScopedProduct === ProjectType.PAM;
+  const isSecretScanningScope = orgScopedProduct === ProjectType.SecretScanning;
   const isAgentVaultScope = isAgentVaultProjectPath(location.pathname);
   const isProjectScope =
     Boolean(orgScopedProduct) ||
@@ -371,9 +372,11 @@ export const Navbar = () => {
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
         !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
+        !isServerAdminPanel && isSecretScanningScope && "from-product-ss/5",
         !isServerAdminPanel &&
           isProjectScope &&
           !isPamScope &&
+          !isSecretScanningScope &&
           !isAgentVaultScope &&
           "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
