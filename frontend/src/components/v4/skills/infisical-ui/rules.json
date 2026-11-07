@@ -1314,6 +1314,19 @@
       "exceptions": "A chart legend laid out as a table beside its chart is not a list of records; keep it a native Table and mark it with v4-check-ignore raw-table-in-card and that reason."
     },
     {
+      "id": "v4-path-helper",
+      "title": "Build v4 links through the path helpers",
+      "category": "Agent docs",
+      "instruction": "Never write the /v4 prefix as a literal in pages/v4 or components/v4: not in to= or href=, navigate or redirect, startsWith checks or regular expressions. Build every v4 link through the v4 link helpers in pages/v4/links.ts (orgHref, useGo) and the other modules in the check's v4PathModules list. The resolver lives in src/helpers/v4Bridge.ts, so moving v4 to the root at launch changes those modules and the route definitions only.",
+      "good": "<RowLink href={accessLinks.orgMember(orgId, id)}>, with the /v4/organizations prefix spelled once inside access/links.ts.",
+      "avoid": "href={`/v4/organizations/${orgId}/members/${id}`} in a page, or pathname.startsWith(\"/v4\") in a component.",
+      "detect": {
+        "by": "lint",
+        "check": "v4-path-literal"
+      },
+      "exceptions": "Route definition files (route.tsx, src/routes.ts and pages/v4/routes.ts) and the modules in the check's v4PathModules list may spell the prefix. A route ID passed as a from: value (useParams, useSearch, useRouteContext, useLoaderData) or to getRouteApi is exempt, because TanStack type-checks it and a root move fails the build at every stale one. Any other line that must spell it, such as code that runs before the router exists, takes v4-check-ignore v4-path-literal with the reason."
+    },
+    {
       "id": "skeleton-for-known-shape",
       "title": "Skeleton when the shape is known, Loader when it is not",
       "instruction": "Inside a page that has rendered, when the shape of the content being loaded is known or measurable, show Skeleton shapes that match the loaded state at the same size. Use a Loader only when the shape is unknown. A whole page that is still loading takes the page loader instead (rule/page-loading).",

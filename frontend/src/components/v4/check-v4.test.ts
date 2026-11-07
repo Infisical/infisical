@@ -509,6 +509,33 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [page, '<FloatingActionBar placement="contained" count={2} onClear={clear} />'],
       [page, '<Popover placement="fixed" />']
     ]
+  },
+  "v4-path-literal": {
+    bad: [
+      [page, '<Link to="/v4/organizations/demo/projects">Projects</Link>'],
+      [page, "<RowLink href={`/v4/organizations/` + orgId} />"],
+      [page, 'navigate({ to: "/v4" });'],
+      [page, 'if (pathname.startsWith("/v4")) return;'],
+      [ui, "const live = /^\\/v4\\/organizations\\//;"],
+      [page, 'throw redirect({ href: "/v4" + href });']
+    ],
+    good: [
+      [page, "<RowLink href={accessLinks.orgMember(orgId, id)} />"],
+      [page, 'const flag = "v4-app";'],
+      [page, 'fetch("/api/v4/secrets");'],
+      [page, 'const { orgId } = useParams({ from: "/v4/organizations/$orgId" });'],
+      [page, 'const routeApi = getRouteApi("/v4/organizations/$orgId/audit-logs");'],
+      [
+        "src/components/v4/lib/boot-theme-keys.ts",
+        "export const live = /^\\/v4\\/organizations\\//;"
+      ],
+      ["src/pages/v4/kms/route.tsx", 'redirect({ to: "/v4/organizations/$orgId" });'],
+      ["src/pages/v4/access/links.ts", "const org = (id: string) => `/v4/organizations/` + id;"],
+      [
+        page,
+        '// v4-check-ignore v4-path-literal -- the boot path is matched before the router exists\nconst boot = "/v4";'
+      ]
+    ]
   }
 };
 
