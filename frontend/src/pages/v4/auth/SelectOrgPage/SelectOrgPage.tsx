@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
 
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v4/ui/button";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
@@ -16,11 +17,12 @@ import {
   useLogoutUser,
   useSelectOrganization
 } from "@app/hooks/api";
-import { UserAgentType } from "@app/hooks/api/auth/types";
+import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { getSsoEnforcementError } from "@app/pages/auth/SelectOrgPage/SelectOrg.utils";
 
 import { AuthPage } from "../components/AuthPage";
+import { Mfa } from "../components/Mfa";
 import { toV4Href } from "../paths";
 import { useAuthPreview } from "../preview";
 import { PREVIEW_ORGS } from "./preview";
@@ -199,10 +201,17 @@ const LiveSelectOrg = () => {
   const search = useSearch({ from: ROUTE_ID });
   const { autoSelectErrorMessage } = useRouteContext({ from: ROUTE_ID });
   const {
+    org_id: orgId,
     callback_port: callbackPort,
     is_admin_login: isBreakglassRoute,
+    mfa_method: mfaMethodFromSearch,
     redirect_to: redirectTo
   } = search;
+  const [shouldShowMfa, setShouldShowMfa] = useState(false);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(
+    (mfaMethodFromSearch as MfaMethod | undefined) ?? MfaMethod.EMAIL
+  );
+  const mfaOrgInfo = useRef<{ rootOrg: TOrgWithSubOrgs; subOrgId?: string } | null>(null);
 
   const { data: orgs, isPending: orgsLoading } = useGetOrganizationsWithSubOrgs();
   const selectOrg = useSelectOrganization();
@@ -218,7 +227,11 @@ const LiveSelectOrg = () => {
     }
   };
 
-  const handleSelectOrganization = async (org: TOrgWithSubOrgs, subOrgId?: string) => {
+  const handleSelectOrganization = async (
+    org: TOrgWithSubOrgs,
+    subOrgId?: string,
+    { needsFactorSetup }: { needsFactorSetup?: boolean } = {}
+  ) => {
     const targetOrgId = subOrgId || org.id;
     const canBypassOrgAuth = org.bypassOrgAuthEnabled && isBreakglassRoute;
 
@@ -254,12 +267,10 @@ const LiveSelectOrg = () => {
     const { token, isMfaEnabled, mfaMethod } = result;
 
     if (isMfaEnabled) {
-      sessionStorage.setItem(SessionStorageKeys.MFA_TEMP_TOKEN, token);
-      const mfaSearch = new URLSearchParams({ org_id: targetOrgId });
-      if (mfaMethod) mfaSearch.set("mfa_method", mfaMethod);
-      if (callbackPort) mfaSearch.set("callback_port", String(callbackPort));
-      if (redirectTo) mfaSearch.set("redirect_to", redirectTo);
-      window.location.assign(`/login/select-organization?${mfaSearch.toString()}`);
+      SecurityClient.setMfaToken(token);
+      if (mfaMethod) setRequiredMfaMethod(mfaMethod);
+      setShouldShowMfa(true);
+      mfaOrgInfo.current = { rootOrg: org, subOrgId };
       return;
     }
 
@@ -288,6 +299,10 @@ const LiveSelectOrg = () => {
 
     setAuthToken(token);
     toast.success("Successfully logged in");
+    if (needsFactorSetup) {
+      navigate({ to: "/personal-settings", search: { selectedTab: "authentication" } });
+      return;
+    }
     if (redirectTo?.startsWith(`/organizations/${targetOrgId}/`)) {
       navigate({ href: toV4Href(redirectTo) });
       return;
@@ -304,7 +319,41 @@ const LiveSelectOrg = () => {
     }
   }, [autoSelectErrorMessage]);
 
+  useEffect(() => {
+    const rootOrg = orgs?.find((o) => o.id === orgId);
+    const subOrgParent = rootOrg
+      ? undefined
+      : orgs?.find((o) => o.subOrganizations.some((sub) => sub.id === orgId));
+    const mfaOrg = rootOrg ?? subOrgParent;
+    const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
+    if (mfaMethodFromSearch && storedMfaToken && mfaOrg) {
+      sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
+      SecurityClient.setMfaToken(storedMfaToken);
+      setShouldShowMfa(true);
+      mfaOrgInfo.current = { rootOrg: mfaOrg, subOrgId: rootOrg ? undefined : orgId };
+    }
+  }, [mfaMethodFromSearch, orgs?.length, orgId]);
+
   if (userLoading || !user) return <Loader size="page" label="Loading" className="flex-1" />;
+
+  if (shouldShowMfa) {
+    return (
+      <Mfa
+        email={user.email as string}
+        method={requiredMfaMethod}
+        onChangeAccount={handleLogout}
+        successCallback={(options) =>
+          mfaOrgInfo.current
+            ? handleSelectOrganization(
+                mfaOrgInfo.current.rootOrg,
+                mfaOrgInfo.current.subOrgId,
+                options
+              )
+            : undefined
+        }
+      />
+    );
+  }
 
   return (
     <SelectOrgView
@@ -317,9 +366,32 @@ const LiveSelectOrg = () => {
   );
 };
 
+const MFA_PREVIEWS: Record<
+  string,
+  { method: MfaMethod; preview: "code" | "recovery" | "passkey" | "codes" }
+> = {
+  "mfa-email": { method: MfaMethod.EMAIL, preview: "code" },
+  "mfa-totp": { method: MfaMethod.TOTP, preview: "code" },
+  "mfa-recovery": { method: MfaMethod.TOTP, preview: "recovery" },
+  "mfa-passkey": { method: MfaMethod.WEBAUTHN, preview: "passkey" },
+  "mfa-recovery-codes": { method: MfaMethod.TOTP, preview: "codes" }
+};
+
 export const SelectOrgPage = () => {
   const preview = useAuthPreview();
   if (!preview) return <LiveSelectOrg />;
+  const mfaPreview = MFA_PREVIEWS[preview];
+  if (mfaPreview) {
+    return (
+      <Mfa
+        email="ada@acme.dev"
+        method={mfaPreview.method}
+        preview={mfaPreview.preview}
+        onChangeAccount={() => {}}
+        successCallback={() => {}}
+      />
+    );
+  }
   return (
     <SelectOrgView
       username="ada@acme.dev"

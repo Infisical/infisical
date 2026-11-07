@@ -4,10 +4,19 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
   layout("v4-auth", "v4/auth/route.tsx", [
     route("/login", [
       index("v4/auth/LoginPage/route.tsx"),
-      route("/select-organization", "v4/auth/SelectOrgPage/route.tsx")
+      route("/admin", "v4/auth/LoginPage/admin/route.tsx"),
+      route("/select-organization", "v4/auth/SelectOrgPage/route.tsx"),
+      route("/ldap", "v4/auth/LdapLoginPage/route.tsx"),
+      route("/oidc", "v4/auth/SsoLoginPage/oidc/route.tsx"),
+      route("/saml", "v4/auth/SsoLoginPage/saml/route.tsx"),
+      route("/provider/error", "v4/auth/ProviderErrorPage/route.tsx")
     ]),
-    route("/signup", [index("v4/auth/SignUpPage/route.tsx")])
+    route("/signup", [
+      index("v4/auth/SignUpPage/route.tsx"),
+      route("/sso", "v4/auth/SignUpSsoPage/route.tsx")
+    ])
   ]),
+  route("/mfa-session/$mfaSessionId", "v4/auth/MfaSessionPage/route.tsx"),
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
