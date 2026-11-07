@@ -1,5 +1,12 @@
 import { CSSProperties, ReactNode, useState } from "react";
-import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { useIsMutating } from "@tanstack/react-query";
+import {
+  CalendarX2Icon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Sparkles
+} from "lucide-react";
 
 import {
   annualSavingsPercent,
@@ -12,11 +19,21 @@ import {
   PlanFeature,
   PlanFeatureIcon
 } from "@app/components/license/UpgradeGate/ProductUpgradeDialog";
+import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Badge,
   Button,
-  Checkbox,
   IconButton,
+  Item,
   Label,
   Sheet,
   SheetContent,
@@ -27,7 +44,8 @@ import {
   Skeleton,
   Tabs,
   TabsList,
-  TabsTrigger
+  TabsTrigger,
+  Toggle
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { useSubscription } from "@app/context";
@@ -37,12 +55,15 @@ import {
   BillingV2Entitlement,
   BillingV2EntitlementDim,
   BillingV2Plan,
-  useGetBillingV2UsageBreakdown
+  useCancelBillingV2Trial,
+  useGetBillingV2UsageBreakdown,
+  useStartBillingV2Trial
 } from "@app/hooks/api";
 
 import {
   byDisplayOrder,
   commitSavingsNudge,
+  dimCommitManageable,
   dimCommitted,
   dimDisplayLabel,
   dimMonthlyRate,
@@ -53,6 +74,7 @@ import {
   productAnnualCommitted,
   tierLabel
 } from "../billing-v2-format";
+import { CancellationFeedbackDialog } from "./CancellationFeedbackDialog";
 import { CommitmentView } from "./CommitmentView";
 import { ProductIcon } from "./shared";
 import {
@@ -202,7 +224,7 @@ const BreakdownPanel = ({
   const rootScopes = data.scopes.filter((scope) => scope.isRoot);
   const subOrgScopes = data.scopes.filter((scope) => !scope.isRoot);
 
-  if (isEnterprise) {
+  if (isEnterprise || subOrgScopes.some((scope) => scope.count > 0)) {
     const rootCount = rootScopes.reduce((sum, scope) => sum + scope.count, 0);
     const subOrgCount = subOrgScopes.reduce((sum, scope) => sum + scope.count, 0);
     const orgCount = data.scopes.length;
@@ -341,7 +363,14 @@ const IdentitySection = ({
     );
   } else if (committedRate !== null) {
     action = (
-      <span className="text-xs text-muted">{fmtMoneyCents(committedRate)} per identity / yr</span>
+      <span className="flex items-baseline gap-2 text-xs">
+        <span className="text-muted">{fmtMoneyCents(committedRate)} per identity / yr</span>
+        {canChangePlan && dimCommitManageable(dim) && (
+          <Button variant="link" size="xs" onClick={onSetCommitment}>
+            Adjust Commitment
+          </Button>
+        )}
+      </span>
     );
   } else if (monthlyRate > 0) {
     action = (
@@ -437,31 +466,29 @@ const EntitlementsSection = ({
                 )}
               </>
             );
-            const tileClass =
-              "flex min-w-0 flex-col gap-1.5 rounded-md border px-2.5 py-2 text-left outline-0";
+            const body = <span className="flex w-full min-w-0 flex-col gap-1.5">{content}</span>;
             if (!canBreakDown(dim)) {
               return (
-                <div key={dim.key} className={cn(tileClass, "border-transparent")}>
-                  {content}
-                </div>
+                <Item key={dim.key} size="xs">
+                  {body}
+                </Item>
               );
             }
             return (
-              <button
+              <Item
                 key={dim.key}
-                type="button"
-                aria-pressed={dim.key === selected?.key}
-                className={cn(
-                  tileClass,
-                  "cursor-pointer focus-visible:ring-2 focus-visible:ring-ring",
-                  dim.key === selected?.key
-                    ? "border-border bg-container-hover"
-                    : "border-transparent hover:bg-container-hover"
-                )}
-                onClick={() => setSelectedKey(dim.key)}
+                asChild
+                size="xs"
+                variant={dim.key === selected?.key ? "outline" : "default"}
               >
-                {content}
-              </button>
+                <button
+                  type="button"
+                  aria-pressed={dim.key === selected?.key}
+                  onClick={() => setSelectedKey(dim.key)}
+                >
+                  {body}
+                </button>
+              </Item>
             );
           })}
         </div>
@@ -565,6 +592,8 @@ const PlansView = ({
   canChangePlan,
   onBack,
   onUpgrade,
+  onStartTrial,
+  onEndTrial,
   onCancel,
   onContact
 }: {
@@ -573,6 +602,8 @@ const PlansView = ({
   canChangePlan: boolean;
   onBack: () => void;
   onUpgrade: (plan: BillingV2Plan, cadence: BillingV2Cadence) => void;
+  onStartTrial: (plan: BillingV2Plan) => void;
+  onEndTrial: () => void;
   onCancel: () => void;
   onContact: () => void;
 }) => {
@@ -625,7 +656,12 @@ const PlansView = ({
           )}
           {ent.renewsOn && <span className="text-xs text-muted">Renews {ent.renewsOn}</span>}
         </span>
-        {canChangePlan && !plan.salesLed && (
+        {canChangePlan && (ent.isTrialing || ent.trialPlan) && (
+          <Button variant="danger" size="sm" onClick={onEndTrial}>
+            {ent.trialPlan ? "End Trial" : "Cancel Trial"}
+          </Button>
+        )}
+        {canChangePlan && !plan.salesLed && !ent.isTrialing && !ent.trialPlan && (
           <Button variant="danger" size="sm" onClick={onCancel}>
             Cancel Subscription
           </Button>
@@ -654,11 +690,12 @@ const PlansView = ({
           </span>
           {supportsAnnual && supportsMonthly && (
             <span className="flex items-center gap-2">
-              <Checkbox
+              <Toggle
                 id={`manage-plan-annual-${prod.id}`}
+                size="sm"
                 variant="org"
-                isChecked={visibleCadence === "annual"}
-                onCheckedChange={(checked) => setCadence(checked === true ? "annual" : "monthly")}
+                checked={visibleCadence === "annual"}
+                onCheckedChange={(checked) => setCadence(checked ? "annual" : "monthly")}
               />
               <Label htmlFor={`manage-plan-annual-${prod.id}`}>Annual</Label>
               {savings > 0 && <Badge variant="success">-{savings}%</Badge>}
@@ -666,9 +703,16 @@ const PlansView = ({
           )}
         </span>
         {canChangePlan && plan.upgradeable && selectedIndex > currentIndex ? (
-          <Button variant="org" size="sm" onClick={() => onUpgrade(plan, visibleCadence)}>
-            Upgrade to {plan.name}
-          </Button>
+          <span className="flex items-center gap-2">
+            {plan.selfServe && plan.trialable && plan.trialDays > 0 && !ent.trialPlan && (
+              <Button variant="outline" size="sm" onClick={() => onStartTrial(plan)}>
+                Try Free for {plan.trialDays} Days
+              </Button>
+            )}
+            <Button variant="org" size="sm" onClick={() => onUpgrade(plan, visibleCadence)}>
+              Upgrade to {plan.name}
+            </Button>
+          </span>
         ) : (
           <span className="text-xs text-muted">Contact support to move to this plan</span>
         )}
@@ -679,15 +723,8 @@ const PlansView = ({
   return (
     <>
       <SheetHeader>
-        <div className="flex items-center gap-3 pr-8">
-          <IconButton size="xs" variant="outline" aria-label="Back" onClick={onBack}>
-            <ChevronLeftIcon />
-          </IconButton>
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <SheetTitle>Manage Plan</SheetTitle>
-            <SheetDescription>{prod.name}</SheetDescription>
-          </div>
-        </div>
+        <SheetTitle>Manage Plan</SheetTitle>
+        <SheetDescription>{prod.name}</SheetDescription>
       </SheetHeader>
       <div className="flex thin-scrollbar flex-1 flex-col gap-5 overflow-y-auto p-4">
         <Tabs value={selectedTier} onValueChange={setSelectedTier}>
@@ -723,7 +760,15 @@ const PlansView = ({
         )}
       </div>
       <SheetFooter>
-        <div className="flex w-full flex-wrap items-center justify-between gap-3">{footer}</div>
+        <div className="flex w-full flex-col gap-3">
+          {footer && (
+            <div className="flex w-full flex-wrap items-center justify-between gap-3">{footer}</div>
+          )}
+          <Button variant="ghost" size="sm" className="self-start" onClick={onBack}>
+            <ChevronLeftIcon />
+            Back
+          </Button>
+        </div>
       </SheetFooter>
     </>
   );
@@ -742,6 +787,51 @@ type ProductDetailsSheetProps = {
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
+const TrialConfirmDialog = ({
+  plan,
+  basePlanName,
+  isPending,
+  onConfirm,
+  onCancel
+}: {
+  plan: BillingV2Plan;
+  basePlanName: string;
+  isPending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) => (
+  <AlertDialog open onOpenChange={(open) => !open && !isPending && onCancel()}>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogMedia>
+          <Sparkles />
+        </AlertDialogMedia>
+        <AlertDialogTitle>Start your {plan.name} trial</AlertDialogTitle>
+        <AlertDialogDescription>
+          Your {plan.trialDays > 0 ? `${plan.trialDays}-day ` : ""}trial is free and nothing changes
+          about your bill. You&apos;ll keep paying for {basePlanName} until it ends, then move to{" "}
+          {plan.name} and be charged the difference. End the trial before then to stay on{" "}
+          {basePlanName}.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+        <AlertDialogAction
+          variant="org"
+          isDisabled={isPending}
+          isPending={isPending}
+          onClick={(event) => {
+            event.preventDefault();
+            onConfirm();
+          }}
+        >
+          Start free trial
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
+
 export const ProductDetailsSheet = ({
   orgId,
   prod,
@@ -757,77 +847,159 @@ export const ProductDetailsSheet = ({
   const [view, setView] = useState<View>("details");
   const [upgradePlan, setUpgradePlan] = useState<BillingV2Plan | null>(null);
   const [commitAfterUpgrade, setCommitAfterUpgrade] = useState(false);
+  const [trialPlan, setTrialPlan] = useState<BillingV2Plan | null>(null);
+  const [showEndTrial, setShowEndTrial] = useState(false);
+  const startTrial = useStartBillingV2Trial();
+  const cancelTrial = useCancelBillingV2Trial();
+  const isMutating = useIsMutating() > 0;
   const hasCommitment = (ent.dimensions ?? []).some(
     (dim) => dimCommitted(dim) || dim.commitAvailable
   );
+  const basePlanName = planNameFor(prod, ent.planTier);
+  const upgradeTrialName = ent.trialPlan ? planNameFor(prod, ent.trialPlan) : null;
+
+  const confirmTrial = async () => {
+    if (!trialPlan) return;
+    try {
+      const result = await startTrial.mutateAsync({
+        orgId,
+        productId: prod.id,
+        plan: trialPlan.tier,
+        returnPath: window.location.pathname
+      });
+      if (result.outcome === "awaiting_card") {
+        if (result.cardSetupUrl) {
+          window.location.href = result.cardSetupUrl;
+        } else {
+          createNotification({
+            type: "error",
+            text: "Failed to complete trial setup. Missing payment details. Please try again!"
+          });
+        }
+        return;
+      }
+      createNotification({ type: "success", text: `Your ${trialPlan.name} trial has started.` });
+      onClose();
+    } catch {
+      setTrialPlan(null);
+    }
+  };
 
   return (
-    <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        side="right"
-        className="product-color"
-        style={{ "--product-color": prod.color } as CSSProperties}
-      >
-        {view === "details" && (
-          <DetailsView
-            prod={prod}
-            ent={ent}
-            breakdown={breakdown}
-            canChangePlan={canChangePlan}
-            isManaged={isManaged}
-            onClose={onClose}
-            onManage={() => setView("plans")}
-            onSetCommitment={() => setView("commitment")}
-          />
-        )}
-        {view === "plans" && (
-          <PlansView
-            prod={prod}
-            ent={ent}
-            canChangePlan={canChangePlan}
-            onBack={() => setView("details")}
-            onUpgrade={(plan, cadence) => {
-              setUpgradePlan(plan);
-              setCommitAfterUpgrade(
-                cadence === "annual" && ent.cadence !== "annual" && hasCommitment
-              );
-              setView("upgrade");
-            }}
-            onCancel={() => onRemove(prod.id)}
-            onContact={() => onContact(prod)}
-          />
-        )}
-        {view === "upgrade" && upgradePlan && (
-          <UpgradeView
-            orgId={orgId}
-            prod={prod}
-            plan={upgradePlan}
-            fromPlanName={planNameFor(prod, ent.planTier)}
-            renewsOn={ent.renewsOn ?? null}
-            selfServe={selfServe}
-            isTrialConversion={ent.trialPlan === upgradePlan.tier}
-            onBack={() => setView("plans")}
-            onDone={() => {
-              if (!commitAfterUpgrade) {
-                onClose();
-                return;
-              }
-              setView("commitment");
-            }}
-          />
-        )}
-        {view === "commitment" && (
-          <CommitmentView
-            orgId={orgId}
-            prod={prod}
-            entitlement={ent}
-            renewsOn={ent.renewsOn ?? null}
-            selfServe={selfServe}
-            onBack={() => setView("details")}
-            onDone={onClose}
-          />
-        )}
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open onOpenChange={(open) => !open && !isMutating && onClose()}>
+        <SheetContent
+          side="right"
+          isPending={isMutating}
+          className="product-color"
+          style={{ "--product-color": prod.color } as CSSProperties}
+        >
+          {view === "details" && (
+            <DetailsView
+              prod={prod}
+              ent={ent}
+              breakdown={breakdown}
+              canChangePlan={canChangePlan}
+              isManaged={isManaged}
+              onClose={onClose}
+              onManage={() => setView("plans")}
+              onSetCommitment={() => setView("commitment")}
+            />
+          )}
+          {view === "plans" && (
+            <PlansView
+              prod={prod}
+              ent={ent}
+              canChangePlan={canChangePlan}
+              onBack={() => setView("details")}
+              onUpgrade={(plan, cadence) => {
+                setUpgradePlan(plan);
+                setCommitAfterUpgrade(
+                  cadence === "annual" && ent.cadence !== "annual" && hasCommitment
+                );
+                setView("upgrade");
+              }}
+              onStartTrial={setTrialPlan}
+              onEndTrial={() => setShowEndTrial(true)}
+              onCancel={() => onRemove(prod.id)}
+              onContact={() => onContact(prod)}
+            />
+          )}
+          {view === "upgrade" && upgradePlan && (
+            <UpgradeView
+              orgId={orgId}
+              prod={prod}
+              plan={upgradePlan}
+              fromPlanName={planNameFor(prod, ent.planTier)}
+              renewsOn={ent.renewsOn ?? null}
+              selfServe={selfServe}
+              isTrialConversion={ent.trialPlan === upgradePlan.tier}
+              onBack={() => setView("plans")}
+              onDone={() => {
+                if (!commitAfterUpgrade) {
+                  onClose();
+                  return;
+                }
+                setView("commitment");
+              }}
+            />
+          )}
+          {view === "commitment" && (
+            <CommitmentView
+              orgId={orgId}
+              prod={prod}
+              entitlement={ent}
+              renewsOn={ent.renewsOn ?? null}
+              selfServe={selfServe}
+              onBack={() => setView("details")}
+              onDone={onClose}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+      {trialPlan && (
+        <TrialConfirmDialog
+          plan={trialPlan}
+          basePlanName={basePlanName}
+          isPending={startTrial.isPending}
+          onConfirm={confirmTrial}
+          onCancel={() => setTrialPlan(null)}
+        />
+      )}
+      {showEndTrial && (
+        <CancellationFeedbackDialog
+          orgId={orgId}
+          productId={prod.id}
+          action="cancel_trial"
+          icon={<CalendarX2Icon />}
+          title={
+            upgradeTrialName
+              ? `End your ${upgradeTrialName} trial`
+              : `Cancel your ${prod.name} trial`
+          }
+          description={
+            upgradeTrialName
+              ? `You'll go back to ${basePlanName} right away and won't be charged anything. This trial can't be restarted later.`
+              : "Canceling returns you to the free tier immediately and stops the trial from converting to a paid plan. This trial can't be restarted later."
+          }
+          reasonLabel={
+            upgradeTrialName ? "Why are you ending your trial?" : "Why are you canceling?"
+          }
+          confirmLabel={upgradeTrialName ? "End trial" : "Cancel trial"}
+          dismissLabel="Keep trial"
+          onConfirm={() => cancelTrial.mutateAsync({ orgId, productId: prod.id })}
+          onConfirmed={() => {
+            createNotification({
+              type: "success",
+              text: upgradeTrialName
+                ? `Your ${upgradeTrialName} trial has ended. You're still on ${basePlanName}.`
+                : `Your ${prod.name} trial has been canceled.`
+            });
+            onClose();
+          }}
+          onDismiss={() => setShowEndTrial(false)}
+        />
+      )}
+    </>
   );
 };
