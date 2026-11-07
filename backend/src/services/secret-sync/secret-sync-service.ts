@@ -930,9 +930,7 @@ export const secretSyncServiceFactory = ({
     // that merges options (Azure Entra ID SCIM) would otherwise hand back the stored mirror as if
     // the caller had sent it.
     const includeAllSubFolders = Boolean(
-      params.includeAllSubFolders ??
-      (params.syncOptions as TSecretSync["syncOptions"] | undefined)?.includeAllSubFolders ??
-      secretSync.includeAllSubFolders
+      params.includeAllSubFolders ?? params.syncOptions?.includeAllSubFolders ?? secretSync.includeAllSubFolders
     );
 
     if (includeAllSubFolders && initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination)

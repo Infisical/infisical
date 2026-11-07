@@ -73,19 +73,22 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
     includeAllSubFolders: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).includeAllSubFolders)
   });
 
-  // What the returned schema actually is: baseSchema, merged with the destination's own extra
-  // sync-option fields when `merge` supplies them.
-  type TMergedSchema = T extends AnyZodObject
-    ? z.ZodObject<z.objectUtil.MergeShapes<typeof baseSchema.shape, T["shape"]>>
-    : typeof baseSchema;
+  // What the merged schema actually is: baseSchema, merged with the destination's own extra
+  // sync-option fields when `merge` supplies them. The conditional sits inside ZodObject rather
+  // than around it, so describe() and optional() keep the type instead of widening it to
+  // ZodObject<any>.
+  type TMergedSchema = z.ZodObject<
+    z.objectUtil.MergeShapes<typeof baseSchema.shape, T extends AnyZodObject ? T["shape"] : Record<never, never>>
+  >;
 
   // The cast below is needed because TypeScript can't verify it on its own: every caller passes
   // `merge` and a real T together or neither, so the runtime ternary and the type-level ternary
-  // above always agree, but the compiler has no way to prove that from a runtime value. It goes
-  // after describe(), which widens the conditional to ZodObject<any>.
-  return (merge ? baseSchema.merge(merge) : baseSchema).describe(
+  // above always agree, but the compiler has no way to prove that from a runtime value.
+  const mergedSchema = (merge ? baseSchema.merge(merge) : baseSchema) as TMergedSchema;
+
+  return mergedSchema.describe(
     isUpdateSchema ? SecretSyncs.UPDATE(destination).syncOptions : SecretSyncs.CREATE(destination).syncOptions
-  ) as TMergedSchema;
+  );
 };
 
 export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefined>(
@@ -164,11 +167,5 @@ export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .describe(SecretSyncs.UPDATE(destination).secretPath),
     includeAllSubFolders: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).includeAllSubFolders),
     isAutoSyncEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isAutoSyncEnabled),
-    // Spelled out because inference widens the still-generic conditional type to ZodObject<any> here.
-    syncOptions: BaseSyncOptionsSchema({
-      destination,
-      syncOptionsConfig,
-      merge,
-      isUpdateSchema: true
-    }).optional() as z.ZodOptional<ReturnType<typeof BaseSyncOptionsSchema<T>>>
+    syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge, isUpdateSchema: true }).optional()
   });
