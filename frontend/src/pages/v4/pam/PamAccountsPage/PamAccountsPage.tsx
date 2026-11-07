@@ -1,6 +1,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useParams } from "@tanstack/react-router";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -465,13 +466,21 @@ export const PamAccountsPage = () => {
             </Inline>
           }
         />
-        <Input
-          icon="search"
-          aria-label="Search accounts"
-          placeholder="Search accounts..."
-          kbd="/"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
+        <FilterBar
+          label="Account filters"
+          fields={[]}
+          value={[]}
+          onChange={() => undefined}
+          search={
+            <Input
+              icon="search"
+              aria-label="Search accounts"
+              placeholder="Search accounts..."
+              kbd="/"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+            />
+          }
         />
         <DataTable
           label="Accounts"

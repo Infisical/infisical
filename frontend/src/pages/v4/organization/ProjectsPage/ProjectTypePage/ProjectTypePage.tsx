@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useParams } from "@tanstack/react-router";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { LayersIcon, LayoutGridIcon, ListIcon, StarIcon } from "lucide-react";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import {
   Accordion,
   AccordionContent,
@@ -186,8 +187,12 @@ const Toolbar = ({
   viewMode: ProjectsViewMode;
   onViewModeChange?: (mode: ProjectsViewMode) => void;
 }) => (
-  <Inline gap={8} align="center" wrap={false}>
-    <div style={{ flex: 1 }}>
+  <FilterBar
+    label="Project filters"
+    fields={[]}
+    value={[]}
+    onChange={() => undefined}
+    search={
       <Input
         icon="search"
         aria-label="Search projects"
@@ -196,39 +201,43 @@ const Toolbar = ({
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
       />
-    </div>
-    {showListToggle && (
-      <Tabs
-        variant="segmented"
-        label="Project list views"
-        value={listView}
-        onChange={(value) => onListViewChange(value as ProjectListView)}
-        tabs={[
-          { value: ProjectListView.MyProjects, label: "My projects" },
-          { value: ProjectListView.AllProjects, label: "All projects" }
-        ]}
-      />
-    )}
-    <ToggleGroup
-      type="single"
-      size="sm"
-      aria-label="Project layout"
-      value={viewMode}
-      disabled={!onViewModeChange}
-      onValueChange={(value) => value && onViewModeChange?.(value as ProjectsViewMode)}
-    >
-      <Tooltip content={onViewModeChange ? "Grid" : LIST_ONLY}>
-        <ToggleGroupItem value={ProjectsViewMode.GRID} aria-label="Grid view">
-          <Icon icon={LayoutGridIcon} />
-        </ToggleGroupItem>
-      </Tooltip>
-      <Tooltip content="List">
-        <ToggleGroupItem value={ProjectsViewMode.LIST} aria-label="List view">
-          <Icon icon={ListIcon} />
-        </ToggleGroupItem>
-      </Tooltip>
-    </ToggleGroup>
-  </Inline>
+    }
+    actions={
+      <>
+        {showListToggle && (
+          <Tabs
+            variant="segmented"
+            label="Project list views"
+            value={listView}
+            onChange={(value) => onListViewChange(value as ProjectListView)}
+            tabs={[
+              { value: ProjectListView.MyProjects, label: "My projects" },
+              { value: ProjectListView.AllProjects, label: "All projects" }
+            ]}
+          />
+        )}
+        <ToggleGroup
+          type="single"
+          size="sm"
+          aria-label="Project layout"
+          value={viewMode}
+          disabled={!onViewModeChange}
+          onValueChange={(value) => value && onViewModeChange?.(value as ProjectsViewMode)}
+        >
+          <Tooltip content={onViewModeChange ? "Grid" : LIST_ONLY}>
+            <ToggleGroupItem value={ProjectsViewMode.GRID} aria-label="Grid view">
+              <Icon icon={LayoutGridIcon} />
+            </ToggleGroupItem>
+          </Tooltip>
+          <Tooltip content="List">
+            <ToggleGroupItem value={ProjectsViewMode.LIST} aria-label="List view">
+              <Icon icon={ListIcon} />
+            </ToggleGroupItem>
+          </Tooltip>
+        </ToggleGroup>
+      </>
+    }
+  />
 );
 
 const FavoriteButton = ({

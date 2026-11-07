@@ -446,6 +446,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
             setPage(1);
           }}
           rowActions={{
+            inline: [{ label: "Edit data source", icon: "settings", onSelect: setEditing }],
             menuLabel: "Data source options",
             renderMenu: (row) => (
               <>
@@ -456,9 +457,6 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
                   }}
                 >
                   Copy data source ID
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setEditing(row)}>
-                  Edit data source
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(row)}>
