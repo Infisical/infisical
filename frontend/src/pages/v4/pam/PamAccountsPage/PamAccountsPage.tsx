@@ -350,13 +350,19 @@ export const PamAccountsPage = () => {
                 params={{ orgId, _splat: `pam/accounts/${folder.id}` }}
               >
                 {folder.name}
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "var(--v4-space-8)",
+                    marginInlineStart: "var(--v4-space-8)",
+                    verticalAlign: "middle"
+                  }}
+                >
+                  <Meta>{`(${row.count})`}</Meta>
+                  {folder.description && <Meta mono={false}>{folder.description}</Meta>}
+                </span>
               </RowLink>
-              <Meta>{`(${row.count})`}</Meta>
-              {folder.description && (
-                <Meta mono={false} style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {folder.description}
-                </Meta>
-              )}
             </Inline>
           );
         }
@@ -376,9 +382,19 @@ export const PamAccountsPage = () => {
               }}
             >
               {account.name}
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "var(--v4-space-8)",
+                  marginInlineStart: "var(--v4-space-8)",
+                  verticalAlign: "middle"
+                }}
+              >
+                <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
+                <AccountBadges account={account} canEdit={canEdit} />
+              </span>
             </RowLink>
-            <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
-            <AccountBadges account={account} canEdit={canEdit} />
           </Inline>
         );
       }
