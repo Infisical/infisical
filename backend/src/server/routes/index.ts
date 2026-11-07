@@ -292,6 +292,8 @@ import { pamFolderAlertDALFactory } from "@app/services/alert/providers/pam-fold
 import { pamFolderAlertProviderFactory } from "@app/services/alert/providers/pam-folder-alert-provider";
 import { secretReminderAlertDALFactory } from "@app/services/alert/providers/secret-reminder-alert-dal";
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
+import { secretRotationAlertDALFactory } from "@app/services/alert/providers/secret-rotation-alert-dal";
+import { secretRotationAlertProviderFactory } from "@app/services/alert/providers/secret-rotation-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -1194,6 +1196,13 @@ export const registerRoutes = async (
   alertProviderRegistry.register(
     secretReminderAlertProviderFactory({
       secretReminderAlertDAL: secretReminderAlertDALFactory(db),
+      folderDAL,
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
+    secretRotationAlertProviderFactory({
+      secretRotationAlertDAL: secretRotationAlertDALFactory(db),
       folderDAL,
       permissionService
     })
@@ -3780,6 +3789,7 @@ export const registerRoutes = async (
 
   const secretRotationV2Service = secretRotationV2ServiceFactory({
     eventEmitter: eventOutboxService,
+    alertService,
     secretRotationV2DAL,
     permissionService,
     appConnectionService,
@@ -4833,7 +4843,8 @@ export const registerRoutes = async (
     cronJob,
     projectDAL,
     projectMembershipDAL,
-    smtpService,
+    orgDAL,
+    userDAL,
     notificationService
   });
 

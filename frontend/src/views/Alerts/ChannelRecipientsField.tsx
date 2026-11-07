@@ -10,7 +10,11 @@ import {
   useGetWorkspaceUsers,
   useListWorkspaceGroups
 } from "@app/hooks/api";
-import { AlertPrincipalType, TAlertChannelRecipient } from "@app/hooks/api/alerts";
+import {
+  ALERT_PROJECT_RECIPIENT_LABELS,
+  AlertPrincipalType,
+  TAlertChannelRecipient
+} from "@app/hooks/api/alerts";
 
 type RecipientOption = {
   principalType: AlertPrincipalType;
@@ -19,12 +23,15 @@ type RecipientOption = {
   groupLabel: "Project" | "Users" | "Groups" | "Emails";
 };
 
-const projectMembersOption = (projectId: string): RecipientOption => ({
-  principalType: AlertPrincipalType.ProjectMembers,
-  principalId: projectId,
-  label: "All Project Members",
-  groupLabel: "Project"
-});
+const projectOptions = (projectId: string): RecipientOption[] =>
+  ([AlertPrincipalType.ProjectMembers, AlertPrincipalType.ProjectAdmins] as const).map(
+    (principalType) => ({
+      principalType,
+      principalId: projectId,
+      label: ALERT_PROJECT_RECIPIENT_LABELS[principalType],
+      groupLabel: "Project"
+    })
+  );
 
 const userLabel = (user: { firstName?: string; lastName?: string; username?: string }): string =>
   user.username || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Unknown user";
@@ -171,12 +178,12 @@ const ProjectRecipientSelect = ({
   );
 
   const groupOptions = groups.map((membership) => membership.group);
-  const everyone = projectMembersOption(projectId);
+  const projectWide = projectOptions(projectId);
 
   return (
     <RecipientSelect
-      options={[everyone, ...buildOptions(eligibleUsers, groupOptions)]}
-      labelledOptions={[everyone, ...buildOptions(users, groupOptions)]}
+      options={[...projectWide, ...buildOptions(eligibleUsers, groupOptions)]}
+      labelledOptions={[...projectWide, ...buildOptions(users, groupOptions)]}
       {...props}
     />
   );
