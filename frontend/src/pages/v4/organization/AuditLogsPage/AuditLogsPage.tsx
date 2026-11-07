@@ -140,7 +140,12 @@ const makeColumns = (onOpen: (log: AuditLog) => void): DataTableColumn<AuditLog>
           style={{ minWidth: 0, overflow: "hidden" }}
           title={[row.event.type, detail].filter(Boolean).join(", ")}
         >
-          <Button variant="link" onClick={() => onOpen(row)} style={{ minWidth: 0 }}>
+          <Button
+            variant="link"
+            underline="hover"
+            onClick={() => onOpen(row)}
+            style={{ minWidth: 0 }}
+          >
             <code style={truncate}>{row.event.type}</code>
           </Button>
           {detail && (

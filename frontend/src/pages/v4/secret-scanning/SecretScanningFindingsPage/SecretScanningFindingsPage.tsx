@@ -183,7 +183,7 @@ const Findings = ({ projectId }: { projectId: string }) => {
           <Media icon="git" size="sm" />
           <Stack gap={0} style={{ minWidth: 0 }}>
             <div>
-              <Button variant="link" onClick={() => setOpened(row)}>
+              <Button variant="link" underline="hover" onClick={() => setOpened(row)}>
                 <code>{row.resourceName}</code>
               </Button>
             </div>

@@ -232,7 +232,12 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       width: 224,
       text: (row) => row.label ?? "",
       render: (row) => (
-        <Button variant="link" onClick={() => setSessionId(row.id)} title={row.label ?? undefined}>
+        <Button
+          variant="link"
+          underline="hover"
+          onClick={() => setSessionId(row.id)}
+          title={row.label ?? undefined}
+        >
           {row.label ?? <Meta mono={false}>No label</Meta>}
         </Button>
       )
