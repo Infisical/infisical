@@ -32,11 +32,6 @@
     "src/pages/v4/cert-manager/DashboardPage/components/DonutCard.tsx": 1,
     "src/pages/v4/secret-manager/SecretApprovalsPage/SecretApprovalsPage.tsx": 2
   },
-  "row-actions-without-context-menu": {
-    "src/pages/v4/secret-manager/OverviewPage/secrets/resource-rows.tsx": 5,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/row-actions/dynamic-secret-leases.tsx": 1,
-    "src/pages/v4/secret-manager/OverviewPage/secrets/secret-row.tsx": 5
-  },
   "row-activate-navigates": {
     "src/pages/v4/access/org/auth-templates.tsx": 1,
     "src/pages/v4/access/org/groups.tsx": 1,

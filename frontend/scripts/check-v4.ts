@@ -418,13 +418,14 @@ const elementsNamed = (text: string, pattern: RegExp) =>
     return { start, end: elementEnd(text, match[1], start) };
   });
 
-/** Hand-built TableRows that hold RowActions or a TableActionsCell without a RowContextMenu around them. */
+/** Hand-built TableRows that hold RowActions or a TableActionsCell with content, without a RowContextMenu around them. An empty self-closing TableActionsCell only keeps the actions column aligned. */
 export const rowsWithoutContextMenu = (text: string) => {
   const rows = elementsNamed(text, /<(TableRow)(?=[\s>/])/g);
   const menus = elementsNamed(text, /<(RowContextMenu)(?=[\s>/])/g);
   const found = new Map<number, string>();
-  [...text.matchAll(/<(?:RowActions|TableActionsCell)(?=[\s>/])/g)].forEach((actions) => {
+  [...text.matchAll(/<(RowActions|TableActionsCell)(?=[\s>/])/g)].forEach((actions) => {
     const at = actions.index ?? 0;
+    if (actions[1] === "TableActionsCell" && text[jsxTagEnd(text, at) - 1] === "/") return;
     const row = rows.filter((candidate) => candidate.start < at && candidate.end > at).pop();
     if (!row) return;
     if (menus.some((menu) => menu.start < row.start && menu.end > row.end)) return;
