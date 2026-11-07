@@ -262,6 +262,10 @@ boot) and the layer builds org-first keys, signs links, and applies the retentio
 `default` (the instance's bucket, `OBJECT_STORAGE_S3_*`) or `external` (the customer's, through an AWS connection);
 use those two words everywhere.
 
+### Forwarded Routes (Node and Go)
+
+A PR that touches a forwarded route must change both the Node and the Go implementation and keep the blackbox suite (`tests/`) green, because Node stays the fallback and the two must not drift (see `docs/adr/0001-shadow-then-forward-node-routes-to-go.md`). Fix Node behaviour bugs in a separate Node PR before the port.
+
 ### API Layer (Frontend)
 
 React Query + Axios with query key factories per domain. Each API domain in `frontend/src/hooks/api/` has `queries.tsx`, `mutations.tsx`, and `types.tsx` — see `frontend/AGENTS.md` for conventions.
