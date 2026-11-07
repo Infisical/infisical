@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "card-pairs",
+    title: "Bands, xs Input and flush SettingsCard",
+    description:
+      "Framed band labels sit at one height, Input gains a 24px xs size, and a flush SettingsCard embeds a table.",
+    date: "2026-11-07",
+    commit: "45ad1c70c1",
+    page: "settings-card"
+  },
+  {
     id: "shared-hover",
     title: "Shared hover",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "02076b65ee",
     page: "breadcrumb"
-  },
-  {
-    id: "draggable-popover",
-    title: "Draggable Popover",
-    description:
-      "A Popover can opt in to a Move handle, with keyboard steps, a viewport clamp and a reset when it reopens.",
-    date: "2026-11-06",
-    commit: "82721e1d76",
-    page: "popover"
   }
 ];
