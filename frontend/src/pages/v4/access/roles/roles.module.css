@@ -32,36 +32,6 @@
   list-style: none;
 }
 
-.panel {
-  border: var(--v4-size-control-border) solid var(--v4-line-soft);
-  background: var(--v4-surface);
-}
-.panelHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--v4-space-12);
-  padding: var(--v4-space-16);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
-}
-.panelTitle {
-  margin: 0;
-  font-family: var(--v4-type-title-sm-font-family);
-  font-size: var(--v4-type-title-sm-font-size);
-  line-height: var(--v4-type-title-sm-line-height);
-  font-weight: var(--v4-type-title-sm-font-weight);
-  letter-spacing: var(--v4-type-title-sm-letter-spacing);
-}
-.panelBody {
-  padding: var(--v4-space-16);
-}
-.cardActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--v4-space-8);
-}
 .policyActions {
   display: flex;
   flex: none;
@@ -399,11 +369,6 @@
 .previewLine[data-comment] {
   color: var(--v4-muted);
   font-style: italic;
-}
-.layoutToolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--v4-space-8);
 }
 .ruleSheetRow {
   display: grid;

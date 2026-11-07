@@ -11,6 +11,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
+import { Card } from "@app/components/v4/ui/card";
 import {
   DataTable,
   type DataTableColumn,
@@ -28,7 +29,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -48,8 +49,7 @@ import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { formatDate, grantLabel, type RoleGrant } from "../roles";
 import { failed, saved } from "../toast";
-import { Gate, RESTRICTED, usePagedList } from "../ui";
-import { Section } from "./detail-parts";
+import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
 
 import css from "./org.module.css";
 
@@ -442,56 +442,61 @@ export const ProjectMembershipsSection = ({
     )
   };
 
-  const addButton = (variant: "outline" | "primary") => (
-    <Gate allowed={canEdit}>
-      <Button
-        variant={variant}
-        size="sm"
-        icon="plus"
-        disabled={!canEdit}
-        onClick={() => setAdding(true)}
-      >
-        Add to project
-      </Button>
-    </Gate>
-  );
-  const showHeaderAdd = canAdd && (subject === "group" || memberships.length > 0);
   const searching = Boolean(list.search.trim());
+  const hasRows = isPending || list.pageRows.length > 0;
 
   return (
-    <Section title="Projects" action={showHeaderAdd ? addButton("outline") : undefined}>
-      <Input
-        icon="search"
-        placeholder="Search projects..."
-        aria-label={`Search ${subjectName} projects`}
-        value={list.search}
-        onChange={(event) => list.setSearch(event.target.value)}
-      />
-      <DataTable
-        label={`Projects for ${subjectName}`}
-        rows={list.pageRows}
-        columns={columns}
-        loading={isPending}
-        rowActions={rowActions}
-        getRowId={(row) => row.id}
-        rowLabel={(row) => row.project.name}
-        sort={list.sort}
-        onSortChange={list.setSort}
-        onRowActivate={openProject}
-        empty={
-          searching ? (
+    <>
+      <Card
+        variant="framed"
+        title="Projects"
+        flush={hasRows}
+        action={
+          <Inline gap={8} wrap={false}>
+            <ListToolbar
+              band
+              search={list.search}
+              onSearch={list.setSearch}
+              placeholder="Search projects..."
+            />
+            {canAdd && (
+              <Gate allowed={canEdit}>
+                <Button
+                  variant="accent"
+                  size="xs"
+                  icon="plus"
+                  disabled={!canEdit}
+                  onClick={() => setAdding(true)}
+                >
+                  Add to project
+                </Button>
+              </Gate>
+            )}
+          </Inline>
+        }
+      >
+        {hasRows && (
+          <DataTable
+            label={`Projects for ${subjectName}`}
+            rows={list.pageRows}
+            columns={columns}
+            loading={isPending}
+            rowActions={rowActions}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.project.name}
+            sort={list.sort}
+            onSortChange={list.setSort}
+            onRowActivate={openProject}
+            pagination={list.pagination}
+          />
+        )}
+        {!hasRows &&
+          (searching ? (
             <EmptyState size="sm" icon="search" title="No projects match this search" />
           ) : (
-            <EmptyState
-              size="sm"
-              icon="folder"
-              title={text.emptyTitle}
-              actions={canAdd ? addButton("primary") : undefined}
-            />
-          )
-        }
-      />
-      {list.pagination}
+            <EmptyState size="sm" icon="folder" title={text.emptyTitle} />
+          ))}
+      </Card>
       {subject === "group" ? (
         <AddGroupProjectsSheet
           open={adding}
@@ -549,6 +554,6 @@ export const ProjectMembershipsSection = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Section>
+    </>
   );
 };

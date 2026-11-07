@@ -584,9 +584,9 @@ export const ProjectIdentityAuthSection = ({
   const { canEditAuth, canDelete } = useAuthGates(projectId, identity.id);
   const flows = useAuthMethodFlows(projectId, identity);
   const methods = identity.authMethods;
-  const addButton = (variant: "outline" | "primary") => (
+  const addButton = (
     <Gate allowed={canEditAuth}>
-      <Button variant={variant} size="xs" icon="plus" disabled={!canEditAuth} onClick={flows.add}>
+      <Button variant="accent" size="xs" icon="plus" disabled={!canEditAuth} onClick={flows.add}>
         Add auth method
       </Button>
     </Gate>
@@ -646,11 +646,7 @@ export const ProjectIdentityAuthSection = ({
         variant="framed"
         title="Authentication"
         flush={methods.length > 0}
-        action={
-          methods.length > 0 && methods.length < allMethods.length
-            ? addButton("outline")
-            : undefined
-        }
+        action={methods.length < allMethods.length ? addButton : undefined}
       >
         {methods.length > 0 ? (
           <DataTable
@@ -667,7 +663,6 @@ export const ProjectIdentityAuthSection = ({
             size="sm"
             icon="key"
             title="This machine identity has no auth methods configured"
-            actions={addButton("primary")}
           />
         )}
       </Card>

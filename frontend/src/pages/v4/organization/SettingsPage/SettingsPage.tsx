@@ -34,7 +34,7 @@ import {
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 import { SettingsCard } from "@app/components/v4/ui/settings-card";
@@ -45,6 +45,7 @@ import type { Organization } from "@app/hooks/api/organization/types";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
+import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 
@@ -254,29 +255,27 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
       render: (row) => new Date(row.createdAt).toISOString().slice(0, 10)
     }
   ];
-  let hint = "No incident contacts yet.";
-  if (contacts.length === 1) hint = "1 incident contact.";
-  else if (contacts.length > 1) hint = `${contacts.length} incident contacts.`;
   return (
     <>
       <SettingsCard
+        flush
         title="Incident contacts"
         description="Emailed if a severe incident affects your organization."
         action={
-          <Button variant="outline" size="sm" icon="plus" onClick={() => setAdding(true)}>
-            Add contact
-          </Button>
+          <Inline gap={8} wrap={false}>
+            <ListToolbar
+              band
+              search={search}
+              onSearch={setSearch}
+              placeholder="Search incident contacts by email"
+            />
+            <Button variant="accent" size="xs" icon="plus" onClick={() => setAdding(true)}>
+              Add contact
+            </Button>
+          </Inline>
         }
-        hint={hint}
       >
-        <Stack gap={12}>
-          <Input
-            icon="search"
-            aria-label="Search incident contacts"
-            placeholder="Search incident contacts by email"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+        {isPending || rows.length > 0 ? (
           <DataTable
             label="Incident contacts"
             rows={rows}
@@ -292,15 +291,14 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
                 </DropdownMenuItem>
               )
             }}
-            empty={
-              <EmptyState
-                size="sm"
-                icon="search"
-                title={contacts.length ? "No contacts match" : "No incident contacts"}
-              />
-            }
           />
-        </Stack>
+        ) : (
+          <EmptyState
+            size="sm"
+            icon="search"
+            title={contacts.length ? "No contacts match" : "No incident contacts"}
+          />
+        )}
       </SettingsCard>
       <AddContactDialog orgId={orgId} open={adding} onOpenChange={setAdding} />
       <AlertDialog open={Boolean(removing)} onOpenChange={(open) => !open && setRemoving(null)}>

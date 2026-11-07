@@ -69,7 +69,7 @@ import {
   RemoveAuthMethodDialog,
   sortedMethods
 } from "./auth-methods";
-import { CopyButton, Dash, MetadataBadges, Section, Value } from "./detail-parts";
+import { CopyButton, Dash, MetadataBadges, Value } from "./detail-parts";
 import { lastUsedLabel } from "./identities";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
@@ -248,11 +248,11 @@ export const OrgIdentityDetail = () => {
   const roleRef = { role: membership.role, roleId: membership.customRole?.id };
   const deleteBlocked = identity.hasDeleteProtection;
 
-  const addAuthButton = (variant: "outline" | "primary") => (
+  const addAuthButton = (
     <Gate allowed={canEditAuth}>
       <Button
-        variant={variant}
-        size="sm"
+        variant="accent"
+        size="xs"
         icon="plus"
         disabled={!canEditAuth}
         onClick={() => setAuthForm({})}
@@ -438,15 +438,13 @@ export const OrgIdentityDetail = () => {
           }
         >
           <div className={css.column}>
-            <Section
+            <Card
+              variant="framed"
               title="Authentication"
-              action={
-                isOwnIdentity && methods.length > 0 && !allConfigured
-                  ? addAuthButton("outline")
-                  : undefined
-              }
+              flush={isOwnIdentity && methods.length > 0}
+              action={isOwnIdentity && !allConfigured ? addAuthButton : undefined}
             >
-              {isOwnIdentity ? (
+              {isOwnIdentity && methods.length > 0 && (
                 <DataTable
                   label={`Auth methods for ${identity.name}`}
                   rows={methods}
@@ -455,16 +453,16 @@ export const OrgIdentityDetail = () => {
                   getRowId={(method) => method}
                   rowLabel={(method) => authMethodName(method)}
                   onRowActivate={setAuthView}
-                  empty={
-                    <EmptyState
-                      size="sm"
-                      icon="lock"
-                      title="This machine identity has no auth methods configured"
-                      actions={addAuthButton("primary")}
-                    />
-                  }
                 />
-              ) : (
+              )}
+              {isOwnIdentity && !methods.length && (
+                <EmptyState
+                  size="sm"
+                  icon="lock"
+                  title="This machine identity has no auth methods configured"
+                />
+              )}
+              {!isOwnIdentity && (
                 <EmptyState
                   size="sm"
                   icon="building"
@@ -478,7 +476,7 @@ export const OrgIdentityDetail = () => {
                   }
                 />
               )}
-            </Section>
+            </Card>
             <ProjectMembershipsSection
               subject="identity"
               subjectId={identity.id}

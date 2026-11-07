@@ -64,7 +64,7 @@ import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDate, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { Gate, ListToolbar, Muted, RESTRICTED, type Sort } from "../ui";
-import { BackButton, CopyButton, Section, Value } from "./detail-parts";
+import { BackButton, CopyButton, Value } from "./detail-parts";
 import { GroupDialog } from "./group-dialog";
 import { ProjectMembershipsSection } from "./project-memberships";
 import { useDebounced } from "./use-debounced";
@@ -212,11 +212,12 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
   const members = data?.members ?? [];
   const totalCount = data?.totalCount ?? 0;
   const filtered = Boolean(debouncedSearch || kinds.length);
-  const addButton = (variant: "outline" | "primary") => (
+  const hasRows = isPending || members.length > 0;
+  const addButton = (
     <Gate allowed={canEdit}>
       <Button
-        variant={variant}
-        size="sm"
+        variant="accent"
+        size="xs"
         icon="plus"
         disabled={!canEdit}
         onClick={() => setAdding(true)}
@@ -291,70 +292,80 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
   };
 
   return (
-    <Section title="Group members" action={addButton("outline")}>
-      <ListToolbar
-        search={search}
-        onSearch={(value) => {
-          setSearch(value);
-          setPage(1);
-        }}
-        placeholder="Search members..."
-        filter={{
-          label: "Filter by member type",
-          options: [
-            { value: FilterMemberType.USERS, label: "Users" },
-            { value: FilterMemberType.MACHINE_IDENTITIES, label: "Machine identities" }
-          ],
-          selected: kinds,
-          onToggle: (kind) => {
-            setKinds((current) =>
-              current.includes(kind as FilterMemberType)
-                ? current.filter((k) => k !== kind)
-                : [...current, kind as FilterMemberType]
-            );
-            setPage(1);
-          }
-        }}
-      />
-      <DataTable
-        label={`Members of ${group.name}`}
-        rows={members}
-        columns={columns}
-        rowActions={rowActions}
-        getRowId={(member) => `${member.type}:${member.id}`}
-        rowLabel={memberName}
-        loading={isPending}
-        sort={sort}
-        onSortChange={(next) => {
-          setSort(next);
-          setPage(1);
-        }}
-        empty={
-          filtered ? (
+    <>
+      <Card
+        variant="framed"
+        title="Group members"
+        flush={hasRows}
+        action={
+          <Inline gap={8} wrap={false}>
+            <ListToolbar
+              band
+              search={search}
+              onSearch={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+              placeholder="Search members..."
+              filter={{
+                label: "Filter by member type",
+                options: [
+                  { value: FilterMemberType.USERS, label: "Users" },
+                  { value: FilterMemberType.MACHINE_IDENTITIES, label: "Machine identities" }
+                ],
+                selected: kinds,
+                onToggle: (kind) => {
+                  setKinds((current) =>
+                    current.includes(kind as FilterMemberType)
+                      ? current.filter((k) => k !== kind)
+                      : [...current, kind as FilterMemberType]
+                  );
+                  setPage(1);
+                }
+              }}
+            />
+            {addButton}
+          </Inline>
+        }
+      >
+        {hasRows && (
+          <DataTable
+            label={`Members of ${group.name}`}
+            rows={members}
+            columns={columns}
+            rowActions={rowActions}
+            getRowId={(member) => `${member.type}:${member.id}`}
+            rowLabel={memberName}
+            loading={isPending}
+            sort={sort}
+            onSortChange={(next) => {
+              setSort(next);
+              setPage(1);
+            }}
+            pagination={
+              !isPending && totalCount > 0 ? (
+                <Pagination
+                  page={page}
+                  total={totalCount}
+                  pageSize={perPage}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPerPage(size);
+                    setPage(1);
+                  }}
+                />
+              ) : undefined
+            }
+          />
+        )}
+        {!hasRows &&
+          (filtered ? (
             <EmptyState size="sm" icon="search" title="No members match this search" />
           ) : (
-            <EmptyState
-              size="sm"
-              icon="user"
-              title="This group does not have any members"
-              actions={addButton("primary")}
-            />
-          )
-        }
-      />
-      {!isPending && totalCount > 0 && (
-        <Pagination
-          page={page}
-          total={totalCount}
-          pageSize={perPage}
-          pageSizeOptions={[10, 20, 50, 100]}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPerPage(size);
-            setPage(1);
-          }}
-        />
-      )}
+            <EmptyState size="sm" icon="user" title="This group does not have any members" />
+          ))}
+      </Card>
       {adding && <AddMembersDialog group={group} onOpenChange={setAdding} />}
       <AlertDialog
         open={Boolean(removing)}
@@ -383,7 +394,7 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Section>
+    </>
   );
 };
 

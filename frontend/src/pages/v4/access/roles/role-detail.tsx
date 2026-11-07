@@ -22,7 +22,7 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import {
@@ -62,8 +62,6 @@ import { PolicyTemplateSheet } from "./policy-template-sheet";
 import { OrgRoleDialog, ProjectRoleSheet, type RoleDraft } from "./role-dialogs";
 import { RuleTable } from "./rule-table";
 import { VaultImportSheet } from "./vault-import-sheet";
-
-import styles from "./roles.module.css";
 
 const BUILT_IN = "Built-in roles are read only";
 const DEFAULT_ROLE = "This is the default role for new members. Set another default to delete it.";
@@ -193,96 +191,85 @@ const RoleEditor = ({
           title={role.name}
           description={`${role.slug}${role.description ? ` - ${role.description}` : ""}`}
           actions={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" iconRight="more">
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => copy(role.id, "Copied ID to clipboard")}>
-                  <Icon name="copy" />
-                  Copy ID
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => copy(role.slug, "Copied slug to clipboard")}>
-                  <Icon name="copy" />
-                  Copy slug
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!isCustom || !can.edit}
-                  description={builtInNote}
-                  onSelect={() => setOverlay("edit")}
-                >
-                  <Icon icon={PencilIcon} />
-                  Edit role
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!isCustom || !can.create}
-                  description={builtInNote}
-                  onSelect={() => setOverlay("duplicate")}
-                >
-                  <Icon name="copy" />
-                  Duplicate role
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!isCustom || !can.delete || isDefault}
-                  description={isDefault ? DEFAULT_ROLE : builtInNote}
-                  onSelect={() => setOverlay("delete")}
-                >
-                  <Icon name="trash" />
-                  Delete role
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
-      </Stack>
-      <section className={styles.panel} aria-labelledby="role-policies-title">
-        <header className={styles.panelHead}>
-          <h3 id="role-policies-title" className={styles.panelTitle}>
-            Policies
-          </h3>
-          <div className={styles.cardActions}>
-            {dirty && (
+            <Inline gap={8}>
+              {importMenu}
               <Button
                 type="button"
                 variant="ghost"
-                disabled={saving}
+                disabled={!dirty || saving}
                 onClick={() => (scope === "project" ? setOverlay("discard") : discard())}
               >
                 Discard
               </Button>
-            )}
-            <Gate allowed={editable} reason={reason}>
-              <Button
-                type="button"
-                variant="primary"
-                disabled={!editable || !dirty}
-                loading={saving}
-                onClick={save}
-              >
-                <Icon icon={SaveIcon} />
-                Save
-              </Button>
-            </Gate>
-            {importMenu}
-          </div>
-        </header>
-        <div className={styles.panelBody}>
-          <RuleTable
-            scope={scope}
-            draft={current}
-            subjects={subjectsFor(scope)}
-            editable={editable}
-            reason={reason}
-            errors={errors}
-            references={references}
-            onChange={change}
-          />
-        </div>
-      </section>
+              <Gate allowed={editable} reason={reason}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={!editable || !dirty}
+                  loading={saving}
+                  onClick={save}
+                >
+                  <Icon icon={SaveIcon} />
+                  Save
+                </Button>
+              </Gate>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" iconRight="more">
+                    Options
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => copy(role.id, "Copied ID to clipboard")}>
+                    <Icon name="copy" />
+                    Copy ID
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => copy(role.slug, "Copied slug to clipboard")}>
+                    <Icon name="copy" />
+                    Copy slug
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!isCustom || !can.edit}
+                    description={builtInNote}
+                    onSelect={() => setOverlay("edit")}
+                  >
+                    <Icon icon={PencilIcon} />
+                    Edit role
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!isCustom || !can.create}
+                    description={builtInNote}
+                    onSelect={() => setOverlay("duplicate")}
+                  >
+                    <Icon name="copy" />
+                    Duplicate role
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={!isCustom || !can.delete || isDefault}
+                    description={isDefault ? DEFAULT_ROLE : builtInNote}
+                    onSelect={() => setOverlay("delete")}
+                  >
+                    <Icon name="trash" />
+                    Delete role
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Inline>
+          }
+        />
+      </Stack>
+      <RuleTable
+        scope={scope}
+        draft={current}
+        subjects={subjectsFor(scope)}
+        editable={editable}
+        reason={reason}
+        errors={errors}
+        references={references}
+        onChange={change}
+      />
       {overlay === "edit" &&
         (scope === "org" ? (
           <OrgRoleDialog
