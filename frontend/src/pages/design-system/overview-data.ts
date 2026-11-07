@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "link-rows-grid",
+    title: "Link rows and 1:2 grid",
+    description:
+      "ListRow takes a router link, Grid gains a 1:2 split that stacks below 896px, and a ToggleGroup no longer shrinks under its neighbours.",
+    date: "2026-11-07",
+    commit: "dca88d2ce5",
+    page: "list"
+  },
+  {
     id: "strategic-descriptions",
     title: "Strategic descriptions",
     description:
@@ -210,14 +219,5 @@ export const recentChanges: {
     date: "2026-11-05",
     commit: "94a2ac115f",
     page: "table"
-  },
-  {
-    id: "nested-overlays",
-    title: "Nested menus",
-    description:
-      "Submenus portal into the v4 layer, so they paint above and beside their parent menu.",
-    date: "2026-11-05",
-    commit: "3a41c65e00",
-    page: "dropdown-menu"
   }
 ];
