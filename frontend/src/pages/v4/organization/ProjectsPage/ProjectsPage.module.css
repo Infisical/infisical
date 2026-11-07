@@ -1,0 +1,4 @@
+.blocked.blocked,
+.blocked.blocked * {
+  color: var(--v4-faint);
+}

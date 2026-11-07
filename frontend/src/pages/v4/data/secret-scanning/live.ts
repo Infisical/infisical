@@ -4,6 +4,7 @@ import {
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2/mutations";
 import {
+  useGetSecretScanningInstanceState,
   useGetSecretScanningProjectId,
   useGetSecretScanningUnresolvedFindingCount,
   useListSecretScanningBasicDataSources,
@@ -16,6 +17,7 @@ import type { SecretScanningAdapter } from "./contract";
 
 export const secretScanningLive: SecretScanningAdapter = {
   useProjectId: useGetSecretScanningProjectId,
+  useInstanceState: (orgId) => useGetSecretScanningInstanceState(orgId),
   useFindings: useListSecretScanningFindings,
   useUnresolvedFindingCount: useGetSecretScanningUnresolvedFindingCount,
   useDataSources: useListSecretScanningBasicDataSources,
