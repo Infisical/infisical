@@ -442,28 +442,15 @@ export const ProjectMembershipsSection = ({
     )
   };
 
-  const addButton = (variant: "accent" | "primary") => (
-    <Gate allowed={canEdit}>
-      <Button
-        variant={variant}
-        size={variant === "accent" ? "xs" : "sm"}
-        icon="plus"
-        disabled={!canEdit}
-        onClick={() => setAdding(true)}
-      >
-        Add to project
-      </Button>
-    </Gate>
-  );
-  const showHeaderAdd = canAdd && (subject === "group" || memberships.length > 0);
   const searching = Boolean(list.search.trim());
+  const hasRows = isPending || list.pageRows.length > 0;
 
   return (
     <>
       <Card
         variant="framed"
         title="Projects"
-        flush={isPending || list.pageRows.length > 0}
+        flush={hasRows}
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar
@@ -472,35 +459,43 @@ export const ProjectMembershipsSection = ({
               onSearch={list.setSearch}
               placeholder="Search projects..."
             />
-            {showHeaderAdd && addButton("accent")}
+            {canAdd && (
+              <Gate allowed={canEdit}>
+                <Button
+                  variant="accent"
+                  size="xs"
+                  icon="plus"
+                  disabled={!canEdit}
+                  onClick={() => setAdding(true)}
+                >
+                  Add to project
+                </Button>
+              </Gate>
+            )}
           </Inline>
         }
       >
-        <DataTable
-          label={`Projects for ${subjectName}`}
-          rows={list.pageRows}
-          columns={columns}
-          loading={isPending}
-          rowActions={rowActions}
-          getRowId={(row) => row.id}
-          rowLabel={(row) => row.project.name}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          onRowActivate={openProject}
-          empty={
-            searching ? (
-              <EmptyState size="sm" icon="search" title="No projects match this search" />
-            ) : (
-              <EmptyState
-                size="sm"
-                icon="folder"
-                title={text.emptyTitle}
-                actions={canAdd ? addButton("primary") : undefined}
-              />
-            )
-          }
-          pagination={list.pagination}
-        />
+        {hasRows && (
+          <DataTable
+            label={`Projects for ${subjectName}`}
+            rows={list.pageRows}
+            columns={columns}
+            loading={isPending}
+            rowActions={rowActions}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.project.name}
+            sort={list.sort}
+            onSortChange={list.setSort}
+            onRowActivate={openProject}
+            pagination={list.pagination}
+          />
+        )}
+        {!hasRows &&
+          (searching ? (
+            <EmptyState size="sm" icon="search" title="No projects match this search" />
+          ) : (
+            <EmptyState size="sm" icon="folder" title={text.emptyTitle} />
+          ))}
       </Card>
       {subject === "group" ? (
         <AddGroupProjectsSheet

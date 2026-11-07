@@ -196,12 +196,7 @@ export const IdentityRoleDetailsSection = ({
   const hasRoles = membership.roles.length > 0;
   return (
     <>
-      <Card
-        variant="framed"
-        title="Project roles"
-        flush={hasRoles}
-        action={hasRoles ? addButton : undefined}
-      >
+      <Card variant="framed" title="Project roles" flush={hasRoles} action={addButton}>
         {hasRoles ? (
           <DataTable
             label="Project roles"
@@ -213,12 +208,7 @@ export const IdentityRoleDetailsSection = ({
             onRowActivate={(grant) => go(accessLinks.projectRole(scope, grantSlug(grant)))}
           />
         ) : (
-          <EmptyState
-            size="sm"
-            icon="user"
-            title="This machine identity doesn't have any roles"
-            actions={addButton}
-          />
+          <EmptyState size="sm" icon="user" title="This machine identity doesn't have any roles" />
         )}
       </Card>
       <AddRoleSheet

@@ -281,29 +281,30 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
         }
         footer={hint}
       >
-        <DataTable
-          label="Incident contacts"
-          rows={rows}
-          columns={columns}
-          loading={isPending}
-          getRowId={(row) => row.id}
-          rowLabel={(row) => row.email}
-          rowActions={{
-            renderMenu: (row) => (
-              <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(row)}>
-                <Icon name="trash" />
-                Remove contact
-              </DropdownMenuItem>
-            )
-          }}
-          empty={
-            <EmptyState
-              size="sm"
-              icon="search"
-              title={contacts.length ? "No contacts match" : "No incident contacts"}
-            />
-          }
-        />
+        {isPending || rows.length > 0 ? (
+          <DataTable
+            label="Incident contacts"
+            rows={rows}
+            columns={columns}
+            loading={isPending}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.email}
+            rowActions={{
+              renderMenu: (row) => (
+                <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(row)}>
+                  <Icon name="trash" />
+                  Remove contact
+                </DropdownMenuItem>
+              )
+            }}
+          />
+        ) : (
+          <EmptyState
+            size="sm"
+            icon="search"
+            title={contacts.length ? "No contacts match" : "No incident contacts"}
+          />
+        )}
       </Card>
       <AddContactDialog orgId={orgId} open={adding} onOpenChange={setAdding} />
       <AlertDialog open={Boolean(removing)} onOpenChange={(open) => !open && setRemoving(null)}>

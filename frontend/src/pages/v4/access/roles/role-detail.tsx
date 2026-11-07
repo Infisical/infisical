@@ -22,7 +22,7 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import {
@@ -159,13 +159,7 @@ const RoleEditor = ({
     <Gate allowed={editable} reason={reason}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            iconRight="chev-down"
-            disabled={!editable}
-          >
+          <Button type="button" variant="outline" iconRight="chev-down" disabled={!editable}>
             Import
           </Button>
         </DropdownMenuTrigger>
@@ -197,49 +191,72 @@ const RoleEditor = ({
           title={role.name}
           description={`${role.slug}${role.description ? ` - ${role.description}` : ""}`}
           actions={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" iconRight="more">
-                  Options
+            <Inline gap={8}>
+              {importMenu}
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={!dirty || saving}
+                onClick={() => (scope === "project" ? setOverlay("discard") : discard())}
+              >
+                Discard
+              </Button>
+              <Gate allowed={editable} reason={reason}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={!editable || !dirty}
+                  loading={saving}
+                  onClick={save}
+                >
+                  <Icon icon={SaveIcon} />
+                  Save
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => copy(role.id, "Copied ID to clipboard")}>
-                  <Icon name="copy" />
-                  Copy ID
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => copy(role.slug, "Copied slug to clipboard")}>
-                  <Icon name="copy" />
-                  Copy slug
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!isCustom || !can.edit}
-                  description={builtInNote}
-                  onSelect={() => setOverlay("edit")}
-                >
-                  <Icon icon={PencilIcon} />
-                  Edit role
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!isCustom || !can.create}
-                  description={builtInNote}
-                  onSelect={() => setOverlay("duplicate")}
-                >
-                  <Icon name="copy" />
-                  Duplicate role
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!isCustom || !can.delete || isDefault}
-                  description={isDefault ? DEFAULT_ROLE : builtInNote}
-                  onSelect={() => setOverlay("delete")}
-                >
-                  <Icon name="trash" />
-                  Delete role
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </Gate>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" iconRight="more">
+                    Options
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => copy(role.id, "Copied ID to clipboard")}>
+                    <Icon name="copy" />
+                    Copy ID
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => copy(role.slug, "Copied slug to clipboard")}>
+                    <Icon name="copy" />
+                    Copy slug
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!isCustom || !can.edit}
+                    description={builtInNote}
+                    onSelect={() => setOverlay("edit")}
+                  >
+                    <Icon icon={PencilIcon} />
+                    Edit role
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!isCustom || !can.create}
+                    description={builtInNote}
+                    onSelect={() => setOverlay("duplicate")}
+                  >
+                    <Icon name="copy" />
+                    Duplicate role
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={!isCustom || !can.delete || isDefault}
+                    description={isDefault ? DEFAULT_ROLE : builtInNote}
+                    onSelect={() => setOverlay("delete")}
+                  >
+                    <Icon name="trash" />
+                    Delete role
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Inline>
           }
         />
       </Stack>
@@ -252,35 +269,6 @@ const RoleEditor = ({
         errors={errors}
         references={references}
         onChange={change}
-        actions={
-          <>
-            {importMenu}
-            {dirty && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                disabled={saving}
-                onClick={() => (scope === "project" ? setOverlay("discard") : discard())}
-              >
-                Discard
-              </Button>
-            )}
-            <Gate allowed={editable} reason={reason}>
-              <Button
-                type="button"
-                variant="primary"
-                size="xs"
-                disabled={!editable || !dirty}
-                loading={saving}
-                onClick={save}
-              >
-                <Icon icon={SaveIcon} />
-                Save
-              </Button>
-            </Gate>
-          </>
-        }
       />
       {overlay === "edit" &&
         (scope === "org" ? (

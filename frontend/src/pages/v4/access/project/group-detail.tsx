@@ -254,12 +254,13 @@ const GroupMembersCard = ({
   };
 
   const filtered = Boolean(search.trim()) || typeFilter.length > 0;
+  const hasRows = query.isPending || members.length > 0;
   return (
     <>
       <Card
         variant="framed"
         title="Group members"
-        flush={query.isPending || members.length > 0}
+        flush={hasRows}
         action={
           <ListToolbar
             band
@@ -289,48 +290,49 @@ const GroupMembersCard = ({
           />
         }
       >
-        <DataTable
-          label="Group members"
-          rows={members}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(member) => `${member.type}-${member.id}`}
-          rowLabel={(member) => member.email ?? member.name}
-          loading={query.isPending}
-          loadingRows={5}
-          sort={sort}
-          onSortChange={(next) => {
-            setSort(next);
-            setPage(1);
-          }}
-          empty={
-            filtered ? (
-              <EmptyState size="sm" icon="search" title="No group members match your filters" />
-            ) : (
-              <EmptyState
-                size="sm"
-                icon="user"
-                title="This group doesn't have any members"
-                description="Add members from organization access control."
-              />
-            )
-          }
-          pagination={
-            !query.isPending && totalCount > 0 ? (
-              <Pagination
-                page={page}
-                total={totalCount}
-                pageSize={perPage}
-                pageSizeOptions={[10, 20, 50, 100]}
-                onPageChange={setPage}
-                onPageSizeChange={(size) => {
-                  setPerPage(size);
-                  setPage(1);
-                }}
-              />
-            ) : undefined
-          }
-        />
+        {hasRows && (
+          <DataTable
+            label="Group members"
+            rows={members}
+            columns={columns}
+            rowActions={rowActions}
+            getRowId={(member) => `${member.type}-${member.id}`}
+            rowLabel={(member) => member.email ?? member.name}
+            loading={query.isPending}
+            loadingRows={5}
+            sort={sort}
+            onSortChange={(next) => {
+              setSort(next);
+              setPage(1);
+            }}
+            pagination={
+              !query.isPending && totalCount > 0 ? (
+                <Pagination
+                  page={page}
+                  total={totalCount}
+                  pageSize={perPage}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPerPage(size);
+                    setPage(1);
+                  }}
+                />
+              ) : undefined
+            }
+          />
+        )}
+        {!hasRows &&
+          (filtered ? (
+            <EmptyState size="sm" icon="search" title="No group members match your filters" />
+          ) : (
+            <EmptyState
+              size="sm"
+              icon="user"
+              title="This group doesn't have any members"
+              description="Add members from organization access control."
+            />
+          ))}
       </Card>
       <AssumeMemberDialog
         projectId={projectId}

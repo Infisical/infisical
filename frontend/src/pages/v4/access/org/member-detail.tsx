@@ -188,12 +188,13 @@ const UserGroupsSection = ({ username }: { username: string }) => {
     )
   };
 
+  const hasRows = isPending || list.pageRows.length > 0;
   return (
     <>
       <Card
         variant="framed"
         title="Groups"
-        flush={isPending || list.pageRows.length > 0}
+        flush={hasRows}
         action={
           <ListToolbar
             band
@@ -203,31 +204,32 @@ const UserGroupsSection = ({ username }: { username: string }) => {
           />
         }
       >
-        <DataTable
-          label={`Groups for ${username}`}
-          rows={list.pageRows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(group) => group.id}
-          rowLabel={(group) => group.name}
-          loading={isPending}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          onRowActivate={(group) => go(accessLinks.orgGroup(orgId, group.id))}
-          empty={
-            groups.length ? (
-              <EmptyState size="sm" icon="search" title="No groups match this search" />
-            ) : (
-              <EmptyState
-                size="sm"
-                icon="user"
-                title="This user has not been assigned to any groups"
-                description="Add this user from a group's page."
-              />
-            )
-          }
-          pagination={list.pagination}
-        />
+        {hasRows && (
+          <DataTable
+            label={`Groups for ${username}`}
+            rows={list.pageRows}
+            columns={columns}
+            rowActions={rowActions}
+            getRowId={(group) => group.id}
+            rowLabel={(group) => group.name}
+            loading={isPending}
+            sort={list.sort}
+            onSortChange={list.setSort}
+            onRowActivate={(group) => go(accessLinks.orgGroup(orgId, group.id))}
+            pagination={list.pagination}
+          />
+        )}
+        {!hasRows &&
+          (groups.length ? (
+            <EmptyState size="sm" icon="search" title="No groups match this search" />
+          ) : (
+            <EmptyState
+              size="sm"
+              icon="user"
+              title="This user has not been assigned to any groups"
+              description="Add this user from a group's page."
+            />
+          ))}
       </Card>
       <AlertDialog
         open={Boolean(removing)}

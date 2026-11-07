@@ -248,11 +248,11 @@ export const OrgIdentityDetail = () => {
   const roleRef = { role: membership.role, roleId: membership.customRole?.id };
   const deleteBlocked = identity.hasDeleteProtection;
 
-  const addAuthButton = (variant: "accent" | "primary") => (
+  const addAuthButton = (
     <Gate allowed={canEditAuth}>
       <Button
-        variant={variant}
-        size={variant === "accent" ? "xs" : "sm"}
+        variant="accent"
+        size="xs"
         icon="plus"
         disabled={!canEditAuth}
         onClick={() => setAuthForm({})}
@@ -442,13 +442,9 @@ export const OrgIdentityDetail = () => {
               variant="framed"
               title="Authentication"
               flush={isOwnIdentity && methods.length > 0}
-              action={
-                isOwnIdentity && methods.length > 0 && !allConfigured
-                  ? addAuthButton("accent")
-                  : undefined
-              }
+              action={isOwnIdentity && !allConfigured ? addAuthButton : undefined}
             >
-              {isOwnIdentity ? (
+              {isOwnIdentity && methods.length > 0 && (
                 <DataTable
                   label={`Auth methods for ${identity.name}`}
                   rows={methods}
@@ -457,16 +453,16 @@ export const OrgIdentityDetail = () => {
                   getRowId={(method) => method}
                   rowLabel={(method) => authMethodName(method)}
                   onRowActivate={setAuthView}
-                  empty={
-                    <EmptyState
-                      size="sm"
-                      icon="lock"
-                      title="This machine identity has no auth methods configured"
-                      actions={addAuthButton("primary")}
-                    />
-                  }
                 />
-              ) : (
+              )}
+              {isOwnIdentity && !methods.length && (
+                <EmptyState
+                  size="sm"
+                  icon="lock"
+                  title="This machine identity has no auth methods configured"
+                />
+              )}
+              {!isOwnIdentity && (
                 <EmptyState
                   size="sm"
                   icon="building"
