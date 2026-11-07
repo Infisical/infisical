@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon, MailIcon, UserCogIcon, UsersIcon } from "lucide-react";
 
 import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
@@ -140,6 +141,18 @@ export const OrgMembersTab = () => {
   );
   const [selected, setSelected] = useState<string[]>([]);
   const [inviting, setInviting] = useState<{ links?: readonly InviteLink[] }>();
+  const { action } = useSearch({ strict: false }) as { action?: string };
+  const navigate = useNavigate();
+  const canInvite = can(OrgPermissionMemberActions.Create);
+  useEffect(() => {
+    if (action !== "invite-members") return;
+    if (canInvite) setInviting({});
+    navigate({
+      to: ".",
+      search: (prev: Record<string, unknown>) => ({ ...prev, action: "" }),
+      replace: true
+    } as never);
+  }, [action, canInvite, navigate]);
   const [removing, setRemoving] = useState<TOrgUserAccess>();
   const [deactivating, setDeactivating] = useState<TOrgUserAccess>();
   const [bulkRemoving, setBulkRemoving] = useState<TOrgUserAccess[]>();

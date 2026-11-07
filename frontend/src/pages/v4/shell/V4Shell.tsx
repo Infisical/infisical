@@ -15,6 +15,7 @@ import { Sidebar, type SidebarLevel, type SidebarSection } from "@app/components
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 
+import { AccessToasts } from "../access/toast";
 import { useV4Session } from "../data/session/contract";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
@@ -176,12 +177,16 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
           icon: "settings",
           onSelect: () => go(`${base}/settings`)
         },
-        { type: "separator" },
-        {
-          label: "Design system",
-          icon: "apps",
-          link: { to: "/design-system" }
-        }
+        ...(orgId === V4_DEMO_ORG_ID
+          ? [
+              { type: "separator" as const },
+              {
+                label: "Design system",
+                icon: "apps" as const,
+                link: { to: "/design-system" as const }
+              }
+            ]
+          : [])
       ]
     }
   };
@@ -276,6 +281,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         <PageGutter className={styles.content}>{content}</PageGutter>
       </AppInset>
       {chrome.dialog}
+      <AccessToasts />
       <CommandPalette
         orgId={orgId}
         projectId={at.projectId}

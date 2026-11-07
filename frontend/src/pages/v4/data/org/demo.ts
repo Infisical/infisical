@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import type { TRecentAnnouncementsResponse } from "@app/hooks/api/announcement/types";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import type { Actor, AuditLog, Event } from "@app/hooks/api/auditLogs/types";
 import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
@@ -48,6 +49,30 @@ const organization = createFixtureStore<Organization>({
   parentOrgId: null,
   rootOrgId: null,
   pamProjectId: null
+});
+
+const announcements = createFixtureStore<TRecentAnnouncementsResponse>({
+  lastSeenAnnouncementId: null,
+  announcements: [
+    {
+      id: "agent-vault",
+      title: "Agent Vault is in preview",
+      body: "Give AI agents scoped access to the secrets and services they need, with every session recorded.",
+      imageUrl: null,
+      link: null,
+      linkLabel: null,
+      published: "2026-10-30T12:00:00Z"
+    },
+    {
+      id: "pam-recordings",
+      title: "Session recordings in PAM",
+      body: "Replay brokered database and SSH sessions from the session detail page.",
+      imageUrl: null,
+      link: null,
+      linkLabel: null,
+      published: "2026-10-21T12:00:00Z"
+    }
+  ]
 });
 
 const roles = [
@@ -252,6 +277,13 @@ const environmentOf = (log: AuditLog) =>
   "environment" in log.event.metadata ? log.event.metadata.environment : undefined;
 
 export const orgDemo: OrgAdapter = {
+  useLogout: fixtureMutation(() => undefined),
+  getSessionToken: () => "demo-session-token",
+  useAnnouncements: () => ({ data: announcements.use(), isPending: false, error: null }),
+  useMarkAnnouncementSeen: fixtureMutation((id: string) => {
+    announcements.update((current) => ({ ...current, lastSeenAnnouncementId: id }));
+    return id;
+  }),
   useOrganization: () => ({ data: organization.use(), isPending: false, error: null }),
   useProductStats: () => ({ data: productStats(), isPending: false, error: null }),
   useUpdateOrganization: fixtureMutation(({ name, slug, defaultMembershipRoleSlug }) => {

@@ -1,5 +1,6 @@
 import type { InfiniteData } from "@tanstack/react-query";
 
+import type { TRecentAnnouncementsResponse } from "@app/hooks/api/announcement/types";
 import type { AuditLog, TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 import type {
   AddIncidentContactDTO,
@@ -22,6 +23,10 @@ export type V4InfiniteQueryResult<TPage> = V4QueryResult<InfiniteData<TPage>> & 
 };
 
 export type OrgAdapter = {
+  useLogout: V4Mutation<void>;
+  getSessionToken: () => string;
+  useAnnouncements: () => V4QueryResult<TRecentAnnouncementsResponse>;
+  useMarkAnnouncementSeen: V4Mutation<string, string | null>;
   useOrganization: (orgId: string) => V4QueryResult<Organization>;
   useProductStats: (orgId: string) => V4QueryResult<TOrgProductStats>;
   useUpdateOrganization: V4Mutation<UpdateOrgDTO, object>;

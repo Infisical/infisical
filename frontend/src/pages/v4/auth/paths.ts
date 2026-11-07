@@ -24,3 +24,5 @@ export const withV4Redirects = async <T>(guard: () => Promise<T>) => {
     throw error;
   }
 };
+
+export const v4LoginPath = "/v4/login" as const;
