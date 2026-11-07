@@ -407,7 +407,7 @@ export function CreateHoneyTokenFlow({
             </Button>
           </span>
         }
-        description="A decoy credential that alerts when used."
+        description="Plant a decoy AWS credential that alerts when anyone uses it."
         steps={HONEY_TOKEN_STEPS.map((entry) => ({ title: entry.name }))}
         current={step}
         onStepClick={(index) => {

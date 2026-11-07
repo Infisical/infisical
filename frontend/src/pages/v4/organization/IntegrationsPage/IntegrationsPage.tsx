@@ -355,6 +355,7 @@ export const IntegrationsPage = () => {
     <Stack gap={24}>
       <PageHeader
         title="Integrations"
+        description="Connect external services once and use them across this organization."
         actions={<NewConnection />}
         tabs={
           <Tabs

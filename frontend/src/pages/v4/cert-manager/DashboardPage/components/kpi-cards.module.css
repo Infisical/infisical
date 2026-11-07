@@ -1,7 +1,0 @@
-.kpi {
-  display: flex;
-  flex-direction: column;
-}
-.kpi > [data-slot="card-content"] {
-  flex: 1;
-}

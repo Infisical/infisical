@@ -78,6 +78,7 @@ export const AccessManagementPage = () => {
       <Stack gap={24}>
         <PageHeader
           title="Organization access control"
+          description="Control who can access this organization and what they can do."
           tabs={
             allowed.length > 0 && (
               <Tabs

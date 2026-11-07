@@ -444,6 +444,7 @@ export const SecretApprovalsPage = () => {
     <Stack gap={24}>
       <PageHeader
         title="Approval workflows"
+        description="Require review before secrets change in sensitive environments and folders."
         tabs={
           <Tabs
             label="Approval sections"

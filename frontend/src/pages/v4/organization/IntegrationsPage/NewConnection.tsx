@@ -111,6 +111,7 @@ export const NewConnection = () => {
       variant="sheet"
       size="lg"
       title="New connection"
+      description="Connect a third-party app once and reuse it across projects."
       trigger={
         <Button variant="accent" icon="plus">
           New connection

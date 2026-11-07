@@ -29,6 +29,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -252,6 +253,9 @@ const TemplateSheet = ({
               ? "Edit machine identity auth template"
               : "Create machine identity auth template"}
           </SheetTitle>
+          <SheetDescription>
+            One auth configuration that many machine identities can share.
+          </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <form

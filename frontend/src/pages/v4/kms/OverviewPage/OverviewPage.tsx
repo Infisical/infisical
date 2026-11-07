@@ -4,6 +4,7 @@ import { useParams } from "@tanstack/react-router";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
@@ -213,8 +214,11 @@ export const OverviewPage = () => {
           title="Keys"
           description={
             disabledCount
-              ? `${disabledCount} disabled ${disabledCount === 1 ? "key" : "keys"} cannot encrypt or sign.`
-              : undefined
+              ? `Encryption, signing, and MAC keys for this project. ${disabledCount} disabled ${disabledCount === 1 ? "key" : "keys"} cannot encrypt or sign.`
+              : "Encryption, signing, and MAC keys for this project."
+          }
+          badges={
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/keys" />
           }
           actions={
             <>

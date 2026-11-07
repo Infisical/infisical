@@ -248,6 +248,7 @@ export function CreateProxiedServiceFlow({
             </span>
           )
         }
+        description="The agent proxy adds this service's credentials to outbound requests, so the agent never holds the real secret."
         steps={
           isPicking
             ? undefined

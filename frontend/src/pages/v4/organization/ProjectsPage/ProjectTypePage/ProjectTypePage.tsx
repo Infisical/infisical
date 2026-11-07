@@ -1105,6 +1105,7 @@ const ProjectTypeContent = ({
       <Stack gap={24}>
         <PageHeader
           title={getProjectTitle(projectType)}
+          description={productOf(projectType).blurb}
           actions={
             canCreate ? (
               newProject

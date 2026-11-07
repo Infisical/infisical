@@ -571,6 +571,7 @@ function ImportSecretsContent({
       <SheetContent className={styles.sheet}>
         <SheetHeader>
           <SheetTitle>Import column mapping</SheetTitle>
+          <SheetDescription>Match each column in your file to a secret field.</SheetDescription>
         </SheetHeader>
         <SheetBody>
           <div className={styles.mapGrid}>

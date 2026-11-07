@@ -1460,6 +1460,7 @@ export const OverviewPage = () => {
                     projectQuery.data?.name ??
                     projectId
                   }
+                  description={projectQuery.data?.description || undefined}
                   mono
                 />
                 <div className={styles.toolbar}>

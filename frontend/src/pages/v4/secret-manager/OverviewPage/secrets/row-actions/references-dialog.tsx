@@ -1,6 +1,12 @@
 import { EyeOffIcon } from "lucide-react";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v4/ui/dialog";
 import { Field } from "@app/components/v4/ui/field";
 import { FileTree, type FileTreeNode } from "@app/components/v4/ui/file-tree";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -122,6 +128,9 @@ export function ReferencesDialog({
       >
         <DialogHeader>
           <DialogTitle>Secret reference details</DialogTitle>
+          <DialogDescription>
+            Secrets this one references, and secrets that depend on it.
+          </DialogDescription>
         </DialogHeader>
         <div className={styles.referenceBody}>
           <Field label="Expanded value">

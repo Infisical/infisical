@@ -19,10 +19,12 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
 } from "@app/components/v4/ui/sheet";
+import { Meta } from "@app/components/v4/ui/text";
 
 import { FabDock, Gate, ListToolbar, Muted } from "../ui";
 import type { PermissionSubject } from "./catalog";
@@ -103,11 +105,14 @@ const RuleSheet = ({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>{isNew ? "Add rule" : "Edit rule"}</SheetTitle>
+          <SheetDescription>
+            Allow or forbid actions on one policy, optionally only where conditions match.
+          </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <Stack gap={16}>
             <div className={styles.ruleSheetRow}>
-              <Field label="Policy" error={policyError}>
+              <Field label="Policy" error={policyError} description={config?.description}>
                 <Combobox
                   label="Policy"
                   placeholder="Select a policy..."
@@ -289,10 +294,17 @@ export const RuleTable = (props: RuleTableProps) => {
       grow: true,
       text: (row) => row.config.title,
       render: (row) => (
-        <Inline gap={8} wrap={false}>
-          <span>{row.config.title}</span>
-          {errors?.[row.config.subject]?.[row.index] && <Badge tone="bad">Needs attention</Badge>}
-        </Inline>
+        <Stack gap={0} style={{ minWidth: 0 }}>
+          <Inline gap={8} wrap={false}>
+            <span>{row.config.title}</span>
+            {errors?.[row.config.subject]?.[row.index] && <Badge tone="bad">Needs attention</Badge>}
+          </Inline>
+          {row.config.description && (
+            <Meta mono={false} style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+              {row.config.description}
+            </Meta>
+          )}
+        </Stack>
       )
     },
     {

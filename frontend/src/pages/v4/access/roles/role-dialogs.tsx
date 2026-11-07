@@ -5,6 +5,7 @@ import { Button } from "@app/components/v4/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -16,6 +17,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -181,6 +183,9 @@ export const OrgRoleDialog = ({
       <DialogContent className={styles.formDialog} pending={form.pending}>
         <DialogHeader>
           <DialogTitle>{mode === "update" ? "Update role" : "Duplicate role"}</DialogTitle>
+          {mode === "duplicate" && (
+            <DialogDescription>Creates a new role with the same permissions.</DialogDescription>
+          )}
         </DialogHeader>
         <form
           id={formId}
@@ -249,6 +254,9 @@ export const ProjectRoleSheet = ({
       <SheetContent pending={form.pending}>
         <SheetHeader>
           <SheetTitle>{mode === "update" ? "Edit role" : "Duplicate role"}</SheetTitle>
+          {mode === "duplicate" && (
+            <SheetDescription>{`Creates a new role with the same permissions as ${role.name}.`}</SheetDescription>
+          )}
         </SheetHeader>
         <SheetBody>
           <form

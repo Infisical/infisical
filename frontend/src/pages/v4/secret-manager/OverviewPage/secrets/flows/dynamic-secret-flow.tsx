@@ -42,6 +42,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -382,6 +383,9 @@ export function DynamicSecretFlow({
           {!definition && (
             <SheetHeader>
               <SheetTitle>Choose a Dynamic Secret Provider</SheetTitle>
+              <SheetDescription>
+                Pick the system Infisical issues short-lived credentials for.
+              </SheetDescription>
             </SheetHeader>
           )}
           {!definition && (
@@ -438,6 +442,9 @@ export function DynamicSecretFlow({
                   </Badge>
                 </Inline>
               </SheetTitle>
+              <SheetDescription>
+                Each lease gets its own credentials, revoked when its TTL ends.
+              </SheetDescription>
             </SheetHeader>
           )}
           {definition && (

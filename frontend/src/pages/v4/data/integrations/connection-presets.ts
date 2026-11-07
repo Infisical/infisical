@@ -44,6 +44,7 @@ export const CONNECTION_PRESETS: Partial<Record<AppConnection, AppConnectionPres
       {
         value: AwsConnectionMethod.AccessKey,
         label: methodLabel(AwsConnectionMethod.AccessKey),
+        description: "Uses a long-lived IAM user access key.",
         credentials: { accessKeyId: "", secretAccessKey: "" },
         fields: [
           { name: "credentials.accessKeyId", label: "Access key ID", mono: true },

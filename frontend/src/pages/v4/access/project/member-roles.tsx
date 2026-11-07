@@ -35,6 +35,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -136,6 +137,7 @@ const EditRolesSheet = ({
       <SheetContent className={styles.wideSheet} pending={pending}>
         <SheetHeader>
           <SheetTitle>Roles</SheetTitle>
+          <SheetDescription>Pick one or more built-in or custom project roles.</SheetDescription>
         </SheetHeader>
         <SheetBody>
           <div className={styles.grantList}>

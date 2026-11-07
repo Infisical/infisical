@@ -343,6 +343,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       <Stack gap={24}>
         <PageHeader
           title="Sessions"
+          description="Tokens that let your agents reach the services they need."
           badges={
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/agent-vault/sessions" />
           }

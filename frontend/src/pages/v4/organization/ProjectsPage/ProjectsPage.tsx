@@ -103,6 +103,7 @@ export const ProjectsPage = () => {
                 {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
               </Inline>
             }
+            description={product.blurb}
             footer={
               stats ? (
                 <Inline gap={24}>

@@ -100,6 +100,7 @@ export const AccessControlPage = () => {
       <Stack gap={24}>
         <PageHeader
           title="Project access control"
+          description="Control who can access this project and what they can do."
           actions={
             <Button variant="ghost" iconRight="chev-right" asChild>
               <a href={accessLinks.org(orgId, OrgAccessControlTabSections.Member)}>

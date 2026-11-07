@@ -10,6 +10,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -163,6 +164,9 @@ export const VaultImportSheet = ({
       <SheetContent className={styles.vaultSheet}>
         <SheetHeader>
           <SheetTitle>Import from HashiCorp Vault</SheetTitle>
+          <SheetDescription>
+            Translate a Vault HCL policy into Infisical permissions.
+          </SheetDescription>
         </SheetHeader>
         <SheetBody>
           <div className={styles.vaultBody}>

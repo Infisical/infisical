@@ -26,6 +26,7 @@ import { Steps } from "@app/components/v4/ui/multi-step";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -738,12 +739,21 @@ export function SecretRotationFlow({
                       <SheetTitle>{SECRET_ROTATION_MAP[type].name} secret rotation</SheetTitle>
                       <DocsLink type={type} />
                     </Inline>
+                    {!isUpdate && (
+                      <SheetDescription>
+                        Infisical replaces these credentials on a schedule and writes each new value
+                        to the secrets you map.
+                      </SheetDescription>
+                    )}
                   </Stack>
                 </Inline>
               </SheetHeader>
             ) : (
               <SheetHeader>
                 <SheetTitle>Choose a rotation provider</SheetTitle>
+                <SheetDescription>
+                  Pick the service whose credentials Infisical rotates on a schedule.
+                </SheetDescription>
               </SheetHeader>
             )}
             {type ? (

@@ -430,6 +430,7 @@ export const PamAccountsPage = () => {
       <Stack gap={24}>
         <PageHeader
           title="Accounts"
+          description="Launch sessions with the accounts you have access to."
           badges={
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pam/accounts/overview" />
           }

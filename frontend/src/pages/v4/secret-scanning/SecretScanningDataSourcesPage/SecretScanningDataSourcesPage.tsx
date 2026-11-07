@@ -388,6 +388,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
       <Stack gap={24}>
         <PageHeader
           title="Data sources"
+          description="Connected platforms that Secret Scanning checks for leaked secrets."
           badges={
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
           }

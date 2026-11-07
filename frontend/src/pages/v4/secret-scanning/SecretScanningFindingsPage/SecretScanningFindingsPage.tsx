@@ -235,6 +235,7 @@ const Findings = ({ projectId }: { projectId: string }) => {
     <Stack gap={24}>
       <PageHeader
         title="Findings"
+        description="Secrets detected across every data source."
         badges={
           unresolved > 0 && (
             <Badge tone="warn" dot>

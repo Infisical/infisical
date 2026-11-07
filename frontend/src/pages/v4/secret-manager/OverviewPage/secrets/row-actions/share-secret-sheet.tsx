@@ -19,6 +19,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -152,6 +153,9 @@ export function ShareSecretSheet({
         <SheetContent className={flowStyles.secretSheet}>
           <SheetHeader>
             <SheetTitle>Share a secret</SheetTitle>
+            <SheetDescription>
+              Send this value through an encrypted, expiring link.
+            </SheetDescription>
           </SheetHeader>
           <SheetBody>
             {result ? (

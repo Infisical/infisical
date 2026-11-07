@@ -19,6 +19,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetSubheader,
   SheetTitle
@@ -160,6 +161,9 @@ export function AccessInsightsSheet({
       >
         <SheetHeader>
           <SheetTitle>Secret access insights</SheetTitle>
+          <SheetDescription>
+            Users, groups, and identities that can access this secret.
+          </SheetDescription>
         </SheetHeader>
         <SheetSubheader className={styles.subject}>
           <span className={styles.subjectName}>{secret.name}</span>

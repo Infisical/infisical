@@ -361,9 +361,9 @@ export const InventoryPage = () => {
         <PageHeader
           title="Inventory"
           description={
-            stats
-              ? `${plural(stats.totals.expiringSoon, "certificate expires", "certificates expire")} within 30 days and ${stats.totals.expired} ${stats.totals.expired === 1 ? "has" : "have"} expired.`
-              : undefined
+            stats && (stats.totals.expiringSoon || stats.totals.expired)
+              ? `Every certificate across your infrastructure. ${plural(stats.totals.expiringSoon, "certificate expires", "certificates expire")} within 30 days and ${stats.totals.expired} ${stats.totals.expired === 1 ? "has" : "have"} expired.`
+              : "Every certificate across your infrastructure."
           }
           actions={
             <Button variant="outline" icon="upload">

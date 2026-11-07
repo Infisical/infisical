@@ -2,6 +2,7 @@ export type PermissionAction = { value: string; label: string; description?: str
 export type PermissionSubject = {
   subject: string;
   title: string;
+  description?: string;
   actions: PermissionAction[];
   conditional?: boolean;
 };
@@ -67,6 +68,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "incident-contact",
     title: "Incident contacts",
+    description: "Notified during security incidents",
     actions: [
       {
         value: "read",
@@ -89,6 +91,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "settings",
     title: "Organization profile",
+    description: "Organization-wide settings",
     actions: [
       {
         value: "read",
@@ -177,6 +180,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "github-org-sync",
     title: "GitHub organization sync",
+    description: "Syncs GitHub teams to Infisical groups",
     actions: [
       {
         value: "read",
@@ -199,6 +203,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "kms",
     title: "External KMS",
+    description: "Your own key management system for encryption",
     actions: [
       {
         value: "read",
@@ -221,6 +226,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "project-templates",
     title: "Secrets management project templates",
+    description: "Applied when creating projects",
     actions: [
       {
         value: "read",
@@ -367,6 +373,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "app-connections",
     title: "App connections",
+    description: "Credentials for external platforms and services",
     actions: [
       {
         value: "read",
@@ -398,6 +405,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "gateway",
     title: "Gateways",
+    description: "Connect Infisical to private infrastructure",
     actions: [
       {
         value: "list-gateways",
@@ -428,6 +436,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "gateway-pool",
     title: "Gateway pools",
+    description: "Groups of gateways",
     actions: [
       {
         value: "list-gateway-pools",
@@ -454,6 +463,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "relay",
     title: "Relays",
+    description: "Servers that tunnel gateway traffic",
     actions: [
       {
         value: "list-relays",
@@ -480,6 +490,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "kmip-server",
     title: "KMIP servers",
+    description: "Proxy KMIP requests to Infisical KMS",
     actions: [
       {
         value: "list-kmip-servers",
@@ -542,6 +553,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "secret-share",
     title: "Secrets management secret sharing",
+    description: "Settings for sharing secrets externally",
     actions: [
       {
         value: "manage-settings",
@@ -575,6 +587,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "honey-tokens",
     title: "Secrets management honey tokens",
+    description: "Decoy credentials that alert when used",
     actions: [
       {
         value: "setup",
@@ -585,6 +598,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "project",
     title: "Project",
+    description: "Creating projects and requesting access",
     actions: [
       {
         value: "create",
@@ -599,6 +613,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "organization-admin-console",
     title: "Organization admin console",
+    description: "Access to every project without membership",
     actions: [
       {
         value: "access-all-projects",
@@ -610,6 +625,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "machine-identity-auth-template",
     title: "Machine identity auth templates",
+    description: "Reusable auth configurations for identities",
     actions: [
       {
         value: "list-templates",
@@ -640,6 +656,7 @@ export const ORG_SUBJECTS: PermissionSubject[] = [
   {
     subject: "sub-organization",
     title: "Sub-organizations",
+    description: "Namespaces within the organization",
     actions: [
       {
         value: "create",
@@ -723,6 +740,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "secret-imports",
     title: "Secret imports",
+    description: "Reference secrets from other environments or folders",
     conditional: true,
     actions: [
       {
@@ -746,6 +764,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "dynamic-secrets",
     title: "Dynamic secrets",
+    description: "On-demand credentials for databases and services",
     conditional: true,
     actions: [
       {
@@ -773,6 +792,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "kms",
     title: "Project KMS configuration",
+    description: "Key used to encrypt this project's data",
     conditional: false,
     actions: [
       {
@@ -784,6 +804,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "integrations",
     title: "Native integrations",
+    description: "Push secrets to third-party services",
     conditional: false,
     actions: [
       {
@@ -980,6 +1001,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "webhooks",
     title: "Webhooks",
+    description: "Notifications for secret events",
     conditional: false,
     actions: [
       {
@@ -1003,6 +1025,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "service-tokens",
     title: "Service tokens",
+    description: "Tokens for programmatic access",
     conditional: false,
     actions: [
       {
@@ -1026,6 +1049,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "honey-tokens",
     title: "Honey tokens",
+    description: "Decoy credentials that alert when used",
     conditional: true,
     actions: [
       {
@@ -1057,6 +1081,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "proxied-services",
     title: "Proxied services",
+    description: "Services agent traffic is routed through",
     conditional: true,
     actions: [
       {
@@ -1105,6 +1130,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "secret-validation-rules",
     title: "Secret validation rules",
+    description: "Constraints secrets must meet",
     conditional: false,
     actions: [
       {
@@ -1151,6 +1177,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "commits",
     title: "Commits",
+    description: "Secret version history and rollbacks",
     conditional: true,
     actions: [
       {
@@ -1247,6 +1274,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "secret-approval",
     title: "Approval policies",
+    description: "Approvals for secret changes and access requests",
     conditional: false,
     actions: [
       {
@@ -1301,6 +1329,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "secret-syncs",
     title: "Secret syncs",
+    description: "Push secrets to external destinations",
     conditional: true,
     actions: [
       {
@@ -1336,6 +1365,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "secret-event-subscriptions",
     title: "Secret event subscriptions",
+    description: "Receive secret lifecycle events",
     conditional: true,
     actions: [
       {
@@ -1359,6 +1389,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "app-connections",
     title: "App connections",
+    description: "Credentials for external platforms and services",
     conditional: true,
     actions: [
       {
@@ -1391,6 +1422,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "project-folder-grant",
     title: "Project folder grants",
+    description: "Access to secrets in specific environments and paths",
     conditional: true,
     actions: [
       {
@@ -1410,6 +1442,7 @@ export const PROJECT_SUBJECTS: PermissionSubject[] = [
   {
     subject: "secret-approval-request",
     title: "Secret approval requests",
+    description: "Secret changes pending approval",
     conditional: false,
     actions: [
       {

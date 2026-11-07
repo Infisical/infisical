@@ -336,7 +336,14 @@ const GeneralTab = () => {
   const { data: roles } = org.useRoles(current.id);
   return (
     <Stack gap={24}>
-      <PageHeader title="General" />
+      <PageHeader
+        title="General"
+        description={
+          current.isSubOrganization
+            ? "Manage this sub-organization's name, slug, and default role."
+            : "Manage this organization's name, slug, default role, and incident contacts."
+        }
+      />
       <Alert tone="info">
         <AlertTitle>Some settings have moved</AlertTitle>
         <AlertDescription>

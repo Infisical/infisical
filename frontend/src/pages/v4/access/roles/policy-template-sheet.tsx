@@ -26,6 +26,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -188,6 +189,9 @@ export const PolicyTemplateSheet = ({
         >
           <SheetHeader>
             <SheetTitle>Policy templates</SheetTitle>
+            <SheetDescription>
+              Start from a prefilled set of policies. You can add more later.
+            </SheetDescription>
           </SheetHeader>
           <SheetBody>
             <div className={styles.templateLayout}>

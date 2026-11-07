@@ -10,6 +10,7 @@ import {
 import { Button } from "@app/components/v4/ui/button";
 import { Calendar } from "@app/components/v4/ui/calendar";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
 import { Empty, EmptyHeader, EmptyState, EmptyTitle } from "@app/components/v4/ui/empty";
 import { Json, type JsonValue } from "@app/components/v4/ui/json";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
@@ -449,6 +450,10 @@ export const AuditLogsPage = () => {
     <Stack gap={24}>
       <PageHeader
         title="Audit logs"
+        description="Review who did what in this organization, and when."
+        badges={
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
+        }
         tabs={
           <Tabs
             label="Audit log sections"
