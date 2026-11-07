@@ -5,7 +5,7 @@
     "width": 1728,
     "height": 991
   },
-  "frozenTime": "2026-11-06T23:34:56Z",
+  "frozenTime": "2026-11-07T00:24:55Z",
   "steps": [
     {
       "waitFor": {
@@ -28,8 +28,7 @@
     },
     {
       "click": {
-        "role": "button",
-        "name": "Requires Setup"
+        "selector": "internal:role=row[name=/slack/] >> internal:role=button[name=\"Requires Setup\"i]"
       }
     },
     {
@@ -47,6 +46,29 @@
     },
     {
       "shot": "agent-vault/personal-values.png"
+    },
+    {
+      "press": "Escape"
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Cancel"
+      }
+    },
+    {
+      "click": {
+        "selector": "internal:role=row[name=/notion/] >> internal:role=button[name=\"Requires Setup\"i]"
+      }
+    },
+    {
+      "waitFor": {
+        "role": "button",
+        "name": "Connect Account"
+      }
+    },
+    {
+      "shot": "agent-vault/personal-values-oauth.png"
     }
   ]
 }
