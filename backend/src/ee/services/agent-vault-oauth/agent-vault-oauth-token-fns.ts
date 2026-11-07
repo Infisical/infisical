@@ -9,7 +9,12 @@ import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 import { computePkceChallenge } from "@app/services/oauth-client/oauth-client-fns";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
-import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultOauthStatus,
+  AgentVaultVariableReferenceField
+} from "../agent-vault/agent-vault-enums";
+import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   describeServer,
   MAX_OAUTH_SCOPES,
@@ -403,21 +408,26 @@ export const requestToken = async ({
 // Refresh errors that mean the login is gone for good, so retrying on every poll only repeats the refusal. The
 // client codes mean the server dropped the registered client (the MCP SDK starts over on invalid_client too) or no
 // longer accepts its secret; the rest are providers' own names for a dead refresh token.
-const DEAD_LOGIN_ERROR_CODES = new Set([
-  "invalid_grant",
+const CLIENT_REFUSED_ERROR_CODES = new Set([
   "invalid_client",
   "unauthorized_client",
   "incorrect_client_credentials", // GitHub's invalid_client, sent with a 200
-  "bad_refresh_token", // GitHub
-  "invalid_refresh_token", // Slack
-  "token_revoked", // Slack
-  "token_expired", // Slack
   "bad_client_secret", // Slack's invalid_client
   "invalid_client_id" // Slack's invalid_client
 ]);
+const DEAD_TOKEN_ERROR_CODES = new Set([
+  "invalid_grant",
+  "bad_refresh_token", // GitHub
+  "invalid_refresh_token", // Slack
+  "token_revoked", // Slack
+  "token_expired" // Slack
+]);
+
+export const isClientRefusedError = (errorCode: string | null) =>
+  errorCode !== null && CLIENT_REFUSED_ERROR_CODES.has(errorCode);
 
 export const isDeadLoginError = (errorCode: string | null) =>
-  errorCode !== null && DEAD_LOGIN_ERROR_CODES.has(errorCode);
+  errorCode !== null && (DEAD_TOKEN_ERROR_CODES.has(errorCode) || CLIENT_REFUSED_ERROR_CODES.has(errorCode));
 
 export const exchangeAuthorizationCode = (
   args: Omit<Parameters<typeof requestToken>[0], "params"> & { code: string; codeVerifier: string; redirectUri: string }
@@ -461,6 +471,41 @@ export const toResolvedOauthCredential = (
   expiresAt: config.expiresAt ?? null
 });
 
+// Each member signs in for themselves, so the service row holds no tokens, only what their sign-ins share.
+export const isMemberProvidedOauth = (service: { credentialType: string; memberProvidedFields?: string[] | null }) =>
+  service.credentialType === AgentVaultCredentialType.OAuth &&
+  Boolean(service.memberProvidedFields?.includes(AgentVaultVariableReferenceField.CredentialValue));
+
+// A connection's status as an API response shows it, without anything that identifies the client or the token.
+export const oauthConnectionStatusOf = (config: TAgentVaultOauthConfig) => ({
+  status: config.status,
+  issuer: config.issuer,
+  grantedScopes: config.grantedScopes ?? [],
+  requiredScopes: config.requiredScopes ?? [],
+  expiresAt: config.expiresAt ?? null,
+  authorizedAt: config.authorizedAt ?? null,
+  lastError: config.lastError ?? null
+});
+
+// What a member's sign-in is bound to on the service: its server URL (not the rest of its config, such as the
+// transport), issuer, client and sealed client secret. Sealing is randomized, so any secret an admin sends changes it,
+// even the same one.
+export const memberOauthSetupOf = (service: {
+  config?: unknown;
+  credentialConfig?: unknown;
+  encryptedCredential?: Buffer | null;
+}) =>
+  crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify([
+        getServiceServerUrl(service.config) ?? null,
+        service.credentialConfig ?? null,
+        service.encryptedCredential?.toString("base64") ?? null
+      ])
+    )
+    .digest("hex");
+
 // Never throws: `parseExpiresIn` bounds what a provider sends, and anything that still isn't a date is no expiry.
 export const expiresAtFrom = (expiresIn: number | undefined, now: Date) => {
   if (expiresIn === undefined) return null;
@@ -500,7 +545,7 @@ export const decideRefresh = ({
     if (!hasRefreshToken) {
       return {
         action: "needs-reauthorization",
-        reason: "The MCP server rejected the access token and issued no refresh token. Reauthorize this service."
+        reason: "The MCP server rejected the access token and issued no refresh token."
       };
     }
     return { action: "refresh" };
@@ -514,7 +559,7 @@ export const decideRefresh = ({
     return expiresAtMs <= now.getTime()
       ? {
           action: "needs-reauthorization",
-          reason: "The access token expired and the MCP server issued no refresh token. Reauthorize this service."
+          reason: "The access token expired and the MCP server issued no refresh token."
         }
       : { action: "return-current" };
   }

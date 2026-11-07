@@ -32,6 +32,7 @@ import {
   TAgentVaultWrittenMember,
   TChangeAgentVaultDelegationSubjectsDTO,
   TCompleteAgentVaultOauthAuthorizationDTO,
+  TConnectAgentVaultPersonalOauthDTO,
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultOauthAuthorizationResponse,
@@ -688,6 +689,19 @@ const invalidatePersonalValues = (
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId, projectId) })
   ]);
 
+// The service changed under the dialog, so its copy is stale: reload it before the member saves again.
+const reloadPersonalValuesOnConflict = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string,
+  accessBundleId: string,
+  error: unknown
+) => {
+  if (axios.isAxiosError(error) && error.response?.status === 409) {
+    invalidatePersonalValues(queryClient, orgId, projectId, accessBundleId).catch(() => undefined);
+  }
+};
+
 export const useSetAgentVaultPersonalValues = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
@@ -705,14 +719,30 @@ export const useSetAgentVaultPersonalValues = (projectId: string) => {
     },
     onSuccess: (_, { accessBundleId }) =>
       invalidatePersonalValues(queryClient, currentOrg.id, projectId, accessBundleId),
-    // The service changed under the dialog, so its copy is stale: reload it before the member saves again.
-    onError: (error, { accessBundleId }) => {
-      if (axios.isAxiosError(error) && error.response?.status === 409) {
-        invalidatePersonalValues(queryClient, currentOrg.id, projectId, accessBundleId).catch(
-          () => undefined
-        );
-      }
-    }
+    onError: (error, { accessBundleId }) =>
+      reloadPersonalValuesOnConflict(queryClient, currentOrg.id, projectId, accessBundleId, error)
+  });
+};
+
+export const useConnectAgentVaultPersonalOauth = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accessBundleId,
+      serviceId,
+      ...params
+    }: TConnectAgentVaultPersonalOauthDTO) => {
+      const { data } = await apiRequest.post<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values/oauth-connection`,
+        params
+      );
+      return data.personalValues;
+    },
+    onSuccess: (_, { accessBundleId }) =>
+      invalidatePersonalValues(queryClient, currentOrg.id, projectId, accessBundleId),
+    onError: (error, { accessBundleId }) =>
+      reloadPersonalValuesOnConflict(queryClient, currentOrg.id, projectId, accessBundleId, error)
   });
 };
 
