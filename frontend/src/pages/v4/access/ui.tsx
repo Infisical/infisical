@@ -13,7 +13,9 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
+import { Skeleton } from "@app/components/v4/ui/skeleton";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { grantLabel, isGrantExpired, type RoleGrant } from "./roles";
@@ -210,6 +212,28 @@ export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; ma
     </span>
   );
 };
+
+export const DetailSkeleton = ({ label, rows = 5 }: { label: string; rows?: number }) => (
+  <Stack gap={12} role="status" aria-label={label}>
+    {Array.from({ length: rows }, (_, index) => (
+      <Inline key={index} gap={16} justify="between">
+        <Skeleton width={160} />
+        <Skeleton width={120} />
+      </Inline>
+    ))}
+  </Stack>
+);
+
+export const FormSkeleton = ({ label, fields = 4 }: { label: string; fields?: number }) => (
+  <Stack gap={24} role="status" aria-label={label}>
+    {Array.from({ length: fields }, (_, index) => (
+      <Stack key={index} gap={8}>
+        <Skeleton width={120} />
+        <Skeleton height={32} />
+      </Stack>
+    ))}
+  </Stack>
+);
 
 export const Muted = ({ children }: { children: ReactNode }) => (
   <span className={styles.muted}>{children}</span>

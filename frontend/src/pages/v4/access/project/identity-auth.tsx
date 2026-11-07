@@ -25,7 +25,6 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -45,7 +44,7 @@ import type { IdentityTrustedIp, IdentityUniversalAuth } from "@app/hooks/api/id
 import { useV4Adapter } from "../../data/adapters";
 import { useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
-import { Gate, Muted, RESTRICTED } from "../ui";
+import { DetailSkeleton, FormSkeleton, Gate, Muted, RESTRICTED } from "../ui";
 import { type AuthIdentity, authMethodName, identitySubject, LockedBadge } from "./identity-common";
 
 const allMethods = Object.values(IdentityAuthMethod);
@@ -293,7 +292,7 @@ const EditUniversalAuthForm = (props: {
   if (isPending)
     return (
       <SheetBody>
-        <Loader label="Loading Universal Auth" />
+        <FormSkeleton label="Loading Universal Auth" />
       </SheetBody>
     );
   return (
@@ -402,7 +401,7 @@ export const RemoveAuthMethodDialog = ({
 
 const UniversalAuthDetails = ({ identityId }: { identityId: string }) => {
   const { data, isPending } = useV4Adapter("access").useIdentityUniversalAuth(identityId);
-  if (isPending) return <Loader label="Loading Universal Auth" />;
+  if (isPending) return <DetailSkeleton label="Loading Universal Auth" />;
   if (!data) return <Muted>Universal Auth configuration is unavailable.</Muted>;
   return (
     <Stack gap={24}>

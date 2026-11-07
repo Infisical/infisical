@@ -29,7 +29,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Spinner } from "@app/components/v4/ui/spinner";
+import { Skeleton } from "@app/components/v4/ui/skeleton";
 import {
   RowActions,
   RowContextMenu,
@@ -171,14 +171,45 @@ export function DynamicSecretLeaseList({
   const [revoke, setRevoke] = useState<{ leaseId: string; isForced: boolean }>();
   const [revokeOpen, setRevokeOpen] = useState(false);
 
+  const head = (
+    <TableHeader>
+      <TableRow>
+        <TableHead>Lease ID</TableHead>
+        <TableHead>State</TableHead>
+        <TableHead>Expires in</TableHead>
+        <TableActionsHead slots={canRenew ? 2 : 1} />
+      </TableRow>
+    </TableHeader>
+  );
   let body;
   if (leaseBlock)
     body = <EmptyState icon="lock" title="Access restricted" description={`${leaseBlock}.`} />;
   else if (loading)
     body = (
-      <div className={styles.loading}>
-        <Spinner label="Loading leases" />
-      </div>
+      <>
+        <span role="status" className="sr-only">
+          Loading leases
+        </span>
+        <Table aria-busy>
+          {head}
+          <TableBody>
+            {[0, 1, 2].map((index) => (
+              <TableRow key={index} aria-hidden>
+                <TableCell>
+                  <Skeleton width={200} />
+                </TableCell>
+                <TableCell>
+                  <Skeleton width={56} height={20} />
+                </TableCell>
+                <TableCell>
+                  <Skeleton width={80} />
+                </TableCell>
+                <TableActionsCell slots={canRenew ? 2 : 1} />
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </>
     );
   else if (leases.length === 0)
     body = (
@@ -197,14 +228,7 @@ export function DynamicSecretLeaseList({
   else
     body = (
       <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Lease ID</TableHead>
-            <TableHead>State</TableHead>
-            <TableHead>Expires in</TableHead>
-            <TableActionsHead slots={canRenew ? 2 : 1} />
-          </TableRow>
-        </TableHeader>
+        {head}
         <TableBody>
           {leases.map(({ id, expireAt, status, statusDetails }) => {
             const rowActions: RowActionProps = {

@@ -14,7 +14,6 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { FieldLabel } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Loader } from "@app/components/v4/ui/loader";
 import {
   Sheet,
   SheetBody,
@@ -24,6 +23,7 @@ import {
   SheetSubheader,
   SheetTitle
 } from "@app/components/v4/ui/sheet";
+import { Skeleton } from "@app/components/v4/ui/skeleton";
 import { Switch } from "@app/components/v4/ui/switch";
 import {
   RowActions,
@@ -157,6 +157,7 @@ export function AccessInsightsSheet({
       (!types.length || types.includes(row.type)) &&
       row.name.toLowerCase().includes(search.trim().toLowerCase())
   );
+  const loading = open && isPending;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -228,12 +229,14 @@ export function AccessInsightsSheet({
                 </Button>
               </Gate>
             </div>
-            {open && isPending && <Loader label="Loading access" />}
-            {!(open && isPending) && rows.length === 0 && (
-              <EmptyState icon="search" title="No results found" />
+            {loading && (
+              <span role="status" className="sr-only">
+                Loading access
+              </span>
             )}
-            {rows.length > 0 && (
-              <Table>
+            {!loading && rows.length === 0 && <EmptyState icon="search" title="No results found" />}
+            {(loading || rows.length > 0) && (
+              <Table aria-busy={loading || undefined}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className={styles.typeColumn}>Type</TableHead>
@@ -247,6 +250,23 @@ export function AccessInsightsSheet({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {loading &&
+                    [0, 1, 2, 3].map((index) => (
+                      <TableRow key={index} aria-hidden>
+                        <TableCell>
+                          <Skeleton width={96} />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton width={160} />
+                        </TableCell>
+                        {columns.map((column) => (
+                          <TableCell key={column.action} className={styles.permissionColumn}>
+                            <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
+                          </TableCell>
+                        ))}
+                        <TableActionsCell slots={1} />
+                      </TableRow>
+                    ))}
                   {rows.map((row) => {
                     const rowActions: RowActionProps = {
                       label: row.name,
