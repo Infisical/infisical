@@ -41,6 +41,7 @@ import {
   secretKeyExistsQueryOptions,
   useGetSecretKeyExistingEnvironments
 } from "@app/hooks/api/dashboard/queries";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 
 import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
 import type { EnvironmentSecretAction } from "../SecretTableRow/SecretEditTableRow";
@@ -238,11 +239,30 @@ export const QuickAddSecretRow = ({
         }
       }
 
-      await Promise.all(
+      const results = await Promise.allSettled(
         environments.map((environment) =>
           onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)
         )
       );
+      const failures = environments.flatMap((environment, index) => {
+        const result = results[index];
+        if (result.status === "fulfilled") return [];
+        return [
+          {
+            error: result.reason as unknown,
+            field: "key" as const,
+            environmentName: isMultiEnvironmentView
+              ? (currentProject.environments.find((env) => env.slug === environment)?.name ??
+                environment)
+              : undefined
+          }
+        ];
+      });
+      if (failures.length) {
+        showSecretWriteErrors(failures, (_, message) => setError(message));
+        if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
+        return;
+      }
       if (annotation) onAnnotate?.(normalizedKey, annotation);
       if (!isDirectSave && !isKeyConfirmedFree) {
         const queuedDraft = { key: normalizedKey, value, comment };
@@ -512,7 +532,7 @@ export const QuickAddSecretRow = ({
           {displayedError && (
             <span
               id="quick-add-secret-error"
-              className="block text-2xs break-words whitespace-normal text-danger"
+              className="block text-2xs break-words whitespace-pre-line text-danger"
             >
               {!error && duplicateEnvironments ? (
                 <DuplicateEnvironmentsMessage environments={duplicateEnvironments} />

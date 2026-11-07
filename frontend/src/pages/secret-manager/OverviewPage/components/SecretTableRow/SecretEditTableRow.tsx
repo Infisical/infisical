@@ -113,6 +113,7 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
@@ -193,7 +194,6 @@ type Props = {
   }[];
   isSecretPresent?: boolean;
   isSingleEnvView?: boolean;
-  onSecretRename?: (newName: string) => Promise<void>;
   isBatchMode?: boolean;
   isPendingCreate?: boolean;
   isPendingDelete?: boolean;
@@ -802,7 +802,7 @@ export const SecretEditTableRow = ({
     batchStore.getState().pendingChanges.secrets.find((c) => c.secretKey === secretName)?.id;
 
   const savePendingRow = async (knownPendingChangeId?: string) => {
-    if (!onPendingSave || isSavingPendingChangeRef.current) return;
+    if (!onPendingSave || isSavingPendingChangeRef.current) return false;
     isSavingPendingChangeRef.current = true;
     setIsSavingPendingChange.on();
     try {
@@ -823,10 +823,14 @@ export const SecretEditTableRow = ({
         if (!knownPendingChangeId) applyBatchEditsRef.current?.();
       }
       await onPendingSave(environment, secretName, pendingChangeId);
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
+      return false;
     } finally {
       isSavingPendingChangeRef.current = false;
       setIsSavingPendingChange.off();
     }
+    return true;
   };
 
   const [isAnnotationSaveRequested, setIsAnnotationSaveRequested] = useState(false);
@@ -836,7 +840,8 @@ export const SecretEditTableRow = ({
     if (!isAnnotationSaveRequested) return;
     setIsAnnotationSaveRequested(false);
     savePendingRow()
-      .then(() => {
+      .then((isSaved) => {
+        if (!isSaved) return;
         setIsCommentOpen(false);
         setIsTagOpen(false);
         setIsMetadataOpen(false);
@@ -949,12 +954,8 @@ export const SecretEditTableRow = ({
           text: `Multi-line encoding ${skipMultilineEncoding ? "disabled" : "enabled"}`
         });
       }
-    } catch (e) {
-      console.error(e);
-      createNotification({
-        type: "error",
-        text: "Failed to update multi-line encoding setting."
-      });
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
     }
   };
 
@@ -1024,21 +1025,26 @@ export const SecretEditTableRow = ({
 
     // Handle rename and/or value changes in a single mutation
     if ((sheetChanges || isKeyDirty || isValueDirty) && secretName) {
-      if (isCreatable) {
-        if (isValueDirty && (value || value === "")) {
-          await onSecretCreate(environment, secretName, value);
+      try {
+        if (isCreatable) {
+          if (isValueDirty && (value || value === "")) {
+            await onSecretCreate(environment, secretName, value);
+          }
+        } else {
+          await onSecretUpdate({
+            env: environment,
+            key: secretName,
+            value: value ?? undefined,
+            secretValueHidden,
+            type: SecretType.Shared,
+            secretId,
+            newSecretName: isKeyDirty ? key : undefined,
+            ...sheetChanges
+          });
         }
-      } else {
-        await onSecretUpdate({
-          env: environment,
-          key: secretName,
-          value: value ?? undefined,
-          secretValueHidden,
-          type: SecretType.Shared,
-          secretId,
-          newSecretName: isKeyDirty ? key : undefined,
-          ...sheetChanges
-        });
+      } catch (error) {
+        showSecretWriteErrors([{ error }]);
+        return false;
       }
     }
     if (invocation !== valueSheetFlow.current) return false;
@@ -1102,7 +1108,7 @@ export const SecretEditTableRow = ({
         newSecretName: newKey,
         ...sheetChanges
       });
-      if (isBatchMode) await savePendingRow(pendingChangeId);
+      if (isBatchMode && !(await savePendingRow(pendingChangeId))) return;
       if (invocation !== valueSheetFlow.current || confirmation !== editConfirmation.current)
         return;
       if (!secretValueHidden) {
@@ -1118,6 +1124,8 @@ export const SecretEditTableRow = ({
         });
       }
       handlePopUpClose("editSecret");
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
     } finally {
       setIsEditing.off();
     }
@@ -1264,7 +1272,7 @@ export const SecretEditTableRow = ({
       });
       if (invocation !== valueSheetFlow.current) return;
       resetSheetFields(changes);
-      await savePendingRow(pendingChangeId);
+      if (!(await savePendingRow(pendingChangeId))) return;
     } else {
       const completed = await handleFormSubmit({ value: changes.value, sheetChanges: changes });
       if (!completed) return;

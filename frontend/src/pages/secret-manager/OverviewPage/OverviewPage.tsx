@@ -1261,8 +1261,12 @@ const OverviewPageContent = () => {
   );
 
   const queryClient = useQueryClient();
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
+  const { mutateAsync: createSecretV3 } = useCreateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
+  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
@@ -1285,7 +1289,9 @@ const OverviewPageContent = () => {
   const batchStoreApi = useBatchStoreApi();
   const { addPendingChange, loadPendingChanges, setExistingKeys, removePendingChange } =
     useBatchModeActions();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createCommit } = useCreateCommit({
+    options: { meta: { skipErrorToast: true } }
+  });
 
   const telemetryScope = useMemo<OverviewScopeProperties>(() => {
     let environmentMode: OverviewScopeProperties["environmentMode"] = "none";
@@ -2845,7 +2851,10 @@ const OverviewPageContent = () => {
   const savePendingChanges = useCallback(
     async (changes: PendingChanges, message: string, source: "bulk" | "row") => {
       if (!singleVisibleEnv) return [];
-      if (isSavingPendingRef.current) throw new Error("A save is already in progress");
+      if (isSavingPendingRef.current)
+        throw new Error(
+          "Another save is still in progress. Wait for it to finish, then save again."
+        );
       isSavingPendingRef.current = true;
       setIsSavingPending(true);
       const environment = singleVisibleEnv.slug;
