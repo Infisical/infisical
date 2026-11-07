@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "context-menu-release",
+    title: "Safer context menus",
+    description:
+      "Releasing the right button that opened a context menu can no longer pick the item that lands under the cursor.",
+    date: "2026-11-07",
+    commit: "a843510f1d",
+    page: "context-menu"
+  },
+  {
     id: "error-state",
     title: "Error and 404 pages",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "7ff23542fa",
     page: "button"
-  },
-  {
-    id: "dark-alt-two-colors",
-    title: "Dark alt, two colors",
-    description:
-      "Dark alt now differs from Dark only in its sidebar and inset; every other color inherits.",
-    date: "2026-11-07",
-    commit: "4da1f58249",
-    page: "colors"
   }
 ];
