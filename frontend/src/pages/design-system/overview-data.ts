@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "row-ring",
+    title: "Even, keyboard-only row rings",
+    description:
+      "Row focus rings appear only after keyboard focus and draw the same width on all four edges, above pinned cells.",
+    date: "2026-11-07",
+    commit: "73aa450373",
+    page: "table"
+  },
+  {
     id: "row-context-menu",
     title: "Right-click row actions",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "7371831b2f",
     page: "tooltip"
-  },
-  {
-    id: "no-nested-frames",
-    title: "No frames in frames",
-    description:
-      "A table, list or card inside a framed container drops its own frame, and a plain Card pads its content like a framed one.",
-    date: "2026-11-07",
-    commit: "0e62ac760f",
-    page: "card"
   }
 ];
