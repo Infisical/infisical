@@ -43,6 +43,10 @@ const invalidateBillingV2 = (queryClient: QueryClient, orgId: string) => {
     .catch(() => queryClient.invalidateQueries({ queryKey }));
 };
 
+// Shared by mutations that submit a billing change, so an overlay can lock while one is in flight
+// without also locking on price previews.
+export const billingV2SubmitMutationKey = ["billing-v2", "submit"] as const;
+
 export const useCreateBillingV2PortalSession = () => {
   return useMutation({
     mutationFn: async ({ orgId, returnPath }: TCreateBillingV2PortalSessionDTO) => {
@@ -140,6 +144,7 @@ export const usePreviewBillingV2Change = () => {
 export const useUpgradeBillingV2Product = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: billingV2SubmitMutationKey,
     mutationFn: async ({
       orgId,
       productId,
@@ -164,6 +169,7 @@ export const useUpgradeBillingV2Product = () => {
 export const useChangeBillingV2Commitment = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: billingV2SubmitMutationKey,
     mutationFn: async ({ orgId, changes, productId }: TChangeBillingV2CommitmentDTO) => {
       const { data } = await apiRequest.put<BillingV2MutationResult>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/commitments`,
@@ -183,6 +189,7 @@ export const useChangeBillingV2Commitment = () => {
 export const useStartBillingV2Trial = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: billingV2SubmitMutationKey,
     mutationFn: async ({ orgId, productId, plan, returnPath }: TStartBillingV2TrialDTO) => {
       const { data } = await apiRequest.post<BillingV2TrialResult>(
         `/api/v1/organizations/${orgId}/billing/v2/trial`,
@@ -231,6 +238,7 @@ export const useConfirmBillingV2TrialPayment = () => {
 export const useCancelBillingV2Trial = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: billingV2SubmitMutationKey,
     mutationFn: async ({ orgId, productId }: TCancelBillingV2TrialDTO) => {
       const { data } = await apiRequest.post<BillingV2TrialCancelResult>(
         `/api/v1/organizations/${orgId}/billing/v2/trial/cancel`,

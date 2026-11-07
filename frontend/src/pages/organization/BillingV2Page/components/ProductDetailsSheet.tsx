@@ -55,6 +55,7 @@ import {
   BillingV2Entitlement,
   BillingV2EntitlementDim,
   BillingV2Plan,
+  billingV2SubmitMutationKey,
   useCancelBillingV2Trial,
   useGetBillingV2UsageBreakdown,
   useStartBillingV2Trial
@@ -703,7 +704,7 @@ const PlansView = ({
           )}
         </span>
         {canChangePlan && plan.upgradeable && selectedIndex > currentIndex ? (
-          <span className="flex items-center gap-2">
+          <span className="flex flex-wrap items-center justify-end gap-2">
             {plan.selfServe && plan.trialable && plan.trialDays > 0 && !ent.trialPlan && (
               <Button variant="outline" size="sm" onClick={() => onStartTrial(plan)}>
                 Try Free for {plan.trialDays} Days
@@ -800,7 +801,7 @@ const TrialConfirmDialog = ({
   onConfirm: () => void;
   onCancel: () => void;
 }) => (
-  <AlertDialog open onOpenChange={(open) => !open && !isPending && onCancel()}>
+  <AlertDialog open isPending={isPending} onOpenChange={(open) => !open && onCancel()}>
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogMedia>
@@ -851,7 +852,7 @@ export const ProductDetailsSheet = ({
   const [showEndTrial, setShowEndTrial] = useState(false);
   const startTrial = useStartBillingV2Trial();
   const cancelTrial = useCancelBillingV2Trial();
-  const isMutating = useIsMutating() > 0;
+  const isMutating = useIsMutating({ mutationKey: billingV2SubmitMutationKey }) > 0;
   const hasCommitment = (ent.dimensions ?? []).some(
     (dim) => dimCommitted(dim) || dim.commitAvailable
   );
