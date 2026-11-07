@@ -1,4 +1,4 @@
-import { isFQDN, isValidAzureKeyVaultUrl } from "./validate-url";
+import { isFQDN, isValidAzureAppConfigurationUrl, isValidAzureKeyVaultUrl } from "./validate-url";
 
 describe("isFQDN", () => {
   test("Non wildcard", () => {
@@ -50,5 +50,34 @@ describe("isValidAzureKeyVaultUrl", () => {
     "https://foo.bar.vault.azure.net"
   ])("rejects non Azure Key Vault URL: %s", (url) => {
     expect(isValidAzureKeyVaultUrl(url)).toBe(false);
+  });
+});
+
+describe("isValidAzureAppConfigurationUrl", () => {
+  test.each([
+    "https://my-store.azconfig.io",
+    "https://my-store.azconfig.io/",
+    "https://My-Store.AZCONFIG.IO",
+    "https://my-store.privatelink.azconfig.io"
+  ])("accepts an App Configuration store endpoint: %s", (url) => {
+    expect(isValidAzureAppConfigurationUrl(url)).toBe(true);
+  });
+
+  test.each([
+    "https://evil.com",
+    "http://my-store.azconfig.io",
+    "https://my-store.azconfig.io.evil.com",
+    "https://evil.com/my-store.azconfig.io",
+    "https://my-store.azconfig.io@evil.com",
+    "https://user:pass@my-store.azconfig.io",
+    "https://my-store.azconfig.io:8443",
+    "https://my-store.azconfig.io/kv",
+    "https://my-store.azconfig.io?label=.azconfig.io",
+    "https://azconfig.io",
+    "https://foo.bar.azconfig.io",
+    "not-a-url",
+    ""
+  ])("rejects anything else: %s", (url) => {
+    expect(isValidAzureAppConfigurationUrl(url)).toBe(false);
   });
 });
