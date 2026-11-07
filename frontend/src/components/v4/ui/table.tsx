@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger
 } from "./dropdown-menu";
 import { Icon, type IconName } from "./icon";
+import { Skeleton } from "./skeleton";
 import { Tooltip } from "./tooltip";
 
 import styles from "./data.module.css";
@@ -272,6 +273,85 @@ function TableActionsCell({
 }
 TableActionsCell.displayName = "TableActionsCell";
 
+export type TableLoadingColumn = {
+  /** Draws a shorter bar, as for the column that names the row. */
+  primary?: boolean;
+  /** The column holds row actions: one glyph-sized bar in the actions tail. */
+  actions?: boolean;
+  pin?: boolean;
+  maxWidth?: React.CSSProperties["maxWidth"];
+  style?: React.CSSProperties;
+};
+
+/** Skeleton rows for a table on screen while its rows load: the same shapes, row height and data-loading marking as DataTable loading. */
+function TableLoadingRows({
+  columns,
+  rows = 5,
+  selectable = false,
+  actionSlots,
+  label
+}: {
+  /** One entry per body column, or a count of plain text columns. */
+  columns: number | readonly TableLoadingColumn[];
+  rows?: number;
+  selectable?: boolean;
+  /** Adds a TableActionsCell tail with this many action slots. */
+  actionSlots?: number;
+  /** Announced while loading, naming what loads, such as Loading secrets. DataTable announces its own. */
+  label?: string;
+}) {
+  const cells: readonly TableLoadingColumn[] =
+    typeof columns === "number" ? Array.from({ length: columns }, () => ({})) : columns;
+  return Array.from({ length: Math.max(1, Math.floor(rows)) }, (_, index) => (
+    <TableRow key={`loading-${index}`} aria-hidden={index > 0 || !label || undefined} data-loading>
+      {selectable && (
+        <TableCell selection>
+          <div className={styles.tableSelection}>
+            <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
+          </div>
+        </TableCell>
+      )}
+      {cells.map((column, cell) => (
+        <TableCell
+          key={cell}
+          className={column.actions ? styles.tableActions : undefined}
+          style={column.style}
+          data-actions={column.actions || undefined}
+          data-pin={column.pin ?? column.actions}
+        >
+          {index === 0 && cell === 0 && label && (
+            <span className={styles.sr} role="status">
+              {label}
+            </span>
+          )}
+          {column.actions ? (
+            <TableRowActions>
+              <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
+            </TableRowActions>
+          ) : (
+            <Skeleton
+              className={styles.tableSkeleton}
+              data-primary={column.primary || undefined}
+              style={{ maxWidth: column.maxWidth }}
+            />
+          )}
+        </TableCell>
+      ))}
+      {actionSlots !== undefined && (
+        <TableActionsCell slots={actionSlots} data-pin="true">
+          <TableRowActions>
+            {Array.from({ length: actionSlots }, (__, slot) => (
+              <span key={slot} className={styles.tableRowActionSkeleton}>
+                <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
+              </span>
+            ))}
+          </TableRowActions>
+        </TableActionsCell>
+      )}
+    </TableRow>
+  ));
+}
+
 export type RowAction = {
   label: string;
   icon: IconName | LucideIcon;
@@ -443,6 +523,7 @@ export {
   TableFooter,
   TableHead,
   TableHeader,
+  TableLoadingRows,
   TableRow,
   TableRowActions,
   TableRowIndicators

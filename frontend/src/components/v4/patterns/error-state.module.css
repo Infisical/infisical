@@ -3,8 +3,8 @@
   flex: 1;
   width: 100%;
   min-width: 0;
-  align-items: center;
-  justify-content: center;
+  align-items: safe center;
+  justify-content: safe center;
   padding: var(--v4-space-48) var(--v4-space-24);
 }
 .root[data-layout="in-shell"] {

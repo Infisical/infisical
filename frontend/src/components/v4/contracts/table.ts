@@ -27,6 +27,8 @@ export const tableDefinition = {
     "TableRowIndicators",
     "TableActionsHead",
     "TableActionsCell",
+    "TableLoadingRows",
+    "TableLoadingColumn",
     "RowActions",
     "RowContextMenu",
     "RowAction",
@@ -63,6 +65,7 @@ export const tableDefinition = {
     "TableRow's onClick applies the same filter, in one place that DataTable's onRowActivate also goes through: it runs only for a primary click whose target is inside the row's own DOM and not on an interactive element there. Clicks that bubble through React from portaled content opened from the row (a menu, popover or dialog) are ignored, so a native Table row needs no stopPropagation on its menus, buttons, checkboxes or actions cell.",
     "pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.",
     "loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.",
+    "TableLoadingRows gives a native Table the same loading rows: DataTable renders its own through it, so the selection square, the size-skeleton-text bars (shorter with primary), the glyph squares in an actions column or a TableActionsCell tail with actionSlots, the row height and data-loading (no hover, no row ground, no context menu) match exactly. Pass one entry per body column with the widths the header uses, or a count. label names what loads, such as Loading secrets, and is announced from the first row; set aria-busy on the Table while it shows.",
     "When every column declares a width, grows to fill the rest or is an actions column, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.",
     "actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar.",
     "Table's ref targets the table element. containerRef targets its horizontal scroll container (what v3 Table's ref pointed at) and containerClassName adds layout classes to it. DataTable takes the same two props for its scroll frame, which scrolls both ways when height is set, so ports keep reading scrollTop, observing scroll or calling scrollTo.",
@@ -116,6 +119,12 @@ export const tableDefinition = {
       title: "Empty and protected selection",
       module: "./examples/table/states.tsx",
       states: ["empty", "controlled", "disabled", "keyboard", "loading"]
+    },
+    {
+      id: "native-loading",
+      title: "Native Table loading rows",
+      module: "./examples/table/native-loading.tsx",
+      states: ["loading"]
     },
     {
       id: "semantic",
