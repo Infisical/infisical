@@ -1,25 +1,70 @@
-services:
-  - type: web
-    name: infisical
-    env: docker
-    dockerfilePath: ./Dockerfile.standalone-infisical
-    autoDeploy: false
-    # healthCheckPath: /api/status
-    repo: https://github.com/Infisical/infisical.git
-    envVars:
-      - key: ENCRYPTION_KEY
-        generateValue: true
-      - key: JWT_SIGNUP_SECRET
-        generateValue: true
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
-      - key: JWT_SERVICE_SECRET
-        generateValue: true
-      - key: JWT_AUTH_SECRET
-        generateValue: true
-      - key: JWT_PROVIDER_AUTH_SECRET
-        generateValue: true
-      - key: MONGO_URL
-        sync: false
-      - key: PORT
-        value: 443
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+#
+# Render Blueprint for Infisical: the official image, Render Postgres, and
+# Render Key Value. Deploy: https://render.com/deploy?repo=https://github.com/Infisical/infisical
+# Bump the image tag below to upgrade.
+
+previews:
+  generation: off
+
+projects:
+  - name: infisical
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: infisical
+            runtime: image
+            image:
+              url: docker.io/infisical/infisical:v0.167.6
+            # Migrations on first boot use more than Starter's 512 MB.
+            plan: standard
+            region: oregon
+            healthCheckPath: /api/status
+            # Infisical uses ENCRYPTION_KEY as a raw AES-256 key, so it must be
+            # exactly 32 characters. generateValue makes a longer string, so
+            # the start command uses the first 32 characters of the seed.
+            # No quotes around the script: Render passes it to bash -c as-is.
+            dockerCommand: >-
+              bash -c export ENCRYPTION_KEY="${ENCRYPTION_SEED:0:32}" && exec ./standalone-entrypoint.sh
+            envVars:
+              - key: NODE_ENV
+                value: production
+              # Never rotate. Stored secrets can't be decrypted without it.
+              - key: ENCRYPTION_SEED
+                generateValue: true
+              - key: AUTH_SECRET
+                generateValue: true
+              - key: DB_CONNECTION_URI
+                fromDatabase:
+                  name: infisical-db
+                  property: connectionString
+              - key: REDIS_URL
+                fromService:
+                  name: infisical-kv
+                  type: keyvalue
+                  property: connectionString
+              - key: SITE_URL
+                fromService:
+                  name: infisical
+                  type: web
+                  envVarKey: RENDER_EXTERNAL_URL
+              - key: TELEMETRY_ENABLED
+                value: "false"
+
+          # Cache and BullMQ job queues. Jobs must not be evicted.
+          - type: keyvalue
+            name: infisical-kv
+            plan: starter
+            region: oregon
+            maxmemoryPolicy: noeviction
+            ipAllowList: []
+
+        databases:
+          - name: infisical-db
+            databaseName: infisical
+            user: infisical
+            plan: basic-256mb
+            region: oregon
+            postgresMajorVersion: "16"
+            ipAllowList: []
