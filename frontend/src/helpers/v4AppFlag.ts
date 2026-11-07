@@ -16,8 +16,10 @@ const readLocalOverride = () => {
 
 export const isPreviewDeploy = () => PREVIEW_HOST.test(window.location.hostname);
 
+let sessionAnswer: Promise<boolean> | undefined;
+
 // Preview deploys default the flag on so a PR can be reviewed in v4; "off" in localStorage still wins.
-export const isV4AppEnabled = () =>
+const resolveV4App = () =>
   new Promise<boolean>((resolve) => {
     const override = readLocalOverride();
     if (isPreviewDeploy()) {
@@ -38,3 +40,8 @@ export const isV4AppEnabled = () =>
       timeoutMs: 3000
     });
   });
+
+export const isV4AppEnabled = () => {
+  sessionAnswer ??= resolveV4App();
+  return sessionAnswer;
+};
