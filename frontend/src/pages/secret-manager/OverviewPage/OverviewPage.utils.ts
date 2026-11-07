@@ -1,4 +1,12 @@
 import { jwtDecode } from "jwt-decode";
+import {
+  ArrowDownZAIcon,
+  ArrowUpAZIcon,
+  CalendarArrowDownIcon,
+  CalendarArrowUpIcon,
+  ClockArrowDownIcon,
+  ClockArrowUpIcon
+} from "lucide-react";
 
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -40,3 +48,42 @@ export const getSecretSortValue = (
   orderBy: DashboardSecretsOrderBy,
   orderDirection: OrderByDirection
 ) => `${orderBy}:${orderDirection}`;
+
+export const SECRET_SORT_OPTIONS = [
+  {
+    label: "Name (A to Z)",
+    Icon: ArrowUpAZIcon,
+    orderBy: DashboardSecretsOrderBy.Name,
+    orderDirection: OrderByDirection.ASC
+  },
+  {
+    label: "Name (Z to A)",
+    Icon: ArrowDownZAIcon,
+    orderBy: DashboardSecretsOrderBy.Name,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Last Edited (New)",
+    Icon: ClockArrowUpIcon,
+    orderBy: DashboardSecretsOrderBy.UpdatedAt,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Last Edited (Old)",
+    Icon: ClockArrowDownIcon,
+    orderBy: DashboardSecretsOrderBy.UpdatedAt,
+    orderDirection: OrderByDirection.ASC
+  },
+  {
+    label: "Created (New)",
+    Icon: CalendarArrowUpIcon,
+    orderBy: DashboardSecretsOrderBy.CreatedAt,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Created (Old)",
+    Icon: CalendarArrowDownIcon,
+    orderBy: DashboardSecretsOrderBy.CreatedAt,
+    orderDirection: OrderByDirection.ASC
+  }
+] as const;

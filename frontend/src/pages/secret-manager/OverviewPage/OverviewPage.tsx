@@ -14,22 +14,13 @@ import { isSortable } from "@dnd-kit/react/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
-import { AxiosError } from "axios";
 import {
-  ArrowDownZAIcon,
-  ArrowUpAZIcon,
   ArrowUpDownIcon,
-  CalendarArrowDownIcon,
-  CalendarArrowUpIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
-  ClockArrowDownIcon,
-  ClockArrowUpIcon,
-  CopyIcon,
-  DownloadIcon,
   EyeIcon,
   EyeOffIcon,
   GitCommitIcon,
@@ -63,7 +54,6 @@ import {
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   AgentProxyMovedModal,
   DeleteProxiedServiceModal,
@@ -104,14 +94,9 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   PageHeader,
   Pagination,
@@ -150,7 +135,6 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
-import { downloadSecretEnvFile } from "@app/helpers/download";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   getUserTablePreference,
@@ -213,14 +197,12 @@ import {
 } from "@app/hooks/api/secretRotationsV2";
 import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
-import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
+import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import {
-  ApiErrorTypes,
   ProjectEnv,
   SecretType,
   SecretV3Raw,
   SecretV3RawSanitized,
-  TApiErrors,
   TSecretFolder,
   WsTag
 } from "@app/hooks/api/types";
@@ -288,6 +270,7 @@ import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { OverviewToolbar } from "./components/OverviewToolbar/OverviewToolbar";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
+import { EnvironmentColumnHead } from "./components/EnvironmentColumnHead/EnvironmentColumnHead";
 import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
 import type { EnvironmentSecretAction } from "./components/SecretTableRow/SecretEditTableRow";
@@ -311,7 +294,12 @@ import {
   overviewResponsePhase,
   withOverviewTelemetry
 } from "./OverviewTelemetry";
-import { getAuthSessionMarker, getSecretSortValue, overviewRowKey } from "./OverviewPage.utils";
+import {
+  getAuthSessionMarker,
+  getSecretSortValue,
+  overviewRowKey,
+  SECRET_SORT_OPTIONS
+} from "./OverviewPage.utils";
 import { useNotifySecretsCreated } from "./useNotifySecretsCreated";
 
 export enum EntryType {
@@ -350,45 +338,6 @@ const LEGACY_OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 const OVERVIEW_REVEAL_ALL_KEY = "overview-reveal-all-values";
 // Keys travel in the query string, so batch them to stay under proxy request-line limits.
 const SECRET_VALUE_PREFETCH_BATCH_SIZE = 50;
-
-const SECRET_SORT_OPTIONS = [
-  {
-    label: "Name (A to Z)",
-    Icon: ArrowUpAZIcon,
-    orderBy: DashboardSecretsOrderBy.Name,
-    orderDirection: OrderByDirection.ASC
-  },
-  {
-    label: "Name (Z to A)",
-    Icon: ArrowDownZAIcon,
-    orderBy: DashboardSecretsOrderBy.Name,
-    orderDirection: OrderByDirection.DESC
-  },
-  {
-    label: "Last Edited (New)",
-    Icon: ClockArrowUpIcon,
-    orderBy: DashboardSecretsOrderBy.UpdatedAt,
-    orderDirection: OrderByDirection.DESC
-  },
-  {
-    label: "Last Edited (Old)",
-    Icon: ClockArrowDownIcon,
-    orderBy: DashboardSecretsOrderBy.UpdatedAt,
-    orderDirection: OrderByDirection.ASC
-  },
-  {
-    label: "Created (New)",
-    Icon: CalendarArrowUpIcon,
-    orderBy: DashboardSecretsOrderBy.CreatedAt,
-    orderDirection: OrderByDirection.DESC
-  },
-  {
-    label: "Created (Old)",
-    Icon: CalendarArrowDownIcon,
-    orderBy: DashboardSecretsOrderBy.CreatedAt,
-    orderDirection: OrderByDirection.ASC
-  }
-] as const;
 
 type UpgradeRequest = {
   intent: UpgradeIntent;
@@ -4224,171 +4173,27 @@ const OverviewPageContent = () => {
                         {resizeHandle(0)}
                       </TableHead>
                       {visibleEnvs.length > 1 ? (
-                        visibleEnvs?.map(({ name, slug, id }, index) => {
-                          return (
-                            <TableHead
-                              className="relative min-w-[240px] border-r p-0 text-left whitespace-nowrap last:border-r-0"
-                              key={`secret-overview-${name}-${index + 1}`}
-                            >
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button
-                                    type="button"
-                                    title={name}
-                                    aria-label={`Open ${name} environment menu${
-                                      sortEnvironment === slug
-                                        ? `. Currently sorting by ${activeSecretSort?.label ?? "recency"}`
-                                        : ""
-                                    }`}
-                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-between gap-x-2 px-3 text-sm font-medium text-muted hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                                  >
-                                    <span
-                                      className={twMerge(
-                                        "min-w-0 truncate",
-                                        sortEnvironment === slug && "text-foreground"
-                                      )}
-                                    >
-                                      {name}
-                                    </span>
-                                    {sortEnvironment === slug ? (
-                                      <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
-                                    ) : (
-                                      <ChevronDownIcon className="size-3.5 shrink-0" />
-                                    )}
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="end"
-                                  onCloseAutoFocus={(event) => event.preventDefault()}
-                                >
-                                  <DropdownMenuSub>
-                                    <DropdownMenuSubTrigger>
-                                      <ArrowUpDownIcon />
-                                      Sort Secrets by Recency
-                                    </DropdownMenuSubTrigger>
-                                    <DropdownMenuSubContent>
-                                      <DropdownMenuLabel>Use {name} Timestamps</DropdownMenuLabel>
-                                      <DropdownMenuRadioGroup
-                                        value={
-                                          sortEnvironment === slug
-                                            ? getSecretSortValue(orderBy, orderDirection)
-                                            : ""
-                                        }
-                                        onValueChange={(value) =>
-                                          handleSecretSortChange(value, slug)
-                                        }
-                                      >
-                                        {SECRET_SORT_OPTIONS.filter(
-                                          ({ orderBy: sortField }) =>
-                                            sortField !== DashboardSecretsOrderBy.Name
-                                        ).map((option) => (
-                                          <DropdownMenuRadioItem
-                                            key={getSecretSortValue(
-                                              option.orderBy,
-                                              option.orderDirection
-                                            )}
-                                            value={getSecretSortValue(
-                                              option.orderBy,
-                                              option.orderDirection
-                                            )}
-                                          >
-                                            <option.Icon />
-                                            {option.label}
-                                          </DropdownMenuRadioItem>
-                                        ))}
-                                      </DropdownMenuRadioGroup>
-                                    </DropdownMenuSubContent>
-                                  </DropdownMenuSub>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(slug);
-                                      createNotification({
-                                        type: "info",
-                                        text: "Environment slug copied to clipboard"
-                                      });
-                                    }}
-                                  >
-                                    <CopyIcon />
-                                    Copy Environment Slug
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={async () => {
-                                      try {
-                                        const { secrets: envSecrets, imports: importedSecrets } =
-                                          await fetchProjectSecrets({
-                                            projectId,
-                                            expandSecretReferences: true,
-                                            includeImports: true,
-                                            environment: slug,
-                                            secretPath
-                                          });
-                                        downloadSecretEnvFile(slug, envSecrets, importedSecrets);
-                                      } catch (err) {
-                                        if (err instanceof AxiosError) {
-                                          const error = err?.response?.data as TApiErrors;
-                                          if (
-                                            error?.error === ApiErrorTypes.ForbiddenError &&
-                                            error.message.includes("readValue")
-                                          ) {
-                                            createNotification({
-                                              title:
-                                                "You don't have permission to download secrets",
-                                              text: "You don't have permission to view one or more of the secrets in the current folder. Please contact your administrator.",
-                                              type: "error"
-                                            });
-                                            return;
-                                          }
-                                        }
-                                        createNotification({
-                                          title: "Failed to download secrets",
-                                          text: "Please try again later.",
-                                          type: "error"
-                                        });
-                                      }
-                                    }}
-                                  >
-                                    <DownloadIcon />
-                                    Download as .env
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleViewCommitHistory(slug)}>
-                                    <GitCommitIcon />
-                                    View Commit History
-                                  </DropdownMenuItem>
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionActions.Delete}
-                                    a={ProjectPermissionSub.Environments}
-                                  >
-                                    {(isAllowed) => (
-                                      <Tooltip open={!isAllowed ? undefined : false}>
-                                        <TooltipTrigger className="block w-full">
-                                          <DropdownMenuItem
-                                            variant="danger"
-                                            isDisabled={!isAllowed}
-                                            onClick={() =>
-                                              handlePopUpOpen("deleteEnv", {
-                                                name,
-                                                slug,
-                                                id
-                                              })
-                                            }
-                                          >
-                                            <TrashIcon />
-                                            Delete Environment
-                                          </DropdownMenuItem>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left">
-                                          Access Restricted
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    )}
-                                  </ProjectPermissionCan>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              {index < visibleEnvs.length - 1 && resizeHandle(index + 1)}
-                            </TableHead>
-                          );
-                        })
+                        visibleEnvs?.map(({ name, slug, id }, index) => (
+                          <EnvironmentColumnHead
+                            key={`secret-overview-${name}-${index + 1}`}
+                            name={name}
+                            slug={slug}
+                            projectId={projectId}
+                            secretPath={secretPath}
+                            isSortedEnvironment={sortEnvironment === slug}
+                            sortLabel={activeSecretSort?.label}
+                            ActiveSortIcon={ActiveSecretSortIcon}
+                            sortValue={getSecretSortValue(orderBy, orderDirection)}
+                            onSortChange={handleSecretSortChange}
+                            onViewCommitHistory={handleViewCommitHistory}
+                            onDeleteEnvironment={() =>
+                              handlePopUpOpen("deleteEnv", { name, slug, id })
+                            }
+                            resizeHandle={
+                              index < visibleEnvs.length - 1 ? resizeHandle(index + 1) : undefined
+                            }
+                          />
+                        ))
                       ) : (
                         <TableHead className="min-w-[368px] text-sm font-medium text-muted">
                           <div className="flex w-full items-center justify-between gap-2">
