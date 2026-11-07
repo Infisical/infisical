@@ -1227,6 +1227,12 @@
                       "self-hosting/deployment-options/gcp-native",
                       "self-hosting/reference-architectures/google-cloud-run"
                     ]
+                  },
+                  {
+                    "group": "Render",
+                    "pages": [
+                      "self-hosting/deployment-options/render"
+                    ]
                   }
                 ]
               },

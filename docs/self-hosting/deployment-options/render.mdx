@@ -1,0 +1,48 @@
+---
+title: "Deploy Infisical on Render"
+sidebarTitle: "Render"
+description: "Deploy Infisical on Render with one click, using Render Postgres and Render Key Value."
+---
+
+[Render](https://render.com) runs Infisical from the official Docker image, with a managed PostgreSQL database and a managed Redis-compatible Key Value instance. Render maintains a [one-click template](https://github.com/render-examples/infisical) that creates all three and connects them.
+
+<a href="https://render.com/deploy-template/api/github/start?template_repo=infisical">
+  <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" />
+</a>
+
+## What gets created
+
+| Resource | Type | Plan |
+| --- | --- | --- |
+| `infisical` | Web service, `infisical/infisical` image | Standard (2 GB) |
+| `infisical-db` | Render Postgres 16 | Basic 256 MB |
+| `infisical-kv` | Render Key Value, `noeviction` | Starter |
+
+The template sets `DB_CONNECTION_URI`, `REDIS_URL`, and `SITE_URL`, and generates `AUTH_SECRET` and `ENCRYPTION_KEY`. You don't need to enter anything.
+
+<Note>
+  Use the Standard instance type or larger. Database migrations on first boot need more than 512 MB of memory.
+</Note>
+
+## Deploy
+
+<Steps>
+  <Step title="Start the deploy">
+    Click **Deploy to Render** above. Render copies the template into your GitHub account and creates the resources.
+  </Step>
+  <Step title="Wait for the service to go live">
+    Infisical runs database migrations on first boot. If the first deploy fails with `ECONNREFUSED` on port 5432, the database wasn't ready yet. Click **Manual Deploy** on the `infisical` service.
+  </Step>
+  <Step title="Create the admin account">
+    Open the service URL and sign up. The first account becomes the instance admin.
+  </Step>
+  <Step title="Back up the encryption key">
+    Copy `ENCRYPTION_SEED` from the service's **Environment** page and store it somewhere safe. `ENCRYPTION_KEY` is derived from it at startup, and you can't decrypt your secrets without it.
+  </Step>
+</Steps>
+
+## Next steps
+
+- To send invites and verification emails, add the [SMTP variables](/self-hosting/configuration/envars#email-service) to the `infisical` service.
+- To use your own domain, add it on the service in Render, then set `SITE_URL` to match.
+- To upgrade, change the image tag in your copy of `render.yaml` and push. Review the [upgrade guide](/self-hosting/guides/upgrading-infisical) first.
