@@ -1,6 +1,7 @@
 import * as React from "react";
 import { createLink, type LinkOptions } from "@tanstack/react-router";
 
+import { FrameScope, useInFrame } from "../lib/frame-context";
 import { cn } from "../lib/utils";
 import { Checkbox } from "./checkbox";
 import { Skeleton } from "./skeleton";
@@ -210,7 +211,7 @@ export function List({
   count: countProp,
   action: actionProp,
   label,
-  variant = "framed",
+  variant: requestedVariant,
   size = "md",
   actionsPlacement = "end",
   selection = "none",
@@ -241,7 +242,10 @@ export function List({
     });
   }
   const { title, count: headerCount, action } = header;
-  const framed = variant === "framed";
+  const variant = requestedVariant ?? "framed";
+  const inFrame = useInFrame("List", requestedVariant);
+  const embedded = inFrame && variant === "framed";
+  const framed = variant === "framed" && !embedded;
   const [own, setOwn] = React.useState<readonly string[]>(defaultSelectedIds);
   const selected = selectedIds ?? own;
   const list = React.useRef<HTMLUListElement>(null);
@@ -302,104 +306,107 @@ export function List({
     }
   };
   return (
-    <ListContext
-      value={{ selected, multiple: selection === "multiple", toggle, size, actionsPlacement }}
-    >
-      <div
-        className={cn(styles.listShell, framed && frame.frame)}
-        data-slot="list"
-        data-variant={variant}
-        data-size={size}
+    <FrameScope framed={inFrame || framed}>
+      <ListContext
+        value={{ selected, multiple: selection === "multiple", toggle, size, actionsPlacement }}
       >
-        {(title || headerCount || action) && (
-          <div
-            className={framed ? frame.frameHead : styles.listHeader}
-            data-select={selection === "multiple" || undefined}
-          >
-            {selection === "multiple" && (
-              <Checkbox
-                aria-label={`Select all ${label}`}
-                disabled={!eligible.length}
-                checked={
-                  count > 0 && count < eligible.length
-                    ? "indeterminate"
-                    : eligible.length > 0 && count === eligible.length
-                }
-                onCheckedChange={() =>
-                  update(
-                    count === eligible.length
-                      ? selected.filter((id) => !eligible.includes(id))
-                      : [...new Set([...selected, ...eligible])]
-                  )
-                }
-              />
-            )}
-            {title && <div className={framed ? frame.frameTitle : styles.listTitle}>{title}</div>}
-            {framed
-              ? (headerCount || action) && (
-                  <div className={frame.frameAction}>
-                    {headerCount}
-                    {action}
-                  </div>
-                )
-              : headerCount && <div className={styles.listHeaderCount}>{headerCount}</div>}
-            {!framed && action && <div className={styles.listHeaderAction}>{action}</div>}
-          </div>
-        )}
-        <ul
-          ref={list}
-          className={cn(styles.list, framed && frame.frameInset)}
-          aria-label={label}
-          aria-busy={loading}
-          tabIndex={-1}
-          onKeyDown={key}
-          onFocusCapture={(event) => {
-            if (!(event.target instanceof HTMLElement)) return;
-            const row = event.target.closest("[data-list-row]");
-            const main = row?.querySelector<HTMLElement>("[data-list-target]");
-            if (!row || !main) {
-              focusedRow.current = null;
-              return;
-            }
-            const targets = Array.from(
-              event.currentTarget.querySelectorAll<HTMLElement>("[data-list-target]")
-            );
-            focusedRow.current = { element: event.target, index: targets.indexOf(main) };
-          }}
-          onBlurCapture={(event) => {
-            if (
-              event.relatedTarget instanceof Node &&
-              !event.currentTarget.contains(event.relatedTarget)
-            )
-              focusedRow.current = null;
-            else if (
-              !event.relatedTarget &&
-              event.target instanceof HTMLElement &&
-              event.target.isConnected
-            )
-              focusedRow.current = null;
-          }}
+        <div
+          className={cn(styles.listShell, framed && frame.frame)}
+          data-slot="list"
+          data-variant={variant}
+          data-embedded={embedded || undefined}
+          data-size={size}
         >
-          {children}
-          {loading &&
-            Array.from({ length: loadingRows }, (_, index) => (
-              <li key={`loading-${index}`} className={styles.listRow} aria-hidden>
-                <Skeleton />
-                <span className={styles.sr}>Loading</span>
-              </li>
-            ))}
-          {!rows.length && !loading && <li className={styles.empty}>{empty}</li>}
-        </ul>
-        {footer && <div className={styles.status}>{footer}</div>}
-        <span className={styles.sr} role="status">
-          {selection === "multiple"
-            ? `${selected.length} selected`
-            : loading
-              ? "Loading items"
-              : ""}
-        </span>
-      </div>
-    </ListContext>
+          {(title || headerCount || action) && (
+            <div
+              className={framed ? frame.frameHead : styles.listHeader}
+              data-select={selection === "multiple" || undefined}
+            >
+              {selection === "multiple" && (
+                <Checkbox
+                  aria-label={`Select all ${label}`}
+                  disabled={!eligible.length}
+                  checked={
+                    count > 0 && count < eligible.length
+                      ? "indeterminate"
+                      : eligible.length > 0 && count === eligible.length
+                  }
+                  onCheckedChange={() =>
+                    update(
+                      count === eligible.length
+                        ? selected.filter((id) => !eligible.includes(id))
+                        : [...new Set([...selected, ...eligible])]
+                    )
+                  }
+                />
+              )}
+              {title && <div className={framed ? frame.frameTitle : styles.listTitle}>{title}</div>}
+              {framed
+                ? (headerCount || action) && (
+                    <div className={frame.frameAction}>
+                      {headerCount}
+                      {action}
+                    </div>
+                  )
+                : headerCount && <div className={styles.listHeaderCount}>{headerCount}</div>}
+              {!framed && action && <div className={styles.listHeaderAction}>{action}</div>}
+            </div>
+          )}
+          <ul
+            ref={list}
+            className={cn(styles.list, framed && frame.frameInset)}
+            aria-label={label}
+            aria-busy={loading}
+            tabIndex={-1}
+            onKeyDown={key}
+            onFocusCapture={(event) => {
+              if (!(event.target instanceof HTMLElement)) return;
+              const row = event.target.closest("[data-list-row]");
+              const main = row?.querySelector<HTMLElement>("[data-list-target]");
+              if (!row || !main) {
+                focusedRow.current = null;
+                return;
+              }
+              const targets = Array.from(
+                event.currentTarget.querySelectorAll<HTMLElement>("[data-list-target]")
+              );
+              focusedRow.current = { element: event.target, index: targets.indexOf(main) };
+            }}
+            onBlurCapture={(event) => {
+              if (
+                event.relatedTarget instanceof Node &&
+                !event.currentTarget.contains(event.relatedTarget)
+              )
+                focusedRow.current = null;
+              else if (
+                !event.relatedTarget &&
+                event.target instanceof HTMLElement &&
+                event.target.isConnected
+              )
+                focusedRow.current = null;
+            }}
+          >
+            {children}
+            {loading &&
+              Array.from({ length: loadingRows }, (_, index) => (
+                <li key={`loading-${index}`} className={styles.listRow} aria-hidden>
+                  <Skeleton />
+                  <span className={styles.sr}>Loading</span>
+                </li>
+              ))}
+            {!rows.length && !loading && <li className={styles.empty}>{empty}</li>}
+          </ul>
+          {footer && <div className={styles.status}>{footer}</div>}
+          <span className={styles.sr} role="status">
+            {selection === "multiple"
+              ? `${selected.length} selected`
+              : loading
+                ? "Loading items"
+                : ""}
+          </span>
+        </div>
+      </ListContext>
+    </FrameScope>
   );
 }
 export function ListSection({

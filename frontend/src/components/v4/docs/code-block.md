@@ -68,6 +68,7 @@ Exports: CodeBlock. Source TypeScript defines the API.
 ## Behavior
 
 - The block uses the shared framed shell: the mono label, icon, actions and Copy sit in the tint frame header, and the code sits in the inset raised surface.
+- Inside a framed Card, List or DataTable the block drops its tint frame, so the header sits on the parent's surface and only the code surface keeps its border.
 - Copy uses literal source, excluding displayed line numbers.
 - A direct Json child supplies its recursively redacted copy text. Custom React children receive the owned body inset and text role; do not duplicate that padding inside the child.
 

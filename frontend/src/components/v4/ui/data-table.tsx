@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 
+import { FrameScope, useInFrame } from "../lib/frame-context";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
@@ -154,6 +155,7 @@ export function DataTable<Row>({
   containerRef,
   containerClassName
 }: DataTableProps<Row>) {
+  const embedded = useInFrame("DataTable");
   const [barPlacement, setBarPlacement] = React.useState<"fixed" | "contained" | null>(null);
   const [ownSelected, setOwnSelected] = React.useState<readonly string[]>(defaultSelectedIds);
   const [top, setTop] = React.useState(0);
@@ -400,7 +402,7 @@ export function DataTable<Row>({
     <div
       ref={attachScroll}
       data-scroll-fade="x"
-      className={cn(frame.frame, styles.tableScroll, containerClassName)}
+      className={cn(!embedded && frame.frame, styles.tableScroll, containerClassName)}
       data-virtual={windowed || undefined}
       style={tableStyle}
       onScroll={(event) => setTop(event.currentTarget.scrollTop)}
@@ -631,9 +633,10 @@ export function DataTable<Row>({
       className={styles.tableShell}
       data-slot="data-table"
       data-variant={variant}
+      data-embedded={embedded || undefined}
       data-action-bar={barPlacement ?? undefined}
     >
-      {scrollFrame}
+      <FrameScope framed>{scrollFrame}</FrameScope>
       {!height && more && <div className={styles.actions}>{more}</div>}
       {footer && <div className={styles.status}>{footer}</div>}
       <span className={styles.sr} role="status">

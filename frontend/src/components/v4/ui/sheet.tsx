@@ -5,6 +5,7 @@ import { useV4PortalContainer } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 
+import { FrameScope } from "../lib/frame-context";
 import { OverlayPendingContext, useDismissGuard, useOverlayPending } from "../lib/overlay-pending";
 import { renderInForm, splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
@@ -38,9 +39,11 @@ function SheetClose({
 }
 SheetClose.displayName = "SheetClose";
 
-function SheetPortal({ ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
+function SheetPortal({ children, ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
   return (
-    <SheetPrimitive.Portal container={useV4PortalContainer()} data-slot="sheet-portal" {...props} />
+    <SheetPrimitive.Portal container={useV4PortalContainer()} data-slot="sheet-portal" {...props}>
+      <FrameScope framed={false}>{children}</FrameScope>
+    </SheetPrimitive.Portal>
   );
 }
 

@@ -45,14 +45,27 @@
     {
       "id": "container-defaults",
       "title": "Frame tables and lists; keep standalone cards plain",
-      "instruction": "Tables are framed: DataTable always sits in the tint frame, and only a table embedded in another surface uses the frameless native Table. Lists default to framed and change case by case. A standalone Card is plain, the default, or no card at all; set variant=\"framed\" only for emphasis, such as the org overview product cards, or for a section card that heads part of a page, such as a detail sidecar or a settings section.",
+      "instruction": "Tables are framed: a standalone DataTable sits in the tint frame, and a DataTable inside a framed Card, List or other frame drops its frame and embeds on the card's inset surface. The frameless native Table is for a table inside another surface. Lists default to framed and change case by case. A standalone Card is plain, the default, or no card at all; set variant=\"framed\" only for emphasis, such as the org overview product cards, or for a section card that heads part of a page, such as a detail sidecar or a settings section. A plain Card pads raw children by the same inset as a framed Card body.",
       "good": "A DataTable in its frame on a list page, a plain Card for a standalone summary, and <Card variant=\"framed\" title=\"Details\"> in a DetailLayout sidecar.",
-      "avoid": "A framed Card wrapped around every block on a page, or a DataTable placed inside a framed Card so two frames nest.",
+      "avoid": "A framed Card wrapped around every block on a page, or a standalone Card set to variant framed with no emphasis or section role.",
       "detect": {
         "by": "review",
-        "how": "Check each Card that sets variant framed is emphasis or a section card, and that no frame nests inside another."
+        "how": "Check each Card that sets variant framed is emphasis or a section card."
       },
       "category": "Visual"
+    },
+    {
+      "id": "no-nested-frames",
+      "title": "Never nest one frame in another",
+      "instruction": "A framed container never renders inside another framed container. Card, DataTable, List, ApprovalQueue and CodeBlock read the frame context: inside a framed Card, a framed List, a DataTable or a CodeBlock, a framed Card drops to plain, a DataTable and a framed List or ApprovalQueue embed frameless on the parent's inset surface, and a CodeBlock drops its tint frame. Overlays (Dialog, AlertDialog, Sheet, Popover, HoverCard) start a fresh surface, so a frame inside one draws normally. Never write variant=\"framed\" on a container inside a framed parent to force a second frame back on.",
+      "good": "A DataTable inside <Card variant=\"framed\" title=\"Recently deleted\" flush>, which renders as an embedded table on the card's inset with its header row on that surface.",
+      "avoid": "A List with variant=\"framed\" inside a framed Card, or a tinted table frame sitting directly on a framed card's tint band so its header merges into the band.",
+      "detect": {
+        "by": "lint",
+        "check": "nested-frame"
+      },
+      "category": "Visual",
+      "exceptions": "The check reads containers written directly inside a framed parent in the same file. A framed child rendered from another component drops its frame at runtime and logs a development warning when it was asked for variant framed."
     },
     {
       "id": "theme-scheme",

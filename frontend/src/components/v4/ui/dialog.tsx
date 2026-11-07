@@ -5,6 +5,7 @@ import { useV4PortalContainer } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 
+import { FrameScope } from "../lib/frame-context";
 import { OverlayPendingContext, useDismissGuard, useOverlayPending } from "../lib/overlay-pending";
 import { renderInForm, splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
@@ -21,13 +22,11 @@ function DialogTrigger({ ref, ...props }: React.ComponentProps<typeof DialogPrim
 }
 DialogTrigger.displayName = "DialogTrigger";
 
-function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
+function DialogPortal({ children, ...props }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
   return (
-    <DialogPrimitive.Portal
-      container={useV4PortalContainer()}
-      data-slot="dialog-portal"
-      {...props}
-    />
+    <DialogPrimitive.Portal container={useV4PortalContainer()} data-slot="dialog-portal" {...props}>
+      <FrameScope framed={false}>{children}</FrameScope>
+    </DialogPrimitive.Portal>
   );
 }
 

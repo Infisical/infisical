@@ -161,7 +161,7 @@ export type ApprovalQueueProps = {
   | { children: React.ReactNode; requests?: never }
 );
 
-export function ApprovalQueue({ variant = "framed", ...props }: ApprovalQueueProps) {
+export function ApprovalQueue({ variant, ...props }: ApprovalQueueProps) {
   let children: React.ReactNode = props.children;
   if (props.requests) {
     const { requests, current, onApprove, onView, onUndo, onRetry, historyHref } = props;
@@ -197,7 +197,7 @@ export function ApprovalQueue({ variant = "framed", ...props }: ApprovalQueuePro
   const list: React.ComponentProps<typeof ApprovalQueueList> = {};
   const content = lower(children, list);
   return (
-    <div data-slot="approval-queue" data-variant={variant}>
+    <div data-slot="approval-queue" data-variant={variant ?? "framed"}>
       <List
         label={list.label ?? "Requests waiting on you"}
         variant={variant}

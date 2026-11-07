@@ -6,6 +6,7 @@ import { Popover as PopoverPrimitive, Slot } from "radix-ui";
 
 import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
+import { FrameScope } from "../lib/frame-context";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
@@ -222,7 +223,7 @@ function PopoverContent({
             </span>
           </button>
         )}
-        {children}
+        <FrameScope framed={false}>{children}</FrameScope>
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );

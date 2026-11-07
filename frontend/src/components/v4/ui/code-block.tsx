@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { FrameScope, useInFrame } from "../lib/frame-context";
 import { cn } from "../lib/utils";
 import { Code, type CodeProps } from "./code";
 import { Icon, type IconName } from "./icon";
@@ -42,43 +43,47 @@ export const CodeBlock = ({
     : (copyValue ?? code ?? (typeof children === "string" ? children : ""));
   const hasCopySource =
     Boolean(json) || copyValue !== undefined || code !== undefined || typeof children === "string";
+  const embedded = useInFrame("CodeBlock");
   return (
     <section
       data-slot="code-block"
       aria-label={label}
-      className={cn(frame.frame, styles.codeBlock, className)}
+      data-embedded={embedded || undefined}
+      className={cn(!embedded && frame.frame, styles.codeBlock, className)}
     >
-      {(label || actions || copyable) && (
-        <div className={styles.header}>
-          <div className={styles.identity}>
-            {icon && <Icon name={icon} />}
-            {label && (
-              <MiddleTruncate keepEnd={16} className={styles.blockLabel}>
-                {label}
-              </MiddleTruncate>
+      <FrameScope framed>
+        {(label || actions || copyable) && (
+          <div className={styles.header}>
+            <div className={styles.identity}>
+              {icon && <Icon name={icon} />}
+              {label && (
+                <MiddleTruncate keepEnd={16} className={styles.blockLabel}>
+                  {label}
+                </MiddleTruncate>
+              )}
+            </div>
+            {actions && <div className={styles.actions}>{actions}</div>}
+            {copyable && (
+              <CopyButton
+                value={source}
+                disabled={!hasCopySource}
+                label={copyLabel}
+                iconOnly
+                onCopy={onCopy}
+                writeClipboard={writeClipboard}
+              />
             )}
           </div>
-          {actions && <div className={styles.actions}>{actions}</div>}
-          {copyable && (
-            <CopyButton
-              value={source}
-              disabled={!hasCopySource}
-              label={copyLabel}
-              iconOnly
-              onCopy={onCopy}
-              writeClipboard={writeClipboard}
-            />
-          )}
+        )}
+        <div className={cn(frame.frameInset, styles.body)}>
+          {json ??
+            (typeof children === "string" || children === undefined ? (
+              <Code block code={code ?? children} label={label} {...props} />
+            ) : (
+              <div className={styles.customContent}>{children}</div>
+            ))}
         </div>
-      )}
-      <div className={cn(frame.frameInset, styles.body)}>
-        {json ??
-          (typeof children === "string" || children === undefined ? (
-            <Code block code={code ?? children} label={label} {...props} />
-          ) : (
-            <div className={styles.customContent}>{children}</div>
-          ))}
-      </div>
+      </FrameScope>
     </section>
   );
 };
