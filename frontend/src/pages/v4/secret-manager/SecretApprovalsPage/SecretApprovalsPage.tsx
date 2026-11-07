@@ -132,6 +132,7 @@ const changeColumns: DataTableColumn<Commit>[] = [
     id: "secret",
     header: "Secret",
     grow: true,
+    text: (commit) => commit.secretKey,
     render: (commit) => <code>{commit.secretKey}</code>
   },
   {
@@ -172,7 +173,7 @@ const RequestDetail = ({
     }
   };
   const reviewerColumns: DataTableColumn<Approver>[] = [
-    { id: "approver", header: "Approver", grow: true, render: approverName },
+    { id: "approver", header: "Approver", grow: true, text: approverName, render: approverName },
     {
       id: "review",
       header: "Review",
