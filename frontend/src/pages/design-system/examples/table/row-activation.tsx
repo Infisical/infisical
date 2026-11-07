@@ -10,6 +10,7 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import {
   RowActions,
+  RowContextMenu,
   Table,
   TableActionsCell,
   TableActionsHead,
@@ -95,24 +96,24 @@ export default function RowActivation() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {certs.map((cert) => (
-              <TableRow key={cert.id} onClick={() => open(cert)}>
-                <TableCell>{cert.cn}</TableCell>
-                <TableCell>{cert.expires}</TableCell>
-                <TableActionsCell>
-                  <RowActions
-                    label={cert.cn}
-                    menu={
-                      <DropdownMenuItem
-                        onSelect={() => setStatus(`Renewal requested for ${cert.cn}.`)}
-                      >
-                        Renew
-                      </DropdownMenuItem>
-                    }
-                  />
-                </TableActionsCell>
-              </TableRow>
-            ))}
+            {certs.map((cert) => {
+              const menu = (
+                <DropdownMenuItem onSelect={() => setStatus(`Renewal requested for ${cert.cn}.`)}>
+                  Renew
+                </DropdownMenuItem>
+              );
+              return (
+                <RowContextMenu key={cert.id} label={cert.cn} menu={menu}>
+                  <TableRow onClick={() => open(cert)}>
+                    <TableCell>{cert.cn}</TableCell>
+                    <TableCell>{cert.expires}</TableCell>
+                    <TableActionsCell>
+                      <RowActions label={cert.cn} menu={menu} />
+                    </TableActionsCell>
+                  </TableRow>
+                </RowContextMenu>
+              );
+            })}
           </TableBody>
         </Table>
       </ExampleCell>

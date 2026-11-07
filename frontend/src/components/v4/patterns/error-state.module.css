@@ -68,8 +68,15 @@
   gap: var(--v4-space-8);
   text-align: start;
 }
-.details > [data-slot="collapsible-content"] {
+.detailsPanel {
+  position: relative;
   width: 100%;
+}
+.detailsCopy {
+  position: absolute;
+  inset-block-start: var(--v4-space-8);
+  inset-inline-end: var(--v4-space-8);
+  z-index: 1;
 }
 .detailsTrigger [data-chevron] {
   transition: rotate var(--v4-duration-fast) var(--v4-ease-standard);

@@ -4,9 +4,27 @@ Search plus an Add filter menu; each applied filter becomes a removable chip tha
 
 ## Choose this component
 
-Choose FilterBar for lists with three or more filter fields. Keep a single Select or ToggleGroup beside the search when there is one filter people always use.
+Choose FilterBar for the toolbar of every full list page. Put a single Select or ToggleGroup that people always use in its actions slot, and add fields once there are filters people pick from. A search box with an icon-only filter menu is only for search inside a Card header.
 
 ## Usage rules
+
+### filter-bar-list-page
+
+Owner: filter-bar.
+
+When a full list page needs search, filters or list tools above its table.
+
+Do: Render FilterBar with the search Input in search, its filter fields in fields (none is fine) and tools such as Columns, Export or one always-used Select in actions.
+
+Avoid: Build the row from a bare Input, an Input and Select pair or a toolbar with an icon-only filter menu, so each list page has a different toolbar.
+
+Why: One toolbar shape on every list page puts search, filters and tools in the same places, and the bar grows chips without a rebuild when filters arrive.
+
+Checked by: review only. Look for: Compare the toolbars above each full list page: each is a FilterBar, and only search inside a Card header uses another shape.
+
+Source evidence:
+- src/components/v4/patterns/filter-bar.tsx
+- src/pages/design-system/examples/filter-bar/default.tsx
 
 ### filter-bar-host-filters
 
@@ -45,6 +63,7 @@ Source evidence:
 ## State guidance
 
 - empty: Only search and Add filter; no chip row is drawn.
+- no fields: Search and the actions only. Add filter is not drawn, so nothing opens an empty menu.
 - pending value: A newly added chip reads is any with its picker open until a value is chosen.
 
 ## Presentation rules
@@ -64,7 +83,7 @@ Exports: FilterBar, describeFilter. Source TypeScript defines the API.
 
 ## Behavior
 
-- Add filter opens a menu of the host's fields. A field already applied stays in the menu, disabled, with Already applied as its reason.
+- Add filter opens a menu of the host's fields. A field already applied stays in the menu, disabled, with Already applied as its reason. With no fields, Add filter is not rendered, so the bar is search plus actions.
 - Choosing a field adds its chip and opens that chip's picker at once. Closing a picker that still has no value removes the chip.
 - Select fields pick one value, multi-select fields pick several, date fields pick Before or After plus a day, and text fields match a typed fragment. Every change calls onChange immediately; there is no Apply step.
 - Each chip is an outline ButtonGroup: the value button reads field, verb and value (Status is Active or Renewed), and the x button removes it.
@@ -76,9 +95,11 @@ Exports: FilterBar, describeFilter. Source TypeScript defines the API.
 - The bar is a search landmark named by label, and the chips are a list named Applied filters, so the count is announced.
 - Each chip is a group named after its field. Its value button is named field, verb and value, and its remove button is named Remove <field> filter.
 - Removing a chip moves focus to the next chip, else the previous one, else Add filter. Clear filters and a picker closed empty also return focus to Add filter.
+- A bar with no fields has no Add filter, so its tab order is the search field and then the actions; it never offers a button that opens an empty menu.
 
 ## Use cases
 
+- Use FilterBar above every full list page: search in its search slot, filter fields in fields and list tools in actions. A page with nothing to filter passes no fields and keeps search plus actions.
 - Use FilterBar when a list has more filterable fields than fit as always-visible selects, or when most people filter by one or two of them.
 
 ## Avoid
@@ -102,6 +123,11 @@ Source declarations and review criteria only. Generation checks references and c
 - date: example `default`, visible label "Four filters, one per field type; the row wraps when it fills".
 - text: example `default`, visible label "Four filters, one per field type; the row wraps when it fills".
 
+### fields
+
+- several: example `default`, visible label "No filters: search and Add filter only".
+- none: example `default`, visible label "No filter fields: search and an environment Select, no Add filter".
+
 ### applied count
 
 - none: example `default`, visible label "No filters: search and Add filter only".
@@ -113,7 +139,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/filter-bar/default.tsx`; its relative imports are generated for that exact path. States: default, empty, overflow, keyboard.
 
-Registry items used: @infisical/filter-bar, @infisical/input, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/filter-bar, @infisical/input, @infisical/select, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -124,6 +150,7 @@ import {
   type FilterBarFilter
 } from "../../../../components/v4/patterns/filter-bar";
 import { Input } from "../../../../components/v4/ui/input";
+import { Select } from "../../../../components/v4/ui/select";
 import { Meta } from "../../../../components/v4/ui/text";
 
 type Secret = { key: string; environment: string; tags: string[]; updated: string };
@@ -140,17 +167,14 @@ const secrets: Secret[] = [
   },
   { key: "LOG_LEVEL", environment: "development", tags: [], updated: "2026-03-30" }
 ];
+const environments = [
+  { value: "production", label: "Production" },
+  { value: "staging", label: "Staging" },
+  { value: "development", label: "Development" }
+];
+const environmentChoices = [{ value: "all", label: "All environments" }, ...environments];
 const fields: FilterBarField[] = [
-  {
-    key: "environment",
-    label: "Environment",
-    type: "select",
-    options: [
-      { value: "production", label: "Production" },
-      { value: "staging", label: "Staging" },
-      { value: "development", label: "Development" }
-    ]
-  },
+  { key: "environment", label: "Environment", type: "select", options: environments },
   {
     key: "tags",
     label: "Tag",
@@ -170,12 +194,22 @@ const matches = (secret: Secret, filter: FilterBarFilter) => {
   return secret.key.toLowerCase().includes(first.toLowerCase());
 };
 
-const Bar = ({ initial, caption }: { initial: FilterBarFilter[]; caption: string }) => {
+const Bar = ({
+  initial,
+  caption,
+  searchOnly = false
+}: {
+  initial: FilterBarFilter[];
+  caption: string;
+  searchOnly?: boolean;
+}) => {
   const [filters, setFilters] = useState(initial);
   const [query, setQuery] = useState("");
+  const [environment, setEnvironment] = useState("all");
   const shown = secrets.filter(
     (secret) =>
       secret.key.toLowerCase().includes(query.trim().toLowerCase()) &&
+      (environment === "all" || secret.environment === environment) &&
       filters.every((filter) => matches(secret, filter))
   );
   return (
@@ -183,7 +217,7 @@ const Bar = ({ initial, caption }: { initial: FilterBarFilter[]; caption: string
       <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
         <FilterBar
           label="Secret filters"
-          fields={fields}
+          fields={searchOnly ? [] : fields}
           value={filters}
           onChange={setFilters}
           search={
@@ -194,6 +228,16 @@ const Bar = ({ initial, caption }: { initial: FilterBarFilter[]; caption: string
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
+          }
+          actions={
+            searchOnly ? (
+              <Select
+                aria-label="Environment"
+                options={environmentChoices}
+                value={environment}
+                onValueChange={setEnvironment}
+              />
+            ) : undefined
           }
         />
         <Meta
@@ -210,6 +254,11 @@ export default function Example() {
   return (
     <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <Bar initial={[]} caption="No filters: search and Add filter only" />
+      <Bar
+        initial={[]}
+        caption="No filter fields: search and an environment Select, no Add filter"
+        searchOnly
+      />
       <Bar
         initial={[
           { field: "environment", values: ["production"] },
