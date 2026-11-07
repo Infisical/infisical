@@ -5,13 +5,13 @@ import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { List, ListRow } from "@app/components/v4/ui/list";
 import { Text } from "@app/components/v4/ui/text";
 import { getProjectHomePage } from "@app/helpers/project";
+import { toV4Href } from "@app/helpers/v4Bridge";
 import { submitSignupOnboarding } from "@app/hooks/api/auth/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { analytics, AnalyticsEvent, OnboardingResource } from "@app/lib/analytics";
 
 import { productOf } from "../../shell/navigation";
 import { AuthPage } from "../components/AuthPage";
-import { toV4Href } from "../paths";
 
 const ORG_OVERVIEW = "organization-overview" as const;
 

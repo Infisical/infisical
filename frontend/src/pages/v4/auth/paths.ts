@@ -1,39 +1,11 @@
 import { isRedirect, type ParsedLocation } from "@tanstack/react-router";
 
-import { isLiveReady } from "../liveReady";
-
-const AUTH_PATHS = new Set([
-  "/login",
-  "/login/admin",
-  "/login/select-organization",
-  "/login/ldap",
-  "/login/oidc",
-  "/login/saml",
-  "/login/provider/error",
-  "/signup",
-  "/signup/sso",
-  "/signupinvite",
-  "/requestnewinvite",
-  "/email-not-verified",
-  "/account-recovery",
-  "/account-recovery-reset",
-  "/password-setup",
-  "/admin/signup",
-  "/organizations/onboarding",
-  "/organizations/none"
-]);
-
-const pathOf = (href: string) => href.split(/[?#]/)[0].replace(/(.)\/$/, "$1");
-
-export const hasV4Twin = (href: string) =>
-  AUTH_PATHS.has(pathOf(href)) || isLiveReady(`/v4${pathOf(href)}`);
-
-export const toV4Href = (href: string) => (hasV4Twin(href) ? `/v4${href}` : href);
+import { toV3Href, toV4Href } from "@app/helpers/v4Bridge";
 
 export const toV3Location = (location: ParsedLocation): ParsedLocation => ({
   ...location,
-  pathname: location.pathname.replace(/^\/v4/, "") || "/",
-  href: location.href.replace(/^\/v4/, "")
+  pathname: toV3Href(location.pathname),
+  href: toV3Href(location.href)
 });
 
 // Main's guards redirect to main's paths; a target that has a v4 twin stays inside v4.

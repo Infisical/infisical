@@ -1,5 +1,3 @@
-import { redirect } from "@tanstack/react-router";
-
 import { getPostHog, isPostHogEnabled } from "@app/components/analytics/posthog";
 import { resolveFeatureFlagVariant } from "@app/lib/analytics/experiments/resolveFeatureFlagVariant";
 
@@ -40,7 +38,3 @@ export const isV4AppEnabled = () =>
       timeoutMs: 3000
     });
   });
-
-export const redirectToV4IfEnabled = async (href: string) => {
-  if (await isV4AppEnabled()) throw redirect({ href: `/v4${href}`, replace: true });
-};

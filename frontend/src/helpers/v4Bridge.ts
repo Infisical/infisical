@@ -80,14 +80,8 @@ export const keepInClassic = (v3Href: string) => {
   }
 };
 
-export const handoffToV4 = async ({
-  location,
-  matches
-}: {
-  location: { pathname: string; href: string };
-  matches: readonly BridgeMatch[];
-}) => {
-  if (matches.at(-1)?.staticData?.v3Alias) return;
+export const handoffToV4 = async (location: { pathname: string; href: string }) => {
+  if (matchesOf(pathOf(location.pathname)).at(-1)?.staticData?.v3Alias) return;
   if (classicPaths().includes(pathOf(location.pathname))) return;
   if (!hasV4Page(`${V4_PREFIX}${location.pathname}`)) return;
   if (!(await isV4AppEnabled())) return;
