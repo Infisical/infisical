@@ -94,3 +94,17 @@
 .inputGroup > [data-slot="input-group-addon"][data-align="inline-end"]:has([data-v4-button]) {
   padding-inline-end: var(--v4-space-control-slot-inset);
 }
+.badged[data-v4-button] {
+  position: relative;
+  overflow: visible;
+}
+.cornerBadge {
+  position: absolute;
+  top: calc(var(--v4-size-control-border) / -2);
+  inset-inline-end: calc(-1 * var(--v4-size-control-border));
+  z-index: 1;
+  display: inline-flex;
+  translate: 0 -50%;
+  background: var(--v4-surface);
+  pointer-events: none;
+}
