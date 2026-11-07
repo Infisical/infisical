@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "boot-loader",
+    title: "Boot loader and route progress",
+    description:
+      "v4 boots on its theme's ground with a labelled BootLoader, and navigations show a quiet progress bar instead of NProgress.",
+    date: "2026-11-07",
+    commit: "8796ac7b20",
+    page: "loader"
+  },
+  {
     id: "preview-v4",
     title: "v4 on previews",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "c58b6c81ec",
     page: "palette"
-  },
-  {
-    id: "pinned-cells",
-    title: "Pinned cells match their row",
-    description:
-      "Pinned columns now paint exactly the row's color at rest, on hover, selected and expanded, and scrolled tables keep their actions tail.",
-    date: "2026-11-07",
-    commit: "4cf899bbbe",
-    page: "table"
   }
 ];
