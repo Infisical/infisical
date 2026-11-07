@@ -10,6 +10,7 @@ import { Button } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
 import { LoginSignupQueryParamsSchema, restrictLoginSignup } from "@app/helpers/authRouteGuards";
+import { redirectToV4IfEnabled } from "@app/helpers/v4AppFlag";
 import { GtmHead } from "@app/hooks/useGtm";
 
 export const AuthConsentWrapper = () => {
@@ -68,6 +69,9 @@ export const Route = createFileRoute("/_restrict-login-signup")({
   search: {
     middlewares: [stripSearchParams({ callback_port: undefined, force: undefined })]
   },
-  beforeLoad: ({ context, location, search }) => restrictLoginSignup({ context, location, search }),
+  beforeLoad: async ({ context, location, search }) => {
+    await redirectToV4IfEnabled(location.href);
+    return restrictLoginSignup({ context, location, search });
+  },
   component: AuthConsentWrapper
 });

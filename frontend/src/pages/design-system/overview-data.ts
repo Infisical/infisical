@@ -87,6 +87,24 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "preview-v4",
+    title: "v4 on previews",
+    description:
+      "Preview deploys open in v4 by default, and main's login, signup and org home send you to their v4 pages while the flag is on.",
+    date: "2026-11-07",
+    commit: "072c1e484c",
+    page: "overview"
+  },
+  {
+    id: "error-state-forbidden",
+    title: "Forbidden error state",
+    description:
+      "ErrorState adds You don't have access, and pages can slot their own flows such as Request access.",
+    date: "2026-11-07",
+    commit: "7b36bf4064",
+    page: "error-state"
+  },
+  {
     id: "table-rules",
     title: "Table rules",
     description:
@@ -202,23 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "4cf899bbbe",
     page: "table"
-  },
-  {
-    id: "palette-playground",
-    title: "Palette playground",
-    description:
-      "Tune any theme token live on a sample shell, share the view by link and copy the overrides as tokens.json.",
-    date: "2026-11-07",
-    commit: "d054fdfef6",
-    page: "palette"
-  },
-  {
-    id: "card-pairs",
-    title: "Bands, xs Input and flush SettingsCard",
-    description:
-      "Framed band labels sit at one height, Input gains a 24px xs size, and a flush SettingsCard embeds a table.",
-    date: "2026-11-07",
-    commit: "45ad1c70c1",
-    page: "settings-card"
   }
 ];
