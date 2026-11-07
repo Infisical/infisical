@@ -202,7 +202,7 @@
   --overlay-press: var(--v4-press-mix);
 }
 .gridRow:hover > .gridCell:not([data-selected], [data-dirty]) {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+  background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), transparent);
 }
 .gridCell[data-selected] {
   background: var(--v4-accent-wash);
@@ -457,7 +457,7 @@
   min-height: var(--v4-size-nested-md);
 }
 .treeRow:hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+  background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), transparent);
 }
 .treeRow[data-selected="true"] {
   background: var(--v4-select);
@@ -633,20 +633,20 @@
   transition: background-color var(--v4-duration-fast) var(--v4-ease-fade);
 }
 .listRow[data-interactive]:not([data-selected], [data-current]):hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
-  --v4-list-row-surface: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), var(--v4-surface));
+  background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), transparent);
+  --v4-list-row-surface: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), var(--v4-surface));
 }
 :where(.listShell[data-variant="segmented"])
   .listRow[data-interactive]:not([data-selected], [data-current]):hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), var(--v4-tint));
-  --v4-list-row-surface: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), var(--v4-tint));
+  background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), var(--v4-tint));
+  --v4-list-row-surface: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), var(--v4-tint));
 }
 .listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-press), transparent);
+  background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-press), transparent);
 }
 :where(.listShell[data-variant="segmented"])
   .listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-press), var(--v4-tint));
+  background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-press), var(--v4-tint));
 }
 .listRow[data-resolved] {
   background: var(--v4-row-done);

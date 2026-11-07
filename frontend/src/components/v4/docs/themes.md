@@ -15,6 +15,7 @@ Overrides:
 - line: #d5cdc2
 - line-soft: #e4ded5
 - faint: #85807a
+- mix-ink: #2e271d
 
 | Text | Ground | Values | Ratio | Floor | Result |
 |---|---|---|---|---|---|

@@ -236,7 +236,7 @@
     a:hover,
     a:focus-visible
   ) {
-  background-color: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+  background-color: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), transparent);
 }
 .row:is([data-variant="destructive"], [data-danger]) {
   color: var(--v4-bad);
