@@ -840,7 +840,8 @@ export const SecretEditTableRow = ({
     if (!isAnnotationSaveRequested) return;
     setIsAnnotationSaveRequested(false);
     savePendingRow()
-      .then(() => {
+      .then((isSaved) => {
+        if (!isSaved) return;
         setIsCommentOpen(false);
         setIsTagOpen(false);
         setIsMetadataOpen(false);

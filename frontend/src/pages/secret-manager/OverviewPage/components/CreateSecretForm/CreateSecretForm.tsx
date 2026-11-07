@@ -807,6 +807,7 @@ export const CreateSecretForm = ({
                     size="xs"
                     className="mt-6.5"
                     aria-label={`Remove secret ${index + 1}`}
+                    isDisabled={isSubmitting}
                     onClick={() => removeSecret(index)}
                   >
                     <TrashIcon className="size-4" />

@@ -64,6 +64,8 @@ type ContentProps = {
   destinationPath: string;
   onImport: (args: TVaultSecretImportArgs) => Promise<void>;
   onDirtyChange: (isDirty: boolean) => void;
+  isImporting: boolean;
+  setIsImporting: (isImporting: boolean) => void;
 };
 
 const MAX_PATH_LENGTH = 30;
@@ -103,11 +105,12 @@ const Content = ({
   appConnections,
   destinationPath,
   onImport,
-  onDirtyChange
+  onDirtyChange,
+  isImporting,
+  setIsImporting
 }: ContentProps) => {
   const hasAppConnections = appConnections.length > 0;
   const [keepVaultStructure, setKeepVaultStructure] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const [state, dispatch] = useReducer(
     vaultImportSelectionReducer<string[]>,
     appConnections.map(({ id }) => id),
@@ -465,6 +468,7 @@ export const VaultSecretImportModal = ({
   onImport
 }: Props) => {
   const [isDirty, setIsDirty] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const closeSheet = useCallback(() => {
     setIsDirty(false);
@@ -488,6 +492,7 @@ export const VaultSecretImportModal = ({
         {isOpen && (
           <SheetContent
             className="sm:max-w-2xl"
+            isPending={isImporting}
             onOpenAutoFocus={(event) => event.preventDefault()}
           >
             <SheetHeader>
@@ -508,6 +513,8 @@ export const VaultSecretImportModal = ({
               destinationPath={destinationPath}
               onImport={onImport}
               onDirtyChange={setIsDirty}
+              isImporting={isImporting}
+              setIsImporting={setIsImporting}
             />
           </SheetContent>
         )}
