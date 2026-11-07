@@ -55,7 +55,7 @@ Then call a tool the same way with `{"jsonrpc":"2.0","id":3,"method":"tools/call
 
 Each response that went through the proxy has an `X-Agent-Vault-Decision` header (`curl -i` shows it):
 
-- `brokered`: the proxy added a credential. If the API still answers 401 or 403, the stored credential is wrong or lacks permission. Tell the user that an Agent Vault admin has to fix the service named in `X-Agent-Vault-Service`. A key from the user would not help, because the proxy replaces it.
+- `brokered`: the proxy added a credential. If the API still answers 401 or 403, the stored credential is wrong or lacks permission. Tell the user that an Agent Vault admin has to fix the service named in `X-Agent-Vault-Service`, or, if the list marks its credential `memberProvided`, that they have to update their own personal value for it in Agent Vault. A key from the user would not help, because the proxy replaces it.
 - `blocked`: the proxy refused the request itself. The JSON body gives the reason and a hint. Do not retry with a different key.
 - `passthrough`: no service covers this host, so the proxy added nothing.
 - No header at all: the request did not go through the proxy.

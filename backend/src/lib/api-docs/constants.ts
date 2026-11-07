@@ -5164,6 +5164,8 @@ export const AGENT_VAULT = {
     credentialType: "The kind of credential the proxy adds: bearer, oauth, basic, or none.",
     credentialHeader: "The header the proxy sets the credential in.",
     credentialAddedByProxy: "Whether the proxy adds a credential to the service's requests.",
+    credentialMemberProvided:
+      "Whether some part of the credential is the session owner's own personal value, so the owner, not an admin, fixes it when the service rejects it.",
     placeholder: "The text the agent writes where the secret goes.",
     placeholderSurfaces: "The parts of a request the proxy replaces the placeholder in: path, query, header, or body.",
     allowedMethods: "The HTTP methods the service allows, or null if it allows every method.",

@@ -34,6 +34,8 @@ export type TSessionServiceFacts = {
   customHeaderNames: string[];
   substitutions: { placeholder: string; surfaces: string[] }[];
   personalValuesMissing: boolean;
+  // Some part of the credential is the session owner's own, so a rejection is theirs to fix, not an admin's.
+  memberProvided: boolean;
 };
 
 export type TSessionServiceDescription = {
@@ -44,7 +46,12 @@ export type TSessionServiceDescription = {
   url: string | null;
   transport?: string;
   status: "ready" | "needs-personal-values";
-  credential: { type: "bearer" | "oauth" | "basic" | "none"; header?: string; addedByProxy: boolean };
+  credential: {
+    type: "bearer" | "oauth" | "basic" | "none";
+    header?: string;
+    addedByProxy: boolean;
+    memberProvided: boolean;
+  };
   customHeaders: string[];
   placeholders: { placeholder: string; surfaces: string[] }[];
   allowedMethods: string[] | null;
@@ -116,16 +123,22 @@ const serviceBaseUrl = (hostPattern: string) => {
 const sortedUnique = (values: string[]) => [...new Set(values)].sort();
 
 const describeCredential = (service: TSessionServiceFacts): TSessionServiceDescription["credential"] => {
-  if (service.personalValuesMissing) return { type: "none", addedByProxy: false };
+  const { memberProvided } = service;
+  if (service.personalValuesMissing) return { type: "none", addedByProxy: false, memberProvided };
   switch (service.credential.type) {
     case "bearer":
-      return { type: "bearer", header: service.credential.headerName || "Authorization", addedByProxy: true };
+      return {
+        type: "bearer",
+        header: service.credential.headerName || "Authorization",
+        addedByProxy: true,
+        memberProvided
+      };
     case "oauth":
-      return { type: "oauth", header: OAUTH_HEADER, addedByProxy: true };
+      return { type: "oauth", header: OAUTH_HEADER, addedByProxy: true, memberProvided };
     case "basic":
-      return { type: "basic", header: "Authorization", addedByProxy: true };
+      return { type: "basic", header: "Authorization", addedByProxy: true, memberProvided };
     default:
-      return { type: "none", addedByProxy: false };
+      return { type: "none", addedByProxy: false, memberProvided };
   }
 };
 
@@ -156,6 +169,13 @@ const howToUse = (service: TSessionServiceFacts, description: Omit<TSessionServi
     parts.push(`Call ${target} directly. The proxy adds no credential to requests for this service.`);
   } else {
     parts.push(`Call ${target} directly.`);
+  }
+  if (description.credential.addedByProxy && description.credential.memberProvided) {
+    parts.push(
+      description.credential.type === "oauth"
+        ? `The credential is the session owner's own sign-in. If the server rejects it, they have to reconnect their account for ${JSON.stringify(service.name)} in Agent Vault, which an admin can't do for them.`
+        : `The credential is the session owner's own. If the service rejects it with 401 or 403, they have to update their personal value for ${JSON.stringify(service.name)} in Agent Vault, which an admin can't do for them.`
+    );
   }
   description.placeholders.forEach(({ placeholder, surfaces }) =>
     parts.push(
@@ -210,7 +230,7 @@ const sessionNotes = (
   const notes = [
     "Requests to these services go through this proxy, which adds each service's credential on the way out. You never hold the real keys, so a missing key in your environment is expected.",
     "Use your usual HTTP client with the proxy settings from the environment (HTTPS_PROXY). Do not unset them or bypass the proxy: a request that skips it carries no credential.",
-    "Responses that went through the proxy carry X-Agent-Vault-Decision: brokered (a credential was added), passthrough (no service covers the host), blocked (the proxy refused it; the JSON body says why) or error. A 401 or 403 marked brokered means the stored credential was rejected or lacks permission: an Agent Vault admin has to fix it, and a key you send will not help."
+    "Responses that went through the proxy carry X-Agent-Vault-Decision: brokered (a credential was added), passthrough (no service covers the host), blocked (the proxy refused it; the JSON body says why) or error. A 401 or 403 marked brokered means the stored credential was rejected or lacks permission: an Agent Vault admin has to fix it, or the session's owner when the service's credential is memberProvided, and a key you send will not help."
   ];
   if (trafficPolicy === "service-hosts") notes.push("This proxy refuses requests to hosts no service covers.");
   if (trafficPolicy === "any-host") {
@@ -315,6 +335,7 @@ export const toBundleServiceFacts = (
     credential,
     customHeaderNames: context.customHeaderNames,
     substitutions: context.substitutions,
-    personalValuesMissing
+    personalValuesMissing,
+    memberProvided: memberFields.length > 0
   };
 };

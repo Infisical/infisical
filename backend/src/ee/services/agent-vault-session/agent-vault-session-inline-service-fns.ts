@@ -313,7 +313,8 @@ export const toInlineServiceFacts = (row: TAgentVaultSessionInlineServices): TSe
     credential,
     customHeaderNames: customHeaders.map((header) => header.name),
     substitutions: substitutions.map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
-    personalValuesMissing: false
+    personalValuesMissing: false,
+    memberProvided: false
   };
 };
 

@@ -1,18 +1,6 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
-import { fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
-import {
-  agentVaultRequester,
-  createAgentVaultProject,
-  deleteAgentVaultProject,
-  markAgentVaultProjectOriginal
-} from "e2e-test/testUtils/agent-vault";
-import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
-import { createIdentityActor } from "e2e-test/testUtils/identities";
-import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
-import { pollUntil } from "e2e-test/testUtils/poll";
-import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
@@ -29,12 +17,12 @@ import {
   agentVaultProxyServiceFactory
 } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
+import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import {
   agentVaultSessionInlineServiceDALFactory,
   DELETE_SECRETS_BATCH_SIZE
 } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
-import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
@@ -64,6 +52,19 @@ import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folde
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
+
+import { fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
+import {
+  agentVaultRequester,
+  createAgentVaultProject,
+  deleteAgentVaultProject,
+  markAgentVaultProjectOriginal
+} from "e2e-test/testUtils/agent-vault";
+import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createIdentityActor } from "e2e-test/testUtils/identities";
+import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
+import { pollUntil } from "e2e-test/testUtils/poll";
+import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
 declare const testKeyStore: TKeyStoreFactory;
 
@@ -534,12 +535,7 @@ describe("Agent Vault V1 Router", async () => {
           .update({ createdAt: new Date(Date.now() - 60 * 60 * 1000) });
 
         const createBundle = async (projectId: string, name: string) => {
-          const res = await injectRaw(
-            "POST",
-            "/api/v1/agent-vault/access-bundles",
-            { projectId, name },
-            org.authToken
-          );
+          const res = await injectRaw("POST", "/api/v1/agent-vault/access-bundles", { projectId, name }, org.authToken);
           expect(res.statusCode, res.payload).toBe(200);
         };
         await createBundle(original, "in-original");
@@ -1377,9 +1373,9 @@ describe("Agent Vault V1 Router", async () => {
 
       const member = await createMemberIdentity(`service-description-${Date.now()}`);
       try {
-        expect(
-          (await inject("POST", `${bundleUrl}/members`, { machineIdentityIds: [member.id] })).statusCode
-        ).toBe(200);
+        expect((await inject("POST", `${bundleUrl}/members`, { machineIdentityIds: [member.id] })).statusCode).toBe(
+          200
+        );
         const read = await member.as("GET", bundleUrl);
         expect(read.statusCode).toBe(200);
         expect((read.json() as TBundleRead).accessBundle.services[0].description).toBe(
@@ -4464,9 +4460,9 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a member can be added by a username that isn't an email", async () => {
       const username = `av-ldap-${crypto.randomUUID()}`;
-      const [user] = (await testDb("users")
-        .insert({ username, isAccepted: true, isGhost: false })
-        .returning("*")) as { id: string }[];
+      const [user] = (await testDb("users").insert({ username, isAccepted: true, isGhost: false }).returning("*")) as {
+        id: string;
+      }[];
       try {
         await addUserMembership({ userId: user.id, orgId: seedData1.organization.id, role: OrgMembershipRole.Member });
 
@@ -6156,7 +6152,11 @@ describe("Agent Vault V1 Router", async () => {
       const bob = await createAgentVaultUser("obo-subjects-bob", projectId);
       const carol = await createAgentVaultUser("obo-subjects-carol", projectId);
       const outsider = await createAgentVaultUser("obo-subjects-outsider", null);
-      const group = await createProjectGroup(projectId, `obo-subjects-group-${Date.now()}`, ProjectMembershipRole.Member);
+      const group = await createProjectGroup(
+        projectId,
+        `obo-subjects-group-${Date.now()}`,
+        ProjectMembershipRole.Member
+      );
       const subjectsUrl = `${delegationUrl(bot.id)}/subjects`;
       const ours = new Set([alice.userId, bob.userId, carol.userId, group.id]);
       const available = async (query = "") => {
@@ -6166,7 +6166,12 @@ describe("Agent Vault V1 Router", async () => {
       };
       const named = (res: { json: () => { delegation: TDelegationDetail | null } }) => {
         const { delegation } = res.json();
-        return delegation && { users: delegation.users.map((row) => row.id).sort(), groups: delegation.groups.map((row) => row.id) };
+        return (
+          delegation && {
+            users: delegation.users.map((row) => row.id).sort(),
+            groups: delegation.groups.map((row) => row.id)
+          }
+        );
       };
       try {
         expect((await available()).sort()).toEqual([...ours].sort());
@@ -6693,9 +6698,8 @@ describe("Agent Vault V1 Router", async () => {
       expect(byId.json().session.services).toEqual(session.services);
       const list = await inject("GET", `${sessionsUrl}?limit=100`);
       expect(
-        (list.json().sessions as { id: string; services: TInlineSummary[] }[]).find(
-          (row) => row.id === session.id
-        )?.services
+        (list.json().sessions as { id: string; services: TInlineSummary[] }[]).find((row) => row.id === session.id)
+          ?.services
       ).toEqual(session.services);
 
       // No read returns a secret, and the rows hold them only sealed.
@@ -6812,7 +6816,9 @@ describe("Agent Vault V1 Router", async () => {
         ]
       });
       expect(memberField.statusCode).toBe(400);
-      expect(memberField.json().message).toMatch(/^Service at index 0: Services sent with a session can't leave a field/);
+      expect(memberField.json().message).toMatch(
+        /^Service at index 0: Services sent with a session can't leave a field/
+      );
     });
 
     test("only an Agent Vault admin can start a session with inline services", async () => {
@@ -7312,14 +7318,18 @@ describe("Agent Vault V1 Router", async () => {
       // A bundle's services are listed in name order.
       expect(viaProxy.json()).toMatchObject({
         agentVault: { proxy: "session-services-list", version: "0.44.0", trafficPolicy: "service-hosts" },
-        session: { label: "Nightly triage", expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/), accessBundle: bundle.name },
+        session: {
+          label: "Nightly triage",
+          expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+          accessBundle: bundle.name
+        },
         services: [
           {
             name: "github",
             description: null,
             type: "http",
             url: "https://api.github.com",
-            credential: { type: "none", addedByProxy: false }
+            credential: { type: "none", addedByProxy: false, memberProvided: false }
           },
           {
             name: "linear",
@@ -7327,7 +7337,7 @@ describe("Agent Vault V1 Router", async () => {
             type: "mcp",
             url: "https://mcp.linear.app/sse",
             transport: "sse",
-            credential: { type: "bearer", header: "Authorization", addedByProxy: true }
+            credential: { type: "bearer", header: "Authorization", addedByProxy: true, memberProvided: false }
           }
         ]
       });
@@ -8684,7 +8694,10 @@ describe("Agent Vault V1 Router", async () => {
         trafficPolicy: "service-hosts"
       });
       expect(created.statusCode).toBe(200);
-      const { proxy, proxyToken } = created.json() as { proxy: { id: string; trafficPolicy: string }; proxyToken: string };
+      const { proxy, proxyToken } = created.json() as {
+        proxy: { id: string; trafficPolicy: string };
+        proxyToken: string;
+      };
       expect(proxy.trafficPolicy).toBe("service-hosts");
       expect((await testDb("agent_vault_proxies").where({ id: proxy.id }).first()).trafficPolicy).toBe("bundle-hosts");
       expect((await asProxy(proxyToken, "bootstrap", {})).json().config.trafficPolicy).toBe("bundle-hosts");

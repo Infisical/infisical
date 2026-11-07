@@ -20,6 +20,7 @@ For each service in the session, the list includes:
 - The header the proxy sets, and any [substitution placeholder](/documentation/platform/agent-vault/http-apis#substitutions) the agent writes where a secret goes
 - The [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) the service allows, or for an MCP service, the [tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools) it allows
 - The service's status: ready, or waiting for [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values)
+- The person who has to fix the credential if the service rejects it: an admin, or the session's owner if part of the credential comes from their personal values
 - A sentence that tells the agent how to call the service
 
 The list also shows the session's label and expiry, and the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) of the proxy that the request came through, so the agent can tell if the proxy refuses hosts that no service covers. The list never includes a credential, a custom header's value, or a substitution's value.
@@ -37,7 +38,7 @@ This shortened example shows a GitHub service that allows only `GET` requests:
       "hosts": ["api.github.com"],
       "url": "https://api.github.com",
       "status": "ready",
-      "credential": { "type": "bearer", "header": "Authorization", "addedByProxy": true },
+      "credential": { "type": "bearer", "header": "Authorization", "addedByProxy": true, "memberProvided": false },
       "allowedMethods": ["GET"],
       "howToUse": "Call https://api.github.com directly. The proxy sets the Authorization header, so send no key, or any placeholder value if a client or SDK insists on one. A key you send in that header is replaced. Only GET requests are allowed; the proxy refuses any other method."
     }

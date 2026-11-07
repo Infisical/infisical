@@ -51,7 +51,8 @@ const SessionServiceSchema = z.object({
     .object({
       type: z.enum(["bearer", "oauth", "basic", "none"]).describe(AGENT_VAULT.SESSION_SERVICES.credentialType),
       header: z.string().optional().describe(AGENT_VAULT.SESSION_SERVICES.credentialHeader),
-      addedByProxy: z.boolean().describe(AGENT_VAULT.SESSION_SERVICES.credentialAddedByProxy)
+      addedByProxy: z.boolean().describe(AGENT_VAULT.SESSION_SERVICES.credentialAddedByProxy),
+      memberProvided: z.boolean().describe(AGENT_VAULT.SESSION_SERVICES.credentialMemberProvided)
     })
     .describe(AGENT_VAULT.SESSION_SERVICES.credential),
   customHeaders: z.string().array().describe(AGENT_VAULT.SESSION_SERVICES.customHeaders),

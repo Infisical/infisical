@@ -30,6 +30,7 @@ const facts = (overrides: Partial<TSessionServiceFacts> = {}): TSessionServiceFa
   customHeaderNames: [],
   substitutions: [],
   personalValuesMissing: false,
+  memberProvided: false,
   ...overrides
 });
 
@@ -42,7 +43,7 @@ describe("describing one service", () => {
       hosts: ["api.github.com"],
       url: "https://api.github.com",
       status: "ready",
-      credential: { type: "bearer", header: "Authorization", addedByProxy: true },
+      credential: { type: "bearer", header: "Authorization", addedByProxy: true, memberProvided: false },
       allowedMethods: ["GET"]
     });
     expect(described).not.toHaveProperty("transport");
@@ -57,15 +58,22 @@ describe("describing one service", () => {
     ).toEqual({
       type: "bearer",
       header: "x-api-key",
-      addedByProxy: true
+      addedByProxy: true,
+      memberProvided: false
     });
     expect(describeSessionService(facts({ credential: { type: "oauth" } })).credential).toEqual({
       type: "oauth",
       header: "Authorization",
-      addedByProxy: true
+      addedByProxy: true,
+      memberProvided: false
     });
     const basic = describeSessionService(facts({ credential: { type: "basic" } }));
-    expect(basic.credential).toEqual({ type: "basic", header: "Authorization", addedByProxy: true });
+    expect(basic.credential).toEqual({
+      type: "basic",
+      header: "Authorization",
+      addedByProxy: true,
+      memberProvided: false
+    });
     expect(basic.howToUse).toBe(
       "Call https://api.github.com directly. The proxy sets HTTP Basic auth, so send no credentials, or any placeholder username and password."
     );
@@ -85,7 +93,7 @@ describe("describing one service", () => {
         ]
       })
     );
-    expect(substituted.credential).toEqual({ type: "none", addedByProxy: false });
+    expect(substituted.credential).toEqual({ type: "none", addedByProxy: false, memberProvided: false });
     expect(substituted.placeholders).toEqual([
       { placeholder: "__TOKEN_SECONDARY__", surfaces: ["header"] },
       { placeholder: "__TOKEN__", surfaces: ["path", "body"] }
@@ -95,10 +103,24 @@ describe("describing one service", () => {
     );
   });
 
+  test("a credential that is the session owner's own says that they, not an admin, fix a rejection", () => {
+    const own = describeSessionService(facts({ memberProvided: true }));
+    expect(own.credential).toEqual({
+      type: "bearer",
+      header: "Authorization",
+      addedByProxy: true,
+      memberProvided: true
+    });
+    expect(own.howToUse).toContain(
+      "The credential is the session owner's own. If the service rejects it with 401 or 403, they have to update their personal value for \"github\" in Agent Vault, which an admin can't do for them."
+    );
+    expect(describeSessionService(facts()).howToUse).not.toContain("session owner");
+  });
+
   test("a service waiting for personal values says it isn't usable yet and offers no credential", () => {
-    const described = describeSessionService(facts({ personalValuesMissing: true }));
+    const described = describeSessionService(facts({ personalValuesMissing: true, memberProvided: true }));
     expect(described.status).toBe("needs-personal-values");
-    expect(described.credential).toEqual({ type: "none", addedByProxy: false });
+    expect(described.credential).toEqual({ type: "none", addedByProxy: false, memberProvided: true });
     expect(described.howToUse).toBe(
       'Not usable yet: the session\'s owner has to set their personal values for "github" in Agent Vault. The proxy refuses requests to it until then, and it can take a few minutes to apply.'
     );
@@ -190,6 +212,11 @@ describe("the whole list", () => {
     expect(document.notes).toContain(
       "The session expires at 2026-11-05T02:00:00Z; after that the proxy refuses every request."
     );
+    expect(
+      document.notes.some((note) =>
+        note.includes("or the session's owner when the service's credential is memberProvided")
+      )
+    ).toBe(true);
   });
 
   test("under any-host, says hosts no service covers are reachable", () => {
@@ -301,11 +328,16 @@ describe("a bundle service's facts", () => {
       const signedIn = factsWith(connection({}));
       expect(signedIn.personalValuesMissing).toBe(false);
       expect(signedIn.credential).toEqual({ type: "oauth" });
-      expect(describeSessionService(signedIn).credential).toEqual({
+      const described = describeSessionService(signedIn);
+      expect(described.credential).toEqual({
         type: "oauth",
         header: "Authorization",
-        addedByProxy: true
+        addedByProxy: true,
+        memberProvided: true
       });
+      expect(described.howToUse).toContain(
+        "The credential is the session owner's own sign-in. If the server rejects it, they have to reconnect their account for \"github\" in Agent Vault, which an admin can't do for them."
+      );
     });
 
     test("waits for the member while resolve would refuse their sign-in", () => {
@@ -320,7 +352,7 @@ describe("a bundle service's facts", () => {
         expect(waiting.personalValuesMissing).toBe(true);
         expect(describeSessionService(waiting)).toMatchObject({
           status: "needs-personal-values",
-          credential: { type: "none", addedByProxy: false }
+          credential: { type: "none", addedByProxy: false, memberProvided: true }
         });
       });
     });

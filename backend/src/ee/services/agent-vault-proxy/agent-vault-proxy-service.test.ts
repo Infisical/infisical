@@ -380,7 +380,7 @@ describe("the services list a session's agent reads", () => {
         type: "mcp",
         url: SERVER_URL,
         transport: "streamable-http",
-        credential: { type: "oauth", header: "Authorization", addedByProxy: true }
+        credential: { type: "oauth", header: "Authorization", addedByProxy: true, memberProvided: false }
       }
     ]);
     // Nothing in the list is ever sealed, so building it never derives a key.
@@ -802,8 +802,14 @@ describe("resolve for a service whose members sign in", () => {
       expect(resolved.personalValuesMissing).toBe(!ready);
       expect(listed).toMatchObject(
         ready
-          ? { status: "ready", credential: { type: "oauth", header: "Authorization", addedByProxy: true } }
-          : { status: "needs-personal-values", credential: { type: "none", addedByProxy: false } }
+          ? {
+              status: "ready",
+              credential: { type: "oauth", header: "Authorization", addedByProxy: true, memberProvided: true }
+            }
+          : {
+              status: "needs-personal-values",
+              credential: { type: "none", addedByProxy: false, memberProvided: true }
+            }
       );
     }
   });
