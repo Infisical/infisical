@@ -294,17 +294,18 @@ export const RuleTable = (props: RuleTableProps) => {
       grow: true,
       text: (row) => row.config.title,
       render: (row) => (
-        <Stack gap={0} style={{ minWidth: 0 }}>
-          <Inline gap={8} wrap={false}>
-            <span>{row.config.title}</span>
-            {errors?.[row.config.subject]?.[row.index] && <Badge tone="bad">Needs attention</Badge>}
-          </Inline>
+        <Inline gap={8} wrap={false} style={{ minWidth: 0 }}>
+          <span>{row.config.title}</span>
           {row.config.description && (
-            <Meta mono={false} style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+            <Meta
+              mono={false}
+              style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            >
               {row.config.description}
             </Meta>
           )}
-        </Stack>
+          {errors?.[row.config.subject]?.[row.index] && <Badge tone="bad">Needs attention</Badge>}
+        </Inline>
       )
     },
     {
