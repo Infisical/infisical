@@ -24,6 +24,7 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { Select } from "@app/components/v4/ui/select";
 import {
   OrgPermissionGroupActions,
@@ -33,7 +34,7 @@ import type { TGroupOrgMembership } from "@app/hooks/api/groups/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink, useGo } from "../navigation";
+import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved, toast } from "../toast";
 import { Gate, RESTRICTED, type Sort } from "../ui";
@@ -95,9 +96,9 @@ export const OrgGroupsTab = () => {
       sortable: true,
       grow: true,
       render: (group) => (
-        <AccessRowLink href={accessLinks.orgGroup(orgId, group.id)} title={group.name}>
+        <RowLink {...go.link(accessLinks.orgGroup(orgId, group.id))} title={group.name}>
           {group.name}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     {

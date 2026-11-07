@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PencilIcon, ServerIcon, WrenchIcon } from "lucide-react";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +21,9 @@ import {
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
@@ -30,14 +33,13 @@ import type { TProjectRole } from "@app/hooks/api/roles/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink, useGo } from "../navigation";
+import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
-import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
+import { Gate, RESTRICTED, usePagedList } from "../ui";
 import { RoleListRoleSheet, type RoleSheetMode } from "./role-list-role-sheet";
 import { useProjectScope } from "./scope";
 
-import shared from "../access.module.css";
 import styles from "./tokens-roles.module.css";
 
 type ProjectRoleRow = Omit<TProjectRole, "permissions">;
@@ -93,9 +95,9 @@ export const ProjectRolesTab = () => {
       sortable: true,
       grow: true,
       render: (role) => (
-        <AccessRowLink href={accessLinks.projectRole(scope, role.slug)} title={role.name}>
+        <RowLink {...go.link(accessLinks.projectRole(scope, role.slug))} title={role.name}>
           {role.name}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     {
@@ -164,25 +166,33 @@ export const ProjectRolesTab = () => {
 
   return (
     <Stack gap={16}>
-      <div className={shared.toolbar}>
-        <div className={shared.grow}>
-          <ListToolbar
-            search={list.search}
-            onSearch={list.setSearch}
+      <FilterBar
+        label="Project role filters"
+        fields={[]}
+        value={[]}
+        onChange={() => undefined}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search project roles..."
             placeholder="Search project roles..."
+            value={list.search}
+            onChange={(event) => list.setSearch(event.target.value)}
           />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button
-            variant="accent"
-            icon="plus"
-            disabled={!canCreate}
-            onClick={() => openSheet({ kind: "create" })}
-          >
-            Add project role
-          </Button>
-        </Gate>
-      </div>
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => openSheet({ kind: "create" })}
+            >
+              Add project role
+            </Button>
+          </Gate>
+        }
+      />
       <DataTable
         label="Project roles"
         rows={list.pageRows}

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import { Button } from "@app/components/v4/ui/button";
 import {
   DataTable,
@@ -15,8 +16,10 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
@@ -26,9 +29,9 @@ import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink } from "../navigation";
+import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
-import { Gate, ListToolbar, RESTRICTED, RoleBadges, type Sort } from "../ui";
+import { Gate, RESTRICTED, RoleBadges, type Sort } from "../ui";
 import { AddProjectIdentitySheet } from "./identity-add-sheet";
 import { useAuthMethodFlows } from "./identity-auth";
 import {
@@ -57,6 +60,7 @@ const useDebounced = <T,>(value: T, delay = 300) => {
 };
 
 export const ProjectIdentitiesTab = () => {
+  const go = useGo();
   const scope = useProjectScope();
   const { orgId, projectId } = scope;
   const access = useV4Adapter("access");
@@ -64,7 +68,11 @@ export const ProjectIdentitiesTab = () => {
   const { data: projectRoles = [] } = access.useProjectRoles(projectId);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search);
-  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const roleFilter = useMemo(
+    () => filters.find((filter) => filter.field === "role")?.values ?? [],
+    [filters]
+  );
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -110,8 +118,8 @@ export const ProjectIdentitiesTab = () => {
       render: (row) => {
         const lockout = lockoutText(row.identity);
         return (
-          <AccessRowLink
-            href={accessLinks.projectIdentity(scope, row.identity.id)}
+          <RowLink
+            {...go.link(accessLinks.projectIdentity(scope, row.identity.id))}
             title={row.identity.name}
           >
             {row.identity.name}
@@ -120,7 +128,7 @@ export const ProjectIdentitiesTab = () => {
                 <LockedBadge label={lockout} />
               </span>
             )}
-          </AccessRowLink>
+          </RowLink>
         );
       }
     },
@@ -218,39 +226,46 @@ export const ProjectIdentitiesTab = () => {
 
   return (
     <Stack gap={16}>
-      <div className={accessStyles.toolbar}>
-        <div className={accessStyles.grow}>
-          <ListToolbar
-            search={search}
-            onSearch={(value) => {
-              setSearch(value);
+      <FilterBar
+        label="Project machine identity filters"
+        fields={[
+          {
+            key: "role",
+            label: "Project role",
+            type: "multi-select",
+            options: projectRoles.map((role) => ({ value: role.slug, label: role.name }))
+          }
+        ]}
+        value={filters}
+        onChange={(next) => {
+          setFilters(next);
+          setPage(1);
+        }}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search project machine identities by name..."
+            placeholder="Search project machine identities by name..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
               setPage(1);
             }}
-            placeholder="Search project machine identities by name..."
-            filter={{
-              label: "Filter by project role",
-              options: projectRoles.map((role) => ({ value: role.slug, label: role.name })),
-              selected: roleFilter,
-              onToggle: (slug) => {
-                setRoleFilter((current) =>
-                  current.includes(slug) ? current.filter((r) => r !== slug) : [...current, slug]
-                );
-                setPage(1);
-              }
-            }}
           />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button
-            variant="accent"
-            icon="plus"
-            disabled={!canCreate}
-            onClick={() => setAdding(true)}
-          >
-            Add machine identity to project
-          </Button>
-        </Gate>
-      </div>
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => setAdding(true)}
+            >
+              Add machine identity to project
+            </Button>
+          </Gate>
+        }
+      />
       <DataTable
         label="Project machine identities"
         rows={rows}

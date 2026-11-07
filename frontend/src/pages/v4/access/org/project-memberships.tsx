@@ -30,6 +30,7 @@ import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -45,7 +46,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { productOf, projectBase } from "../../shell/navigation";
-import { AccessRowLink } from "../navigation";
+import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { formatDate, grantLabel, type RoleGrant } from "../roles";
 import { failed, saved } from "../toast";
@@ -271,8 +272,8 @@ const AddGroupProjectsSheet = ({
                   }
                 />
               }
+              pagination={list.pagination}
             />
-            {list.pagination}
           </Stack>
         </SheetBody>
       </SheetContent>
@@ -336,6 +337,7 @@ export const ProjectMembershipsSection = ({
   canEdit: boolean;
   canAdd?: boolean;
 }) => {
+  const go = useGo();
   const access = useV4Adapter("access");
   const orgId = useOrgId();
   const { projects } = useV4Session();
@@ -409,9 +411,9 @@ export const ProjectMembershipsSection = ({
       sortable: true,
       grow: true,
       render: (row) => (
-        <AccessRowLink href={projectHref(row)} title={row.project.name}>
+        <RowLink {...go.link(projectHref(row))} title={row.project.name}>
           {row.project.name}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     subject === "group"

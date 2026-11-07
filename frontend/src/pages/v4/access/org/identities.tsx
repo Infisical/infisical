@@ -2,6 +2,7 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { PencilIcon } from "lucide-react";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,7 @@ import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { StatusText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -51,7 +53,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { useV4Adapter } from "../../data/adapters";
 import { projectBase } from "../../shell/navigation";
 import { accessLinks } from "../links";
-import { AccessRowLink, useGo } from "../navigation";
+import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime } from "../roles";
 import { failed, saved } from "../toast";
@@ -70,7 +72,6 @@ import { CreateIdentitySheet } from "./create-identity-sheet";
 import { useDebounced } from "./use-debounced";
 
 import styles from "../access.module.css";
-import css from "./org.module.css";
 
 type ScopeTab = "organization" | "project" | "all";
 type Row = IdentityMembershipSearchResult;
@@ -198,12 +199,12 @@ export const OrgIdentitiesTab = () => {
       render: (row) => {
         const locked = row.identity.activeLockoutAuthMethods;
         return (
-          <AccessRowLink
-            href={
+          <RowLink
+            {...go.link(
               isProjectScoped(row)
                 ? projectHref(row)
                 : accessLinks.orgIdentity(orgId, row.identity.id)
-            }
+            )}
             title={row.identity.name}
           >
             {row.identity.name}
@@ -212,7 +213,7 @@ export const OrgIdentitiesTab = () => {
                 <LockBadge label={`Locked out: ${locked.map(authMethodName).join(", ")}`} />
               </span>
             )}
-          </AccessRowLink>
+          </RowLink>
         );
       }
     },
@@ -359,24 +360,12 @@ export const OrgIdentitiesTab = () => {
   return (
     <Stack gap={32}>
       <Stack gap={16}>
-        <div className={styles.toolbar}>
-          <div className={css.toolbarTabs}>
-            <Tabs
-              variant="segmented"
-              label="Machine identity scope"
-              value={scope}
-              onChange={(value) => {
-                setScope(value as ScopeTab);
-                setPage(1);
-              }}
-              tabs={[
-                { value: "organization", label: "Org", count: counts?.organization },
-                { value: "project", label: "Project", count: counts?.project },
-                { value: "all", label: "All", count: allCount }
-              ]}
-            />
-          </div>
-          <div className={styles.grow}>
+        <FilterBar
+          label="Machine identity filters"
+          fields={[]}
+          value={[]}
+          onChange={() => undefined}
+          search={
             <Input
               icon="search"
               placeholder="Search machine identities by name or role..."
@@ -387,18 +376,36 @@ export const OrgIdentitiesTab = () => {
                 setPage(1);
               }}
             />
-          </div>
-          <Gate allowed={canCreate}>
-            <Button
-              variant="accent"
-              icon="plus"
-              disabled={!canCreate}
-              onClick={() => setCreating(true)}
-            >
-              Create
-            </Button>
-          </Gate>
-        </div>
+          }
+          actions={
+            <>
+              <Tabs
+                variant="segmented"
+                label="Machine identity scope"
+                value={scope}
+                onChange={(value) => {
+                  setScope(value as ScopeTab);
+                  setPage(1);
+                }}
+                tabs={[
+                  { value: "organization", label: "Org", count: counts?.organization },
+                  { value: "project", label: "Project", count: counts?.project },
+                  { value: "all", label: "All", count: allCount }
+                ]}
+              />
+              <Gate allowed={canCreate}>
+                <Button
+                  variant="accent"
+                  icon="plus"
+                  disabled={!canCreate}
+                  onClick={() => setCreating(true)}
+                >
+                  Create
+                </Button>
+              </Gate>
+            </>
+          }
+        />
         <DataTable
           label="Organization machine identities"
           rows={rows}

@@ -27,11 +27,12 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink } from "../navigation";
+import { useGo } from "../navigation";
 import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
@@ -92,6 +93,7 @@ export const MemberRolesSection = ({
   projectId: string;
   isSelf: boolean;
 }) => {
+  const go = useGo();
   const scope = useProjectScope();
   const updateRoles = useV4Adapter("access").useUpdateProjectUserRoles();
   const { canEdit, assignable } = useMemberRoleAccess(projectId, member.user.email);
@@ -141,12 +143,12 @@ export const MemberRolesSection = ({
       header: "Role",
       grow: true,
       render: (grant) => (
-        <AccessRowLink
-          href={accessLinks.projectRole(scope, grantSlug(grant))}
+        <RowLink
+          {...go.link(accessLinks.projectRole(scope, grantSlug(grant)))}
           title={grantLabel(grant)}
         >
           {grantLabel(grant)}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     {

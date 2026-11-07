@@ -2,6 +2,7 @@ import { useState } from "react";
 import slugify from "@sindresorhus/slugify";
 import { IdCardIcon, PencilIcon, ServerIcon, WrenchIcon } from "lucide-react";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   OrgPermissionActions,
@@ -42,10 +44,10 @@ import type { TOrgRole } from "@app/hooks/api/roles/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink, useGo } from "../navigation";
+import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved } from "../toast";
-import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
+import { Gate, RESTRICTED, usePagedList } from "../ui";
 
 import styles from "../access.module.css";
 
@@ -219,7 +221,7 @@ export const OrgRolesTab = () => {
       sortable: true,
       grow: true,
       render: (role) => (
-        <AccessRowLink href={accessLinks.orgRole(orgId, role.id)} title={role.name}>
+        <RowLink {...go.link(accessLinks.orgRole(orgId, role.id))} title={role.name}>
           {role.name}
           {isDefault(role) && (
             <span className={styles.linkBadges}>
@@ -230,7 +232,7 @@ export const OrgRolesTab = () => {
               </Tooltip>
             </span>
           )}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     {
@@ -311,20 +313,33 @@ export const OrgRolesTab = () => {
 
   return (
     <Stack gap={16}>
-      <div className={styles.toolbar}>
-        <div className={styles.grow}>
-          <ListToolbar
-            search={list.search}
-            onSearch={list.setSearch}
+      <FilterBar
+        label="Organization role filters"
+        fields={[]}
+        value={[]}
+        onChange={() => undefined}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search organization roles..."
             placeholder="Search organization roles..."
+            value={list.search}
+            onChange={(event) => list.setSearch(event.target.value)}
           />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button variant="accent" icon="plus" disabled={!canCreate} onClick={() => setDialog({})}>
-            Create
-          </Button>
-        </Gate>
-      </div>
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => setDialog({})}
+            >
+              Create
+            </Button>
+          </Gate>
+        }
+      />
       <DataTable
         label="Organization roles"
         rows={list.pageRows}

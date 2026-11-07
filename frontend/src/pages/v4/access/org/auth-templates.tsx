@@ -24,6 +24,7 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -47,7 +48,7 @@ import {
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink } from "../navigation";
+import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED, type Sort } from "../ui";
@@ -352,6 +353,7 @@ const UsagesDialog = ({
   template: IdentityAuthTemplate;
   onClose: () => void;
 }) => {
+  const go = useGo();
   const orgId = useOrgId();
   const { data: usages = [], isPending } = useV4Adapter("access").useIdentityAuthTemplateUsages({
     templateId: template.id,
@@ -363,12 +365,12 @@ const UsagesDialog = ({
       header: "Identity name",
       grow: true,
       render: (usage) => (
-        <AccessRowLink
-          href={accessLinks.orgIdentity(orgId, usage.identityId)}
+        <RowLink
+          {...go.link(accessLinks.orgIdentity(orgId, usage.identityId))}
           title={usage.identityName}
         >
           {usage.identityName}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     { id: "id", header: "Identity ID", render: (usage) => <code>{usage.identityId}</code> }

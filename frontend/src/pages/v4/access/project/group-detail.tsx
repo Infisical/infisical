@@ -308,6 +308,7 @@ const GroupMembersCard = ({
             pagination={
               !query.isPending && totalCount > 0 ? (
                 <Pagination
+                  variant="compact"
                   page={page}
                   total={totalCount}
                   pageSize={perPage}

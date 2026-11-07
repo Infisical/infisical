@@ -345,6 +345,7 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
             pagination={
               !isPending && totalCount > 0 ? (
                 <Pagination
+                  variant="compact"
                   page={page}
                   total={totalCount}
                   pageSize={perPage}

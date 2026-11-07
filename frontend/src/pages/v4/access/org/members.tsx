@@ -26,6 +26,7 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { Select } from "@app/components/v4/ui/select";
 import { Separator } from "@app/components/v4/ui/separator";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -39,7 +40,7 @@ import type { TOrgUserAccess } from "@app/hooks/api/users/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink, useGo } from "../navigation";
+import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved } from "../toast";
@@ -248,8 +249,10 @@ export const OrgMembersTab = () => {
       sortable: true,
       grow: true,
       render: (member) => (
-        <AccessRowLink
-          href={member.membership ? accessLinks.orgMember(orgId, member.membership.id) : undefined}
+        <RowLink
+          {...go.link(
+            member.membership ? accessLinks.orgMember(orgId, member.membership.id) : undefined
+          )}
           title={displayName(member.user) ?? undefined}
         >
           {displayName(member.user) ?? <Muted>-</Muted>}
@@ -266,7 +269,7 @@ export const OrgMembersTab = () => {
               )}
             </span>
           )}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     {

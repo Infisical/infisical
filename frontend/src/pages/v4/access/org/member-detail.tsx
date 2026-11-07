@@ -41,6 +41,7 @@ import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import { Select } from "@app/components/v4/ui/select";
 import {
   OrgPermissionGroupActions,
@@ -53,7 +54,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink, useGo } from "../navigation";
+import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
@@ -155,6 +156,7 @@ const EditMembershipDialog = ({
 };
 
 const UserGroupsSection = ({ username }: { username: string }) => {
+  const go = useGo();
   const access = useV4Adapter("access");
   const orgId = useOrgId();
   const { permission } = useOrgPermission();
@@ -175,9 +177,9 @@ const UserGroupsSection = ({ username }: { username: string }) => {
       header: "Name",
       sortable: true,
       render: (group) => (
-        <AccessRowLink href={accessLinks.orgGroup(orgId, group.id)} title={group.name}>
+        <RowLink {...go.link(accessLinks.orgGroup(orgId, group.id))} title={group.name}>
           {group.name}
-        </AccessRowLink>
+        </RowLink>
       )
     }
   ];

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { UserRoundXIcon } from "lucide-react";
 
+import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import { Button } from "@app/components/v4/ui/button";
 import {
   DataTable,
@@ -10,7 +11,9 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
@@ -19,17 +22,16 @@ import type { TGroupMembership } from "@app/hooks/api/groups/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { AccessRowLink } from "../navigation";
+import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { formatDate } from "../roles";
-import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
+import { Gate, RESTRICTED, usePagedList } from "../ui";
 import { GroupModal, RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
 import { useProjectScope } from "./scope";
 
-import styles from "../access.module.css";
-
 export const ProjectGroupsTab = () => {
+  const go = useGo();
   const scope = useProjectScope();
   const { projectId } = scope;
   const { permission } = useProjectPermission(projectId);
@@ -56,9 +58,9 @@ export const ProjectGroupsTab = () => {
       sortable: true,
       grow: true,
       render: (row) => (
-        <AccessRowLink href={accessLinks.projectGroup(scope, row.group.id)} title={row.group.name}>
+        <RowLink {...go.link(accessLinks.projectGroup(scope, row.group.id))} title={row.group.name}>
           {row.group.name}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     {
@@ -96,25 +98,33 @@ export const ProjectGroupsTab = () => {
 
   return (
     <Stack gap={16}>
-      <div className={styles.toolbar}>
-        <div className={styles.grow}>
-          <ListToolbar
-            search={list.search}
-            onSearch={list.setSearch}
+      <FilterBar
+        label="Project group filters"
+        fields={[]}
+        value={[]}
+        onChange={() => undefined}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search project groups..."
             placeholder="Search project groups..."
+            value={list.search}
+            onChange={(event) => list.setSearch(event.target.value)}
           />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button
-            variant="accent"
-            icon="plus"
-            disabled={!canCreate}
-            onClick={() => setAdding(true)}
-          >
-            Add group to project
-          </Button>
-        </Gate>
-      </div>
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => setAdding(true)}
+            >
+              Add group to project
+            </Button>
+          </Gate>
+        }
+      />
       <DataTable
         label="Project groups"
         rows={list.pageRows}

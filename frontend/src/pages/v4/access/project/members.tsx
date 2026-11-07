@@ -14,6 +14,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
+import { RowLink } from "@app/components/v4/ui/row-link";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
@@ -25,7 +26,7 @@ import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
-import { AccessRowLink } from "../navigation";
+import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, Muted, RESTRICTED, RoleBadges, usePagedList } from "../ui";
@@ -37,6 +38,7 @@ import { useProjectScope } from "./scope";
 const SELF_REASON = "You cannot modify your own membership";
 
 export const ProjectMembersTab = () => {
+  const go = useGo();
   const scope = useProjectScope();
   const { orgId, projectId } = scope;
   const access = useV4Adapter("access");
@@ -100,12 +102,12 @@ export const ProjectMembersTab = () => {
       sortable: true,
       grow: true,
       render: (member) => (
-        <AccessRowLink
-          href={accessLinks.projectMember(scope, member.id)}
+        <RowLink
+          {...go.link(accessLinks.projectMember(scope, member.id))}
           title={personName(member.user) ?? undefined}
         >
           {personName(member.user) ?? <Muted>-</Muted>}
-        </AccessRowLink>
+        </RowLink>
       )
     },
     {
