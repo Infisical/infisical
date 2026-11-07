@@ -83,14 +83,19 @@ export const useDecryptedSessionLogs = (
   const accEventCountRef = useRef(0);
   const accBrokenRef = useRef<TBrokenChunkMarker[]>([]);
   const prevSessionIdRef = useRef(sessionId);
+  const verifiedManifestRef = useRef(playback?.manifest?.canonicalSha256);
 
-  if (prevSessionIdRef.current !== sessionId) {
+  if (
+    prevSessionIdRef.current !== sessionId ||
+    verifiedManifestRef.current !== playback?.manifest?.canonicalSha256
+  ) {
     sessionKeyRef.current = null;
     decryptedIndicesRef.current = new Set();
     accChunkEventsRef.current = new Map();
     accEventCountRef.current = 0;
     accBrokenRef.current = [];
     prevSessionIdRef.current = sessionId;
+    verifiedManifestRef.current = playback?.manifest?.canonicalSha256;
   }
 
   useEffect(() => {
@@ -150,7 +155,10 @@ export const useDecryptedSessionLogs = (
             sessionKey,
             projectId,
             sessionId,
-            fallbackUrlBuilder
+            fallbackUrlBuilder,
+            manifestDigest: playback.manifest?.canonical.chunks.find(
+              (entry) => entry.i === chunk.chunkIndex
+            )?.sha256
           });
 
           if (cancelled) return;
@@ -238,13 +246,17 @@ export const useDecryptedSessionLogs = (
             events.push(marker);
             brokenChunks.push(marker);
           } else {
+            const chunkToDecrypt = sortedChunks[chunkIdx];
             // eslint-disable-next-line no-await-in-loop
             const r = await decryptOneChunk({
-              chunk: sortedChunks[chunkIdx],
+              chunk: chunkToDecrypt,
               sessionKey,
               projectId,
               sessionId,
-              fallbackUrlBuilder
+              fallbackUrlBuilder,
+              manifestDigest: playback.manifest?.canonical.chunks.find(
+                (entry) => entry.i === chunkToDecrypt.chunkIndex
+              )?.sha256
             });
             chunkIdx += 1;
             if (r.ok) {

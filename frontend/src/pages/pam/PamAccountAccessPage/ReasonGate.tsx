@@ -13,7 +13,7 @@ import {
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
-import { PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
+import { PamAccountType, PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
 import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 
 type TAccessPolicy = {
@@ -67,8 +67,13 @@ export const SessionAccessGate = ({ account, children }: Props) => {
 
     try {
       await apiRequest.post<{ ticket: string }>(
-        `/api/v1/pam/accounts/${account.id}/web-access-ticket`,
-        { reason: trimmed || undefined }
+        account.accountType === PamAccountType.WebApp
+          ? "/api/v1/pam/web-app-sessions"
+          : `/api/v1/pam/accounts/${account.id}/web-access-ticket`,
+        {
+          ...(account.accountType === PamAccountType.WebApp ? { accountId: account.id } : {}),
+          reason: trimmed || undefined
+        }
       );
       setStep("done");
     } catch (err: unknown) {
@@ -92,7 +97,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
       setErrorMessage(getAccessErrorMessage(err, "Failed to access account. Please try again."));
       setStep("error");
     }
-  }, [reason, policy.requireMfa, account.id]);
+  }, [reason, policy.requireMfa, account.id, account.accountType]);
 
   const handleMfaVerify = useCallback(async () => {
     if (!mfaSessionId) return;
@@ -218,7 +223,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
           <TextArea
             placeholder="Optional, e.g. Running migration for release 2.4"
             rows={3}
-            maxLength={1000}
+            maxLength={account.accountType === PamAccountType.WebApp ? 500 : 1000}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             onKeyDown={(e) => {

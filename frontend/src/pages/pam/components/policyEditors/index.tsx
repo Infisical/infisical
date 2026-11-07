@@ -26,6 +26,14 @@ const CommandBlockingEditor = ({ accountType, ...props }: PolicyEditorProps) => 
 );
 
 export const POLICY_EDITORS: Partial<Record<PamPolicyType, ComponentType<PolicyEditorProps>>> = {
+  [PamPolicyType.WebReconnectGraceSeconds]: (props) => (
+    <DurationPolicyEditor
+      {...props}
+      placeholder="60 (defaults to 60 seconds if empty)"
+      min={0}
+      max={600}
+    />
+  ),
   [PamPolicyType.RequiresApproval]: BooleanPolicyEditor,
   [PamPolicyType.AllowAutoApproval]: BooleanPolicyEditor,
   [PamPolicyType.AllowBreakGlass]: BooleanPolicyEditor,

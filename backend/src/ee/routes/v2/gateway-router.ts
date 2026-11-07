@@ -137,6 +137,15 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         .object({
           capabilities: z
             .object({
+              webApp: z.boolean().optional(),
+              webAppRuntime: z
+                .object({
+                  image: z.string().max(512),
+                  chromium: z.string().max(128),
+                  lastCheckedAt: z.string().max(64),
+                  error: z.string().max(500).optional()
+                })
+                .optional(),
               pkcs11: z.boolean().optional(),
               pkcs11MlDsa: z.boolean().optional(),
               sessionLogMaskingBuiltInDetection: z.boolean().optional(),

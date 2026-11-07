@@ -545,7 +545,8 @@ export const gatewayV2ServiceFactory = ({
     host,
     port,
     actorMetadata,
-    clientSupportsDirect
+    clientSupportsDirect,
+    webApp
   }: {
     gatewayId: string;
     sessionId: string;
@@ -555,6 +556,7 @@ export const gatewayV2ServiceFactory = ({
     port?: number;
     actorMetadata: { id: string; type: ActorType; name: string };
     clientSupportsDirect: boolean;
+    webApp?: { allocationGen: number; controllerGen: number; actorId: string };
   }) => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -649,7 +651,8 @@ export const gatewayV2ServiceFactory = ({
       Buffer.from(
         JSON.stringify({
           sessionId,
-          resourceType: accountType // "resourceType" name needed to support current CLI version
+          resourceType: accountType, // "resourceType" name needed to support current CLI version
+          ...(webApp ? { webApp } : {})
         })
       )
     );
@@ -1084,6 +1087,8 @@ export const gatewayV2ServiceFactory = ({
   }: {
     orgPermission: OrgServiceActor;
     capabilities?: {
+      webApp?: boolean;
+      webAppRuntime?: { image: string; chromium: string; lastCheckedAt: string; error?: string };
       pkcs11?: boolean;
       pkcs11MlDsa?: boolean;
       sessionLogMaskingBuiltInDetection?: boolean;

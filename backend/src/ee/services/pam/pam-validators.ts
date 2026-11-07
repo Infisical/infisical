@@ -29,6 +29,7 @@ import {
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "../pam-session-recording/pam-recording-storage-factory";
 import { normalizeKeyPrefix, TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
+import { PamAccountType } from "./pam-enums";
 import { TActorContext } from "./pam-permission";
 
 export type TPamValidatorDeps = {
@@ -145,7 +146,8 @@ export const validateRecordingS3Config = async (
   deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsService">,
   connectionId: string,
   s3Config: { bucket: string; region?: string; keyPrefix?: string },
-  ctx: TActorContext
+  ctx: TActorContext,
+  accountType?: PamAccountType
 ): Promise<TPamRecordingResolvedConfig> => {
   const raw = await enforceAppConnectionConnect(deps, connectionId, ctx);
 
@@ -158,8 +160,10 @@ export const validateRecordingS3Config = async (
     ...(await resolveS3RecordingAccess(appConnection, s3Config.region))
   };
 
-  const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[PamRecordingStorageBackend.AwsS3]();
-  await provider.validateConfig({ config: resolvedConfig });
+  if (accountType !== PamAccountType.WebApp) {
+    const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[PamRecordingStorageBackend.AwsS3]();
+    await provider.validateConfig({ config: resolvedConfig });
+  }
 
   return resolvedConfig;
 };
@@ -174,7 +178,8 @@ export const resolveOverridesS3Config = async (
   effectiveConnectionId: string | null | undefined,
   ctx: TActorContext,
   // an account that overrides only the connection still records to the bucket it inherits
-  inheritedS3Config?: TPamAccountSettingsOverrides["recordingS3Config"]
+  inheritedS3Config?: TPamAccountSettingsOverrides["recordingS3Config"],
+  accountType?: PamAccountType
 ): Promise<TPamRecordingResolvedConfig | null> => {
   const s3Config = settingsOverrides?.recordingS3Config ?? inheritedS3Config;
   if (!s3Config) return null;
@@ -185,7 +190,7 @@ export const resolveOverridesS3Config = async (
     });
   }
 
-  return validateRecordingS3Config(deps, effectiveConnectionId, s3Config, ctx);
+  return validateRecordingS3Config(deps, effectiveConnectionId, s3Config, ctx, accountType);
 };
 
 export const mintCorsProbeUrl = async (resolvedConfig: TPamRecordingResolvedConfig): Promise<string | null> => {

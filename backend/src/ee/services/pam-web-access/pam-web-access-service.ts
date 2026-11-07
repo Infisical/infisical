@@ -192,6 +192,9 @@ export const pamWebAccessServiceFactory = ({
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
+    if (account.accountType === PamAccountType.WebApp) {
+      throw new BadRequestError({ message: "Web App accounts open through the Web App session API" });
+    }
 
     if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });

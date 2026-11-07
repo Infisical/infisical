@@ -15,7 +15,8 @@ import {
 } from "../pam-account-template/pam-account-template-schemas";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
+import { TPamWebAppSessionDAL } from "../pam-web-app-session/pam-web-app-session-dal";
+import { PamAccountType, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { resolveS3RecordingAccess } from "./aws-s3/aws-s3-provider-factory";
@@ -25,8 +26,11 @@ import { PamRecordingStorageBackend } from "./pam-recording-enums";
 import { decryptSessionKey, verifyGatewayUploadToken } from "./pam-recording-secrets";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "./pam-recording-storage-factory";
 import { buildExternalChunkObjectKey, TPamRecordingResolvedConfig } from "./pam-recording-storage-types";
+import { TPamWebRecordingService } from "./pam-web-recording-service";
 
 type TPamSessionChunkServiceFactoryDep = {
+  pamWebAppSessionDAL: TPamWebAppSessionDAL;
+  webRecordingService: TPamWebRecordingService;
   pamSessionDAL: TPamSessionDALFactory;
   pamSessionEventChunkDAL: TPamSessionEventChunkDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
@@ -44,6 +48,8 @@ function assertGatewayActor(actor: OrgServiceActor) {
 }
 
 export const pamSessionChunkServiceFactory = ({
+  pamWebAppSessionDAL,
+  webRecordingService,
   pamSessionDAL,
   pamSessionEventChunkDAL,
   pamAccountDAL,
@@ -133,12 +139,14 @@ export const pamSessionChunkServiceFactory = ({
       chunkIndex,
       ciphertextBytes,
       isKeyframe,
+      ciphertextSha256Base64,
       uploadToken
     }: {
       sessionId: string;
       chunkIndex: number;
       ciphertextBytes: number;
       isKeyframe?: boolean;
+      ciphertextSha256Base64?: string;
       uploadToken: string;
     },
     actor: OrgServiceActor
@@ -151,8 +159,13 @@ export const pamSessionChunkServiceFactory = ({
       });
     }
 
-    const session = await pamSessionDAL.findById(sessionId);
+    const session = await pamSessionDAL.findById(sessionId, pamWebAppSessionDAL.db);
     if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
+    if (session.accountType === PamAccountType.WebApp)
+      return webRecordingService.requestPresignedPut(
+        { sessionId, chunkIndex, ciphertextBytes, ciphertextSha256Base64, uploadToken },
+        actor
+      );
 
     if (actor.type === ActorType.GATEWAY && session.gatewayId && session.gatewayId !== actor.id) {
       throw new ForbiddenRequestError({ message: "Gateway not authorized for this session" });
@@ -195,6 +208,7 @@ export const pamSessionChunkServiceFactory = ({
       ivBase64,
       keyframeObjectKey,
       keyframeSizeBytes,
+      objectVersionId,
 
       // For Postgres backend, the gateway POSTs the ciphertext bytes inline
       ciphertext,
@@ -209,6 +223,7 @@ export const pamSessionChunkServiceFactory = ({
       ivBase64: string;
       keyframeObjectKey?: string;
       keyframeSizeBytes?: number;
+      objectVersionId?: string;
       ciphertext?: Buffer;
       uploadToken: string;
     },
@@ -216,8 +231,24 @@ export const pamSessionChunkServiceFactory = ({
   ) => {
     assertGatewayActor(actor);
 
-    const session = await pamSessionDAL.findById(sessionId);
+    const session = await pamSessionDAL.findById(sessionId, pamWebAppSessionDAL.db);
     if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
+    if (session.accountType === PamAccountType.WebApp)
+      return webRecordingService.recordChunk(
+        {
+          sessionId,
+          chunkIndex,
+          startElapsedMs,
+          endElapsedMs,
+          ciphertextSha256Base64,
+          ciphertextBytes,
+          ivBase64,
+          ciphertext,
+          objectVersionId,
+          uploadToken
+        },
+        actor
+      );
 
     if (actor.type === ActorType.GATEWAY && session.gatewayId && session.gatewayId !== actor.id) {
       throw new ForbiddenRequestError({ message: "Gateway not authorized for this session" });

@@ -11,7 +11,8 @@ export const Route = createFileRoute(
   validateSearch: zodValidator(
     z.object({
       // Target host chosen at launch, for account types that allow multiple hosts
-      host: z.string().optional()
+      host: z.string().optional(),
+      sessionId: z.string().uuid().optional()
     })
   )
 });

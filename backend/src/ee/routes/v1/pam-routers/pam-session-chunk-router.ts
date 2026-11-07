@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
+import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -17,6 +18,7 @@ const ChunkPlaybackSchema = z.object({
   endElapsedMs: z.number(),
   storageBackend: z.nativeEnum(PamRecordingStorageBackend),
   externalChunkObjectKey: z.string().nullable(),
+  objectVersionId: z.string().nullable().optional(),
   ciphertextSha256: z.string(),
   ciphertextBytes: z.number(),
   iv: z.string(),
@@ -36,15 +38,25 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       body: z.object({
         chunkIndex: z.number().int().nonnegative().max(999999).describe("Sequential chunk index"),
         ciphertextBytes: z.number().int().positive().describe("Size of the encrypted chunk in bytes"),
+        ciphertextSha256Base64: z
+          .string()
+          .length(44)
+          .optional()
+          .describe("SHA-256 checksum of Web App ciphertext, base64 encoded"),
         isKeyframe: z.boolean().optional().describe("Whether this chunk is a keyframe")
       }),
       response: {
-        200: z.object({
-          url: z.string(),
-          objectKey: z.string(),
-          method: z.literal("PUT"),
-          expiresInSeconds: z.number()
-        })
+        200: z.union([
+          z.object({
+            url: z.string(),
+            objectKey: z.string(),
+            method: z.literal("PUT"),
+            expiresInSeconds: z.number(),
+            headers: z.record(z.string()).optional(),
+            alreadyUploaded: z.literal(false).optional()
+          }),
+          z.object({ alreadyUploaded: z.literal(true), objectVersionId: z.string().nullable() })
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
@@ -71,6 +83,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
             sessionId: req.params.sessionId,
             chunkIndex: req.body.chunkIndex,
             ciphertextBytes: req.body.ciphertextBytes,
+            ciphertextSha256Base64: req.body.ciphertextSha256Base64,
             isKeyframe: req.body.isKeyframe,
             uploadToken
           },
@@ -97,6 +110,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
   server.route({
     method: "POST",
     url: "/:sessionId/chunks",
+    bodyLimit: 32 * 1024 * 1024,
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "pamSessionRecordChunk",
@@ -110,6 +124,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         ciphertextSha256: z.string().describe("SHA-256 hash of the ciphertext"),
         ciphertextBytes: z.number().int().positive().describe("Size of the encrypted chunk in bytes"),
         iv: z.string().describe("Initialization vector for decryption"),
+        objectVersionId: z.string().min(1).max(1024).optional().describe("Exact object version returned by storage"),
         keyframeObjectKey: z.string().nullable().optional().describe("Object key for the keyframe in storage"),
         keyframeSizeBytes: z.number().int().nonnegative().nullable().optional().describe("Size of the keyframe"),
         ciphertext: z.string().optional().describe("Base64-encoded ciphertext for inline storage")
@@ -159,6 +174,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
             ciphertextSha256Base64: req.body.ciphertextSha256,
             ciphertextBytes: req.body.ciphertextBytes,
             ivBase64: req.body.iv,
+            objectVersionId: req.body.objectVersionId,
             keyframeObjectKey: req.body.keyframeObjectKey ?? undefined,
             keyframeSizeBytes: req.body.keyframeSizeBytes ?? undefined,
             ciphertext: ciphertextBuf,
@@ -211,18 +227,76 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       description: "Get playback data for a session recording",
       tags: [ApiDocsTags.PamSessions],
       params: z.object({ sessionId: z.string().uuid().describe("The ID of the session") }),
+      querystring: z.object({
+        verifyCursor: z.coerce
+          .number()
+          .int()
+          .min(0)
+          .max(10000)
+          .optional()
+          .describe("Offset for the next page of recording availability checks")
+      }),
       response: {
         200: z.object({
           sessionComplete: z.boolean(),
           sessionKey: z.string(),
           projectId: z.string(),
           storageBackend: z.string(),
-          chunks: z.array(ChunkPlaybackSchema)
+          chunks: z.array(ChunkPlaybackSchema),
+          manifest: z
+            .object({
+              status: z.enum(["complete", "incomplete", "mismatch"]),
+              statusDetail: z.string().nullable(),
+              canonicalSha256: z.string(),
+              signature: z.string().nullable(),
+              signingKeyId: z.string().nullable(),
+              alg: z.string().nullable(),
+              finalizedAt: z.date(),
+              canonical: z.unknown()
+            })
+            .nullable()
+            .optional(),
+          coverage: z
+            .object({
+              expectedChunks: z.number(),
+              presentChunks: z.number(),
+              missingIndices: z.array(z.number()),
+              tailSealed: z.boolean(),
+              gaps: z.array(z.object({ fromElapsedUs: z.number(), toElapsedUs: z.number(), reason: z.string() }))
+            })
+            .optional(),
+          integrity: z
+            .object({ manifestStatus: z.string(), manifestSignatureVerified: z.boolean(), checkpointCount: z.number() })
+            .optional(),
+          availability: z
+            .object({
+              verifiedChunks: z.number(),
+              checkedChunks: z.number(),
+              verifyCursor: z.number().nullable(),
+              storageBackend: z.string(),
+              protection: z.literal("participant-level"),
+              retentionLock: z.literal("not-verified"),
+              versionPinned: z.boolean()
+            })
+            .optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const session = await server.services.pamSession.getSessionById(req.params.sessionId, {
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      if (session?.accountType === PamAccountType.WebApp)
+        return server.services.pamWebRecording.getPlayback(
+          req.params.sessionId,
+          req.permission,
+          req.query.verifyCursor ?? 0,
+          req.auditLogInfo
+        );
       const result = await server.services.pamSessionChunk.getSessionPlayback(req.params.sessionId, req.permission);
       return {
         sessionComplete: result.sessionComplete,

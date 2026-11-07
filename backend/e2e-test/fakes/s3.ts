@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { S3ServiceException } from "@aws-sdk/client-s3";
 
 import type * as RealS3 from "../../src/lib/aws/s3";
@@ -16,16 +18,22 @@ type TAccessFailure = "unlistable" | "unwritable";
 type TFakeState = {
   objects: Map<string, Buffer>;
   tags: Map<string, string>;
+  versions: Map<string, string | null>;
+  versionedObjects: Map<string, Buffer>;
+  checksumOverrides: Map<string, string>;
   accessFailure: TAccessFailure | null;
   isListFailing: boolean;
   presignedPuts: Map<string, { bucket: string; key: string; contentLength: number; tagging?: string }>;
-  presignedGets: Map<string, { bucket: string; key: string }>;
+  presignedGets: Map<string, { bucket: string; key: string; versionId?: string }>;
   nextUrlId: number;
 };
 
 const freshState = (): TFakeState => ({
   objects: new Map(),
   tags: new Map(),
+  versions: new Map(),
+  versionedObjects: new Map(),
+  checksumOverrides: new Map(),
   accessFailure: null,
   isListFailing: false,
   presignedPuts: new Map(),
@@ -58,9 +66,14 @@ export const fakeS3Bucket = {
   },
 
   // Store an object no link was minted for, as someone with access to the bucket could.
-  putDirect: (bucket: string, key: string, body: Buffer) => {
-    state.objects.set(objectId(bucket, key), body);
+  putDirect: (bucket: string, key: string, body: Buffer, versionId: string | null = null) => {
+    const id = objectId(bucket, key);
+    state.objects.set(id, body);
+    state.versions.set(id, versionId);
+    if (versionId && versionId !== "null") state.versionedObjects.set(`${id}@${versionId}`, body);
   },
+  setObjectChecksum: (bucket: string, key: string, checksum: string) =>
+    state.checksumOverrides.set(objectId(bucket, key), checksum),
 
   put: (url: string, body: Buffer) => {
     const target = state.presignedPuts.get(url);
@@ -82,7 +95,11 @@ export const fakeS3Bucket = {
   get: (url: string) => {
     const target = state.presignedGets.get(url);
     if (!target) throw new Error(`No presigned GET was minted for ${url}`);
-    return state.objects.get(objectId(target.bucket, target.key)) ?? null;
+    return (
+      (target.versionId
+        ? state.versionedObjects.get(`${objectId(target.bucket, target.key)}@${target.versionId}`)
+        : state.objects.get(objectId(target.bucket, target.key))) ?? null
+    );
   },
 
   objectKeys: (bucket: string) =>
@@ -100,6 +117,23 @@ export const createS3Bucket = ({ bucket }: Parameters<typeof RealS3.createS3Buck
   };
 
   return {
+    headObject: async (key: string, versionId?: string) => {
+      const id = objectId(bucket, key);
+      const body = versionId ? state.versionedObjects.get(`${id}@${versionId}`) : state.objects.get(id);
+      if (!body)
+        throw new S3ServiceException({
+          name: "NotFound",
+          $fault: "client",
+          $metadata: { httpStatusCode: 404 },
+          message: "Object not found"
+        });
+      return {
+        ContentLength: body.length,
+        VersionId: versionId ?? state.versions.get(id) ?? undefined,
+        ChecksumSHA256: state.checksumOverrides.get(id) ?? createHash("sha256").update(body).digest("base64"),
+        $metadata: { httpStatusCode: 200 }
+      };
+    },
     presignCreateOnlyPut: ({
       key,
       contentLength,
@@ -114,9 +148,9 @@ export const createS3Bucket = ({ bucket }: Parameters<typeof RealS3.createS3Buck
       return Promise.resolve(url);
     },
 
-    presignGet: (key: string) => {
+    presignGet: (key: string, _expiresInSeconds: number, versionId?: string) => {
       const url = mintUrl("get", key);
-      state.presignedGets.set(url, { bucket, key });
+      state.presignedGets.set(url, { bucket, key, versionId });
       return Promise.resolve(url);
     },
 
@@ -173,6 +207,7 @@ export const assertFakeMatchesRealS3: Pick<typeof RealS3, "createS3Bucket"> = { 
 
 export const assertFakeBucketShapeMatches: { [K in keyof RealS3.TS3Bucket]: unknown } = {
   presignCreateOnlyPut: null,
+  headObject: null,
   presignGet: null,
   listPage: null,
   checkListAccess: null,

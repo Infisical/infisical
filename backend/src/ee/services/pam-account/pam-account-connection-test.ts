@@ -27,6 +27,7 @@ export enum TestConnectionMode {
   SSH = "ssh",
   Snowflake = "snowflake",
   ClickHouse = "clickhouse",
+  WebAppTcp = "web-app-tcp",
   Tcp = "tcp"
 }
 
@@ -125,7 +126,7 @@ export type TestConnectionRequest =
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
     }
-  | { mode: TestConnectionMode.Tcp };
+  | { mode: TestConnectionMode.Tcp | TestConnectionMode.WebAppTcp };
 
 const SQL_DIALECTS = {
   [PamAccountType.Postgres]: "postgres",
@@ -137,7 +138,9 @@ const SQL_DIALECTS = {
 const tcp = (host: string, port: number) => ({ host, port, request: { mode: TestConnectionMode.Tcp } as const });
 
 export const testVerifiesCredential = (request: TestConnectionRequest): boolean =>
-  request.mode !== TestConnectionMode.Tcp && !("probeOnly" in request && request.probeOnly);
+  request.mode !== TestConnectionMode.Tcp &&
+  request.mode !== TestConnectionMode.WebAppTcp &&
+  !("probeOnly" in request && request.probeOnly);
 
 export const exceedsOraclePasswordLimit = (
   accountType: PamAccountType,
@@ -439,6 +442,8 @@ export const buildGatewayConnectionTest = async (
     }
     case PamAccountType.Windows:
       return tcp(host, port);
+    case PamAccountType.WebApp:
+      return { host, port, request: { mode: TestConnectionMode.WebAppTcp } };
     default:
       return null;
   }

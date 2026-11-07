@@ -2,6 +2,8 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAppConnections } from "@app/db/schemas";
+import { PAM_RECORDING_STORAGE_TABLE } from "@app/ee/services/pam-web-app-session/pam-web-app-session-types";
+import { ConflictError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import { transformUsageToProjects } from "@app/services/app-connection/app-connection-fns";
 
@@ -15,6 +17,15 @@ type AppConnectionFindFilter = Parameters<typeof buildFindFilter<TAppConnections
 
 export const appConnectionDALFactory = (db: TDbClient) => {
   const appConnectionOrm = ormify(db, TableName.AppConnection);
+  const deleteById = (id: string, tx?: Knex) => {
+    const remove = async (conn: Knex) => {
+      await conn(TableName.AppConnection).where({ id }).forUpdate().first();
+      if (await conn(PAM_RECORDING_STORAGE_TABLE).where({ connectionId: id }).first())
+        throw new ConflictError({ message: "This connection stores PAM session recordings" });
+      return appConnectionOrm.deleteById(id, conn);
+    };
+    return tx ? remove(tx) : db.transaction(remove);
+  };
 
   const findWithProjectDetails = async (filter: AppConnectionFindFilter, tx?: Knex) => {
     const query = (tx || db.replicaNode())(TableName.AppConnection)
@@ -205,6 +216,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
 
   return {
     ...appConnectionOrm,
+    deleteById,
     findAppConnectionUsageById,
     findWithProjectDetails,
     findByGatewayId,

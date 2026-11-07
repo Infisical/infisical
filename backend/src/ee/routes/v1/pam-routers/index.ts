@@ -12,9 +12,17 @@ import {
 import { registerPamProjectRouter } from "./pam-project-router";
 import { registerPamResourceRoleRouter } from "./pam-resource-role-router";
 import { registerPamSessionChunkRouter } from "./pam-session-chunk-router";
-import { registerPamSessionRouter, registerPamWebAccessRouter } from "./pam-session-router";
+import {
+  registerPamSessionRouter,
+  registerPamSessionAccessRouter,
+  registerPamWebAccessRouter
+} from "./pam-session-router";
+import { registerPamWebAppSessionRouter, registerPamWebAppStateRouter } from "./pam-web-app-session-router";
+import { registerPamWebRecordingRouter, registerPamRecordingSigningKeysRouter } from "./pam-web-recording-router";
 
 export const registerPamRouters = async (server: FastifyZodProvider) => {
+  await server.register(registerPamWebAppSessionRouter, { prefix: "/web-app-sessions" });
+  await server.register(registerPamRecordingSigningKeysRouter);
   await server.register(registerPamProjectRouter, { prefix: "/project" });
   await server.register(registerPamAccountTemplateRouter, { prefix: "/account-templates" });
   await server.register(
@@ -39,7 +47,10 @@ export const registerPamRouters = async (server: FastifyZodProvider) => {
   await server.register(
     async (sessionServer) => {
       await sessionServer.register(registerPamSessionRouter);
+      await sessionServer.register(registerPamSessionAccessRouter);
       await sessionServer.register(registerPamSessionChunkRouter);
+      await sessionServer.register(registerPamWebAppStateRouter);
+      await sessionServer.register(registerPamWebRecordingRouter);
     },
     { prefix: "/sessions" }
   );

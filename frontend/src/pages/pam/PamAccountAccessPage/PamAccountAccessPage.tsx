@@ -9,9 +9,10 @@ import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataE
 import { AwsIamAccessContent } from "./AwsIamAccessContent";
 import { DisconnectedScreen } from "./DisconnectedScreen";
 import { RdpLauncher } from "./RdpLauncher";
-import { SessionAccessGate } from "./ReasonGate";
+import { SessionAccessGate, resolveAccessPolicy } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
+import { WebAppWorkspace } from "./webapp/WebAppWorkspace";
 
 const TerminalContent = ({
   account,
@@ -97,7 +98,10 @@ const PageContent = () => {
   };
 
   const { accountId } = params;
-  const { host: preselectedHost } = useSearch({ strict: false }) as { host?: string };
+  const { host: preselectedHost, sessionId } = useSearch({ strict: false }) as {
+    host?: string;
+    sessionId?: string;
+  };
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
   if (isPending) {
@@ -121,6 +125,18 @@ const PageContent = () => {
 
   if (account.accountType === PamAccountType.AwsIam) {
     return <AwsIamAccessContent account={account} />;
+  }
+  if (account.accountType === PamAccountType.WebApp) {
+    const policy = resolveAccessPolicy(account);
+    if (sessionId || (!policy.requireReason && !policy.requireMfa))
+      return <WebAppWorkspace account={account} initialSessionId={sessionId} />;
+    return (
+      <SessionAccessGate account={account}>
+        {({ reason, mfaSessionId }) => (
+          <WebAppWorkspace account={account} reason={reason} mfaSessionId={mfaSessionId} />
+        )}
+      </SessionAccessGate>
+    );
   }
 
   if (account.accountType === PamAccountType.SSH) {

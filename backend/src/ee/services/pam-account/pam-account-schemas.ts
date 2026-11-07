@@ -14,6 +14,12 @@ import {
 } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import {
+  WebAppConnectionDetailsSchema,
+  WebAppCredentialsSchema,
+  destinationFromUrl,
+  normalizeWebAppConnectionDetails
+} from "../pam-web-app-session/pam-web-app-config";
+import {
   GcpServiceAccountAuthMethod,
   PamAccountType,
   PamPostgresAuthMethod,
@@ -109,6 +115,42 @@ export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.133";
 
 export const ACCOUNT_TYPE_CONFIGS = {
+  [PamAccountType.WebApp]: {
+    name: "Web App",
+    icon: "Web.png",
+    requiresGateway: true,
+    connectionDetails: WebAppConnectionDetailsSchema,
+    credentials: WebAppCredentialsSchema,
+    sanitizedCredentials: z.object({
+      authMethod: z.enum(["none", "basic-auth"]),
+      username: z.string().max(255).optional()
+    }),
+    ui: {
+      startUrl: {
+        label: "Start URL",
+        description:
+          "The session browser has no external network interface. Its only route is the gateway connector, which checks allowed destinations. Isolation relies on the gateway’s container runtime."
+      },
+      allowedDestinations: {
+        label: "Allowed destinations",
+        widget: PamFieldWidget.Textarea,
+        description:
+          "One per line, scheme://host[:port]; *.example.internal allows one subdomain level. The connector checks destinations; it does not inspect the protocol inside an encrypted tunnel."
+      },
+      extraDenyCidrs: { label: "Additional denied ranges", widget: PamFieldWidget.Textarea },
+      allowTypedNavigation: { label: "Allow typed navigation" },
+      authMethod: {
+        label: "Sign-in method",
+        defaultValue: "none",
+        options: [
+          { label: "In-app sign-in", value: "none" },
+          { label: "Basic authentication", value: "basic-auth" }
+        ]
+      },
+      username: { label: "Username" },
+      password: { label: "Password", widget: PamFieldWidget.Password, secret: true }
+    }
+  },
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
     icon: "Postgres.png",
@@ -1051,6 +1093,7 @@ const getAccountTypeConfig = (accountType: PamAccountType | string) => {
 };
 
 export const validateConnectionDetails = (accountType: PamAccountType, data: unknown) => {
+  if (accountType === PamAccountType.WebApp) return normalizeWebAppConnectionDetails(data);
   return getAccountTypeConfig(accountType).connectionDetails.parse(data) as z.output<
     (typeof ACCOUNT_TYPE_CONFIGS)[TSupportedAccountType]["connectionDetails"]
   >;
@@ -1078,6 +1121,10 @@ export const extractGatewayTarget = async (
   const validated = validateConnectionDetails(accountType, rawConnectionDetails);
 
   switch (accountType) {
+    case PamAccountType.WebApp: {
+      const { host, port } = destinationFromUrl((validated as { startUrl: string }).startUrl);
+      return { host, port };
+    }
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
@@ -1171,8 +1218,12 @@ export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccou
 
 export const gatewaySupportsAccountType = (
   accountType: PamAccountType,
-  supportedTypes: string[] | undefined
-): boolean => !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
+  supportedTypes: string[] | undefined,
+  capabilities?: { webApp?: boolean } | null
+): boolean =>
+  accountType === PamAccountType.WebApp
+    ? Boolean(capabilities?.webApp && supportedTypes?.includes(PamAccountType.WebApp))
+    : !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
 
 export const webAccessUnavailableReason = (
   accountType: PamAccountType,
@@ -1535,7 +1586,7 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     type,
     name: config.name,
     icon: config.icon,
-    supportsWebAccess: webAccessSupportedTypes.has(type),
+    supportsWebAccess: type === PamAccountType.WebApp || webAccessSupportedTypes.has(type),
     requiresGateway: accountTypeRequiresGateway(type),
     supportsDependencies: isWindowsRotatableType(type),
     connectionStringSchemes: accountTypeConnectionStringSchemes(type),

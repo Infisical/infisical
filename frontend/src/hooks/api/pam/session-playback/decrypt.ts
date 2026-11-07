@@ -107,6 +107,7 @@ export type DecryptChunkInput = {
   projectId: string;
   sessionId: string;
   fallbackUrlBuilder: (chunkIndex: number) => string;
+  manifestDigest?: string;
 };
 
 export const decryptOneChunk = async ({
@@ -114,7 +115,8 @@ export const decryptOneChunk = async ({
   sessionKey,
   projectId,
   sessionId,
-  fallbackUrlBuilder
+  fallbackUrlBuilder,
+  manifestDigest
 }: DecryptChunkInput): Promise<DecryptedChunkResult> => {
   if (chunk.ciphertextBytes > PAM_PLAYBACK_MAX_CHUNK_BYTES) {
     return {
@@ -160,6 +162,14 @@ export const decryptOneChunk = async ({
 
   const actualShaBuf = await crypto.subtle.digest("SHA-256", body);
   const actualSha = new Uint8Array(actualShaBuf);
+  if (manifestDigest && !timingSafeEqual(base64ToBytes(manifestDigest), actualSha)) {
+    return {
+      ok: false,
+      chunkIndex: chunk.chunkIndex,
+      reason: "sha256",
+      message: `Chunk ${chunk.chunkIndex} failed verification`
+    };
+  }
   if (!timingSafeEqual(expectedSha, actualSha)) {
     return {
       ok: false,

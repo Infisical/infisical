@@ -157,10 +157,13 @@ import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam
 import { pamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
 import { pamSessionEventChunkDALFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-dal";
 import { pamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
+import { pamWebRecordingServiceFactory } from "@app/ee/services/pam-session-recording/pam-web-recording-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionExpirationServiceFactory } from "@app/ee/services/pam-session/pam-session-expiration-queue";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
+import { pamWebAppSessionDALFactory } from "@app/ee/services/pam-web-app-session/pam-web-app-session-dal";
+import { pamWebAppSessionServiceFactory } from "@app/ee/services/pam-web-app-session/pam-web-app-session-service";
 import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -799,6 +802,7 @@ export const registerRoutes = async (
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
   const userNotificationDAL = userNotificationDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
+  const pamWebAppSessionDAL = pamWebAppSessionDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
 
   const deferredGatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails"> = {
@@ -2443,6 +2447,9 @@ export const registerRoutes = async (
   });
 
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
+    pamWebAppSessionDAL,
+    auditLogService,
+    cronJob,
     queueService,
     pamSessionDAL,
     projectDAL,
@@ -4445,6 +4452,7 @@ export const registerRoutes = async (
   });
 
   const pamSessionService = pamSessionServiceFactory({
+    pamWebAppSessionDAL,
     pamSessionDAL,
     pamAccountDAL,
     pamFolderDAL,
@@ -4462,13 +4470,46 @@ export const registerRoutes = async (
     telemetryService
   });
 
+  const pamWebRecordingService = pamWebRecordingServiceFactory({
+    dal: pamWebAppSessionDAL,
+    kmsService,
+    kmsDAL,
+    keyStore,
+    appConnectionDAL,
+    pamSessionService,
+    auditLogService
+  });
   const pamSessionChunkService = pamSessionChunkServiceFactory({
+    pamWebAppSessionDAL,
+    webRecordingService: pamWebRecordingService,
     pamSessionDAL,
     pamSessionEventChunkDAL,
     pamAccountDAL,
     permissionService,
     kmsService,
     appConnectionDAL
+  });
+
+  const pamWebAppSessionService = pamWebAppSessionServiceFactory({
+    dal: pamWebAppSessionDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    permissionService,
+    pamAccessRequestService,
+    membershipDAL,
+    membershipRoleDAL,
+    orgDAL,
+    userDAL,
+    mfaSessionService,
+    kmsService,
+    appConnectionDAL,
+    gatewayPoolService,
+    gatewayV2Service,
+    authTokenService: tokenService,
+    pamSessionService,
+    pamSessionExpirationService,
+    auditLogService,
+    telemetryService
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({
@@ -5104,8 +5145,10 @@ export const registerRoutes = async (
     pamMembership: pamMembershipService,
     pamSession: pamSessionService,
     pamSessionChunk: pamSessionChunkService,
+    pamWebRecording: pamWebRecordingService,
     pamAccessRequest: pamAccessRequestService,
     pamWebAccess: pamWebAccessService,
+    pamWebAppSession: pamWebAppSessionService,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,
     certificateAuthorityCrl: certificateAuthorityCrlService,

@@ -24,7 +24,7 @@ import {
   SelectValue
 } from "@app/components/v3/generic/Select";
 import { useOrganization } from "@app/context";
-import { TAccessiblePamAccount } from "@app/hooks/api/pam";
+import { PamAccountType, TAccessiblePamAccount } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { useAccountSheetDetails } from "./accountSheetDetails";
@@ -60,6 +60,24 @@ const LaunchTab = ({
     needsHost ? undefined : hosts[0]
   );
   const hostMissing = needsHost && !selectedHost;
+  if (account.accountType === PamAccountType.WebApp)
+    return (
+      <div className="p-4">
+        <Button asChild variant="pam">
+          <Link
+            to="/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
+            params={{
+              orgId: currentOrg.id,
+              accountType: account.accountType,
+              accountId: account.id
+            }}
+            target="_blank"
+          >
+            Open App
+          </Link>
+        </Button>
+      </div>
+    );
 
   const cliHost = selectedHost ?? (needsHost ? "HOST" : undefined);
   const cliCommand = `infisical pam access ${account.folderName}/${account.name}${

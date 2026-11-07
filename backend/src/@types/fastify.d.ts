@@ -57,8 +57,10 @@ import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder
 import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
 import { TPamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
 import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
+import { TPamWebRecordingService } from "@app/ee/services/pam-session-recording/pam-web-recording-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
+import { TPamWebAppSessionService } from "@app/ee/services/pam-web-app-session/pam-web-app-session-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
@@ -504,6 +506,8 @@ declare module "fastify" {
     pamSessionChunk: TPamSessionChunkServiceFactory;
     pamAccessRequest: TPamAccessRequestServiceFactory;
     pamWebAccess: TPamWebAccessServiceFactory;
+    pamWebAppSession: TPamWebAppSessionService;
+    pamWebRecording: TPamWebRecordingService;
     mfaSession: TMfaSessionServiceFactory;
     membershipUser: TMembershipUserServiceFactory;
     membershipIdentity: TMembershipIdentityServiceFactory;

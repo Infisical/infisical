@@ -6,14 +6,19 @@ export const DurationPolicyEditor = ({
   label,
   description,
   value,
-  onChange
-}: PolicyEditorProps) => (
+  onChange,
+  placeholder = "e.g. 3600 (defaults to 1 hour if empty)",
+  min,
+  max
+}: PolicyEditorProps & { placeholder?: string; min?: number; max?: number }) => (
   <Field>
     <FieldLabel>{label}</FieldLabel>
     <FieldContent>
       <Input
         type="number"
-        placeholder="e.g. 3600 (defaults to 1 hour if empty)"
+        placeholder={placeholder}
+        min={min}
+        max={max}
         value={typeof value === "number" ? value : ""}
         onChange={(e) => {
           const parsed = Number(e.target.value);

@@ -104,7 +104,7 @@ export const sendPamSessionCancellationSignal = ({
   gatewayId: string;
   accountType: string;
   actorId: string;
-  actorType?: ActorType.USER | ActorType.IDENTITY;
+  actorType?: ActorType.USER | ActorType.IDENTITY | ActorType.PLATFORM;
   actorEmail: string;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 }) => {

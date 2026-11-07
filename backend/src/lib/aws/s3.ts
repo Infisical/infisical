@@ -1,6 +1,12 @@
 import type { Agent } from "node:https";
 
-import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -58,15 +64,19 @@ export const createS3Client = (args: {
 export const createS3Bucket = ({
   region,
   bucket,
-  credentials
+  credentials,
+  endpoint,
+  httpsAgent
 }: {
   region: string;
   bucket: string;
   // Null runs as the server's own AWS identity (the environment, the shared config file, or the pod's role), so it has to
   // be passed on purpose. Only default storage does.
   credentials: TS3Credentials | null;
+  endpoint?: string;
+  httpsAgent?: Agent;
 }) => {
-  const client = buildS3Client({ region, credentials: credentials ?? undefined });
+  const client = buildS3Client({ region, credentials: credentials ?? undefined, endpoint, httpsAgent });
   // The request timeout stops once the headers arrive, so a reply that stalls after them needs an overall limit.
   const sendOptions = () => ({ abortSignal: AbortSignal.timeout(S3_CALL_TIMEOUT_MS) });
 
@@ -104,8 +114,16 @@ export const createS3Bucket = ({
       }
     );
 
-  const presignGet = (key: string, expiresInSeconds: number) =>
-    getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSeconds });
+  const presignGet = (key: string, expiresInSeconds: number, versionId?: string) =>
+    getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key, VersionId: versionId }), {
+      expiresIn: expiresInSeconds
+    });
+
+  const headObject = (key: string, versionId?: string) =>
+    client.send(
+      new HeadObjectCommand({ Bucket: bucket, Key: key, VersionId: versionId, ChecksumMode: "ENABLED" }),
+      sendOptions()
+    );
 
   // One page only: callers that page do so across requests, so one request can't walk an unbounded listing.
   const listPage = async ({
@@ -157,5 +175,5 @@ export const createS3Bucket = ({
     }
   };
 
-  return { presignCreateOnlyPut, presignGet, listPage, checkListAccess, writeTestObject };
+  return { presignCreateOnlyPut, presignGet, headObject, listPage, checkListAccess, writeTestObject };
 };

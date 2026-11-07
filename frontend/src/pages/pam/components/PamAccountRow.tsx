@@ -4,6 +4,7 @@ import { Clock, KeyRound, Rocket } from "lucide-react";
 import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
+  Button,
   IconButton,
   TableCell,
   TableRow,
@@ -66,6 +67,8 @@ type Props = {
   launchDisabledReason?: string;
   onLaunch: () => void;
   onRequestAccess: () => void;
+  launchHref?: string;
+  launchLabel?: string;
   // Optional slots layered on top of the shared row (e.g. the admin "..." menu / accessibility badge).
   actions?: ReactNode;
   accessibilityBadge?: ReactNode;
@@ -85,6 +88,8 @@ export const PamAccountRow = ({
   launchDisabledReason = "You don't have permission to launch sessions for this account",
   onLaunch,
   onRequestAccess,
+  launchHref,
+  launchLabel,
   actions,
   accessibilityBadge,
   indented
@@ -106,6 +111,19 @@ export const PamAccountRow = ({
   })();
 
   const renderAction = () => {
+    if (launchHref && canLaunchNow && !isDisabled && !isPending && !needsApproval)
+      return (
+        <Button asChild variant="pam" size="sm">
+          <a
+            href={launchHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {launchLabel ?? "Open App"}
+          </a>
+        </Button>
+      );
     if (isDisabled) {
       return (
         <Tooltip>
@@ -202,13 +220,27 @@ export const PamAccountRow = ({
   };
 
   return (
-    <TableRow className={rowAction ? "cursor-pointer" : ""} onClick={rowAction}>
+    <TableRow
+      className={rowAction && !launchHref ? "cursor-pointer" : ""}
+      onClick={launchHref ? undefined : rowAction}
+    >
       <TableCell>
         <div className={`flex items-center gap-2.5 ${indented ? "pl-[26px]" : ""}`}>
           <AccountPlatformIcon accountType={accountType} size={20} />
-          <span className="font-medium text-foreground">
-            <HighlightText text={name} highlight={search} />
-          </span>
+          {launchHref && canLaunchNow ? (
+            <a
+              href={launchHref}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              <HighlightText text={name} highlight={search} />
+            </a>
+          ) : (
+            <span className="font-medium text-foreground">
+              <HighlightText text={name} highlight={search} />
+            </span>
+          )}
           <Badge variant="neutral">{typeName}</Badge>
           {accessibilityBadge}
         </div>

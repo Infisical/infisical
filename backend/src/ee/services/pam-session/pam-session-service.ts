@@ -35,6 +35,8 @@ import {
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
+import { TPamWebAppSessionDAL } from "../pam-web-app-session/pam-web-app-session-dal";
+import { webLeaseSeconds } from "../pam-web-app-session/pam-web-app-session-fns";
 import {
   accountTypeSupportsSessionLogMasking,
   PamAccessMethod,
@@ -84,6 +86,7 @@ import {
 } from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
+  pamWebAppSessionDAL: TPamWebAppSessionDAL;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
     | "findAccessibleByProjectId"
@@ -122,6 +125,7 @@ type TPamSessionServiceFactoryDep = {
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
 
 export const pamSessionServiceFactory = ({
+  pamWebAppSessionDAL,
   pamSessionDAL,
   pamAccountDAL,
   pamFolderDAL,
@@ -213,7 +217,7 @@ export const pamSessionServiceFactory = ({
 
   // Called by the gateway
   const getSessionCredentials = async (sessionId: string, gatewayId: string, orgId: string) => {
-    const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
+    const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId }, pamWebAppSessionDAL.db);
     if (!session) {
       throw new NotFoundError({ message: "Session not found" });
     }
@@ -226,12 +230,21 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Session has no linked account" });
     }
 
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+    const account = await pamAccountDAL.findByIdWithDetails(session.accountId, pamWebAppSessionDAL.db);
     if (!account) {
       throw new NotFoundError({ message: "Account not found" });
     }
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
+    const webRecord =
+      session.accountType === PamAccountType.WebApp ? await pamWebAppSessionDAL.getRecord(sessionId) : null;
+    if (
+      session.accountType === PamAccountType.WebApp &&
+      (!webRecord || webRecord.session.orgId !== orgId || webRecord.web.gatewayId !== gatewayId)
+    ) {
+      throw new NotFoundError({ message: "Browser allocation not found" });
+    }
+    const webStorage = webRecord ? await pamWebAppSessionDAL.getStorage(sessionId) : null;
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
     const remainingSeconds = pamSessionRemainingSeconds(session);
 
@@ -295,7 +308,8 @@ export const pamSessionServiceFactory = ({
       delete credentials.clientSecret;
     }
 
-    const sessionStarted = session.status === PamSessionStatus.Starting;
+    const sessionStarted =
+      session.status === PamSessionStatus.Starting && session.accountType !== PamAccountType.WebApp;
 
     let actorDistinctId: string | undefined;
     if (sessionStarted) {
@@ -306,10 +320,9 @@ export const pamSessionServiceFactory = ({
     const templateSettingsParsed = account.templateSettings
       ? PamTemplateSettingsSchema.safeParse(account.templateSettings)
       : null;
-    const resolvedBackend =
-      templateSettingsParsed?.success && templateSettingsParsed.data.recordingStorageBackend
-        ? templateSettingsParsed.data.recordingStorageBackend
-        : PamRecordingStorageBackend.Postgres;
+    let resolvedBackend = PamRecordingStorageBackend.Postgres;
+    if (templateSettingsParsed?.success) resolvedBackend = templateSettingsParsed.data.recordingStorageBackend;
+    if (webStorage) resolvedBackend = webStorage.backend as PamRecordingStorageBackend;
 
     let recording: {
       sessionKey: string;
@@ -390,11 +403,20 @@ export const pamSessionServiceFactory = ({
         parsedSettings.data.sessionLogMaskingBuiltInDetection
     });
 
-    const normalizedConnectionDetails = buildSessionGatewayConnectionDetails(
-      account.accountType as PamAccountType,
-      connectionDetails,
-      session.selectedHost
-    );
+    const snapshot = webRecord?.web.policySnapshot;
+    const normalizedConnectionDetails = snapshot
+      ? {
+          startUrl: snapshot.startUrl,
+          startOrigin: snapshot.startOrigin,
+          allowedDestinations: snapshot.allowedDestinations,
+          extraDenyCidrs: snapshot.extraDenyCidrs,
+          allowTypedNavigation: snapshot.allowTypedNavigation
+        }
+      : buildSessionGatewayConnectionDetails(
+          account.accountType as PamAccountType,
+          connectionDetails,
+          session.selectedHost
+        );
 
     if (account.accountType === PamAccountType.WindowsAd) {
       credentials.username = qualifyUsernameWithDomain(
@@ -404,7 +426,22 @@ export const pamSessionServiceFactory = ({
     }
 
     return {
-      credentials: { ...normalizedConnectionDetails, ...credentials },
+      credentials: snapshot ? credentials : { ...normalizedConnectionDetails, ...credentials },
+      connectionDetails: snapshot ? normalizedConnectionDetails : undefined,
+      webAppPolicy: snapshot
+        ? {
+            reconnectGraceSeconds: snapshot.reconnectGraceSeconds,
+            maxFps: snapshot.maxFps,
+            jpegQuality: snapshot.jpegQuality,
+            maxWidth: snapshot.maxWidth,
+            maxHeight: snapshot.maxHeight
+          }
+        : undefined,
+      expiresAt: snapshot ? session.expiresAt : undefined,
+      leaseUntil: webRecord?.web.leaseUntil ?? undefined,
+      leaseSeconds: webRecord?.web.leaseUntil
+        ? webLeaseSeconds(webRecord.web.leaseUntil, session.expiresAt)
+        : undefined,
       recording,
       policyRules,
       projectId: session.projectId,
@@ -476,6 +513,9 @@ export const pamSessionServiceFactory = ({
     targetHost?: string;
   }) => {
     const account = await resolveAccountByPath(projectId, path);
+    if (account.accountType === PamAccountType.WebApp) {
+      throw new BadRequestError({ message: "Web App accounts open through the Web App session API" });
+    }
 
     // Machine identities launch sessions via identity access tokens; human-only controls
     // (MFA, access-request approval) cannot be satisfied by them and are rejected explicitly below.

@@ -1,4 +1,5 @@
 export enum PamAccountType {
+  WebApp = "web-app",
   SSH = "ssh",
   Postgres = "postgres",
   MySQL = "mysql",
@@ -52,6 +53,7 @@ export enum PamAccountWarning {
 // and produces no session log. Mirrors accountTypeSupportsSessionLogMasking in
 // backend/src/ee/services/pam/pam-enums.ts.
 export const UNMASKABLE_PAM_ACCOUNT_TYPES = [
+  PamAccountType.WebApp,
   PamAccountType.Windows,
   PamAccountType.WindowsAd,
   PamAccountType.AwsIam
@@ -116,6 +118,7 @@ export const getRotationIntervalOptions = (savedSeconds: number | null | undefin
       ].sort((a, b) => a.seconds - b.seconds);
 
 export enum PamPolicyType {
+  WebReconnectGraceSeconds = "web-reconnect-grace-seconds",
   RequiresApproval = "requires-approval",
   AllowAutoApproval = "allow-auto-approval",
   AllowBreakGlass = "allow-break-glass",
@@ -126,6 +129,7 @@ export enum PamPolicyType {
 }
 
 export enum SessionChannelType {
+  Web = "web",
   Terminal = "terminal",
   Exec = "exec",
   Sftp = "sftp",

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PamAccountType } from "./pam-enums";
 
 export enum PamPolicyType {
+  WebReconnectGraceSeconds = "web-reconnect-grace-seconds",
   RequiresApproval = "requires-approval",
   AllowAutoApproval = "allow-auto-approval",
   AllowBreakGlass = "allow-break-glass",
@@ -66,6 +67,12 @@ type TPamPolicyDefinition = {
 };
 
 export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition> = {
+  [PamPolicyType.WebReconnectGraceSeconds]: {
+    label: "Reconnect Grace Period",
+    description: "Time in seconds the browser remains running after the viewer disconnects.",
+    appliesTo: [PamAccountType.WebApp],
+    schema: z.number().int().min(0).max(600).default(60)
+  },
   [PamPolicyType.RequiresApproval]: {
     label: "Require Approval",
     description: "Users must request and receive approval before launching sessions and viewing credentials.",

@@ -787,6 +787,14 @@ export enum EventType {
 
   PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
+  PAM_WEB_APP_SESSION_CREATED = "pam-web-app-session-created",
+  PAM_WEB_APP_SESSION_ATTACHED = "pam-web-app-session-attached",
+  PAM_WEB_APP_SESSION_STOP_REQUESTED = "pam-web-app-session-stop-requested",
+  PAM_WEB_APP_SESSION_WORKER_FAILED = "pam-web-app-session-worker-failed",
+  PAM_SESSION_RECORDING_CHUNK_CONFLICT = "pam-session-recording-chunk-conflict",
+  PAM_SESSION_RECORDING_FINALIZED = "pam-session-recording-finalized",
+  PAM_SESSION_RECORDING_LATE_UPLOAD_REJECTED = "pam-session-recording-late-upload-rejected",
+  PAM_SESSION_RECORDING_VIEWED = "pam-session-recording-viewed",
   PAM_SESSION_END = "pam-session-end",
   PAM_SESSION_TERMINATE = "pam-session-terminate",
   PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
@@ -6344,6 +6352,29 @@ interface PamSessionStartEvent {
   };
 }
 
+interface PamWebAppEvent {
+  type:
+    | EventType.PAM_WEB_APP_SESSION_CREATED
+    | EventType.PAM_WEB_APP_SESSION_ATTACHED
+    | EventType.PAM_WEB_APP_SESSION_STOP_REQUESTED
+    | EventType.PAM_WEB_APP_SESSION_WORKER_FAILED
+    | EventType.PAM_SESSION_RECORDING_CHUNK_CONFLICT
+    | EventType.PAM_SESSION_RECORDING_FINALIZED
+    | EventType.PAM_SESSION_RECORDING_LATE_UPLOAD_REJECTED
+    | EventType.PAM_SESSION_RECORDING_VIEWED;
+  metadata: {
+    sessionId: string;
+    accountId?: string;
+    accountName?: string;
+    reason?: string;
+    expiresAt?: string;
+    controllerGen?: number;
+    takeControl?: boolean;
+    chunkIndex?: number;
+    status?: string;
+  };
+}
+
 interface PamSessionEndEvent {
   type: EventType.PAM_SESSION_END;
   metadata: {
@@ -9049,6 +9080,7 @@ export type Event =
   | PamSessionTerminateEvent
   | PamSessionChunkUploadEvent
   | PamSessionUploadTokenInvalidEvent
+  | PamWebAppEvent
   | PamAccountTemplateCreateEvent
   | PamAccountTemplateUpdateEvent
   | PamAccountTemplateDeleteEvent

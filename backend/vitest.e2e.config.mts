@@ -29,6 +29,10 @@ export default defineConfig({
     globals: true,
     env: {
       NODE_ENV: "test",
+      SITE_URL: "http://localhost:3001",
+      ...(process.argv.some((arg) => arg.includes("pam-web-app"))
+        ? { DB_POOL_MAX: "2" }
+        : {}),
       E2E_TEST_ORACLE_DB_19_HOST: process.env.E2E_TEST_ORACLE_DB_19_HOST!,
       E2E_TEST_ORACLE_DB_19_USERNAME: process.env.E2E_TEST_ORACLE_DB_19_USERNAME!,
       E2E_TEST_ORACLE_DB_19_PASSWORD: process.env.E2E_TEST_ORACLE_DB_19_PASSWORD!,
@@ -64,6 +68,14 @@ export default defineConfig({
     // An ordered array rather than an object so the exact @app/… entry is matched before the
     // generic "@app" prefix alias in resolve.alias below.
     alias: [
+      {
+        find: "../gateway-v2/gateway-v2-fns",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/pam-gateway-connection-test")
+      },
+      {
+        find: "./aws-s3/aws-s3-provider-factory",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/pam-recording-s3")
+      },
       {
         find: "./license-fns",
         replacement: path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")

@@ -176,14 +176,15 @@ export const getLaunchAccessRemainingMs = async (
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
   account: { id: string; folderId?: string | null },
-  ctx: Pick<TActorContext, "actor" | "actorId">
+  ctx: Pick<TActorContext, "actor" | "actorId">,
+  tx?: Knex
 ): Promise<number | null> => {
   const { folderMemberships, accountMemberships, roles } = await findActivePamMemberships(
     membershipDAL,
     membershipRoleDAL,
     projectId,
     ctx,
-    undefined,
+    tx,
     (m) => m.scopeResourceId === account.id || (Boolean(account.folderId) && m.scopeResourceId === account.folderId)
   );
   const membershipIds = new Set(

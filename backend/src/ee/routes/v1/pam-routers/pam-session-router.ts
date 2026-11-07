@@ -136,6 +136,20 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           credentials: z.record(z.unknown()),
+          accountType: z.string().optional(),
+          connectionDetails: z.record(z.unknown()).optional(),
+          webAppPolicy: z
+            .object({
+              reconnectGraceSeconds: z.number(),
+              maxFps: z.number(),
+              jpegQuality: z.number(),
+              maxWidth: z.number(),
+              maxHeight: z.number()
+            })
+            .optional(),
+          expiresAt: z.date().optional(),
+          leaseUntil: z.date().optional(),
+          leaseSeconds: z.number().int().min(0).max(45).optional(),
           recording: z
             .object({
               sessionKey: z.string(),
@@ -187,6 +201,16 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 
       return {
         credentials: result.credentials,
+        ...(result.accountType === PamAccountType.WebApp
+          ? {
+              accountType: result.accountType,
+              connectionDetails: result.connectionDetails,
+              webAppPolicy: result.webAppPolicy,
+              expiresAt: result.expiresAt,
+              leaseUntil: result.leaseUntil,
+              leaseSeconds: result.leaseSeconds
+            }
+          : {}),
         recording: result.recording,
         policyRules: result.policyRules ?? null
       };
@@ -295,13 +319,13 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
   });
 };
 
-export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => {
+export const registerPamSessionAccessRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/access",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "pamAccountAccess",
+      operationId: server.prefix.endsWith("/sessions") ? "pamSessionAccess" : "pamAccountAccess",
       description: "Access a PAM account by path and obtain gateway connection details",
       tags: [ApiDocsTags.PamSessions],
       body: z.object({
@@ -430,7 +454,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       };
     }
   });
+};
 
+export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => {
+  await registerPamSessionAccessRouter(server);
   server.route({
     method: "POST",
     url: "/:accountId/web-access-ticket",

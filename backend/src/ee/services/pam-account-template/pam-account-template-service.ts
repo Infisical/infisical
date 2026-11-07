@@ -105,7 +105,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
   const validateTemplateRecordingS3Config = async (
     recordingConnectionId: string | null | undefined,
     settings: TPamTemplateSettingsInput | undefined,
-    ctx: TActorContext
+    ctx: TActorContext,
+    accountType: PamAccountType
   ): Promise<TPamRecordingResolvedConfig | null> => {
     const isS3Backend = settings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
 
@@ -113,7 +114,13 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     if (recordingConnectionId && settings) {
       const s3Parsed = PamRecordingS3ConfigSchema.safeParse(settings.recordingS3Config);
       if (s3Parsed.success) {
-        resolvedS3Config = await validateRecordingS3Config(deps, recordingConnectionId, s3Parsed.data, ctx);
+        resolvedS3Config = await validateRecordingS3Config(
+          deps,
+          recordingConnectionId,
+          s3Parsed.data,
+          ctx,
+          accountType
+        );
       }
     }
 
@@ -165,7 +172,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const validatedPolicies = validateTemplatePolicies(type, policies);
     validateTemplateRotationConfig(type, settings);
 
-    const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
+    const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx, type);
 
     // Credential health checking and built-in masking are on for a new template unless the caller
     // says otherwise.
@@ -233,7 +240,12 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     const resolvedConnId = recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;
     const resolvedSettings = (settings !== undefined ? settings : existing.settings) as TPamTemplateSettings;
 
-    const resolvedS3Config = await validateTemplateRecordingS3Config(resolvedConnId, resolvedSettings, ctx);
+    const resolvedS3Config = await validateTemplateRecordingS3Config(
+      resolvedConnId,
+      resolvedSettings,
+      ctx,
+      existing.type as PamAccountType
+    );
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;

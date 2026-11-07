@@ -13,6 +13,26 @@ const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
 const wireKeys = (request: unknown): string[] => Object.keys(JSON.parse(JSON.stringify(request)) as object);
 
+describe("buildGatewayConnectionTest: Web App", () => {
+  test.each([null, { authMethod: "none" }, { authMethod: "basic-auth", username: "operator", password: "secret" }])(
+    "probes the worker network without forwarding credentials: %j",
+    async (credentials) => {
+      const result = await buildGatewayConnectionTest(
+        PamAccountType.WebApp,
+        { startUrl: "http://fixture.pam.local:8081/" },
+        credentials,
+        ORG_ID
+      );
+      expect(result).toEqual({
+        host: "fixture.pam.local",
+        port: 8081,
+        request: { mode: TestConnectionMode.WebAppTcp }
+      });
+      expect(testVerifiesCredential(result!.request)).toBe(false);
+    }
+  );
+});
+
 describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {
   const connectionDetails = {
     host: "sql.corp.example.com",

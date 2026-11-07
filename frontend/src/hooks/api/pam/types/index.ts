@@ -292,7 +292,7 @@ export type TPamCommandLog = {
 
 export type TSessionEvent = {
   timestamp: string;
-  eventType: "input" | "output" | "resize" | "error";
+  eventType: "input" | "output" | "resize" | "error" | "web";
   channelType?: SessionChannelType;
   data: string;
   // set by gateways that render the terminal before recording. absent on older recordings, whose data is raw terminal bytes

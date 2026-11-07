@@ -658,8 +658,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const capabilities = attachedGateway?.capabilities as {
       supported_account_types?: string[];
       clickhouseNativeProtocol?: boolean;
+      webApp?: boolean;
     } | null;
-    if (!gatewaySupportsAccountType(accountType, capabilities?.supported_account_types)) {
+    if (!gatewaySupportsAccountType(accountType, capabilities?.supported_account_types, capabilities)) {
       throw new BadRequestError({
         message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ${ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType].name} accounts. Update the gateway, then try again.`
       });
@@ -766,7 +767,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       settingsOverrides,
       recordingConnectionId ?? template.recordingConnectionId,
       ctx,
-      recordingConnectionId ? getInheritedRecordingS3Config(settingsOverrides, template.settings) : undefined
+      recordingConnectionId ? getInheritedRecordingS3Config(settingsOverrides, template.settings) : undefined,
+      accountType
     );
 
     const forced = applyForcedFields(accountType, {
@@ -967,7 +969,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
             settingsOverrides === undefined ? existing.settingsOverrides : settingsOverrides,
             template ? template.settings : existing.templateSettings
           )
-        : undefined
+        : undefined,
+      accountType
     );
 
     const updateData: Record<string, unknown> = {};

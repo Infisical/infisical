@@ -1,3 +1,4 @@
+import { useOrganization } from "@app/context";
 import {
   PamAccessStatus,
   PamAccountAccessibilityIssue,
@@ -7,6 +8,7 @@ import {
   TPamAccountListItem,
   usePamAccountActionsFromPermissions
 } from "@app/hooks/api/pam";
+import { useGetMyWebAppSessions } from "@app/hooks/api/pam/web-app-sessions/queries";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { AccountHealthBadge } from "../../components/AccountHealthBadge";
@@ -39,6 +41,26 @@ export const FolderAccountRow = ({
   onDeleteAccount,
   indented
 }: Props) => {
+  const { currentOrg } = useOrganization();
+  const { data: webSessions } = useGetMyWebAppSessions(
+    account.accountType === PamAccountType.WebApp
+  );
+  const activeWebSession = webSessions?.find(
+    (session) =>
+      session.accountId === account.id &&
+      [
+        "allocating",
+        "provisioning",
+        "provisioned",
+        "recording-ready",
+        "active",
+        "detached"
+      ].includes(session.webApp.workerState)
+  );
+  const webHref =
+    account.accountType === PamAccountType.WebApp
+      ? `/organizations/${currentOrg.id}/pam/accounts/web-app/${account.id}/access${activeWebSession ? `?sessionId=${activeWebSession.id}` : ""}`
+      : undefined;
   // Permissions come embedded in the list item, so no per-account request is made here.
   const { can } = usePamAccountActionsFromPermissions(account.permissions);
   const canLaunch = can(PamResourcePermissionActions.LaunchSessions);
@@ -78,6 +100,8 @@ export const FolderAccountRow = ({
   return (
     <PamAccountRow
       name={account.name}
+      launchHref={webHref}
+      launchLabel={activeWebSession ? "Return to Session" : "Open App"}
       accountType={accountType}
       search={search}
       accessStatus={accessStatus}
