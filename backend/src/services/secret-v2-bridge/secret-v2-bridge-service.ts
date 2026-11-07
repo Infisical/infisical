@@ -96,7 +96,8 @@ import {
   fnSecretMoveInTransaction,
   fnUpdateSecretLinkedReferences,
   recursivelyGetSecretPaths,
-  reshapeBridgeSecret
+  reshapeBridgeSecret,
+  throwIfDuplicateSharedSecret
 } from "./secret-v2-bridge-fns";
 import {
   SecretUpdateMode,
@@ -399,10 +400,9 @@ export const secretV2BridgeServiceFactory = ({
       type: SecretType.Shared,
       folderId
     });
+    const duplicateSecretMessage = `Secret '${inputSecret.secretName}' already exists in path '${secretPath}' of environment '${environment}'`;
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
-      throw new BadRequestError({
-        message: `Secret '${inputSecret.secretName}' already exists in path '${secretPath}' of environment '${environment}'`
-      });
+      throw new BadRequestError({ message: duplicateSecretMessage });
 
     // if user creating personal check its shared also exist
     if (inputSecret.type === SecretType.Personal && !doesSecretExist) {
@@ -480,7 +480,7 @@ export const secretV2BridgeServiceFactory = ({
     const blindIndexes = await (inputSecretData.secretValue
       ? blindIndexer.generateBlindIndexes(Buffer.from(inputSecretData.secretValue))
       : null);
-    const secret = await secretDAL.transaction(async (tx) => {
+    const insertSecret = async (tx: Knex) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
         eventEmitter,
@@ -526,7 +526,10 @@ export const secretV2BridgeServiceFactory = ({
 
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return createdSecret;
-    });
+    };
+    const secret = await secretDAL
+      .transaction(insertSecret)
+      .catch(throwIfDuplicateSharedSecret(duplicateSecretMessage));
 
     if (inputSecret.secretReminderRepeatDays) {
       await reminderService.createReminder({
@@ -2458,9 +2461,13 @@ export const secretV2BridgeServiceFactory = ({
       return modifiedSecretsInDB;
     };
 
-    const newSecrets = providedTx
-      ? await executeBulkInsert(providedTx)
-      : await secretDAL.transaction(executeBulkInsert);
+    const newSecrets = await (
+      providedTx ? executeBulkInsert(providedTx) : secretDAL.transaction(executeBulkInsert)
+    ).catch(
+      throwIfDuplicateSharedSecret(
+        `One or more of these secrets already exist in path '${secretPath}' of environment '${environment}'`
+      )
+    );
 
     if (!skipPostProcessing) {
       await dispatchSecretCreateSideEffects({
