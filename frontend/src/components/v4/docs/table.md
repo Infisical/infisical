@@ -108,7 +108,7 @@ Owner: table.
 
 When each row opens its resource in a sheet or dialog on the same page.
 
-Do: Pass onRowActivate (or, in a native Table, TableRow onClick) and render the primary cell's name as a quiet link Button (variant link, underline hover) that runs the same handler. The cell holds no RowLink, so no chevron is drawn, and the actions tail adds no Open or chevron action. Keep selection on the checkbox and Space.
+Do: Pass onRowActivate (or, in a native Table, TableRow onClick) and render the primary cell's name as a link Button that runs the same handler. The cell holds no RowLink, so no chevron is drawn, and the actions tail adds no Open or chevron action. Keep selection on the checkbox and Space.
 
 Avoid: Navigate from onRowActivate or a cell's own onClick, give the row a button or link role, let a row click change the selection, or add stopPropagation to the row's controls and menus to keep them from activating it.
 
@@ -1305,7 +1305,7 @@ export default function RowActivation() {
       grow: true,
       text: (row) => row.cn,
       render: (row) => (
-        <Button variant="link" underline="hover" onClick={() => open(row)}>
+        <Button variant="link" onClick={() => open(row)}>
           {row.cn}
         </Button>
       )

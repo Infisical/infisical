@@ -38,11 +38,6 @@ export default function Example() {
           <a href="#input">Input guide</a>
         </Button>
       </ExampleCell>
-      <ExampleCell label="link, underline on hover">
-        <Button variant="link" underline="hover" asChild>
-          <a href="#table">Table guide</a>
-        </Button>
-      </ExampleCell>
     </ExampleGrid>
   );
 }

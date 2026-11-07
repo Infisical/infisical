@@ -83,7 +83,6 @@ function Button({
   disabledReason,
   cornerBadge,
   layout,
-  underline,
   children,
   onClickCapture,
   onPointerDownCapture,
@@ -114,8 +113,6 @@ function Button({
     cornerBadge?: React.ReactNode;
     /** trigger: the label sits at the start and truncates and a chevron (iconRight, chev-down by default) sits at the end, with SelectTrigger's padding, for a Button that opens a menu, popover or picker. */
     layout?: "trigger";
-    /** For variant link: always (the default) keeps the underline at rest; hover draws it only on hover and keyboard focus, for a record name in a table row. */
-    underline?: "always" | "hover";
   } & { ref?: React.Ref<React.ComponentRef<"button">> }) {
   const Comp = asChild ? MotionSlot : MotionButton;
   const loading = loadingProp ?? false;
@@ -221,7 +218,6 @@ function Button({
       data-variant={variant}
       data-size={size}
       data-layout={layout}
-      data-underline={variant === "link" ? (underline ?? "always") : undefined}
       type={asChild ? type : (type ?? "button")}
       {...props}
       disabled={reason ? undefined : props.disabled}

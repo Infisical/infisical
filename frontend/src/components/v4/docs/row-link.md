@@ -32,7 +32,7 @@ Owner: row-link.
 
 When activating a row opens its record in a Sheet or Dialog on the same page.
 
-Do: Render the name as a quiet link Button (variant link, underline hover) that runs the table's onRowActivate handler, so the row draws no chevron. When the sheet is addressable by URL and the name is a RowLink to it, pass chevron={false}.
+Do: Render the name as a link Button that runs the table's onRowActivate handler, so the row draws no chevron. When the sheet is addressable by URL and the name is a RowLink to it, pass chevron={false}.
 
 Avoid: Keep RowLink's chevron on a row that never leaves the page, or add a chevron or Open action to the actions tail for the same sheet.
 
