@@ -83,6 +83,10 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
     <Steps>
       <Step>
         In your Agent Vault project, go to **Skills** and select **Create Skill**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/skills-list.png" alt="The Skills page listing three skills, incident-triage, release-notes-writer, and review-guidelines, and a Create Skill button" />
+        </Frame>
       </Step>
       <Step>
         To start from a skill you already have, select **Upload** and drop a zipped skill folder or a Markdown file into the dialog. Infisical fills in the **Name**, the **Description**, and the files from the upload.
@@ -90,6 +94,10 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
         To write the skill instead, enter a **Name** and a **Description**, then write the instructions in `SKILL.md`. To add more files, follow the steps in [Change the files](#change-the-files).
 
         The header at the top of `SKILL.md` always matches the **Name** and **Description** fields, so you can change the name and the description in either place.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/skill-create.png" alt="The Create Skill panel with deploy-checklist as the name, a description, and SKILL.md open in the editor" />
+        </Frame>
       </Step>
       <Step>
         Check the files, then select **Create Skill**.
@@ -111,6 +119,10 @@ To install skills for agents, add them to an access bundle:
   </Step>
   <Step>
     Pick one or more skills from the list, then select the **Add** button. You can also create a skill from here with **Create New Skill** at the end of the list, and it's added to the access bundle.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-add-skills.png" alt="The Add Skills dialog of the code-review access bundle, with a list of the incident-triage and release-notes-writer skills and Create New Skill at the end" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -185,6 +197,10 @@ If you're a member of the project rather than an admin, open the skill from an a
 
 The skill opens in a side panel that shows the latest version of its files. To get a copy of the files, select **Options** in the panel, then select **Download**. Infisical downloads the files as a zip file, and scripts that are executable in Infisical stay executable.
 
+<Frame>
+  <img src="/images/platform/agent-vault/skill-view.png" alt="The review-guidelines skill in a side panel, with its files on the left and a preview of SKILL.md on the right" />
+</Frame>
+
 ### Edit a skill
 
 To change a skill's files in Infisical:
@@ -192,6 +208,10 @@ To change a skill's files in Infisical:
 <Steps>
   <Step>
     In your Agent Vault project, go to **Skills** and select the skill. To edit a Markdown file, select **Code**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/skill-code.png" alt="The review-guidelines skill with SKILL.md open in the code editor, and Discard and Save Version buttons at the bottom" />
+    </Frame>
   </Step>
   <Step>
     Change the files in the editor, as described in [Change the files](#change-the-files).
@@ -255,6 +275,10 @@ To roll a skill back:
   </Step>
   <Step>
     Select the version you want, check its files, and select **Roll Back**. Select **Roll Back** again to confirm.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/skill-version-history.png" alt="The Version History dialog of the review-guidelines skill, listing versions v3 (Latest), v2, and v1 with a Roll Back button for each older version" />
+    </Frame>
   </Step>
 </Steps>
 

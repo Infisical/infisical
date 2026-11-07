@@ -22,18 +22,38 @@ You add the MCP server to your agent with its real URL and no credentials. When 
   </Step>
   <Step>
     On the **Choose a template** panel, pick a template under **MCP Servers**, or select **Custom MCP Server** to connect any other remote MCP server.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-template-picker.png" alt="The Choose a template panel filtered to MCP Servers, showing Custom MCP Server, GitHub MCP, Linear MCP, Notion MCP, and Sentry MCP" />
+    </Frame>
   </Step>
   <Step>
     On the **Details** step, enter a **Name**, and check the [**Transport** and **Server URL**](#server-url-and-transport). A template fills in the transport and server URL for you. Select **Continue**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-service-details.png" alt="The Details step of the notion MCP service, with Streamable HTTP as the transport and https://mcp.notion.com/mcp as the server URL" />
+    </Frame>
   </Step>
   <Step>
     On the **Credential** step, pick a **Credential Type** and set up the [credential](#credential-types). Select **Continue**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-service-credential.png" alt="The Credential step of the notion MCP service, with Bearer Token as the credential type, a token that uses the NOTION_TOKEN variable, and the Member provided toggle off" />
+    </Frame>
   </Step>
   <Step>
     On the **Tools** step, choose which of the server's [tools agents can call](#allowed-tools). Select **Continue**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-service-tools.png" alt="The Tools step of the notion MCP service, with All Tools turned on" />
+    </Frame>
   </Step>
   <Step>
     On the **Review** step, select **Add Service**. The service appears in the bundle's list with the type **MCP Server**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-mcp-services.png" alt="The support-triage access bundle in the Customer Support project, listing slack and zendesk as HTTP APIs and linear and notion as MCP servers, with a Needs Reauthorization badge on linear" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -56,6 +76,10 @@ With OAuth, you sign in to the provider from Infisical, and Infisical stores the
   <Step>
     Under **Credential Type**, select **OAuth**, then select **Authorize**.
 
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-oauth-authorize.png" alt="The Credential step of a new Linear MCP service, with OAuth as the credential type, an Authorize button, and the Member provided toggle off" />
+    </Frame>
+
     <Note>
       Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, Infisical asks for an OAuth app of your own instead. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows. Then enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty for a public client), and authorize again.
     </Note>
@@ -65,6 +89,10 @@ With OAuth, you sign in to the provider from Infisical, and Infisical stores the
   </Step>
   <Step>
     When Infisical shows **Authorized** and the scopes the provider granted, select **Continue**. **Continue** stays disabled until the authorization succeeds.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-oauth-authorized.png" alt="The Credential step of the linear MCP service, showing Authorized with the read and write scopes and a Reauthorize button" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -219,6 +247,10 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
     If the server rejects an OAuth service's token, the proxy gets a fresh token from Infisical and sends the request again. If that doesn't work, or if the server rejects a Bearer token, the proxy returns a `502` response to the agent. Its message says what to do:
 
     **The service needs to be reauthorized:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-mcp-services.png" alt="The support-triage access bundle in the Customer Support project, listing slack and zendesk as HTTP APIs and linear and notion as MCP servers, with a Needs Reauthorization badge on linear" />
+    </Frame>
 
     **Try again in a moment:** The proxy couldn't get a valid token from Infisical this time. Try the tool call again.
 
