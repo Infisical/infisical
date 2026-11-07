@@ -13,10 +13,6 @@
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
   },
-  "raw-table-in-card": {
-    "src/pages/v4/cert-manager/DashboardPage/components/DonutCard.tsx": 1,
-    "src/pages/v4/secret-manager/SecretApprovalsPage/SecretApprovalsPage.tsx": 2
-  },
   "row-activate-navigates": {
     "src/pages/v4/cert-manager/InventoryPage/InventoryPage.tsx": 1
   }
