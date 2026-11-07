@@ -345,6 +345,14 @@ html[data-theme="light"] {
   --color-proxied-service: oklch(0.4447 0.1461 309.7);
 }
 
+html:has([data-product-accent="pki"]) {
+  --color-project: var(--color-product-pki);
+}
+
+html:has([data-product-accent="kms"]) {
+  --color-project: var(--color-product-kms);
+}
+
 .product-color {
   --product-color-resolved: var(--product-color);
 }

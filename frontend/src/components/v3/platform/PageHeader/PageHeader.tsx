@@ -46,13 +46,13 @@ const PAGE_HEADER_SCOPE_CONFIG: Record<NonNullable<TPageHeaderScope>, TPageHeade
   },
   [ProjectType.CertificateManager]: {
     icon: ProjectIcon,
-    iconClassName: "text-project",
-    titleClassName: "decoration-project/90"
+    iconClassName: "text-product-pki",
+    titleClassName: "decoration-product-pki/90"
   },
   [ProjectType.KMS]: {
     icon: ProjectIcon,
-    iconClassName: "text-project",
-    titleClassName: "decoration-project/90"
+    iconClassName: "text-product-kms",
+    titleClassName: "decoration-product-kms/90"
   },
   [ProjectType.SecretScanning]: {
     icon: ProjectIcon,
