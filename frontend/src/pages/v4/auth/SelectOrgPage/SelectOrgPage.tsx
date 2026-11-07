@@ -121,6 +121,7 @@ const SelectOrgView = ({
           Sign out
         </Button>
       }
+      variant="focused"
       wide
     >
       <Stack gap={12}>

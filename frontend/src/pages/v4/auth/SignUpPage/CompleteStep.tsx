@@ -58,7 +58,13 @@ export const CompleteStep = ({ orgId, products, projects, progress }: Props) => 
   ];
 
   return (
-    <AuthPage pageTitle="Sign Up" title="Your organization is ready" progress={progress} wide>
+    <AuthPage
+      pageTitle="Sign Up"
+      title="Your organization is ready"
+      progress={progress}
+      variant="focused"
+      wide
+    >
       <List label="Open your workspace">
         {destinations.map((destination) => (
           <ListRow

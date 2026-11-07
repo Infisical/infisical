@@ -104,6 +104,7 @@ export const InviteStep = ({
       title="Invite your team"
       description={`Bring in the people who'll work with ${productName ?? "Infisical"} day to day.`}
       progress={progress}
+      variant="focused"
       wide
     >
       <Field label="Teammate emails" description={description} error={validationError || undefined}>

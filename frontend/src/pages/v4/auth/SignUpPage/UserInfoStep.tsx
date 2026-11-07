@@ -144,7 +144,7 @@ export const UserInfoStep = ({
       title={
         isInvite
           ? `Join ${inviteOrganizationName?.trim() || "an organization"}`
-          : "Set up your account"
+          : "Create your account"
       }
     >
       <form onSubmit={handleSubmit(onSubmit)} noValidate>

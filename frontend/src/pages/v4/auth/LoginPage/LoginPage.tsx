@@ -246,7 +246,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   if (isEnforced) {
     const method = config.defaultAuthOrgAuthMethod === "oidc" ? LoginMethod.OIDC : LoginMethod.SAML;
     return (
-      <AuthPage pageTitle="Login" title="Log in to Infisical" headerAction={<RegionSelect />}>
+      <AuthPage pageTitle="Login" title="Log in to Infisical" titleAction={<RegionSelect />}>
         <ProviderButton
           provider={method}
           label={`Continue with ${method.toUpperCase()}`}
@@ -277,7 +277,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
               aria-expanded={false}
               onClick={() => setAreMoreOptionsVisible(true)}
             >
-              {otherOptions.length} more {otherOptions.length === 1 ? "option" : "options"}
+              + {otherOptions.length} more {otherOptions.length === 1 ? "option" : "options"}
             </Button>
           )}
           <AnimatedCollapse open={areMoreOptionsVisible}>
@@ -319,28 +319,34 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   return (
     <AuthPage
       pageTitle={isAdmin ? "Admin Login" : "Login"}
-      title={isAdmin ? "Log in to the admin console" : "Log in to Infisical"}
-      headerAction={<RegionSelect />}
-      footer={
-        <>
-          {canSignUp && (
-            <span>
-              Don&apos;t have an account?{" "}
-              <Link
-                to="/v4/signup"
-                search={{ callback_port: callbackPort ? Number(callbackPort) : undefined }}
-                className={styles.link}
-              >
-                Sign up
-              </Link>
-            </span>
-          )}
-          {canUseEmail && (
+      title="Welcome back"
+      description={
+        isAdmin ? "Sign in to the Super Admin console" : "Sign in to your Infisical account"
+      }
+      titleAction={<RegionSelect />}
+      bottom={
+        canUseEmail ? (
+          <span>
+            Help me{" "}
             <Link to="/account-recovery" className={styles.link}>
-              Recover your account
+              recover my account
             </Link>
-          )}
-        </>
+          </span>
+        ) : undefined
+      }
+      footer={
+        canSignUp ? (
+          <span>
+            Don&apos;t have an account?{" "}
+            <Link
+              to="/v4/signup"
+              search={{ callback_port: callbackPort ? Number(callbackPort) : undefined }}
+              className={styles.link}
+            >
+              Sign up
+            </Link>
+          </span>
+        ) : undefined
       }
     >
       {renderButtonOptions()}

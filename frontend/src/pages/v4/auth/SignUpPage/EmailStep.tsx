@@ -110,16 +110,19 @@ export const EmailStep = ({
   return (
     <AuthPage
       pageTitle="Sign Up"
-      title="Create your account"
-      headerAction={<RegionSelect />}
+      title="Sign up"
+      description="Create your Infisical account"
+      titleAction={<RegionSelect />}
       footer={
+        <span>
+          Already have an account?{" "}
+          <Link to="/v4/login" search={{ callback_port: callbackPort }} className={styles.link}>
+            Log in
+          </Link>
+        </span>
+      }
+      bottom={
         <>
-          <span>
-            Already have an account?{" "}
-            <Link to="/v4/login" search={{ callback_port: callbackPort }} className={styles.link}>
-              Log in
-            </Link>
-          </span>
           <span>
             By signing up, you agree to our{" "}
             <a

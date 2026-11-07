@@ -143,6 +143,7 @@ export const ProductsStep = ({
       title="What brings you to Infisical?"
       description="Pick what to set up first. You can add more later."
       progress={progress}
+      variant="focused"
       wide
     >
       <List label="Products" selection="none">

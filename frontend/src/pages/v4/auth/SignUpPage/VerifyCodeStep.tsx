@@ -153,7 +153,7 @@ export const VerifyCodeStep = ({
           Change
         </Button>
       }
-      footer={
+      bottom={
         <span>
           Already have an account?{" "}
           <Link to="/v4/login" search={{ callback_port: callbackPort }} className={styles.link}>
