@@ -209,6 +209,17 @@
     text-decoration-thickness: var(--v4-space-2);
   }
 }
+.link.link[data-underline="hover"] {
+  text-decoration-line: none;
+}
+.link.link[data-underline="hover"]:focus-visible {
+  text-decoration-line: underline;
+}
+@media (hover: hover) {
+  .link.link[data-underline="hover"]:hover:not(:disabled, [aria-disabled="true"]) {
+    text-decoration-line: underline;
+  }
+}
 .link.link:active:not(:disabled, [aria-disabled="true"]) {
   text-decoration-thickness: var(--v4-space-2);
 }

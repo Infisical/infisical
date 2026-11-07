@@ -43,7 +43,7 @@ export default function RowActivation() {
       grow: true,
       text: (row) => row.cn,
       render: (row) => (
-        <Button variant="link" onClick={() => open(row)}>
+        <Button variant="link" underline="hover" onClick={() => open(row)}>
           {row.cn}
         </Button>
       )
