@@ -17,5 +17,6 @@ const inventoryPageSearchSchema = z.object({
 export const Route = createFileRoute("/v4/organizations/$orgId/cert-manager/inventory")({
   component: InventoryPage,
   validateSearch: zodValidator(inventoryPageSearchSchema),
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader")
+  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
+  errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });
