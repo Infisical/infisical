@@ -83,6 +83,7 @@ export const PasswordSetupPage = () => {
   return (
     <>
       <AuthPage
+        variant="focused"
         pageTitle="Set Password"
         title="Set a password"
         description="Store it somewhere safe."

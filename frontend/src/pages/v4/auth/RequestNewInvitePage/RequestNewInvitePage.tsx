@@ -9,6 +9,7 @@ export const RequestNewInvitePage = () => {
   const isAlreadyMember = reason === "already_member";
   return (
     <AuthPage
+      variant="focused"
       pageTitle={isAlreadyMember ? "Already a Member" : "Request a New Invite"}
       title={isAlreadyMember ? "Invite already accepted" : "Your invite has expired"}
       description={

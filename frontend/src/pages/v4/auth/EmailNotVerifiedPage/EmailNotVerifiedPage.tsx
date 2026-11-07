@@ -6,6 +6,7 @@ import { AuthPage } from "../components/AuthPage";
 
 export const EmailNotVerifiedPage = () => (
   <AuthPage
+    variant="focused"
     pageTitle="Email Not Verified"
     title="Your email was not verified"
     description="Try again. If the problem continues, contact support@infisical.com."

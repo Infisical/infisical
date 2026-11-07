@@ -120,6 +120,7 @@ const EnterPasswordStep = ({
 
   return (
     <AuthPage
+      variant="focused"
       pageTitle="Account Recovery"
       title="Enter a new password"
       titleAction={
@@ -224,6 +225,7 @@ export const AccountRecoveryResetPage = () => {
   if (step === Steps.ConfirmEmail) {
     return (
       <AuthPage
+        variant="focused"
         pageTitle="Account Recovery"
         title="Confirm your email"
         description={
@@ -268,6 +270,7 @@ export const AccountRecoveryResetPage = () => {
 
   return (
     <AuthPage
+      variant="focused"
       pageTitle="Account Recovery"
       title="Recover your account"
       description={

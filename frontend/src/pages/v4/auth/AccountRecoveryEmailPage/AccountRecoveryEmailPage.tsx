@@ -66,6 +66,7 @@ export const AccountRecoveryEmailPage = () => {
   if (step === 2) {
     return (
       <AuthPage
+        variant="focused"
         pageTitle="Account Recovery"
         title="Check your inbox"
         description={
@@ -83,6 +84,7 @@ export const AccountRecoveryEmailPage = () => {
 
   return (
     <AuthPage
+      variant="focused"
       pageTitle="Account Recovery"
       title="Recover your account"
       description="Enter your email to receive recovery instructions."

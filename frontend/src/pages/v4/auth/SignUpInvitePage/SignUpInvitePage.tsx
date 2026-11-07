@@ -13,6 +13,7 @@ export const SignUpInvitePage = () => {
   if (error) {
     return (
       <AuthPage
+        variant="focused"
         pageTitle="Invalid Invitation"
         title="This invitation isn't valid"
         description="Ask your organization administrator to send you a new invitation."
