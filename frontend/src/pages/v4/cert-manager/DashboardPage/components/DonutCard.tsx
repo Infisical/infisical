@@ -93,6 +93,7 @@ export const DonutCard = ({
               </Pie>
             </PieChart>
           </ChartContainer>
+          {/* v4-check-ignore raw-table-in-card -- the chart legend, not a table of records */}
           <Table aria-label={`${title} breakdown`}>
             <TableHeader>
               <TableRow>
