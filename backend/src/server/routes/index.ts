@@ -642,7 +642,7 @@ import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { goSidecarPlugin } from "../plugins/go-sidecar";
-// import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
+import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
 import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
@@ -5267,11 +5267,25 @@ export const registerRoutes = async (
       sampleRate: envConfig.GO_SIDECAR_SHADOW_SAMPLE_RATE
     });
   }
-  // Forwarding plugin disabled in favor of shadowing
-  // if (envConfig.GOLANG_SIDECAR_URL) {
-  //   logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
-  //   await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
-  // }
+  if (envConfig.GOLANG_SIDECAR_URL && envConfig.GO_SIDECAR_FORWARD_ENABLED) {
+    logger.info(`Go sidecar forwarding enabled: ${envConfig.GOLANG_SIDECAR_URL}`);
+    const splitList = (value?: string) =>
+      new Set(
+        (value ?? "")
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean)
+      );
+    await server.register(forwardToGoSidecar, {
+      sidecarUrl: envConfig.GOLANG_SIDECAR_URL,
+      getSettings: () => ({
+        enabled: envConfig.GO_SIDECAR_FORWARD_ENABLED,
+        enabledRoutes: splitList(envConfig.GO_SIDECAR_FORWARD_ROUTES),
+        orgIds: splitList(envConfig.GO_SIDECAR_FORWARD_ORG_IDS),
+        percent: envConfig.GO_SIDECAR_FORWARD_PERCENT
+      })
+    });
+  }
 
   const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
   if (shouldForwardWritesToPrimaryInstance) {
