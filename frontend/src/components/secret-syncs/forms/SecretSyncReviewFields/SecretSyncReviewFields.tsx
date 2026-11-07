@@ -49,6 +49,7 @@ import {
   CloudflareWorkersSyncReviewFields
 } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
+import { DenoDeploySyncReviewFields } from "./DenoDeploySyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
 import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
@@ -277,6 +278,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Daytona:
       // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.DenoDeploy:
+      DestinationFieldsComponent = <DenoDeploySyncReviewFields />;
       break;
     case SecretSync.Keeper:
       DestinationFieldsComponent = <KeeperSyncReviewFields />;

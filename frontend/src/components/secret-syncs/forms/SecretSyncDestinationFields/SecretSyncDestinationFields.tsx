@@ -21,6 +21,7 @@ import { CloudflareSecretsStoreSyncFields } from "./CloudflareSecretsStoreSyncFi
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DaytonaSyncFields } from "./DaytonaSyncFields";
+import { DenoDeploySyncFields } from "./DenoDeploySyncFields";
 import { DevinSyncFields } from "./DevinSyncFields";
 import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSyncFields";
 import { ExternalInfisicalSyncFields } from "./ExternalInfisicalSyncFields";
@@ -162,6 +163,8 @@ export const SecretSyncDestinationFields = () => {
       return <Cloud66SyncFields />;
     case SecretSync.Daytona:
       return <DaytonaSyncFields />;
+    case SecretSync.DenoDeploy:
+      return <DenoDeploySyncFields />;
     case SecretSync.Keeper:
       return <KeeperSyncFields />;
     case SecretSync.Spacelift:

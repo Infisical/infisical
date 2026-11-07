@@ -260,6 +260,7 @@ Devin
 Mintlify
 Ona
 Daytona
+Deno Deploy
 E2B
 DBT
 Ab Initio

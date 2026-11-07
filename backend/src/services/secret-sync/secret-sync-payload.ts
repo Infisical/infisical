@@ -138,12 +138,19 @@ export const createSecretSyncPayload = (
     const map: TSecretMap = {};
 
     for (const [destinationKey, [entry]] of grouped) {
-      map[destinationKey] = {
-        value: entry.value,
-        id: entry.id,
-        comment: entry.comment,
-        secretMetadata: entry.secretMetadata
-      };
+      // defineProperty, not assignment: a secret named "__proto__" must stay an own key instead of
+      // replacing the map's prototype.
+      Object.defineProperty(map, destinationKey, {
+        value: {
+          value: entry.value,
+          id: entry.id,
+          comment: entry.comment,
+          secretMetadata: entry.secretMetadata
+        },
+        enumerable: true,
+        writable: true,
+        configurable: true
+      });
     }
 
     return map;

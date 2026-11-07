@@ -166,6 +166,12 @@ import {
   TValidateDbtConnectionCredentialsSchema
 } from "./dbt";
 import {
+  TDenoDeployConnection,
+  TDenoDeployConnectionConfig,
+  TDenoDeployConnectionInput,
+  TValidateDenoDeployConnectionCredentialsSchema
+} from "./deno-deploy";
+import {
   TDevinConnection,
   TDevinConnectionConfig,
   TDevinConnectionInput,
@@ -661,6 +667,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TPowerDnsConnection
   | TSpaceliftConnection
   | TDaytonaConnection
+  | TDenoDeployConnection
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
@@ -768,6 +775,7 @@ export type TAppConnectionInput = { id: string } & (
   | TPowerDnsConnectionInput
   | TSpaceliftConnectionInput
   | TDaytonaConnectionInput
+  | TDenoDeployConnectionInput
   | TStripeConnectionInput
   | TKeeperConnectionInput
   | THpeIloConnectionInput
@@ -909,6 +917,7 @@ export type TAppConnectionConfig =
   | TPowerDnsConnectionConfig
   | TSpaceliftConnectionConfig
   | TDaytonaConnectionConfig
+  | TDenoDeployConnectionConfig
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
   | THpeIloConnectionConfig
@@ -1007,6 +1016,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidatePowerDnsConnectionCredentialsSchema
   | TValidateSpaceliftConnectionCredentialsSchema
   | TValidateDaytonaConnectionCredentialsSchema
+  | TValidateDenoDeployConnectionCredentialsSchema
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema
