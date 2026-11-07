@@ -268,7 +268,35 @@ React Query + Axios with query key factories per domain. Each API domain in `fro
 
 ## Keeping AGENTS.md Up to Date
 
-When making significant changes to the codebase (new services, architectural shifts, new patterns, major refactors), update the relevant AGENTS.md file(s) with high-level findings. This includes this root file for cross-cutting concerns, `backend/AGENTS.md` for Node.js backend changes, `backend-go/AGENTS.md` for Go backend changes, and `frontend/AGENTS.md` for frontend changes. The goal is to keep these files accurate as living documentation so future sessions start with correct context.
+When a change adds a service, a pattern, or a rule other code must follow, update the AGENTS.md that owns it in the same PR. This file and the package files are loaded into every session, so every line costs context; add what prevents a mistake, not everything you learned.
+
+**Where it goes:**
+
+| Content | Home |
+|---|---|
+| Rules that span packages | this file |
+| Rules that code anywhere in a package must follow | `backend/AGENTS.md`, `backend-go/AGENTS.md`, `frontend/AGENTS.md` |
+| How a module works inside, for someone editing it | an `AGENTS.md` next to the code (e.g. `backend/src/services/<module>/AGENTS.md`), plus a one-line "read X before touching Y" pointer in the package file |
+| Why one piece of code is written the way it is | a code comment |
+| What must not regress | a test |
+
+Nested files are not loaded automatically; an agent reaches them only through those pointers, so never add one without its pointer.
+
+**The test for a line:** would an agent working outside this module get something wrong without it? If not, it belongs in the module's own file, a comment, or nowhere.
+
+**Write:**
+- Rules as imperatives, with the reason in the same sentence when it isn't obvious. The reason is what stops a later "simplification" from breaking the rule, so don't cut it to save space.
+- The names of the functions, constants and files involved, so the rule can be found in code.
+- Commands that can be copied and run as written.
+
+**Don't write:**
+- Line numbers, file counts, or "currently N of X"; they go stale silently.
+- Change history or incident narration ("this used to...", "after the outage...").
+- What the code already says, or a walkthrough of a module's internals in a package file.
+- A second copy of a rule; link the existing one.
+- Generic advice that holds for any codebase.
+
+When a section in a package file grows past about 30 lines of internals, move them to a nested `AGENTS.md` and keep only the rules other code must follow plus the pointer. Before deleting a section, check a code comment or test actually covers it.
 
 ## Wiring a New Full-Stack Feature
 

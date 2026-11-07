@@ -10,7 +10,8 @@ All commands run from the `frontend/` directory:
 
 - `npm run dev` — start dev server on port 3000
 - `npm run build` — TypeScript check + Vite production build
-- `npm run lint:fix` — ESLint autofix (double quotes, simple-import-sort with 7 groups)
+- `npm run lint` / `npm run lint:fix` — Oxlint + Oxfmt check / autofix (see Conventions)
+- `npm run test` — Vitest unit tests (`vitest.config.mts`)
 - `npm run type:check` — TypeScript type check only (`tsconfig.app.json`)
 - `make reviewable-ui` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
 - `npm run storybook` — Storybook on port 6006
@@ -84,8 +85,8 @@ Read [`../ANALYTICS.md`](../ANALYTICS.md) before adding or changing an event. It
 ### State Management
 
 - **Server state**: TanStack React Query (query key factories in each API domain)
-- **Global app state**: React Context providers in `src/context/` — User, Organization, Project, OrgPermission, ProjectPermission, ServerConfig, Subscription
-- **Local component state**: Zustand stores
+- **Global app state**: React Context providers in `src/context/` — User, Organization, Project, OrgPermission, ProjectPermission, SignerPermission, ServerConfig, Subscription
+- **Local component state**: React state; Zustand only for the secrets dashboard (`SecretMainPage.store.tsx`)
 
 ### Permissions
 
@@ -97,11 +98,11 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 
 ### Layouts
 
-9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
+Layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
 
 ### Org-scoped products
 
-PAM lives at `/organizations/$orgId/<slug>` over a single implicit project, so its URLs carry no `$projectId`. Its layout's `beforeLoad` publishes `implicitProjectId` and `implicitProductType` into route context, and `useImplicitProjectId()` / `useImplicitProduct()` read them back off the matched routes. **Anything that decides whether a `useProject()` caller renders must use `useImplicitProduct()`, never the pathname.** The router changes location before it swaps matches, so a pathname gate mounts a frame early on the way in and unmounts a frame late on the way out, leaving the component asking for a project the router no longer resolves, which throws into `ErrorPage`. Reading the matches keeps the product in step with `useParams`, which is match-derived and is what every other product's gate already uses. The gates that matter today are `OrgSidebar`'s `isInsideProject`, the `ProjectSelect` wrapper, and `OrganizationCommandMenu` in `RootCommandMenu.tsx`, which had exactly this bug when it arrived from main with a pathname check; `getOrgScopedProductFromPath` remains correct for the cosmetic uses behind no `useProject` (navbar scope, `useScopeVariant`, `TypeSelect`).
+PAM lives at `/organizations/$orgId/<slug>` over a single implicit project, so its URLs carry no `$projectId`. Its layout's `beforeLoad` publishes `implicitProjectId` and `implicitProductType` into route context, and `useImplicitProjectId()` / `useImplicitProduct()` read them back off the matched routes. **Anything that decides whether a `useProject()` caller renders must use `useImplicitProduct()`, never the pathname.** The router changes location before it swaps matches, so a pathname gate mounts a frame early on the way in and unmounts a frame late on the way out, leaving the component asking for a project the router no longer resolves, which throws into `ErrorPage`. Reading the matches keeps the product in step with `useParams`, which is match-derived and is what every other product's gate already uses. The gates that matter today are `OrgSidebar`'s `isInsideProject`, the `ProjectSelect` wrapper, and `OrganizationCommandMenu` in `RootCommandMenu.tsx`; `getOrgScopedProductFromPath` remains correct for the cosmetic uses behind no `useProject` (navbar scope, `useScopeVariant`, `TypeSelect`).
 
 A new org-scoped product therefore needs: a `<product>ProjectId` on the `Organization` type, an entry in `ORG_SCOPED_PRODUCT_TYPES` and `getOrgScopedProductFromPath` (`helpers/project.ts`), and a layout `beforeLoad` that bootstraps the id, patches it into the cached org, and returns both `implicitProjectId` and `implicitProductType` (see `pages/pam/layout.tsx`). Use `isOrgScopedProduct(type)` rather than adding another pathname check; the sidebar, navbar, project switcher and nav links all key off it.
 
