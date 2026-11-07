@@ -302,11 +302,6 @@ export const OverviewPage = () => {
               />
             )
           }
-          footer={
-            rows.length === totalCount
-              ? `${totalCount} keys`
-              : `${rows.length} of ${totalCount} keys`
-          }
           pagination={
             totalCount > 0 ? (
               <Pagination
