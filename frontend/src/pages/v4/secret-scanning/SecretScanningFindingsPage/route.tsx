@@ -7,6 +7,7 @@ import { SecretScanningFindingStatus } from "@app/hooks/api/secretScanningV2/enu
 import { SecretScanningFindingsPage } from "./SecretScanningFindingsPage";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/secret-scanning/findings")({
+  staticData: { readiness: "partial", missing: ["Live sign-off"] },
   component: SecretScanningFindingsPage,
   validateSearch: zodValidator(
     z.object({

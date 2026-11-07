@@ -9,6 +9,7 @@ import { AccessControlPage } from "../AccessControlPage";
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/kms/$projectId/access-management"
 )({
+  staticData: { readiness: "full" },
   component: AccessControlPage,
   validateSearch: zodValidator(
     z.object({

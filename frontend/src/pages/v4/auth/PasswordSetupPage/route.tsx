@@ -23,6 +23,7 @@ export const Route = createFileRoute("/v4/password-setup")({
     const { toV3Location, withV4Redirects } = await import("../paths");
     await withV4Redirects(() => authenticateSession({ context, location: toV3Location(location) }));
   },
+  staticData: { readiness: "full" },
   component: PasswordSetupPage,
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

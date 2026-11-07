@@ -11,6 +11,7 @@ const QueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute("/v4/_v4-auth/login/saml")({
+  staticData: { readiness: "full" },
   component: () => <SsoLoginPage type="SAML" />,
   validateSearch: zodValidator(QueryParamsSchema),
   search: {

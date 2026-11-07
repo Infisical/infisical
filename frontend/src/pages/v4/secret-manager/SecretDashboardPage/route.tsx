@@ -17,6 +17,7 @@ const SecretDashboardPageQueryParamsSchema = z.object({
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
 )({
+  staticData: { readiness: "full" },
   component: SecretDashboardPage,
   validateSearch: zodValidator(SecretDashboardPageQueryParamsSchema),
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),

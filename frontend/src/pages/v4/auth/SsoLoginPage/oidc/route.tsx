@@ -11,6 +11,7 @@ const QueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute("/v4/_v4-auth/login/oidc")({
+  staticData: { readiness: "full" },
   component: () => <SsoLoginPage type="OIDC" />,
   validateSearch: zodValidator(QueryParamsSchema),
   search: {

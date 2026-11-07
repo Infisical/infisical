@@ -5,6 +5,7 @@ import { z } from "zod";
 import { AuditLogsPage } from "./AuditLogsPage";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/audit-logs")({
+  staticData: { readiness: "partial", missing: ["External log streams", "Audit log settings"] },
   component: AuditLogsPage,
   validateSearch: zodValidator(z.object({ selectedTab: z.string().catch("audit-logs") })),
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),

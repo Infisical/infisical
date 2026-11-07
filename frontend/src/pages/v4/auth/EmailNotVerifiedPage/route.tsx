@@ -3,6 +3,7 @@ import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { EmailNotVerifiedPage } from "./EmailNotVerifiedPage";
 
 export const Route = createFileRoute("/v4/_v4-auth/email-not-verified")({
+  staticData: { readiness: "full" },
   component: EmailNotVerifiedPage,
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

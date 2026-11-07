@@ -10,6 +10,7 @@ const QueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute("/v4/_v4-auth/account-recovery-reset")({
+  staticData: { readiness: "full" },
   component: AccountRecoveryResetPage,
   validateSearch: zodValidator(QueryParamsSchema),
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),

@@ -23,6 +23,7 @@ export const Route = createFileRoute("/v4/_v4-auth/signupinvite")({
       acceptSignupInvite({ context, search: SignupInvitePageQueryParamsSchema.parse(search) })
     );
   },
+  staticData: { readiness: "full" },
   component: SignUpInvitePage,
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

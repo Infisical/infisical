@@ -12,6 +12,7 @@ const CertificateDetailsByIDPageQuerySchema = z.object({
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/cert-manager/certificates/$certificateId"
 )({
+  staticData: { readiness: "partial", missing: ["Renew now", "Auto renewal", "Certificate syncs"] },
   component: CertificateDetailsByIDPage,
   validateSearch: zodValidator(CertificateDetailsByIDPageQuerySchema),
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),

@@ -7,6 +7,7 @@ export const Route = createFileRoute("/v4/_v4-auth/admin/signup")({
     if (context.authPreview) return;
     if (context.serverConfig.initialized) throw redirect({ to: "/v4/login" });
   },
+  staticData: { readiness: "full" },
   component: AdminSignUpPage,
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
