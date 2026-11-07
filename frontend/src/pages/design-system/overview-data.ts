@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "themes",
+    title: "Four themes",
+    description:
+      "Peach, Pale, Dark and Dark alt are named themes with a light or dark scheme, picked from the account and workbench menus.",
+    date: "2026-11-07",
+    commit: "c700ce77aa",
+    page: "colors"
+  },
+  {
     id: "line-roles",
     title: "Line roles",
     description:
@@ -210,14 +219,5 @@ export const recentChanges: {
     date: "2026-11-04",
     commit: "d83fdd0dfc",
     page: "rules"
-  },
-  {
-    id: "band-org-zone",
-    title: "Band org zone",
-    description:
-      "The band's org zone matches the sidebar, and the collapsed org trigger hugs its content and eases with the sidebar.",
-    date: "2026-11-04",
-    commit: "cf39aaea7d",
-    page: "top-bar"
   }
 ];
