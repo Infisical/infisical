@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "row-ring-width",
+    title: "Row rings keep column widths",
+    description:
+      "A focused table row no longer narrows its columns, and the error details panel drops its repeated label.",
+    date: "2026-11-07",
+    commit: "a3f075ef64",
+    page: "table"
+  },
+  {
     id: "context-menu-release",
     title: "Safer context menus",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "b7593b3735",
     page: "colors"
-  },
-  {
-    id: "button-corner-badge",
-    title: "Button corner badge",
-    description:
-      "A Button can carry a small Badge on its top-right corner, such as Last used, without changing its size or hit area.",
-    date: "2026-11-07",
-    commit: "7ff23542fa",
-    page: "button"
   }
 ];
