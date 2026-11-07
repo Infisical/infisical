@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "shared-hover",
+    title: "Shared hover",
+    description:
+      "Every hover and press is one ink overlay tuned by hover-mix and press-mix, darker in light themes and brighter in dark ones.",
+    date: "2026-11-07",
+    commit: "b7593b3735",
+    page: "colors"
+  },
+  {
     id: "button-corner-badge",
     title: "Button corner badge",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "82721e1d76",
     page: "popover"
-  },
-  {
-    id: "selection-column",
-    title: "Selection column",
-    description:
-      "Native tables and DataTable share one selection hook, and icon columns that double as selection can drop the divider.",
-    date: "2026-11-06",
-    commit: "75c373c9f0",
-    page: "table"
   }
 ];
