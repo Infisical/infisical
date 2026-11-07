@@ -395,9 +395,15 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
               className="w-full"
               loading={isLoading}
               disabled={!isValid || (shouldShowCaptcha && captchaToken === "")}
+              cornerBadge={
+                lastUsedMethod === LoginMethod.EMAIL ? (
+                  <Badge tone="accent" size="sm">
+                    Last used
+                  </Badge>
+                ) : undefined
+              }
             >
               Continue with email
-              {lastUsedMethod === LoginMethod.EMAIL && <Badge tone="soft">Last used</Badge>}
             </Button>
           </Stack>
         </form>

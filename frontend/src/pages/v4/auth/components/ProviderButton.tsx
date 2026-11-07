@@ -41,6 +41,13 @@ export const ProviderButton = ({
       aria-label={ariaLabel}
       onClick={onClick}
       className="w-full"
+      cornerBadge={
+        badge ? (
+          <Badge tone="accent" size="sm">
+            {badge}
+          </Badge>
+        ) : undefined
+      }
     >
       {icon ? (
         <img alt="" className={styles.providerIcon} src={providerIconPath(icon, scheme)} />
@@ -48,7 +55,6 @@ export const ProviderButton = ({
         <Icon name="lock" />
       )}
       {showLabel && label}
-      {badge && <Badge tone="soft">{badge}</Badge>}
     </Button>
   );
 };
