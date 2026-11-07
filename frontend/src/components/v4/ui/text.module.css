@@ -80,6 +80,18 @@
 .grid > * {
   min-width: 0;
 }
+.gridSplit {
+  container-type: inline-size;
+}
+.gridSplit > * {
+  grid-column: 1 / -1;
+}
+/* Container conditions cannot read custom properties, so this repeats size-sidecar-collapse (896px), the two-column breakpoint DetailLayout uses. */
+@container (min-width: 896px) {
+  .gridSplit > * {
+    grid-column: auto;
+  }
+}
 .container {
   width: 100%;
   min-width: 0;

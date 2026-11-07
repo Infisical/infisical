@@ -916,6 +916,7 @@
 }
 .toggleGroup {
   display: inline-flex;
+  flex-shrink: 0;
   width: fit-content;
   max-width: 100%;
   align-items: center;

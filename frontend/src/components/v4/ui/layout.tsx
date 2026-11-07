@@ -105,19 +105,24 @@ export function Grid({
   className,
   ref,
   ...props
-}: Omit<LayoutProps, "align" | "justify"> & { columns?: 2 | 3 | 4; min?: "tile" | "card" } & {
+}: Omit<LayoutProps, "align" | "justify"> & {
+  columns?: 2 | 3 | 4 | "1:2";
+  min?: "tile" | "card";
+} & {
   ref?: React.Ref<HTMLDivElement>;
 }) {
+  let gridTemplateColumns = `repeat(auto-fit, minmax(min(100%, var(--v4-size-${min}-min)), 1fr))`;
+  if (columns === "1:2") gridTemplateColumns = "minmax(0, 1fr) minmax(0, 2fr)";
+  else if (columns) gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
   return (
     <div
       ref={ref}
       data-slot="grid"
-      className={cn(styles.grid, className)}
+      data-columns={columns}
+      className={cn(styles.grid, columns === "1:2" && styles.gridSplit, className)}
       style={{
         gap: spacing(gap),
-        gridTemplateColumns: columns
-          ? `repeat(${columns}, minmax(0, 1fr))`
-          : `repeat(auto-fit, minmax(min(100%, var(--v4-size-${min}-min)), 1fr))`,
+        gridTemplateColumns,
         ...style
       }}
       {...props}

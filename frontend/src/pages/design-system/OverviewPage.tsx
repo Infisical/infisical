@@ -1,5 +1,3 @@
-import { useNavigate, useRouter } from "@tanstack/react-router";
-
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
@@ -43,8 +41,6 @@ const entryPoints = [
 });
 
 export const OverviewPage = () => {
-  const router = useRouter();
-  const navigate = useNavigate();
   return (
     <div>
       <PageHeading title="Infisical design system" />
@@ -108,19 +104,7 @@ export const OverviewPage = () => {
                 title={change.title}
                 description={change.description}
                 meta={<Meta>{change.date}</Meta>}
-                href={link && router.buildLocation(link as Parameters<typeof navigate>[0]).href}
-                onClick={(event) => {
-                  if (
-                    !link ||
-                    event.metaKey ||
-                    event.ctrlKey ||
-                    event.shiftKey ||
-                    event.button !== 0
-                  )
-                    return;
-                  event.preventDefault();
-                  navigate(link as Parameters<typeof navigate>[0]);
-                }}
+                link={link}
               />
             );
           })}
