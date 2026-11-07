@@ -9,16 +9,14 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { toV4Href } from "@app/helpers/v4Bridge";
 import type { TAnnouncement } from "@app/hooks/api/announcement/types";
 
 import { accessLinks } from "../access/links";
 import { useOrgPermission } from "../access/permissions";
 import { failed, toast } from "../access/toast";
-import { v4LoginPath } from "../auth/paths";
 import { useV4Adapter, useV4Mode } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
-import { useResolveV4Href } from "../resolveV4Href";
+import { useGo, v4Path } from "../links";
 import { useV4ThemeChoice } from "../useV4Theme";
 
 const publishedDate = (iso: string, options: Intl.DateTimeFormatOptions) => {
@@ -73,13 +71,12 @@ export const useShellChrome = () => {
   const { user } = useV4Session();
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const navigate = useNavigate();
-  const resolve = useResolveV4Href();
   const org = useV4Adapter("org");
   const live = useV4Mode() === "live";
   const logout = org.useLogout();
   const { permission } = useOrgPermission();
   const { theme, setTheme } = useV4ThemeChoice("profile-menu");
-  const go = (href: string) => navigate({ href: resolve(href) });
+  const go = useGo();
   const canInvite = permission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
   const copyToken = async () => {
     try {
@@ -92,7 +89,7 @@ export const useShellChrome = () => {
   const logOut = async () => {
     try {
       await logout.mutateAsync();
-      await navigate({ to: v4LoginPath, replace: true });
+      await navigate({ to: v4Path("/login"), replace: true });
     } catch (error) {
       failed("Failed to log out", error);
     }
@@ -101,7 +98,7 @@ export const useShellChrome = () => {
     {
       label: "Personal settings",
       icon: "user",
-      onSelect: () => go(toV4Href("/personal-settings")),
+      onSelect: () => go(v4Path("/personal-settings")),
       disabled: !live,
       disabledReason: "Not available in the demo"
     },
