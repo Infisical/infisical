@@ -39,9 +39,11 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/context";
+import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { usePopUp, useRouteProjectId } from "@app/hooks";
 import { useRevokeIdentityTokenAuthToken } from "@app/hooks/api";
 import { IdentityAccessToken } from "@app/hooks/api/identities/types";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { IdentityTokenModal } from "@app/pages/organization/IdentityDetailsByIDPage/components";
 
 type Props = {
@@ -56,6 +58,9 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
   ] as const);
 
   const projectId = useRouteProjectId();
+  const { data: serverStatus } = useFetchServerStatus();
+  const maxTokenTTL =
+    serverStatus?.maxIdentityAccessTokenTTL ?? MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK;
 
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(5);
@@ -145,10 +150,9 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                   id
                 } = token;
 
-                let expiresAt: Date | undefined;
-                if (accessTokenTTL > 0) {
-                  expiresAt = new Date(new Date(createdAt).getTime() + accessTokenTTL * 1000);
-                }
+                const effectiveTTL =
+                  accessTokenTTL > 0 ? Math.min(accessTokenTTL, maxTokenTTL) : maxTokenTTL;
+                const expiresAt = new Date(new Date(createdAt).getTime() + effectiveTTL * 1000);
 
                 return (
                   <TableRow key={id}>
@@ -157,12 +161,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                       {`${accessTokenNumUses}${accessTokenNumUsesLimit ? `/${accessTokenNumUsesLimit}` : ""}`}
                     </TableCell>
                     <TableCell>
-                      {/* eslint-disable-next-line no-nested-ternary */}
-                      {isAccessTokenRevoked
-                        ? "Revoked"
-                        : expiresAt
-                          ? format(expiresAt, "yyyy-MM-dd")
-                          : "—"}
+                      {isAccessTokenRevoked ? "Revoked" : format(expiresAt, "yyyy-MM-dd")}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
