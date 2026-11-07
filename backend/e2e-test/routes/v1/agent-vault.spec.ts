@@ -55,7 +55,8 @@ import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { usageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
+import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
@@ -64,6 +65,12 @@ import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folde
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
+
+// The Agent Vault seat meter, as the License domain counts it.
+const countAgentVaultSeats = (orgId: string) =>
+  new AgentVaultModule({ organizationsProjects: new OrganizationsProjectsModule({ db: testDb }).service }).usageCounters[0].count(
+    orgId
+  );
 
 declare const testKeyStore: TKeyStoreFactory;
 
@@ -9646,7 +9653,7 @@ describe("Agent Vault V1 Router", async () => {
           .statusCode
       ).toBe(200);
 
-      const seatsBefore = await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id);
+      const seatsBefore = await countAgentVaultSeats(seedData1.organization.id);
 
       const projectMembership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
@@ -9686,7 +9693,7 @@ describe("Agent Vault V1 Router", async () => {
         skipped: [{ type: "machineIdentity", id: identity.id }]
       });
 
-      expect(await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id)).toBe(
+      expect(await countAgentVaultSeats(seedData1.organization.id)).toBe(
         seatsBefore
       );
 

@@ -7,13 +7,21 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import {
+  Plan,
+  TLicenseService,
+  AgentVaultIdentities,
+  IdentitiesMeter,
+  PamIdentities,
+  SecretIdentities,
+  UserIdentities
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -37,14 +45,6 @@ import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/valida
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import {
-  AgentVaultIdentities,
-  IdentitiesMeter,
-  PamIdentities,
-  SecretIdentities,
-  UserIdentities
-} from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
@@ -113,15 +113,12 @@ type TSuperAdminServiceFactoryDep = {
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<
-    TLicenseServiceFactory,
-    "onPremFeatures" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount"
-  >;
+  licenseService: Pick<TLicenseService, "getInstanceEntitlements" | "syncSeats" | "within">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   tokenService: TAuthTokenServiceFactory;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -916,7 +913,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const identityLimit = getEnforcedIdentityLimit(licenseService.onPremFeatures);
+    const identityLimit = Plan.restore(licenseService.getInstanceEntitlements().features).enforcedIdentityLimit;
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -945,7 +942,7 @@ export const superAdminServiceFactory = ({
       const org = await orgService.createOrganization({ orgName: name }, tx);
 
       if (identityLimit) {
-        const { identitiesUsed } = await licenseService.getOrgSeatUsage(org.id, tx);
+        const { identitiesUsed } = await licenseService.within(sealKnexTransaction(tx)).getSeatUsage(org.id);
         if (identitiesUsed >= identityLimit) {
           throw new BadRequestError({
             name: "InviteUser",
@@ -1015,7 +1012,7 @@ export const superAdminServiceFactory = ({
       return { organization: org, users };
     });
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await licenseService.syncSeats(organization.id);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {
@@ -1237,7 +1234,7 @@ export const superAdminServiceFactory = ({
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
-    if (!licenseService.onPremFeatures?.instanceUserManagement) {
+    if (!licenseService.getInstanceEntitlements().features.instanceUserManagement) {
       throw new BadRequestError({
         message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
       });
@@ -1280,7 +1277,7 @@ export const superAdminServiceFactory = ({
   };
 
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
-    if (!licenseService.onPremFeatures.hsm) {
+    if (!licenseService.getInstanceEntitlements().features.hsm) {
       throw new BadRequestError({
         message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
       });
@@ -1346,7 +1343,7 @@ export const superAdminServiceFactory = ({
 
     const config = getConfig();
     if (!config.isCloud) {
-      const plan = licenseService.onPremFeatures;
+      const plan = licenseService.getInstanceEntitlements().features;
       const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
       if (!canEmailDomainVerification) {
         throw new BadRequestError({

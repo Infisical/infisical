@@ -104,30 +104,6 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		require.Equal(t, "enterprise", fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)["slug"])
 	})
 
-	t.Run("should send the organization's name and slug with the entitlements read", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
-
-		// Action
-		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)
-
-		// Assert
-		fetches := root.State(t).EntitlementFetches
-		require.NotEmpty(t, fetches)
-		require.Equal(t, tn.OrgSlug, fetches[len(fetches)-1].OrgSlug)
-		require.Equal(t, orgOf(t, tn).Name, fetches[len(fetches)-1].OrgName)
-	})
-}
-
-func TestOrganizationPlan_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	// Today a sub-org's plan is cached under the root's key but looked up under its
-	// own, so every request a sub-org session makes fetches the plan again.
 	t.Run("should serve a sub-org's second request from the cache", func(t *testing.T) {
 		t.Parallel()
 
@@ -145,5 +121,22 @@ func TestOrganizationPlan_KnownIssues(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, before, len(root.State(t).EntitlementFetches))
+	})
+
+	t.Run("should send the organization's name and slug with the entitlements read", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+
+		// Action
+		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)
+
+		// Assert
+		fetches := root.State(t).EntitlementFetches
+		require.NotEmpty(t, fetches)
+		require.Equal(t, tn.OrgSlug, fetches[len(fetches)-1].OrgSlug)
+		require.Equal(t, orgOf(t, tn).Name, fetches[len(fetches)-1].OrgName)
 	})
 }

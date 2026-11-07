@@ -1,8 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import {
+  Plan,
+  TLicenseService,
+  AgentVaultIdentities,
+  IdentitiesMeter,
+  PamIdentities,
+  SecretIdentities
+} from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -18,8 +25,6 @@ import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/v
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -52,10 +57,10 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -136,7 +141,7 @@ export const identityServiceFactory = ({
         });
     }
 
-    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+    const identityLimit = Plan.restore(await licenseService.getPlan(orgId)).enforcedIdentityLimit;
 
     const identity = await identityDAL.transaction(async (tx) => {
       // Acquire advisory lock to prevent race conditions when checking identity limits
@@ -145,7 +150,7 @@ export const identityServiceFactory = ({
 
       // Count seats inside the transaction, after the lock, so a concurrent create can't slip past
       if (identityLimit) {
-        const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
+        const { identitiesUsed } = await licenseService.within(sealKnexTransaction(tx)).getSeatUsage(orgId);
         if (identitiesUsed >= identityLimit) {
           throw new BadRequestError({
             message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
@@ -195,7 +200,7 @@ export const identityServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
+    await licenseService.syncSeats(orgId);
     usageMeteringService.emit(orgId, IdentitiesMeter.key);
 
     return identity;
@@ -437,7 +442,7 @@ export const identityServiceFactory = ({
         return identityDAL.deleteById(id, tx);
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
-      await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
+      await licenseService.syncSeats(identityOrgMembership.scopeOrgId);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);

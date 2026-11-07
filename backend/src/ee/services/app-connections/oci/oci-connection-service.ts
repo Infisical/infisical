@@ -1,9 +1,9 @@
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
-import { TLicenseServiceFactory } from "../../license/license-service";
 import { listOCICompartments, listOCIVaultKeys, listOCIVaults } from "./oci-connection-fns";
 import { TOCIConnection } from "./oci-connection-types";
 
@@ -25,7 +25,7 @@ type TListOCIVaultKeysDTO = {
 };
 
 // Enterprise check
-export const checkPlan = async (licenseService: Pick<TLicenseServiceFactory, "getPlan">, orgId: string) => {
+export const checkPlan = async (licenseService: Pick<TLicenseService, "getPlan">, orgId: string) => {
   const plan = await licenseService.getPlan(orgId);
   if (!plan.enterpriseAppConnections)
     throw new BadRequestError({
@@ -36,7 +36,7 @@ export const checkPlan = async (licenseService: Pick<TLicenseServiceFactory, "ge
 
 export const ociConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">
+  licenseService: Pick<TLicenseService, "getPlan">
 ) => {
   const listCompartments = async (connectionId: string, actor: OrgServiceActor) => {
     await checkPlan(licenseService, actor.orgId);

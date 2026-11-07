@@ -1,10 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { featureReaderFactory } from "./feature-reader";
-import { AuditRetentionDays, IdentitiesMeter, SsoEnforcement } from "./features";
-import { licenseClientFactory } from "./license-client";
-import { entitlementResolverFactory } from "./license-client-cache";
-import { TEntitlementsResponse } from "./license-client-types";
+import { TEntitlementsResponse } from "../../../ce/model/license-server-types";
+import { entitlementResolverFactory } from "./entitlement-resolver";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -92,75 +89,5 @@ describe("entitlementResolverFactory", () => {
 
     await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
     expect(getOrgs()[0]).toEqual({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-  });
-});
-
-describe("featureReaderFactory", () => {
-  test("falls back to the descriptor fallback when no entitlements resolve", async () => {
-    const reader = featureReaderFactory({ getEntitlements: async () => null });
-
-    expect((await reader.getFeature(ORG_ID, SsoEnforcement)).value).toBe(false);
-    expect((await reader.getFeature(ORG_ID, AuditRetentionDays)).value).toBe(30);
-    expect((await reader.getFeature(ORG_ID, IdentitiesMeter)).value).toBe(0);
-  });
-
-  test("returns server-resolved values when present", async () => {
-    const entitlements = makeEntitlements({
-      sso_enforcement: { value: true, source: "plan", from_product: "boost" },
-      identities: { value: 100, source: "plan", from_product: "secrets_management" }
-    });
-    const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
-
-    expect((await reader.getFeature(ORG_ID, SsoEnforcement)).value).toBe(true);
-    expect((await reader.getFeature(ORG_ID, IdentitiesMeter)).value).toBe(100);
-  });
-
-  test("canUse enforces the cap against a registered counter", async () => {
-    const entitlements = makeEntitlements({ identities: { value: 100, source: "plan" } });
-    const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
-    reader.registerCounter(IdentitiesMeter, async () => 99);
-
-    const limit = await reader.getFeature(ORG_ID, IdentitiesMeter);
-    expect(await limit.canUse(1)).toBe(true);
-    expect(await limit.canUse(2)).toBe(false);
-  });
-
-  test("canUse without a registered counter compares the request against the cap", async () => {
-    const entitlements = makeEntitlements({ identities: { value: 100, source: "plan" } });
-    const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
-
-    const limit = await reader.getFeature(ORG_ID, IdentitiesMeter);
-    expect(await limit.canUse(50)).toBe(true);
-    expect(await limit.canUse(101)).toBe(false);
-  });
-});
-
-// How a consumer uses the client. With no credential configured, every feature resolves to its fallback.
-describe("licenseClientFactory (usage example)", () => {
-  const licenseClient = licenseClientFactory({
-    envConfig: {
-      LICENSE_SERVER_V2_SERVICE_KEY: undefined,
-      LICENSE_SERVER_URL: "https://license.example.com",
-      LICENSE_KEY: undefined,
-      INTERNAL_REGION: undefined
-    },
-    keyStore: createFakeKeyStore()
-  });
-
-  // A metered feature needs its live-count source registered once at init.
-  licenseClient.registerCounter(IdentitiesMeter, async () => 4);
-
-  test("boolean gate", async () => {
-    const sso = await licenseClient.getFeature(ORG_ID, SsoEnforcement);
-    if (sso.value) {
-      // enforce SSO
-    }
-    expect(sso.value).toBe(false);
-  });
-
-  test("limit gate via canUse", async () => {
-    const identities = await licenseClient.getFeature(ORG_ID, IdentitiesMeter);
-    // throw a LimitExceededError here in real code
-    expect(await identities.canUse(1)).toBe(false); // fallback cap is 0, current is 4
   });
 });

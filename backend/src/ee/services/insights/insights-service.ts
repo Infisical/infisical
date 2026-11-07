@@ -2,12 +2,12 @@ import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSubjects
@@ -71,7 +71,7 @@ import {
 
 export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
   clickhouseAuditLogDAL?: Pick<
     TClickHouseAuditLogDALFactory,

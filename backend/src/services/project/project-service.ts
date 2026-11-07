@@ -17,6 +17,13 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import {
+  TLicenseService,
+  AgentVaultIdentities,
+  PamIdentities,
+  SecretIdentities
+} from "@app/domains/platform/license/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -25,7 +32,6 @@ import {
 } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
   OrgPermissionAdminConsoleAction,
@@ -68,8 +74,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -192,7 +196,7 @@ type TProjectServiceFactoryDep = {
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
+  licenseService: Pick<TLicenseService, "getPlan" | "refreshPlan" | "invalidatePlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
@@ -213,7 +217,7 @@ type TProjectServiceFactoryDep = {
     TProjectAccessRequestDALFactory,
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
   dynamicSecretQueueService: Pick<
@@ -799,9 +803,9 @@ export const projectServiceFactory = ({
         );
       }
 
-      // no need to invalidate if there was no limit
+      // The plan carries the project count, so a capped org's cached plan is refreshed once the project commits.
       if (plan.workspaceLimit) {
-        await licenseService.invalidateGetPlan(organization.id);
+        sealKnexTransaction(tx).afterCommit(() => licenseService.refreshPlan(organization.id));
       }
       return {
         ...project,
@@ -828,7 +832,7 @@ export const projectServiceFactory = ({
       };
     });
 
-    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
+    await licenseService.invalidatePlan(actorOrgId);
     // A new project seeds its creator (plus any template members/identities); emit so a new
     // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
     // the just-committed row; the counter filters by project type.
@@ -945,7 +949,7 @@ export const projectServiceFactory = ({
 
       // refresh the cached plan so the freed workspace slot is reflected immediately
       // (countOfOrgProjects now excludes soft-deleted projects)
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
+      await licenseService.invalidatePlan(actorOrgId);
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
@@ -1099,7 +1103,7 @@ export const projectServiceFactory = ({
         throw error;
       }
 
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(project.orgId));
+      await licenseService.invalidatePlan(project.orgId);
       // Cached reads from before the deletion can hold imports from projects deleted since.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       usageMeteringService.emit(project.orgId, SecretIdentities.key);

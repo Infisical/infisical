@@ -1,6 +1,5 @@
-import { TEntitlementsResponse } from "@app/services/license-client/license-client-types";
-
-import { TFeatureSet } from "./license-types";
+import { TEntitlementsResponse } from "../../ce/model/license-server-types";
+import { TFeatureSet } from "../../ce/model/license-types";
 
 // Every cloud plan includes default storage for session logs, free orgs included, unless the org's plan or an override
 // turns it off. The License Server's default for the key is off, which is what self-hosted licenses get, so only a

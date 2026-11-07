@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -17,7 +18,6 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretChangeGlobalPolicyBridgeDALFactory } from "./secret-change-global-policy-bridge-dal";
@@ -50,7 +50,7 @@ type TSecretChangeGlobalPolicyBridgeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TSecretChangeGlobalPolicyBridgeServiceFactory = ReturnType<

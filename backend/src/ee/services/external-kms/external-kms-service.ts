@@ -4,13 +4,13 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey, KmsKeyUsage } from "@app/services/kms/kms-types";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TExternalKmsDALFactory } from "./external-kms-dal";
@@ -38,7 +38,7 @@ type TExternalKmsServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "getOrgKmsKeyId" | "createCipherPairWithDataKey">;
   kmsDAL: Pick<TKmsKeyDALFactory, "create" | "updateById" | "findById" | "deleteById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFactory>;

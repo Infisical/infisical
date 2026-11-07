@@ -14,6 +14,12 @@ import {
   TUsers
 } from "@app/db/schemas";
 import {
+  AgentVaultIdentities,
+  PamIdentities,
+  SecretIdentities,
+  TLicenseService
+} from "@app/domains/platform/license/ce/module";
+import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
 } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
@@ -51,8 +57,6 @@ import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/al
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "@app/services/membership-user/membership-user-fns";
@@ -76,7 +80,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { verifyEmailDomainOwnership as verifyEmailDomainOwnershipValidate } from "../email-domain/email-domain-fns";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TScimEventsDALFactory } from "./scim-events-dal";
@@ -165,7 +168,7 @@ type TScimServiceFactoryDep = {
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
@@ -179,7 +182,7 @@ type TScimServiceFactoryDep = {
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   eventEmitter: TEventEmitter;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
@@ -629,9 +632,11 @@ export const scimServiceFactory = ({
         },
         tx
       );
-      await licenseService.updateSubscriptionOrgMemberCount(org.id);
       return { user, orgMembership, isNewUser: newUserCreated };
     });
+
+    // After the commit: seat sync calls the License Server.
+    await licenseService.syncSeats(org.id);
 
     if (isNewUser) {
       void telemetryService.sendPostHogEvents({

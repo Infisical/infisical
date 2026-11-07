@@ -1,4 +1,4 @@
-import { InstanceType } from "@app/ee/services/license/license-types";
+import { InstanceType } from "@app/domains/platform/license/ce/module";
 
 import { assertCertificateQuota, TCertificateQuotaDeps } from "./certificate-quota-fns";
 import { buildCertificateQuotaKey } from "./certificate-quota-key";
@@ -27,13 +27,13 @@ const buildDeps = ({
       getPlan: async () => ({ maxCertificates, maxWildcardCertificates }),
       getInstanceType: () => instanceType
     },
-    usageCounterDAL: {
+    certManager: {
       resolveRootOrgId: async () => "root-org",
-      countActiveCertificateQuotaKeysByOrg: async (orgId?: string) => {
+      countActiveCertificateQuota: async (orgId?: string) => {
         calls.counted.push(orgId);
         return { total, wildcard };
       },
-      isCertificateQuotaKeyActiveInOrg: async (orgId: string | undefined, quotaKey: string) => {
+      isCertificateQuotaKeyActive: async (orgId: string | undefined, quotaKey: string) => {
         calls.activeChecked.push(orgId);
         return activeKeys.includes(quotaKey);
       }

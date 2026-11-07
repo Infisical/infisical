@@ -1,7 +1,8 @@
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import type { TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 
-import { TEntitlementOrg, TEntitlementsResponse, TLicenseClientBackend } from "./license-client-types";
+import { TEntitlementOrg, TEntitlementsResponse, TLicenseClientBackend } from "../../../ce/model/license-server-types";
+import { LicenseKeys, LicenseKeyTtls } from "../../../ce/model/plan-cache-keys";
 
 type TEntitlementResolverDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
@@ -35,10 +36,8 @@ export const entitlementResolverFactory = ({ keyStore, backend }: TEntitlementRe
   const markPassThrough = async (orgId: string, opts?: { checkout?: boolean }): Promise<void> => {
     try {
       await keyStore.setItemWithExpiry(
-        KeyStorePrefixes.LicenseCachePassThrough(orgId),
-        opts?.checkout
-          ? KeyStoreTtls.LicenseCachePassThroughCheckoutInSeconds
-          : KeyStoreTtls.LicenseCachePassThroughInSeconds,
+        LicenseKeys.passThrough(orgId),
+        opts?.checkout ? LicenseKeyTtls.passThroughCheckoutInSeconds : LicenseKeyTtls.passThroughInSeconds,
         "1"
       );
     } catch (error) {
@@ -51,7 +50,7 @@ export const entitlementResolverFactory = ({ keyStore, backend }: TEntitlementRe
   // markPassThrough for stale-while-revalidate instead.
   const invalidateEntitlements = async (orgId: string): Promise<void> => {
     try {
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
+      await keyStore.deleteItem(LicenseKeys.cloudPlan(orgId));
     } catch (error) {
       logger.error(error, `license-client: failed to invalidate entitlements [orgId=${orgId}]`);
     }

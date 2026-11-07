@@ -1,4 +1,4 @@
-import { TFeatureSet } from "../license/license-types";
+import { TFeatureSet } from "@app/domains/platform/license/ce/module";
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { catalogResponseSchema, subscriptionResponseSchema } from "./license-client-types";
+import { catalogResponseSchema, subscriptionResponseSchema } from "./license-server-types";
 
 const meteredDimension = {
   key: "pam_session_minutes",

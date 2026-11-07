@@ -14,9 +14,9 @@ import {
   SecretType,
   TableName
 } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission,
@@ -139,7 +139,7 @@ type TSecretServiceFactoryDep = {
     "generateSecretApprovalRequest" | "generateSecretApprovalRequestV2Bridge"
   >;
   secretApprovalRequestCreationFns: Pick<TSecretApprovalRequestCreationFnsFactory, "createSecretApprovalRequest">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "find">;

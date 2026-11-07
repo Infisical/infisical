@@ -1,5 +1,4 @@
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { TLicenseService, TFeatureSet } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -8,7 +7,7 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 
 export type TCertificateAuthorityQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "countCasByOrgId" | "countInternalCasByOrgId">;
 };
 

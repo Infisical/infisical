@@ -2,14 +2,13 @@
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { ActiveCerts, TLicenseService, WildcardCerts } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
-import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage/usage-metering-service";
 
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
@@ -37,7 +36,7 @@ type TCertificateCleanupQueueFactoryDep = {
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "find">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -62,12 +61,15 @@ export const certificateCleanupQueueFactory = ({
 }: TCertificateCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
 
-  const processProjectCleanup = async (config: {
-    id: string;
-    projectId: string;
-    postExpiryRetentionDays: number;
-    skipCertsWithActiveSyncs: boolean;
-  }) => {
+  const processProjectCleanup = async (
+    config: {
+      id: string;
+      projectId: string;
+      postExpiryRetentionDays: number;
+      skipCertsWithActiveSyncs: boolean;
+    },
+    orgId: string | undefined
+  ) => {
     let deletedCount = 0;
     let offset = 0;
     const errorMessages: string[] = [];
@@ -206,9 +208,9 @@ export const certificateCleanupQueueFactory = ({
 
     await flushAuditLog();
 
-    if (deletedCount > 0) {
-      usageMeteringService.emitForProject(config.projectId, ActiveCerts.key);
-      usageMeteringService.emitForProject(config.projectId, WildcardCerts.key);
+    if (deletedCount > 0 && orgId) {
+      usageMeteringService.emit(orgId, ActiveCerts.key);
+      usageMeteringService.emit(orgId, WildcardCerts.key);
     }
 
     return { deletedCount, errors: errorMessages.length };
@@ -227,13 +229,24 @@ export const certificateCleanupQueueFactory = ({
 
         logger.info(`${QueueJobs.CertificateCleanup}: found ${configs.length} projects with cleanup enabled`);
 
+        const projects: { id: string; orgId: string }[] = configs.length
+          ? await db
+              .replicaNode()(TableName.Project)
+              .whereIn(
+                "id",
+                configs.map((config) => config.projectId)
+              )
+              .select("id", "orgId")
+          : [];
+        const orgIdByProjectId = new Map(projects.map((project) => [project.id, project.orgId]));
+
         let totalDeleted = 0;
         let totalErrors = 0;
 
         for (const config of configs) {
           try {
             // eslint-disable-next-line no-await-in-loop
-            const result = await processProjectCleanup(config);
+            const result = await processProjectCleanup(config, orgIdByProjectId.get(config.projectId));
             totalDeleted += result.deletedCount;
             totalErrors += result.errors;
 

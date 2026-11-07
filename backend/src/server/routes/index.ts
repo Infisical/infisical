@@ -6,6 +6,7 @@ import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
+import { createDomains } from "@app/domains/domains";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -129,10 +130,6 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseV2BreakdownDALFactory } from "@app/ee/services/license-v2/license-v2-breakdown-dal";
 import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
-import { licenseDALFactory } from "@app/ee/services/license/license-dal";
-import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
-import { licenseServiceFactory } from "@app/ee/services/license/license-service";
-import { LicenseType } from "@app/ee/services/license/license-types";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccessApprovalResourceFactory } from "@app/ee/services/pam-access-request/pam-access-approval-resource";
@@ -471,14 +468,6 @@ import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { legacyPkiDeprecationDALFactory } from "@app/services/legacy-pki-deprecation/legacy-pki-deprecation-dal";
 import { legacyPkiDeprecationQueueFactory } from "@app/services/legacy-pki-deprecation/legacy-pki-deprecation-queue";
-import { licenseClientFactory } from "@app/services/license-client";
-import {
-  buildMeteredFeatures,
-  buildUsageReporter,
-  usageCounterDALFactory,
-  usageEventQueueFactory,
-  usageMeteringServiceFactory
-} from "@app/services/license-client/usage";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { membershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
@@ -838,7 +827,6 @@ export const registerRoutes = async (
   const secretScanningDAL = secretScanningDALFactory(db);
   const secretSharingDAL = secretSharingDALFactory(db);
   const orgAssetDAL = orgAssetDALFactory(db);
-  const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
   const emailDomainDAL = emailDomainDALFactory(db);
@@ -938,54 +926,21 @@ export const registerRoutes = async (
     userDAL
   });
 
-  // Offline (air-gapped) licenses are stored in LICENSE_KEY too, but must never reach the license
-  // server. The v2 client is left dormant for them so no billing/entitlement read can transmit the
-  // signed license credential; usage reporting + its cron are disabled below for the same reason.
-  const licenseKeyConfig = getLicenseKeyConfig(envConfig);
-  const isOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
-
-  // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
-  // is the single read primitive; falls back to feature defaults until the server is configured.
-  const licenseClient = licenseClientFactory({ envConfig, keyStore, isOffline: isOfflineLicense });
-
-  // Created before licenseService so the latter can emit the user-seat meter from its
-  // updateSubscriptionOrgMemberCount chokepoint.
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, licenseClient });
-
-  const licenseService = licenseServiceFactory({
-    permissionService,
-    orgDAL,
-    licenseDAL,
+  const domains = createDomains({
+    db,
     keyStore,
-    projectDAL,
-    envConfig,
-    licenseClient,
-    usageMeteringService
-  });
-
-  // Usage metering: counts the metered features and reports them to the License Server. Inert when no
-  // license server is configured (emitter no-ops / worker no-ops without a reporter).
-  const usageCounterDAL = usageCounterDALFactory(db);
-  const licenseV2BreakdownDAL = licenseV2BreakdownDALFactory(db);
-  const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
-  meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
-  const usageReporter = isOfflineLicense ? null : buildUsageReporter(envConfig);
-  let usageSource = "self-hosted";
-  if (envConfig.isCloud) {
-    usageSource = "cloud";
-  }
-  const usageEventQueue = usageEventQueueFactory({
     queueService,
     cronJob,
-    keyStore,
-    licenseService,
-    usageMeteringService,
-    meteredFeatures,
-    usageReporter,
-    isCloud: envConfig.isCloud,
-    isOffline: isOfflineLicense,
-    source: usageSource
+    envConfig,
+    resolveRootOrg: async (orgId) => {
+      const org = await orgDAL.findRootOrgDetails(orgId);
+      return org ? { id: org.id, name: org.name, slug: org.slug } : null;
+    },
+    countBillableProjects: (rootOrgId) => projectDAL.countOfBillableOrgProjects(rootOrgId)
   });
+  const licenseService = domains.license.service;
+  const usageMeteringService = licenseService;
+  const licenseV2BreakdownDAL = licenseV2BreakdownDALFactory(db);
 
   // Billing surface. Drives the catalog, subscription, and entitlement reads off the real license
   // server via licenseClient; no new tables.
@@ -993,10 +948,9 @@ export const registerRoutes = async (
     envConfig,
     orgDAL,
     permissionService,
-    meteredFeatures,
-    licenseClient,
-    licenseDAL,
-    usageCounterDAL,
+    licenseService,
+    organizationsProjects: domains.organizationsProjects.service,
+    certManager: domains.certManager.service,
     breakdownDAL: licenseV2BreakdownDAL
   });
 
@@ -1539,13 +1493,14 @@ export const registerRoutes = async (
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
-    usageCounterDAL,
+    certManager: domains.certManager.service,
     cronJob,
     telemetryService
   });
   const updateCheckService = updateCheckServiceFactory({
     cronJob,
-    keyStore
+    keyStore,
+    licenseService
   });
 
   const scimService = scimServiceFactory({
@@ -3651,7 +3606,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     caKeySourceService,
     keyStore,
-    auditLogService
+    auditLogService,
+    licenseService
   });
 
   const certificateProfileService = certificateProfileServiceFactory({
@@ -4142,7 +4098,7 @@ export const registerRoutes = async (
   });
 
   const certificateService = certificateServiceFactory({
-    usageCounterDAL,
+    certManager: domains.certManager.service,
     keyStore,
     certificateDAL,
     certificateRequestDAL,
@@ -4239,7 +4195,7 @@ export const registerRoutes = async (
 
   const certificateApprovalService = certificateApprovalServiceFactory({
     licenseService,
-    usageCounterDAL,
+    certManager: domains.certManager.service,
     keyStore,
     certificateRequestDAL,
     certificateProfileDAL,
@@ -4494,7 +4450,7 @@ export const registerRoutes = async (
 
   const certificateV3Service = certificateV3ServiceFactory({
     caKeySourceService,
-    usageCounterDAL,
+    certManager: domains.certManager.service,
     pkiApplicationDAL,
     keyStore,
     certificateDAL,
@@ -4597,7 +4553,7 @@ export const registerRoutes = async (
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
     pkiApplicationDAL,
-    usageCounterDAL,
+    certManager: domains.certManager.service,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -4634,7 +4590,7 @@ export const registerRoutes = async (
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
     licenseService,
-    usageCounterDAL,
+    certManager: domains.certManager.service,
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
@@ -4919,11 +4875,11 @@ export const registerRoutes = async (
     projectEnvDAL
   });
 
-  // setup the communication with license key server
-  await licenseService.init();
+  // Reads the instance's license and starts usage metering.
+  await domains.license.start();
 
   // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
-  crypto.verifyFipsLicense(licenseService);
+  crypto.verifyFipsLicense(licenseService.getInstanceEntitlements().features.fips);
 
   await superAdminService.initServerCfg();
 
@@ -4933,7 +4889,7 @@ export const registerRoutes = async (
   const hsmStatus = await isHsmActiveAndEnabled({
     hsmService,
     kmsRootConfigDAL,
-    licenseService
+    instanceHasHsm: licenseService.getInstanceEntitlements().features.hsm
   });
 
   // if the encryption strategy is software - user needs to provide an encryption key
@@ -4966,7 +4922,6 @@ export const registerRoutes = async (
   projectEnvQueue.init();
   projectCleanupQueue.init();
   honeyTokenCleanupQueue.init();
-  usageEventQueue.init();
   healthAlert.init();
   secretReadActivityQueue.init();
   alertQueue.init();
@@ -5127,7 +5082,6 @@ export const registerRoutes = async (
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,
-    licenseClient,
     licenseV2: licenseV2Service,
     trustedIp: trustedIpService,
     scim: scimService,
@@ -5203,7 +5157,7 @@ export const registerRoutes = async (
   // Expose services globally for e2e tests (only available inside the encapsulated plugin context)
   if (process.env.NODE_ENV === "test") {
     // @ts-expect-error type - expose for e2e test access
-    globalThis.testServices = server.services;
+    globalThis.testServices = { ...server.services, licenseEntitlements: domains.license.instanceEntitlements };
   }
 
   // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
@@ -5211,7 +5165,7 @@ export const registerRoutes = async (
   // running them would serve stale config rather than shed background work.
   const cronJobs: TLocalRefreshHandle[] = [];
   if (appCfg.isProductionMode) {
-    const licenseSyncJob = await licenseService.initializeBackgroundSync();
+    const licenseSyncJob = domains.license.startBackgroundSync();
     if (licenseSyncJob) {
       cronJobs.push(licenseSyncJob);
     }

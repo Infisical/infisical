@@ -6,9 +6,9 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { TLicenseService, ActiveCerts, WildcardCerts } from "@app/domains/platform/license/ce/module";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -37,8 +37,6 @@ import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -162,9 +160,9 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   caKeySourceService: Pick<
     TCaKeySourceServiceFactory,
     "createKey" | "buildSigner" | "describeKey" | "prepareKeyReleases"
@@ -197,6 +195,12 @@ export const internalCertificateAuthorityServiceFactory = ({
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
+
+  const $getProjectOrgId = async (projectId: string, tx?: Knex) => {
+    const project = await projectDAL.findById(projectId, tx);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    return project.orgId;
+  };
 
   // Gates only Infisical's own distribution point. Custom URLs are gated where the CA is configured.
   const $isManagedCrlDistributionAllowed = async (projectId: string) => {
@@ -1998,6 +2002,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
+    const projectOrgId = !internal && actorOrgId ? actorOrgId : await $getProjectOrgId(ca.projectId, tx);
+
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
@@ -2357,8 +2363,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, ActiveCerts.key);
+    usageMeteringService.emit(projectOrgId, WildcardCerts.key);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2449,6 +2455,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         );
       }
     }
+
+    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId, tx) : dto.actorOrgId;
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2853,8 +2861,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(persist);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, ActiveCerts.key);
+    usageMeteringService.emit(projectOrgId, WildcardCerts.key);
 
     return {
       certificate: leafCert,

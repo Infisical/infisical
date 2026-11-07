@@ -148,6 +148,23 @@ func TestUsageReport_Send(t *testing.T) {
 		}, fakenet.Since(mark), fakenet.Within(12*time.Second))
 	})
 
+	t.Run("should retry a report the server failed with a 500", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		awaitFirstReport(t, root)
+		root.Fail(t, http.MethodPost, "/v1/organizations/"+tn.OrgID.String()+"/usage-snapshots", http.StatusInternalServerError, fakenet.Times(1))
+		tn.NewUser(t)
+
+		// Action: creating an identity syncs the seats
+		tn.NewMachineIdentity(t)
+
+		// Assert
+		expectSnapshot(t, root, "user_identities", 1)
+	})
+
 	t.Run("should send a count again when the server refused it as not priced", func(t *testing.T) {
 		t.Parallel()
 
@@ -167,30 +184,6 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Assert
 		spec.Why(t, "a refused value is not recorded as reported, so the next send carries it")
-		expectSnapshot(t, root, "user_identities", 1)
-	})
-}
-
-func TestUsageReport_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	// Today the job has a single attempt, so a server error drops the report until the
-	// count next changes.
-	t.Run("should retry a report the server failed with a 500", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
-		awaitFirstReport(t, root)
-		root.Fail(t, http.MethodPost, "/v1/organizations/"+tn.OrgID.String()+"/usage-snapshots", http.StatusInternalServerError, fakenet.Times(1))
-		tn.NewUser(t)
-
-		// Action: creating an identity syncs the seats
-		tn.NewMachineIdentity(t)
-
-		// Assert
 		expectSnapshot(t, root, "user_identities", 1)
 	})
 }

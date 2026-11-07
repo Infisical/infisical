@@ -3,6 +3,8 @@ import * as x509 from "@peculiar/x509";
 import { randomBytes } from "crypto";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -49,7 +51,6 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -57,7 +58,6 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { convertRawCertsToPkcs7 } from "../certificate-est/certificate-est-fns";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { getScepValidationHandler, IScepValidationHandler, ScepChallengeType } from "./challenge";
 import { TScepDynamicChallengeDALFactory } from "./pki-scep-dynamic-challenge-dal";
 import {
@@ -98,10 +98,10 @@ type TPkiScepServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  certManager: Pick<
+    TCertManagerService,
+    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
   >;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
@@ -135,7 +135,7 @@ export const pkiScepServiceFactory = ({
   appConnectionDAL,
   keyStore,
   licenseService,
-  usageCounterDAL,
+  certManager,
   certificatePolicyDAL,
   certificatePolicyService,
   certificateRequestService,
@@ -969,7 +969,7 @@ export const pkiScepServiceFactory = ({
       projectId: profile.projectId,
       projectDAL,
       licenseService,
-      quotaDeps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+      quotaDeps: { projectDAL, licenseService, certManager, keyStore }
     });
 
     const newCertRequest = await certificateRequestService.createCertificateRequest({

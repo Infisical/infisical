@@ -1,10 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { projectV2ToFeatureSet } from "@app/services/license-client/entitlement-projection";
-import { TEntitlementsResponse } from "@app/services/license-client/license-client-types";
-
+import { getDefaultOnPremFeatures } from "../../ce/model/default-features";
+import { TEntitlementsResponse } from "../../ce/model/license-server-types";
+import { projectV2ToFeatureSet } from "../service/entitlement-projection";
 import { withCloudPlanDefaults } from "./cloud-plan-defaults";
-import { getDefaultOnPremFeatures } from "./license-fns";
 
 const entitlements = (features: TEntitlementsResponse["features"]) =>
   ({ slug: null, features, products: [] }) as unknown as TEntitlementsResponse;

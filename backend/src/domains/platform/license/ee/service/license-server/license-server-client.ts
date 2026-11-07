@@ -2,9 +2,6 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
-import { featureReaderFactory } from "./feature-reader";
-import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-client-backends";
-import { entitlementResolverFactory } from "./license-client-cache";
 import {
   TBuyProductPayload,
   TCancelTrialPayload,
@@ -16,10 +13,12 @@ import {
   TStartTrialPayload,
   TSubscriptionPreviewPayload,
   TUpgradePayload
-} from "./license-client-types";
+} from "../../../ce/model/license-server-types";
+import { entitlementResolverFactory } from "./entitlement-resolver";
+import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-server-backends";
 import { createSelfHostedTokenProvider } from "./license-token-provider";
 
-type TLicenseClientFactoryDep = {
+type TLicenseServerClientDep = {
   envConfig: Pick<
     TEnvConfig,
     "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_SERVER_URL" | "LICENSE_KEY" | "INTERNAL_REGION"
@@ -29,12 +28,12 @@ type TLicenseClientFactoryDep = {
   isOffline?: boolean;
 };
 
-export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
+export type TLicenseServerClient = ReturnType<typeof licenseServerClientFactory>;
 
-// Returns null (SDK dormant -> getFeature serves fallbacks) unless either a self-hosted license key or
+// Returns null (dormant) unless either a self-hosted license key or
 // the cloud service key (plus the license server URL) is configured.
 const buildBackend = (
-  envConfig: TLicenseClientFactoryDep["envConfig"],
+  envConfig: TLicenseServerClientDep["envConfig"],
   isOffline: boolean
 ): TLicenseClientBackend | null => {
   // An offline (air-gapped) license lives in LICENSE_KEY, but transmitting it would violate the
@@ -85,7 +84,7 @@ const buildBackend = (
   return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"), envConfig.INTERNAL_REGION);
 };
 
-export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }: TLicenseClientFactoryDep) => {
+export const licenseServerClientFactory = ({ envConfig, keyStore, isOffline = false }: TLicenseServerClientDep) => {
   const backend = buildBackend(envConfig, isOffline);
   const resolver = backend ? entitlementResolverFactory({ keyStore, backend }) : null;
 
@@ -236,7 +235,6 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
   };
 
   return {
-    ...featureReaderFactory({ getEntitlements }),
     // False when no license server is reachable (unlicensed self-hosted, or an offline license), so
     // callers can skip work that would only end in a dormant no-op.
     isEnabled: () => backend !== null,

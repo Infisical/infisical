@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, RESOURCE_SCOPE, ResourceType, TemporaryPermissionMode } from "@app/db/schemas";
+import { PamIdentities, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
@@ -22,8 +23,6 @@ import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approva
 import { ApprovalPolicyScope } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { PamIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -84,7 +83,7 @@ type TPamMembershipServiceFactoryDep = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
 };
 
 export type TPamMembershipServiceFactory = ReturnType<typeof pamMembershipServiceFactory>;
@@ -457,7 +456,7 @@ export const pamMembershipServiceFactory = ({
     });
 
     // A new PAM project member (user/identity/group) changes the pam_identities meter.
-    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emit(dto.actorOrgId, PamIdentities.key);
     return result;
   };
 
@@ -590,7 +589,7 @@ export const pamMembershipServiceFactory = ({
 
     // Only re-meter when project members were actually added.
     if (memberships.length > 0) {
-      usageMeteringService.emitForProject(projectId, PamIdentities.key);
+      usageMeteringService.emit(ctx.actorOrgId, PamIdentities.key);
     }
 
     return { memberships, skipped };
@@ -741,7 +740,7 @@ export const pamMembershipServiceFactory = ({
 
     sendSessionCancellations();
 
-    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emit(dto.actorOrgId, PamIdentities.key);
     return result;
   };
 

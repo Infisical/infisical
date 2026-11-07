@@ -1,10 +1,10 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TLicenseService, InternalCas } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -34,8 +34,6 @@ import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CrlReason } from "../certificate/certificate-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { InternalCas } from "../license-client";
-import { TUsageMeteringServiceFactory } from "../license-client/usage";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -169,10 +167,10 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -391,7 +389,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emitForProject(projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, InternalCas.key);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -967,7 +965,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -1206,7 +1204,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,

@@ -8,6 +8,12 @@ import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import {
+  AgentVaultIdentities,
+  PamIdentities,
+  SecretIdentities,
+  TLicenseService
+} from "@app/domains/platform/license/ce/module";
+import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
 } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
@@ -24,8 +30,6 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -39,7 +43,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGithubOrgSyncDALFactory } from "./github-org-sync-dal";
@@ -389,10 +392,10 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany" | "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;

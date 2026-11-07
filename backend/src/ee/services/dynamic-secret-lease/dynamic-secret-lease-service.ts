@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -50,7 +50,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "update">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;

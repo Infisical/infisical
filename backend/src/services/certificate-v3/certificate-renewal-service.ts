@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType, TCertificates } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -180,7 +180,7 @@ type TCertificateRenewalServiceFactoryDep = {
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
   quotaDeps: TCertificateQuotaDeps;
   recordQuotaUsage: (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => Promise<void>;
   resolveApplicationIdForProfile: TResolveApplicationIdForProfile;

@@ -3,9 +3,10 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService, ActiveCerts, WildcardCerts } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -55,9 +56,6 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -176,13 +174,13 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  certManager: Pick<
+    TCertManagerService,
+    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
@@ -218,7 +216,7 @@ export const certificateServiceFactory = ({
   digicertFns,
   certificatePolicyService,
   licenseService,
-  usageCounterDAL,
+  certManager,
   keyStore,
   usageMeteringService,
   caKeySourceService,
@@ -614,8 +612,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    usageMeteringService.emitForProject(cert.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(cert.projectId, WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, ActiveCerts.key);
+    usageMeteringService.emit(actorOrgId, WildcardCerts.key);
 
     return {
       deletedCert,
@@ -797,8 +795,8 @@ export const certificateServiceFactory = ({
       });
     }
 
-    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, ActiveCerts.key);
+    usageMeteringService.emit(actorOrgId, WildcardCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -1407,7 +1405,7 @@ export const certificateServiceFactory = ({
       projectId,
       commonName,
       altNames,
-      deps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+      deps: { projectDAL, licenseService, certManager, keyStore }
     });
 
     let renewBeforeDays: number | undefined;
@@ -1494,8 +1492,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    usageMeteringService.emitForProject(projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(projectId, WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, ActiveCerts.key);
+    usageMeteringService.emit(actorOrgId, WildcardCerts.key);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);

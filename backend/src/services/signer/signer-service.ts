@@ -12,7 +12,7 @@ import {
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCodeSigningActions,
@@ -205,7 +205,7 @@ type TSignerServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TSignerServiceFactory = ReturnType<typeof signerServiceFactory>;

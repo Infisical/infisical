@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -30,7 +31,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { convertRawCertsToPkcs7 } from "../../ee/services/certificate-est/certificate-est-fns";
-import { TLicenseServiceFactory } from "../../ee/services/license/license-service";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 
 type TCertificateEstV3ServiceFactoryDep = {
@@ -40,7 +40,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;

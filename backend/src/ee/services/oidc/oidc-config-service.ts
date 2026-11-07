@@ -5,6 +5,8 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import { Plan, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -12,8 +14,6 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -50,7 +50,6 @@ import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -118,7 +117,7 @@ type TOidcConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -144,7 +143,7 @@ type TOidcConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -341,7 +340,7 @@ export const oidcConfigServiceFactory = ({
     } else {
       let isNewUser = false;
       let adoptedFromUsername: string | null = null;
-      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+      const identityLimit = Plan.restore(await licenseService.getPlan(orgId)).enforcedIdentityLimit;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -414,12 +413,10 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached({
-            licenseService,
+          await licenseService.within(sealKnexTransaction(tx)).assertSeatAvailable({
             orgId,
             identityLimit,
-            tx,
-            aliasType: UserAliasType.OIDC
+            via: UserAliasType.OIDC
           });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
@@ -574,7 +571,7 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await licenseService.syncSeats(organization.id);
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 

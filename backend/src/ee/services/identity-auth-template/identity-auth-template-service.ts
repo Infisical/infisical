@@ -2,11 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
@@ -63,7 +63,7 @@ type TIdentityAuthTemplateServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
@@ -188,7 +188,7 @@ export const identityAuthTemplateServiceFactory = ({
   }: {
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
-    plan: Awaited<ReturnType<TLicenseServiceFactory["getPlan"]>>;
+    plan: Awaited<ReturnType<TLicenseService["getPlan"]>>;
     permission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"];
   }) => {
     if (gatewayId) {

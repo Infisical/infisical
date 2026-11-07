@@ -1,11 +1,4 @@
-import {
-  ActiveCerts,
-  AuditRetentionDays,
-  IdentitiesMeter,
-  InternalCas,
-  SsoEnforcement,
-  WildcardCerts
-} from "./features";
+import { ActiveCerts, IdentitiesMeter, InternalCas, WildcardCerts } from "../../ce/model/metered-features";
 
 export type TFeatureMapping = {
   // Must match a License Server feature registry key (a separate repo); a wrong key means the feature
@@ -28,13 +21,13 @@ const platformMappings: TFeatureMapping[] = [
     v1Field: null
   },
   {
-    v2Key: AuditRetentionDays.key,
+    v2Key: "audit_retention_days",
     v1Field: "auditLogsRetentionDays"
   },
   {
     // v2's sso_enforcement is the general "can enforce SSO" entitlement; v1 has no single field for it
     // (SAML/OIDC enforcement rides on the samlSSO/oidcSSO capabilities, Google on enforceGoogleSSO).
-    v2Key: SsoEnforcement.key,
+    v2Key: "sso_enforcement",
     v1Field: null
   },
   {

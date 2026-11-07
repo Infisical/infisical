@@ -1,7 +1,7 @@
 import { ForbiddenError, MongoAbility, MongoQuery } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCmekActions,
@@ -43,7 +43,7 @@ type TCmekServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   kmsDAL: TKmsKeyDALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;

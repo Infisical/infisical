@@ -1,8 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -41,7 +41,7 @@ type TDynamicSecretServiceFactoryDep = {
     TDynamicSecretLeaseQueueServiceFactory,
     "pruneDynamicSecret" | "unsetLeaseRevocation"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findById" | "findSecretPathByFolderIds"

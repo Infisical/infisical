@@ -1,7 +1,6 @@
-import { TFeatureSet, TPlanNotice } from "@app/ee/services/license/license-types";
-
+import { TEntitlementsResponse, trialPaymentFailedNoticeSchema } from "../../ce/model/license-server-types";
+import { TFeatureSet, TPlanNotice } from "../../ce/model/license-types";
 import { FEATURE_MAPPINGS } from "./feature-mapping";
-import { TEntitlementsResponse, trialPaymentFailedNoticeSchema } from "./license-client-types";
 
 // Unknown notice types are expected (the License Server adds them ahead of us), so they are dropped silently.
 const projectNotices = (rawNotices: unknown[]): TPlanNotice[] =>

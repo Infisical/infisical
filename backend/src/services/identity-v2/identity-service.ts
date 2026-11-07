@@ -9,8 +9,14 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  Plan,
+  TLicenseService,
+  AgentVaultIdentities,
+  IdentitiesMeter,
+  PamIdentities,
+  SecretIdentities
+} from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
@@ -35,8 +41,6 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
-import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
@@ -69,7 +73,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseService, "getPlan" | "getSeatUsage" | "syncSeats">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -81,7 +85,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
@@ -126,9 +130,9 @@ export const identityV2ServiceFactory = ({
     await factory.onCreateIdentityGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    const identityLimit = getEnforcedIdentityLimit(plan);
+    const identityLimit = Plan.restore(plan).enforcedIdentityLimit;
     if (identityLimit) {
-      const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
+      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
       if (identitiesUsed >= identityLimit) {
         // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
         throw new BadRequestError({
@@ -317,15 +321,15 @@ export const identityV2ServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.updateSubscriptionOrgMemberCount(dto.permission.orgId);
+    await licenseService.syncSeats(dto.permission.orgId);
 
     // A new identity always adds an org membership; a project-scoped one also joins that project, so
     // it counts toward the secret-manager and PAM identity meters too.
     usageMeteringService.emit(dto.permission.orgId, IdentitiesMeter.key);
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+      usageMeteringService.emit(dto.permission.orgId, SecretIdentities.key);
+      usageMeteringService.emit(dto.permission.orgId, PamIdentities.key);
+      usageMeteringService.emit(dto.permission.orgId, AgentVaultIdentities.key);
     }
 
     return { identity };
@@ -446,7 +450,7 @@ export const identityV2ServiceFactory = ({
     });
     await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
 
-    await licenseService.updateSubscriptionOrgMemberCount(scopeData.orgId);
+    await licenseService.syncSeats(scopeData.orgId);
 
     // Deleting the identity cascades its org + project + group memberships, so all meters change.
     usageMeteringService.emit(scopeData.orgId, IdentitiesMeter.key);

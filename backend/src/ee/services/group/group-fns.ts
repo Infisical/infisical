@@ -1,12 +1,12 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/domains/platform/license/ce/module";
 import { clearPersonalValuesInProjects } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { lockMembershipsById } from "@app/services/membership/membership-dal";
 import { emitGroupMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 

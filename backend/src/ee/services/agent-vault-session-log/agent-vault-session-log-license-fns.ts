@@ -1,5 +1,4 @@
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { TLicenseService, TFeatureSet } from "@app/domains/platform/license/ce/module";
 import { logger } from "@app/lib/logger";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -17,10 +16,7 @@ export const getSessionLogNotOnPlanMessage = (storageType: ObjectStorageType) =>
 
 export type TSessionLogEntitlement = "licensed" | "unlicensed" | "unknown";
 
-export type TSessionLogLicenseService = Pick<
-  TLicenseServiceFactory,
-  "getPlan" | "isServingFallbackPlan" | "getLastKnownPlan"
->;
+export type TSessionLogLicenseService = Pick<TLicenseService, "getPlan" | "isServingFallbackPlan" | "getLastKnownPlan">;
 
 const hasStorageOnPlan = (
   plan: Pick<TFeatureSet, "agentVaultManagedStorage" | "agentVaultByoS3">,

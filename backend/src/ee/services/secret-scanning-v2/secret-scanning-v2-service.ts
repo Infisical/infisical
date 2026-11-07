@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretScanningConfigActions,
@@ -83,7 +83,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"

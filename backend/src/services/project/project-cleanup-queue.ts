@@ -1,4 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -65,6 +66,7 @@ type TProjectCleanupQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
+  licenseService: Pick<TLicenseService, "invalidatePlan">;
 };
 
 export type TProjectCleanupQueueFactory = ReturnType<typeof projectCleanupQueueFactory>;
@@ -79,7 +81,8 @@ export const projectCleanupQueueFactory = ({
   keyStore,
   auditLogService,
   queueService,
-  cronJob
+  cronJob,
+  licenseService
 }: TProjectCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -232,7 +235,7 @@ export const projectCleanupQueueFactory = ({
       }
 
       await releaseCaKeys();
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(project.orgId));
+      await licenseService.invalidatePlan(project.orgId);
       await auditLogService.createAuditLog({
         orgId: project.orgId,
         projectId,

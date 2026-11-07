@@ -1,11 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
+import { Plan, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
@@ -40,7 +39,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage">;
+  licenseService: Pick<TLicenseService, "getPlan" | "getSeatUsage">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -129,9 +128,9 @@ export const newOrgMembershipUserFactory = ({
       });
     }
 
-    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(dto.permission.orgId));
+    const identityLimit = Plan.restore(await licenseService.getPlan(dto.permission.orgId)).enforcedIdentityLimit;
     if (identityLimit) {
-      const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
+      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
       if (identitiesUsed >= identityLimit) {
         throw new BadRequestError({
           name: "InviteUser",

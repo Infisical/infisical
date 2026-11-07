@@ -2,20 +2,18 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { PamIdentities, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
-import { PamIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TCreateSubOrgDTO, TDeleteSubOrgDTO, TJoinSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
@@ -26,12 +24,12 @@ type TSubOrgServiceFactoryDep = {
     "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;

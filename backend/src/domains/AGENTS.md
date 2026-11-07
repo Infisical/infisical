@@ -14,19 +14,29 @@ This file is the reference for building a domain from scratch. Notes specific to
 
 ```
 src/domains/
-├── domains.ts            # Builds every module in dependency order
-├── lib/                  # Shared building blocks with no business logic
-├── platform/             # Domains other products depend on
-│   ├── billing-core/
-│   └── kms-core/
-└── secrets/              # A product area
-    └── static-secrets/   # A domain inside it
+├── domains.ts                  # Builds every module in dependency order
+├── lib/                        # Shared building blocks with no business logic
+├── platform/                   # Domains other products depend on
+│   ├── license/
+│   └── organizations-projects/
+├── secrets-manager/            # A product area
+│   └── secrets/                # A domain inside it
+├── pam/pam/
+├── agent-vault/agent-vault/
+└── certificates/cert-manager/
 ```
+
+Read a domain's own `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
+[organizations-projects](platform/organizations-projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
+[pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
+[cert-manager](certificates/cert-manager/AGENTS.md). The organizations-projects and cert-manager domains are a
+declared exception to "a table belongs to one data access class": they hold only usage counters that read
+tables no domain owns yet, tested against Postgres without an in-memory twin.
 
 | Path | Holds |
 | --- | --- |
 | `domains.ts` | The only wiring file. Builds each module and passes modules and hooks between them |
-| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, the `TDomainModule` type, and their in-memory versions under `lib/testing/` |
+| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, `sealKnexTransaction`, the `TDomainModule` type, and their in-memory versions under `lib/testing/` |
 | `platform/` | Domains used by many products: KMS, billing, access control, audit log |
 | `<product-area>/` | A product, such as secrets. Holds one or more domains |
 
@@ -212,7 +222,7 @@ export class SecretService implements TSecretService {
 | Remove your data when the owner tells you it is gone (an event, or a call until the event exists); do not depend on `ON DELETE CASCADE` from another domain's table | A cascade from someone else's table is a write into your tables inside their transaction |
 | No network or HSM calls inside a transaction; make them before `run` | The connection and its locks are held for the whole call |
 | Within one domain, take locks in one order (root key, org, project; key before data key) | Two transactions taking the same locks in different orders deadlock |
-| Use `within(tx)` across domains only for legacy code under `src/services/` that already holds a Knex transaction, while it moves to a domain | It is a migration bridge; new domain code never calls another domain through `within(tx)` |
+| Use `within(tx)` across domains only for legacy code under `src/services/` that already holds a Knex transaction, while it moves to a domain: wrap it with `sealKnexTransaction(trx)` from `lib/legacy-transaction.ts`, whose `afterCommit` runs once that transaction commits | It is a migration bridge; new domain code never calls another domain through `within(tx)` |
 
 If an outcome truly has to be atomic across two domains, the boundary is in the wrong place: raise it in
 review and move the data into one domain rather than sharing a transaction.
@@ -231,6 +241,8 @@ router → service → data-access → model
 | Other domains import only `ce/module.ts` | The module is the domain's contract; everything else can change freely |
 | `ce/` never imports `ee/`; only `domains.ts` imports `ee/` from outside the domain | Community code reads and builds alone. EE plugs in through hooks |
 | A module that provides hooks is built before the module that takes them | A provider that needs the taker's service is a cycle: move the boundary |
+| `ce/module.ts` and what it imports reach `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` only with `import type`; `domains.ts` passes their runtime pieces in | Code all over the backend imports values from a module, and those three sit in an import cycle with `@app/lib/crypto`, which breaks any test that loads them first |
+| Lint enforces the import rules above (`.oxlintrc.json`, `no-restricted-imports`) | A broken boundary fails `npm run lint`, not review |
 
 ## Where new code goes
 

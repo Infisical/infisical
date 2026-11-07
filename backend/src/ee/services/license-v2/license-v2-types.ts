@@ -1,5 +1,5 @@
+import type { TMeteredDimensionKey } from "@app/domains/platform/license/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
-import type { TMeteredDimensionKey } from "@app/services/license-client/usage/usage-counters";
 
 export type BillingV2SubState = "active" | "trialing" | "past-due" | "suspended" | "no-subscription";
 

@@ -1,10 +1,9 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { TLicenseService, InstanceType } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { InstanceType } from "@app/ee/services/license/license-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -86,7 +85,7 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan" | "getOrgSeatUsage">;
+  licenseService: Pick<TLicenseService, "getInstanceType" | "getPlan" | "getSeatUsage">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
@@ -285,10 +284,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const [plan, seatUsage] = await Promise.all([
-        licenseService.getPlan(orgId),
-        licenseService.getOrgSeatUsage(orgId)
-      ]);
+      const [plan, seatUsage] = await Promise.all([licenseService.getPlan(orgId), licenseService.getSeatUsage(orgId)]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
       properties.has_secret_scanning = Boolean(plan.secretScanning);

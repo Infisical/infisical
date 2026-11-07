@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -16,7 +17,6 @@ import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "../gateway-pool/gateway-pool-membership-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
@@ -114,7 +114,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };

@@ -2,7 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { TFeatureSet } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,

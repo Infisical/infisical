@@ -1,23 +1,22 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
-import { TEnvConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
-import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
-import { TLicenseClientFactory } from "@app/services/license-client";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import {
+  TLicenseService,
   TCatalogProduct,
   TEntitlementOrg,
   TProductLineItem,
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
-} from "@app/services/license-client/license-client-types";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
-import { TMeteredFeature } from "@app/services/license-client/usage/usage-counters";
+} from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TEnvConfig } from "@app/lib/config/env";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TLicenseDALFactory } from "../license/license-dal";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLicenseV2BreakdownDALFactory, TScopeOrgRow, TScopeProjectRow } from "./license-v2-breakdown-dal";
@@ -60,42 +59,19 @@ type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseDAL: Pick<TLicenseDALFactory, "countBillableOrgActors" | "getBillableIdentityOwnershipBreakdown">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
+  organizationsProjects: Pick<
+    TOrganizationsProjectsService,
+    | "countBillableOrgActors"
+    | "getBillableIdentityOwnershipBreakdown"
     | "resolveRootOrgId"
-    | "countProjectIdentitiesByKindFor"
+    | "countProjectIdentitiesByKind"
     | "getProjectIdentityBreakdown"
-    | "getInternalCaOrgBreakdown"
-    | "getActiveCertificateOrgBreakdown"
   >;
+  certManager: Pick<TCertManagerService, "getInternalCaOrgBreakdown" | "getActiveCertificateOrgBreakdown">;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
-  // Same metered-feature/count-fn pairs the usage pipeline registers; used to seed a purchase's initial
-  // per_resource quantities with the org's present provisioned count so the previewed/charged figure is
-  // truthful (identities, active certs, ...).
-  meteredFeatures: TMeteredFeature[];
-  licenseClient: Pick<
-    TLicenseClientFactory,
-    | "getEntitlements"
-    | "markEntitlementsStale"
-    | "refreshEntitlements"
-    | "getCatalog"
-    | "getSubscription"
-    | "getCloudPlan"
-    | "getBillingProfile"
-    | "createPortal"
-    | "previewSubscriptionChange"
-    | "buyProduct"
-    | "removeProduct"
-    | "upgradeProduct"
-    | "changeCommitments"
-    | "startTrial"
-    | "cancelTrial"
-    | "confirmTrialPayment"
-    | "getTrials"
-    | "cancelSubscription"
-    | "resumeSubscription"
-  >;
+  // countUsage seeds a purchase's initial per_resource quantities with the org's present provisioned count,
+  // so the previewed and charged figures are truthful. billing is the License Server's billing surface.
+  licenseService: Pick<TLicenseService, "countUsage" | "billing">;
 };
 
 export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory>;
@@ -435,13 +411,12 @@ export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
   permissionService,
-  meteredFeatures,
-  licenseClient,
-  licenseDAL,
-  usageCounterDAL,
+  licenseService,
+  organizationsProjects,
+  certManager,
   breakdownDAL
 }: TLicenseV2ServiceFactoryDep) => {
-  const countByDimensionKey = new Map(meteredFeatures.map(({ feature, count }) => [feature.key, count]));
+  const licenseClient = licenseService.billing;
 
   const buildProductLineItem = async (
     product: TCatalogProduct,
@@ -476,8 +451,7 @@ export const licenseV2ServiceFactory = ({
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
-        const countFn = countByDimensionKey.get(price.dimensionKey);
-        const present = countFn ? await countFn(orgId) : null;
+        const present = await licenseService.countUsage(orgId, price.dimensionKey);
         return { dimensionKey: price.dimensionKey, present, included: price.includedQuantity ?? 0 };
       })
     );
@@ -1081,7 +1055,7 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
-    const rootOrgId = isInstanceScope ? null : await usageCounterDAL.resolveRootOrgId(orgId);
+    const rootOrgId = isInstanceScope ? null : await organizationsProjects.resolveRootOrgId(orgId);
     const scopeOrgId = rootOrgId ?? undefined;
     const orgs = isInstanceScope
       ? await breakdownDAL.findAllOrgNames()
@@ -1127,8 +1101,8 @@ export const licenseV2ServiceFactory = ({
     switch (dimensionKey) {
       case BillingV2BreakdownDimension.Identities: {
         const [counts, rows] = await Promise.all([
-          licenseDAL.countBillableOrgActors(rootOrgId),
-          licenseDAL.getBillableIdentityOwnershipBreakdown(rootOrgId)
+          organizationsProjects.countBillableOrgActors(rootOrgId),
+          organizationsProjects.getBillableIdentityOwnershipBreakdown(rootOrgId)
         ]);
         return { breakdown: await buildIdentityBreakdown(counts, rows, true, "machine identity") };
       }
@@ -1137,8 +1111,8 @@ export const licenseV2ServiceFactory = ({
         const isSecretIdentities = dimensionKey === BillingV2BreakdownDimension.SecretIdentities;
         const projectType = isSecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
         const [counts, rows] = await Promise.all([
-          usageCounterDAL.countProjectIdentitiesByKindFor(projectType, scopeOrgId),
-          usageCounterDAL.getProjectIdentityBreakdown(projectType, scopeOrgId)
+          organizationsProjects.countProjectIdentitiesByKind(projectType, scopeOrgId),
+          organizationsProjects.getProjectIdentityBreakdown(projectType, scopeOrgId)
         ]);
         return {
           breakdown: await buildIdentityBreakdown(
@@ -1150,7 +1124,7 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.UserIdentities: {
-        const { users } = await licenseDAL.countBillableOrgActors(rootOrgId);
+        const { users } = await organizationsProjects.countBillableOrgActors(rootOrgId);
         return {
           breakdown: {
             dimensionKey,
@@ -1164,12 +1138,12 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.InternalCas: {
-        const rows = await usageCounterDAL.getInternalCaOrgBreakdown(scopeOrgId);
+        const rows = await certManager.getInternalCaOrgBreakdown(scopeOrgId);
         return { breakdown: buildOrgOnlyBreakdown(rows, "internal CA") };
       }
       case BillingV2BreakdownDimension.ActiveCerts:
       case BillingV2BreakdownDimension.WildcardCerts: {
-        const rows = await usageCounterDAL.getActiveCertificateOrgBreakdown(scopeOrgId);
+        const rows = await certManager.getActiveCertificateOrgBreakdown(scopeOrgId);
         const isWildcard = dimensionKey === BillingV2BreakdownDimension.WildcardCerts;
         return {
           breakdown: buildOrgOnlyBreakdown(

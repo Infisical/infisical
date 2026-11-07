@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -54,7 +55,6 @@ import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types"
 
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub } from "../permission/project-permission";
 import {
@@ -131,7 +131,7 @@ type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
     "findSecretChangePolicyById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;

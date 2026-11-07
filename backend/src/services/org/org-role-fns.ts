@@ -1,5 +1,5 @@
 import { OrgMembershipRole } from "@app/db/schemas";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { TPlan } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TRoleDALFactory } from "../role/role-dal";
@@ -18,7 +18,7 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
   orgId: string;
   membershipRoleSlug: string;
   roleDAL: TRoleDALFactory;
-  plan: TFeatureSet;
+  plan: TPlan;
 }) => {
   if (isCustomOrgRole(membershipRoleSlug)) {
     if (!plan?.rbac)

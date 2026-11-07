@@ -1,5 +1,4 @@
-import { TOrgPermission } from "@app/lib/types";
-import { TEntitlementsResponse } from "@app/services/license-client/license-client-types";
+import { TEntitlementsResponse } from "./license-server-types";
 
 export enum InstanceType {
   OnPrem = "self-hosted",
@@ -156,12 +155,6 @@ export type TFeatureSet = {
   crossProjectSecretSharing: false;
   secretsFolderRbac: false;
 };
-
-export type TOrgPlanDTO = {
-  projectId?: string;
-  refreshCache?: boolean;
-  rootOrgId: string;
-} & TOrgPermission;
 
 export enum LicenseType {
   Offline = "offline",

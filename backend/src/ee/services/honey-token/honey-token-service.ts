@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
@@ -41,7 +42,6 @@ import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
@@ -92,7 +92,7 @@ export type THoneyTokenServiceFactoryDep = {
     "create" | "find" | "countByHoneyTokenId" | "findByHoneyTokenId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;

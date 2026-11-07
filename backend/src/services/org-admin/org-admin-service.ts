@@ -1,11 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { AgentVaultIdentities, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";
-import { AgentVaultIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
@@ -27,7 +26,7 @@ type TOrgAdminServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
 };
 
 export type TOrgAdminServiceFactory = ReturnType<typeof orgAdminServiceFactory>;
@@ -136,7 +135,7 @@ export const orgAdminServiceFactory = ({
 
     // Agent Vault's project starts empty and admins join through here, so this is where its seat count moves.
     if (project.type === ProjectType.AgentVault) {
-      usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
     }
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);

@@ -1,9 +1,14 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import {
+  TLicenseService,
+  AgentVaultIdentities,
+  PamIdentities,
+  SecretIdentities
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -16,8 +21,6 @@ import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -57,14 +60,14 @@ type TMembershipIdentityServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteByIdentityIdsInGroupsOwnedByOrgs">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -251,9 +254,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
     return { membership };
   };
@@ -553,15 +556,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
-    } else {
-      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
-    }
+    usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
 
     if (needsRevocationBump && externalTx) {
       return {

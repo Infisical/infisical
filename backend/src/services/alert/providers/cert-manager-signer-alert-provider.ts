@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -58,7 +58,7 @@ const formatSigners = (signerNames: string[]) =>
 export type TCertManagerSignerAlertProviderDep = {
   certManagerSignerAlertDAL: TCertManagerSignerAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 

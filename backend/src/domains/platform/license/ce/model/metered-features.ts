@@ -1,17 +1,27 @@
-import { defineFeature, defineLimitFeature } from "./feature";
+// A metered dimension: the License Server prices and caps it, and the instance reports its count.
+export type TMeteredFeature<K extends string = string> = { readonly key: K };
 
-// Add a constant here when a call site needs to gate on a feature. The key matches a license
-// server feature by name; the fallback is served when the server is disabled or unreachable.
-export const SsoEnforcement = defineFeature("sso_enforcement", false);
-export const AuditRetentionDays = defineFeature("audit_retention_days", 30);
+const meter = <K extends string>(key: K): TMeteredFeature<K> => ({ key });
 
-// Metered limit features. Their key is both the resolved cap and the usage meter (see usage/).
-export const IdentitiesMeter = defineLimitFeature("identities", 0);
-export const InternalCas = defineLimitFeature("internal_cas", 0);
-export const ActiveCerts = defineLimitFeature("active_certs", 0);
-export const WildcardCerts = defineLimitFeature("wildcard_certs", 0);
-export const SecretIdentities = defineLimitFeature("secret_identities", 0);
-export const PamIdentities = defineLimitFeature("pam_identities", 0);
-export const AgentVaultIdentities = defineLimitFeature("agent_vault_identities", 0);
+export const IdentitiesMeter = meter("identities");
+export const InternalCas = meter("internal_cas");
+export const ActiveCerts = meter("active_certs");
+export const WildcardCerts = meter("wildcard_certs");
+export const SecretIdentities = meter("secret_identities");
+export const PamIdentities = meter("pam_identities");
+export const AgentVaultIdentities = meter("agent_vault_identities");
 // Human users (org members), excluding machine identities. For legacy per-user plans that count seats.
-export const UserIdentities = defineLimitFeature("user_identities", 0);
+export const UserIdentities = meter("user_identities");
+
+export const METERED_FEATURES = [
+  IdentitiesMeter,
+  InternalCas,
+  ActiveCerts,
+  WildcardCerts,
+  SecretIdentities,
+  PamIdentities,
+  AgentVaultIdentities,
+  UserIdentities
+] as const;
+
+export type TMeteredDimensionKey = (typeof METERED_FEATURES)[number]["key"];

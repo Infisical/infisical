@@ -1,8 +1,8 @@
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { buildCertificateQuotaKey, certificateHasWildcard } from "./certificate-quota-key";
@@ -12,10 +12,10 @@ type TQuotaCounts = { total: number; wildcard: number };
 
 export type TCertificateQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  certManager: Pick<
+    TCertManagerService,
+    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
@@ -41,7 +41,7 @@ const $getQuotaCounts = async (orgId: string, deps: TCertificateQuotaDeps): Prom
     logger.error(error, `Failed to read certificate quota cache [orgId=${orgId}]`);
   }
 
-  const counts = await deps.usageCounterDAL.countActiveCertificateQuotaKeysByOrg(
+  const counts = await deps.certManager.countActiveCertificateQuota(
     orgId === PKI_INSTANCE_QUOTA_SCOPE ? undefined : orgId
   );
 
@@ -106,11 +106,11 @@ export const assertCertificateQuota = async ({
   // either count, and this is what lets an org sitting at its cap keep renewing. Remove it and its
   // certs expire.
   const isInstanceWide = isInstanceWidePkiQuota(deps.licenseService);
-  const isAlreadyActive = await deps.usageCounterDAL.isCertificateQuotaKeyActiveInOrg(
+  const isAlreadyActive = await deps.certManager.isCertificateQuotaKeyActive(
     isInstanceWide ? undefined : orgId,
     quotaKey
   );
-  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.usageCounterDAL.resolveRootOrgId(orgId);
+  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.certManager.resolveRootOrgId(orgId);
   if (isAlreadyActive) return { quotaKey, isNewQuotaKey: false, quotaOrgId, isWildcard };
   const scopeNote = isInstanceWide ? " across this instance" : "";
   const holder = isInstanceWide ? "this instance" : "your organization";

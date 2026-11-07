@@ -3,7 +3,8 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -49,7 +50,6 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
@@ -110,10 +110,10 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  certManager: Pick<
+    TCertManagerService,
+    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
@@ -225,7 +225,7 @@ export const certificateApprovalServiceFactory = (
     kmsService,
     projectDAL,
     licenseService,
-    usageCounterDAL,
+    certManager,
     keyStore,
     certificatePolicyService,
     certificateIssuanceQueue,
@@ -604,7 +604,7 @@ export const certificateApprovalServiceFactory = (
       altNames: (mappedReconstructedRequest.subjectAlternativeNames ?? [])
         .map((san: { value: string }) => san.value)
         .join(","),
-      deps: { projectDAL, licenseService, usageCounterDAL, keyStore },
+      deps: { projectDAL, licenseService, certManager, keyStore },
       isApprovedRequest: true
     });
 
@@ -762,7 +762,7 @@ export const certificateApprovalServiceFactory = (
       projectId: profile.projectId,
       commonName: certRequest.commonName,
       altNames: (altNames ?? []).map((san) => san.value).join(","),
-      deps: { projectDAL, licenseService, usageCounterDAL, keyStore },
+      deps: { projectDAL, licenseService, certManager, keyStore },
       isApprovedRequest: true
     });
 
@@ -1271,7 +1271,7 @@ export const certificateApprovalServiceFactory = (
         projectId: targetProfile.projectId,
         commonName: certificateRequestInput.commonName,
         altNames: (altNames ?? []).map((san) => san.value).join(","),
-        deps: { projectDAL, licenseService, usageCounterDAL, keyStore },
+        deps: { projectDAL, licenseService, certManager, keyStore },
         isApprovedRequest: true
       });
 

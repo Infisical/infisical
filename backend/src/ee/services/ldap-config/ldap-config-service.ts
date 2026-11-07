@@ -9,6 +9,8 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import { Plan, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -19,7 +21,6 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -46,7 +47,6 @@ import { AuthMethod } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -67,7 +67,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { isIdpAuthoritativeForDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
@@ -125,14 +124,14 @@ type TLdapConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -597,7 +596,7 @@ export const ldapConfigServiceFactory = ({
         });
     } else {
       let isNewUser = false;
-      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+      const identityLimit = Plan.restore(await licenseService.getPlan(orgId)).enforcedIdentityLimit;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -645,12 +644,10 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached({
-            licenseService,
+          await licenseService.within(sealKnexTransaction(tx)).assertSeatAvailable({
             orgId,
             identityLimit,
-            tx,
-            aliasType: UserAliasType.LDAP
+            via: UserAliasType.LDAP
           });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
@@ -692,7 +689,7 @@ export const ldapConfigServiceFactory = ({
         });
       }
     }
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await licenseService.syncSeats(organization.id);
 
     const pamCancellations: (() => void)[] = [];
     let user = await userDAL.transaction(async (tx) => {

@@ -523,6 +523,25 @@
                   "@opentelemetry/*"
                 ],
                 "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/domains",
+                  "!@app/domains/lib/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "Outside a domain, import only its ce/module or its ce/testing doubles (or @app/domains/domains). See src/domains/AGENTS.md."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transaction-runner",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
               }
             ]
           }
@@ -543,6 +562,186 @@
       "rules": {
         "eslint/no-restricted-imports": "off",
         "eslint/no-restricted-properties": "off"
+      }
+    },
+    {
+      "files": [
+        "src/domains/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transaction-runner",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transaction-runner",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ce/data-access/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/**/ee/data-access/**",
+        "src/domains/lib/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/domains.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transaction-runner",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              }
+            ]
+          }
+        ]
       }
     },
     {

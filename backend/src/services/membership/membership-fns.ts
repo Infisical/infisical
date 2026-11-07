@@ -8,7 +8,7 @@ import {
   ProjectType,
   TableName
 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
@@ -27,7 +27,7 @@ export const assertSecretsTemporaryAccessAllowed = async ({
   orgId,
   roles
 }: {
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   scope: AccessScope;
   projectId?: string;

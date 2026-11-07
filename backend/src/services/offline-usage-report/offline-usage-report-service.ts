@@ -1,15 +1,13 @@
 import crypto from "crypto";
 
-import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { LicenseType } from "@app/ee/services/license/license-types";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TOfflineUsageReportDALFactory } from "./offline-usage-report-dal";
 
 type TOfflineUsageReportServiceFactoryDep = {
   offlineUsageReportDAL: TOfflineUsageReportDALFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getCustomerId" | "getLicenseId">;
+  licenseService: Pick<TLicenseService, "getLicenseId" | "hasOfflineLicenseKey">;
 };
 
 export type TOfflineUsageReportServiceFactory = ReturnType<typeof offlineUsageReportServiceFactory>;
@@ -31,8 +29,7 @@ export const offlineUsageReportServiceFactory = ({
   };
 
   const generateUsageReportCSV = async () => {
-    const licenseKeyConfig = getLicenseKeyConfig();
-    const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+    const hasOfflineLicense = licenseService.hasOfflineLicenseKey();
 
     if (!hasOfflineLicense) {
       throw new BadRequestError({

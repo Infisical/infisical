@@ -10,6 +10,12 @@ import {
   TRoles
 } from "@app/db/schemas";
 import {
+  AgentVaultIdentities,
+  PamIdentities,
+  SecretIdentities,
+  TLicenseService
+} from "@app/domains/platform/license/ce/module";
+import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
 } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
@@ -37,8 +43,6 @@ import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/al
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -51,7 +55,6 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -121,9 +124,9 @@ type TGroupServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;

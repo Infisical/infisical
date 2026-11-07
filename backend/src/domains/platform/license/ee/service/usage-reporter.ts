@@ -1,60 +1,17 @@
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
-import { mintServiceToken } from "../license-client-backends";
-import { licenseErrorMessage, readLicenseRequestId } from "../license-client-errors";
-import { createSelfHostedTokenProvider } from "../license-token-provider";
-
-export type TUsageSnapshot = {
-  dimension_key: string;
-  value: number;
-  observed_at: string;
-  idempotency_key: string;
-  source: string;
-};
-
-// One metered fact for a sum or count meter. The license server dedups on event_id, so a retry must
-// resend the same id; quantity is ignored for a count meter, which counts each event once.
-export type TUsageEvent = {
-  event_id: string;
-  dimension_key: string;
-  quantity: number;
-  occurred_at: string;
-  source: string;
-};
-
-export type TUsageEventResult = {
-  event_id: string;
-  status: "accepted" | "deduped";
-};
-
-export type TUsageReporter = {
-  reportSnapshots: (orgId: string, snapshots: TUsageSnapshot[]) => Promise<void>;
-  reportEvents: (orgId: string, events: TUsageEvent[]) => Promise<TUsageEventResult[]>;
-};
-
-// The license server's per-request cap on usage events.
-export const MAX_USAGE_EVENTS_PER_REQUEST = 1000;
-
-// Carries the license server's HTTP status + parsed message so callers can special-case responses
-// (e.g. swallow a 422 "not priced by any active product on this license") instead of retrying.
-export class UsageReportError extends Error {
-  readonly status: number;
-
-  readonly serverMessage: string;
-
-  constructor(status: number, serverMessage: string, requestId?: string) {
-    super(
-      licenseErrorMessage(
-        requestId || "unknown",
-        `usage report failed with ${status}${serverMessage ? `: ${serverMessage}` : ""}`
-      )
-    );
-    this.name = "UsageReportError";
-    this.status = status;
-    this.serverMessage = serverMessage;
-  }
-}
+import {
+  MAX_USAGE_EVENTS_PER_REQUEST,
+  TUsageEvent,
+  TUsageEventResult,
+  TUsageReporter,
+  TUsageSnapshot,
+  UsageReportError
+} from "../../ce/model/usage-report";
+import { mintServiceToken } from "./license-server/license-server-backends";
+import { readLicenseRequestId } from "./license-server/license-server-errors";
+import { createSelfHostedTokenProvider } from "./license-server/license-token-provider";
 
 // getBearerToken is called per request so a cloud reporter can mint a fresh short-lived JWT each time,
 // while a self-hosted reporter exchanges its license key for a cached JWT at the token endpoint.

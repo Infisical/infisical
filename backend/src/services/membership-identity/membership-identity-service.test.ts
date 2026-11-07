@@ -113,7 +113,7 @@ const createService = ({
       findById: vi.fn().mockResolvedValue(projectType ? { id: "project-1", type: projectType } : undefined)
     } as never,
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
-    usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
+    usageMeteringService: { emit: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {
       insertOrgMembershipRevocationMarker,

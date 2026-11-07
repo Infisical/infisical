@@ -12,6 +12,13 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import {
+  TLicenseService,
+  AgentVaultIdentities,
+  PamIdentities,
+  SecretIdentities
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -19,7 +26,6 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
@@ -53,8 +59,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -140,10 +144,7 @@ type TOrgServiceFactoryDep = {
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<
-    TLicenseServiceFactory,
-    "getPlan" | "updateSubscriptionOrgMemberCount" | "cancelOrgSubscription"
-  >;
+  licenseService: Pick<TLicenseService, "getPlan" | "syncSeats" | "cancelSubscription">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
@@ -153,7 +154,7 @@ type TOrgServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: Pick<TLicenseService, "emit">;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeOrgHoneyTokens">;
@@ -859,7 +860,12 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
+    // Seat sync calls the License Server, so it waits for the org to commit, including a caller's transaction.
+    if (trx) {
+      sealKnexTransaction(trx).afterCommit(() => licenseService.syncSeats(organization.id));
+    } else {
+      await licenseService.syncSeats(organization.id);
+    }
 
     usageMeteringService.emit(organization.id, PamIdentities.key);
 
@@ -919,7 +925,7 @@ export const orgServiceFactory = ({
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     // if root org null = this is a root org then cancel the subscription.
     if (!org.rootOrgId) {
-      await licenseService.cancelOrgSubscription(orgId);
+      await licenseService.cancelSubscription(orgId);
     }
 
     // Outside the transaction: the cleanup runs its own queries per project, and inside it each

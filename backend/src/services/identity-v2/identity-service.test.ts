@@ -66,7 +66,7 @@ const createService = ({
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([]),
       getProjectPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
-    licenseService: { getPlan: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
+    licenseService: { getPlan: vi.fn(), getSeatUsage: vi.fn(), syncSeats: vi.fn() } as never,
     // The delete guards bound the removal against the roles the target identity holds.
     membershipIdentityDAL: {
       getIdentityById: vi.fn().mockResolvedValue({ roles: [] }),
@@ -86,7 +86,7 @@ const createService = ({
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }) } as never,
     roleDAL: { find: vi.fn() } as never,
-    usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
+    usageMeteringService: { emit: vi.fn() } as never,
     alertService: { deleteAlertsForDeletedResource } as never
   });
 

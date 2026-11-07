@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { LICENSE_SERVER_ERROR_NAME, licenseErrorMessage, readLicenseRequestId } from "./license-client-errors";
 import {
   billingProfileResponseSchema,
   catalogResponseSchema,
@@ -41,7 +40,8 @@ import {
   TUpgradePayload,
   TUpgradeResult,
   upgradeResultSchema
-} from "./license-client-types";
+} from "../../../ce/model/license-server-types";
+import { LICENSE_SERVER_ERROR_NAME, licenseErrorMessage, readLicenseRequestId } from "./license-server-errors";
 import { TLicenseTokenProvider } from "./license-token-provider";
 
 // Token-scoped paths for the self-hosted (license-key) backend: the key identifies the license, so

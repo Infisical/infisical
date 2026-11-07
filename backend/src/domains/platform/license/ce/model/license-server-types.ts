@@ -637,3 +637,30 @@ export type TLicenseClientBackend = {
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
   resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
 };
+
+// The License Server's billing surface, for the billing portal. Without the EE edition it is dormant: reads
+// return nothing and changes are refused.
+export type TLicenseServerBilling = {
+  isEnabled: () => boolean;
+  getEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse | null>;
+  getCatalog: (orgId: string) => Promise<TCatalogResponse | null>;
+  getSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
+  getCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
+  getBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
+  createPortal: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
+  previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
+  buyProduct: (orgId: string, payload: TBuyProductPayload) => Promise<TCheckoutResult>;
+  removeProduct: (orgId: string, productId: string) => Promise<TCheckoutResult>;
+  upgradeProduct: (orgId: string, payload: TUpgradePayload) => Promise<TUpgradeResult>;
+  changeCommitments: (orgId: string, payload: TChangeCommitmentsPayload) => Promise<TCheckoutResult>;
+  startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
+  cancelTrial: (orgId: string, payload: TCancelTrialPayload) => Promise<TTrialCancelResult>;
+  confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
+  getTrials: (orgId: string) => Promise<TTrialsResponse>;
+  cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
+  resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
+  // After a billing change the License Server settles asynchronously, so the cached plan keeps serving while
+  // a background refresh converges on the new answer.
+  markEntitlementsStale: (orgId: string, opts?: { checkout?: boolean }) => Promise<void>;
+  refreshEntitlements: (org: TEntitlementOrg) => Promise<void>;
+};

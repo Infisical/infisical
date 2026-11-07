@@ -1,7 +1,7 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { TFeatureSet } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,

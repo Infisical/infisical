@@ -3,10 +3,10 @@ import pLimit from "p-limit";
 import { z } from "zod";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -87,7 +87,7 @@ type TPkiDiscoveryServiceFactoryDep = {
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;

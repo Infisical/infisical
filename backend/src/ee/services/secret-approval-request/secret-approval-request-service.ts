@@ -9,6 +9,7 @@ import {
   SecretType,
   TSecretApprovalRequestsSecretsInsert
 } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
@@ -64,7 +65,6 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { ChangeRequestWebhookAction, TWebhookActor, WebhookEvents } from "@app/services/webhook/webhook-types";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
@@ -151,7 +151,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;

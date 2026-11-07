@@ -1,4 +1,4 @@
-import { InstanceType } from "@app/ee/services/license/license-types";
+import { InstanceType } from "@app/domains/platform/license/ce/module";
 
 import { assertCertificateAuthorityQuota, TCertificateAuthorityQuotaDeps } from "./certificate-authority-quota-fns";
 

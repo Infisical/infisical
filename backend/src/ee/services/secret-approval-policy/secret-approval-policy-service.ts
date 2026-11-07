@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -14,7 +15,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { approvalPolicyMembershipVerifierFactory } from "../access-approval-policy/access-approval-policy-fns";
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretChangeGlobalPolicyBridgeServiceFactory } from "../secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
@@ -42,7 +42,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
   secretApprovalPolicyEnvironmentDAL: TSecretApprovalPolicyEnvironmentDALFactory;
   secretChangeGlobalPolicyBridgeService: Pick<

@@ -13,6 +13,8 @@ import { z, ZodError } from "zod";
 import { TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -67,14 +69,12 @@ import { assertCertificateMaterialAvailable } from "@app/services/certificate/ce
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -179,10 +179,10 @@ type TPkiAcmeServiceFactoryDep = {
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  licenseService: Pick<TLicenseService, "getPlan" | "getInstanceType">;
+  certManager: Pick<
+    TCertManagerService,
+    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
   >;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -217,7 +217,7 @@ export const pkiAcmeServiceFactory = ({
   acmeChallengeDAL,
   keyStore,
   licenseService,
-  usageCounterDAL,
+  certManager,
   kmsService,
   certificateV3Service,
   certificatePolicyService,
@@ -1127,7 +1127,7 @@ export const pkiAcmeServiceFactory = ({
       projectId: profile.projectId,
       projectDAL,
       licenseService,
-      quotaDeps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+      quotaDeps: { projectDAL, licenseService, certManager, keyStore }
     });
 
     const certRequest = await certificateRequestService.createCertificateRequest({

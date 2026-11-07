@@ -77,7 +77,7 @@ const createService = ({
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
     } as never,
-    licenseService: { getPlan: vi.fn(), getOrgSeatUsage: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
+    licenseService: { getPlan: vi.fn(), syncSeats: vi.fn(), within: vi.fn() } as never,
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),

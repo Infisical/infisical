@@ -9,8 +9,8 @@ import { join } from "node:path";
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { InstanceType } from "@app/domains/platform/license/ce/module";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { InstanceType } from "@app/ee/services/license/license-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -199,8 +199,8 @@ describe("CertificateV3Service", () => {
 
   const mockUsageCounterDAL = {
     resolveRootOrgId: vi.fn(async (id: string) => id),
-    countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
-    isCertificateQuotaKeyActiveInOrg: vi.fn((orgId: string | undefined, quotaKey: string) =>
+    countActiveCertificateQuota: vi.fn(async () => ({ total: 0, wildcard: 0 })),
+    isCertificateQuotaKeyActive: vi.fn((orgId: string | undefined, quotaKey: string) =>
       Promise.resolve(Boolean(orgId && quotaKey && false))
     )
   };
@@ -256,8 +256,8 @@ describe("CertificateV3Service", () => {
     // These three are shared across tests rather than rebuilt per test, so resetAllMocks strips their
     // implementations and they have to be re-established here.
     mockUsageCounterDAL.resolveRootOrgId.mockImplementation(async (id: string) => id);
-    mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg.mockResolvedValue({ total: 0, wildcard: 0 });
-    mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg.mockResolvedValue(false);
+    mockUsageCounterDAL.countActiveCertificateQuota.mockResolvedValue({ total: 0, wildcard: 0 });
+    mockUsageCounterDAL.isCertificateQuotaKeyActive.mockResolvedValue(false);
     mockKeyStore.getItem.mockResolvedValue(null);
     mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
     mockKeyStore.deleteItem.mockResolvedValue(1);
@@ -405,7 +405,7 @@ describe("CertificateV3Service", () => {
       apiEnrollmentConfigDAL: {
         findById: vi.fn().mockResolvedValue(undefined)
       },
-      usageCounterDAL: mockUsageCounterDAL,
+      certManager: mockUsageCounterDAL,
       keyStore: mockKeyStore,
       licenseService: mockLicenseService,
       telemetryService: mockTelemetryService,
@@ -1522,7 +1522,7 @@ describe("CertificateV3Service", () => {
         })
         .catch(() => undefined);
 
-      const [, probedKey] = mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg.mock.calls[0];
+      const [, probedKey] = mockUsageCounterDAL.isCertificateQuotaKeyActive.mock.calls[0];
       expect(probedKey).toBe(buildCertificateQuotaKey({ commonName: "app.example.com", altNames: "app.example.com" }));
       expect(probedKey).not.toBe(
         buildCertificateQuotaKey({
@@ -2562,8 +2562,8 @@ describe("CertificateV3Service", () => {
       const atCap = (plan: Record<string, unknown> = AT_CAP, total = 5, wildcard = 0) => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
         vi.mocked(mockLicenseService.getPlan).mockResolvedValue(plan as never);
-        vi.mocked(mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg).mockResolvedValue({ total, wildcard });
-        vi.mocked(mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg).mockResolvedValue(false);
+        vi.mocked(mockUsageCounterDAL.countActiveCertificateQuota).mockResolvedValue({ total, wildcard });
+        vi.mocked(mockUsageCounterDAL.isCertificateQuotaKeyActive).mockResolvedValue(false);
       };
 
       it("refuses a renewal that changes the SANs once the certificate cap is reached", async () => {
@@ -2610,7 +2610,7 @@ describe("CertificateV3Service", () => {
         // Fails later for want of the issuance mocks; the point is that it gets past the quota gate.
         await service.renewCertificate({ certificateId: "cert-123", ...mockActor }).catch(() => undefined);
 
-        expect(mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg).not.toHaveBeenCalled();
+        expect(mockUsageCounterDAL.countActiveCertificateQuota).not.toHaveBeenCalled();
       });
     });
 
