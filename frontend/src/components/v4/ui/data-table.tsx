@@ -579,7 +579,7 @@ export function DataTable<Row>({
               </TableRow>
             )}
             {!loading && !rows.length && (
-              <TableRow>
+              <TableRow data-row-kind="empty">
                 <TableCell colSpan={span}>{empty}</TableCell>
               </TableRow>
             )}

@@ -1280,7 +1280,16 @@ button.rowTitle::after {
   background-color: var(--v4-table-row-ground);
   background-image: var(--v4-table-row-layers);
 }
-.nativeTableRow:is(:hover, :has([aria-expanded="true"])):not(thead > *) {
+.tableScroll thead > .nativeTableRow {
+  background-color: transparent;
+}
+.nativeTableRow:is(:hover, :has([aria-expanded="true"])):not(
+    thead > *,
+    [data-loading],
+    [data-spacer],
+    [data-row-kind],
+    :has(> td:only-child[colspan])
+  ) {
   --v4-table-row-hover: var(--v4-hover);
 }
 .nativeTableRow[data-state="selected"] {
