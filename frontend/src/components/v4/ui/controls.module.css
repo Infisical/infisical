@@ -288,6 +288,11 @@
 .cardPlain {
   background: var(--v4-surface);
 }
+.cardPlain:not(
+    :has(> [data-slot="card-header"], > [data-slot="card-content"], > [data-slot="card-footer"])
+  ) {
+  padding: var(--v4-card-body-inset);
+}
 .cardInset {
   display: flex;
   flex-direction: column;

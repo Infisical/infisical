@@ -8,6 +8,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 
+import { FrameScope } from "../lib/frame-context";
 import { OverlayPendingContext, useDismissGuard, useOverlayPending } from "../lib/overlay-pending";
 import { splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
@@ -33,13 +34,18 @@ function AlertDialogTrigger({
 }
 AlertDialogTrigger.displayName = "AlertDialogTrigger";
 
-function AlertDialogPortal({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
+function AlertDialogPortal({
+  children,
+  ...props
+}: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
   return (
     <AlertDialogPrimitive.Portal
       container={useV4PortalContainer()}
       data-slot="alert-dialog-portal"
       {...props}
-    />
+    >
+      <FrameScope framed={false}>{children}</FrameScope>
+    </AlertDialogPrimitive.Portal>
   );
 }
 

@@ -1061,6 +1061,24 @@ button.rowTitle::after {
   z-index: 4;
   background: var(--v4-tint);
 }
+.tableShell[data-embedded] thead,
+.tableShell[data-embedded] th[data-pin="true"],
+.tableShell[data-embedded] .tablePagination {
+  background: var(--v4-surface);
+}
+.tableShell[data-embedded] td[data-pin="true"] {
+  box-shadow: none;
+}
+.tableShell[data-embedded] .tablePagination {
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
+.tableShell[data-embedded] th {
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
+.tableShell[data-embedded] tbody::before,
+.tableShell[data-embedded] tbody::after {
+  content: none;
+}
 .tableScroll th {
   height: var(--v4-space-40);
   color: var(--v4-muted);

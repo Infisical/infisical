@@ -141,6 +141,49 @@ export const disabledButtonsInTooltips = (text: string) => {
   return [...found].map(([index, match]) => ({ index, text: match }));
 };
 
+const framedParents = /<(Card|List|ApprovalQueue|DataTable|CodeBlock)(?=[\s>/])/g;
+const framedChildren = /<(Card|List|ApprovalQueue)(?=[\s>/])/g;
+const variantValue = /\svariant=(?:"(\w+)"|\{\s*["'`](\w+)["'`]\s*\})/;
+
+const opensFrame = (name: string, tag: string) => {
+  if (name === "DataTable" || name === "CodeBlock") return true;
+  const variant = tag.match(variantValue);
+  const value = variant?.[1] ?? variant?.[2];
+  if (name === "Card") return value === "framed";
+  return !/\svariant=/.test(tag) || value === "framed";
+};
+
+const elementEnd = (text: string, name: string, from: number) => {
+  const tagEnd = jsxTagEnd(text, from);
+  if (text[tagEnd - 1] === "/") return tagEnd;
+  const tokens = new RegExp(`<${name}(?=[\\s>/])|</${name}>`, "g");
+  tokens.lastIndex = tagEnd;
+  let depth = 1;
+  for (let token = tokens.exec(text); token; token = tokens.exec(text)) {
+    if (token[0].startsWith("</")) depth -= 1;
+    else if (text[jsxTagEnd(text, token.index) - 1] !== "/") depth += 1;
+    if (depth === 0) return token.index;
+  }
+  return text.length;
+};
+
+/** An explicit variant="framed" Card, List or ApprovalQueue written inside a framed Card, a framed List or ApprovalQueue, a DataTable or a CodeBlock. */
+export const nestedFrames = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(framedParents)].forEach((open) => {
+    const start = open.index ?? 0;
+    if (!opensFrame(open[1], text.slice(start, jsxTagEnd(text, start)))) return;
+    const region = text.slice(start + 1, elementEnd(text, open[1], start));
+    [...region.matchAll(framedChildren)].forEach((child) => {
+      const at = start + 1 + (child.index ?? 0);
+      const tag = text.slice(at, jsxTagEnd(text, at));
+      const variant = tag.match(variantValue);
+      if ((variant?.[1] ?? variant?.[2]) === "framed") found.set(at, tag.split("\n")[0].trim());
+    });
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
 const topLevelParts = (selector: string) => {
   const parts = [""];
   let depth = 0;
@@ -433,6 +476,14 @@ export const v4Checks: readonly V4Check[] = [
       "A natively disabled Button gets no pointer or focus events, so a Tooltip around it never opens. Pass the reason as disabledReason, which keeps the Button focusable and shows the reason in its own tooltip.",
     appliesTo: isAuthored,
     source: disabledButtonsInTooltips
+  },
+  {
+    id: "nested-frame",
+    rule: "no-nested-frames",
+    message:
+      'A framed container never renders inside another framed container. Remove variant="framed": inside a framed Card, List, DataTable or CodeBlock, a Card, List or ApprovalQueue drops to its frameless treatment on its own.',
+    appliesTo: isMarkup,
+    source: nestedFrames
   },
   {
     id: "dot-separator",

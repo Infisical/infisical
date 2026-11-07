@@ -5,6 +5,7 @@ import { HoverCard as HoverCardPrimitive } from "radix-ui";
 
 import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
+import { FrameScope } from "../lib/frame-context";
 import { cn } from "../lib/utils";
 
 import menu from "./menu.module.css";
@@ -27,6 +28,7 @@ function HoverCardContent({
   align = "center",
   sideOffset = 4,
   ref,
+  children,
   ...props
 }: React.ComponentProps<typeof HoverCardPrimitive.Content>) {
   return (
@@ -40,7 +42,9 @@ function HoverCardContent({
         sideOffset={sideOffset}
         className={cn("z-50", menu.surface, menu.card, menu.motion, className)}
         {...props}
-      />
+      >
+        <FrameScope framed={false}>{children}</FrameScope>
+      </HoverCardPrimitive.Content>
     </HoverCardPrimitive.Portal>
   );
 }
