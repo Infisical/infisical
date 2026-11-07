@@ -35,6 +35,12 @@ const ticket: TAutoApprovalSubject<unknown, TFacts> = {
       test: () => {
         throw new Error("boom");
       }
+    },
+    named: {
+      label: "is named",
+      value: AutoApprovalConstraintValue.Many,
+      describeValues: (_facts, values) => values.map((value) => value.toUpperCase()),
+      test: () => ({ pass: true })
     }
   }
 };
@@ -111,6 +117,18 @@ describe("evaluateAutoApprovalRules", () => {
       ctx
     );
     expect(throwing.approvedByRuleId).toBeNull();
+  });
+
+  test("describes values the way the provider names them", () => {
+    const result = evaluateAutoApprovalRules(
+      [{ id: "rule-1", name: "Named", conditions: [condition("c-1", "named", ["a", "b"])] }],
+      resolved("Approved"),
+      ctx
+    );
+    expect(result.rules[0].conditions[0]).toMatchObject({
+      description: "Jira ticket is named A or B",
+      values: ["a", "b"]
+    });
   });
 
   test("never approves with a rule that has no conditions", () => {

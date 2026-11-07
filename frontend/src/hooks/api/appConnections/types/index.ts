@@ -45,6 +45,7 @@ import { THerokuConnection } from "./heroku-connection";
 import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TImpervaConnection } from "./imperva-connection";
+import { TIncidentIoConnection } from "./incident-io-connection";
 import { TJiraConnection } from "./jira-connection";
 import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
@@ -139,6 +140,7 @@ export * from "./heroku-connection";
 export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
 export * from "./imperva-connection";
+export * from "./incident-io-connection";
 export * from "./jira-connection";
 export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
@@ -287,7 +289,8 @@ export type TAppConnection =
   | TServiceNowConnection
   | TS3CompatibleConnection
   | TJiraConnection
-  | TClickHouseConnection;
+  | TClickHouseConnection
+  | TIncidentIoConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId"> & {
   gatewayId?: string | null;

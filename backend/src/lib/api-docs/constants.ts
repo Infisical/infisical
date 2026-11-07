@@ -3316,6 +3316,9 @@ export const AppConnections = {
         "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
       sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
     },
+    INCIDENT_IO: {
+      apiKey: "The incident.io API key used to read on-call schedules. It needs the View on-call resources permission."
+    },
     JIRA: {
       instanceUrl:
         "The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).",

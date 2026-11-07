@@ -142,6 +142,7 @@ import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateImpervaConnectionCredentialsSchema } from "./imperva";
 import { impervaConnectionService } from "./imperva/imperva-connection-service";
+import { ValidateIncidentIoConnectionCredentialsSchema } from "./incident-io";
 import { ValidateJiraConnectionCredentialsSchema } from "./jira";
 import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
 import { keeperConnectionService } from "./keeper/keeper-connection-service";
@@ -349,7 +350,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
   [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
-  [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema
+  [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema,
+  [AppConnection.IncidentIo]: ValidateIncidentIoConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

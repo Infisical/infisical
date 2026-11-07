@@ -722,4 +722,12 @@ export const appConnections = [
       "Learn how to connect Jira Cloud or Jira Data Center so Infisical can read your Jira tickets.",
     category: "SaaS",
   },
+  {
+    name: "incident.io",
+    slug: "incident-io",
+    path: "/integrations/app-connections/incident-io",
+    description:
+      "Learn how to connect incident.io so Infisical can check who is on call in your schedules.",
+    category: "Monitoring",
+  },
 ];
