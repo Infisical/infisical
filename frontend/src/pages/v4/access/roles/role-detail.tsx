@@ -392,10 +392,10 @@ const OrgRoleDetail = ({ orgId, roleId }: { orgId: string; roleId: string }) => 
   const deleteRole = access.useDeleteOrgRole();
   const backHref = accessLinks.org(orgId, OrgAccessControlTabSections.Roles);
 
-  if (permissionPending) return <Loader size="page" label="Loading role" />;
-  if (!permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role))
-    return <AccessRestricted requirement="read Role" />;
-  if (isPending) return <Loader size="page" label="Loading role" />;
+  const canRead = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
+  if (permissionPending || (canRead && isPending))
+    return <Loader size="page" label="Loading role" />;
+  if (!canRead) return <AccessRestricted requirement="read Role" />;
   if (!role) return <NotFound backHref={backHref} />;
 
   const isCustom = isCustomOrgRole(role.slug);
@@ -476,10 +476,10 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   const deleteRole = access.useDeleteProjectRole();
   const backHref = accessLinks.project(scope, ProjectAccessControlTabs.Roles);
 
-  if (permissionPending) return <Loader size="page" label="Loading role" />;
-  if (!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role))
-    return <AccessRestricted requirement="read Role" />;
-  if (isPending) return <Loader size="page" label="Loading role" />;
+  const canRead = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+  if (permissionPending || (canRead && isPending))
+    return <Loader size="page" label="Loading role" />;
+  if (!canRead) return <AccessRestricted requirement="read Role" />;
   if (!role) return <NotFound backHref={backHref} />;
 
   return (
