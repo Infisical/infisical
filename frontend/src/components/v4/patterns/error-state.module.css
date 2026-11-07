@@ -43,6 +43,14 @@
   border-color: var(--v4-muted);
   background: transparent;
 }
+.root[data-preset="forbidden"] .mark > span[data-target] {
+  border-color: var(--v4-muted);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--v4-muted) 0 var(--v4-size-control-border),
+    transparent 0 var(--v4-space-3)
+  );
+}
 .root[data-preset="crash"] .mark > span[data-target] {
   border-color: var(--v4-accent);
   background: var(--v4-accent);
@@ -68,8 +76,15 @@
   gap: var(--v4-space-8);
   text-align: start;
 }
-.details > [data-slot="collapsible-content"] {
+.detailsPanel {
+  position: relative;
   width: 100%;
+}
+.detailsCopy {
+  position: absolute;
+  inset-block-start: var(--v4-space-8);
+  inset-inline-end: var(--v4-space-8);
+  z-index: 1;
 }
 .detailsTrigger [data-chevron] {
   transition: rotate var(--v4-duration-fast) var(--v4-ease-standard);

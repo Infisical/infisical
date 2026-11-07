@@ -204,8 +204,25 @@ export const listDefinition = {
     ],
     avoid: [],
     decision:
-      "Choose List for a stable collection of comparable resource rows. Use Item for an isolated rich object and DataTable when columns need comparison. For a DataList, choose compact when a card holds more than about five facts that a reader scans for one value, and default when it holds a few facts that each deserve a full row.",
+      "Choose List for a stable collection of comparable resource rows. Use Item for an isolated rich object and DataTable when columns need comparison. For a DataList, choose compact for every detail page's facts card, whatever its length, and default for short summaries, stat lists and anything in a sheet or dialog.",
     rules: [
+      {
+        id: "list-detail-facts-compact",
+        when: "A detail page shows one record's facts in its details card or DetailLayout sidecar.",
+        do: 'Render the DataList with density="compact" and pair short values with span half.',
+        avoid:
+          "Leave the facts card at default density on some detail pages, or use compact inside a Sheet or Dialog.",
+        reason:
+          "Every record page then reads its facts at one row height, and sheets keep the roomier rows their narrower width needs.",
+        evidence: [
+          "src/components/v4/ui/list.tsx",
+          "src/pages/design-system/examples/list/density.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Open each detail page and check its facts card is compact, while DataLists in sheets keep the default."
+        }
+      },
       {
         id: "list-variant-owner",
         when: "A composite needs a list treatment: cards, rules, a header row or a footer.",

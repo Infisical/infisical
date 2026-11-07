@@ -62,4 +62,14 @@ The workbench itself runs in a real AppShell on real routes: `/design-system` is
 - Page content width: the size-content token (1160px) sets the page gutter that AppInset derives and PageGutter pads by. Wrap page content in PageGutter; never cap it with mx-auto and an arbitrary max-w.
 - Detail pages that pair one details card with stacked content cards use DetailLayout: the sidecar (size-sidecar) sits on the right and stacks above the content below size-sidecar-collapse of the layout's own width. Never hand-build that two-column grid. Record facts in those cards use DataList density compact, with short values paired by span half.
 - Status cells: report a state with StatusText (a line icon plus words), never color alone or a brand mark, and derive it only from fields the API returns.
-- Bulk selection uses the floating action bar (FloatingActionBar), never an inline bar. Selecting or clearing rows must not move layout.
+- Bulk selection uses the floating action bar (FloatingActionBar), never an inline bar. Selecting or clearing rows must not move layout. The bar is contained, its default, on every page: pass it to DataTable's actionBar, which keeps it on the scroller's bottom edge centered on the table and holds room below the frame; never set placement fixed (rule/selection-floating-action-bar, ui:lint fixed-bulk-bar).
+- Tables and list pages follow one recipe:
+  - A row that goes to the record's page puts RowLink in its primary cell; never navigate from onRowActivate (rule/row-navigation-link, ui:lint row-activate-navigates).
+  - A row that opens its record in a Sheet or Dialog uses onRowActivate plus a link Button with the record's name in the primary cell. It has no RowLink, so no chevron, and no Open action in the tail; a URL-addressable sheet may use RowLink with chevron={false} (rule/sheet-row-open).
+  - Pagination goes in DataTable's pagination slot with variant="compact", never as a sibling after the table (rule/pagination-in-frame, ui:lint pagination-outside-frame).
+  - A hand-built Table row with RowActions or a TableActionsCell wraps itself in RowContextMenu (rule/row-context-menu, ui:lint row-actions-without-context-menu).
+  - Resource lists inline the one most-used non-destructive action, such as Edit, Rotate or View logs, then More; destructive actions stay in More (rule/row-actions-inline-primary).
+  - Full list pages search and filter with FilterBar, which drops Add filter when it has no fields; a search box with an icon-only filter menu is only for search inside a Card header (rule/list-page-filter-bar).
+  - A table inside a Card or SettingsCard is a DataTable; the native Table is for the secrets matrix and dialog, sheet and popover internals (rule/detail-card-data-table, ui:lint raw-table-in-card).
+  - A detail page's facts card uses DataList density compact (rule/detail-facts-compact).
+  - pages/v4 findings for these checks sit in scripts/check-v4-baseline.json until the sweep fixes them.

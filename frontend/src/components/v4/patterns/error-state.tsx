@@ -4,12 +4,13 @@ import { Button } from "../ui/button";
 import { CodeBlock } from "../ui/code-block";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Icon } from "../ui/icon";
+import { CopyButton } from "../ui/sensitive-editor";
 import { Heading, Text } from "../ui/text";
 import { useAppShell } from "../ui/top-bar";
 
 import styles from "./error-state.module.css";
 
-export type ErrorStatePreset = "not-found" | "crash";
+export type ErrorStatePreset = "not-found" | "forbidden" | "crash";
 export type ErrorStateLayout = "auto" | "in-shell" | "full-page";
 export type ErrorStateDetail = { label: string; value: string };
 
@@ -31,12 +32,18 @@ export type ErrorStateProps = {
   onReload?: () => void;
   /** Called once per error when crash mounts, to send it to error reporting. */
   onReport?: (error: unknown) => void;
+  /** The page's own flows, such as Request access. They sit after the preset's primary action and before its secondary one; keep them outline so the primary stays the one accent. */
+  actions?: React.ReactNode;
 };
 
 const presets = {
   "not-found": {
     title: "Page not found",
     description: "The link may be broken, or the page was moved or removed."
+  },
+  forbidden: {
+    title: "You don't have access",
+    description: "Your role doesn't include access to this page. An admin can grant it."
   },
   crash: {
     title: "Something went wrong",
@@ -58,7 +65,8 @@ export function ErrorState({
   onHome,
   onBack = () => window.history.back(),
   onReload = () => window.location.reload(),
-  onReport
+  onReport,
+  actions
 }: ErrorStateProps) {
   const shell = useAppShell();
   const fullPage = layout === "full-page" || (layout === "auto" && !shell);
@@ -116,11 +124,13 @@ export function ErrorState({
               <Button variant="accent" onClick={onReload}>
                 Reload
               </Button>
+              {actions}
               {home}
             </>
           ) : (
             <>
               {home}
+              {actions}
               <Button variant="outline" onClick={onBack}>
                 Go back
               </Button>
@@ -135,8 +145,11 @@ export function ErrorState({
                 Error details
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CodeBlock label="Error details" code={reportText} copyLabel="Copy details" />
+            <CollapsibleContent className={styles.detailsPanel}>
+              <CodeBlock code={reportText} copyable={false} />
+              <span className={styles.detailsCopy}>
+                <CopyButton value={reportText} label="Copy details" iconOnly />
+              </span>
             </CollapsibleContent>
           </Collapsible>
         )}

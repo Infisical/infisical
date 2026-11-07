@@ -106,11 +106,11 @@ Source evidence:
 
 Owner: table.
 
-When each row opens one detail page or sheet for its resource.
+When each row opens its resource in a sheet or dialog on the same page.
 
-Do: Pass onRowActivate (or, in a native Table, TableRow onClick) with the same destination as the link or button in the primary cell, and keep selection on the checkbox and Space.
+Do: Pass onRowActivate (or, in a native Table, TableRow onClick) and render the primary cell's name as a link Button that runs the same handler. The cell holds no RowLink, so no chevron is drawn, and the actions tail adds no Open or chevron action. Keep selection on the checkbox and Space.
 
-Avoid: Navigate from a cell's own onClick, give the row a button or link role, let a row click change the selection, or add stopPropagation to the row's controls and menus to keep them from activating it.
+Avoid: Navigate from onRowActivate or a cell's own onClick, give the row a button or link role, let a row click change the selection, or add stopPropagation to the row's controls and menus to keep them from activating it.
 
 Why: One handler keeps pointer, Enter and the named control in agreement, while the row's own controls keep their clicks and the row keeps native table semantics.
 
@@ -121,6 +121,96 @@ Source evidence:
 - src/components/v4/ui/data-table.tsx
 - src/components/v4/ui/data-table.test.tsx
 - src/pages/design-system/examples/table/row-activation.tsx
+
+### table-row-navigation
+
+Owner: table.
+
+When activating a row goes to the record's own page.
+
+Do: Put RowLink in the primary cell with the record's route and leave onRowActivate unset; RowLink stretches over the row and keeps its chevron.
+
+Avoid: Pass onRowActivate={(row) => go(...)} or any handler that calls navigate, or set RowLink and onRowActivate on the same table.
+
+Why: A row with an href opens in a new tab, copies as a link and reads as a named link to screen readers; a click handler that navigates does none of that.
+
+Checked by: review only. Look for: ui:lint row-activate-navigates flags an onRowActivate whose inline body, or a function it calls from the same file, navigates. Check imported handlers by hand.
+
+Source evidence:
+- src/components/v4/ui/data-table.tsx
+- src/pages/design-system/examples/table/row-activation.tsx
+
+### table-pagination-slot
+
+Owner: table.
+
+When a DataTable shows one page of a longer result.
+
+Do: Pass Pagination through the pagination slot with variant="compact", so the range and arrows sit in the frame below the rows.
+
+Avoid: Render Pagination, or a helper's pagination node, as a sibling after the table, or put the numbered variant in the slot.
+
+Why: Inside the frame the controls stay with the rows they page and in view while the table scrolls; one variant keeps every paged table the same.
+
+Checked by: review only. Look for: ui:lint pagination-outside-frame flags a Pagination right after a DataTable and a slot Pagination without the compact variant. A slot node built in a helper is checked by hand.
+
+Source evidence:
+- src/components/v4/ui/data-table.tsx
+- src/pages/design-system/examples/table/pagination.tsx
+
+### table-row-context-menu
+
+Owner: table.
+
+When a native Table row shows RowActions or a TableActionsCell.
+
+Do: Wrap the row in RowContextMenu with the same label, inline actions, menu and menuDisabledReason it passes RowActions.
+
+Avoid: Leave a hand-built row with actions in its tail and no RowContextMenu around it.
+
+Why: Right-click, Shift+F10 and the Menu key open a row's actions on every DataTable row, so a hand-built row without them behaves differently from the table beside it.
+
+Checked by: review only. Look for: ui:lint row-actions-without-context-menu flags a TableRow holding RowActions or TableActionsCell with no RowContextMenu around it in the same file.
+
+Source evidence:
+- src/components/v4/ui/table.tsx
+- src/pages/design-system/examples/table/row-actions.tsx
+
+### table-inline-primary-action
+
+Owner: table.
+
+When a table lists resources of one type with row actions.
+
+Do: Inline the one most-used non-destructive action, such as Edit, Rotate or View logs, and put the rest in More. Show More alone when no action is clearly most used.
+
+Avoid: Inline several actions on every row of a resource list, or inline an action that repeats the row's own target, such as Open.
+
+Why: One inline action keeps the frequent task one click away without turning the tail into a toolbar, and the same shape on every resource list reads as one product.
+
+Checked by: review only. Look for: Name the most-used action for each resource list and check it is the only inline action, is not destructive and does not repeat the row's target.
+
+Source evidence:
+- src/components/v4/ui/data-table.tsx
+- src/pages/design-system/examples/table/row-actions.tsx
+
+### table-in-card
+
+Owner: table.
+
+When a detail or settings page lists records inside a Card or SettingsCard.
+
+Do: Use DataTable, which embeds frameless on the card's inset with its sort, loading rows and empty state.
+
+Avoid: Hand-build a native Table in the card. Keep the native Table for the secrets overview matrix and for dialog, sheet and popover internals.
+
+Why: Every table in a card then sorts, loads and reads empty the same way, and the native Table stays for layouts DataTable cannot express.
+
+Checked by: review only. Look for: ui:lint raw-table-in-card flags a native Table inside a Card or SettingsCard outside an overlay and the secrets overview.
+
+Source evidence:
+- src/components/v4/ui/data-table.tsx
+- src/pages/design-system/examples/table/semantic.tsx
 
 ### table-grouped-rows
 
@@ -1098,6 +1188,7 @@ import {
 } from "../../../../components/v4/ui/dropdown-menu";
 import {
   RowActions,
+  RowContextMenu,
   Table,
   TableActionsCell,
   TableActionsHead,
@@ -1187,24 +1278,24 @@ export default function RowActivation() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {certs.map((cert) => (
-                <TableRow key={cert.id} onClick={() => open(cert)}>
-                  <TableCell>{cert.cn}</TableCell>
-                  <TableCell>{cert.expires}</TableCell>
-                  <TableActionsCell>
-                    <RowActions
-                      label={cert.cn}
-                      menu={
-                        <DropdownMenuItem
-                          onSelect={() => setStatus(`Renewal requested for ${cert.cn}.`)}
-                        >
-                          Renew
-                        </DropdownMenuItem>
-                      }
-                    />
-                  </TableActionsCell>
-                </TableRow>
-              ))}
+              {certs.map((cert) => {
+                const menu = (
+                  <DropdownMenuItem onSelect={() => setStatus(`Renewal requested for ${cert.cn}.`)}>
+                    Renew
+                  </DropdownMenuItem>
+                );
+                return (
+                  <RowContextMenu key={cert.id} label={cert.cn} menu={menu}>
+                    <TableRow onClick={() => open(cert)}>
+                      <TableCell>{cert.cn}</TableCell>
+                      <TableCell>{cert.expires}</TableCell>
+                      <TableActionsCell>
+                        <RowActions label={cert.cn} menu={menu} />
+                      </TableActionsCell>
+                    </TableRow>
+                  </RowContextMenu>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

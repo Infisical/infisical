@@ -111,37 +111,39 @@ export const FilterBar = ({ label, fields, value, onChange, search, actions }: F
     <div className={styles.bar} data-slot="filter-bar" role="search" aria-label={label}>
       <div className={styles.top}>
         {search && <div className={styles.search}>{search}</div>}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button ref={addButton} variant="outline" icon="plus">
-              Add filter
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            onCloseAutoFocus={(event) => {
-              if (!picked.current) return;
-              event.preventDefault();
-              setOpen(picked.current);
-              picked.current = null;
-            }}
-          >
-            <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-            {fields.map((field) => {
-              const applied = value.some((filter) => filter.field === field.key);
-              return (
-                <DropdownMenuItem
-                  key={field.key}
-                  disabled={applied}
-                  description={applied ? "Already applied" : undefined}
-                  onSelect={() => add(field)}
-                >
-                  {field.label}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {fields.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button ref={addButton} variant="outline" icon="plus">
+                Add filter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              onCloseAutoFocus={(event) => {
+                if (!picked.current) return;
+                event.preventDefault();
+                setOpen(picked.current);
+                picked.current = null;
+              }}
+            >
+              <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+              {fields.map((field) => {
+                const applied = value.some((filter) => filter.field === field.key);
+                return (
+                  <DropdownMenuItem
+                    key={field.key}
+                    disabled={applied}
+                    description={applied ? "Already applied" : undefined}
+                    onSelect={() => add(field)}
+                  >
+                    {field.label}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {actions}
       </div>
       {value.length > 0 && (

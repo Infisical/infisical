@@ -87,6 +87,42 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "preview-v4",
+    title: "v4 on previews",
+    description:
+      "Preview deploys open in v4 by default, and main's login, signup and org home send you to their v4 pages while the flag is on.",
+    date: "2026-11-07",
+    commit: "072c1e484c",
+    page: "overview"
+  },
+  {
+    id: "error-state-forbidden",
+    title: "Forbidden error state",
+    description:
+      "ErrorState adds You don't have access, and pages can slot their own flows such as Request access.",
+    date: "2026-11-07",
+    commit: "7b36bf4064",
+    page: "error-state"
+  },
+  {
+    id: "table-rules",
+    title: "Table rules",
+    description:
+      "Navigation, pagination, sheet rows, context menus, facts density, inline actions, toolbars, bulk bars and tables in cards each have one rule.",
+    date: "2026-11-07",
+    commit: "c2b9967476",
+    page: "table"
+  },
+  {
+    id: "row-ring-width",
+    title: "Row rings keep column widths",
+    description:
+      "A focused table row no longer narrows its columns, and the error details panel drops its repeated label.",
+    date: "2026-11-07",
+    commit: "a3f075ef64",
+    page: "table"
+  },
+  {
     id: "context-menu-release",
     title: "Safer context menus",
     description:
@@ -184,41 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "4cf899bbbe",
     page: "table"
-  },
-  {
-    id: "palette-playground",
-    title: "Palette playground",
-    description:
-      "Tune any theme token live on a sample shell, share the view by link and copy the overrides as tokens.json.",
-    date: "2026-11-07",
-    commit: "d054fdfef6",
-    page: "palette"
-  },
-  {
-    id: "card-pairs",
-    title: "Bands, xs Input and flush SettingsCard",
-    description:
-      "Framed band labels sit at one height, Input gains a 24px xs size, and a flush SettingsCard embeds a table.",
-    date: "2026-11-07",
-    commit: "45ad1c70c1",
-    page: "settings-card"
-  },
-  {
-    id: "shared-hover",
-    title: "Shared hover",
-    description:
-      "Every hover and press is one ink overlay tuned by hover-mix and press-mix, darker in light themes and brighter in dark ones.",
-    date: "2026-11-07",
-    commit: "b7593b3735",
-    page: "colors"
-  },
-  {
-    id: "button-corner-badge",
-    title: "Button corner badge",
-    description:
-      "A Button can carry a small Badge on its top-right corner, such as Last used, without changing its size or hit area.",
-    date: "2026-11-07",
-    commit: "7ff23542fa",
-    page: "button"
   }
 ];
