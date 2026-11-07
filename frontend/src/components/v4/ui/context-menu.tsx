@@ -11,17 +11,31 @@ import { menuRowContent, menuShortcutContent } from "./menu-content";
 
 import menu from "./menu.module.css";
 
+/**
+ * Whether a pointer has pressed inside the open menu. Radix selects the item under a pointerup that
+ * had no pointerdown on it, so the release of the opening right-click or long press would select
+ * whichever item the menu placed under the cursor. Items take pointer releases only after a press.
+ */
+const PressedSinceOpenContext = React.createContext<React.RefObject<boolean> | null>(null);
+
 function ContextMenu({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
-  return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;
+  const pressedSinceOpen = React.useRef(false);
+  return (
+    <PressedSinceOpenContext value={pressedSinceOpen}>
+      <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />
+    </PressedSinceOpenContext>
+  );
 }
 
 function ContextMenuTrigger({
   className,
   disabled,
   onKeyDown,
+  onContextMenuCapture,
   ref,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
+  const pressedSinceOpen = React.useContext(PressedSinceOpenContext);
   return (
     <ContextMenuPrimitive.Trigger
       ref={ref}
@@ -29,6 +43,10 @@ function ContextMenuTrigger({
       className={cn("select-none", className)}
       disabled={disabled}
       {...props}
+      onContextMenuCapture={(event) => {
+        onContextMenuCapture?.(event);
+        if (pressedSinceOpen) pressedSinceOpen.current = false;
+      }}
       onKeyDown={(event) => {
         onKeyDown?.(event);
         if (event.defaultPrevented || disabled || event.repeat) return;
@@ -85,9 +103,12 @@ function ContextMenuContent({
   className,
   children,
   collisionPadding = 8,
+  onPointerDownCapture,
+  onPointerUpCapture,
   ref,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
+  const pressedSinceOpen = React.useContext(PressedSinceOpenContext);
   return (
     <ContextMenuPrimitive.Portal container={useV4PortalContainer()}>
       <ContextMenuPrimitive.Content
@@ -98,6 +119,14 @@ function ContextMenuContent({
         className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
         data-scroll-fade="y"
         {...props}
+        onPointerDownCapture={(event) => {
+          onPointerDownCapture?.(event);
+          if (pressedSinceOpen) pressedSinceOpen.current = true;
+        }}
+        onPointerUpCapture={(event) => {
+          onPointerUpCapture?.(event);
+          if (pressedSinceOpen && !pressedSinceOpen.current) event.preventDefault();
+        }}
       >
         <MenuKindContext value="context">{children}</MenuKindContext>
         <ListHighlight />
