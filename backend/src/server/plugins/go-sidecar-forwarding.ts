@@ -7,17 +7,10 @@ import { logger } from "@app/lib/logger";
 import { goSidecarFallbackCounter } from "@app/lib/telemetry/metrics";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
-type TForwardedRoute = {
-  method: string;
-  url: string;
-  // Opt-in routes are forwarded only when named in GO_SIDECAR_FORWARD_ROUTES
-  optIn?: boolean;
-};
-
-const FORWARDED_ROUTES: TForwardedRoute[] = [
+const FORWARDED_ROUTES: { method: string; url: string }[] = [
   { method: "GET", url: "/api/v4/secrets" },
   { method: "GET", url: "/api/v4/secrets/:secretName" },
-  { method: "GET", url: "/api/v2/folders", optIn: true }
+  { method: "GET", url: "/api/v2/folders" }
 ];
 
 export type TGoForwardingSettings = {
@@ -27,14 +20,21 @@ export type TGoForwardingSettings = {
   percent: number;
 };
 
+export const splitList = (value?: string) =>
+  new Set(
+    (value ?? "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean)
+  );
+
 type TFallbackReason = "connection" | "timeout" | "5xx";
 
 const routeKey = (method: string, url: string) => `${method}:${url}`;
 
 const isRouteEnabled = (key: string, enabledRoutes: Set<string>) =>
-  FORWARDED_ROUTES.some((r) => routeKey(r.method, r.url) === key && (!r.optIn || enabledRoutes.has(key)));
+  enabledRoutes.has(key) && FORWARDED_ROUTES.some((r) => routeKey(r.method, r.url) === key);
 
-// Returns the key that scopes the rollout decision, or null when the credential is not one Go supports.
 const resolveRolloutKey = (headers: IncomingHttpHeaders): string | null => {
   if (headers["x-api-key"]) return null;
 
@@ -63,7 +63,7 @@ const isInPercentage = (key: string, percent: number) => {
   return bucket < percent * 100;
 };
 
-export const resolveForwardingTarget = (
+export const shouldForward = (
   method: string,
   url: string,
   headers: IncomingHttpHeaders,
@@ -84,7 +84,15 @@ const RESPONSE_SKIPPED_HEADERS = new Set(["connection", "content-length", "trans
 // Forwarding runs in onRequest, before the @fastify/rate-limit preValidation hook, so a forwarded
 // request is counted only by Go; a fallback continues into Node's pipeline and is counted there.
 export const forwardToGoSidecar = fp(
-  async (server, opt: { sidecarUrl: string; getSettings: () => TGoForwardingSettings; timeoutMs?: number }) => {
+  async (
+    server,
+    opt: {
+      sidecarUrl: string;
+      getSettings: () => TGoForwardingSettings;
+      isDisabled?: () => Promise<boolean>;
+      timeoutMs?: number;
+    }
+  ) => {
     const timeoutMs = opt.timeoutMs ?? 10000;
 
     const recordFallback = (reason: TFallbackReason, route: string, requestId: string, detail?: string) => {
@@ -97,7 +105,9 @@ export const forwardToGoSidecar = fp(
 
     server.addHook("onRequest", async (request, reply) => {
       const route = request.routeOptions.url;
-      if (!route || !resolveForwardingTarget(request.method, route, request.headers, opt.getSettings())) return;
+      if (!route || !shouldForward(request.method, route, request.headers, opt.getSettings())) return undefined;
+
+      if (opt.isDisabled && (await opt.isDisabled().catch(() => true))) return undefined;
 
       const headers: Record<string, string> = {};
       for (const [name, value] of Object.entries(request.headers)) {
@@ -108,6 +118,11 @@ export const forwardToGoSidecar = fp(
       headers["x-request-id"] = request.id;
       headers["x-real-ip"] = request.realIp;
 
+      const clientGone = new AbortController();
+      reply.raw.once("close", () => {
+        if (!reply.raw.writableEnded) clientGone.abort();
+      });
+
       let response: Response;
       let body: Buffer;
       try {
@@ -115,29 +130,31 @@ export const forwardToGoSidecar = fp(
           method: "GET",
           headers,
           redirect: "manual",
-          signal: AbortSignal.timeout(timeoutMs)
+          signal: AbortSignal.any([AbortSignal.timeout(timeoutMs), clientGone.signal])
         });
         body = Buffer.from(await response.arrayBuffer());
       } catch (error) {
-        const isTimeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+        if (clientGone.signal.aborted) return reply.status(499).send();
+        const isTimeout = error instanceof Error && error.name === "TimeoutError";
         recordFallback(
           isTimeout ? "timeout" : "connection",
           route,
           request.id,
           error instanceof Error ? error.name : undefined
         );
-        return;
+        return undefined;
       }
 
       if (response.status >= 500) {
         recordFallback("5xx", route, request.id, String(response.status));
-        return;
+        return undefined;
       }
 
       response.headers.forEach((value, name) => {
-        if (!RESPONSE_SKIPPED_HEADERS.has(name)) void reply.header(name, value);
+        if (!RESPONSE_SKIPPED_HEADERS.has(name) && name !== "set-cookie") void reply.header(name, value);
       });
-      // eslint-disable-next-line consistent-return
+      const cookies = response.headers.getSetCookie();
+      if (cookies.length) void reply.header("set-cookie", cookies);
       return reply.status(response.status).send(body);
     });
   }

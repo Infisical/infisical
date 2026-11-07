@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
-import { forwardToGoSidecar, resolveForwardingTarget, TGoForwardingSettings } from "./go-sidecar-forwarding";
+import { forwardToGoSidecar, shouldForward, splitList, TGoForwardingSettings } from "./go-sidecar-forwarding";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
@@ -32,13 +32,13 @@ const jwtFor = (claims: Record<string, unknown>) => `Bearer ${jwt.sign(claims, "
 const accessClaims = { authTokenType: AuthTokenType.ACCESS_TOKEN, userId: "u1", organizationId: "org-1" };
 const identityClaims = { authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN, identityId: "i1", orgId: "org-2" };
 
-describe("resolveForwardingTarget", () => {
+describe("shouldForward", () => {
   test.each([
     ["JWT", { authorization: jwtFor(accessClaims) }],
     ["identity access token", { authorization: jwtFor(identityClaims) }],
     ["service token", { authorization: "Bearer st.abc123.secret.tail" }]
   ])("forwards %s requests", (_name, headers) => {
-    expect(resolveForwardingTarget("GET", "/api/v2/folders", headers, settings())).toBe(true);
+    expect(shouldForward("GET", "/api/v2/folders", headers, settings())).toBe(true);
   });
 
   test.each([
@@ -50,12 +50,12 @@ describe("resolveForwardingTarget", () => {
     ["garbage bearer", { authorization: "Bearer not-a-jwt" }],
     ["no credential", {}]
   ])("keeps %s requests on Node", (_name, headers) => {
-    expect(resolveForwardingTarget("GET", "/api/v2/folders", headers, settings())).toBe(false);
+    expect(shouldForward("GET", "/api/v2/folders", headers, settings())).toBe(false);
   });
 
   test("keeps everything on Node when the off switch is set", () => {
     expect(
-      resolveForwardingTarget(
+      shouldForward(
         "GET",
         "/api/v2/folders",
         { authorization: jwtFor(accessClaims) },
@@ -64,9 +64,23 @@ describe("resolveForwardingTarget", () => {
     ).toBe(false);
   });
 
+  test("keeps v4 secrets routes on Node unless they are named in the enabled routes", () => {
+    const headers = { authorization: jwtFor(accessClaims) };
+    expect(shouldForward("GET", "/api/v4/secrets", headers, settings())).toBe(false);
+    expect(shouldForward("GET", "/api/v4/secrets/:secretName", headers, settings())).toBe(false);
+    expect(
+      shouldForward("GET", "/api/v4/secrets", headers, settings({ enabledRoutes: new Set(["GET:/api/v4/secrets"]) }))
+    ).toBe(true);
+  });
+
+  test("splitList trims entries and drops empty ones", () => {
+    expect(splitList(" a , ,b,")).toEqual(new Set(["a", "b"]));
+    expect(splitList(undefined)).toEqual(new Set());
+  });
+
   test("keeps a route that is not enabled on Node", () => {
     expect(
-      resolveForwardingTarget(
+      shouldForward(
         "GET",
         "/api/v2/folders",
         { authorization: jwtFor(accessClaims) },
@@ -77,20 +91,20 @@ describe("resolveForwardingTarget", () => {
 
   test("never forwards non-GET requests", () => {
     expect(
-      resolveForwardingTarget("POST", "/api/v2/folders", { authorization: jwtFor(accessClaims) }, settings())
+      shouldForward("POST", "/api/v2/folders", { authorization: jwtFor(accessClaims) }, settings())
     ).toBe(false);
   });
 
   test("an allowlisted org is forwarded at 0 percent and others are not", () => {
     const s = settings({ percent: 0, orgIds: new Set(["org-1"]) });
-    expect(resolveForwardingTarget("GET", "/api/v2/folders", { authorization: jwtFor(accessClaims) }, s)).toBe(true);
-    expect(resolveForwardingTarget("GET", "/api/v2/folders", { authorization: jwtFor(identityClaims) }, s)).toBe(false);
+    expect(shouldForward("GET", "/api/v2/folders", { authorization: jwtFor(accessClaims) }, s)).toBe(true);
+    expect(shouldForward("GET", "/api/v2/folders", { authorization: jwtFor(identityClaims) }, s)).toBe(false);
   });
 
   test("percentage is deterministic per org and roughly proportional", () => {
     const s = settings({ percent: 30 });
     const decide = (org: string) =>
-      resolveForwardingTarget(
+      shouldForward(
         "GET",
         "/api/v2/folders",
         { authorization: jwtFor({ ...accessClaims, organizationId: org }) },
@@ -106,7 +120,7 @@ describe("resolveForwardingTarget", () => {
 
   test("a larger percentage never drops an org a smaller one included", () => {
     const decide = (org: string, percent: number) =>
-      resolveForwardingTarget(
+      shouldForward(
         "GET",
         "/api/v2/folders",
         { authorization: jwtFor({ ...accessClaims, organizationId: org }) },
@@ -125,7 +139,7 @@ describe("forwardToGoSidecar", () => {
   let goHits: number;
   let nodeHits: number;
 
-  const start = async (s: TGoForwardingSettings, timeoutMs = 500) => {
+  const start = async (s: TGoForwardingSettings, timeoutMs = 500, isDisabled?: () => Promise<boolean>) => {
     go = http.createServer((req, res) => {
       goHits += 1;
       goHandler(req, res);
@@ -138,6 +152,7 @@ describe("forwardToGoSidecar", () => {
     await server.register(forwardToGoSidecar, {
       sidecarUrl: `http://127.0.0.1:${port}`,
       getSettings: () => s,
+      isDisabled,
       timeoutMs
     });
     const nodeRoute = (method: "GET" | "POST") => {
@@ -170,6 +185,7 @@ describe("forwardToGoSidecar", () => {
 
   afterEach(async () => {
     await server.close();
+    go.closeAllConnections();
     await new Promise((resolve) => {
       go.close(resolve);
     });
@@ -235,6 +251,62 @@ describe("forwardToGoSidecar", () => {
     await server.inject({ method: "POST", url: "/api/v2/folders", headers: { authorization: jwtFor(accessClaims) } });
     expect(goHits).toBe(0);
     expect(nodeHits).toBe(1);
+  });
+
+  test("serves from Node while the off switch is set, and resumes when it is cleared", async () => {
+    goHandler = (_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ from: "go" }));
+    };
+    let disabled = true;
+    await start(settings(), 500, async () => disabled);
+    expect((await get()).json()).toEqual({ from: "node" });
+    expect(goHits).toBe(0);
+    disabled = false;
+    expect((await get()).json()).toEqual({ from: "go" });
+  });
+
+  test("serves from Node when the off switch cannot be read", async () => {
+    goHandler = (_req, res) => res.end();
+    await start(settings(), 500, async () => {
+      throw new Error("redis down");
+    });
+    expect((await get()).json()).toEqual({ from: "node" });
+    expect(goHits).toBe(0);
+  });
+
+  test("keeps every set-cookie value from Go", async () => {
+    goHandler = (_req, res) => {
+      res.writeHead(200, { "content-type": "application/json", "set-cookie": ["a=1; Path=/", "b=2; Path=/"] });
+      res.end("{}");
+    };
+    await start(settings());
+    expect((await get()).headers["set-cookie"]).toEqual(["a=1; Path=/", "b=2; Path=/"]);
+  });
+
+  test("a client that disconnects is neither a fallback nor served by Node", async () => {
+    let goReceived: () => void;
+    const received = new Promise<void>((resolve) => {
+      goReceived = resolve;
+    });
+    goHandler = () => goReceived();
+    await start(settings(), 5000);
+    await server.listen({ port: 0, host: "127.0.0.1" });
+    const { port } = server.server.address() as AddressInfo;
+    const req = http.get({
+      port,
+      host: "127.0.0.1",
+      path: "/api/v2/folders?projectId=p",
+      headers: { authorization: jwtFor(accessClaims) }
+    });
+    req.on("error", () => {});
+    await received;
+    req.destroy();
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+    expect(fallbackAdd).not.toHaveBeenCalled();
+    expect(nodeHits).toBe(0);
   });
 
   test("keeps an ineligible auth mode on Node without contacting Go", async () => {

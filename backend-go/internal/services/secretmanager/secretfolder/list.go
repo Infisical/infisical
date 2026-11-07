@@ -10,13 +10,53 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
 
 	"github.com/infisical/api/internal/libs/errutil"
 )
 
 var folderNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+const (
+	folderColumns         = `id, name, version, "createdAt", "updatedAt", "envId", "parentId", "isReserved", description, "lastSecretModified"`
+	prefixedFolderColumns = `c.id, c.name, c.version, c."createdAt", c."updatedAt", c."envId", c."parentId", c."isReserved", c.description, c."lastSecretModified"`
+
+	// Resolves a path from the environment's root, one segment per recursion step. Reserved folders are
+	// walked through, as Node's path lookup does.
+	findFolderByPathSQL = `
+		WITH RECURSIVE walk AS (
+			SELECT id, 0 AS depth FROM secret_folders WHERE "envId" = @envID AND "parentId" IS NULL
+			UNION ALL
+			SELECT f.id, w.depth + 1
+			FROM walk w
+			JOIN secret_folders f ON f."parentId" = w.id AND f.name = (@segments::text[])[w.depth + 1]
+			WHERE w.depth < cardinality(@segments::text[])
+		)
+		SELECT id FROM walk WHERE depth = cardinality(@segments::text[]) LIMIT 1`
+
+	// Same filter and ordering as Node's findByMultiEnv for a single environment and parent.
+	listChildrenSQL = `
+		SELECT ` + folderColumns + `, NULL::text AS "relativePath"
+		FROM secret_folders
+		WHERE "parentId" = @parentID AND "envId" = @envID AND "isReserved" = false
+		ORDER BY name COLLATE "en-x-icu" ASC`
+
+	// Node walks the environment in memory (findByEnvsDeep), excludes reserved folders and their subtrees,
+	// and sorts by depth, name, then id.
+	listDescendantsSQL = `
+		WITH RECURSIVE tree AS (
+			SELECT ` + folderColumns + `, 1 AS depth, '/' || name AS path
+			FROM secret_folders
+			WHERE "parentId" = @parentID AND "envId" = @envID AND "isReserved" = false
+			UNION ALL
+			SELECT ` + prefixedFolderColumns + `, t.depth + 1, t.path || '/' || c.name
+			FROM tree t
+			JOIN secret_folders c ON c."parentId" = t.id
+			WHERE c."isReserved" = false
+		)
+		SELECT ` + folderColumns + `, path AS "relativePath"
+		FROM tree
+		ORDER BY depth, name COLLATE "en-x-icu" ASC, id::text COLLATE "en-x-icu" ASC`
+)
 
 type ListFoldersOpts struct {
 	ProjectID          string
@@ -41,54 +81,58 @@ type ListedFolder struct {
 	RelativePath       *string
 }
 
-// ListFolders lists the folders under a path. Callers must have checked project access.
+// ListFolders lists the folders under a path. Callers must have checked project access, which also
+// excludes soft-deleted projects.
 func (s *Service) ListFolders(ctx context.Context, opts *ListFoldersOpts) ([]ListedFolder, error) {
-	envID, err := s.findActiveEnvironmentID(ctx, opts.ProjectID, opts.Environment)
+	var envID uuid.UUID
+	err := s.db.Replica().QueryRow(ctx,
+		`SELECT id FROM project_environments WHERE "projectId" = @projectID AND slug = @slug AND "deleteAfter" IS NULL`,
+		pgx.NamedArgs{"projectID": opts.ProjectID, "slug": opts.Environment},
+	).Scan(&envID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errutil.NotFound("Environment with slug '%s' not found", opts.Environment)
+	}
 	if err != nil {
-		return nil, err
+		return nil, errutil.DatabaseErr("Failed to get environment").WithErrf("ListFolders(projectId=%s, slug=%s): %w", opts.ProjectID, opts.Environment, err)
 	}
 
-	segments, err := parseFolderPath(opts.Path)
-	if err != nil {
-		return nil, err
-	}
-
-	all, err := s.loadEnvironmentFolders(ctx, envID)
-	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to get folders").WithErrf("ListFolders(projectId=%s): %w", opts.ProjectID, err)
-	}
-
-	children := make(map[uuid.UUID][]*ListedFolder)
-	var root *ListedFolder
-	for i := range all {
-		f := &all[i]
-		if f.ParentID == nil {
-			if root == nil {
-				root = f
-			}
+	segments := make([]string, 0)
+	for segment := range strings.SplitSeq(opts.Path, "/") {
+		if segment == "" {
 			continue
 		}
-		children[*f.ParentID] = append(children[*f.ParentID], f)
+		if !folderNameRegex.MatchString(segment) {
+			return nil, errutil.BadRequest("Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed.")
+		}
+		segments = append(segments, segment)
 	}
-	if root == nil {
+
+	var parentID uuid.UUID
+	err = s.db.Replica().QueryRow(ctx, findFolderByPathSQL,
+		pgx.NamedArgs{"envID": envID, "segments": segments},
+	).Scan(&parentID)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return []ListedFolder{}, nil
 	}
-
-	parent := root
-	for _, segment := range segments {
-		idx := slices.IndexFunc(children[parent.ID], func(f *ListedFolder) bool { return f.Name == segment })
-		if idx < 0 {
-			return []ListedFolder{}, nil
-		}
-		parent = children[parent.ID][idx]
+	if err != nil {
+		return nil, errutil.DatabaseErr("Failed to get folders").WithErrf("ListFolders(projectId=%s, path=%s): %w", opts.ProjectID, opts.Path, err)
 	}
 
-	collator := collate.New(language.English)
-	var listed []ListedFolder
+	query := listChildrenSQL
 	if opts.Recursive {
-		listed = listDescendants(children, parent, collator)
-	} else {
-		listed = listChildren(children, parent, collator)
+		query = listDescendantsSQL
+	}
+	rows, err := s.db.Replica().Query(ctx, query, pgx.NamedArgs{"envID": envID, "parentID": parentID})
+	if err != nil {
+		return nil, errutil.DatabaseErr("Failed to get folders").WithErrf("ListFolders(projectId=%s, path=%s): %w", opts.ProjectID, opts.Path, err)
+	}
+	listed, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (ListedFolder, error) {
+		var f ListedFolder
+		err := row.Scan(&f.ID, &f.Name, &f.Version, &f.CreatedAt, &f.UpdatedAt, &f.EnvID, &f.ParentID, &f.IsReserved, &f.Description, &f.LastSecretModified, &f.RelativePath)
+		return f, err
+	})
+	if err != nil {
+		return nil, errutil.DatabaseErr("Failed to get folders").WithErrf("ListFolders(projectId=%s, path=%s): %w", opts.ProjectID, opts.Path, err)
 	}
 
 	if opts.LastSecretModified != nil {
@@ -101,99 +145,4 @@ func (s *Service) ListFolders(ctx context.Context, opts *ListFoldersOpts) ([]Lis
 		listed = []ListedFolder{}
 	}
 	return listed, nil
-}
-
-func parseFolderPath(path string) ([]string, error) {
-	segments := make([]string, 0)
-	for segment := range strings.SplitSeq(path, "/") {
-		if segment == "" {
-			continue
-		}
-		if !folderNameRegex.MatchString(segment) {
-			return nil, errutil.BadRequest("Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed.")
-		}
-		segments = append(segments, segment)
-	}
-	return segments, nil
-}
-
-func listChildren(children map[uuid.UUID][]*ListedFolder, parent *ListedFolder, collator *collate.Collator) []ListedFolder {
-	direct := make([]ListedFolder, 0, len(children[parent.ID]))
-	for _, child := range children[parent.ID] {
-		if child.IsReserved != nil && *child.IsReserved {
-			continue
-		}
-		direct = append(direct, *child)
-	}
-	slices.SortStableFunc(direct, func(a, b ListedFolder) int { return collator.CompareString(a.Name, b.Name) })
-	return direct
-}
-
-func listDescendants(children map[uuid.UUID][]*ListedFolder, parent *ListedFolder, collator *collate.Collator) []ListedFolder {
-	type walked struct {
-		folder ListedFolder
-		depth  int
-	}
-	var out []walked
-
-	var walk func(folder *ListedFolder, path string, depth int)
-	walk = func(folder *ListedFolder, path string, depth int) {
-		for _, child := range children[folder.ID] {
-			if child.IsReserved != nil && *child.IsReserved {
-				continue
-			}
-			childPath := path + "/" + child.Name
-			item := *child
-			item.RelativePath = &childPath
-			out = append(out, walked{folder: item, depth: depth})
-			walk(child, childPath, depth+1)
-		}
-	}
-	walk(parent, "", 1)
-
-	slices.SortStableFunc(out, func(a, b walked) int {
-		if a.depth != b.depth {
-			return a.depth - b.depth
-		}
-		if c := collator.CompareString(a.folder.Name, b.folder.Name); c != 0 {
-			return c
-		}
-		return collator.CompareString(a.folder.ID.String(), b.folder.ID.String())
-	})
-
-	listed := make([]ListedFolder, len(out))
-	for i := range out {
-		listed[i] = out[i].folder
-	}
-	return listed
-}
-
-func (s *Service) findActiveEnvironmentID(ctx context.Context, projectID, slug string) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := s.db.Replica().QueryRow(ctx,
-		`SELECT id FROM project_environments WHERE "projectId" = @projectID AND slug = @slug AND "deleteAfter" IS NULL`,
-		pgx.NamedArgs{"projectID": projectID, "slug": slug},
-	).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, errutil.NotFound("Environment with slug '%s' not found", slug)
-	}
-	if err != nil {
-		return uuid.Nil, errutil.DatabaseErr("Failed to get environment").WithErrf("findActiveEnvironmentID(projectId=%s, slug=%s): %w", projectID, slug, err)
-	}
-	return id, nil
-}
-
-func (s *Service) loadEnvironmentFolders(ctx context.Context, envID uuid.UUID) ([]ListedFolder, error) {
-	rows, err := s.db.Replica().Query(ctx, `
-		SELECT id, name, version, "createdAt", "updatedAt", "envId", "parentId", "isReserved", description, "lastSecretModified"
-		FROM secret_folders
-		WHERE "envId" = @envID`, pgx.NamedArgs{"envID": envID})
-	if err != nil {
-		return nil, err
-	}
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (ListedFolder, error) {
-		var f ListedFolder
-		err := row.Scan(&f.ID, &f.Name, &f.Version, &f.CreatedAt, &f.UpdatedAt, &f.EnvID, &f.ParentID, &f.IsReserved, &f.Description, &f.LastSecretModified)
-		return f, err
-	})
 }

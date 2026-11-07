@@ -17,13 +17,13 @@ paths:
         - serviceToken: []
       parameters:
         - name: projectId
+          description: Required, but presence is checked in the handler so the 422 body matches Node's
           in: query
-          required: true
           schema:
             type: string
         - name: environment
+          description: Required, but presence is checked in the handler so the 422 body matches Node's
           in: query
-          required: true
           schema:
             type: string
         - name: path

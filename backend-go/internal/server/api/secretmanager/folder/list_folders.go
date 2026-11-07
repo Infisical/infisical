@@ -2,6 +2,7 @@ package folder
 
 import (
 	"context"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -15,27 +16,54 @@ import (
 
 const timestampLayout = "2006-01-02T15:04:05.000Z"
 
+var lastSecretModifiedRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$`)
+
+type validationIssue struct {
+	Code       string   `json:"code"`
+	Expected   string   `json:"expected,omitempty"`
+	Received   string   `json:"received,omitempty"`
+	Validation string   `json:"validation,omitempty"`
+	Message    string   `json:"message"`
+	Path       []string `json:"path"`
+}
+
 func (h *Handler) ListSecretFolders(ctx context.Context, opts *ListSecretFoldersServiceRequestOptions) (*ListSecretFoldersResponseData, error) {
 	q := opts.Query
-	if !opts.RawRequest.URL.Query().Has("path") {
-		return nil, errutil.BadRequest("path is required")
+	query := opts.RawRequest.URL.Query()
+
+	// Issue order and shapes mirror Node's Zod validation output.
+	issues := make([]validationIssue, 0)
+	for _, field := range []struct {
+		name  string
+		value *string
+	}{{"projectId", q.ProjectID}, {"environment", q.Environment}} {
+		if field.value == nil {
+			issues = append(issues, validationIssue{Code: "invalid_type", Expected: "string", Received: "undefined", Message: "Required", Path: []string{field.name}})
+		}
 	}
-	projectID := strings.TrimSpace(q.ProjectID)
+
+	var lastSecretModified *time.Time
+	if q.LastSecretModified != nil {
+		parsed, err := time.Parse(time.RFC3339Nano, *q.LastSecretModified)
+		if err != nil || !lastSecretModifiedRegex.MatchString(*q.LastSecretModified) {
+			issues = append(issues, validationIssue{Code: "invalid_string", Validation: "datetime", Message: "Invalid datetime", Path: []string{"lastSecretModified"}})
+		} else {
+			lastSecretModified = &parsed
+		}
+	}
+	if !query.Has("path") {
+		issues = append(issues, validationIssue{Code: "invalid_type", Expected: "string", Received: "undefined", Message: "Required", Path: []string{"path"}})
+	}
+	if len(issues) > 0 {
+		return nil, errutil.ValidationFailure(issues)
+	}
 
 	identity, err := auth.IdentityFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var lastSecretModified *time.Time
-	if q.LastSecretModified != nil {
-		parsed, err := parseLastSecretModified(*q.LastSecretModified)
-		if err != nil {
-			return nil, err
-		}
-		lastSecretModified = &parsed
-	}
-
+	projectID := strings.TrimSpace(*q.ProjectID)
 	if _, err := h.permission.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
 		Actor:             identity.Actor,
 		ActorID:           identity.ActorID,
@@ -47,11 +75,22 @@ func (h *Handler) ListSecretFolders(ctx context.Context, opts *ListSecretFolders
 		return nil, err
 	}
 
-	recursive := parseBoolean(fn.ValueOr(q.Recursive, ""))
+	// Node's booleanSchema: any non-empty value other than "0" or "false" is true.
+	recursive := false
+	if raw := strings.TrimSpace(fn.ValueOr(q.Recursive, "")); raw != "" && !strings.EqualFold(raw, "false") {
+		number, err := strconv.ParseFloat(raw, 64)
+		recursive = err != nil || number != 0
+	}
+
+	path := strings.TrimSpace(fn.ValueOr(q.Path, ""))
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
 	folders, err := h.folders.ListFolders(ctx, &secretfolder.ListFoldersOpts{
 		ProjectID:          projectID,
-		Environment:        strings.TrimSpace(q.Environment),
-		Path:               normalizePath(fn.ValueOr(q.Path, "")),
+		Environment:        strings.TrimSpace(*q.Environment),
+		Path:               fn.RemoveTrailingSlash(path),
 		Recursive:          recursive,
 		LastSecretModified: lastSecretModified,
 	})
@@ -65,38 +104,6 @@ func (h *Handler) ListSecretFolders(ctx context.Context, opts *ListSecretFolders
 	}
 	return NewListSecretFoldersResponseData(&ListSecretFoldersResponse{Folders: items}), nil
 }
-
-func normalizePath(raw string) string {
-	path := strings.TrimSpace(raw)
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return fn.RemoveTrailingSlash(path)
-}
-
-// parseBoolean mirrors Node's booleanSchema: any non-empty value other than "0" or "false" is true.
-func parseBoolean(raw string) bool {
-	value := strings.TrimSpace(raw)
-	if value == "" || strings.EqualFold(value, "false") {
-		return false
-	}
-	if number, err := strconv.ParseFloat(value, 64); err == nil && number == 0 {
-		return false
-	}
-	return true
-}
-
-func parseLastSecretModified(raw string) (time.Time, error) {
-	if !strings.HasSuffix(raw, "Z") {
-		return time.Time{}, errutil.BadRequest("lastSecretModified must be an ISO 8601 UTC datetime")
-	}
-	parsed, err := time.Parse(time.RFC3339Nano, raw)
-	if err != nil {
-		return time.Time{}, errutil.BadRequest("lastSecretModified must be an ISO 8601 UTC datetime")
-	}
-	return parsed, nil
-}
-
 func formatTime(t time.Time) string {
 	return t.UTC().Format(timestampLayout)
 }
@@ -107,8 +114,8 @@ func toSecretFolder(f *secretfolder.ListedFolder) SecretFolder {
 		Name:         f.Name,
 		CreatedAt:    formatTime(f.CreatedAt),
 		UpdatedAt:    formatTime(f.UpdatedAt),
-		EnvID:        f.EnvID.String(),
 		Description:  f.Description,
+		EnvID:        f.EnvID.String(),
 		IsReserved:   f.IsReserved,
 		RelativePath: f.RelativePath,
 	}

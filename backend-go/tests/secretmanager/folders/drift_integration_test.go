@@ -118,3 +118,38 @@ func TestListSecretFolders_ResponseCoversEverySecretFoldersColumn(t *testing.T) 
 	sort.Strings(columns)
 	require.Equal(t, columns, keys, "the Go response must expose exactly the secret_folders columns Node returns; update folder.SecretFolder after a migration")
 }
+
+func TestListSecretFolders_ListsOneLevelOrDescendantsUnderAPath(t *testing.T) {
+	nodejs := stack.NodeJS()
+	identity := nodejs.CreateIdentity(t, "folders-level-identity")
+	nodejs.AddIdentityToProject(t, testProject.ID, identity.ID, []infra.RoleAssignment{{Role: "admin"}})
+	nodejs.CreateFolder(t, testProject.ID, testProject.EnvSlug, "/", "lvl")
+	nodejs.CreateFolder(t, testProject.ID, testProject.EnvSlug, "/lvl", "b")
+	nodejs.CreateFolder(t, testProject.ID, testProject.EnvSlug, "/lvl", "a")
+	nodejs.CreateFolder(t, testProject.ID, testProject.EnvSlug, "/lvl/a", "deep")
+
+	srv := newTestServer(t, identity.ID, nodejs.OrgID())
+	defer srv.Close()
+
+	names := func(recursive string) []string {
+		query := url.Values{"projectId": {testProject.ID}, "environment": {testProject.EnvSlug}, "path": {"/lvl"}, "recursive": {recursive}}
+		resp, err := http.Get(srv.URL + "/api/v2/folders?" + query.Encode())
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+		var parsed struct {
+			Folders []struct {
+				Name string `json:"name"`
+			} `json:"folders"`
+		}
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&parsed))
+		out := make([]string, 0, len(parsed.Folders))
+		for _, f := range parsed.Folders {
+			out = append(out, f.Name)
+		}
+		return out
+	}
+
+	require.Equal(t, []string{"a", "b"}, names("false"))
+	require.Equal(t, []string{"a", "b", "deep"}, names("true"))
+}
