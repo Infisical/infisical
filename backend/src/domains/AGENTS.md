@@ -168,7 +168,7 @@ export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, i
 
 | Rule | Why |
 | --- | --- |
-| A public service method calls `this.deps.runner.run(...)` once, at the top | One place decides the transaction |
+| A public service method calls `this.deps.runner.run(...)` once; only calls to other domains (see below) come before it | One place decides the transaction |
 | Work shared between services goes into a helper that takes `store` | A helper cannot open a second transaction by accident |
 | Services in the same domain never call each other's public methods | A public method on another service runs its own `run` and is the usual way to open a second connection by mistake |
 | Data access never opens a transaction. Writes that span tables (`kms_keys` + `internal_kms`) rely on the caller's | The service owns the boundary |
@@ -177,39 +177,45 @@ export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, i
 
 ### Across domains
 
-The default is **no shared transaction**. Each domain commits its own data. Cross-domain consistency
-comes from call order (the domain whose data the other needs goes first), idempotent writes
-(`INSERT ... ON CONFLICT`), outbox events for follow-ups, and sweepers for orphans.
+**Domains do not share transactions.** Each domain commits its own data in its own short
+transaction, and a use case that spans domains is a sequence of calls that are each safe to repeat. A
+shared transaction keeps one domain's row locks held while another domain works, so a write in one
+domain can block or deadlock on a lock held by a connection Postgres cannot see waiting, and it ties
+together domains that must be able to move independently.
 
-Share a transaction across domains only when the outcome must be atomic, and keep it rare. Then pass
-`tx` and call the other domain through `within(tx)`:
+| You need | Do this | Not this |
+| --- | --- | --- |
+| Something from another domain to write your own data (a cipher, a key id, a plan) | Call the other domain first, then open your `run` for your writes | Calling it inside your `run`, which either joins your transaction or takes a second connection while you hold one |
+| Another domain to react to your change (keys for a new project, cleanup after a delete) | Emit an outbox event in your own transaction and let the other domain consume it. Until that event exists, call the other domain after your commit | Calling it inside your transaction, or relying on a foreign-key cascade into its tables |
+| Data in two domains that must exist together | Call in dependency order (the domain whose data the other needs goes first), make each write idempotent, and let a sweeper remove orphans | One transaction around both |
+| Something created on first use | Create it in the owning domain's own short transaction with `INSERT ... ON CONFLICT DO NOTHING`; the loser rolls back and reads the winner's row | An advisory lock held until a caller's transaction commits |
+| To replace a value another request may be changing | Compare and swap: `UPDATE ... WHERE value = :expected`, and treat no row as a conflict | Reading it, then writing it unconditionally |
 
 ```ts
 export class SecretService implements TSecretService {
-  constructor(private readonly deps: { runner: TransactionRunner<TSecretsStore>; kmsCore: { within(tx: TTransaction): TKmsCoreService } }) {}
+  constructor(private readonly deps: { runner: TransactionRunner<TSecretsStore>; kmsCore: TKmsCoreService }) {}
 
-  createSecret(input: TCreateSecretInput) {
-    return this.deps.runner.run(async ({ store, tx }) => {
-      const cipher = await this.deps.kmsCore.within(tx).createCipherPairWithDataKey({ projectId: input.projectId });
-      await store.secrets.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }));
-    });
+  async createSecret(input: TCreateSecretInput) {
+    const cipher = await this.deps.kmsCore.createCipherPairWithDataKey({ projectId: input.projectId });
+    return this.deps.runner.run(({ store }) =>
+      store.secrets.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }))
+    );
   }
 }
-
-// a use case spanning domains uses a runner with no store and only passes tx
-await new TransactionRunner(db, () => undefined).run(async ({ tx }) => {
-  const project = await orgsProjects.within(tx).createProject({ orgId, name });
-  await secrets.within(tx).createSecret({ projectId: project.id, key, value });
-});
 ```
 
 | Rule | Why |
 | --- | --- |
-| Each domain writes only its own tables, even inside a shared transaction | Sharing a connection does not share ownership |
-| Only the outermost caller opens the transaction; everything inside joins | No nesting, no savepoints, one commit |
+| Call other domains before `run` or after it commits, never inside it | Inside `run` the call either joins your transaction or holds a second connection while yours waits, which exhausts a pool of about 10 |
+| Each domain writes only its own tables. Never add a column to another domain's table for your data; keep it in your own table, keyed by the other domain's id | Writing a row another domain updates takes the same row lock its transactions hold, so your write waits on theirs |
+| Never hold a lock on a row another domain writes while you call another domain | The other domain may need that row, and the wait cannot be detected as a deadlock |
+| Remove your data when the owner tells you it is gone (an event, or a call until the event exists); do not depend on `ON DELETE CASCADE` from another domain's table | A cascade from someone else's table is a write into your tables inside their transaction |
 | No network or HSM calls inside a transaction; make them before `run` | The connection and its locks are held for the whole call |
-| Keep shared transactions short; take locks in one global order (root key, org, project; key before data key) | Locks are held until the outermost commit |
-| A domain never keeps `tx` after its call returns | No use after commit |
+| Within one domain, take locks in one order (root key, org, project; key before data key) | Two transactions taking the same locks in different orders deadlock |
+| Use `within(tx)` across domains only for legacy code under `src/services/` that already holds a Knex transaction, while it moves to a domain | It is a migration bridge; new domain code never calls another domain through `within(tx)` |
+
+If an outcome truly has to be atomic across two domains, the boundary is in the wrong place: raise it in
+review and move the data into one domain rather than sharing a transaction.
 
 ## Dependency direction
 
