@@ -73,34 +73,199 @@
   overflow: hidden;
   background: var(--v4-paper);
 }
-.lens {
+.field {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   pointer-events: none;
+  opacity: 0.3;
 }
-.lensRule {
-  stroke: var(--v4-line-soft);
-  stroke-opacity: 0.8;
+.fieldSlot {
+  position: absolute;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: transform var(--v4-duration-moderate) var(--v4-ease-standard)
+    calc(var(--v4-duration-slow) * var(--settle, 0));
+  will-change: transform, opacity;
+  animation: fieldEnter var(--v4-duration-fast) steps(1, end) both
+    calc(var(--v4-duration-slow) * var(--enter, 0));
 }
-.lensGrid {
-  stroke: var(--v4-ink);
-  stroke-opacity: 0.08;
+.fieldCell {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 1px dashed color-mix(in oklab, var(--v4-ink) 28%, transparent);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--v4-ink) 32%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 9px 9px;
+  background-position: center;
+  opacity: 0;
+  animation-name: fieldBreathe;
+  animation-duration: calc(var(--v4-duration-slow) * var(--breathe));
+  animation-delay: calc(var(--v4-duration-slow) * var(--offset));
+  animation-timing-function: var(--v4-ease-fade);
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
 }
-.lensFrame {
-  stroke: var(--v4-line);
-  stroke-opacity: 0.8;
+.fieldCell[data-kind="grid"] {
+  border: 1px solid color-mix(in oklab, var(--v4-ink) 20%, transparent);
+  background-image: none;
 }
-.lensCorner {
-  fill: var(--v4-sidebar);
-  stroke: var(--v4-line);
-  stroke-opacity: 0.8;
+.fieldCell[data-kind="dark"] {
+  border: none;
+  background-image: none;
+  background-color: color-mix(in oklab, var(--v4-ink) 70%, transparent);
 }
-.lensCenter {
-  fill: var(--v4-accent);
+.fieldCell[data-kind="accent"] {
+  border: none;
+  background-image: none;
+  background-color: var(--v4-accent);
 }
-.lensRuler {
-  stroke: var(--v4-ink);
-  stroke-opacity: 0.2;
+.fieldCell[data-blink] {
+  animation-name: fieldBlink;
+  animation-timing-function: steps(1, end);
+  animation-direction: normal;
+}
+.fieldCell[data-walk] {
+  animation-duration:
+    calc(var(--v4-duration-slow) * var(--breathe)), calc(var(--v4-duration-slow) * var(--walk));
+  animation-delay:
+    calc(var(--v4-duration-slow) * var(--offset)),
+    calc(var(--v4-duration-slow) * var(--walk-offset));
+  animation-timing-function: var(--v4-ease-fade), steps(1, end);
+  animation-iteration-count: infinite, infinite;
+  animation-direction: alternate, normal;
+}
+.fieldCell[data-walk][data-blink] {
+  animation-timing-function: steps(1, end), steps(1, end);
+  animation-direction: normal, normal;
+}
+.fieldCell[data-walk="a"] {
+  animation-name: fieldBreathe, fieldWalkA;
+}
+.fieldCell[data-walk="b"] {
+  animation-name: fieldBreathe, fieldWalkB;
+}
+.fieldCell[data-walk="c"] {
+  animation-name: fieldBreathe, fieldWalkC;
+}
+.fieldCell[data-walk="d"] {
+  animation-name: fieldBreathe, fieldWalkD;
+}
+.fieldCell[data-blink][data-walk="a"] {
+  animation-name: fieldBlink, fieldWalkA;
+}
+.fieldCell[data-blink][data-walk="b"] {
+  animation-name: fieldBlink, fieldWalkB;
+}
+.fieldCell[data-blink][data-walk="c"] {
+  animation-name: fieldBlink, fieldWalkC;
+}
+.fieldCell[data-blink][data-walk="d"] {
+  animation-name: fieldBlink, fieldWalkD;
+}
+.field[data-paused] .fieldSlot,
+.field[data-paused] .fieldCell {
+  animation-play-state: paused;
+}
+@keyframes fieldBreathe {
+  0% {
+    opacity: var(--floor, 0.06);
+  }
+  100% {
+    opacity: var(--peak, 0.6);
+  }
+}
+@keyframes fieldBlink {
+  0%,
+  48% {
+    opacity: var(--peak, 0.55);
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes fieldEnter {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes fieldWalkA {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(44px, 0);
+  }
+  50% {
+    transform: translate(44px, 44px);
+  }
+  75% {
+    transform: translate(0, 44px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes fieldWalkB {
+  0% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(0, -44px);
+  }
+  66% {
+    transform: translate(0, -88px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes fieldWalkC {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(88px, 0);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes fieldWalkD {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-44px, 44px);
+  }
+  50% {
+    transform: translate(0, 88px);
+  }
+  75% {
+    transform: translate(44px, 44px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fieldSlot {
+    animation: none;
+    opacity: 1;
+  }
+  .fieldCell {
+    animation: none !important;
+    transform: none;
+    opacity: 0.28;
+  }
 }
 .asideBar {
   position: relative;

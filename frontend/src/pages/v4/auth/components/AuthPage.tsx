@@ -5,7 +5,7 @@ import { PageTitle } from "@app/components/PageTitle";
 import { Button } from "@app/components/v4/ui/button";
 import { Heading, Text } from "@app/components/v4/ui/text";
 
-import { AuthLens } from "./AuthLens";
+import { AuthCellField } from "./AuthCellField";
 
 import styles from "../auth.module.css";
 
@@ -64,7 +64,7 @@ export const AuthPage = ({
       </section>
       {variant === "split" && (
         <aside className={styles.aside}>
-          <AuthLens copyRef={copyRef} />
+          <AuthCellField copyRef={copyRef} />
           <div className={styles.asideBar}>
             <Button asChild variant="outline" size="sm" icon="file">
               <a href="https://infisical.com/docs" target="_blank" rel="noopener noreferrer">
