@@ -1,4 +1,5 @@
 import { InstanceType } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 
 import { assertCertificateQuota, TCertificateQuotaDeps } from "./certificate-quota-fns";
 import { buildCertificateQuotaKey } from "./certificate-quota-key";
@@ -20,13 +21,12 @@ const buildDeps = ({
   wildcard?: number;
   activeKeys?: string[];
   calls: { counted: (string | undefined)[]; activeChecked: (string | undefined)[] };
-}) =>
-  ({
+}) => {
+  const licenseService = new FakeLicenseService().setPlan("sub-org", { maxCertificates, maxWildcardCertificates });
+  licenseService.instance = { ...licenseService.instance, instanceType };
+  return {
     projectDAL: { findById: async () => ({ id: "project-1", orgId: "sub-org" }) },
-    licenseService: {
-      getPlan: async () => ({ maxCertificates, maxWildcardCertificates }),
-      getInstanceType: () => instanceType
-    },
+    licenseService,
     certManager: {
       resolveRootOrgId: async () => "root-org",
       countActiveCertificateQuota: async (orgId?: string) => {
@@ -39,7 +39,8 @@ const buildDeps = ({
       }
     },
     keyStore: { getItem: async () => null, setItemWithExpiry: async () => "OK", deleteItem: async () => 1 }
-  }) as unknown as TCertificateQuotaDeps;
+  } as unknown as TCertificateQuotaDeps;
+};
 
 const newCalls = () => ({ counted: [] as (string | undefined)[], activeChecked: [] as (string | undefined)[] });
 

@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { projectTemplateServiceFactory } from "./project-template-service";
@@ -26,9 +27,10 @@ const actor = {
 
 const createService = () =>
   projectTemplateServiceFactory({
-    licenseService: {
-      getPlan: vi.fn().mockResolvedValue({ projectTemplates: true, environmentLimit: null })
-    },
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, {
+      projectTemplates: true as false,
+      environmentLimit: null
+    }),
     permissionService: {
       getOrgPermission: vi.fn().mockResolvedValue({
         permission: createMongoAbility([{ action: ["create", "edit"], subject: "project-templates" }])

@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
@@ -72,7 +73,7 @@ const createUpdate = ({
         .fn()
         .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
     } as never,
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ groups: true }) } as never,
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { groups: true as false }),
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     groupDAL: {
       transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => unknown) => cb({}))
