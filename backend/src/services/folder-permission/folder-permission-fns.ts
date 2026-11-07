@@ -1,14 +1,18 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 
 import { ActionProjectType, SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
+import { recursiveFolderPathGlob } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSecretFolderActions,
+  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { conditionsMatcher } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -115,6 +119,29 @@ export const assertManageFolderAccess = (
   );
 };
 
+export const assertManageFolderSubtree = (
+  callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
+  folder: TResolvedFolder
+) => {
+  const subtreeManageAccess = createMongoAbility<ProjectPermissionSet>(
+    [
+      {
+        action: ProjectPermissionSecretFolderActions.ManageAccess,
+        subject: ProjectPermissionSub.SecretFolders,
+        conditions: { environment: folder.environmentSlug, secretPath: { $glob: recursiveFolderPathGlob(folder.path) } }
+      }
+    ] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+    { conditionsMatcher }
+  );
+  const { isValid } = validatePermissionBoundary(callerPermission, subtreeManageAccess);
+  if (!isValid) {
+    throw new ForbiddenRequestError({
+      name: "RecursiveFolderAccessNotAllowed",
+      message: `Applying folder access to subfolders requires permission to manage access on '${folder.path}' and every folder below it in environment with slug '${folder.environmentSlug}'. Grant access on this folder only, or ask someone who can manage access on all of its subfolders.`
+    });
+  }
+};
+
 // Access can be inherited from a group, so this cannot be a membership lookup on
 // actorUserId/actorIdentityId: a group-derived actor has no such row and would be rejected despite
 // holding real access to the project.
@@ -184,6 +211,7 @@ export const toFolderGrant = (
     TAdditionalPrivileges,
     | "id"
     | "role"
+    | "isRecursive"
     | "isTemporary"
     | "temporaryMode"
     | "temporaryRange"
@@ -201,6 +229,7 @@ export const toFolderGrant = (
   permission: row.role as SecretFolderRole,
   environment: folder.environmentSlug,
   secretPath: folder.path,
+  isRecursive: row.isRecursive,
   isTemporary: row.isTemporary,
   temporaryMode: row.temporaryMode ?? null,
   temporaryRange: row.temporaryRange ?? null,

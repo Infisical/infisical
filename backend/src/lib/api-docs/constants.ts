@@ -1966,6 +1966,8 @@ export const FOLDER_ACCESS = {
     identityId: "The ID of the machine identity to grant folder access to.",
     permission:
       "The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isRecursive:
+      "Whether the role also applies to every folder below this one. A grant on a deeper folder overrides it from that folder down. Requires permission to manage access on every folder below this one.",
     isTemporary:
       "Whether the folder access is temporary. Omit the type object for permanent access. The full-access role must be permanent.",
     temporaryMode: "Type of temporary access given. Types: relative.",
@@ -1980,6 +1982,8 @@ export const FOLDER_ACCESS = {
     identityId: "The ID of the machine identity whose folder access to update.",
     permission:
       "The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isRecursive:
+      "Whether the role also applies to every folder below this one. Turning it on requires permission to manage access on every folder below this one.",
     isTemporary:
       "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged. The full-access role must be permanent, so making an access temporary also requires lowering its role.",
     temporaryMode: "Type of temporary access given. Types: relative.",

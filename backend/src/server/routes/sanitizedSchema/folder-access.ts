@@ -9,6 +9,7 @@ export const SanitizedFolderAccessSchema = z.object({
   permission: z.nativeEnum(SecretFolderRole),
   environment: z.string(),
   secretPath: z.string(),
+  isRecursive: z.boolean(),
   isTemporary: z.boolean(),
   temporaryMode: z.string().nullable(),
   temporaryRange: z.string().nullable(),
@@ -37,12 +38,14 @@ export const SanitizedFolderAccessUserSchema = z.object({
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
   membership: SanitizedFolderAccessMembershipSchema,
-  folderRBACAccess: SanitizedFolderAccessSchema.nullable()
+  folderRBACAccess: SanitizedFolderAccessSchema.nullable(),
+  inheritedFolderRBACAccess: SanitizedFolderAccessSchema.nullable()
 });
 
 export const SanitizedFolderAccessIdentitySchema = z.object({
   identityId: z.string().uuid(),
   name: z.string(),
   membership: SanitizedFolderAccessMembershipSchema,
-  folderRBACAccess: SanitizedFolderAccessSchema.nullable()
+  folderRBACAccess: SanitizedFolderAccessSchema.nullable(),
+  inheritedFolderRBACAccess: SanitizedFolderAccessSchema.nullable()
 });

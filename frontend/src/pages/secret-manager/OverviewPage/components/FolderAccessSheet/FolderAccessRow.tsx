@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { BotIcon, ChevronDownIcon, ClockIcon, ShieldIcon } from "lucide-react";
+import {
+  BotIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  CornerLeftUpIcon,
+  FolderTreeIcon,
+  ShieldIcon
+} from "lucide-react";
 
 import {
   Badge,
@@ -49,6 +56,7 @@ type Props = {
   actor: TFolderAccessActor;
   isDisabled?: boolean;
   onSetTier: (tier: SecretFolderRole) => void;
+  onSetRecursive: (isRecursive: boolean) => void;
   onSetTemporaryRange: (range: string) => void;
   onMakePermanent: () => void;
   onRemove: () => void;
@@ -78,6 +86,7 @@ export const FolderAccessRow = ({
   actor,
   isDisabled,
   onSetTier,
+  onSetRecursive,
   onSetTemporaryRange,
   onMakePermanent,
   onRemove
@@ -85,7 +94,7 @@ export const FolderAccessRow = ({
   const [isTemporaryOpen, setIsTemporaryOpen] = useState(false);
   const [range, setRange] = useState(actor.access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
 
-  const { access } = actor;
+  const { access, inheritedAccess } = actor;
   const firstName = actor.name.split(" ")[0];
   const isRangeValid = isValidTemporaryRange(range);
   const roleNames = actor.roles.map((role) => role.name).join(", ");
@@ -102,6 +111,38 @@ export const FolderAccessRow = ({
     setRange(access?.temporaryRange || DEFAULT_TEMPORARY_RANGE);
     setIsTemporaryOpen(true);
   };
+
+  const noGrantTrigger = inheritedAccess ? (
+    <DropdownMenuTrigger asChild>
+      <Button variant="ghost" size="sm" isDisabled={isDisabled}>
+        {FOLDER_ROLE_TIER_LABELS[inheritedAccess.permission]}
+        <Badge
+          variant="neutral"
+          iconPosition="left"
+          className="max-w-40"
+          title={`Inherited from the recursive access on ${inheritedAccess.secretPath}`}
+        >
+          <CornerLeftUpIcon />
+          <span className="truncate">{inheritedAccess.secretPath}</span>
+        </Badge>
+        <ChevronDownIcon />
+      </Button>
+    </DropdownMenuTrigger>
+  ) : (
+    <DropdownMenuTrigger asChild>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="max-w-48"
+        title={roleNames || undefined}
+        isDisabled={isDisabled}
+      >
+        <span className="truncate">{roleNames || "Role"}</span>
+        <Badge variant="project">Project</Badge>
+        <ChevronDownIcon />
+      </Button>
+    </DropdownMenuTrigger>
+  );
 
   // admins already have full access everywhere and cannot be granted folder access, so the row is
   // shown for completeness with no controls at all
@@ -130,6 +171,16 @@ export const FolderAccessRow = ({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" isDisabled={isDisabled}>
                 {FOLDER_ROLE_TIER_LABELS[access.permission]}
+                {access.isRecursive && (
+                  <Badge
+                    variant="info"
+                    iconPosition="left"
+                    title="Also applies to every folder below this one"
+                  >
+                    <FolderTreeIcon />
+                    Recursive
+                  </Badge>
+                )}
                 {isOverride && <Badge variant="warning">Override</Badge>}
                 {remainingTime && (
                   // the menu repeats the time left, so narrow sheets drop this badge to keep the
@@ -149,27 +200,17 @@ export const FolderAccessRow = ({
               </Button>
             </DropdownMenuTrigger>
           ) : (
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="max-w-48"
-                title={roleNames || undefined}
-                isDisabled={isDisabled}
-              >
-                <span className="truncate">{roleNames || "Role"}</span>
-                <Badge variant="project">Project</Badge>
-                <ChevronDownIcon />
-              </Button>
-            </DropdownMenuTrigger>
+            noGrantTrigger
           )}
           <TierDropdown
             activeTier={access?.permission ?? null}
-            footerNote={
-              access
-                ? undefined
-                : `Choosing a tier overrides ${firstName}'s project role in this folder.`
-            }
+            isRecursive={access?.isRecursive}
+            footerNote={(() => {
+              if (access) return undefined;
+              if (inheritedAccess)
+                return `Inherited from ${inheritedAccess.secretPath}. Choosing a tier overrides it in this folder only; subfolders keep the inherited access.`;
+              return `Choosing a tier overrides ${firstName}'s project role in this folder.`;
+            })()}
             temporaryLabel={
               remainingTime && remainingTime?.expiresAt ? (
                 <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
@@ -183,6 +224,7 @@ export const FolderAccessRow = ({
               )
             }
             onSelectTier={onSetTier}
+            onToggleRecursive={access ? onSetRecursive : undefined}
             onEditTemporaryAccess={access ? openTemporary : undefined}
             onRemove={access ? onRemove : undefined}
             removeLabel={

@@ -13,30 +13,21 @@ import {
   TUpdateUserFolderAccessDTO
 } from "./types";
 
-type TFolderAccessScope = { projectId: string; environmentSlug: string; secretPath: string };
-
 // a grant changes what the actor may read, so the roster and anything rendering the project's
 // secrets both go stale. the roster is invalidated across every page/search variant.
 const invalidateFolderAccess = (
   queryClient: ReturnType<typeof useQueryClient>,
-  { projectId, environmentSlug, secretPath }: TFolderAccessScope
+  { projectId }: { projectId: string }
 ) => {
   queryClient.invalidateQueries({
     predicate: (query) => {
       const label = query.queryKey[1];
-      if (label === "user-folder-access" || label === "identity-folder-access") {
-        return (query.queryKey[0] as { projectId?: string })?.projectId === projectId;
-      }
-      if (label !== "folder-access-users" && label !== "folder-access-identities") return false;
-      const params = query.queryKey[0] as {
-        projectId?: string;
-        environmentSlug?: string;
-        secretPath?: string;
-      };
       return (
-        params?.projectId === projectId &&
-        params?.environmentSlug === environmentSlug &&
-        params?.secretPath === secretPath
+        (label === "user-folder-access" ||
+          label === "identity-folder-access" ||
+          label === "folder-access-users" ||
+          label === "folder-access-identities") &&
+        (query.queryKey[0] as { projectId?: string })?.projectId === projectId
       );
     }
   });
@@ -79,16 +70,22 @@ export const useCreateUserFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
+      isRecursive,
       type
     }: TCreateUserFolderAccessDTO) => {
       const { data } = await apiRequest.post<{ folderAccess: TFolderAccess & { userId: string } }>(
         userFolderAccessUrl({ projectId, userId }),
-        { environmentSlug, secretPath, permission, ...(type ? { type } : {}) }
+        {
+          environmentSlug,
+          secretPath,
+          permission,
+          ...(isRecursive === undefined ? {} : { isRecursive }),
+          ...(type ? { type } : {})
+        }
       );
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
-      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
+    onSuccess: (_, { projectId }) => invalidateFolderAccess(queryClient, { projectId })
   });
 };
 
@@ -101,6 +98,7 @@ export const useUpdateUserFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
+      isRecursive,
       type
     }: TUpdateUserFolderAccessDTO) => {
       const { data } = await apiRequest.patch<{ folderAccess: TFolderAccess & { userId: string } }>(
@@ -109,13 +107,13 @@ export const useUpdateUserFolderAccess = () => {
           environmentSlug,
           secretPath,
           ...(permission ? { permission } : {}),
+          ...(isRecursive === undefined ? {} : { isRecursive }),
           ...(type ? { type } : {})
         }
       );
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
-      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
+    onSuccess: (_, { projectId }) => invalidateFolderAccess(queryClient, { projectId })
   });
 };
 
@@ -135,8 +133,7 @@ export const useDeleteUserFolderAccess = () => {
       });
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
-      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
+    onSuccess: (_, { projectId }) => invalidateFolderAccess(queryClient, { projectId })
   });
 };
 
@@ -149,6 +146,7 @@ export const useCreateIdentityFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
+      isRecursive,
       type
     }: TCreateIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.post<{
@@ -157,12 +155,12 @@ export const useCreateIdentityFolderAccess = () => {
         environmentSlug,
         secretPath,
         permission,
+        ...(isRecursive === undefined ? {} : { isRecursive }),
         ...(type ? { type } : {})
       });
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
-      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
+    onSuccess: (_, { projectId }) => invalidateFolderAccess(queryClient, { projectId })
   });
 };
 
@@ -175,6 +173,7 @@ export const useUpdateIdentityFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
+      isRecursive,
       type
     }: TUpdateIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.patch<{
@@ -183,12 +182,12 @@ export const useUpdateIdentityFolderAccess = () => {
         environmentSlug,
         secretPath,
         ...(permission ? { permission } : {}),
+        ...(isRecursive === undefined ? {} : { isRecursive }),
         ...(type ? { type } : {})
       });
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
-      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
+    onSuccess: (_, { projectId }) => invalidateFolderAccess(queryClient, { projectId })
   });
 };
 
@@ -208,7 +207,6 @@ export const useDeleteIdentityFolderAccess = () => {
       });
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
-      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
+    onSuccess: (_, { projectId }) => invalidateFolderAccess(queryClient, { projectId })
   });
 };

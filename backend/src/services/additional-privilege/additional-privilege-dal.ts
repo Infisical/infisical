@@ -156,6 +156,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
         "name",
         "folderId",
         "role",
+        "isRecursive",
         "isTemporary",
         "temporaryAccessEndTime",
         "actorUserId",
@@ -167,6 +168,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
       name: string;
       folderId: string;
       role: string | null;
+      isRecursive: boolean;
       isTemporary: boolean;
       temporaryAccessEndTime: Date | null;
       actorUserId: string | null;

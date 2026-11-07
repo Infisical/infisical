@@ -91,6 +91,7 @@ export type TProjectFolderScopedPrivilege = {
   role: string;
   environmentSlug: string;
   secretPath: string;
+  isRecursive?: boolean;
 };
 
 export type TCachedFolderScopedPrivileges = {

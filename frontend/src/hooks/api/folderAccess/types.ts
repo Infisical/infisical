@@ -22,6 +22,7 @@ export type TFolderAccess = {
   permission: SecretFolderRole;
   environment: string;
   secretPath: string;
+  isRecursive: boolean;
   isTemporary: boolean;
   temporaryMode: string | null;
   temporaryRange: string | null;
@@ -52,6 +53,7 @@ export type TFolderAccessUser = {
   lastName: string | null;
   membership: TFolderAccessMembership;
   folderRBACAccess: TFolderAccess | null;
+  inheritedFolderRBACAccess: TFolderAccess | null;
 };
 
 export type TFolderAccessIdentity = {
@@ -59,6 +61,7 @@ export type TFolderAccessIdentity = {
   name: string;
   membership: TFolderAccessMembership;
   folderRBACAccess: TFolderAccess | null;
+  inheritedFolderRBACAccess: TFolderAccess | null;
 };
 
 // `users` have access on the folder and membership.roles holds only the roles granting it (empty
@@ -109,12 +112,14 @@ type TFolderAccessTargetDTO = {
 export type TCreateUserFolderAccessDTO = TFolderAccessTargetDTO & {
   userId: string;
   permission: SecretFolderRole;
+  isRecursive?: boolean;
   type?: TFolderGrantType;
 };
 
 export type TUpdateUserFolderAccessDTO = TFolderAccessTargetDTO & {
   userId: string;
   permission?: SecretFolderRole;
+  isRecursive?: boolean;
   type?: TFolderGrantType;
 };
 
@@ -125,12 +130,14 @@ export type TDeleteUserFolderAccessDTO = TFolderAccessTargetDTO & {
 export type TCreateIdentityFolderAccessDTO = TFolderAccessTargetDTO & {
   identityId: string;
   permission: SecretFolderRole;
+  isRecursive?: boolean;
   type?: TFolderGrantType;
 };
 
 export type TUpdateIdentityFolderAccessDTO = TFolderAccessTargetDTO & {
   identityId: string;
   permission?: SecretFolderRole;
+  isRecursive?: boolean;
   type?: TFolderGrantType;
 };
 
