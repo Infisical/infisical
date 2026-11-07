@@ -47,37 +47,33 @@ export const OrganizationFeatures = () => {
   if (features.length === 0) return null;
 
   return (
-    <Accordion
-      type="single"
-      collapsible
-      variant="ghost"
-      defaultValue="features"
-      className="-mx-5 -mb-5 border-t border-border px-5"
-    >
-      <AccordionItem value="features">
-        <AccordionTrigger>
-          <span className="flex items-baseline gap-2">
-            <span className="text-[13px]">Organization Features</span>
-            <span className="text-xs font-normal text-muted">
-              Unlocked by your plans and applied across every product
+    <div className="-mx-5 -mb-5 rounded-b-card border-t border-border bg-container-hover px-5">
+      <Accordion type="single" collapsible variant="ghost" defaultValue="features">
+        <AccordionItem value="features">
+          <AccordionTrigger>
+            <span className="flex items-baseline gap-2">
+              <span className="text-[13px]">Organization Features</span>
+              <span className="text-xs font-normal text-muted">
+                Unlocked by your plans and applied across every product
+              </span>
             </span>
-          </span>
-        </AccordionTrigger>
-        <AccordionContent className="pt-1 pb-3.5">
-          <ul className="grid grid-cols-1 gap-x-6 gap-y-2.5 pl-6 md:grid-cols-2 xl:grid-cols-3">
-            {features.map((feature) => {
-              const detail = feature.detail?.(subscription);
-              return (
-                <li key={feature.key} className="flex items-baseline gap-2">
-                  <CheckIcon className="size-3.5 shrink-0 self-center text-success" />
-                  <span className="text-[13px]">{feature.label}</span>
-                  {detail && <span className="text-xs text-muted">({detail})</span>}
-                </li>
-              );
-            })}
-          </ul>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+          </AccordionTrigger>
+          <AccordionContent className="pt-1 pb-3.5">
+            <ul className="grid grid-cols-1 gap-x-6 gap-y-2.5 md:grid-cols-2 xl:grid-cols-3">
+              {features.map((feature) => {
+                const detail = feature.detail?.(subscription);
+                return (
+                  <li key={feature.key} className="flex items-baseline gap-2">
+                    <CheckIcon className="size-3.5 shrink-0 self-center text-success" />
+                    <span className="text-[13px]">{feature.label}</span>
+                    {detail && <span className="text-xs text-muted">({detail})</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
   );
 };

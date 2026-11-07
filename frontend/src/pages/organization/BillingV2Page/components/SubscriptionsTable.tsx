@@ -53,6 +53,7 @@ import { BREAKDOWN_DIMENSIONS, breakdownableDimensions } from "./UsageBreakdownS
 const NEAR_LIMIT_PCT = 80;
 
 const productTint = "color-mix(in srgb, var(--product-color-resolved) 85%, transparent)";
+const productStripes = `repeating-linear-gradient(-45deg, ${productTint} 0 2px, color-mix(in srgb, var(--product-color-resolved) 25%, transparent) 2px 4px)`;
 
 const ProductIconFallback = () => <Box className="size-full" />;
 
@@ -120,9 +121,14 @@ const IdentityBar = ({
   className?: string;
 }) => (
   <span className={cn("flex w-full gap-0.5 overflow-hidden rounded-xs bg-border", className)}>
-    {users > 0 && <span className="h-full rounded-xs bg-accent" style={{ flexGrow: users }} />}
+    {users > 0 && (
+      <span className="h-full rounded-xs" style={{ flexGrow: users, background: productTint }} />
+    )}
     {machines > 0 && (
-      <span className="h-full rounded-xs bg-foreground/25" style={{ flexGrow: machines }} />
+      <span
+        className="h-full rounded-xs"
+        style={{ flexGrow: machines, background: productStripes }}
+      />
     )}
   </span>
 );
@@ -154,10 +160,12 @@ const seatRateLines = (dim: BillingV2EntitlementDim): string[] => {
 };
 
 const IdentitySplitTooltip = ({
+  color,
   dim,
   split,
   children
 }: {
+  color: string;
   dim: BillingV2EntitlementDim;
   split: { users: number; machines: number } | null;
   children: ReactNode;
@@ -167,16 +175,22 @@ const IdentitySplitTooltip = ({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent className="flex min-w-48 flex-col gap-1.5 whitespace-nowrap">
+      <TooltipContent
+        className="product-color flex min-w-48 flex-col gap-1.5 whitespace-nowrap"
+        style={{ "--product-color": color } as CSSProperties}
+      >
         {split && (
           <>
             <span className="flex items-center gap-2">
-              <span className="h-[3px] w-2 shrink-0 rounded-xs bg-accent" />
+              <span className="h-1.5 w-3 shrink-0 rounded-xs" style={{ background: productTint }} />
               <span className="flex-1">Users</span>
               <span className="tabular-nums">{split.users.toLocaleString()}</span>
             </span>
             <span className="flex items-center gap-2">
-              <span className="h-[3px] w-2 shrink-0 rounded-xs bg-foreground/25" />
+              <span
+                className="h-1.5 w-3 shrink-0 rounded-xs"
+                style={{ background: productStripes }}
+              />
               <span className="flex-1">Machines</span>
               <span className="tabular-nums">{split.machines.toLocaleString()}</span>
             </span>
@@ -201,7 +215,8 @@ const IdentitySplitTooltip = ({
 
 const MeterLabel = ({ dim }: { dim: BillingV2EntitlementDim }) => {
   const allowance = dimAllowance(dim);
-  const noun = pluralizeUnit(dimDisplayNoun(dim));
+  const rawNoun = dimDisplayNoun(dim);
+  const noun = rawNoun.includes("_") ? dim.label : pluralizeUnit(rawNoun);
   let unit = noun;
   if (isIdentityDim(dim)) unit = "billed identities";
   else if (allowance !== null) unit = `/ ${allowance.toLocaleString()} ${noun}`;
@@ -217,22 +232,24 @@ const MeterLabel = ({ dim }: { dim: BillingV2EntitlementDim }) => {
 };
 
 const IdentityMeter = ({
+  color,
   dim,
   breakdown
 }: {
+  color: string;
   dim: BillingV2EntitlementDim;
   breakdown: Breakdown;
 }) => {
   const split = useIdentitySplit(dim, breakdown);
   return (
-    <IdentitySplitTooltip dim={dim} split={split}>
+    <IdentitySplitTooltip color={color} dim={dim} split={split}>
       <span className="flex w-full min-w-0 flex-col gap-0.5">
         <MeterLabel dim={dim} />
         <span className="flex h-4 items-center">
           {split ? (
             <IdentityBar users={split.users} machines={split.machines} className="h-[3px]" />
           ) : (
-            <span className="h-[3px] w-full rounded-xs bg-accent/40" />
+            <span className="h-[3px] w-full rounded-xs" style={{ background: productTint }} />
           )}
         </span>
       </span>
@@ -240,8 +257,16 @@ const IdentityMeter = ({
   );
 };
 
-const Meter = ({ dim, breakdown }: { dim: BillingV2EntitlementDim; breakdown: Breakdown }) => {
-  if (isIdentityDim(dim)) return <IdentityMeter dim={dim} breakdown={breakdown} />;
+const Meter = ({
+  color,
+  dim,
+  breakdown
+}: {
+  color: string;
+  dim: BillingV2EntitlementDim;
+  breakdown: Breakdown;
+}) => {
+  if (isIdentityDim(dim)) return <IdentityMeter color={color} dim={dim} breakdown={breakdown} />;
   return (
     <span className="flex w-full min-w-0 flex-col gap-0.5">
       <MeterLabel dim={dim} />
@@ -498,12 +523,12 @@ const LimitRow = ({
         </span>
       </span>
       {isIdentity ? (
-        <IdentitySplitTooltip dim={dim} split={split}>
+        <IdentitySplitTooltip color={prod.color} dim={dim} split={split}>
           <span className="flex h-4 items-center">
             {split ? (
               <IdentityBar users={split.users} machines={split.machines} className="h-1" />
             ) : (
-              <span className="h-1 w-full rounded-xs bg-accent/40" />
+              <span className="h-1 w-full rounded-xs" style={{ background: productTint }} />
             )}
           </span>
         </IdentitySplitTooltip>
@@ -759,7 +784,7 @@ export const SubscriptionsTable = ({
                       <span className="grid auto-cols-[9rem] grid-flow-col items-center justify-start gap-x-6">
                         {visible.map((dim, index) => (
                           <span key={dim.key} className={meterSlotClass(index, ordered.length)}>
-                            <Meter dim={dim} breakdown={breakdown} />
+                            <Meter color={prod.color} dim={dim} breakdown={breakdown} />
                           </span>
                         ))}
                         {visible.map((dim, index) =>
