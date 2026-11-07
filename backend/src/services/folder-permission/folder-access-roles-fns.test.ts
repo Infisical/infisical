@@ -252,11 +252,13 @@ describe("reviveFolderAccess", () => {
 describe("splitFolderAccess", () => {
   const split = (
     folderAccess: Omit<TCachedFolderAccess<TProjectMemberUser>, "totalCount">,
-    grants: [string, TAdditionalPrivileges][] = []
+    grants: [string, TAdditionalPrivileges][] = [],
+    inheritedGrants: [string, TAdditionalPrivileges][] = []
   ) =>
     splitFolderAccess({
       folderAccess: { ...folderAccess, totalCount: folderAccess.actors.length },
       grantByActorId: new Map(grants),
+      inheritedGrantByActorId: new Map(inheritedGrants),
       actorIdOf: (actor) => actor.userId,
       now
     });
@@ -277,7 +279,8 @@ describe("splitFolderAccess", () => {
           isProjectAdmin: false,
           roles: [{ id: null, slug: ProjectMembershipRole.Member, name: "Member" }]
         },
-        grant: null
+        grant: null,
+        inheritedGrant: null
       }
     ]);
   });
@@ -308,7 +311,8 @@ describe("splitFolderAccess", () => {
             { id: "custom-role-id", slug: "custom-role", name: "Custom Role" }
           ]
         },
-        grant: null
+        grant: null,
+        inheritedGrant: null
       }
     ]);
   });
@@ -324,7 +328,12 @@ describe("splitFolderAccess", () => {
 
     expect(withoutAccess).toEqual([]);
     expect(withAccess).toEqual([
-      { actor: user("u"), membership: { id: "u-membership", isProjectAdmin: false, roles: [] }, grant }
+      {
+        actor: user("u"),
+        membership: { id: "u-membership", isProjectAdmin: false, roles: [] },
+        grant,
+        inheritedGrant: null
+      }
     ]);
   });
 
@@ -391,7 +400,12 @@ describe("splitFolderAccess", () => {
 
     expect(withoutAccess).toEqual([]);
     expect(withAccess).toEqual([
-      { actor: user("admin"), membership: { id: "admin-membership", isProjectAdmin: true, roles: [] }, grant: null }
+      {
+        actor: user("admin"),
+        membership: { id: "admin-membership", isProjectAdmin: true, roles: [] },
+        grant: null,
+        inheritedGrant: null
+      }
     ]);
   });
 
@@ -402,5 +416,76 @@ describe("splitFolderAccess", () => {
     });
 
     expect(withAccess[0].membership.roles).toHaveLength(1);
+  });
+
+  const rootGrant = { id: "root-grant-id", isTemporary: false, temporaryAccessEndTime: null } as TAdditionalPrivileges;
+  const noAccessRole = cachedRole({ slug: ProjectMembershipRole.NoAccess, name: "No Access" });
+
+  test("keeps an actor whose only access is an inherited root grant in the with-access list", () => {
+    const { withAccess, withoutAccess } = split(
+      { grantingRoleKeys: [], actors: [{ actor: user("u"), roles: [noAccessRole] }] },
+      [],
+      [["u", rootGrant]]
+    );
+
+    expect(withoutAccess).toEqual([]);
+    expect(withAccess).toEqual([
+      {
+        actor: user("u"),
+        membership: { id: "u-membership", isProjectAdmin: false, roles: [] },
+        grant: null,
+        inheritedGrant: rootGrant
+      }
+    ]);
+  });
+
+  test("carries both the folder's own grant and the inherited root grant", () => {
+    const { withAccess } = split(
+      { grantingRoleKeys: [], actors: [{ actor: user("u"), roles: [noAccessRole] }] },
+      [["u", grant]],
+      [["u", rootGrant]]
+    );
+
+    expect(withAccess).toMatchObject([{ grant, inheritedGrant: rootGrant }]);
+  });
+
+  test("ignores an expired temporary inherited grant and counts an active one", () => {
+    const actors = [{ actor: user("u"), roles: [noAccessRole] }];
+
+    const expired = split(
+      { grantingRoleKeys: [], actors },
+      [],
+      [["u", { ...rootGrant, isTemporary: true, temporaryAccessEndTime: past }]]
+    );
+    expect(expired.withAccess).toEqual([]);
+    expect(expired.withoutAccess).toMatchObject([{ grant: null, inheritedGrant: null }]);
+
+    const active = split(
+      { grantingRoleKeys: [], actors },
+      [],
+      [["u", { ...rootGrant, isTemporary: true, temporaryAccessEndTime: future }]]
+    );
+    expect(active.withoutAccess).toEqual([]);
+    expect(active.withAccess).toMatchObject([{ grant: null, inheritedGrant: { id: "root-grant-id" } }]);
+  });
+
+  test("reports an inherited grant on an admin without changing the membership", () => {
+    const { withAccess } = split(
+      {
+        grantingRoleKeys: [],
+        actors: [{ actor: user("admin"), roles: [cachedRole({ slug: ProjectMembershipRole.Admin, name: "Admin" })] }]
+      },
+      [],
+      [["admin", rootGrant]]
+    );
+
+    expect(withAccess).toEqual([
+      {
+        actor: user("admin"),
+        membership: { id: "admin-membership", isProjectAdmin: true, roles: [] },
+        grant: null,
+        inheritedGrant: rootGrant
+      }
+    ]);
   });
 });

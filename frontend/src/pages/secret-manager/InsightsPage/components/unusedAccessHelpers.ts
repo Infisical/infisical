@@ -31,7 +31,7 @@ export const accessPathBadges = (
   })),
   ...folderAccess.map((access) => ({
     key: `folder:${access.id}`,
-    label: `Folder: ${environmentName(access.environment)} ${access.secretPath} (${FOLDER_ROLE_TIER_LABELS[access.role] ?? access.role})`
+    label: `Folder: ${environmentName(access.environment)} ${access.secretPath}${access.isPermissionRecursive ? " and subfolders" : ""} (${FOLDER_ROLE_TIER_LABELS[access.role] ?? access.role})`
   }))
 ];
 

@@ -7,12 +7,14 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
@@ -81,6 +83,7 @@ type TProjectMembershipServiceFactoryDep = {
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  keyStore: Pick<TKeyStoreFactory, "incrementSeededWithExpiry">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
@@ -110,6 +113,7 @@ export const projectMembershipServiceFactory = ({
   membershipRoleDAL,
   applicationMembershipCleanupService,
   usageMeteringService,
+  keyStore,
   alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
@@ -600,6 +604,7 @@ export const projectMembershipServiceFactory = ({
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
     usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    await invalidateFolderAccessCache(keyStore, projectId);
     return memberships;
   };
 
@@ -695,6 +700,7 @@ export const projectMembershipServiceFactory = ({
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
     usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    await invalidateFolderAccessCache(keyStore, projectId);
     return deletedMembership;
   };
 

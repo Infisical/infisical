@@ -64,7 +64,16 @@ describe("buildMergedProjectPermissionRules", () => {
   });
 
   test("leaves out folder grants when any membership holds the Admin role", () => {
-    const listOnly = [{ id: "grant", folderId: "folder", role: "list", environmentSlug: "prod", secretPath: "/api" }];
+    const listOnly = [
+      {
+        id: "grant",
+        folderId: "folder",
+        role: "list",
+        environmentSlug: "prod",
+        secretPath: "/api",
+        isRecursiveFolder: false
+      }
+    ];
     const asMember = buildMergedProjectPermissionRules({
       memberships: [{ roles: [{ role: ProjectMembershipRole.Member }] }],
       folderGrants: listOnly,

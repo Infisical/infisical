@@ -134,6 +134,16 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
     return Boolean(result);
   };
 
+  const findOneForUpdate = async (filter: Partial<TAdditionalPrivileges>, tx: Knex) => {
+    try {
+      return (await tx(TableName.AdditionalPrivilege).where(filter).forUpdate().first()) as
+        | TAdditionalPrivileges
+        | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find additional privilege for update" });
+    }
+  };
+
   // Without an actor, returns the folder grants of every user and identity in the project.
   const findFolderScopedPrivileges = async (
     {
@@ -159,7 +169,8 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
         "isTemporary",
         "temporaryAccessEndTime",
         "actorUserId",
-        "actorIdentityId"
+        "actorIdentityId",
+        "isRecursiveFolder"
       );
 
     return docs as {
@@ -171,6 +182,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
       temporaryAccessEndTime: Date | null;
       actorUserId: string | null;
       actorIdentityId: string | null;
+      isRecursiveFolder: boolean | null;
     }[];
   };
 
@@ -231,6 +243,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
     delete: deleteFn,
     findWithAccessApprovalStatus,
     isLinkedToAccessApproval,
+    findOneForUpdate,
     findFolderScopedPrivileges,
     remapFolderIds
   };
