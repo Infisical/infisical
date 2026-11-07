@@ -166,6 +166,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "SECRETS",
     description: "Account-level secrets for Cloudflare Workers and AI Gateway."
   },
+  [SecretSync.Convex]: {
+    name: "Convex",
+    image: "Convex.png",
+    category: "PLATFORM",
+    description: "Environment variables for Convex deployments."
+  },
   [SecretSync.Zabbix]: {
     name: "Zabbix",
     image: "Zabbix.png",
@@ -369,6 +375,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.CloudflareSecretsStore]: AppConnection.Cloudflare,
+  [SecretSync.Convex]: AppConnection.Convex,
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Rundeck]: AppConnection.Rundeck,
   [SecretSync.Portainer]: AppConnection.Portainer,
