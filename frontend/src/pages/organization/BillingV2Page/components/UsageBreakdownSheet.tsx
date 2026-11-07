@@ -39,12 +39,12 @@ import {
   useGetBillingV2UsageBreakdown
 } from "@app/hooks/api";
 
-import { pluralizeUnit, unitForCount } from "../billing-v2-format";
+import { isIdentityDim, pluralizeUnit, unitForCount } from "../billing-v2-format";
 import { ProductIcon } from "./shared";
 
 // user_identities is deliberately absent: it is already the user half of the summary split, and it
 // carries no scope tree, so a tab for it would show a number the reader has just seen and nothing else.
-const BREAKDOWN_DIMENSIONS = new Set<string>(
+export const BREAKDOWN_DIMENSIONS = new Set<string>(
   Object.values(BillingV2BreakdownDimension).filter(
     (key) => key !== BillingV2BreakdownDimension.UserIdentities
   )
@@ -279,6 +279,9 @@ const BreakdownBody = ({
   const { total, userCount, scopedCount, unit, hasProjectDetail, scopes } = breakdown;
   const unitLabel = pluralizeUnit(unit);
   const isInstanceScope = scopeKind === "instance";
+  const isIdentity = isIdentityDim({ key: breakdown.dimensionKey });
+  let emptyTitle = "Nothing counted yet";
+  if (isIdentity) emptyTitle = userCount > 0 ? "Only users so far" : "Nothing billed yet";
   const uniqueNoun = total === 1 ? "billed identity" : "billed identities";
   const totalNoun = userCount > 0 ? uniqueNoun : unitForCount(unit, total);
   const totalLabel = isInstanceScope
@@ -355,9 +358,9 @@ const BreakdownBody = ({
       {scopedCount === 0 ? (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>{userCount > 0 ? "Only users so far" : "Nothing billed yet"}</EmptyTitle>
+            <EmptyTitle>{emptyTitle}</EmptyTitle>
             <EmptyDescription>
-              No {unitLabel} have been given access{" "}
+              No {unitLabel} have been {isIdentity ? "given access" : "created"}{" "}
               {isInstanceScope
                 ? "anywhere on this instance"
                 : "in this organization or its sub-organizations"}

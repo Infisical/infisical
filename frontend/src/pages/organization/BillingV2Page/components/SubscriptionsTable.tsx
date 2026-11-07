@@ -47,7 +47,7 @@ import {
   tierLabel
 } from "../billing-v2-format";
 import { ProductMenu } from "./ProductMenu";
-import { breakdownableDimensions } from "./UsageBreakdownSheet";
+import { BREAKDOWN_DIMENSIONS, breakdownableDimensions } from "./UsageBreakdownSheet";
 
 const COLLAPSED_METERS = 3;
 const NEAR_LIMIT_PCT = 80;
@@ -128,10 +128,30 @@ const IdentityBar = ({
   </span>
 );
 
-const useIdentitySplit = (dimensionKey: string | null, breakdown: Breakdown) => {
+const useIdentitySplit = (dim: BillingV2EntitlementDim | null, breakdown: Breakdown) => {
+  const dimensionKey = dim && BREAKDOWN_DIMENSIONS.has(dim.key) ? dim.key : null;
   const { data } = useGetBillingV2UsageBreakdown(breakdown.orgId, dimensionKey, breakdown.scope);
-  if (!data || data.total === 0) return null;
+  if (!dim || !data || data.total === 0 || data.userCount + data.scopedCount !== dim.used) {
+    return null;
+  }
   return { users: data.userCount, machines: data.scopedCount };
+};
+
+const committedSeatRate = (dim: BillingV2EntitlementDim) =>
+  dimCommitted(dim) && dim.committedRate ? dim.committedRate : null;
+
+const seatRateLines = (dim: BillingV2EntitlementDim): string[] => {
+  const committedRate = committedSeatRate(dim);
+  const monthlyRate = dimMonthlyRate(dim);
+  if (committedRate !== null) {
+    return [
+      `Committed seats billed at ${fmtMoneyCents(committedRate)} per seat / yr`,
+      ...(monthlyRate > 0
+        ? [`Seats past the commitment billed at ${fmtMoneyCents(monthlyRate)} per seat / mo`]
+        : [])
+    ];
+  }
+  return monthlyRate > 0 ? [`All identities billed at ${fmtMoneyCents(monthlyRate)} per seat`] : [];
 };
 
 const IdentitySplitTooltip = ({
@@ -143,8 +163,8 @@ const IdentitySplitTooltip = ({
   split: { users: number; machines: number } | null;
   children: ReactNode;
 }) => {
-  const rate = dimMonthlyRate(dim);
-  if (!split && rate <= 0) return children;
+  const rateLines = seatRateLines(dim);
+  if (!split && rateLines.length === 0) return children;
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -163,9 +183,16 @@ const IdentitySplitTooltip = ({
             </span>
           </>
         )}
-        {rate > 0 && (
-          <span className={cn("text-muted", split && "border-t border-border pt-1.5")}>
-            All identities billed at {fmtMoneyCents(rate)} per seat
+        {rateLines.length > 0 && (
+          <span
+            className={cn(
+              "flex flex-col gap-0.5 text-muted",
+              split && "border-t border-border pt-1.5"
+            )}
+          >
+            {rateLines.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
           </span>
         )}
       </TooltipContent>
@@ -197,7 +224,7 @@ const IdentityMeter = ({
   dim: BillingV2EntitlementDim;
   breakdown: Breakdown;
 }) => {
-  const split = useIdentitySplit(dim.key, breakdown);
+  const split = useIdentitySplit(dim, breakdown);
   return (
     <IdentitySplitTooltip dim={dim} split={split}>
       <span className="flex w-32 shrink-0 flex-col gap-0.5">
@@ -217,7 +244,7 @@ const IdentityMeter = ({
 const Meter = ({ dim, breakdown }: { dim: BillingV2EntitlementDim; breakdown: Breakdown }) => {
   if (isIdentityDim(dim)) return <IdentityMeter dim={dim} breakdown={breakdown} />;
   return (
-    <span className="flex w-40 shrink-0 flex-col gap-0.5">
+    <span className="flex w-36 shrink-0 flex-col gap-0.5">
       <MeterLabel dim={dim} />
       <span className="flex h-4 items-center">
         <UsageBar dim={dim} className="h-[3px]" />
@@ -267,14 +294,13 @@ const priceCell = (
     );
   }
   const identity = dims.find(isIdentityDim);
-  const identityRate = identity ? dimMonthlyRate(identity) : 0;
   if (parts.length > 0) {
-    return (
-      <Stacked
-        primary={parts.join(" + ")}
-        secondary={identityRate > 0 ? `${fmtMoneyCents(identityRate)} per identity` : undefined}
-      />
-    );
+    const committedRate = identity ? committedSeatRate(identity) : null;
+    const monthlyRate = identity ? dimMonthlyRate(identity) : 0;
+    let secondary: string | undefined;
+    if (committedRate !== null) secondary = `${fmtMoneyCents(committedRate)} per identity / yr`;
+    else if (monthlyRate > 0) secondary = `${fmtMoneyCents(monthlyRate)} per identity`;
+    return <Stacked primary={parts.join(" + ")} secondary={secondary} />;
   }
   if (ent.isTrialing) return <Stacked primary="Free" secondary="During trial" />;
   if (ent.planTier === "enterprise") {
@@ -287,7 +313,32 @@ const priceCell = (
 const cadenceCycle = (ent: BillingV2Entitlement) =>
   ent.cadence === "annual" ? "Annual cycle" : "Monthly cycle";
 
-const dateCell = (ent: BillingV2Entitlement, isManaged: boolean) => {
+const trialPlanName = (prod: BillingV2CatalogProduct, ent: BillingV2Entitlement) =>
+  ent.trialPlan
+    ? (ent.trialPlanName ??
+      prod.plans.find((plan) => plan.tier === ent.trialPlan)?.name ??
+      tierLabel(ent.trialPlan))
+    : null;
+
+const dateCell = (prod: BillingV2CatalogProduct, ent: BillingV2Entitlement, isManaged: boolean) => {
+  const upgradeTrial = trialPlanName(prod, ent);
+  if (upgradeTrial && ent.trialPlanPaymentDueAt) {
+    return (
+      <Stacked
+        primary={ent.trialPlanPaymentDueAt}
+        secondary={`Confirm payment to upgrade to ${upgradeTrial}`}
+        secondaryClassName="text-warning"
+      />
+    );
+  }
+  if (upgradeTrial) {
+    return (
+      <Stacked
+        primary={ent.trialPlanEndsAt ?? ent.renewsOn ?? "Trial"}
+        secondary={`${upgradeTrial} starts billing`}
+      />
+    );
+  }
   if (ent.trialPaymentDueAt) {
     return (
       <Stacked
@@ -310,8 +361,10 @@ const dateCell = (ent: BillingV2Entitlement, isManaged: boolean) => {
 
 const statusBadge = (ent: BillingV2Entitlement) => {
   if (ent.status === "grace") return <Badge variant="warning">Grace</Badge>;
-  if (ent.trialPaymentDueAt) return <Badge variant="warning">Payment Needed</Badge>;
-  if (ent.isTrialing) return <Badge variant="info">Trial</Badge>;
+  if (ent.trialPaymentDueAt || ent.trialPlanPaymentDueAt) {
+    return <Badge variant="warning">Payment Needed</Badge>;
+  }
+  if (ent.isTrialing || ent.trialPlan) return <Badge variant="info">Trial</Badge>;
   return <Badge variant="success">Active</Badge>;
 };
 
@@ -357,7 +410,7 @@ const LimitRow = ({
   onSetCommitment: () => void;
 }) => {
   const isIdentity = isIdentityDim(dim);
-  const split = useIdentitySplit(isIdentity ? dim.key : null, breakdown);
+  const split = useIdentitySplit(isIdentity ? dim : null, breakdown);
   const allowance = dimAllowance(dim);
   const overage = dimOnDemandQuantity(dim);
   const rate = dimMonthlyRate(dim);
@@ -396,6 +449,10 @@ const LimitRow = ({
         action={{ label: "Switch to Annual", onClick: onSetCommitment }}
       />
     );
+  } else if (isIdentity && committedSeatRate(dim) !== null) {
+    action = (
+      <LimitAction title={`${fmtMoneyCents(committedSeatRate(dim) ?? 0)} each / yr committed`} />
+    );
   } else if (isIdentity && rate > 0) {
     action = <LimitAction title={`${fmtMoneyCents(rate)} each / mo`} />;
   } else if (isNearLimit(dim)) {
@@ -413,7 +470,7 @@ const LimitRow = ({
   }
 
   return (
-    <div className="grid grid-cols-[minmax(0,15rem)_minmax(0,1fr)_5rem_minmax(0,12rem)] items-center gap-6 border-b border-border py-3 last:border-b-0">
+    <div className="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)_5rem_minmax(0,11rem)] items-center gap-6 border-b border-border py-3 last:border-b-0">
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className="truncate text-sm leading-[18px]">{dimDisplayLabel(dim)}</span>
         {subtext && <span className="truncate text-xs text-muted">{subtext}</span>}
@@ -475,19 +532,19 @@ export const SubscriptionsTable = ({
   const breakdown = { orgId: breakdownOrgId, scope: breakdownScope };
 
   return (
-    <Card className="gap-0 overflow-hidden p-0">
-      <CardHeader className="px-5 py-4">
-        <CardTitle className="text-base">Subscriptions</CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle>Subscriptions</CardTitle>
       </CardHeader>
-      <Table containerClassName="rounded-none border-x-0 border-b-0 bg-transparent">
+      <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-72 pl-5">Product</TableHead>
+            <TableHead className="w-64">Product</TableHead>
             <TableHead>Usage</TableHead>
             <TableHead className="w-40">Price</TableHead>
             <TableHead className="w-44">Next Billing Date</TableHead>
             <TableHead className="w-28">Status</TableHead>
-            <TableHead variant="action" className="w-12 pr-5" />
+            <TableHead variant="action" className="w-12" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -515,11 +572,11 @@ export const SubscriptionsTable = ({
             return (
               <Fragment key={prod.id}>
                 <TableRow
-                  className={cn("product-color hover:bg-transparent", isExpanded && "border-b-0")}
+                  className={cn("product-color", isExpanded && "border-b-0")}
                   style={{ "--product-color": prod.color } as CSSProperties}
                   onClick={canExpand ? toggle : undefined}
                 >
-                  <TableCell className="py-3 pl-5">
+                  <TableCell className="py-3">
                     <span className="flex items-start gap-2">
                       {canExpand ? (
                         <button
@@ -565,12 +622,16 @@ export const SubscriptionsTable = ({
                             {prod.addon && <Badge variant="neutral">Add-on</Badge>}
                           </span>
                         }
-                        secondary={planName}
+                        secondary={
+                          trialPlanName(prod, ent)
+                            ? `${planName} · trialing ${trialPlanName(prod, ent)}`
+                            : planName
+                        }
                       />
                     </span>
                   </TableCell>
                   <TableCell className="py-3">
-                    <span className="flex items-center gap-7">
+                    <span className="flex items-center gap-6">
                       {ordered.slice(0, COLLAPSED_METERS).map((dim) => (
                         <Meter key={dim.key} dim={dim} breakdown={breakdown} />
                       ))}
@@ -585,11 +646,11 @@ export const SubscriptionsTable = ({
                     </span>
                   </TableCell>
                   <TableCell className="py-3">{priceCell(ent, dims, isManaged)}</TableCell>
-                  <TableCell className="py-3">{dateCell(ent, isManaged)}</TableCell>
+                  <TableCell className="py-3">{dateCell(prod, ent, isManaged)}</TableCell>
                   <TableCell className="py-3">{statusBadge(ent)}</TableCell>
                   <TableCell
                     variant="action"
-                    className="py-3 pr-5"
+                    className="py-3"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <ProductMenu
@@ -607,10 +668,10 @@ export const SubscriptionsTable = ({
                 {isExpanded && (
                   <TableRow
                     id={panelId}
-                    className="product-color hover:bg-transparent"
+                    className="product-color"
                     style={{ "--product-color": prod.color } as CSSProperties}
                   >
-                    <TableCell colSpan={COLUMN_COUNT} className="pt-0 pr-5 pb-3 pl-11">
+                    <TableCell colSpan={COLUMN_COUNT} className="pt-0 pb-3 pl-9">
                       <div className="flex flex-col">
                         {dims.map((dim) => (
                           <LimitRow
