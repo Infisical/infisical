@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   ActivityIcon,
@@ -774,6 +774,75 @@ export function FolderRow({
   );
 }
 
+function ImportedIn({ labels }: { labels: string[] }) {
+  const fit = useRef<HTMLSpanElement>(null);
+  const measure = useRef<HTMLSpanElement>(null);
+  const [shown, setShown] = useState(labels.length);
+  const [reserve, setReserve] = useState(0);
+  const signature = labels.join("|");
+  useLayoutEffect(() => {
+    const box = fit.current;
+    const ruler = measure.current;
+    if (!box || !ruler) return undefined;
+    const update = () => {
+      const [more, ...items] = [...ruler.children].map(
+        (child) => (child as HTMLElement).offsetWidth
+      );
+      const gap = parseFloat(getComputedStyle(ruler).columnGap) || 0;
+      const space = box.clientWidth;
+      setReserve(more);
+      const total = items.reduce((sum, width) => sum + width + gap, -gap);
+      if (total <= space) {
+        setShown(items.length);
+        return;
+      }
+      const room = space - more - gap;
+      let used = -gap;
+      let count = 0;
+      while (count < items.length && used + gap + items[count] <= room) {
+        used += gap + items[count];
+        count += 1;
+      }
+      setShown(count);
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [signature]);
+  const badge = (label: string) => (
+    <Badge key={label} tone="outline">
+      <Icon icon={LayersIcon} />
+      {label}
+    </Badge>
+  );
+  const overflow = labels.slice(shown);
+  return (
+    <span className={styles.importedIn}>
+      <span className={styles.subtle}>Imported in</span>
+      <span ref={fit} className={styles.importedBadges} style={{ minWidth: reserve }}>
+        {labels.slice(0, shown).map(badge)}
+        {overflow.length > 0 && (
+          <Tooltip content={overflow.join(", ")}>
+            <Badge tone="outline">{`+${overflow.length}`}</Badge>
+          </Tooltip>
+        )}
+      </span>
+      <span ref={measure} className={styles.importedRuler} aria-hidden="true">
+        <Badge tone="outline">{`+${labels.length}`}</Badge>
+        {labels.map(badge)}
+      </span>
+      <span className={styles.importedHint}>
+        <span className={styles.hint} data-tone="info">
+          <Icon name="info" size={12} />
+        </span>
+        <span className={styles.truncate}>Select one environment to manage</span>
+      </span>
+    </span>
+  );
+}
+
 export function ImportRow({
   rowKey,
   entries,
@@ -898,14 +967,22 @@ export function ImportRow({
             {ctx.single && <TableRowIndicators>{replication(first)}</TableRowIndicators>}
           </div>
         </TableCell>
+        {!ctx.single && expanded && (
+          <TableCell colSpan={ctx.environments.length} className={styles.importedInCell}>
+            <ImportedIn
+              labels={entries.map(
+                (entry) =>
+                  environments.find((environment) => environment.value === entry.environment)
+                    ?.label ?? entry.environment
+              )}
+            />
+          </TableCell>
+        )}
         {!ctx.single &&
-          ctx.environments.map((environment) =>
-            expanded ? (
-              <TableCell key={environment.value} />
-            ) : (
-              <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
-            )
-          )}
+          !expanded &&
+          ctx.environments.map((environment) => (
+            <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
+          ))}
         <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
           {ctx.single && actions(first)}
         </TableActionsCell>
@@ -944,22 +1021,6 @@ export function ImportRow({
       {!ctx.single && expanded && (
         <TableRow className={styles.nestedRow}>
           <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
-            <div className={styles.importedIn}>
-              <span className={styles.subtle}>Imported in:</span>
-              {entries.map((entry) => (
-                <Badge key={entry.id} tone="outline">
-                  <Icon icon={LayersIcon} />
-                  {environments.find((environment) => environment.value === entry.environment)
-                    ?.label ?? entry.environment}
-                </Badge>
-              ))}
-              <span className={styles.push}>
-                <span className={styles.hint} data-tone="info">
-                  <Icon name="info" size={12} />
-                </span>
-                <span className={styles.subtle}>Select a single environment to manage imports</span>
-              </span>
-            </div>
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>
