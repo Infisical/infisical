@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "trigger-layout",
+    title: "Start-aligned triggers",
+    description:
+      'Picker triggers put the value at the start and the chevron at the end, matching Select, with layout="trigger" on Button.',
+    date: "2026-11-07",
+    commit: "357f910288",
+    page: "button"
+  },
+  {
     id: "header-band",
     title: "Header band and quiet empty rows",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "aab51e979e",
     page: "card"
-  },
-  {
-    id: "themes",
-    title: "Four themes",
-    description:
-      "Peach, Pale, Dark and Dark alt are named themes with a light or dark scheme, picked from the account and workbench menus.",
-    date: "2026-11-07",
-    commit: "c700ce77aa",
-    page: "colors"
   }
 ];
