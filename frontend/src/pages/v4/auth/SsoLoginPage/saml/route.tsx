@@ -22,5 +22,6 @@ export const Route = createFileRoute("/v4/_v4-auth/login/saml")({
       })
     ]
   },
-  pendingComponent: lazyRouteComponent(() => import("../../../V4PageLoader"), "V4PageLoader")
+  pendingComponent: lazyRouteComponent(() => import("../../../V4PageLoader"), "V4PageLoader"),
+  errorComponent: lazyRouteComponent(() => import("../../../V4ErrorPage"), "V4ErrorPage")
 });

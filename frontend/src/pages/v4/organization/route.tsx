@@ -24,5 +24,7 @@ export const Route = createFileRoute("/v4/organizations/$orgId")({
     return { ...session, organizationId, v4Mode: "live" as const, adapters: liveAdapters };
   },
   component: V4OrganizationLayout,
-  pendingComponent: lazyRouteComponent(() => import("../V4PageLoader"), "V4PageLoader")
+  pendingComponent: lazyRouteComponent(() => import("../V4PageLoader"), "V4PageLoader"),
+  errorComponent: lazyRouteComponent(() => import("../V4ErrorPage"), "V4ErrorPage"),
+  notFoundComponent: lazyRouteComponent(() => import("../V4NotFoundPage"), "V4NotFoundPage")
 });
