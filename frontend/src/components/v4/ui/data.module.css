@@ -1277,10 +1277,11 @@ button.rowTitle::after {
   --v4-table-row-layers:
     linear-gradient(var(--v4-table-row-hover), var(--v4-table-row-hover)),
     linear-gradient(var(--v4-table-row-state), var(--v4-table-row-state));
+  background-color: var(--v4-table-row-ground);
   background-image: var(--v4-table-row-layers);
 }
 .nativeTableRow:is(:hover, :has([aria-expanded="true"])):not(thead > *) {
-  --v4-table-row-hover: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+  --v4-table-row-hover: var(--v4-hover);
 }
 .nativeTableRow[data-state="selected"] {
   --v4-table-row-state: var(--v4-selected-surface);
