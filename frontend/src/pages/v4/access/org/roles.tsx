@@ -31,7 +31,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Stack } from "@app/components/v4/ui/layout";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   OrgPermissionActions,
@@ -42,7 +42,7 @@ import type { TOrgRole } from "@app/hooks/api/roles/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink, useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
@@ -216,19 +216,22 @@ export const OrgRolesTab = () => {
     {
       id: "name",
       header: "Name",
+      primary: true,
       sortable: true,
       grow: true,
       render: (role) => (
-        <Inline gap={8} wrap={false}>
-          <span>{role.name}</span>
+        <AccessRowLink href={accessLinks.orgRole(orgId, role.id)} title={role.name}>
+          {role.name}
           {isDefault(role) && (
-            <Tooltip
-              content={`Members joining your organization will be assigned the ${role.name} role unless otherwise specified.`}
-            >
-              <Badge tone="info">Default</Badge>
-            </Tooltip>
+            <span className={styles.linkBadges}>
+              <Tooltip
+                content={`Members joining your organization will be assigned the ${role.name} role unless otherwise specified.`}
+              >
+                <Badge tone="info">Default</Badge>
+              </Tooltip>
+            </span>
           )}
-        </Inline>
+        </AccessRowLink>
       )
     },
     {
@@ -323,29 +326,26 @@ export const OrgRolesTab = () => {
           </Button>
         </Gate>
       </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Organization roles"
-          rows={list.pageRows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(role) => role.id}
-          rowLabel={(role) => role.name}
-          loading={isPending}
-          loadingRows={10}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          onRowActivate={openRole}
-          empty={
-            roles.length ? (
-              <EmptyState size="sm" icon="search" title="No organization roles match search" />
-            ) : (
-              <EmptyState size="sm" icon="key" title="This organization does not have any roles" />
-            )
-          }
-        />
-        {!isPending && list.pagination}
-      </Stack>
+      <DataTable
+        label="Organization roles"
+        rows={list.pageRows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(role) => role.id}
+        rowLabel={(role) => role.name}
+        loading={isPending}
+        loadingRows={10}
+        sort={list.sort}
+        onSortChange={list.setSort}
+        empty={
+          roles.length ? (
+            <EmptyState size="sm" icon="search" title="No organization roles match search" />
+          ) : (
+            <EmptyState size="sm" icon="key" title="This organization does not have any roles" />
+          )
+        }
+        pagination={isPending ? undefined : list.pagination}
+      />
       {dialog && (
         <RoleDialog
           key={dialog.source?.id ?? "new"}

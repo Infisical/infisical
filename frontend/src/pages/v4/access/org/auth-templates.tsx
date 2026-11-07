@@ -47,7 +47,7 @@ import {
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED, type Sort } from "../ui";
@@ -353,7 +353,6 @@ const UsagesDialog = ({
   onClose: () => void;
 }) => {
   const orgId = useOrgId();
-  const go = useGo();
   const { data: usages = [], isPending } = useV4Adapter("access").useIdentityAuthTemplateUsages({
     templateId: template.id,
     organizationId: orgId
@@ -362,8 +361,16 @@ const UsagesDialog = ({
     {
       id: "name",
       header: "Identity name",
+      primary: true,
       grow: true,
-      render: (usage) => <span>{usage.identityName}</span>
+      render: (usage) => (
+        <AccessRowLink
+          href={accessLinks.orgIdentity(orgId, usage.identityId)}
+          title={usage.identityName}
+        >
+          {usage.identityName}
+        </AccessRowLink>
+      )
     },
     { id: "id", header: "Identity ID", render: (usage) => <code>{usage.identityId}</code> }
   ];
@@ -381,7 +388,6 @@ const UsagesDialog = ({
           rowLabel={(usage) => usage.identityName}
           loading={isPending}
           loadingRows={3}
-          onRowActivate={(usage) => go(accessLinks.orgIdentity(orgId, usage.identityId))}
           empty={
             <EmptyState
               size="sm"
@@ -522,36 +528,36 @@ export const AuthTemplatesSection = () => {
               setPage(1);
             }}
           />
-          <Stack gap={8}>
-            <DataTable
-              label="Machine identity auth templates"
-              rows={rows}
-              columns={columns}
-              rowActions={rowActions}
-              getRowId={(template) => template.id}
-              rowLabel={(template) => template.name}
-              loading={loading}
-              loadingRows={3}
-              sort={sort}
-              onSortChange={setSort}
-              empty={
-                <EmptyState size="sm" icon="search" title="No templates match search filter" />
-              }
-            />
-            {!loading && totalCount > 0 && (
-              <Pagination
-                page={page}
-                total={totalCount}
-                pageSize={perPage}
-                pageSizeOptions={[10, 20, 50, 100]}
-                onPageChange={setPage}
-                onPageSizeChange={(size) => {
-                  setPerPage(size);
-                  setPage(1);
-                }}
-              />
-            )}
-          </Stack>
+          <DataTable
+            label="Machine identity auth templates"
+            rows={rows}
+            columns={columns}
+            rowActions={rowActions}
+            getRowId={(template) => template.id}
+            rowLabel={(template) => template.name}
+            loading={loading}
+            loadingRows={3}
+            sort={sort}
+            onSortChange={setSort}
+            empty={<EmptyState size="sm" icon="search" title="No templates match search filter" />}
+            pagination={
+              !loading && totalCount > 0 ? (
+                <Pagination
+                  label="Auth template pages"
+                  variant="compact"
+                  page={page}
+                  total={totalCount}
+                  pageSize={perPage}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPerPage(size);
+                    setPage(1);
+                  }}
+                />
+              ) : undefined
+            }
+          />
         </>
       )}
       {editing && (

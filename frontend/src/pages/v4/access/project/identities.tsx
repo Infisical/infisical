@@ -15,7 +15,7 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
 import {
   ProjectPermissionIdentityActions,
@@ -26,7 +26,7 @@ import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { Gate, ListToolbar, RESTRICTED, RoleBadges, type Sort } from "../ui";
 import { AddProjectIdentitySheet } from "./identity-add-sheet";
@@ -60,7 +60,6 @@ export const ProjectIdentitiesTab = () => {
   const scope = useProjectScope();
   const { orgId, projectId } = scope;
   const access = useV4Adapter("access");
-  const go = useGo();
   const { permission } = useProjectPermission(projectId);
   const { data: projectRoles = [] } = access.useProjectRoles(projectId);
   const [search, setSearch] = useState("");
@@ -106,15 +105,23 @@ export const ProjectIdentitiesTab = () => {
     {
       id: "name",
       header: "Name",
+      primary: true,
       sortable: true,
       grow: true,
       render: (row) => {
         const lockout = lockoutText(row.identity);
         return (
-          <Inline gap={8} wrap={false}>
-            <span>{row.identity.name}</span>
-            {lockout && <LockedBadge label={lockout} />}
-          </Inline>
+          <AccessRowLink
+            href={accessLinks.projectIdentity(scope, row.identity.id)}
+            title={row.identity.name}
+          >
+            {row.identity.name}
+            {lockout && (
+              <span className={accessStyles.linkBadges}>
+                <LockedBadge label={lockout} />
+              </span>
+            )}
+          </AccessRowLink>
         );
       }
     },
@@ -245,48 +252,49 @@ export const ProjectIdentitiesTab = () => {
           </Button>
         </Gate>
       </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Project machine identities"
-          rows={rows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(row) => row.identity.id}
-          rowLabel={(row) => row.identity.name}
-          loading={isPending}
-          loadingRows={10}
-          sort={sort}
-          onSortChange={(next) => {
-            setSort(next);
-            setPage(1);
-          }}
-          onRowActivate={(row) => go(accessLinks.projectIdentity(scope, row.identity.id))}
-          empty={
-            searching ? (
-              <EmptyState size="sm" icon="search" title="No machine identities match search" />
-            ) : (
-              <EmptyState
-                size="sm"
-                icon="machine"
-                title="No machine identities have been added to this project"
-              />
-            )
-          }
-        />
-        {!isPending && totalCount > 0 && (
-          <Pagination
-            page={page}
-            total={totalCount}
-            pageSize={perPage}
-            pageSizeOptions={[10, 20, 50, 100]}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPerPage(size);
-              setPage(1);
-            }}
-          />
-        )}
-      </Stack>
+      <DataTable
+        label="Project machine identities"
+        rows={rows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(row) => row.identity.id}
+        rowLabel={(row) => row.identity.name}
+        loading={isPending}
+        loadingRows={10}
+        sort={sort}
+        onSortChange={(next) => {
+          setSort(next);
+          setPage(1);
+        }}
+        empty={
+          searching ? (
+            <EmptyState size="sm" icon="search" title="No machine identities match search" />
+          ) : (
+            <EmptyState
+              size="sm"
+              icon="machine"
+              title="No machine identities have been added to this project"
+            />
+          )
+        }
+        pagination={
+          !isPending && totalCount > 0 ? (
+            <Pagination
+              label="Machine identity pages"
+              variant="compact"
+              page={page}
+              total={totalCount}
+              pageSize={perPage}
+              pageSizeOptions={[10, 20, 50, 100]}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPerPage(size);
+                setPage(1);
+              }}
+            />
+          ) : undefined
+        }
+      />
       <AddProjectIdentitySheet
         orgId={orgId}
         projectId={projectId}

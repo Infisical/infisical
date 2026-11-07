@@ -30,7 +30,7 @@ import type { TProjectRole } from "@app/hooks/api/roles/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink, useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
@@ -90,9 +90,14 @@ export const ProjectRolesTab = () => {
     {
       id: "name",
       header: "Name",
+      primary: true,
       sortable: true,
       grow: true,
-      render: (role) => <span>{role.name}</span>
+      render: (role) => (
+        <AccessRowLink href={accessLinks.projectRole(scope, role.slug)} title={role.name}>
+          {role.name}
+        </AccessRowLink>
+      )
     },
     {
       id: "slug",
@@ -179,29 +184,26 @@ export const ProjectRolesTab = () => {
           </Button>
         </Gate>
       </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Project roles"
-          rows={list.pageRows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(role) => role.id}
-          rowLabel={(role) => role.name}
-          loading={isPending}
-          loadingRows={10}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          onRowActivate={openRole}
-          empty={
-            roles.length ? (
-              <EmptyState size="sm" icon="search" title="No project roles match search" />
-            ) : (
-              <EmptyState size="sm" icon="lock" title="This project does not have any roles" />
-            )
-          }
-        />
-        {!isPending && list.pagination}
-      </Stack>
+      <DataTable
+        label="Project roles"
+        rows={list.pageRows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(role) => role.id}
+        rowLabel={(role) => role.name}
+        loading={isPending}
+        loadingRows={10}
+        sort={list.sort}
+        onSortChange={list.setSort}
+        empty={
+          roles.length ? (
+            <EmptyState size="sm" icon="search" title="No project roles match search" />
+          ) : (
+            <EmptyState size="sm" icon="lock" title="This project does not have any roles" />
+          )
+        }
+        pagination={isPending ? undefined : list.pagination}
+      />
       {sheet.key > 0 && (
         <RoleListRoleSheet
           key={sheet.key}

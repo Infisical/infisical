@@ -503,6 +503,7 @@ export const OrgGroupDetail = () => {
             >
               <DataList
                 variant="props"
+                density="compact"
                 items={[
                   ["Name", group.name],
                   [

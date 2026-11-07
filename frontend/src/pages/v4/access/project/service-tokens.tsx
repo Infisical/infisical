@@ -156,28 +156,26 @@ export const ServiceTokensTab = () => {
           </Button>
         </Gate>
       </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Service tokens"
-          rows={list.pageRows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(token) => token.id}
-          rowLabel={(token) => token.name}
-          loading={tokens.isPending}
-          loadingRows={10}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          empty={
-            list.search.trim() ? (
-              <EmptyState size="sm" icon="search" title="No service tokens match search" />
-            ) : (
-              <EmptyState size="sm" icon="key" title="No service tokens found" />
-            )
-          }
-        />
-        {!tokens.isPending && list.pagination}
-      </Stack>
+      <DataTable
+        label="Service tokens"
+        rows={list.pageRows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(token) => token.id}
+        rowLabel={(token) => token.name}
+        loading={tokens.isPending}
+        loadingRows={10}
+        sort={list.sort}
+        onSortChange={list.setSort}
+        empty={
+          list.search.trim() ? (
+            <EmptyState size="sm" icon="search" title="No service tokens match search" />
+          ) : (
+            <EmptyState size="sm" icon="key" title="No service tokens found" />
+          )
+        }
+        pagination={tokens.isPending ? undefined : list.pagination}
+      />
       <ServiceTokenCreateSheet projectId={projectId} open={creating} onOpenChange={setCreating} />
       <AlertDialog
         open={Boolean(deleting)}

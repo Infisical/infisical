@@ -53,7 +53,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink, useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
@@ -157,7 +157,6 @@ const EditMembershipDialog = ({
 const UserGroupsSection = ({ username }: { username: string }) => {
   const access = useV4Adapter("access");
   const orgId = useOrgId();
-  const go = useGo();
   const { permission } = useOrgPermission();
   const canEdit = permission.can(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
   const { data: groups = [], isPending } = access.useUserGroupMemberships(username);
@@ -171,7 +170,17 @@ const UserGroupsSection = ({ username }: { username: string }) => {
     compare: (a, b) => a.name.localeCompare(b.name)
   });
   const columns: DataTableColumn<TGroupWithProjectMemberships>[] = [
-    { id: "name", header: "Name", sortable: true, render: (group) => <span>{group.name}</span> }
+    {
+      id: "name",
+      header: "Name",
+      primary: true,
+      sortable: true,
+      render: (group) => (
+        <AccessRowLink href={accessLinks.orgGroup(orgId, group.id)} title={group.name}>
+          {group.name}
+        </AccessRowLink>
+      )
+    }
   ];
 
   const rowActions: DataTableRowActions<TGroupWithProjectMemberships> = {
@@ -215,7 +224,6 @@ const UserGroupsSection = ({ username }: { username: string }) => {
             loading={isPending}
             sort={list.sort}
             onSortChange={list.setSort}
-            onRowActivate={(group) => go(accessLinks.orgGroup(orgId, group.id))}
             pagination={list.pagination}
           />
         )}
@@ -432,6 +440,7 @@ export const OrgMemberDetail = () => {
               <Stack gap={16}>
                 <DataList
                   variant="props"
+                  density="compact"
                   items={[
                     ["Name", name ?? <Dash key="name" />],
                     [

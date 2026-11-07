@@ -408,6 +408,7 @@ const UniversalAuthDetails = ({ identityId }: { identityId: string }) => {
     <Stack gap={24}>
       <DataList
         variant="props"
+        density="compact"
         items={[
           ["Client secret trusted IPs", ipList(data.clientSecretTrustedIps)],
           ["Lockout", data.lockoutEnabled ? "Enabled" : "Disabled"],

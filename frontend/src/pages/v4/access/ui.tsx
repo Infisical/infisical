@@ -163,6 +163,7 @@ export const usePagedList = <Row,>({
     pagination:
       filtered.length > 0 ? (
         <Pagination
+          variant="compact"
           page={current}
           total={filtered.length}
           pageSize={perPage}
@@ -213,10 +214,4 @@ export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; ma
 
 export const Muted = ({ children }: { children: ReactNode }) => (
   <span className={styles.muted}>{children}</span>
-);
-
-export const FabDock = ({ active, children }: { active: boolean; children: ReactNode }) => (
-  <div className={styles.fabDock} data-active={active || undefined}>
-    {children}
-  </div>
 );

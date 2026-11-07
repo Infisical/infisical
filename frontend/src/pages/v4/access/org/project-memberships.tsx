@@ -45,7 +45,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { productOf, projectBase } from "../../shell/navigation";
-import { useGo } from "../navigation";
+import { AccessRowLink } from "../navigation";
 import { useOrgId } from "../permissions";
 import { formatDate, grantLabel, type RoleGrant } from "../roles";
 import { failed, saved } from "../toast";
@@ -338,7 +338,6 @@ export const ProjectMembershipsSection = ({
 }) => {
   const access = useV4Adapter("access");
   const orgId = useOrgId();
-  const go = useGo();
   const { projects } = useV4Session();
   const text = copy[subject];
   const [adding, setAdding] = useState(false);
@@ -360,10 +359,8 @@ export const ProjectMembershipsSection = ({
     matches: (row, needle) => row.project.name.toLowerCase().includes(needle),
     compare: (a, b) => a.project.name.localeCompare(b.project.name)
   });
-  const openProject = (row: ProjectMembershipRow) =>
-    go(
-      `/v4/organizations/${orgId}${projectBase(row.project.type, row.project.id)}/access-management?selectedTab=${text.projectTab}`
-    );
+  const projectHref = (row: ProjectMembershipRow) =>
+    `/v4/organizations/${orgId}${projectBase(row.project.type, row.project.id)}/access-management?selectedTab=${text.projectTab}`;
   const roleLabel = (row: ProjectMembershipRow) =>
     row.roles.length
       ? `${grantLabel(row.roles[0])}${row.roles.length > 1 ? ` (+${row.roles.length - 1})` : ""}`
@@ -409,9 +406,14 @@ export const ProjectMembershipsSection = ({
     {
       id: "name",
       header: "Name",
+      primary: true,
       sortable: true,
       grow: true,
-      render: (row) => <span>{row.project.name}</span>
+      render: (row) => (
+        <AccessRowLink href={projectHref(row)} title={row.project.name}>
+          {row.project.name}
+        </AccessRowLink>
+      )
     },
     subject === "group"
       ? { id: "type", header: "Type", render: (row) => typeName(row.project.type) }
@@ -428,7 +430,6 @@ export const ProjectMembershipsSection = ({
   ];
 
   const rowActions: DataTableRowActions<ProjectMembershipRow> = {
-    inline: [{ label: "Access project", icon: "external", onSelect: openProject }],
     renderMenu: (row) => (
       <DropdownMenuItem
         variant="destructive"
@@ -486,7 +487,6 @@ export const ProjectMembershipsSection = ({
             rowLabel={(row) => row.project.name}
             sort={list.sort}
             onSortChange={list.setSort}
-            onRowActivate={openProject}
             pagination={list.pagination}
           />
         )}

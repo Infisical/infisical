@@ -452,6 +452,7 @@ export const ProjectGroupDetail = () => {
           <Card variant="framed" title="Details">
             <DataList
               variant="props"
+              density="compact"
               items={[
                 ["Name", group.name],
                 [

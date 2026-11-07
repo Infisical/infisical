@@ -19,7 +19,7 @@ import type { TGroupMembership } from "@app/hooks/api/groups/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { formatDate } from "../roles";
 import { Gate, ListToolbar, RESTRICTED, usePagedList } from "../ui";
@@ -32,7 +32,6 @@ import styles from "../access.module.css";
 export const ProjectGroupsTab = () => {
   const scope = useProjectScope();
   const { projectId } = scope;
-  const go = useGo();
   const { permission } = useProjectPermission(projectId);
   const groups = useV4Adapter("access").useProjectGroups(projectId, scope.projectType);
   const [adding, setAdding] = useState(false);
@@ -54,9 +53,14 @@ export const ProjectGroupsTab = () => {
     {
       id: "name",
       header: "Name",
+      primary: true,
       sortable: true,
       grow: true,
-      render: (row) => <span>{row.group.name}</span>
+      render: (row) => (
+        <AccessRowLink href={accessLinks.projectGroup(scope, row.group.id)} title={row.group.name}>
+          {row.group.name}
+        </AccessRowLink>
+      )
     },
     {
       id: "role",
@@ -112,29 +116,26 @@ export const ProjectGroupsTab = () => {
           </Button>
         </Gate>
       </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Project groups"
-          rows={list.pageRows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(row) => row.group.id}
-          rowLabel={(row) => row.group.name}
-          loading={groups.isPending}
-          loadingRows={10}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          onRowActivate={(row) => go(accessLinks.projectGroup(scope, row.group.id))}
-          empty={
-            list.search.trim() ? (
-              <EmptyState size="sm" icon="search" title="No project groups match search" />
-            ) : (
-              <EmptyState size="sm" icon="user" title="No project groups found" />
-            )
-          }
-        />
-        {!groups.isPending && list.pagination}
-      </Stack>
+      <DataTable
+        label="Project groups"
+        rows={list.pageRows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(row) => row.group.id}
+        rowLabel={(row) => row.group.name}
+        loading={groups.isPending}
+        loadingRows={10}
+        sort={list.sort}
+        onSortChange={list.setSort}
+        empty={
+          list.search.trim() ? (
+            <EmptyState size="sm" icon="search" title="No project groups match search" />
+          ) : (
+            <EmptyState size="sm" icon="user" title="No project groups found" />
+          )
+        }
+        pagination={groups.isPending ? undefined : list.pagination}
+      />
       <GroupModal projectId={projectId} open={adding} onOpenChange={setAdding} />
       <RemoveGroupDialog
         projectId={projectId}

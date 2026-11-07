@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PencilIcon } from "lucide-react";
 
+import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
 import { Select } from "@app/components/v4/ui/select";
@@ -31,10 +33,10 @@ import type { TGroupOrgMembership } from "@app/hooks/api/groups/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink, useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved, toast } from "../toast";
-import { Gate, ListToolbar, RESTRICTED, type Sort } from "../ui";
+import { Gate, RESTRICTED, type Sort } from "../ui";
 import { type GroupDraft, GroupDialog } from "./group-dialog";
 import { useDebounced } from "./use-debounced";
 
@@ -61,7 +63,11 @@ export const OrgGroupsTab = () => {
   const update = access.useUpdateGroup();
   const remove = access.useDeleteGroup();
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const roleFilter = useMemo(
+    () => filters.find((filter) => filter.field === "role")?.values ?? [],
+    [filters]
+  );
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -88,7 +94,11 @@ export const OrgGroupsTab = () => {
       header: "Name",
       sortable: true,
       grow: true,
-      render: (group) => <span>{group.name}</span>
+      render: (group) => (
+        <AccessRowLink href={accessLinks.orgGroup(orgId, group.id)} title={group.name}>
+          {group.name}
+        </AccessRowLink>
+      )
     },
     {
       id: "slug",
@@ -175,76 +185,89 @@ export const OrgGroupsTab = () => {
   const canCreate = can(OrgPermissionGroupActions.Create);
   return (
     <Stack gap={16}>
-      <div className={styles.toolbar}>
-        <div className={styles.grow}>
-          <ListToolbar
-            search={search}
-            onSearch={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-            placeholder="Search organization groups..."
-            filter={{
-              label: "Filter by organization role",
-              options: roles.map((role) => ({ value: role.slug, label: role.name })),
-              selected: roleFilter,
-              onToggle: (slug) => {
-                setRoleFilter((current) =>
-                  current.includes(slug) ? current.filter((r) => r !== slug) : [...current, slug]
-                );
-                setPage(1);
-              }
-            }}
-          />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button variant="accent" icon="plus" disabled={!canCreate} onClick={() => setDialog({})}>
-            Create
-          </Button>
-        </Gate>
-      </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Organization groups"
-          rows={groups}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(group) => group.id}
-          rowLabel={(group) => group.name}
-          loading={isPending}
-          loadingRows={10}
-          sort={sort}
-          onSortChange={(next) => {
-            setSort(next);
-            setPage(1);
-          }}
-          onRowActivate={openDetail}
-          empty={
-            searching || roleFilter.length ? (
-              <EmptyState
-                size="sm"
-                icon="search"
-                title={`No organization groups match ${searching ? "search" : "filter criteria"}`}
-              />
-            ) : (
-              <EmptyState size="sm" icon="user" title="No organization groups found" />
-            )
+      <FilterBar
+        label="Organization group filters"
+        fields={[
+          {
+            key: "role",
+            label: "Organization role",
+            type: "multi-select",
+            options: roles.map((role) => ({ value: role.slug, label: role.name }))
           }
-        />
-        {!isPending && totalCount > 0 && (
-          <Pagination
-            page={page}
-            total={totalCount}
-            pageSize={perPage}
-            pageSizeOptions={[10, 20, 50, 100]}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPerPage(size);
+        ]}
+        value={filters}
+        onChange={(next) => {
+          setFilters(next);
+          setPage(1);
+        }}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search organization groups..."
+            placeholder="Search organization groups..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
               setPage(1);
             }}
           />
-        )}
-      </Stack>
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => setDialog({})}
+            >
+              Create
+            </Button>
+          </Gate>
+        }
+      />
+      <DataTable
+        label="Organization groups"
+        rows={groups}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(group) => group.id}
+        rowLabel={(group) => group.name}
+        loading={isPending}
+        loadingRows={10}
+        sort={sort}
+        onSortChange={(next) => {
+          setSort(next);
+          setPage(1);
+        }}
+        empty={
+          searching || roleFilter.length ? (
+            <EmptyState
+              size="sm"
+              icon="search"
+              title={`No organization groups match ${searching ? "search" : "filter criteria"}`}
+            />
+          ) : (
+            <EmptyState size="sm" icon="user" title="No organization groups found" />
+          )
+        }
+        pagination={
+          !isPending && totalCount > 0 ? (
+            <Pagination
+              label="Organization group pages"
+              variant="compact"
+              page={page}
+              total={totalCount}
+              pageSize={perPage}
+              pageSizeOptions={[10, 20, 50, 100]}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPerPage(size);
+                setPage(1);
+              }}
+            />
+          ) : undefined
+        }
+      />
       {dialog && (
         <GroupDialog
           key={dialog.group?.id ?? "new"}

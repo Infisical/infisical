@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { InfoIcon, MailIcon, UserCogIcon, UsersIcon } from "lucide-react";
 
+import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/d
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
 import { Select } from "@app/components/v4/ui/select";
@@ -37,11 +39,11 @@ import type { TOrgUserAccess } from "@app/hooks/api/users/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink, useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved } from "../toast";
-import { FabDock, Gate, ListToolbar, Muted, usePagedList, RESTRICTED } from "../ui";
+import { Gate, Muted, usePagedList, RESTRICTED } from "../ui";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
 import { displayName, useIsSelf } from "./users";
 
@@ -130,7 +132,11 @@ export const OrgMembersTab = () => {
   const inviteUsers = access.useInviteOrgUsers();
   const resendInvite = access.useResendOrgInvite();
   const loading = membersPending || rolesPending;
-  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const roleFilter = useMemo(
+    () => filters.find((filter) => filter.field === "role")?.values ?? [],
+    [filters]
+  );
   const [selected, setSelected] = useState<string[]>([]);
   const [inviting, setInviting] = useState<{ links?: readonly InviteLink[] }>();
   const [removing, setRemoving] = useState<TOrgUserAccess>();
@@ -239,20 +245,32 @@ export const OrgMembersTab = () => {
     {
       id: "name",
       header: "Name",
+      primary: true,
       sortable: true,
       grow: true,
       render: (member) => (
         <Inline gap={8} wrap={false}>
-          <span>{displayName(member.user) ?? <Muted>-</Muted>}</span>
-          {member.membership?.isActive === false && <Badge>Deactivated</Badge>}
-          {member.user.superAdmin && (
-            <Tooltip content="Server admin">
-              <Badge tone="info">
-                <Icon icon={UserCogIcon} size={12} />
-                Server admin
-              </Badge>
-            </Tooltip>
-          )}
+          <AccessRowLink
+            href={
+              member.membership ? accessLinks.orgMember(orgId, member.membership.id) : undefined
+            }
+            title={displayName(member.user) ?? undefined}
+          >
+            {displayName(member.user) ?? <Muted>-</Muted>}
+            {(member.membership?.isActive === false || member.user.superAdmin) && (
+              <span className={styles.linkBadges}>
+                {member.membership?.isActive === false && <Badge>Deactivated</Badge>}
+                {member.user.superAdmin && (
+                  <Tooltip content="Server admin">
+                    <Badge tone="info">
+                      <Icon icon={UserCogIcon} size={12} />
+                      Server admin
+                    </Badge>
+                  </Tooltip>
+                )}
+              </span>
+            )}
+          </AccessRowLink>
           {member.membership?.lastLoginAuthMethod && member.membership.lastLoginTime && (
             <Tooltip
               content={`Last login with ${member.membership.lastLoginAuthMethod} on ${formatDateTime(member.membership.lastLoginTime)}`}
@@ -412,84 +430,88 @@ export const OrgMembersTab = () => {
 
   return (
     <Stack gap={16}>
-      <div className={styles.toolbar}>
-        <div className={styles.grow}>
-          <ListToolbar
-            search={list.search}
-            onSearch={list.setSearch}
-            placeholder="Search organization users..."
-            filter={{
-              label: "Filter by organization role",
-              options: roles.map((role) => ({ value: role.slug, label: role.name })),
-              selected: roleFilter,
-              onToggle: (slug) => {
-                setRoleFilter((current) =>
-                  current.includes(slug) ? current.filter((r) => r !== slug) : [...current, slug]
-                );
-                list.resetPage();
-              }
-            }}
-          />
-        </div>
-        <Gate allowed={canCreate}>
-          <Button
-            variant="accent"
-            icon="user-plus"
-            disabled={!canCreate}
-            onClick={() => setInviting({})}
-          >
-            Invite
-          </Button>
-        </Gate>
-      </div>
-      <Stack gap={8}>
-        <DataTable
-          label="Organization users"
-          rows={list.pageRows}
-          columns={columns}
-          rowActions={rowActions}
-          getRowId={(member) => member.membership?.id ?? member.user.id}
-          rowLabel={usernameOf}
-          loading={loading}
-          loadingRows={10}
-          sort={list.sort}
-          onSortChange={list.setSort}
-          onRowActivate={openMember}
-          selectable
-          selectedIds={selected}
-          onSelectionChange={setSelected}
-          selectionDisabledReason={(member) => (member.membership ? undefined : GROUP_ONLY)}
-          empty={
-            searching ? (
-              <EmptyState size="sm" icon="search" title="No organization users match search" />
-            ) : (
-              <EmptyState size="sm" icon="user" title="No organization users found" />
-            )
+      <FilterBar
+        label="Organization user filters"
+        fields={[
+          {
+            key: "role",
+            label: "Organization role",
+            type: "multi-select",
+            options: roles.map((role) => ({ value: role.slug, label: role.name }))
           }
-        />
-        {!loading && list.pagination}
-      </Stack>
+        ]}
+        value={filters}
+        onChange={(next) => {
+          setFilters(next);
+          list.resetPage();
+        }}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search organization users..."
+            placeholder="Search organization users..."
+            value={list.search}
+            onChange={(event) => list.setSearch(event.target.value)}
+          />
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="user-plus"
+              disabled={!canCreate}
+              onClick={() => setInviting({})}
+            >
+              Invite
+            </Button>
+          </Gate>
+        }
+      />
+      <DataTable
+        label="Organization users"
+        rows={list.pageRows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(member) => member.membership?.id ?? member.user.id}
+        rowLabel={usernameOf}
+        loading={loading}
+        loadingRows={10}
+        sort={list.sort}
+        onSortChange={list.setSort}
+        selectable
+        selectedIds={selected}
+        onSelectionChange={setSelected}
+        actionBar={
+          <FloatingActionBar
+            placement="contained"
+            label="Selected user actions"
+            count={selected.length}
+            total={direct.length}
+            onSelectAll={() => setSelected(direct)}
+            onClear={() => setSelected([])}
+            noun={selected.length === 1 ? "user" : "users"}
+            actions={[
+              {
+                label: "Delete",
+                icon: "trash",
+                danger: true,
+                disabled: !can(OrgPermissionMemberActions.Delete),
+                onClick: () => selectedMembers.length && setBulkRemoving(selectedMembers)
+              }
+            ]}
+          />
+        }
+        selectionDisabledReason={(member) => (member.membership ? undefined : GROUP_ONLY)}
+        empty={
+          searching ? (
+            <EmptyState size="sm" icon="search" title="No organization users match search" />
+          ) : (
+            <EmptyState size="sm" icon="user" title="No organization users found" />
+          )
+        }
+        pagination={loading ? undefined : list.pagination}
+      />
 
-      <FabDock active={selected.length > 0}>
-        <FloatingActionBar
-          placement="contained"
-          label="Selected user actions"
-          count={selected.length}
-          total={direct.length}
-          onSelectAll={() => setSelected(direct)}
-          onClear={() => setSelected([])}
-          noun={selected.length === 1 ? "user" : "users"}
-          actions={[
-            {
-              label: "Delete",
-              icon: "trash",
-              danger: true,
-              disabled: !can(OrgPermissionMemberActions.Delete),
-              onClick: () => selectedMembers.length && setBulkRemoving(selectedMembers)
-            }
-          ]}
-        />
-      </FabDock>
       <InviteUsersSheet
         key={inviting?.links ? "links" : "form"}
         open={Boolean(inviting)}

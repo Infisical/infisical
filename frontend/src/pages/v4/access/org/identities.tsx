@@ -29,7 +29,7 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Stack } from "@app/components/v4/ui/layout";
 import { Pagination } from "@app/components/v4/ui/pagination";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { StatusText } from "@app/components/v4/ui/text";
@@ -51,7 +51,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { useV4Adapter } from "../../data/adapters";
 import { projectBase } from "../../shell/navigation";
 import { accessLinks } from "../links";
-import { useGo } from "../navigation";
+import { AccessRowLink, useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime } from "../roles";
 import { failed, saved } from "../toast";
@@ -192,18 +192,28 @@ export const OrgIdentitiesTab = () => {
     {
       id: "name",
       header: "Name",
+      primary: true,
       sortable: true,
       grow: true,
       text: (row) => row.identity.name,
       render: (row) => {
         const locked = row.identity.activeLockoutAuthMethods;
         return (
-          <Inline gap={8} wrap={false}>
-            <span>{row.identity.name}</span>
+          <AccessRowLink
+            href={
+              isProjectScoped(row)
+                ? projectHref(row)
+                : accessLinks.orgIdentity(orgId, row.identity.id)
+            }
+            title={row.identity.name}
+          >
+            {row.identity.name}
             {locked.length > 0 && (
-              <LockBadge label={`Locked out: ${locked.map(authMethodName).join(", ")}`} />
+              <span className={styles.linkBadges}>
+                <LockBadge label={`Locked out: ${locked.map(authMethodName).join(", ")}`} />
+              </span>
             )}
-          </Inline>
+          </AccessRowLink>
         );
       }
     },
@@ -390,51 +400,52 @@ export const OrgIdentitiesTab = () => {
             </Button>
           </Gate>
         </div>
-        <Stack gap={8}>
-          <DataTable
-            label="Organization machine identities"
-            rows={rows}
-            columns={columns}
-            rowActions={rowActions}
-            getRowId={(row) => row.id}
-            rowLabel={(row) => row.identity.name}
-            loading={isPending}
-            loadingRows={perPage}
-            sort={sort}
-            onSortChange={(next) => {
-              setSort(next);
-              setPage(1);
-            }}
-            onRowActivate={openDetail}
-            empty={
-              <EmptyState
-                size="sm"
-                icon={searching ? "search" : "machine"}
-                title={empty.title}
-                actions={
-                  searching ? (
-                    <Button variant="link" onClick={() => setSearch("")}>
-                      Clear search
-                    </Button>
-                  ) : undefined
-                }
-              />
-            }
-          />
-          {!isPending && totalCount > 0 && (
-            <Pagination
-              page={page}
-              total={totalCount}
-              pageSize={perPage}
-              pageSizeOptions={[10, 20, 50, 100]}
-              onPageChange={setPage}
-              onPageSizeChange={(size) => {
-                setPerPage(size);
-                setPage(1);
-              }}
+        <DataTable
+          label="Organization machine identities"
+          rows={rows}
+          columns={columns}
+          rowActions={rowActions}
+          getRowId={(row) => row.id}
+          rowLabel={(row) => row.identity.name}
+          loading={isPending}
+          loadingRows={perPage}
+          sort={sort}
+          onSortChange={(next) => {
+            setSort(next);
+            setPage(1);
+          }}
+          empty={
+            <EmptyState
+              size="sm"
+              icon={searching ? "search" : "machine"}
+              title={empty.title}
+              actions={
+                searching ? (
+                  <Button variant="link" onClick={() => setSearch("")}>
+                    Clear search
+                  </Button>
+                ) : undefined
+              }
             />
-          )}
-        </Stack>
+          }
+          pagination={
+            !isPending && totalCount > 0 ? (
+              <Pagination
+                label="Machine identity pages"
+                variant="compact"
+                page={page}
+                total={totalCount}
+                pageSize={perPage}
+                pageSizeOptions={[10, 20, 50, 100]}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPerPage(size);
+                  setPage(1);
+                }}
+              />
+            ) : undefined
+          }
+        />
       </Stack>
       <AuthTemplatesSection />
       <CreateIdentitySheet open={creating} onOpenChange={setCreating} />
