@@ -321,7 +321,6 @@ A test declares what it needs once per `describe` and keeps plain `test(...)`:
 ```ts
 describe("KmsKeyService.generateKmsKey", () => {
   const h = setupIntegration();   // this worker's migrated database, plus tenants
-  const ssh = setupSsh();         // only if the claim needs an SSH server
 
   test("should refuse a duplicate key name in the same org", async () => {
     // Setup
@@ -351,15 +350,15 @@ test exercises its rules.
 
 How it is shared:
 
-| Level | Postgres | A server such as SSH |
+| Level | Postgres | Another server (LDAP, say) |
 | --- | --- | --- |
 | Once per run | the server, and a template database with every migration applied | the container |
 | Once per worker | a clone of the template (`infisical_it_<run>_w<n>`), reused by the worker's later files | nothing |
-| Once per test | a tenant from `h.newTenant()` | a user from `ssh.newUser()` |
+| Once per test | a tenant from `h.newTenant()` | a namespace such as an OU, from `ldap.newOrgUnit()` |
 
 - **Nothing starts until a test asks for it.** `startOnce(name, start)` (`harness.ts`) lets the first
   caller in the run start a server while every other worker waits on a lock and then reuses its
-  address. A run that never calls `setupSsh()` never starts SSH.
+  address. A run that never asks for a server never starts it.
 - **Migrations run once, sequentially.** The template is named after a hash of `src/db/migrations`;
   against a long-lived server (`INTEGRATION_POSTGRES_URL`) an unchanged tree reuses it across runs.
 - **Instance-wide state** (root key, server config) is not per tenant. A describe that changes it uses
@@ -373,7 +372,29 @@ How it is shared:
 
 #### Adding a server
 
-Write one file in `lib/testing/integration/servers/`, shaped like `servers/ssh.ts`:
+Write one file in `lib/testing/integration/servers/`:
+
+```ts
+const startLdapServer = async (): Promise<TLdapServer> => {
+  const started = await container("<image>:<exact tag>").withExposedPorts(389).withWaitStrategy(Wait.forListeningPorts()).start();
+  return { host: started.getHost(), port: started.getMappedPort(389), containerId: started.getId() };
+};
+
+export const setupLdap = () => {
+  let server: TLdapServer | undefined;
+  beforeAll(async () => {
+    server = await startOnce("ldap", startLdapServer);
+  });
+  return {
+    async newOrgUnit() {
+      const ou = `ou=t${randomId()},dc=it`;
+      // create it on `server`, and remove it after the test
+      onTestFinished(() => deleteOrgUnit(server!, ou));
+      return { ...server!, baseDn: ou };
+    }
+  };
+};
+```
 
 1. `start<Name>()` starts the container with `container(image)` (a Testcontainers builder labelled with
    the run) and returns a plain JSON address: host, port, container id, credentials. It crosses
@@ -384,7 +405,7 @@ Write one file in `lib/testing/integration/servers/`, shaped like `servers/ssh.t
 
 Nothing else registers it. Add per-test options to `new<Thing>()`, not a second server. Pin the image to
 an exact tag, and check it can do what the namespace needs: an sshd running as an unprivileged user, for
-instance, can only log in that one user.
+instance, can only log in that one user, so it cannot give each test its own.
 
 #### Before you call it done
 

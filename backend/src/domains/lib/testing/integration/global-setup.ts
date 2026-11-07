@@ -14,7 +14,7 @@ import {
 } from "./run";
 
 // Runs in Vitest's main process, once per run. Nothing is started here: servers start on first use
-// (startOnce), so a run that needs no SSH server never starts one.
+// (startOnce), so a run never starts a server none of its tests asked for.
 
 const dropRunDatabases = async (runId: string) => {
   const server = await readAddress<TPostgresServer>(runId, "postgres-server");
