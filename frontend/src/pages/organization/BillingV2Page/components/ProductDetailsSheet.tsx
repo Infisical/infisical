@@ -724,7 +724,12 @@ const PlansView = ({
   return (
     <>
       <SheetHeader>
-        <SheetTitle>Manage Plan</SheetTitle>
+        <SheetTitle>
+          <Button variant="text" aria-label="Back to product details" onClick={onBack}>
+            <ChevronLeftIcon />
+            Manage Plan
+          </Button>
+        </SheetTitle>
         <SheetDescription>{prod.name}</SheetDescription>
       </SheetHeader>
       <div className="flex thin-scrollbar flex-1 flex-col gap-5 overflow-y-auto p-4">
@@ -761,15 +766,7 @@ const PlansView = ({
         )}
       </div>
       <SheetFooter>
-        <div className="flex w-full flex-col gap-3">
-          {footer && (
-            <div className="flex w-full flex-wrap items-center justify-between gap-3">{footer}</div>
-          )}
-          <Button variant="ghost" size="sm" className="self-start" onClick={onBack}>
-            <ChevronLeftIcon />
-            Back
-          </Button>
-        </div>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">{footer}</div>
       </SheetFooter>
     </>
   );
