@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "tooltip-pass-through",
+    title: "Pass-through tooltips",
+    description:
+      "Tooltips close as the pointer leaves, never catch clicks, and no longer reopen when focus returns from a menu, dialog or sheet.",
+    date: "2026-11-07",
+    commit: "7371831b2f",
+    page: "tooltip"
+  },
+  {
     id: "no-nested-frames",
     title: "No frames in frames",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-06",
     commit: "d05df39e77",
     page: "table"
-  },
-  {
-    id: "toast-disabled",
-    title: "Toasts and disabled reasons",
-    description:
-      "The shell hosts toasts, and a disabled Button explains why in a tooltip through disabledReason.",
-    date: "2026-11-05",
-    commit: "32e2402f30",
-    page: "toast"
   }
 ];
