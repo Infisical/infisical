@@ -22,7 +22,7 @@ import { generatePassword } from "../shared/utils";
 export const auth0ClientSecretRotationFactory: TRotationFactory<
   TAuth0ClientSecretRotationWithConnection,
   TAuth0ClientSecretRotationGeneratedCredentials
-> = (secretRotation, appConnectionDAL, kmsService) => {
+> = (secretRotation, appConnectionDAL, kmsCoreDomain) => {
   const {
     connection,
     parameters: { clientId },
@@ -30,7 +30,7 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
   } = secretRotation;
 
   const $rotateClientSecret = async () => {
-    const accessToken = await getAuth0ConnectionAccessToken(connection, appConnectionDAL, kmsService);
+    const accessToken = await getAuth0ConnectionAccessToken(connection, appConnectionDAL, kmsCoreDomain);
     const { audience } = connection.credentials;
     await blockLocalAndPrivateIpAddresses(audience);
     const clientSecret = generatePassword();
@@ -59,7 +59,7 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
     _,
     callback
   ) => {
-    const accessToken = await getAuth0ConnectionAccessToken(connection, appConnectionDAL, kmsService);
+    const accessToken = await getAuth0ConnectionAccessToken(connection, appConnectionDAL, kmsCoreDomain);
     const { audience } = connection.credentials;
     await blockLocalAndPrivateIpAddresses(audience);
 

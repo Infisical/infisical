@@ -1,8 +1,8 @@
 import { TDelegatedApprovalRequests } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-enums";
 
@@ -18,7 +18,7 @@ export type TDelegatedApprovalCallbackServiceFactoryDep = {
     | "updateWithDetails"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "transaction" | "findByIdForUpdate" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   eventEmitter: Pick<TEventEmitter, "emit">;
 };
 

@@ -363,7 +363,8 @@ describe("CertificateV3Service", () => {
       certificateBodyDAL: {
         create: vi.fn().mockResolvedValue({ id: "body-123" })
       },
-      kmsService: {
+      kmsCoreDomain: {
+        getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
         generateKmsKey: vi.fn().mockResolvedValue("kms-key-123"),
         encryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted"))),
         decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted"))),
@@ -371,7 +372,7 @@ describe("CertificateV3Service", () => {
           cipherTextBlob: Buffer.from("encrypted"),
           plainTextKey: Buffer.from("plainkey")
         })
-      },
+      } as never,
       projectDAL: {
         findOne: vi.fn().mockResolvedValue({ id: "project-123" }),
         findById: vi.fn().mockResolvedValue({ id: "project-123", orgId: "org-123" }),

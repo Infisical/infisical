@@ -1,6 +1,7 @@
 import { UnrecoverableError } from "bullmq";
 
 import { ProjectType } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -15,7 +16,6 @@ import {
   TEvent,
   TEventConsumerResult
 } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
@@ -70,7 +70,7 @@ type TDelegatedApprovalDispatchConsumerDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "update">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TDelegatedApprovalDispatchConsumer = ReturnType<typeof delegatedApprovalDispatchConsumerFactory>;
@@ -82,7 +82,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   approvalRequestDAL,
   projectDAL,
   appConnectionDAL,
-  kmsService
+  kmsCoreDomain
 }: TDelegatedApprovalDispatchConsumerDep): IEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
   const $markDispatchFailed = async (delegatedRequestId: string, eventId: string, statusReason: string) => {
     try {
@@ -227,7 +227,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
           delegatedPolicy,
           organizationId: approvalRequest.organizationId
         }),
-        kmsService
+        kmsCoreDomain
       );
 
       const callbackToken = await delegatedApprovalCallbackService.getOrIssueCallbackToken({ delegatedRequest });

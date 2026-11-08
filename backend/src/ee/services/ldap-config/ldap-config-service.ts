@@ -9,6 +9,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
@@ -44,8 +45,6 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -126,7 +125,7 @@ type TLdapConfigServiceFactoryDep = {
   licenseDomain: TLicenseDomain;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -161,7 +160,7 @@ export const ldapConfigServiceFactory = ({
   licenseDomain,
   tokenService,
   smtpService,
-  kmsService,
+  kmsCoreDomain,
   loginService,
   emailDomainDAL,
   telemetryService,
@@ -228,7 +227,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -281,7 +280,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: ldapConfig.orgId
     });
@@ -392,7 +391,7 @@ export const ldapConfigServiceFactory = ({
       uniqueUserAttribute
     };
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });

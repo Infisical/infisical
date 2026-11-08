@@ -1,9 +1,9 @@
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn/array";
 import { logger } from "@app/lib/logger";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
@@ -33,11 +33,11 @@ export type THoneyTokenCleanupServiceFactory = ReturnType<typeof honeyTokenClean
 export const honeyTokenCleanupServiceFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL,
-  kmsService,
+  kmsCoreDomain,
   appConnectionDAL
 }: THoneyTokenCleanupServiceFactoryDep) => {
   const providerHooksByType = getHoneyTokenServiceHooksByType({
-    kmsService,
+    kmsCoreDomain,
     appConnectionDAL,
     honeyTokenDAL,
     honeyTokenConfigDAL
@@ -46,7 +46,7 @@ export const honeyTokenCleanupServiceFactory = ({
   const $fetchConnection = async (orgId: string, type: HoneyTokenType) => {
     const config = await honeyTokenConfigDAL.findOne({ orgId, type });
     const rawConnection = config?.connectionId ? await appConnectionDAL.findById(config.connectionId) : null;
-    return rawConnection ? decryptAppConnection(rawConnection, kmsService) : null;
+    return rawConnection ? decryptAppConnection(rawConnection, kmsCoreDomain) : null;
   };
 
   // Resolves each org's honey token connection once, however many of its tokens are revoked. The credentials
@@ -79,7 +79,7 @@ export const honeyTokenCleanupServiceFactory = ({
         target = { managedBy: HoneyTokenManagedBy.Organization, appConnection };
       }
 
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: honeyToken.projectId
       });

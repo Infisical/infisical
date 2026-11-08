@@ -1,4 +1,5 @@
 import { TCertificateRequests } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -10,7 +11,6 @@ import {
   getIssuanceAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
@@ -63,7 +63,7 @@ export type TDigiCertOrderMetadata = {
 export type TProcessDigiCertRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TDigiCertCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -82,7 +82,7 @@ export type TProcessDigiCertRequestResult =
 
 const getOrCreateClient = async (
   request: TCertificateRequests,
-  deps: Pick<TProcessDigiCertRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsService">,
+  deps: Pick<TProcessDigiCertRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsCoreDomain">,
   clientCache?: Map<string, TDigiCertApiClient>
 ): Promise<TDigiCertApiClient> => {
   if (!request.caId) {
@@ -103,7 +103,7 @@ const getOrCreateClient = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService: deps.kmsService
+    kmsCoreDomain: deps.kmsCoreDomain
   })) as TDigiCertConnection["credentials"];
 
   const client = createDigiCertApiClient(credentials.apiKey, getDigiCertApiBaseUrl(credentials));

@@ -4,6 +4,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -49,13 +50,11 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "@app/services/resource-metadata/resource-metadata-fns";
 
@@ -103,7 +102,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectDAL: TProjectDALFactory;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest" | "getPolicyById">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
@@ -219,7 +218,7 @@ export const certificateApprovalServiceFactory = (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsCoreDomain,
     projectDAL,
     licenseDomain,
     certManagerDomain,
@@ -379,13 +378,9 @@ export const certificateApprovalServiceFactory = (
     projectId: string;
     tx: Parameters<TCertificateBodyDALFactory["create"]>[1];
   }) => {
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
+    const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
 
     const encryptedCertificate = await kmsEncryptor({
       plainText: certificate

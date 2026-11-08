@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   decryptLogStream,
@@ -10,7 +11,6 @@ import {
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -26,7 +26,7 @@ export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDomain: TLicenseDomain;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServiceFactory>;
@@ -35,7 +35,7 @@ export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   permissionService,
   licenseDomain,
-  kmsService
+  kmsCoreDomain
 }: TAuditLogStreamServiceFactoryDep) => {
   const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseDomain.getPlan(actor.orgId);
@@ -69,7 +69,7 @@ export const auditLogStreamServiceFactory = ({
     const encryptedCredentials = await encryptLogStreamCredentials({
       credentials: validatedCredentials,
       orgId: actor.orgId,
-      kmsService
+      kmsCoreDomain
     });
 
     const logStream = await auditLogStreamDAL.create({
@@ -140,7 +140,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsService
+        kmsCoreDomain
       })) as TCustomProviderCredentials;
 
       const oldHeadersMap = decryptedOldCredentials.headers.reduce<Record<string, string>>((acc, header) => {
@@ -170,7 +170,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsService
+        kmsCoreDomain
       })) as TSumoLogicProviderCredentials;
 
       (finalCredentials as TSumoLogicProviderCredentials).token = decryptedOldCredentials.token;
@@ -182,7 +182,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsService
+        kmsCoreDomain
       })) as TSplunkProviderCredentials;
 
       (finalCredentials as TSplunkProviderCredentials).port = decryptedOldCredentials.port;
@@ -194,7 +194,7 @@ export const auditLogStreamServiceFactory = ({
     const encryptedCredentials = await encryptLogStreamCredentials({
       credentials: validatedCredentials,
       orgId: logStream.orgId,
-      kmsService
+      kmsCoreDomain
     });
 
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
@@ -235,7 +235,7 @@ export const auditLogStreamServiceFactory = ({
 
     const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
 
-    return decryptLogStream(deletedLogStream, kmsService);
+    return decryptLogStream(deletedLogStream, kmsCoreDomain);
   };
 
   const getById = async (logStreamId: string, provider: LogProvider, actor: OrgServiceActor) => {
@@ -259,7 +259,7 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    return decryptLogStream(logStream, kmsService);
+    return decryptLogStream(logStream, kmsCoreDomain);
   };
 
   const list = async (actor: OrgServiceActor) => {
@@ -276,7 +276,7 @@ export const auditLogStreamServiceFactory = ({
 
     const logStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
 
-    return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsService)));
+    return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsCoreDomain)));
   };
 
   return {

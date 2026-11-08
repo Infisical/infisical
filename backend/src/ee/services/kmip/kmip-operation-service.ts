@@ -2,13 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { KmsKeyUsage, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry/metrics";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsKeyUsage } from "@app/services/kms/kms-types";
 
 import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -25,8 +23,7 @@ import {
 } from "./kmip-types";
 
 type TKmipOperationServiceFactoryDep = {
-  kmsService: TKmsServiceFactory;
-  kmsDAL: TKmsKeyDALFactory;
+  kmsCoreDomain: TKmsCoreDomain;
   kmipClientDAL: TKmipClientDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -34,8 +31,7 @@ type TKmipOperationServiceFactoryDep = {
 export type TKmipOperationServiceFactory = ReturnType<typeof kmipOperationServiceFactory>;
 
 export const kmipOperationServiceFactory = ({
-  kmsService,
-  kmsDAL,
+  kmsCoreDomain,
   kmipClientDAL,
   permissionService
 }: TKmipOperationServiceFactoryDep) => {
@@ -88,7 +84,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const kmsKey = await kmsService.generateKmsKey({
+    const kmsKey = await kmsCoreDomain.generateKmsKey({
       encryptionAlgorithm: algorithm,
       orgId: actorOrgId,
       projectId,
@@ -121,7 +117,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsCoreDomain.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -135,11 +131,11 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot destroy reserved keys" });
     }
 
-    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    const completeKeyDetails = await kmsCoreDomain.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
-    if (!completeKeyDetails.internalKms) {
+    if (completeKeyDetails.isExternal) {
       throw new BadRequestError({
         message: "Cannot destroy external keys"
       });
@@ -151,7 +147,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const [kms] = await kmsDAL.delete({ id, hasDeleteProtection: false });
+    const kms = await kmsCoreDomain.deleteKey(id);
 
     if (!kms) {
       throw new BadRequestError({
@@ -185,7 +181,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsCoreDomain.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -199,18 +195,18 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot get reserved keys" });
     }
 
-    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    const completeKeyDetails = await kmsCoreDomain.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
 
-    if (!completeKeyDetails.internalKms) {
+    if (completeKeyDetails.isExternal) {
       throw new BadRequestError({
         message: "Cannot get external keys"
       });
     }
 
-    const kmsKey = await kmsService.getKeyMaterial({
+    const kmsKey = await kmsCoreDomain.getKeyMaterial({
       kmsId: key.id
     });
 
@@ -226,7 +222,7 @@ export const kmipOperationServiceFactory = ({
     return {
       id: key.id,
       value: kmsKey.toString("base64"),
-      algorithm: completeKeyDetails.internalKms.encryptionAlgorithm,
+      algorithm: completeKeyDetails.encryptionAlgorithm as string,
       isActive: !key.isDisabled,
       createdAt: key.createdAt,
       updatedAt: key.updatedAt,
@@ -248,7 +244,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsCoreDomain.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -292,7 +288,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsCoreDomain.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -306,20 +302,18 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot revoke reserved keys" });
     }
 
-    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    const completeKeyDetails = await kmsCoreDomain.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
 
-    if (!completeKeyDetails.internalKms) {
+    if (completeKeyDetails.isExternal) {
       throw new BadRequestError({
         message: "Cannot revoke external keys"
       });
     }
 
-    const revokedKey = await kmsDAL.updateById(key.id, {
-      isDisabled: true
-    });
+    const revokedKey = await kmsCoreDomain.updateKeyAttributes(key.id, { isDisabled: true });
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.REVOKE,
@@ -358,7 +352,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsCoreDomain.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -372,12 +366,12 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot get reserved keys" });
     }
 
-    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    const completeKeyDetails = await kmsCoreDomain.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
 
-    if (!completeKeyDetails.internalKms) {
+    if (completeKeyDetails.isExternal) {
       throw new BadRequestError({
         message: "Cannot get external keys"
       });
@@ -394,7 +388,7 @@ export const kmipOperationServiceFactory = ({
 
     return {
       id: key.id,
-      algorithm: completeKeyDetails.internalKms.encryptionAlgorithm,
+      algorithm: completeKeyDetails.encryptionAlgorithm as string,
       isActive: !key.isDisabled,
       createdAt: key.createdAt,
       updatedAt: key.updatedAt,
@@ -416,7 +410,15 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const keys = await kmsDAL.findProjectCmeks(projectId);
+    // KMIP here only handles symmetric keys, so a project's sign-verify and MAC keys are not KMIP objects.
+    const keys = (await kmsCoreDomain.findKeys({ projectId, isReserved: false, keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT }))
+      .filter((key) => !key.isExternal)
+      .map((key) => ({
+        ...key,
+        isActive: !key.isDisabled,
+        algorithm: key.encryptionAlgorithm as string,
+        kmipMetadata: key.kmipMetadata as Record<string, unknown>
+      }));
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.LOCATE,
@@ -453,9 +455,9 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    let kmsKey: Awaited<ReturnType<TKmsServiceFactory["importKeyMaterial"]>>;
+    let kmsKey: Awaited<ReturnType<TKmsCoreDomain["importKeyMaterial"]>>;
     try {
-      kmsKey = await kmsService.importKeyMaterial({
+      kmsKey = await kmsCoreDomain.importKeyMaterial({
         name,
         key: Buffer.from(key, "base64"),
         algorithm,

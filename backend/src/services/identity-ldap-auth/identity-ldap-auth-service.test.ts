@@ -96,7 +96,7 @@ const createService = ({ identityAuthMethods = [] as string[] }: { identityAuthM
       getProjectPermission: vi.fn(),
       getActorGrantAbilities: vi.fn().mockResolvedValue([])
     },
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob

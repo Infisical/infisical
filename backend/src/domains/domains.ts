@@ -1,5 +1,7 @@
+import type { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
-import { TEnvConfig } from "@app/lib/config/env";
+import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { TQueueServiceFactory } from "@app/queue";
@@ -8,6 +10,8 @@ import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
+import { KmsCoreModule, TKmsCoreDomain } from "./platform/kms-core/ce/module";
+import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
 import { LicenseModule } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
 import { OrganizationsProjectsModule } from "./platform/organizations-projects/ce/module";
@@ -27,7 +31,71 @@ export type TDomainDeps = {
     | "INTERNAL_REGION"
     | "isCloud"
     | "isProductionMode"
+    | "ENCRYPTION_KEY"
+    | "ROOT_ENCRYPTION_KEY"
+    | "KMS_ROOT_KEY_RETENTION_DAYS"
+    | "isHsmConfigured"
+    | "HSM_PIN"
+    | "HSM_SLOT"
+    | "HSM_LIB_PATH"
+    | "HSM_KEY_LABEL"
   >;
+};
+
+type TKmsCoreEnvConfig = Pick<
+  TEnvConfig,
+  | "ENCRYPTION_KEY"
+  | "ROOT_ENCRYPTION_KEY"
+  | "KMS_ROOT_KEY_RETENTION_DAYS"
+  | "isHsmConfigured"
+  | "HSM_PIN"
+  | "HSM_SLOT"
+  | "HSM_LIB_PATH"
+  | "HSM_KEY_LABEL"
+>;
+
+const buildKmsCore = ({
+  db,
+  replicaDb,
+  envConfig,
+  cronJob
+}: {
+  db: TDbClient | Knex;
+  replicaDb?: Knex;
+  envConfig: TKmsCoreEnvConfig;
+  cronJob?: Pick<TCronJobFactory, "register">;
+}) => {
+  const kmsCoreEe = new KmsCoreEeModule({ db, replicaDb, hsmConfig: envConfig });
+  const kmsCore = new KmsCoreModule({
+    db,
+    replicaDb,
+    cronJob,
+    env: {
+      ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY,
+      ROOT_ENCRYPTION_KEY: envConfig.ROOT_ENCRYPTION_KEY,
+      KMS_ROOT_KEY_RETENTION_DAYS: envConfig.KMS_ROOT_KEY_RETENTION_DAYS,
+      isHsmConfigured: envConfig.isHsmConfigured
+    },
+    originalEnv: getOriginalConfig(),
+    hooks: kmsCoreEe.hooks
+  });
+  return { kmsCoreEe, kmsCore };
+};
+
+// KMS Core for code that runs outside the server: migrations and seed scripts. Runs every query on `db`, which in a
+// migration is the migration's own transaction, and loads only the root key (no rotation state, which historical
+// migrations predate). HSM counts as entitled: the license has not been read yet.
+export const startStandaloneKmsCore = async ({
+  db,
+  envConfig
+}: {
+  db: TDbClient | Knex;
+  envConfig: TKmsCoreEnvConfig;
+}): Promise<TKmsCoreDomain> => {
+  const { kmsCoreEe, kmsCore } = buildKmsCore({ db, replicaDb: db as Knex, envConfig });
+  await kmsCoreEe.start({ hsmEntitled: true });
+  await kmsCore.start({ skipRotationState: true });
+  return kmsCore.service;
 };
 
 export type TDomains = ReturnType<typeof createDomains>;
@@ -47,6 +115,10 @@ export const createDomains = (deps: TDomainDeps) => {
     hooks: licenseEe.hooks
   });
 
+  // KMS Core depends on no other domain. HSM and external keys plug in from its enterprise edition; boot starts
+  // kmsCoreEe (with the instance's HSM entitlement from License) and then kmsCore.
+  const { kmsCoreEe, kmsCore } = buildKmsCore({ db: deps.db, envConfig: deps.envConfig, cronJob: deps.cronJob });
+
   const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db, licenseRegistry: license.registry });
   const productDeps = {
     organizationsProjectsDomain: organizationsProjects.service,
@@ -57,5 +129,5 @@ export const createDomains = (deps: TDomainDeps) => {
   const agentVault = new AgentVaultModule(productDeps);
   const certManager = new CertManagerModule({ db: deps.db, ...productDeps });
 
-  return { license, organizationsProjects, secrets, pam, agentVault, certManager };
+  return { license, kmsCoreEe, kmsCore, organizationsProjects, secrets, pam, agentVault, certManager };
 };

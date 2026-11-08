@@ -131,7 +131,7 @@ const buildConsumer = ({
     appConnectionDAL: {
       findById: vi.fn().mockResolvedValue({ id: "connection-1", orgId: ORG_ID, app: "servicenow" })
     },
-    kmsService: { createCipherPairWithDataKey: vi.fn() }
+    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn() }
   } as never);
 
   return { consumer, row: () => row, updateWithDetails, approvalUpdate };

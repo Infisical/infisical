@@ -10,6 +10,7 @@ import {
   TGatewaysV2Update,
   TRelays
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -33,8 +34,6 @@ import {
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -73,7 +72,7 @@ const MAX_GATEWAYS_PER_ORG = 50;
 
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
-  kmsService: TKmsServiceFactory;
+  kmsCoreDomain: TKmsCoreDomain;
   relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
   relayDAL: TRelayDALFactory;
@@ -103,7 +102,7 @@ export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory
 
 export const gatewayV2ServiceFactory = ({
   orgGatewayConfigV2DAL,
-  kmsService,
+  kmsCoreDomain,
   relayService,
   gatewayV2DAL,
   relayDAL,
@@ -135,7 +134,7 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const $getOrgCAs = async (orgId: string) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -409,7 +408,7 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
     });
@@ -584,7 +583,7 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
     });
@@ -1219,6 +1218,12 @@ export const gatewayV2ServiceFactory = ({
       );
     }
 
+    // Fetched before the transaction: KMS Core is never called inside one.
+    const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: orgPermission.orgId
+    });
+
     return gatewayV2DAL.transaction(async (tx) => {
       const gateway = await gatewayV2DAL.findOne(
         orgPermission.type === ActorType.GATEWAY ? { id: orgPermission.id } : { identityId: orgPermission.id },
@@ -1228,11 +1233,6 @@ export const gatewayV2ServiceFactory = ({
       if (!gateway) {
         throw new NotFoundError({ message: "Gateway not found" });
       }
-
-      const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: orgPermission.orgId
-      });
 
       if (gateway.encryptedPamSessionKey) {
         return decryptor({ cipherTextBlob: gateway.encryptedPamSessionKey });

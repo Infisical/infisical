@@ -2,16 +2,14 @@
    run everywhere, and on a fresh install runs against empty tables before a rotation is possible. */
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
 export async function up(knex: Knex): Promise<void> {
@@ -28,16 +26,13 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     if (!hasEncryptedCredentials) {
-      const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
       const superAdminDAL = superAdminDALFactory(knex);
-      const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-      const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-      const keyStore = inMemoryKeyStore();
+      const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-      const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+      const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
       const orgEncryptionRingBuffer =
-        createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+        createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
 
       const logStreams = await knex(TableName.AuditLogStream).select(
         "id",
@@ -55,13 +50,10 @@ export async function up(knex: Knex): Promise<void> {
         logStreams.map(async (el) => {
           let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
           if (!orgKmsService) {
-            orgKmsService = await kmsService.createCipherPairWithDataKey(
-              {
-                type: KmsDataKey.Organization,
-                orgId: el.orgId
-              },
-              knex
-            );
+            orgKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+              type: KmsDataKey.Organization,
+              orgId: el.orgId
+            });
             orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
           }
 
@@ -136,17 +128,13 @@ export async function down(knex: Knex): Promise<void> {
     const hasEncryptedCredentials = await knex.schema.hasColumn(TableName.AuditLogStream, "encryptedCredentials");
 
     if (hasEncryptedCredentials) {
-      const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
-
       const superAdminDAL = superAdminDALFactory(knex);
-      const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-      const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-      const keyStore = inMemoryKeyStore();
+      const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-      const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+      const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
       const orgEncryptionRingBuffer =
-        createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+        createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
 
       const logStreamsToRevert = await knex(TableName.AuditLogStream)
         .select("id", "orgId", "encryptedCredentials")
@@ -157,13 +145,10 @@ export async function down(knex: Knex): Promise<void> {
         logStreamsToRevert.map(async (el) => {
           let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
           if (!orgKmsService) {
-            orgKmsService = await kmsService.createCipherPairWithDataKey(
-              {
-                type: KmsDataKey.Organization,
-                orgId: el.orgId
-              },
-              knex
-            );
+            orgKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+              type: KmsDataKey.Organization,
+              orgId: el.orgId
+            });
             orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
           }
 

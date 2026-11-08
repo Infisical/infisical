@@ -1,7 +1,7 @@
 import { z } from "zod";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 import type { THsmConnectorServiceFactoryDep } from "./hsm-connector-service";
@@ -54,13 +54,13 @@ export type THsmConnectorCredentialsSchemaType = z.infer<typeof HsmConnectorCred
 export const encryptHsmConnectorCredentials = async ({
   projectId,
   credentials,
-  kmsService
+  kmsCoreDomain
 }: {
   projectId: string;
   credentials: THsmConnectorCredentials;
-  kmsService: THsmConnectorServiceFactoryDep["kmsService"];
+  kmsCoreDomain: THsmConnectorServiceFactoryDep["kmsCoreDomain"];
 }): Promise<Buffer> => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -73,13 +73,13 @@ export const encryptHsmConnectorCredentials = async ({
 export const decryptHsmConnectorCredentials = async ({
   projectId,
   encryptedCredentials,
-  kmsService
+  kmsCoreDomain
 }: {
   projectId: string;
   encryptedCredentials: Buffer;
-  kmsService: THsmConnectorServiceFactoryDep["kmsService"];
+  kmsCoreDomain: THsmConnectorServiceFactoryDep["kmsCoreDomain"];
 }): Promise<THsmConnectorCredentials> => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });

@@ -1,5 +1,6 @@
 import { Job } from "bullmq";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TChefSync,
@@ -50,7 +51,6 @@ import {
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnection } from "../app-connection/app-connection-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import {
   TOnePassSync,
@@ -646,7 +646,7 @@ export type DestinationDuplicateCheckFn = (opts: {
 export type TPreSaveTransformDeps = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TPreSaveTransformSyncOptionsParams = {

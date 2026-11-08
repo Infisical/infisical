@@ -96,7 +96,7 @@ const createHarness = ({ staleFlag }: { staleFlag?: boolean } = {}) => {
     dynamicSecretDAL: dynamicSecretDAL as never,
     dynamicSecretProviders: { [PROVIDER]: { revoke } } as never,
     folderDAL: { findById: vi.fn(async () => ({ id: "folder-1", projectId: "project-1" })) } as never,
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn(async () => ({ decryptor: () => Buffer.from("{}") }))
     } as never,
     smtpService: {} as never,

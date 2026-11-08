@@ -87,7 +87,7 @@ const buildService = (
       resolveEffectiveGatewayId: vi.fn(async () => "gw-1"),
       assertGatewayBindingInOrg
     },
-    kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
+    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     permissionService: { getProjectPermission: vi.fn(), getResourcePermission: vi.fn() },
     projectDAL: { findById: vi.fn(async () => ({ id: "proj-1", orgId: "org-1" })) },
     rotationHandlers
@@ -101,7 +101,7 @@ const buildService = (
 
 describe("heartbeat: Windows", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   test("a Windows account is checked over WinRM, not by a reachability probe", async () => {
@@ -200,7 +200,7 @@ describe("heartbeat: Windows", () => {
 
 describe("heartbeat: SSH certificate", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   test("mints a short-lived certificate and logs in with it", async () => {
@@ -282,7 +282,7 @@ describe("heartbeat: manual check permissions", () => {
 
 describe("heartbeat: gateway binding check", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   test.each([

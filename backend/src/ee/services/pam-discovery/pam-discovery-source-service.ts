@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import pLimit from "p-limit";
 
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -15,8 +16,6 @@ import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import {
@@ -75,7 +74,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
@@ -144,7 +143,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     pamAccountService,
     pamAccountRotationService,
     permissionService,
-    kmsService,
+    kmsCoreDomain,
     gatewayV2Service,
     gatewayPoolService,
     queueService,
@@ -161,7 +160,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     );
 
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const decryptToObject = (blob: Buffer, decryptor: (i: { cipherTextBlob: Buffer }) => Buffer) =>
     JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;

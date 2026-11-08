@@ -11,6 +11,7 @@ import {
   TSecretBlindIndexes,
   TSecrets
 } from "@app/db/schemas";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
@@ -29,7 +30,6 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { KmsDataKey } from "../kms/kms-types";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -735,7 +735,7 @@ export const createManySecretsRawFnFactory = ({
   secretVersionTagV2BridgeDAL,
   folderCommitService,
   eventEmitter,
-  kmsService,
+  kmsCoreDomain,
   resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -755,11 +755,11 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor: secretManagerEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsCoreDomain });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -929,7 +929,7 @@ export const updateManySecretsRawFnFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   eventEmitter,
-  kmsService
+  kmsCoreDomain
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
@@ -949,11 +949,11 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor: secretManagerEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsCoreDomain });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,

@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -66,8 +67,6 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { gitlabSecretScanningService } from "./gitlab/gitlab-secret-scanning-service";
@@ -88,7 +87,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
     TSecretScanningV2QueueServiceFactory,
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -103,7 +102,7 @@ export const secretScanningV2ServiceFactory = ({
   licenseDomain,
   secretScanningV2Queue,
   appConnectionDAL,
-  kmsService,
+  kmsCoreDomain,
   keyStore
 }: TSecretScanningV2ServiceFactoryDep) => {
   // A data source's webhook lives both with the provider and in its stored credentials, so changes that can touch it
@@ -284,10 +283,10 @@ export const secretScanningV2ServiceFactory = ({
     encryptedCredentials: Buffer | null | undefined,
     resourceNames: string[]
   ) => {
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsService });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsCoreDomain });
     if (!factory.updateWebhook || !isDataSourceWebhookRequired(dataSource)) return undefined;
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: dataSource.projectId
     });
@@ -381,7 +380,7 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[payload.type]({
       appConnectionDAL,
-      kmsService
+      kmsCoreDomain
     });
 
     try {
@@ -395,7 +394,7 @@ export const secretScanningV2ServiceFactory = ({
           let encryptedCredentials: Buffer | null = null;
 
           if (credentials) {
-            const { encryptor } = await kmsService.createCipherPairWithDataKey({
+            const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
               type: KmsDataKey.SecretManager,
               projectId: payload.projectId
             });
@@ -500,7 +499,7 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
-      kmsService
+      kmsCoreDomain
     });
 
     if (payload.isDiscoveryEnabled && !doesDataSourceSupportDiscovery(dataSource))
@@ -523,7 +522,7 @@ export const secretScanningV2ServiceFactory = ({
     const nextDataSourceWithConnection = (
       payload.config ? { ...dataSourceWithConnection, config: payload.config } : dataSourceWithConnection
     ) as TSecretScanningDataSourceWithConnection;
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: dataSource.projectId
     });
@@ -635,18 +634,18 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[type]({
       appConnectionDAL,
-      kmsService
+      kmsCoreDomain
     });
 
     let connection: TAppConnection | null = null;
     if (dataSource.connection) {
-      connection = await decryptAppConnection(dataSource.connection, kmsService);
+      connection = await decryptAppConnection(dataSource.connection, kmsCoreDomain);
     }
 
     let credentials: TSecretScanningDataSourceCredentials | undefined;
 
     if (dataSource.encryptedCredentials) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: dataSource.projectId
       });
@@ -711,7 +710,7 @@ export const secretScanningV2ServiceFactory = ({
       });
 
     let connection: TAppConnection | null = null;
-    if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+    if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsCoreDomain);
 
     let resourceExternalId: string | undefined;
 
@@ -814,7 +813,7 @@ export const secretScanningV2ServiceFactory = ({
     }
 
     const dataSourceWithConnection = { ...dataSource, connection } as TSecretScanningDataSourceWithConnection;
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsService });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsCoreDomain });
     const { noun } = AUTO_SYNC_DESCRIPTION_HELPER[dataSource.type];
 
     let availableResources: Awaited<ReturnType<typeof factory.listRawResources>>;
@@ -950,7 +949,7 @@ export const secretScanningV2ServiceFactory = ({
     // A disconnected data source can't reach the provider, so its hook is left behind rather than blocking removal.
     let webhook: Awaited<ReturnType<typeof prepareResourceWebhooks>>;
     if (dataSource.connection && !dataSource.isDisconnected) {
-      const connection = await decryptAppConnection(dataSource.connection, kmsService);
+      const connection = await decryptAppConnection(dataSource.connection, kmsCoreDomain);
       const remainingResources = await secretScanningV2DAL.resources.find({ dataSourceId });
 
       webhook = await prepareResourceWebhooks(
@@ -1079,7 +1078,7 @@ export const secretScanningV2ServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
-      kmsService
+      kmsCoreDomain
     });
 
     let rawResources: Awaited<ReturnType<typeof factory.listRawResources>>;
@@ -1491,7 +1490,7 @@ export const secretScanningV2ServiceFactory = ({
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
     github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
-    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService),
-    gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)
+    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsCoreDomain),
+    gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsCoreDomain)
   };
 };

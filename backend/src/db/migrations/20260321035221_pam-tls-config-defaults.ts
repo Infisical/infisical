@@ -1,14 +1,12 @@
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger } from "@app/lib/logger";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEnvConfig } from "./utils/env-config";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
 
@@ -42,22 +40,19 @@ export async function up(knex: Knex): Promise<void> {
   if (!resources.length) return;
 
   initLogger();
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
   const updates: { id: string; encryptedConnectionDetails: Buffer }[] = [];
 
   for (const resource of resources) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const { decryptor, encryptor } = await kmsService.createCipherPairWithDataKey(
-        { type: KmsDataKey.SecretManager, projectId: resource.projectId },
-        knex
-      );
+      const { decryptor, encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: resource.projectId
+      });
 
       const decrypted = JSON.parse(decryptor({ cipherTextBlob: resource.encryptedConnectionDetails }).toString());
 

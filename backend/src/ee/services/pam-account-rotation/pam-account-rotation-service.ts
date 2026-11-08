@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 import pLimit from "p-limit";
 
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -10,8 +11,6 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import { logger } from "@app/lib/logger";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -89,7 +88,7 @@ type TPamAccountRotationServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
@@ -105,7 +104,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     permissionService,
     membershipDAL,
     membershipRoleDAL,
-    kmsService,
+    kmsCoreDomain,
     keyStore,
     gatewayV2Service,
     gatewayPoolService,
@@ -118,7 +117,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const gatewayDeps = { gatewayV2Service, gatewayPoolService };
 
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const encrypt = async (projectId: string, data: Record<string, unknown>) => {
     const { encryptor } = await getProjectCipher(projectId);

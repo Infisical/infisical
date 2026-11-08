@@ -8,6 +8,7 @@ import {
   TSecretChangeRequests,
   TUsers
 } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
@@ -22,7 +23,6 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -54,7 +54,7 @@ type TSecretChangeGlobalRequestFnsFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
@@ -158,7 +158,7 @@ export const secretChangeGlobalRequestFnsFactory = ({
   identityDAL,
   projectDAL,
   projectEnvDAL,
-  kmsService,
+  kmsCoreDomain,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
@@ -344,7 +344,7 @@ export const secretChangeGlobalRequestFnsFactory = ({
       },
       dependencies: {
         projectDAL,
-        kmsService,
+        kmsCoreDomain,
         projectSlackConfigDAL,
         microsoftTeamsService,
         projectMicrosoftTeamsConfigDAL

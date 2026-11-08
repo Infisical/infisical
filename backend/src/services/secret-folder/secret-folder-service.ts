@@ -5,6 +5,7 @@ import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
 import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
@@ -22,7 +23,6 @@ import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privile
 import { ActorType } from "@app/services/auth/auth-type";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {
   assertFolderMoveAllowed,
   buildFolderPath,
@@ -49,7 +49,7 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { fnSecretMoveInTransaction } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import { fnSecretMoveInTransaction, prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TFnSecretMoveResult } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
@@ -103,7 +103,7 @@ type TSecretFolderServiceFactoryDep = {
     | "findByFolderIds"
     | "invalidateSecretCacheByProjectId"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -138,7 +138,7 @@ export const secretFolderServiceFactory = ({
   projectDAL,
   secretApprovalPolicyService,
   secretV2BridgeDAL,
-  kmsService,
+  kmsCoreDomain,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -1890,6 +1890,7 @@ export const secretFolderServiceFactory = ({
     // the entire operation: enumerate + lock the source subtree, recreate the tree at the destination, move every
     // folder's secrets (sharing this tx), then delete the emptied source root. a failure anywhere rolls all of
     // it back. side effects (snapshots/syncs/cache) are dispatched after the commit.
+    const moveCiphers = await prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: actorOrgId });
     const { moveResults } = await folderDAL.transaction(async (tx) => {
       const destinationParentFolder = await folderDAL.findBySecretPath(
         projectId,
@@ -2121,7 +2122,7 @@ export const secretFolderServiceFactory = ({
             actorOrgId,
             tx,
             permissionService,
-            kmsService,
+            ciphers: moveCiphers,
             folderDAL,
             secretDAL: secretV2BridgeDAL,
             secretVersionDAL,

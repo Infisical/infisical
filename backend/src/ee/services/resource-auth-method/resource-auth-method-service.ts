@@ -2,14 +2,13 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
@@ -105,7 +104,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   resourceGcpAuthDAL: TResourceGcpAuthDALFactory;
   resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
@@ -171,7 +170,7 @@ export const resourceAuthMethodServiceFactory = ({
   resourceGcpAuthDAL,
   resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
-  kmsService,
+  kmsCoreDomain,
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolMembershipDAL,
@@ -425,7 +424,7 @@ export const resourceAuthMethodServiceFactory = ({
 
       let caCertificate = "";
       if (config.encryptedKubernetesCaCertificate && loaded.orgId) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: loaded.orgId
         });
@@ -754,7 +753,7 @@ export const resourceAuthMethodServiceFactory = ({
       return {};
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
 
     const encrypt = (value: string | undefined) => {
       if (value === undefined) return undefined;
@@ -875,7 +874,7 @@ export const resourceAuthMethodServiceFactory = ({
       const stored =
         !isMethodChange && current ? await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id }) : undefined;
       if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: actor.orgId
         });
@@ -1323,7 +1322,7 @@ export const resourceAuthMethodServiceFactory = ({
     let caCertificate = "";
     let tokenReviewerJwt = "";
     if (config.encryptedKubernetesCaCertificate || config.encryptedKubernetesTokenReviewerJwt) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: resourceOrgId
       });

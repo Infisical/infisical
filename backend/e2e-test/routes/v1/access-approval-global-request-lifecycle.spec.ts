@@ -228,7 +228,7 @@ describe("Additional privilege list on the global system", () => {
 
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(testSuperAdminDAL, logger);
     approver = await createApproverUser();
     approvers.push(approver);
   });

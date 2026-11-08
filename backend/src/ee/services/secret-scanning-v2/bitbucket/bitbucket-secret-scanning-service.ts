@@ -1,10 +1,9 @@
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { BitbucketDataSourceConfigSchema } from "./bitbucket-secret-scanning-schemas";
 import { TBitbucketDataSourceCredentials, TBitbucketPushEvent } from "./bitbucket-secret-scanning-types";
@@ -12,7 +11,7 @@ import { TBitbucketDataSourceCredentials, TBitbucketPushEvent } from "./bitbucke
 export const bitbucketSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ) => {
   const handlePushEvent = async (
     payload: TBitbucketPushEvent & { dataSourceId: string; receivedSignature: string; bodyString: string }
@@ -59,7 +58,7 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

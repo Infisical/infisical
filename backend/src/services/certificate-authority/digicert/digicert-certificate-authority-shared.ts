@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -7,7 +8,6 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { getDigiCertApiBaseUrl } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -69,7 +69,7 @@ export const castDbEntryToDigiCertCertificateAuthority = (
 export const getDigiCertClientCredentials = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ): Promise<{ apiKey: string; baseUrl: string }> => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -83,7 +83,7 @@ export const getDigiCertClientCredentials = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService
+    kmsCoreDomain
   })) as TDigiCertConnection["credentials"];
 
   return {

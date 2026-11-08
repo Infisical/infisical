@@ -6,6 +6,7 @@ import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -45,13 +46,11 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -158,10 +157,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsCoreDomain: TKmsCoreDomain;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -179,10 +175,7 @@ type TOrderCertificateDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsCoreDomain: TKmsCoreDomain;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -384,8 +377,7 @@ export const executeAcmeOrder = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsCoreDomain,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService,
@@ -404,17 +396,13 @@ export const executeAcmeOrder = async (
     throw new BadRequestError({ message: "CA is disabled" });
   }
 
-  const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-    projectId: ca.projectId,
-    projectDAL,
-    kmsService
-  });
+  const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
 
-  const kmsEncryptor = await kmsService.encryptWithKmsKey({
+  const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
     kmsId: certificateManagerKmsId
   });
 
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+  const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
     kmsId: certificateManagerKmsId
   });
 
@@ -465,7 +453,7 @@ export const executeAcmeOrder = async (
   const acmeClient = new acme.Client(acmeClientOptions);
 
   const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
-  const connection = await decryptAppConnection(appConnection, kmsService);
+  const connection = await decryptAppConnection(appConnection, kmsCoreDomain);
 
   await reportProgress("Submitting order to the certificate authority");
 
@@ -773,7 +761,7 @@ export const AcmeCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
+  kmsCoreDomain,
   projectDAL,
   pkiSubscriberDAL,
   pkiSyncDAL,
@@ -1030,7 +1018,7 @@ export const AcmeCertificateAuthorityFns = ({
         certificateDAL,
         certificateBodyDAL,
         certificateSecretDAL,
-        kmsService,
+        kmsCoreDomain,
         projectDAL,
         gatewayV2Service,
         gatewayPoolService,
@@ -1102,7 +1090,7 @@ export const AcmeCertificateAuthorityFns = ({
         certificateDAL,
         certificateBodyDAL,
         certificateSecretDAL,
-        kmsService,
+        kmsCoreDomain,
         projectDAL,
         certificateProfileDAL,
         gatewayV2Service,

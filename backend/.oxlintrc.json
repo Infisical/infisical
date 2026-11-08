@@ -807,6 +807,101 @@
           }
         ]
       }
+    },
+    {
+      "files": [
+        "src/domains/platform/kms-core/ce/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "@app/ee/**"
+                ],
+                "message": "KMS Core's community edition never imports enterprise code: HSM and external KMS plug in through TKmsCoreHooks, wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transaction-runner",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/platform/kms-core/ce/data-access/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "@app/ee/**"
+                ],
+                "message": "KMS Core's community edition never imports enterprise code: HSM and external KMS plug in through TKmsCoreHooks, wired in domains.ts."
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

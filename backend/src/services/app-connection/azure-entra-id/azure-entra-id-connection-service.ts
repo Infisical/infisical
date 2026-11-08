@@ -1,10 +1,10 @@
 import RE2 from "re2";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { getAzureEntraIdConnectionAccessToken, graphApiRequest } from "./azure-entra-id-connection-fns";
 
@@ -41,11 +41,11 @@ const SCIM_SERVICE_PRINCIPALS_LIMIT = 5;
 export const azureEntraIdConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ) => {
   const listScimServicePrincipals = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.AzureEntraId, connectionId, actor);
-    const accessToken = await getAzureEntraIdConnectionAccessToken(appConnection.id, appConnectionDAL, kmsService);
+    const accessToken = await getAzureEntraIdConnectionAccessToken(appConnection.id, appConnectionDAL, kmsCoreDomain);
 
     const headers = {
       Authorization: `Bearer ${accessToken}`,

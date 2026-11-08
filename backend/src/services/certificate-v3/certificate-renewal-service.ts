@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType, TCertificates } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -46,11 +47,9 @@ import { assertCertificateNotDeleted } from "@app/services/certificate/certifica
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateIssuanceQueueFactory } from "../certificate-authority/certificate-issuance-queue";
 import {
@@ -166,7 +165,7 @@ type TCertificateRenewalServiceFactoryDep = {
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectDAL: TProjectDALFactory;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -235,7 +234,7 @@ export const certificateRenewalServiceFactory = ({
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  kmsService,
+  kmsCoreDomain,
   projectDAL,
   certificateIssuanceQueue,
   certificateRequestService,
@@ -398,8 +397,8 @@ export const certificateRenewalServiceFactory = ({
     projectId: string;
     encryptedPrivateKey: Buffer;
   }): Promise<string> => {
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
+    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const decryptedPrivateKey = await kmsDecryptor({ cipherTextBlob: encryptedPrivateKey });
     return decryptedPrivateKey.toString("utf-8");
   };
@@ -1350,7 +1349,7 @@ export const certificateRenewalServiceFactory = ({
           certificateDAL,
           certificateBodyDAL,
           certificateSecretDAL,
-          kmsService,
+          kmsCoreDomain,
           projectDAL,
           tx,
           isRenewal: true,

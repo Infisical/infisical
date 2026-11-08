@@ -210,7 +210,7 @@ describe("folderCommitServiceFactory", () => {
       folderCommitQueueService: mockFolderCommitQueueService,
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       permissionService: mockPermissionService,
-      kmsService: mockKmsService,
+      kmsCoreDomain: mockKmsService as never,
       secretTagDAL: mockSecretTagDAL,
       resourceMetadataDAL: mockResourceMetadataDAL,
       eventEmitter: mockEventEmitter

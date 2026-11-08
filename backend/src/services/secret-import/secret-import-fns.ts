@@ -1,11 +1,10 @@
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -259,7 +258,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior,
   projectId,
   projectFolderGrantDAL,
-  kmsService,
+  kmsCoreDomain,
   actorOrgId,
   orgDAL,
   abortSignal
@@ -286,7 +285,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior?: PersonalOverridesBehavior;
   projectId?: string;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   actorOrgId: string;
   abortSignal?: AbortSignal;
 }) => {
@@ -294,7 +293,7 @@ export const fnSecretsV2FromImports = async ({
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
   const projectDecryptors = new Map<string, (value?: Buffer | null) => string>();
   const getProjectDecryptor = async (sourceProjectId: string) => {
-    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: sourceDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: sourceProjectId
     });

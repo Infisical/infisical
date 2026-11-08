@@ -38,7 +38,6 @@ import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vau
 import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
-import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -48,13 +47,8 @@ import { initLogger, logger } from "@app/lib/logger";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
-import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
-import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
-import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
-import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { startStandaloneKmsCore } from "@app/domains/domains";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { Meter } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
@@ -294,34 +288,13 @@ const createAccessBundle = async (name: string) => {
 
 // The project's own key, loaded the way the server loads it, so a test can read and write sealed text directly.
 // The spec runs in its own module graph, which is why the env config is initialized again here.
-let kmsService: TKmsServiceFactory | undefined;
+let kmsCoreDomain: TKmsCoreDomain | undefined;
 const projectCipher = async (projectId: string) => {
-  if (!kmsService) {
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
-    kmsService = kmsServiceFactory({
-      kmsRootConfigDAL: testKmsRootConfigDAL,
-      kmsLegacyEncryptionKeyDAL: kmsLegacyEncryptionKeyDALFactory(testDb),
-      kmsKekHistoryDAL: kmsKekHistoryDALFactory(testDb),
-      kmsDAL: kmskeyDALFactory(testDb),
-      internalKmsDAL: internalKmsDALFactory(testDb),
-      internalKmsKeyVersionDAL: internalKmsKeyVersionDALFactory(testDb),
-      orgDAL: orgDALFactory(testDb),
-      projectDAL: projectDALFactory(testDb),
-      hsmService: testHsmService,
-      keyStore: {
-        getItem: async () => null,
-        setItemWithExpiry: async () => "OK" as const,
-        deleteItem: async () => 0
-      },
-      envConfig: getConfig()
-    });
-    const hsmStatus = await isHsmActiveAndEnabled({
-      hsmService: testHsmService,
-      kmsRootConfigDAL: testKmsRootConfigDAL
-    });
-    await kmsService.startService(hsmStatus, { skipRotationState: true });
+  if (!kmsCoreDomain) {
+    await initEnvConfig(testSuperAdminDAL, logger);
+    kmsCoreDomain = await startStandaloneKmsCore({ db: testDb, envConfig: getConfig() });
   }
-  return kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  return kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 };
 
 describe("Agent Vault V1 Router", async () => {
@@ -7027,7 +7000,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        kmsService: {
+        kmsCoreDomain: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
         licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
@@ -7166,7 +7139,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        kmsService: {
+        kmsCoreDomain: {
           createCipherPairWithDataKey: () =>
             Promise.resolve({ decryptor: () => Buffer.from(JSON.stringify({ value: "unsealed" })) })
         } as never,
@@ -7341,7 +7314,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        kmsService: {
+        kmsCoreDomain: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
         licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
@@ -9319,7 +9292,7 @@ describe("Agent Vault V1 Router", async () => {
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
-          kmsService: {
+          kmsCoreDomain: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
@@ -9425,7 +9398,7 @@ describe("Agent Vault V1 Router", async () => {
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
-          kmsService: {
+          kmsCoreDomain: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,

@@ -7,6 +7,7 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
+import { RootKeyEncryptionStrategy, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
@@ -45,10 +46,6 @@ import { ActorType, AuthMethod } from "../auth/auth-type";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
-import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
-import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { RootKeyEncryptionStrategy } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -100,8 +97,7 @@ type TSuperAdminServiceFactoryDep = {
   eventEmitter: TEventEmitter;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
-  kmsRootConfigDAL: TKmsRootConfigDALFactory;
+  kmsCoreDomain: TKmsCoreDomain;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseDomain: TLicenseDomain;
@@ -159,8 +155,7 @@ export const superAdminServiceFactory = ({
   authService,
   orgService,
   keyStore,
-  kmsRootConfigDAL,
-  kmsService,
+  kmsCoreDomain,
   licenseDomain,
   identityAccessTokenService,
   identityTokenAuthDAL,
@@ -231,7 +226,7 @@ export const superAdminServiceFactory = ({
       throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
     }
 
-    const decrypt = kmsService.decryptWithRootKey();
+    const decrypt = kmsCoreDomain.decryptWithRootKey();
 
     const slackClientId = serverCfg.encryptedSlackClientId ? decrypt(serverCfg.encryptedSlackClientId).toString() : "";
     const slackClientSecret = serverCfg.encryptedSlackClientSecret
@@ -299,7 +294,7 @@ export const superAdminServiceFactory = ({
       return {};
     }
 
-    const decrypt = kmsService.decryptWithRootKey();
+    const decrypt = kmsCoreDomain.decryptWithRootKey();
 
     const overrides = JSON.parse(decrypt(serverCfg.encryptedEnvOverrides).toString()) as Record<string, string>;
 
@@ -400,7 +395,7 @@ export const superAdminServiceFactory = ({
       }
     }
 
-    const encryptWithRoot = kmsService.encryptWithRootKey();
+    const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
     if (data.slackClientId) {
       const encryptedClientId = encryptWithRoot(Buffer.from(data.slackClientId));
 
@@ -523,7 +518,7 @@ export const superAdminServiceFactory = ({
       updatedServerCfg.encryptedMicrosoftTeamsBotId &&
       microsoftTeamsSettingsUpdated
     ) {
-      const decryptWithRoot = kmsService.decryptWithRootKey();
+      const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
       decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsBotId); // validate that we're able to decrypt the bot ID
       const decryptedAppId = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsAppId);
       const decryptedAppPassword = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsClientSecret);
@@ -1231,39 +1226,7 @@ export const superAdminServiceFactory = ({
     await userDAL.updateById(userId, { superAdmin: true });
   };
 
-  const getConfiguredEncryptionStrategies = async () => {
-    const appCfg = getConfig();
-
-    const kmsRootCfg = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-
-    if (!kmsRootCfg) {
-      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
-    }
-
-    const selectedStrategy = kmsRootCfg.encryptionStrategy;
-    const enabledStrategies: { enabled: boolean; strategy: RootKeyEncryptionStrategy }[] = [];
-
-    if (appCfg.ROOT_ENCRYPTION_KEY || appCfg.ENCRYPTION_KEY) {
-      const basicStrategy = RootKeyEncryptionStrategy.Software;
-
-      enabledStrategies.push({
-        enabled: selectedStrategy === basicStrategy,
-        strategy: basicStrategy
-      });
-    }
-    if (appCfg.isHsmConfigured) {
-      const hsmStrategy = RootKeyEncryptionStrategy.HSM;
-
-      enabledStrategies.push({
-        enabled: selectedStrategy === hsmStrategy,
-        strategy: hsmStrategy
-      });
-    }
-
-    return {
-      strategies: enabledStrategies
-    };
-  };
+  const getConfiguredEncryptionStrategies = () => kmsCoreDomain.listEncryptionStrategies();
 
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
     if (!licenseDomain.getInstanceEntitlements().features.hsm) {
@@ -1284,7 +1247,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "The selected encryption strategy is already enabled" });
     }
 
-    await kmsService.updateEncryptionStrategy(strategy);
+    await kmsCoreDomain.updateEncryptionStrategy(strategy);
   };
 
   const invalidateCache = async (type: CacheType) => {

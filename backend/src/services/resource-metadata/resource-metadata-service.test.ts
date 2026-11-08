@@ -64,7 +64,7 @@ const setup = (
       searchSecretMetadataWithEncryptedValues,
       transaction: async <T>(callback: (transaction: Knex) => Promise<T>) => callback(tx as Knex)
     },
-    kmsService: { createCipherPairWithDataKey }
+    kmsCoreDomain: { createCipherPairWithDataKey } as never
   });
   return {
     service,

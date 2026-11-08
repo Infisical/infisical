@@ -1,28 +1,23 @@
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger } from "@app/lib/logger";
 import { ExternalMigrationProviders } from "@app/services/external-migration/external-migration-schemas";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEnvConfig } from "./utils/env-config";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 // Dropped by the 20260910093000 migration, so it no longer has a TableName entry.
 const VAULT_EXTERNAL_MIGRATION_CONFIGS = "vault_external_migration_configs";
 
 export async function up(knex: Knex): Promise<void> {
   initLogger();
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
   if (!(await knex.schema.hasTable(TableName.ExternalMigrationConfig))) {
     await knex.schema.createTable(TableName.ExternalMigrationConfig, (t) => {
@@ -45,7 +40,7 @@ export async function up(knex: Knex): Promise<void> {
 
       await Promise.all(
         existingVaultConfigs.map(async (vaultConfig) => {
-          const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
             orgId: vaultConfig.orgId,
             type: KmsDataKey.Organization
           });

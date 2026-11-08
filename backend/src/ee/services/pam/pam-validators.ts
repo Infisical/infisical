@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -14,7 +15,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import {
@@ -36,7 +36,7 @@ export type TPamValidatorDeps = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
@@ -142,14 +142,14 @@ export const validateRecordingConnection = async (
 };
 
 export const validateRecordingS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsService">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsCoreDomain">,
   connectionId: string,
   s3Config: { bucket: string; region?: string; keyPrefix?: string },
   ctx: TActorContext
 ): Promise<TPamRecordingResolvedConfig> => {
   const raw = await enforceAppConnectionConnect(deps, connectionId, ctx);
 
-  const appConnection = await decryptAppConnection(raw, deps.kmsService);
+  const appConnection = await decryptAppConnection(raw, deps.kmsCoreDomain);
 
   const resolvedConfig: TPamRecordingResolvedConfig = {
     backend: PamRecordingStorageBackend.AwsS3,
@@ -169,7 +169,7 @@ export const getInheritedRecordingS3Config = (settingsOverrides: unknown, templa
   PamTemplateSettingsSchema.safeParse(templateSettings).data?.recordingS3Config;
 
 export const resolveOverridesS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsService">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsCoreDomain">,
   settingsOverrides: TPamAccountSettingsOverrides | null | undefined,
   effectiveConnectionId: string | null | undefined,
   ctx: TActorContext,

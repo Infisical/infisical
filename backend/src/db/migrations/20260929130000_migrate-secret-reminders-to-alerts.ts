@@ -1,19 +1,17 @@
 /* eslint-disable no-await-in-loop -- batches run one after another on purpose */
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger, logger } from "@app/lib/logger";
 import { resolvePrincipalsInScope } from "@app/services/alert/alert-principal-scope-fns";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 // Copied rather than imported so later changes to the reminder or alert code can't change what this
 // migration did.
@@ -77,15 +75,10 @@ export async function up(knex: Knex): Promise<void> {
   const hasReminders = await knex(TableName.Reminder).whereNotNull("secretId").first("id");
   if (!hasReminders) return;
 
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
-  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex), hsmService, kmsRootConfigDALFactory(knex));
-  const { kmsService } = await getMigrationEncryptionServices({
-    envConfig,
-    keyStore: inMemoryKeyStore(),
-    db: knex,
-    skipHsmLicenseCheck: true
-  });
-  const cipherCache = createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const cipherCache =
+    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
   const orgDAL = orgDALFactory(knex as never);
   const projectDAL = projectDALFactory(knex as never);
 
@@ -142,7 +135,7 @@ export async function up(knex: Knex): Promise<void> {
     for (const projectId of new Set(pending.map((reminder) => reminder.projectId))) {
       let cipher = cipherCache.getItem(projectId);
       if (!cipher) {
-        cipher = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, knex);
+        cipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
         cipherCache.push(projectId, cipher);
       }
       encryptedEmptyConfigByProject.set(

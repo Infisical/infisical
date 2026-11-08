@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TAuditLogs } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -10,7 +11,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { chunkAuditLogsByBatchLimit } from "../audit-log-stream/audit-log-stream-batching";
@@ -77,7 +77,7 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
   auditLogStreamOutboxDAL: TAuditLogStreamOutboxDALFactory;
   auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectTypesByIds">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
   eventEmitter: TEventEmitter;
@@ -94,7 +94,7 @@ export const auditLogStreamOutboxServiceFactory = ({
   auditLogStreamOutboxDAL,
   auditLogStreamDAL,
   projectDAL,
-  kmsService,
+  kmsCoreDomain,
   keyStore,
   queueService,
   eventEmitter
@@ -274,7 +274,7 @@ export const auditLogStreamOutboxServiceFactory = ({
       credentials = await decryptLogStreamCredentials({
         encryptedCredentials: stream.encryptedCredentials,
         orgId: stream.orgId,
-        kmsService
+        kmsCoreDomain
       });
     } catch (error) {
       // This message reaches the alert and the stream's lastDeliveryError, so the KMS detail stays in the log.

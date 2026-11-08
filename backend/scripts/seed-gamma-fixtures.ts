@@ -30,23 +30,12 @@ import path from "node:path";
 import knexLib from "knex";
 import promptSync from "prompt-sync";
 
-import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
-import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
+import { startStandaloneKmsCore } from "@app/domains/domains";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
-import { inMemoryKeyStore } from "@app/keystore/memory";
-import { getConfig, getHsmConfig, initEnvConfig } from "@app/lib/config/env";
+import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
-import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
-import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
-import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
-import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { kmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { orgDALFactory } from "@app/services/org/org-dal";
-import { projectDALFactory } from "@app/services/project/project-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "../src/db/schemas";
@@ -124,54 +113,16 @@ const main = async () => {
   });
 
   // Match the main app: no replicas are configured here, so route everything
-  // through the same connection. KMS service (kms-service.ts) reads via these.
+  // through the same connection.
   knex.primaryNode = () => knex;
   knex.replicaNode = () => knex;
 
   initLogger();
 
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const kmsLegacyEncryptionKeyDAL = kmsLegacyEncryptionKeyDALFactory(knex);
-  const kmsKekHistoryDAL = kmsKekHistoryDALFactory(knex);
-  const hsmConfig = getHsmConfig(logger);
-
-  const hsmModule = initializeHsmModule(hsmConfig);
-  hsmModule.initialize();
-
-  const hsmService = hsmServiceFactory({
-    hsmModule: hsmModule.getModule(),
-    envConfig: hsmConfig
-  });
-  await hsmService.startService();
-  const envConfig = await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
-
-  // Wire just enough of the DAL graph for kmsService.createCipherPairWithDataKey
-  // against an organization. projectDAL is required by the factory contract
-  // even though it's only used on the project-scoped path.
-  const kmsDAL = kmskeyDALFactory(knex);
-  const internalKmsDAL = internalKmsDALFactory(knex);
-  const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(knex);
-  const orgDAL = orgDALFactory(knex);
-  const projectDAL = projectDALFactory(knex);
-  const kmsService = kmsServiceFactory({
-    kmsRootConfigDAL,
-    kmsLegacyEncryptionKeyDAL,
-    kmsKekHistoryDAL,
-    kmsDAL,
-    internalKmsDAL,
-    internalKmsKeyVersionDAL,
-    orgDAL,
-    projectDAL,
-    hsmService,
-    keyStore: inMemoryKeyStore(),
-    envConfig
-  });
-  // Loads the decrypted root key into the service's in-memory buffer; the
-  // generateKmsKey path called by createCipherPairWithDataKey requires it.
-  // Gamma doesn't use HSM, so we pass an empty status — `null` strategy +
-  // `isHsmConfigured: false` matches the runtime status the main app reports.
-  await kmsService.startService({ rootKmsConfigEncryptionStrategy: null, isHsmConfigured: false });
+  const envConfig = await initEnvConfig(superAdminDAL, logger);
+  // Loads only the root key, as a migration does: enough for createCipherPairWithDataKey against an org.
+  const kmsCoreDomain = await startStandaloneKmsCore({ db: knex, envConfig });
 
   let org = await knex(TableName.Organization).where({ slug: orgSlug }).first();
   if (!org) {
@@ -241,9 +192,7 @@ const main = async () => {
     }
   }
 
-  let scimToken = await knex(TableName.ScimToken)
-    .where({ orgId: org.id, description: scimTokenDescription })
-    .first();
+  let scimToken = await knex(TableName.ScimToken).where({ orgId: org.id, description: scimTokenDescription }).first();
   if (!scimToken) {
     [scimToken] = await knex(TableName.ScimToken)
       .insert({
@@ -261,7 +210,7 @@ const main = async () => {
   // data key (created lazily on first access), so gamma's runtime SAML
   // service decrypts these via the same code path.
   const idpCert = fs.readFileSync(IDP_CERT_PATH, "utf8");
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId: org.id
   });
@@ -301,9 +250,7 @@ const main = async () => {
   // verification flow by inserting status=verified directly. Idempotent on
   // (orgId, domain). Future-dated codeExpiresAt is a placeholder — once
   // status is verified, the runtime code path doesn't read expiry.
-  const existingDomain = await knex(TableName.EmailDomains)
-    .where({ orgId: org.id, domain: E2E_EMAIL_DOMAIN })
-    .first();
+  const existingDomain = await knex(TableName.EmailDomains).where({ orgId: org.id, domain: E2E_EMAIL_DOMAIN }).first();
   if (!existingDomain) {
     const [domainRow] = await knex(TableName.EmailDomains)
       .insert({

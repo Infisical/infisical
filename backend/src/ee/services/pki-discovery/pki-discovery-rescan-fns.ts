@@ -1,5 +1,3 @@
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
-
 import { computeLocationFingerprint } from "./pki-discovery-fns";
 import { describeHostFileError } from "./pki-discovery-host-fns";
 import {
@@ -81,12 +79,8 @@ export const rescanInstallation = async (installationId: string, deps: THostScan
       return;
     }
 
-    const certificateKmsKeyId = await getProjectKmsCertificateKeyId({
-      projectId: installation.projectId,
-      projectDAL: deps.projectDAL,
-      kmsService: deps.kmsService
-    });
-    const kmsEncryptor = await deps.kmsService.encryptWithKmsKey({ kmsId: certificateKmsKeyId });
+    const certificateKmsKeyId = await deps.kmsCoreDomain.getProjectCertificateKmsKeyId(installation.projectId);
+    const kmsEncryptor = await deps.kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateKmsKeyId });
 
     const written = await writeHostFile(
       { ...host, hostname: response.host.hostname },

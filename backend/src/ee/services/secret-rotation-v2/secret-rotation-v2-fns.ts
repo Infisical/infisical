@@ -1,10 +1,10 @@
 import { AxiosError } from "axios";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TQueueOptions } from "@app/queue/queue-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
@@ -152,13 +152,13 @@ export const getNextUtcRotationInterval = (rotateAtUtc?: TSecretRotationV2["rota
 export const encryptSecretRotationCredentials = async ({
   projectId,
   generatedCredentials,
-  kmsService
+  kmsCoreDomain
 }: {
   projectId: string;
   generatedCredentials: TSecretRotationV2GeneratedCredentials;
-  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"];
+  kmsCoreDomain: TSecretRotationV2ServiceFactoryDep["kmsCoreDomain"];
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -173,13 +173,13 @@ export const encryptSecretRotationCredentials = async ({
 export const decryptSecretRotationCredentials = async ({
   projectId,
   encryptedGeneratedCredentials,
-  kmsService
+  kmsCoreDomain
 }: {
   projectId: string;
   encryptedGeneratedCredentials: Buffer;
-  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"];
+  kmsCoreDomain: TSecretRotationV2ServiceFactoryDep["kmsCoreDomain"];
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -274,9 +274,9 @@ export const calculateNextRotationAt = ({
 
 export const expandSecretRotation = async (
   { encryptedLastRotationMessage, ...secretRotation }: TSecretRotationV2Raw,
-  kmsService: TSecretRotationV2ServiceFactoryDep["kmsService"]
+  kmsCoreDomain: TSecretRotationV2ServiceFactoryDep["kmsCoreDomain"]
 ) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId: secretRotation.projectId
   });

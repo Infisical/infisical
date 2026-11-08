@@ -1,7 +1,7 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TScepDynamicChallengeDALFactory } from "../pki-scep-dynamic-challenge-dal";
 
@@ -46,5 +46,5 @@ export type TScepValidationHandlerDeps = {
   scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "consumeByHash">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };

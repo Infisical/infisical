@@ -61,7 +61,7 @@ const withAzureConcurrentRequestRetry = async <T>(fn: () => Promise<T>, context:
 export const azureClientSecretRotationFactory: TRotationFactory<
   TAzureClientSecretRotationWithConnection,
   TAzureClientSecretRotationGeneratedCredentials
-> = (secretRotation, appConnectionDAL, kmsService) => {
+> = (secretRotation, appConnectionDAL, kmsCoreDomain) => {
   const {
     connection,
     parameters: { objectId, clientId: clientIdParam },
@@ -73,7 +73,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
    * Creates a new client secret for the Azure app.
    */
   const $rotateClientSecret = async () => {
-    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
+    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsCoreDomain);
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/addPassword`;
 
     const now = new Date();
@@ -130,7 +130,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
    * Checks if a credential with the given keyId exists.
    */
   const credentialExists = async (keyId: string): Promise<boolean> => {
-    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
+    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsCoreDomain);
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/passwordCredentials`;
 
     try {
@@ -158,7 +158,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   };
 
   const $removeClientSecret = async (keyId: string) => {
-    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
+    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsCoreDomain);
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/removePassword`;
 
     try {

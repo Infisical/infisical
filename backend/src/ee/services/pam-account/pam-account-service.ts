@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -22,8 +23,6 @@ import { createSshKeyPair, SshCertKeyAlgorithm } from "@app/lib/ssh";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
@@ -125,7 +124,7 @@ type TPamAccountServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "findHealthyGatewaysByPoolId">;
   gatewayV2Service: Pick<
@@ -214,7 +213,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     orgDAL,
     mfaSessionService,
     permissionService,
-    kmsService,
+    kmsCoreDomain,
     gatewayV2Service,
     gatewayPoolService,
     gatewayPoolMembershipDAL,
@@ -223,7 +222,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   } = deps;
 
   const getProjectCipher = async (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const encrypt = async (projectId: string, data: Record<string, unknown>) => {
     const { encryptor } = await getProjectCipher(projectId);

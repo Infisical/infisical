@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -11,9 +12,7 @@ import {
 import { NotFoundError } from "@app/lib/errors";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "@app/services/certificate-authority/certificate-authority-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlServiceFactory } from "./certificate-authority-crl-types";
 
@@ -21,15 +20,14 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export const certificateAuthorityCrlServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCrlDAL,
-  projectDAL,
-  kmsService,
+  kmsCoreDomain,
   permissionService // license
 }: TCertificateAuthorityCrlServiceFactoryDep): TCertificateAuthorityCrlServiceFactory => {
   /**
@@ -42,13 +40,9 @@ export const certificateAuthorityCrlServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caCrl.caId);
     if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caCrl.caId}' not found` });
 
-    const keyId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
       kmsId: keyId
     });
 
@@ -92,13 +86,9 @@ export const certificateAuthorityCrlServiceFactory = ({
 
     const caCrls = await certificateAuthorityCrlDAL.find({ caId: ca.id }, { sort: [["createdAt", "desc"]] });
 
-    const keyId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
       kmsId: keyId
     });
 
@@ -143,13 +133,9 @@ export const certificateAuthorityCrlServiceFactory = ({
 
   //   const alg = keyAlgorithmToAlgCfg(ca.keyAlgorithm as CertKeyAlgorithm);
 
-  //   const keyId = await getProjectKmsCertificateKeyId({
-  //     projectId: ca.projectId,
-  //     projectDAL,
-  //     kmsService
-  //   });
+  //   const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
 
-  //   const privateKey = await kmsService.decrypt({
+  //   const privateKey = await kmsCoreDomain.decrypt({
   //     kmsId: keyId,
   //     cipherTextBlob: caSecret.encryptedPrivateKey
   //   });
@@ -181,7 +167,7 @@ export const certificateAuthorityCrlServiceFactory = ({
   //     signingKey: sk
   //   });
 
-  //   const { cipherTextBlob: encryptedCrl } = await kmsService.encrypt({
+  //   const { cipherTextBlob: encryptedCrl } = await kmsCoreDomain.encrypt({
   //     kmsId: keyId,
   //     plainText: Buffer.from(new Uint8Array(crl.rawData))
   //   });

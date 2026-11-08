@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -20,8 +21,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
@@ -54,7 +53,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: TIdentityDALFactory;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "findConstraintsForGeneratedSecret">;
@@ -69,7 +68,7 @@ export const dynamicSecretLeaseServiceFactory = ({
   dynamicSecretQueueService,
   projectDAL,
   licenseDomain,
-  kmsService,
+  kmsCoreDomain,
   userDAL,
   identityDAL,
   secretValidationRuleService
@@ -141,7 +140,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
+      await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -275,7 +274,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -380,7 +379,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

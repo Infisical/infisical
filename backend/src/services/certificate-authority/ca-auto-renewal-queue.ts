@@ -1,3 +1,4 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 /* eslint-disable no-continue, no-await-in-loop */
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -11,7 +12,6 @@ import { decryptAppConnectionCredentials } from "../app-connection/app-connectio
 import { getAzureADCSConnectionCredentials } from "../app-connection/azure-adcs/azure-adcs-connection-fns";
 import { TVenafiConnection } from "../app-connection/venafi/venafi-connection-types";
 import { splitPemChain } from "../certificate/certificate-fns";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { submitCsrToNativeAdcs } from "./ca-signing-config/adcs-native-signing-fns";
 import { submitCsrToAdcs } from "./ca-signing-config/adcs-signing-fns";
 import { TCaSigningConfigDALFactory } from "./ca-signing-config/ca-signing-config-dal";
@@ -41,7 +41,7 @@ type TCaAutoRenewalQueueFactoryDep = {
     "getCaCsr" | "importCertToCa" | "renewCaCert"
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -58,7 +58,7 @@ export const caAutoRenewalQueueFactory = ({
   caSigningConfigDAL,
   internalCertificateAuthorityService,
   appConnectionDAL,
-  kmsService,
+  kmsCoreDomain,
   gatewayV2Service,
   gatewayPoolService
 }: TCaAutoRenewalQueueFactoryDep) => {
@@ -108,7 +108,7 @@ export const caAutoRenewalQueueFactory = ({
     const credentials = (await decryptAppConnectionCredentials({
       orgId: appConnection.orgId,
       encryptedCredentials: appConnection.encryptedCredentials,
-      kmsService,
+      kmsCoreDomain,
       projectId: appConnection.projectId
     })) as TVenafiConnection["credentials"];
 
@@ -237,7 +237,7 @@ export const caAutoRenewalQueueFactory = ({
     const credentials = await getAzureADCSConnectionCredentials(
       signingConfig.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsCoreDomain
     );
 
     const { certificate, certificateChain } = await submitCsrToAdcs({
@@ -308,7 +308,7 @@ export const caAutoRenewalQueueFactory = ({
         template: destinationConfig.template,
         caName: destinationConfig.caName
       },
-      { appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService }
+      { appConnectionDAL, kmsCoreDomain, gatewayV2Service, gatewayPoolService }
     );
 
     await internalCertificateAuthorityService.importCertToCa({

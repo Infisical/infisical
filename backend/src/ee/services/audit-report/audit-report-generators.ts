@@ -1,13 +1,12 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { getConfig } from "@app/lib/config/env";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -34,7 +33,7 @@ export type TAuditReportGeneratorDALs = {
   auditLogDAL: Pick<TAuditLogDALFactory, "find">;
   clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "find">;
   secretValidationRuleDAL: Pick<TSecretValidationRuleDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TReportGenerationContext = {
@@ -210,7 +209,7 @@ const duplicateSecretsReport: TReportDefinition = {
     const groups = await dal.secretV2BridgeDAL.findDuplicatedSecretValues(projectId);
     if (!groups.length) return { columns, rows: [], truncated: false };
 
-    const { decryptor } = await dal.kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await dal.kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -267,7 +266,7 @@ const secretValidationComplianceReport: TReportDefinition = {
     if (!rules.length) return { columns, rows: [], truncated: false };
 
     // The same SecretManager data key encrypts both rule inputs and secret values.
-    const { decryptor } = await dal.kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await dal.kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

@@ -1,5 +1,5 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { groupBy } from "@app/lib/fn";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
@@ -25,7 +25,7 @@ export type TFnSecretsV2FromImportsDeps = {
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   actorOrgId: string;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export const getAncestorPaths = (path: string): string[] => {

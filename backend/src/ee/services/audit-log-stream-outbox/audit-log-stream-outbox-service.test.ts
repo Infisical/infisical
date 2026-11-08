@@ -131,7 +131,7 @@ const createService = () => {
     auditLogStreamOutboxDAL: auditLogStreamOutboxDAL as never,
     auditLogStreamDAL: auditLogStreamDAL as never,
     projectDAL: projectDAL as never,
-    kmsService: {} as never,
+    kmsCoreDomain: {} as never,
     keyStore: {} as never,
     queueService: {} as never,
     eventEmitter
@@ -404,7 +404,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       auditLogStreamOutboxDAL: auditLogStreamOutboxDAL as never,
       auditLogStreamDAL: auditLogStreamDAL as never,
       projectDAL: projectDAL as never,
-      kmsService: {} as never,
+      kmsCoreDomain: {} as never,
       keyStore: keyStore as never,
       queueService: queueService as never,
       eventEmitter: { emit: vi.fn(async () => undefined) }

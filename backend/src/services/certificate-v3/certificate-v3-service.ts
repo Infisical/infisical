@@ -4,6 +4,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -63,7 +64,6 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
@@ -175,10 +175,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
+  kmsCoreDomain: TKmsCoreDomain;
   projectDAL: TProjectDALFactory;
   certificateIssuanceQueue: Pick<
     import("../certificate-authority/certificate-issuance-queue").TCertificateIssuanceQueueFactory,
@@ -353,7 +350,7 @@ export const certificateV3ServiceFactory = ({
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  kmsService,
+  kmsCoreDomain,
   projectDAL,
   certificateIssuanceQueue,
   certificateRequestService,
@@ -922,7 +919,7 @@ export const certificateV3ServiceFactory = ({
           certificateDAL,
           certificateBodyDAL,
           certificateSecretDAL,
-          kmsService,
+          kmsCoreDomain,
           projectDAL,
           tx
         });
@@ -2381,7 +2378,7 @@ export const certificateV3ServiceFactory = ({
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    kmsService,
+    kmsCoreDomain,
     projectDAL,
     certificateIssuanceQueue,
     certificateRequestService,

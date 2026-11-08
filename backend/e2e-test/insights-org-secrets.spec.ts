@@ -416,14 +416,14 @@ const dupInsightsService = insightsServiceFactory({
   licenseDomain: dupGate.licenseDomain,
   orgDAL: { ...usageInsightsDepStubs.orgDAL, findById: orgDALFactory(testDb).findById },
   // No secret here carries an encrypted value, so the decryptor is never invoked.
-  kmsService: {
+  kmsCoreDomain: {
     createCipherPairWithDataKey: async () =>
       ({
         decryptor: () => {
           throw new Error("insights duplication spec: no secret carries an encrypted value to decrypt");
         }
       }) as never
-  },
+  } as never,
   folderDAL: {
     ...projectScopedInsightsDepStubs.folderDAL,
     findSecretPathByFolderIds: secretFolderDALFactory(testDb).findSecretPathByFolderIds

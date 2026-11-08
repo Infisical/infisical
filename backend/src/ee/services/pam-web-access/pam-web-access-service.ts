@@ -2,6 +2,7 @@ import net from "node:net";
 
 import type WebSocket from "ws";
 
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -18,8 +19,6 @@ import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
@@ -86,7 +85,7 @@ type TPamWebAccessServiceFactoryDep = {
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "runWithPoolFailover" | "assertGatewayBindingInOrg"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   userDAL: Pick<TUserDALFactory, "findById">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
@@ -126,7 +125,7 @@ export const pamWebAccessServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service,
   gatewayPoolService,
-  kmsService,
+  kmsCoreDomain,
   userDAL,
   mfaSessionService,
   orgDAL,
@@ -135,7 +134,10 @@ export const pamWebAccessServiceFactory = ({
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
   };
 

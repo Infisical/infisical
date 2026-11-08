@@ -52,7 +52,7 @@ const buildService = (
       }))
     },
     projectDAL: { findProjectById: vi.fn(async (id: string) => ({ id, type: "cert-manager" })) },
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       }))

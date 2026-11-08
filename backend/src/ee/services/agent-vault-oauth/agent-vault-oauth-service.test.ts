@@ -185,7 +185,7 @@ const setup = ({
         };
       }
     },
-    kmsService: kms as never,
+    kmsCoreDomain: kms as never,
     agentVaultServiceDAL: {
       findByIdInAccessBundle: async ({ id }: { id: string }) => rows.get(id) as never,
       findByIdPrimary: async (id: string) => {

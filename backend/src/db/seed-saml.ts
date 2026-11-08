@@ -1,3 +1,4 @@
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 /* eslint-disable no-console */
 // Standalone dev helper: stands up SAML SSO + real SCIM provisioning against the local Authentik
 // IdP (`make up-dev-saml`), without touching the shared `seed-dev` data. One `saml` org is used for
@@ -13,17 +14,14 @@
 // Run: `make seed-dev-saml` / `npm run seed-saml`. See sso.md.
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
-import { inMemoryKeyStore } from "@app/keystore/memory";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { AuthTokenType } from "@app/services/auth/auth-type";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { initDbConnection } from "./instance";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./migrations/utils/env-config";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./migrations/utils/services";
+import { getMigrationEnvConfig } from "./migrations/utils/env-config";
+import { getMigrationEncryptionServices } from "./migrations/utils/services";
 import { TableName } from "./schemas";
 import { seedAdminUser } from "./seed-sso-shared";
 
@@ -93,12 +91,9 @@ const main = async () => {
 
   try {
     // ---- Infisical: KMS bootstrap ----
-    const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
     const superAdminDAL = superAdminDALFactory(db);
-    const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
-    const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-    const keyStore = inMemoryKeyStore();
-    const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db });
+    const envConfig = await getMigrationEnvConfig(superAdminDAL);
+    const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db });
 
     // ---- Infisical: org (SCIM enabled) ----
     let org = await db(TableName.Organization).where({ slug: ORG_SLUG }).first();
@@ -245,10 +240,10 @@ const main = async () => {
     const idpCert = ((await certRes.json()) as { data: string }).data;
 
     // ---- Infisical: active SAML config (entryPoint/issuer/cert KMS-encrypted; unblocks SCIM) ----
-    const { encryptor } = await kmsService.createCipherPairWithDataKey(
-      { type: KmsDataKey.Organization, orgId: org.id },
-      db
-    );
+    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: org.id
+    });
     await db(TableName.SamlConfig).where({ orgId: org.id }).del();
     await db(TableName.SamlConfig).insert({
       // @ts-expect-error id is normally auto-generated; we pin it so it matches the Authentik ACS path

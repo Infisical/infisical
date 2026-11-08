@@ -2,14 +2,12 @@
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { DEFAULT_ACCOUNT_TEMPLATES } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { PamProductRole, PamResourceRole } from "@app/ee/services/pam/pam-enums";
-import { inMemoryKeyStore } from "@app/keystore/memory";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import {
@@ -22,8 +20,8 @@ import {
   TableName
 } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEnvConfig } from "./utils/env-config";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 // Batched: the per-org insert loop is round-trip-bound and holds write-blocking locks on hot
 // tables for ~15 statements x org count (12+ min at Cloud scale); chunked inserts take seconds.
@@ -270,20 +268,15 @@ export async function up(knex: Knex): Promise<void> {
 
   // Migrate data from old projects
   initLogger();
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({
     envConfig,
-    keyStore,
-    db: knex,
-    skipHsmLicenseCheck: true
+    db: knex
   });
 
   const getProjectCipher = async (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, knex);
+    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   for (const { orgId } of orgsWithPam) {
     const newProjectId = orgToPamProject.get(orgId)!;

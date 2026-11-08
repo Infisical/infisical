@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -42,8 +43,6 @@ import {
   TPamAccessPolicyInputs
 } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -97,7 +96,7 @@ type TPamAccessApprovalResourceDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   pamFolderNotificationConfigDAL: Pick<TPamFolderNotificationConfigDALFactory, "findByFolderIdWithIntegration">;
 };
 
@@ -160,7 +159,7 @@ export const pamAccessApprovalResourceFactory = ({
   permissionService,
   userDAL,
   gatewayV2Service,
-  kmsService,
+  kmsCoreDomain,
   pamFolderNotificationConfigDAL
 }: TPamAccessApprovalResourceDep): TPamAccessApprovalResource => {
   const $assertFolderInProject = async (folderId: string, projectId: string) => {
@@ -434,7 +433,7 @@ export const pamAccessApprovalResourceFactory = ({
     }
 
     if (isCredentialRequest) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });

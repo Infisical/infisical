@@ -4,6 +4,7 @@ import net from "net";
 import pLimit from "p-limit";
 
 import { TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -15,9 +16,7 @@ import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
 import { TPkiCertificateInstallationCertDALFactory } from "./pki-certificate-installation-cert-dal";
@@ -67,7 +66,7 @@ type TExecuteScanDeps = {
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -119,7 +118,7 @@ export const findOrCreateNetworkInstallation = async (
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
-  const { pkiDiscoveryConfigDAL, projectDAL, kmsService, gatewayV2Service, gatewayPoolService, telemetryService } =
+  const { pkiDiscoveryConfigDAL, projectDAL, kmsCoreDomain, gatewayV2Service, gatewayPoolService, telemetryService } =
     deps;
 
   const startedAt = new Date();
@@ -137,13 +136,9 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
       "PKI discovery scan starting"
     );
 
-    const certificateKmsKeyId = await getProjectKmsCertificateKeyId({
-      projectId: discoveryConfig.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateKmsKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
       kmsId: certificateKmsKeyId
     });
 

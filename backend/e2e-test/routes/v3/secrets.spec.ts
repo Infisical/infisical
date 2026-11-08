@@ -200,7 +200,7 @@ describe("Secret V3 Router", async () => {
   let folderId = "";
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(testSuperAdminDAL, logger);
 
     const projectKeyRes = await testServer.inject({
       method: "GET",

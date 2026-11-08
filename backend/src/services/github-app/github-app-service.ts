@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -37,8 +38,6 @@ import {
   signGitHubAppJwt
 } from "@app/services/app-connection/github/github-connection-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGitHubAppDALFactory } from "./github-app-dal";
@@ -55,7 +54,7 @@ import {
 type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
   licenseDomain: TLicenseDomain;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -73,7 +72,7 @@ export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory
 export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
   permissionService,
-  kmsService,
+  kmsCoreDomain,
   keyStore,
   licenseDomain,
   gatewayV2Service,
@@ -318,7 +317,7 @@ export const gitHubAppServiceFactory = ({
     try {
       credentials = await resolveGitHubAppCredentials(
         { gitHubAppId: id, orgId: orgPermission.orgId },
-        { gitHubAppDAL, kmsService }
+        { gitHubAppDAL, kmsCoreDomain }
       );
     } catch {
       // App missing or credentials unreadable — the transaction below still performs (or rejects)
@@ -614,7 +613,7 @@ export const gitHubAppServiceFactory = ({
         }
         codeExchanged = true;
 
-        const { encryptor } = await kmsService.createCipherPairWithDataKey(
+        const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
           projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
         );
 

@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import pLimit from "p-limit";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
@@ -12,7 +13,6 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -42,9 +42,9 @@ export type TExternalMigrationQueueFactoryDep = {
   smtpService: TSmtpService;
   queueService: TQueueServiceFactory;
 
-  projectDAL: Pick<TProjectDALFactory, "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "transaction" | "delete">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
@@ -75,7 +75,7 @@ export const externalMigrationQueueFactory = ({
   projectDAL,
   projectEnvService,
   secretV2BridgeService,
-  kmsService,
+  kmsCoreDomain,
   projectEnvDAL,
   secretDAL,
   secretVersionDAL,
@@ -157,7 +157,7 @@ export const externalMigrationQueueFactory = ({
         secretTagDAL,
         secretVersionTagDAL,
         folderDAL,
-        kmsService,
+        kmsCoreDomain,
         projectService,
         projectEnvService,
         secretV2BridgeService,

@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType, TCertificateSyncs } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -23,7 +24,6 @@ import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -152,7 +152,7 @@ type TPkiSyncServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseDomain: TLicenseDomain;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiSyncHealthCheckQueue: Pick<
     TPkiSyncHealthCheckQueueFactory,
@@ -186,7 +186,7 @@ export const pkiSyncServiceFactory = ({
   permissionService,
   licenseDomain,
   keyStore,
-  kmsService,
+  kmsCoreDomain,
   pkiSyncQueue,
   pkiSyncHealthCheckQueue,
   auditLogService
@@ -778,7 +778,7 @@ export const pkiSyncServiceFactory = ({
 
     const encryptedCredentials =
       credentials?.exportPassword && !isBlankExportPassword(credentials.exportPassword)
-        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsService })
+        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsCoreDomain })
         : undefined;
 
     try {
@@ -1031,7 +1031,12 @@ export const pkiSyncServiceFactory = ({
 
     const encryptedCredentials =
       credentials?.exportPassword && !isBlankExportPassword(credentials.exportPassword)
-        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId: pkiSync.projectId, credentials, kmsService })
+        ? await encryptPkiSyncCredentials({
+            orgId: actor.orgId,
+            projectId: pkiSync.projectId,
+            credentials,
+            kmsCoreDomain
+          })
         : undefined;
 
     const isHealthCheckBeingCleared =

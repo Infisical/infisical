@@ -36,7 +36,7 @@ const sleep = async () =>
 export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
   TDatabricksServicePrincipalSecretRotationWithConnection,
   TDatabricksServicePrincipalSecretRotationGeneratedCredentials
-> = (secretRotation, appConnectionDAL, kmsService) => {
+> = (secretRotation, appConnectionDAL, kmsCoreDomain) => {
   const {
     connection,
     parameters: { servicePrincipalId, clientId: clientIdParam },
@@ -45,7 +45,7 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
   } = secretRotation;
 
   const $rotateClientSecret = async () => {
-    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService);
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsCoreDomain);
     const workspaceUrl = removeTrailingSlash(connection.credentials.workspaceUrl);
 
     await blockLocalAndPrivateIpAddresses(workspaceUrl);
@@ -117,7 +117,7 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
   };
 
   const $listClientSecrets = async () => {
-    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService);
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsCoreDomain);
     const workspaceUrl = removeTrailingSlash(connection.credentials.workspaceUrl);
 
     await blockLocalAndPrivateIpAddresses(workspaceUrl);
@@ -159,7 +159,7 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
   };
 
   const revokeCredential = async (secretId: string) => {
-    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService);
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsCoreDomain);
     const workspaceUrl = removeTrailingSlash(connection.credentials.workspaceUrl);
 
     await blockLocalAndPrivateIpAddresses(workspaceUrl);

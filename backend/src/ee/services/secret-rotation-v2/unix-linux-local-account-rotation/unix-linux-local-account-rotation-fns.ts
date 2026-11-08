@@ -426,7 +426,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
 > = (
   secretRotation,
   appConnectionDAL,
-  kmsService,
+  kmsCoreDomain,
   gatewayV2Service,
   gatewayPoolService,
   _keyStore,

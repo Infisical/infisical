@@ -46,7 +46,7 @@ const LAST_ATTEMPT = 4;
 // Stands in for the org KMS key: these tests are about the outbox, not about encryption, and the
 // server does not expose its KMS service. Flip decryptShouldFail to simulate a broken key.
 let decryptShouldFail = false;
-const kmsService = {
+const kmsCoreDomain = {
   createCipherPairWithDataKey: async () => ({
     encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
     decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => {
@@ -75,7 +75,7 @@ const service = auditLogStreamOutboxServiceFactory({
   auditLogStreamOutboxDAL: outboxDAL,
   auditLogStreamDAL,
   projectDAL: { findProjectTypesByIds: async () => [] },
-  kmsService: kmsService as never,
+  kmsCoreDomain: kmsCoreDomain as never,
   // Required by the factory; drainStream never touches it.
   keyStore: { setItemWithExpiryNX: async () => null },
   queueService: {} as never,
@@ -86,7 +86,7 @@ const createStream = async (url: string) => {
   const encryptedCredentials = await encryptLogStreamCredentials({
     orgId,
     credentials: { url, headers: [] },
-    kmsService: kmsService as never
+    kmsCoreDomain: kmsCoreDomain as never
   });
   const [stream] = await testDb(TableName.AuditLogStream)
     .insert({ orgId, provider: LogProvider.Custom, encryptedCredentials, streamMode: StreamMode.Batch })
@@ -128,7 +128,7 @@ describe("audit log stream outbox (postgres)", () => {
     // Spec files run in a separate module graph from the test server, so the logger and env config the
     // outbox service and the providers read have to be initialized here as well.
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(testSuperAdminDAL, logger);
     ({ orgId, cleanup: cleanupOrg } = await createIsolatedOrgAndProject("audit-log-stream-outbox-e2e"));
     await cleanupEvents();
   });

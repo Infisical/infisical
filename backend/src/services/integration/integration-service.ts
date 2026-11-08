@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -14,8 +15,6 @@ import { TProjectPermission } from "@app/lib/types";
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { deleteIntegrationSecrets } from "../integration-auth/integration-delete-secret";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
@@ -42,7 +41,7 @@ type TIntegrationServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -60,7 +59,7 @@ export const integrationServiceFactory = ({
   projectBotService,
   secretV2BridgeDAL,
   secretImportDAL,
-  kmsService,
+  kmsCoreDomain,
   secretDAL,
   projectFolderGrantDAL,
   orgDAL
@@ -189,7 +188,7 @@ export const integrationServiceFactory = ({
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: integration.projectId
     });
@@ -242,7 +241,7 @@ export const integrationServiceFactory = ({
         folderDAL,
         secretImportDAL,
         secretDAL,
-        kmsService,
+        kmsCoreDomain,
         projectFolderGrantDAL,
         orgDAL,
         actorOrgId

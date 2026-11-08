@@ -366,7 +366,7 @@ const resolveGitHubSyncConnection = async (
 
 export const gitHubPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
   { destinationConfig, existingDestinationConfig, connectionId },
-  { appConnectionDAL, kmsService }
+  { appConnectionDAL, kmsCoreDomain }
 ) => {
   // An update that only changes the connection still has to be checked against the stored config
   const effectiveDestinationConfig = destinationConfig ?? existingDestinationConfig;
@@ -378,7 +378,7 @@ export const gitHubPreSaveTransformDestinationConfig: TPreSaveTransformDestinati
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService,
+    kmsCoreDomain,
     projectId: appConnection.projectId
   })) as TGitHubConnection["credentials"];
 

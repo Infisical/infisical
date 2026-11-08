@@ -14,6 +14,7 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -32,8 +33,6 @@ import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -111,7 +110,7 @@ type TSamlConfigServiceFactoryDep = {
   licenseDomain: TLicenseDomain;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "find" | "delete" | "transaction" | "insertMany" | "filterProjectsByUserMembership"
@@ -153,7 +152,7 @@ export const samlConfigServiceFactory = ({
   tokenService,
   smtpService,
   identityMetadataDAL,
-  kmsService,
+  kmsCoreDomain,
   membershipDAL,
   membershipRoleDAL,
   membershipGroupDAL,
@@ -393,7 +392,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -490,7 +489,7 @@ export const samlConfigServiceFactory = ({
     if (mfaAuthnContexts !== undefined) {
       updateQuery.mfaAuthnContexts = mfaAuthnContexts;
     }
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -572,7 +571,7 @@ export const samlConfigServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
     }
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: samlConfig.orgId
     });

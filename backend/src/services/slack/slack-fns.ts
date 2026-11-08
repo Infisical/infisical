@@ -1,11 +1,11 @@
 import { WebClient } from "@slack/web-api";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
-import { KmsDataKey } from "../kms/kms-types";
 import { TSendSlackNotificationDTO } from "./slack-types";
 
 const COMPANY_BRAND_COLOR = "#e0ed34";
@@ -436,11 +436,11 @@ const buildSlackPayload = (notification: TNotification) => {
 export const sendSlackNotification = async ({
   orgId,
   notification,
-  kmsService,
+  kmsCoreDomain,
   targetChannelIds,
   slackIntegration
 }: TSendSlackNotificationDTO) => {
-  const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor: orgDataKeyDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
   });

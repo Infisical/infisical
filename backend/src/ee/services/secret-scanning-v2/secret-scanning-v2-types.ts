@@ -6,6 +6,7 @@ import {
   TSecretScanningResourcesInsert,
   TSecretScanningScans
 } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TBitbucketDataSource,
@@ -43,7 +44,6 @@ import {
   SecretScanningScanTrigger
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 export type TSecretScanningDataSource = TGitHubDataSource | TBitbucketDataSource | TGitLabDataSource;
 
@@ -315,7 +315,7 @@ export type TSecretScanningFactoryUpdateWebhook<
 
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TSecretScanningFactory<

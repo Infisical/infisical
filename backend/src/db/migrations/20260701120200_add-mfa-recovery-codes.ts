@@ -1,15 +1,13 @@
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
 import { initLogger } from "@app/lib/logger";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { generateRecoveryCode } from "@app/services/mfa-recovery-code/mfa-recovery-code-fns";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEnvConfig } from "./utils/env-config";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
 // Keep in sync with MAX_RECOVERY_CODE_LIMIT in mfa-recovery-code-service.ts.
@@ -19,13 +17,10 @@ const RECOVERY_CODE_COUNT = 10;
 // migration, mirroring the runtime mfaRecoveryCodeService.
 const startRootEncryptor = async (knex: Knex) => {
   initLogger();
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
-  return kmsService.encryptWithRootKey();
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  return kmsCoreDomain.encryptWithRootKey();
 };
 
 // Same code count + encoding as generateEncryptedRecoveryCodes in the service,
@@ -51,7 +46,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.UserMfaRecoveryCode);
 
     // Backfill from existing TOTP recovery codes. Both stores use
-    // kmsService.encryptWithRootKey() (root-key AES-GCM, table-independent),
+    // kmsCoreDomain.encryptWithRootKey() (root-key AES-GCM, table-independent),
     // so the ciphertext is portable and can be copied without decrypting.
     await knex.raw(
       `INSERT INTO ?? ("userId", "encryptedRecoveryCodes")

@@ -17,6 +17,7 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
@@ -80,7 +81,6 @@ import { expandInternalCa } from "../certificate-authority/certificate-authority
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
@@ -197,16 +197,7 @@ type TProjectServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    | "updateProjectSecretManagerKmsKey"
-    | "getProjectKeyBackup"
-    | "loadProjectKeyBackup"
-    | "getKmsById"
-    | "getProjectSecretManagerKmsKeyId"
-    | "deleteInternalKms"
-    | "createCipherPairWithDataKey"
-  >;
+  kmsCoreDomain: TKmsCoreDomain;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectAccessRequestDAL: Pick<
@@ -256,7 +247,7 @@ export const projectServiceFactory = ({
   pkiAlertDAL,
   pkiSubscriberDAL,
   keyStore,
-  kmsService,
+  kmsCoreDomain,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   slackIntegrationDAL,
@@ -349,6 +340,28 @@ export const projectServiceFactory = ({
       }
     }
 
+    // Validated before the transaction: KMS Core is never called inside one.
+    if (kmsKeyId) {
+      if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
+        throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
+      }
+
+      const kms = await kmsCoreDomain.getKmsById(kmsKeyId);
+
+      if (kms.orgId !== organization.id) {
+        throw new ForbiddenRequestError({
+          message: "KMS does not belong in the organization"
+        });
+      }
+
+      // an internal key here belongs to another project or to the org
+      if (!kms.isExternal) {
+        throw new BadRequestError({
+          message: "Only an external KMS key can be assigned to a project"
+        });
+      }
+    }
+
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
@@ -361,27 +374,6 @@ export const projectServiceFactory = ({
         if (existingSecretScanningProject) {
           throw new BadRequestError({
             message: "Secret Scanning is limited to one project per organization at this time."
-          });
-        }
-      }
-
-      if (kmsKeyId) {
-        if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
-          throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
-        }
-
-        const kms = await kmsService.getKmsById(kmsKeyId, tx);
-
-        if (kms.orgId !== organization.id) {
-          throw new ForbiddenRequestError({
-            message: "KMS does not belong in the organization"
-          });
-        }
-
-        // an internal key here belongs to another project or to the org
-        if (!kms.isExternal) {
-          throw new BadRequestError({
-            message: "Only an external KMS key can be assigned to a project"
           });
         }
       }
@@ -2014,7 +2006,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const secretManagerKmsKey = await kmsService.updateProjectSecretManagerKmsKey({
+    const secretManagerKmsKey = await kmsCoreDomain.updateProjectSecretManagerKmsKey({
       projectId,
       kms
     });
@@ -2049,7 +2041,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const kmsBackup = await kmsService.getProjectKeyBackup(projectId);
+    const kmsBackup = await kmsCoreDomain.getProjectKeyBackup(projectId);
     return kmsBackup;
   };
 
@@ -2079,7 +2071,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const kmsBackup = await kmsService.loadProjectKeyBackup(projectId, backup);
+    const kmsBackup = await kmsCoreDomain.loadProjectKeyBackup(projectId, backup);
     return kmsBackup;
   };
 
@@ -2093,8 +2085,8 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId, undefined, true);
-    const kmsKey = await kmsService.getKmsById(kmsKeyId);
+    const kmsKeyId = await kmsCoreDomain.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKey = await kmsCoreDomain.getKmsById(kmsKeyId);
 
     return { secretManagerKmsKey: kmsKey };
   };

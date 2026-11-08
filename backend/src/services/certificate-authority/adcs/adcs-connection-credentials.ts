@@ -1,8 +1,8 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 export type TAdcsResolvedConnection = {
   credentials: { host: string; username: string; password: string };
@@ -13,7 +13,7 @@ export type TAdcsResolvedConnection = {
 export const getAdcsConnectionCredentials = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ): Promise<TAdcsResolvedConnection> => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -30,7 +30,7 @@ export const getAdcsConnectionCredentials = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    kmsService,
+    kmsCoreDomain,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   })) as { host: string; username: string; password: string };

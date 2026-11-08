@@ -16,10 +16,6 @@ vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => (
   getCaSigner: (...args: unknown[]) => getCaSignerMock(...args) as unknown
 }));
 
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-key-id")
-}));
-
 // eslint-disable-next-line import/first
 import { certificateAuthorityOcspServiceFactory } from "./certificate-authority-ocsp-service";
 
@@ -103,7 +99,8 @@ const buildHarness = async () => {
     certificateAuthoritySecretDAL: { findOne: vi.fn() } as never,
     certificateDAL: { find: vi.fn(async () => []), primaryNode: vi.fn(() => undefined) } as never,
     projectDAL: { findById: vi.fn(), findOne: vi.fn(), updateById: vi.fn(), transaction: vi.fn() } as never,
-    kmsService: {
+    kmsCoreDomain: {
+      getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-id"),
       decryptWithKmsKey: vi.fn(async () => async () => Buffer.from(caCert.rawData)),
       generateKmsKey: vi.fn()
     } as never,

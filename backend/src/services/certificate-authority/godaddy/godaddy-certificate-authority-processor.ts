@@ -1,4 +1,5 @@
 import { TCertificateRequests } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -11,7 +12,6 @@ import {
   getIssuanceAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
@@ -62,7 +62,7 @@ export type TGoDaddyCertificateRequestServiceDep = {
 export type TProcessGoDaddyRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TGoDaddyCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -81,7 +81,7 @@ export type TProcessGoDaddyRequestResult =
 
 const getOrCreateClient = async (
   request: TCertificateRequests,
-  deps: Pick<TProcessGoDaddyRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsService">,
+  deps: Pick<TProcessGoDaddyRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsCoreDomain">,
   clientCache?: Map<string, TGoDaddyApiClient>
 ): Promise<TGoDaddyApiClient> => {
   if (!request.caId) {
@@ -102,7 +102,7 @@ const getOrCreateClient = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService: deps.kmsService
+    kmsCoreDomain: deps.kmsCoreDomain
   })) as TGoDaddyConnection["credentials"];
 
   const client = createGoDaddyApiClient(

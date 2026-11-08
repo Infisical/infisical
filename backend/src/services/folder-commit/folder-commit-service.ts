@@ -11,6 +11,7 @@ import {
   TSecretV2TagJunctionInsert,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -27,8 +28,6 @@ import { TFolderCommitChangesDALFactory } from "../folder-commit-changes/folder-
 import { TFolderTreeCheckpointResourcesDALFactory } from "../folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { TFolderTreeCheckpointDALFactory } from "../folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -181,7 +180,7 @@ type TFolderCommitServiceFactoryDep = {
     "scheduleTreeCheckpoint" | "createFolderTreeCheckpoint"
   >;
   permissionService?: TPermissionServiceFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
     | "findSecretTagsByVersionId"
@@ -245,7 +244,7 @@ export const folderCommitServiceFactory = ({
   folderTreeCheckpointResourcesDAL,
   folderCommitQueueService,
   permissionService,
-  kmsService,
+  kmsCoreDomain,
   secretTagDAL,
   resourceMetadataDAL,
   eventEmitter
@@ -660,7 +659,7 @@ export const folderCommitServiceFactory = ({
 
     const removeNoChangeUpdate: string[] = [];
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: project.id
     });
@@ -845,7 +844,7 @@ export const folderCommitServiceFactory = ({
     version2: TSecretVersionsV2 & { tags: { id: string }[] },
     projectId: string
   ) => {
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -1029,8 +1028,8 @@ export const folderCommitServiceFactory = ({
     if (!project) return (version) => version;
 
     const [{ decryptor }, blindIndexer] = await Promise.all([
-      kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx),
-      createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService, tx })
+      kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }),
+      createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsCoreDomain })
     ]);
 
     return async (version) => {

@@ -57,7 +57,7 @@ const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(project
 
 beforeAll(async () => {
   initLogger();
-  await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+  await initEnvConfig(testSuperAdminDAL, logger);
   const keyStore = keyStoreFactory(getConfig(), keyValueStoreDALFactory(testDb));
 
   permissionService = permissionServiceFactory({

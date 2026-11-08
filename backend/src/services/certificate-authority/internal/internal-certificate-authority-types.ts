@@ -2,6 +2,7 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { TCertificates } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { TProjectPermission } from "@app/lib/types";
@@ -16,7 +17,6 @@ import {
   CertKeyUsage,
   CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
@@ -345,7 +345,7 @@ export type TGetCaCredentialsDTO = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
   prefetched?: {
     ca?: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>;
@@ -359,7 +359,7 @@ export type TGetCaSignerDTO = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
   prefetched?: { kmsKeyId?: string };
@@ -370,7 +370,7 @@ export type TGetCaCertChainsDTO = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TGetCaCertChainDTO = {
@@ -378,14 +378,14 @@ export type TGetCaCertChainDTO = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TGetCaCrlIssuerDTO = {
   internalCa: { dn: string; activeCaCertId?: string | null };
   kmsId: string;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   tx?: Knex;
 };
 
@@ -399,7 +399,7 @@ export type TBuildIssuedCertificateChainDTO = {
     "findValidInCaHierarchy"
   >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TRebuildCaCrlDTO = {
@@ -410,7 +410,7 @@ export type TRebuildCaCrlDTO = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
 };
 

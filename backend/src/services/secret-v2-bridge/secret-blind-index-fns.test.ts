@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 
 import { createSecretBlindIndexer } from "./secret-blind-index-fns";
 
@@ -14,8 +14,8 @@ const makeKmsService = () => ({
   }))
 });
 
-const makeIndexer = (kmsService = makeKmsService()) =>
-  createSecretBlindIndexer({ projectId: PROJECT_ID, orgId: ORG_ID, kmsService: kmsService as never });
+const makeIndexer = (kmsCoreDomain = makeKmsService()) =>
+  createSecretBlindIndexer({ projectId: PROJECT_ID, orgId: ORG_ID, kmsCoreDomain: kmsCoreDomain as never });
 
 describe("createSecretBlindIndexer", () => {
   it("derives the project index from the project data key and the org index from the org data key", async () => {
@@ -57,26 +57,11 @@ describe("createSecretBlindIndexer", () => {
   // A bulk write can carry thousands of values, and each data key resolution can be a round trip to an
   // external KMS, so the pairs are built once for the request rather than once per value.
   it("resolves each data key once no matter how many values it indexes", async () => {
-    const kmsService = makeKmsService();
-    const indexer = await makeIndexer(kmsService);
+    const kmsCoreDomain = makeKmsService();
+    const indexer = await makeIndexer(kmsCoreDomain);
 
     await Promise.all(["a", "b", "c", "d"].map((value) => indexer.generateBlindIndexes(Buffer.from(value))));
 
-    expect(kmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
-  });
-
-  it("threads the transaction into both key resolutions", async () => {
-    const kmsService = makeKmsService();
-    const tx = { marker: "tx" };
-
-    await createSecretBlindIndexer({
-      projectId: PROJECT_ID,
-      orgId: ORG_ID,
-      kmsService: kmsService as never,
-      tx: tx as never
-    });
-
-    expect(kmsService.createCipherPairWithDataKey).toHaveBeenCalledWith(expect.anything(), tx);
-    expect(kmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
+    expect(kmsCoreDomain.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
   });
 });

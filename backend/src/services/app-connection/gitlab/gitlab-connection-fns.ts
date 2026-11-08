@@ -2,6 +2,7 @@
 import { GitbeakerRequestError, GitbeakerRetryError, Gitlab } from "@gitbeaker/rest";
 import { AxiosError, HttpStatusCode } from "axios";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, RateLimitError } from "@app/lib/errors";
@@ -11,7 +12,6 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
@@ -29,7 +29,7 @@ interface GitLabOAuthTokenResponse {
 type TNavigationParams = {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export const getGitLabConnectionListItem = () => {
@@ -72,7 +72,7 @@ export const refreshGitLabToken = async (
   orgId: string,
   projectId: string | undefined | null,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsCoreDomain: TKmsCoreDomain,
   instanceUrl?: string
 ): Promise<string> => {
   const {
@@ -122,7 +122,7 @@ export const refreshGitLabToken = async (
         expiresAt
       },
       orgId,
-      kmsService,
+      kmsCoreDomain,
       projectId
     });
 
@@ -140,7 +140,7 @@ export const refreshGitLabToken = async (
   }
 };
 
-const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService }: TNavigationParams) => {
+const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsCoreDomain }: TNavigationParams) => {
   let { accessToken } = appConnection.credentials;
 
   if (
@@ -161,7 +161,7 @@ const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsService
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       appConnection.credentials.instanceUrl
     );
   }
@@ -285,7 +285,7 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
 export const getGitLabConnectionClient = async (
   appConnection: TGitLabConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ) => {
   let { accessToken } = appConnection.credentials;
 
@@ -300,7 +300,7 @@ export const getGitLabConnectionClient = async (
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       appConnection.credentials.instanceUrl
     );
   }
@@ -344,13 +344,13 @@ const throwGitLabListError = (error: unknown, resource: "groups" | "projects"): 
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
-  kmsService,
+  kmsCoreDomain,
   search,
   limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   search?: string;
   limit?: number;
 }): Promise<TGitLabProject[]> => {
@@ -367,7 +367,7 @@ export const listGitLabProjects = async ({
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       appConnection.credentials.instanceUrl
     );
   }
@@ -403,17 +403,17 @@ export const listGitLabProjects = async ({
 export const listGitLabGroups = async ({
   appConnection,
   appConnectionDAL,
-  kmsService,
+  kmsCoreDomain,
   search,
   limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   search?: string;
   limit?: number;
 }): Promise<TGitLabGroup[]> => {
-  const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsService });
+  const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsCoreDomain });
   if (!client) return [];
 
   try {

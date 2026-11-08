@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import {
@@ -7,7 +8,6 @@ import {
   encryptAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -21,7 +21,7 @@ import {
 export const getAzureEntraIdConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -41,7 +41,7 @@ export const getAzureEntraIdConnectionAccessToken = async (
     case AzureEntraIdConnectionMethod.ClientSecret: {
       const clientSecretCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsService,
+        kmsCoreDomain,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureEntraIdConnectionClientSecretCredentials;
@@ -72,7 +72,7 @@ export const getAzureEntraIdConnectionAccessToken = async (
       const encryptedClientCredentials = await encryptAppConnectionCredentials({
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
-        kmsService,
+        kmsCoreDomain,
         projectId: appConnection.projectId
       });
 

@@ -87,7 +87,7 @@ const makeHarness = ({
         rows = rows.map((row) => (filled.has(row.id) ? { ...row, hasOrgDigest: true } : row));
       }
     } as never,
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: async () => ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob,
         generateSecretBlindIndex: async (value: Buffer) => `digest-${value.toString()}`

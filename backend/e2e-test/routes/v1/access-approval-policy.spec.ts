@@ -149,7 +149,7 @@ const deletePolicyThroughGenericEndpoint = (policyId: string, token: string) =>
 describe("Access approval policy router", async () => {
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(testSuperAdminDAL, logger);
   });
 
   afterEach(async () => {

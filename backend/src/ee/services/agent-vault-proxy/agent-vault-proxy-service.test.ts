@@ -121,7 +121,7 @@ const setup = (
           memberships: []
         }) as never
     },
-    kmsService: { createCipherPairWithDataKey },
+    kmsCoreDomain: { createCipherPairWithDataKey } as never,
     licenseDomain: new FakeLicenseDomain(),
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
@@ -412,10 +412,10 @@ describe("resolve for a session on a user's behalf", () => {
           } as never;
         }
       },
-      kmsService: {
+      kmsCoreDomain: {
         createCipherPairWithDataKey: async () =>
           ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
-      },
+      } as never,
       licenseDomain: new FakeLicenseDomain(),
       resourceAuthMethodService: {} as never,
       agentVaultOauthService: {

@@ -2,6 +2,7 @@
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
@@ -21,9 +22,7 @@ import {
 } from "@app/services/certificate/certificate-types";
 import { certKeyAlgorithmToHsmKeyAlgorithm } from "@app/services/hsm-connector/hsm-connector-fns";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { CertKeySource, HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 type TIssueSignerCertificateDeps = {
@@ -32,17 +31,17 @@ type TIssueSignerCertificateDeps = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 type TVerifyCodeSigningEkuDeps = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export const verifyCodeSigningEku = async (
-  { certificateBodyDAL, projectDAL, kmsService }: TVerifyCodeSigningEkuDeps,
+  { certificateBodyDAL, kmsCoreDomain }: TVerifyCodeSigningEkuDeps,
   { certificateId, projectId, tx }: { certificateId: string; projectId: string; tx?: Knex }
 ): Promise<void> => {
   const certBody = await certificateBodyDAL.findOne({ certId: certificateId }, tx);
@@ -52,8 +51,8 @@ export const verifyCodeSigningEku = async (
     });
   }
 
-  const kmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
+  const kmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
+  const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId });
   const decrypted = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
   const cert = new x509.X509Certificate(decrypted);
 
@@ -86,7 +85,7 @@ export const issueSignerCertificate = async (
     certificateBodyDAL,
     certificateSecretDAL,
     projectDAL,
-    kmsService
+    kmsCoreDomain
   }: TIssueSignerCertificateDeps,
   { caId, projectId, commonName, certificateTtlDays, keyAlgorithm, tx }: TIssueSignerCertificateInput
 ): Promise<{ certificateId: string }> => {
@@ -151,17 +150,13 @@ export const issueSignerCertificate = async (
   }
 
   await verifyCodeSigningEku(
-    { certificateBodyDAL, projectDAL, kmsService },
+    { certificateBodyDAL, projectDAL, kmsCoreDomain },
     { certificateId: signResult.certificateId, projectId: ca.projectId, tx }
   );
 
-  const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-    projectId: ca.projectId,
-    projectDAL,
-    kmsService
-  });
+  const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
 
-  const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+  const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
 
   const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
   const skLeafPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
@@ -187,7 +182,7 @@ type THsmBackedDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "updateById">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "generateKeyPair" | "sign">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 type THsmBackedInput = {
@@ -294,7 +289,7 @@ export const issueHsmBackedSignerCertificate = async (
       throw new BadRequestError({ message: "Certificate authority did not return a certificate id." });
     }
     await verifyCodeSigningEku(
-      { certificateBodyDAL: deps.certificateBodyDAL, projectDAL: deps.projectDAL, kmsService: deps.kmsService },
+      { certificateBodyDAL: deps.certificateBodyDAL, projectDAL: deps.projectDAL, kmsCoreDomain: deps.kmsCoreDomain },
       { certificateId: issued.certificateId, projectId: ca.projectId, tx }
     );
     await deps.certificateDAL.updateById(
@@ -397,7 +392,7 @@ export const renewHsmBackedSignerCertificate = async (
       throw new BadRequestError({ message: "Certificate authority did not return a certificate id." });
     }
     await verifyCodeSigningEku(
-      { certificateBodyDAL: deps.certificateBodyDAL, projectDAL: deps.projectDAL, kmsService: deps.kmsService },
+      { certificateBodyDAL: deps.certificateBodyDAL, projectDAL: deps.projectDAL, kmsCoreDomain: deps.kmsCoreDomain },
       { certificateId: signResult.certificateId, projectId: ca.projectId, tx }
     );
     await deps.certificateDAL.updateById(

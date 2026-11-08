@@ -3,6 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -22,7 +23,6 @@ import {
   TSecretAccessPolicyInputs
 } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -98,7 +98,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     TUserDALFactory,
     "findUserByProjectMembershipId" | "findUsersByProjectMembershipIds" | "find" | "findById"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
@@ -127,7 +127,7 @@ export const accessApprovalRequestServiceFactory = ({
   additionalPrivilegeDAL,
   smtpService,
   userDAL,
-  kmsService,
+  kmsCoreDomain,
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL,
@@ -455,7 +455,7 @@ export const accessApprovalRequestServiceFactory = ({
         dependencies: {
           projectDAL,
           projectSlackConfigDAL,
-          kmsService,
+          kmsCoreDomain,
           microsoftTeamsService,
           projectMicrosoftTeamsConfigDAL
         }
@@ -662,7 +662,7 @@ export const accessApprovalRequestServiceFactory = ({
         dependencies: {
           projectDAL,
           projectSlackConfigDAL,
-          kmsService,
+          kmsCoreDomain,
           microsoftTeamsService,
           projectMicrosoftTeamsConfigDAL
         }

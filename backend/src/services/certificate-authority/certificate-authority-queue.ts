@@ -1,3 +1,4 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 /* eslint-disable no-await-in-loop, no-continue */
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -11,9 +12,7 @@ import type { TCaKeySourceServiceFactory } from "@app/services/certificate-autho
 import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -46,10 +45,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
+  kmsCoreDomain: TKmsCoreDomain;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
@@ -72,7 +68,7 @@ export const certificateAuthorityQueueFactory = ({
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
-  kmsService,
+  kmsCoreDomain,
   queueService,
   cronJob,
   keyStore,
@@ -97,7 +93,7 @@ export const certificateAuthorityQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsCoreDomain,
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
@@ -115,7 +111,7 @@ export const certificateAuthorityQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsCoreDomain,
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
@@ -164,18 +160,14 @@ export const certificateAuthorityQueueFactory = ({
 
               const ca = await certificateAuthorityDAL.findById(internalCa.caId);
 
-              const keyId = await getProjectKmsCertificateKeyId({
-                projectId: ca.projectId,
-                projectDAL,
-                kmsService
-              });
+              const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
 
               const { signer } = await getCaSigner({
                 caId: internalCa.caId,
                 certificateAuthorityDAL,
                 certificateAuthoritySecretDAL,
                 projectDAL,
-                kmsService,
+                kmsCoreDomain,
                 caKeySourceService
               });
 
@@ -192,7 +184,7 @@ export const certificateAuthorityQueueFactory = ({
                 internalCa,
                 kmsId: keyId,
                 certificateAuthorityCertDAL,
-                kmsService
+                kmsCoreDomain
               });
 
               const crl = await signer.createCrl({
@@ -206,7 +198,7 @@ export const certificateAuthorityQueueFactory = ({
                 }))
               });
 
-              const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: keyId });
+              const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: keyId });
               const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
                 plainText: Buffer.from(new Uint8Array(crl.rawData))
               });

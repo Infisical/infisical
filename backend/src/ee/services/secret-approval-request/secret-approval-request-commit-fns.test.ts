@@ -65,7 +65,7 @@ const buildFns = ({
     },
     folderDAL: { findBySecretPath: vi.fn().mockResolvedValue(FOLDER) },
     projectDAL: { findById: vi.fn().mockResolvedValue(PROJECT) },
-    kmsService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue({ encryptor }) },
+    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn().mockResolvedValue({ encryptor }) },
     secretV2BridgeDAL: {
       findBySecretKeys,
       find: vi.fn(() => Promise.resolve(stored))
@@ -176,6 +176,7 @@ describe("buildSecretApprovalCommits", () => {
           { key: "B", value: "two" }
         ]
       }),
+      undefined,
       undefined
     );
     expect(scanSecretPolicyViolations).toHaveBeenCalledTimes(1);
@@ -197,13 +198,12 @@ describe("buildSecretApprovalCommits", () => {
 
     expect(scanSecretPolicyViolations).not.toHaveBeenCalled();
     expect(deps.folderDAL.findBySecretPath).toHaveBeenCalledWith("project-1", "dev", "/", TX);
-    expect(deps.kmsService.createCipherPairWithDataKey).toHaveBeenCalledWith(expect.anything(), TX);
     expect(deps.projectDAL.findById).toHaveBeenCalledWith("project-1", TX);
     expect(deps.secretV2BridgeDAL.findBySecretKeys).toHaveBeenCalledWith("folder-1", expect.anything(), TX);
     expect(deps.secretV2BridgeDAL.find).toHaveBeenCalledWith(expect.anything(), { tx: TX });
     expect(deps.secretVersionV2BridgeDAL.findLatestVersionMany).toHaveBeenCalledWith("folder-1", ["secret-1"], TX);
     expect(deps.secretTagDAL.findManyTagsById).toHaveBeenCalledWith("project-1", ["tag-9"], TX);
-    expect(deps.secretValidationRuleService.validateSecrets).toHaveBeenCalledWith(expect.anything(), TX);
+    expect(deps.secretValidationRuleService.validateSecrets).toHaveBeenCalledWith(expect.anything(), TX, undefined);
   });
 
   test("rejects a create whose key already exists", async () => {

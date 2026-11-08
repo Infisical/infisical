@@ -2,22 +2,19 @@
    run everywhere, and on a fresh install runs against empty tables before a rotation is possible. */
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
-const reencryptSamlConfig = async (knex: Knex, kmsService: TKmsServiceFactory) => {
+const reencryptSamlConfig = async (knex: Knex, kmsCoreDomain: TKmsCoreDomain) => {
   const hasEncryptedEntrypointColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlEntryPoint");
   const hasEncryptedIssuerColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlIssuer");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlCertificate");
@@ -33,7 +30,7 @@ const reencryptSamlConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
 
   initLogger();
   const orgEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
 
   const samlConfigs = await knex(TableName.SamlConfig)
     .join(TableName.OrgBot, `${TableName.OrgBot}.orgId`, `${TableName.SamlConfig}.orgId`)
@@ -51,13 +48,10 @@ const reencryptSamlConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey(
-            {
-              type: KmsDataKey.Organization,
-              orgId: el.orgId
-            },
-            knex
-          );
+          orgKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+            type: KmsDataKey.Organization,
+            orgId: el.orgId
+          });
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
 
@@ -159,7 +153,7 @@ const reencryptSamlConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
   }
 };
 
-const reencryptLdapConfig = async (knex: Knex, kmsService: TKmsServiceFactory) => {
+const reencryptLdapConfig = async (knex: Knex, kmsCoreDomain: TKmsCoreDomain) => {
   const hasEncryptedLdapBindDNColum = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindDN");
   const hasEncryptedLdapBindPassColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindPass");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapCaCertificate");
@@ -195,7 +189,7 @@ const reencryptLdapConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
 
   initLogger();
   const orgEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
 
   const ldapConfigs = await knex(TableName.LdapConfig)
     .join(TableName.OrgBot, `${TableName.OrgBot}.orgId`, `${TableName.LdapConfig}.orgId`)
@@ -213,13 +207,10 @@ const reencryptLdapConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey(
-            {
-              type: KmsDataKey.Organization,
-              orgId: el.orgId
-            },
-            knex
-          );
+          orgKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+            type: KmsDataKey.Organization,
+            orgId: el.orgId
+          });
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
 
@@ -319,7 +310,7 @@ const reencryptLdapConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
   }
 };
 
-const reencryptOidcConfig = async (knex: Knex, kmsService: TKmsServiceFactory) => {
+const reencryptOidcConfig = async (knex: Knex, kmsCoreDomain: TKmsCoreDomain) => {
   const hasEncryptedOidcClientIdColumn = await knex.schema.hasColumn(TableName.OidcConfig, "encryptedOidcClientId");
   const hasEncryptedOidcClientSecretColumn = await knex.schema.hasColumn(
     TableName.OidcConfig,
@@ -351,7 +342,7 @@ const reencryptOidcConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
 
   initLogger();
   const orgEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
 
   const oidcConfigs = await knex(TableName.OidcConfig)
     .join(TableName.OrgBot, `${TableName.OrgBot}.orgId`, `${TableName.OidcConfig}.orgId`)
@@ -369,13 +360,10 @@ const reencryptOidcConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey(
-            {
-              type: KmsDataKey.Organization,
-              orgId: el.orgId
-            },
-            knex
-          );
+          orgKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+            type: KmsDataKey.Organization,
+            orgId: el.orgId
+          });
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
 
@@ -456,16 +444,13 @@ const reencryptOidcConfig = async (knex: Knex, kmsService: TKmsServiceFactory) =
 export async function up(knex: Knex): Promise<void> {
   initLogger();
 
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
-  await reencryptSamlConfig(knex, kmsService);
-  await reencryptLdapConfig(knex, kmsService);
-  await reencryptOidcConfig(knex, kmsService);
+  await reencryptSamlConfig(knex, kmsCoreDomain);
+  await reencryptLdapConfig(knex, kmsCoreDomain);
+  await reencryptOidcConfig(knex, kmsCoreDomain);
 }
 
 const dropSamlConfigColumns = async (knex: Knex) => {

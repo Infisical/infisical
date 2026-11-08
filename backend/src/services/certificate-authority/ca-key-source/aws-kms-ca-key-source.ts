@@ -13,6 +13,7 @@ import { AsnConvert } from "@peculiar/asn1-schema";
 import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
 import { ProjectType } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -30,7 +31,6 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { ECDSA_SIGNATURE_ALGORITHMS } from "@app/services/certificate/certificate-fns";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import {
@@ -54,7 +54,7 @@ const AWS_KMS_KEY_DELETION_WINDOW_DAYS = 30;
 type TAwsKmsCaKeySourceDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseDomain: TLicenseDomain;
 };
@@ -71,7 +71,7 @@ const requireAwsKmsInput = (input: TExternalCaKeyInput) => {
 export const awsKmsCaKeySourceFactory = ({
   appConnectionDAL,
   appConnectionService,
-  kmsService,
+  kmsCoreDomain,
   projectDAL,
   licenseDomain
 }: TAwsKmsCaKeySourceDep): TExternalCaKeyProvider => {
@@ -86,7 +86,7 @@ export const awsKmsCaKeySourceFactory = ({
       throw new BadRequestError({ message: `App connection with ID '${appConnectionId}' is not an AWS connection` });
     }
 
-    const decryptedConnection = (await decryptAppConnection(appConnection, kmsService)) as TAwsConnection;
+    const decryptedConnection = (await decryptAppConnection(appConnection, kmsCoreDomain)) as TAwsConnection;
     const awsConfig = await getAwsConnectionConfig(
       { ...decryptedConnection, projectType: ProjectType.CertificateManager },
       region as AWSRegion

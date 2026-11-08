@@ -1,6 +1,7 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -11,7 +12,6 @@ import {
   getAppConnectionMethodName
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -43,7 +43,7 @@ export const getAzureClientSecretsConnectionListItem = () => {
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ) => {
   const appCfg = getConfig();
   const appConnection = await appConnectionDAL.findById(connectionId);
@@ -60,7 +60,7 @@ export const getAzureConnectionAccessToken = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    kmsService,
+    kmsCoreDomain,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials
   })) as TAzureClientSecretsConnectionCredentials;
@@ -99,7 +99,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService
+        kmsCoreDomain
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials });
@@ -110,7 +110,7 @@ export const getAzureConnectionAccessToken = async (
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService,
+        kmsCoreDomain,
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionClientSecretCredentials;
       const { accessToken, expiresAt, clientId, clientSecret, tenantId } = accessTokenCredentials;
@@ -138,7 +138,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService
+        kmsCoreDomain
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });
@@ -150,7 +150,7 @@ export const getAzureConnectionAccessToken = async (
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService,
+        kmsCoreDomain,
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionCertificateCredentials;
       const { accessToken, expiresAt, clientId, tenantId, certificateBody, privateKey } = accessTokenCredentials;
@@ -180,7 +180,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        kmsService
+        kmsCoreDomain
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });

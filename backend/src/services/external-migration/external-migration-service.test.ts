@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { FakeKmsCoreDomain } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core-domain";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { SecretProtectionType } from "../secret/secret-types";
@@ -65,6 +66,7 @@ const buildService = ({ approvalPaths = [] as string[] } = {}) => {
     },
     appConnectionService: { validateAppConnectionUsageById: vi.fn().mockResolvedValue({ id: "connection-1" }) },
     projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: ENVIRONMENT, name: "Production" }) },
+    kmsCoreDomain: new FakeKmsCoreDomain(),
     folderDAL: {
       transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb({}))),
       findByManySecretPath: vi.fn((query: { secretPath: string }[]) =>

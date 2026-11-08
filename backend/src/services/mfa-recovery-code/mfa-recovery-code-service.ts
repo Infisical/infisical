@@ -1,6 +1,6 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TMfaRecoveryCodeDALFactory } from "./mfa-recovery-code-dal";
 import { generateRecoveryCode } from "./mfa-recovery-code-fns";
@@ -14,7 +14,7 @@ import {
 type TMfaRecoveryCodeServiceFactoryDep = {
   mfaRecoveryCodeDAL: TMfaRecoveryCodeDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TMfaRecoveryCodeServiceFactory = ReturnType<typeof mfaRecoveryCodeServiceFactory>;
@@ -24,11 +24,11 @@ const MAX_RECOVERY_CODE_LIMIT = 10;
 export const mfaRecoveryCodeServiceFactory = ({
   mfaRecoveryCodeDAL,
   userDAL,
-  kmsService
+  kmsCoreDomain
 }: TMfaRecoveryCodeServiceFactoryDep) => {
   // Generates a fresh pool of recovery codes alongside its root-key ciphertext.
   const generateEncryptedRecoveryCodes = () => {
-    const encryptWithRoot = kmsService.encryptWithRootKey();
+    const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
     const recoveryCodes = Array.from({ length: MAX_RECOVERY_CODE_LIMIT }).map(generateRecoveryCode);
     const encryptedRecoveryCodes = encryptWithRoot(Buffer.from(recoveryCodes.join(",")));
 
@@ -44,7 +44,7 @@ export const mfaRecoveryCodeServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = kmsService.decryptWithRootKey();
+    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
     const recoveryCodes = decryptWithRoot(recoveryCodeConfig.encryptedRecoveryCodes)
       .toString()
       .split(",")
@@ -54,8 +54,8 @@ export const mfaRecoveryCodeServiceFactory = ({
   };
 
   const verifyAndConsumeRecoveryCode = async ({ userId, recoveryCode }: TVerifyAndConsumeRecoveryCodeDTO) => {
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const encryptWithRoot = kmsService.encryptWithRootKey();
+    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
 
     return mfaRecoveryCodeDAL.transaction(async (tx) => {
       // Lock the row FOR UPDATE so concurrent logins presenting the same code

@@ -1,12 +1,11 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import {
   CertExtendedKeyUsageType,
@@ -102,8 +101,7 @@ const createEncryptedCertificateData = async ({
   projectId,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL,
+  kmsCoreDomain,
   tx
 }: {
   certificateId: string;
@@ -112,17 +110,13 @@ const createEncryptedCertificateData = async ({
   projectId: string;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectDAL: TProjectDALFactory;
   tx: Parameters<TCertificateBodyDALFactory["create"]>[1];
 }) => {
-  const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-    projectId,
-    projectDAL,
-    kmsService
-  });
+  const certificateManagerKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
 
-  const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
+  const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
 
   const encryptedCertificate = await kmsEncryptor({
     plainText: certificate
@@ -158,7 +152,7 @@ export const processSelfSignedCertificate = async ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
+  kmsCoreDomain,
   projectDAL,
   tx,
   isRenewal = false,
@@ -203,7 +197,7 @@ export const processSelfSignedCertificate = async ({
   certificateDAL: Pick<TCertificateDALFactory, "create" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectDAL: TProjectDALFactory;
   tx: Parameters<TCertificateDALFactory["create"]>[1];
   isRenewal?: boolean;
@@ -251,7 +245,7 @@ export const processSelfSignedCertificate = async ({
     projectId,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsCoreDomain,
     projectDAL,
     tx
   });

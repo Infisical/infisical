@@ -1,8 +1,7 @@
+import { TKmsCoreDomain, WrappedKeyPayload } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { openWrappedKey } from "@app/services/kms/kms-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 const AGENT_VAULT_SESSION_LOG_KEY_BYTES = 32;
 
@@ -14,8 +13,8 @@ export const generateSessionLogKey = () => crypto.randomBytes(AGENT_VAULT_SESSIO
 
 export const wrapSessionLogKey = async (
   { projectId, sessionId, sessionLogKey }: { projectId: string; sessionId: string; sessionLogKey: Buffer },
-  kmsService: Pick<TKmsServiceFactory, "wrapKey">
-) => kmsService.wrapKey({ projectId, label: sessionLabel(sessionId), key: sessionLogKey });
+  kmsCoreDomain: TKmsCoreDomain
+) => kmsCoreDomain.wrapKey({ projectId, label: sessionLabel(sessionId), key: sessionLogKey });
 
 const keyOrThrow = (sessionId: string, key: Buffer | null) => {
   if (!key) {
@@ -32,7 +31,7 @@ const keyOrThrow = (sessionId: string, key: Buffer | null) => {
 export const openSessionLogKey = ({ sessionId, payload }: { sessionId: string; payload: Buffer }) =>
   keyOrThrow(
     sessionId,
-    openWrappedKey({ label: sessionLabel(sessionId), payload, keyBytes: AGENT_VAULT_SESSION_LOG_KEY_BYTES })
+    WrappedKeyPayload.restore(payload).open(sessionLabel(sessionId), AGENT_VAULT_SESSION_LOG_KEY_BYTES)
   );
 
 export const unwrapSessionLogKey = async (
@@ -41,11 +40,11 @@ export const unwrapSessionLogKey = async (
     sessionId,
     encryptedSessionLogKey
   }: { projectId: string; sessionId: string; encryptedSessionLogKey: Buffer },
-  kmsService: Pick<TKmsServiceFactory, "unwrapKey">
+  kmsCoreDomain: TKmsCoreDomain
 ) =>
   keyOrThrow(
     sessionId,
-    await kmsService.unwrapKey({
+    await kmsCoreDomain.unwrapKey({
       projectId,
       label: sessionLabel(sessionId),
       wrappedKey: encryptedSessionLogKey,

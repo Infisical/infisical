@@ -3,11 +3,10 @@ import path from "node:path";
 import { Knex } from "knex";
 import RE2 from "re2";
 
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { ClientClosedRequestError, ForbiddenRequestError, throwIfClientDisconnected } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -106,7 +105,7 @@ type TInterpolateSecretArg = {
   orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   projectDAL?: Pick<TProjectDALFactory, "find">;
-  kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain?: TKmsCoreDomain;
   // Optional raw DAL for cross-project secret fetching. This is only distinct from
   // secretDAL when the caller wraps secretDAL with import-aware behavior for
   // same-project relative references; cross-project reads must stay raw so source
@@ -137,7 +136,7 @@ export const expandSecretReferencesFactory = ({
   orgDAL,
   projectFolderGrantDAL,
   projectDAL,
-  kmsService,
+  kmsCoreDomain,
   crossProjectSecretDAL,
   onSecretExpanded,
   abortSignal,
@@ -145,7 +144,7 @@ export const expandSecretReferencesFactory = ({
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, TCachedReferencedSecret>> = {};
   let crossProjectAllowedCache: boolean | undefined;
-  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
+  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsCoreDomain);
   const checkCrossProjectAllowed = async () => {
     if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
     if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;
@@ -166,8 +165,8 @@ export const expandSecretReferencesFactory = ({
     }
   };
   const getProjectDecryptor = async (sourceProjectId: string) => {
-    if (!kmsService) return undefined;
-    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+    if (!kmsCoreDomain) return undefined;
+    const { decryptor: sourceDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: sourceProjectId
     });

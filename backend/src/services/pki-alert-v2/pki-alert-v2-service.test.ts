@@ -66,7 +66,7 @@ const buildService = () => {
     permissionService,
     licenseDomain: new FakeLicenseDomain(),
     smtpService: {},
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("") }),
         decryptor: () => Buffer.from("")

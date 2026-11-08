@@ -9,6 +9,7 @@ import {
   SecretType,
   TSecretApprovalRequestsSecretsInsert
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
@@ -27,8 +28,6 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -131,7 +130,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     "checkProjectUpgradeStatus" | "findById" | "findProjectById" | "findProjectWithOrg"
   >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "insertMany"
@@ -196,7 +195,7 @@ export const secretApprovalRequestServiceFactory = ({
   userDAL,
   projectEnvDAL,
   secretApprovalPolicyDAL,
-  kmsService,
+  kmsCoreDomain,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
@@ -218,7 +217,7 @@ export const secretApprovalRequestServiceFactory = ({
     permissionService,
     folderDAL,
     projectDAL,
-    kmsService,
+    kmsCoreDomain,
     secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
     secretTagDAL,
@@ -436,7 +435,7 @@ export const secretApprovalRequestServiceFactory = ({
       secretPath: secretPath?.[0]?.path
     });
     if (shouldUseSecretV2Bridge) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -823,11 +822,11 @@ export const secretApprovalRequestServiceFactory = ({
         folderId,
         commits: secretApprovalSecrets
       });
-      const cipher = await kmsService.createCipherPairWithDataKey({
+      const cipher = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsCoreDomain });
 
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
         const secrets = await applySecretApprovalCommitsV2Bridge({
@@ -1576,7 +1575,7 @@ export const secretApprovalRequestServiceFactory = ({
       dependencies: {
         projectDAL,
         projectSlackConfigDAL,
-        kmsService,
+        kmsCoreDomain,
         projectMicrosoftTeamsConfigDAL,
         microsoftTeamsService
       }
@@ -1675,7 +1674,7 @@ export const secretApprovalRequestServiceFactory = ({
       },
       dependencies: {
         projectDAL,
-        kmsService,
+        kmsCoreDomain,
         projectSlackConfigDAL,
         microsoftTeamsService,
         projectMicrosoftTeamsConfigDAL

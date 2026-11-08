@@ -85,7 +85,7 @@ const createService = ({ revocationFailing = false } = {}) => {
       }))
     } as never,
     projectDAL: { findProjectBySlug: vi.fn(async () => ({ id: "project-1" })) } as never,
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("") }),
         decryptor: () => Buffer.from("{}")

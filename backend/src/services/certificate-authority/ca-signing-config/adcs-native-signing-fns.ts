@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -7,7 +8,6 @@ import { ADCS_DISPOSITION_ISSUED, AdcsEnrollResult, describeAdcsDisposition } fr
 import { logger } from "@app/lib/logger";
 import { executeAdcsGatewayOperation, resolveAdcsCaName } from "@app/services/app-connection/adcs";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { getAdcsConnectionCredentials } from "../adcs/adcs-connection-credentials";
 
@@ -35,16 +35,16 @@ export const submitCsrToNativeAdcs = async (
   },
   deps: TAdcsNativeGatewayDeps & {
     appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+    kmsCoreDomain: TKmsCoreDomain;
   }
 ): Promise<{ certificate: string; certificateChain: string }> => {
   const { appConnectionId, csr, template } = params;
-  const { appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService } = deps;
+  const { appConnectionDAL, kmsCoreDomain, gatewayV2Service, gatewayPoolService } = deps;
 
   const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
     appConnectionId,
     appConnectionDAL,
-    kmsService
+    kmsCoreDomain
   );
 
   const resolvedCaName = await resolveAdcsCaName(

@@ -1,6 +1,13 @@
 import { ForbiddenError, MongoAbility, MongoQuery } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import {
+  KmsCiphertextUndecryptableError,
+  KmsKeyOrderBy,
+  KmsKeyUsage,
+  TKmsCoreDomain,
+  TKmsKeyDetails
+} from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -34,26 +41,36 @@ import {
   TListCmeksByProjectIdDTO,
   TUpdabteCmekByIdDTO
 } from "@app/services/cmek/cmek-types";
-import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-
-import { KmsCiphertextUndecryptableError, KmsKeyUsage } from "../kms/kms-types";
 
 type TCmekServiceFactoryDep = {
-  kmsService: TKmsServiceFactory;
-  kmsDAL: TKmsKeyDALFactory;
+  kmsCoreDomain: TKmsCoreDomain;
   permissionService: TPermissionServiceFactory;
   licenseDomain: TLicenseDomain;
 };
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
 
-export const cmekServiceFactory = ({
-  kmsService,
-  kmsDAL,
-  permissionService,
-  licenseDomain
-}: TCmekServiceFactoryDep) => {
+// A customer managed key: a project key that is not reserved and holds internal material.
+const toCmek = ({ isExternal, ...key }: TKmsKeyDetails) => ({
+  ...key,
+  encryptionAlgorithm: key.encryptionAlgorithm as string,
+  version: key.version as number
+});
+
+const isCmek = (key: TKmsKeyDetails | undefined): key is TKmsKeyDetails =>
+  Boolean(key && !key.isReserved && !key.isExternal);
+
+export const cmekServiceFactory = ({ kmsCoreDomain, permissionService, licenseDomain }: TCmekServiceFactoryDep) => {
+  const $findCmekById = async (keyId: string) => {
+    const key = await kmsCoreDomain.findKeyById(keyId);
+    return isCmek(key) ? toCmek(key) : undefined;
+  };
+
+  const $findCmekByName = async (name: string, projectId: string) => {
+    const [key] = await kmsCoreDomain.findKeys({ name, projectId, isReserved: false });
+    return isCmek(key) ? toCmek(key) : undefined;
+  };
+
   // A public key is not secret, and verifying outside Infisical needs it, so anyone who may sign or verify with the
   // key can read it and its signing algorithms without being able to list or look up the project's keys.
   const $throwUnlessCanReadPublicKeyInfo = (permission: MongoAbility<ProjectPermissionSet, MongoQuery>) => {
@@ -90,7 +107,7 @@ export const cmekServiceFactory = ({
     }
 
     try {
-      const cmek = await kmsService.generateKmsKey({
+      const cmek = await kmsCoreDomain.generateKmsKey({
         ...dto,
         projectId,
         isReserved: false
@@ -113,7 +130,7 @@ export const cmekServiceFactory = ({
   };
 
   const updateCmekById = async ({ keyId, ...data }: TUpdabteCmekByIdDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
@@ -131,7 +148,7 @@ export const cmekServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
 
     try {
-      const cmek = await kmsDAL.updateById(keyId, data);
+      const cmek = await kmsCoreDomain.updateKeyAttributes(keyId, data);
 
       return {
         ...cmek,
@@ -150,7 +167,7 @@ export const cmekServiceFactory = ({
   };
 
   const rotateCmekById = async (keyId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
@@ -169,7 +186,7 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Rotate, ProjectPermissionSub.Cmek);
 
-    const { version } = await kmsService.rotateKmsKey(keyId);
+    const { version } = await kmsCoreDomain.rotateKmsKey(keyId);
 
     return {
       ...key,
@@ -178,7 +195,7 @@ export const cmekServiceFactory = ({
   };
 
   const deleteCmekById = async (keyId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
@@ -195,7 +212,7 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Delete, ProjectPermissionSub.Cmek);
 
-    const [deletedKey] = await kmsDAL.delete({ id: keyId, hasDeleteProtection: false });
+    const deletedKey = await kmsCoreDomain.deleteKey(keyId);
 
     if (!deletedKey) {
       throw new BadRequestError({
@@ -218,13 +235,17 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
 
-    const { keys: cmeks, totalCount } = await kmsDAL.listCmeksByProjectId({ projectId, ...filters });
+    const { keys, totalCount } = await kmsCoreDomain.listProjectKeys({
+      projectId,
+      ...filters,
+      orderBy: filters.orderBy as unknown as KmsKeyOrderBy | undefined
+    });
 
-    return { cmeks, totalCount };
+    return { cmeks: keys.map(toCmek), totalCount };
   };
 
   const findCmekById = async (keyId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -245,7 +266,7 @@ export const cmekServiceFactory = ({
   };
 
   const findCmekByName = async (keyName: string, projectId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekByName(keyName, projectId);
+    const key = await $findCmekByName(keyName, projectId);
 
     if (!key || key.orgId !== actor.orgId)
       throw new NotFoundError({ message: `Key with name "${keyName}" not found for project with ID "${projectId}"` });
@@ -267,7 +288,7 @@ export const cmekServiceFactory = ({
   };
 
   const cmekEncrypt = async ({ keyId, plaintext }: TCmekEncryptDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findById(keyId);
+    const key = await kmsCoreDomain.findKeyById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -286,7 +307,7 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Encrypt, ProjectPermissionSub.Cmek);
 
-    const encrypt = await kmsService.encryptWithKmsKey({ kmsId: keyId });
+    const encrypt = await kmsCoreDomain.encryptWithKmsKey({ kmsId: keyId });
 
     const { cipherTextBlob } = await encrypt({ plainText: Buffer.from(plaintext, "base64") });
 
@@ -297,7 +318,7 @@ export const cmekServiceFactory = ({
   };
 
   const listSigningAlgorithms = async ({ keyId }: TCmekListSigningAlgorithmsDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
@@ -327,7 +348,7 @@ export const cmekServiceFactory = ({
   };
 
   const getPublicKey = async ({ keyId }: TCmekGetPublicKeyDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
@@ -344,12 +365,12 @@ export const cmekServiceFactory = ({
 
     $throwUnlessCanReadPublicKeyInfo(permission);
 
-    const publicKey = await kmsService.getPublicKey({ kmsId: keyId });
+    const publicKey = await kmsCoreDomain.getPublicKey({ kmsId: keyId });
     return { publicKey: publicKey.toString("base64"), projectId: key.projectId, keyName: key.name };
   };
 
   const getPrivateKey = async ({ keyId }: TCmekGetPrivateKeyDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
@@ -371,7 +392,7 @@ export const cmekServiceFactory = ({
 
     if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
 
-    const keyMaterial = await kmsService.getKeyMaterial({ kmsId: keyId });
+    const keyMaterial = await kmsCoreDomain.getKeyMaterial({ kmsId: keyId });
 
     return {
       privateKey: keyMaterial.toString("base64"),
@@ -384,7 +405,10 @@ export const cmekServiceFactory = ({
     if (keyIds.length === 0) throw new BadRequestError({ message: "At least one key ID is required" });
 
     const uniqueKeyIds = [...new Set(keyIds)];
-    const keys = (await kmsDAL.findCmeksByIds(uniqueKeyIds)).filter((key) => key.orgId === actor.orgId);
+    const keys = (await kmsCoreDomain.findKeys({ ids: uniqueKeyIds, isReserved: false }))
+      .filter(isCmek)
+      .map(toCmek)
+      .filter((key) => key.orgId === actor.orgId);
 
     if (keys.length === 0) throw new NotFoundError({ message: "No keys found for the provided IDs" });
 
@@ -424,7 +448,7 @@ export const cmekServiceFactory = ({
       if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
     }
 
-    const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
+    const bulkMaterials = await kmsCoreDomain.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
 
     const materialByKmsId = new Map(bulkMaterials.map((m) => [m.kmsId, m]));
     const asymmetricAlgorithms = new Set<string>(Object.values(AsymmetricKeyAlgorithm));
@@ -460,7 +484,7 @@ export const cmekServiceFactory = ({
   };
 
   const cmekSign = async ({ keyId, data, signingAlgorithm, isDigest }: TCmekSignDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -479,7 +503,7 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Sign, ProjectPermissionSub.Cmek);
 
-    const sign = await kmsService.signWithKmsKey({ kmsId: keyId });
+    const sign = await kmsCoreDomain.signWithKmsKey({ kmsId: keyId });
 
     const { signature, algorithm } = await sign({ data: Buffer.from(data, "base64"), signingAlgorithm, isDigest });
 
@@ -495,7 +519,7 @@ export const cmekServiceFactory = ({
     { keyId, data, signature, signingAlgorithm, isDigest }: TCmekVerifyDTO,
     actor: OrgServiceActor
   ) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -514,7 +538,7 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Verify, ProjectPermissionSub.Cmek);
 
-    const verify = await kmsService.verifyWithKmsKey({ kmsId: keyId, signingAlgorithm });
+    const verify = await kmsCoreDomain.verifyWithKmsKey({ kmsId: keyId, signingAlgorithm });
 
     const { signatureValid, algorithm } = await verify({
       isDigest,
@@ -531,7 +555,7 @@ export const cmekServiceFactory = ({
   };
 
   const cmekGenerateMac = async ({ keyId, data }: TCmekGenerateMacDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -554,7 +578,7 @@ export const cmekServiceFactory = ({
       throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for MAC generation` });
     }
 
-    const generate = await kmsService.generateMac({ kmsId: keyId });
+    const generate = await kmsCoreDomain.generateMac({ kmsId: keyId });
 
     const { mac, algorithm } = generate({ data: Buffer.from(data, "base64") });
 
@@ -567,7 +591,7 @@ export const cmekServiceFactory = ({
   };
 
   const cmekVerifyMac = async ({ keyId, data, mac }: TCmekVerifyMacDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -590,7 +614,7 @@ export const cmekServiceFactory = ({
       throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for MAC verification` });
     }
 
-    const verify = await kmsService.verifyMac({ kmsId: keyId });
+    const verify = await kmsCoreDomain.verifyMac({ kmsId: keyId });
 
     const { macValid, algorithm } = verify({
       data: Buffer.from(data, "base64"),
@@ -606,7 +630,7 @@ export const cmekServiceFactory = ({
   };
 
   const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findById(keyId);
+    const key = await kmsCoreDomain.findKeyById(keyId);
 
     if (!key || key.orgId !== actor.orgId) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -625,7 +649,7 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Decrypt, ProjectPermissionSub.Cmek);
 
-    const decrypt = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+    const decrypt = await kmsCoreDomain.decryptWithKmsKey({ kmsId: keyId });
 
     let plaintextBlob: Buffer;
     try {
@@ -675,7 +699,7 @@ export const cmekServiceFactory = ({
               "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
           });
         }
-        const imported = await kmsService.importKeyMaterial({
+        const imported = await kmsCoreDomain.importKeyMaterial({
           key: Buffer.from(entry.keyMaterial, "base64"),
           algorithm: entry.algorithm,
           name: entry.name,

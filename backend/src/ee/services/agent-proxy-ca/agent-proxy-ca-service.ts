@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
@@ -13,8 +14,6 @@ import {
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TOrgAgentProxyConfigDALFactory } from "./org-agent-proxy-config-dal";
@@ -23,7 +22,7 @@ export type TAgentProxyCaServiceFactory = ReturnType<typeof agentProxyCaServiceF
 
 type TAgentProxyCaServiceFactoryDep = {
   orgAgentProxyConfigDAL: TOrgAgentProxyConfigDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   licenseDomain: TLicenseDomain;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -34,7 +33,7 @@ const ROOT_CA_VALIDITY_YEARS = 10;
 
 export const agentProxyCaServiceFactory = ({
   orgAgentProxyConfigDAL,
-  kmsService,
+  kmsCoreDomain,
   licenseDomain,
   permissionService
 }: TAgentProxyCaServiceFactoryDep) => {
@@ -59,7 +58,7 @@ export const agentProxyCaServiceFactory = ({
   };
 
   const $getOrgRootCa = async (orgId: string) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });

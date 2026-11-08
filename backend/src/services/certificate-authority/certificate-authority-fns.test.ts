@@ -499,7 +499,11 @@ describe("buildIssuedCertificateChain", () => {
         updateById: vi.fn(),
         transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(undefined))
       } as never,
-      kmsService: { decryptWithKmsKey, generateKmsKey: vi.fn() } as never
+      kmsCoreDomain: {
+        decryptWithKmsKey,
+        generateKmsKey: vi.fn(),
+        getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key")
+      } as never
     });
 
     return { chain, findValidInCaHierarchy, decryptWithKmsKey };
@@ -615,7 +619,7 @@ describe("getCaCrlIssuer", () => {
       internalCa: { dn: storedDn, activeCaCertId },
       kmsId: "kms-key",
       certificateAuthorityCertDAL: { findById: vi.fn().mockResolvedValue(caCertRow) },
-      kmsService: {
+      kmsCoreDomain: {
         decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
       } as never
     });

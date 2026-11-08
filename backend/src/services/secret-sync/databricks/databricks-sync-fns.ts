@@ -1,3 +1,4 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -6,7 +7,6 @@ import {
   databricksRequest,
   getDatabricksConnectionAccessToken
 } from "@app/services/app-connection/databricks/databricks-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {
   TDatabricksDeleteSecret,
   TDatabricksListSecretKeys,
@@ -22,7 +22,7 @@ import { TSecretSyncPayload } from "../secret-sync-payload";
 
 type TDatabricksSecretSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -96,7 +96,7 @@ const deleteDatabricksSecrets = async (
   );
 
 export const databricksSyncFactory = ({
-  kmsService,
+  kmsCoreDomain,
   appConnectionDAL,
   gatewayV2Service,
   gatewayPoolService
@@ -127,7 +127,7 @@ export const databricksSyncFactory = ({
 
     const connection = await $resolveGatewayConnection(secretSync.connection);
 
-    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService, deps);
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsCoreDomain, deps);
 
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
@@ -188,7 +188,7 @@ export const databricksSyncFactory = ({
 
     const connection = await $resolveGatewayConnection(secretSync.connection);
 
-    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsService, deps);
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsCoreDomain, deps);
 
     const databricksSecretKeys = await listDatabricksSecrets(
       {

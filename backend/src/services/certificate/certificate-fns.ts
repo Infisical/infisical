@@ -18,7 +18,6 @@ import { extractDnParts } from "../certificate-authority/certificate-authority-f
 import type { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import type { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import type { TPkiCollectionItemDALFactory } from "../pki-collection/pki-collection-item-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import type { TCertificateBodyDALFactory } from "./certificate-body-dal";
 import type { TCertificateDALFactory } from "./certificate-dal";
 import type { TCertificateSecretDALFactory } from "./certificate-secret-dal";
@@ -157,19 +156,14 @@ export const getCertificateCredentials = async ({
   certId,
   projectId,
   certificateSecretDAL,
-  projectDAL,
-  kmsService
+  kmsCoreDomain
 }: TGetCertificateCredentialsDTO) => {
   const certificateSecret = await certificateSecretDAL.findOne({ certId });
   if (!certificateSecret)
     throw new NotFoundError({ message: `Certificate secret for certificate with ID '${certId}' not found` });
 
-  const keyId = await getProjectKmsCertificateKeyId({
-    projectId,
-    projectDAL,
-    kmsService
-  });
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+  const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
+  const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
     kmsId: keyId
   });
   const decryptedPrivateKey = await kmsDecryptor({

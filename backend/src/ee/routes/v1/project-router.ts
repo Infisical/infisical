@@ -1,10 +1,10 @@
 import { z } from "zod";
 
+import { KmsType } from "@app/domains/platform/kms-core/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { KmsType } from "@app/services/kms/kms-types";
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({

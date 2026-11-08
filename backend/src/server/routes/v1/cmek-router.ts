@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { InternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
+import { KmsKeyUsage } from "@app/domains/platform/kms-core/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KMS } from "@app/lib/api-docs";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
@@ -14,7 +15,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
-import { KmsKeyUsage } from "@app/services/kms/kms-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });

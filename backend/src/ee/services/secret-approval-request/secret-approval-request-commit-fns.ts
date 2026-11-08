@@ -2,12 +2,11 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
+import { KmsDataKey, TCipherPair, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -35,7 +34,7 @@ type TSecretApprovalRequestCommitFnsFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findBySecretKeys" | "find">;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById">;
@@ -87,7 +86,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
   permissionService,
   folderDAL,
   projectDAL,
-  kmsService,
+  kmsCoreDomain,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretTagDAL,
@@ -98,10 +97,11 @@ export const secretApprovalRequestCommitFnsFactory = ({
   const $validateSecrets = async (
     dto: TValidateSecretsDTO,
     permission: MongoAbility<ProjectPermissionSet>,
-    tx?: Knex
+    tx?: Knex,
+    cipher?: TCipherPair
   ) => {
     try {
-      await secretValidationRuleService.validateSecrets(dto, tx);
+      await secretValidationRuleService.validateSecrets(dto, tx, cipher);
     } catch (error) {
       if (!(error instanceof SecretValidationError)) throw error;
 
@@ -168,13 +168,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
 
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey(
-      {
-        type: KmsDataKey.SecretManager,
-        projectId
-      },
-      providedTx
-    );
+    const { encryptor: secretManagerEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     const project = await projectDAL.findById(projectId, providedTx);
 

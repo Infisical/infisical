@@ -32,7 +32,7 @@ const STRIPE_KEY_NAME_MAX_LENGTH = 100;
 export const stripeApiKeyRotationFactory: TRotationFactory<
   TStripeApiKeyRotationWithConnection,
   TStripeApiKeyRotationGeneratedCredentials
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayV2Service, _gatewayPoolService, keyStore) => {
+> = (secretRotation, appConnectionDAL, kmsCoreDomain, _gatewayV2Service, _gatewayPoolService, keyStore) => {
   const {
     connection,
     parameters: { permissions, keyName },
@@ -48,7 +48,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   // Runs once at the start of each operation, not per request, so the cleanup a failed operation
   // does (expiring a key it just created) never fails on authorization half way through.
   const $assertAuthorized = () =>
-    assertStripeConnectionAuthorized(connection.id, { appConnectionDAL, kmsService, keyStore });
+    assertStripeConnectionAuthorized(connection.id, { appConnectionDAL, kmsCoreDomain, keyStore });
 
   /** No 404 on a double expire has ever been observed, so a non-404 failure on retiring a key that
    *  was already expired can't be told apart from a real failure by status code alone. This is only

@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { OrganizationActionScope, OrgMembershipRole, ProjectType, TableName } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -13,10 +14,8 @@ import { TInternalCertificateAuthorityDALFactory } from "@app/services/certifica
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TExportCertManagerProjectDTO, TExportCertManagerProjectResult } from "./cert-manager-export-types";
 
@@ -33,7 +32,7 @@ type TCertManagerExportServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
@@ -49,7 +48,7 @@ export const certManagerExportServiceFactory = ({
   certificateProfileDAL,
   projectDAL,
   orgDAL,
-  kmsService,
+  kmsCoreDomain,
   permissionService
 }: TCertManagerExportServiceFactoryDep) => {
   const allocateUniqueName = (desired: string, taken: Set<string>): string => {
@@ -130,19 +129,11 @@ export const certManagerExportServiceFactory = ({
       });
     }
 
-    const sourceKmsKeyId = await getProjectKmsCertificateKeyId({
-      projectId: sourceProjectId,
-      projectDAL,
-      kmsService
-    });
-    const destinationKmsKeyId = await getProjectKmsCertificateKeyId({
-      projectId: destinationProjectId,
-      projectDAL,
-      kmsService
-    });
+    const sourceKmsKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(sourceProjectId);
+    const destinationKmsKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(destinationProjectId);
 
-    const sourceDecryptor = await kmsService.decryptWithKmsKey({ kmsId: sourceKmsKeyId });
-    const destinationEncryptor = await kmsService.encryptWithKmsKey({ kmsId: destinationKmsKeyId });
+    const sourceDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: sourceKmsKeyId });
+    const destinationEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: destinationKmsKeyId });
 
     const reencrypt = async (cipherTextBlob: Buffer): Promise<Buffer> => {
       const plainText = await sourceDecryptor({ cipherTextBlob });

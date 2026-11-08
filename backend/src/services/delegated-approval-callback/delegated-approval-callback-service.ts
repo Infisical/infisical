@@ -1,8 +1,8 @@
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
 import { failDelegatedApprovalRequest } from "@app/services/delegated-approval/delegated-approval-request-fns";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import {
   DELEGATED_APPROVAL_CALLBACK_ATTEMPTS_EXHAUSTED_REASON,
@@ -27,7 +27,7 @@ export type TDelegatedApprovalCallbackServiceFactory = ReturnType<typeof delegat
 export const delegatedApprovalCallbackServiceFactory = ({
   delegatedApprovalRequestDAL,
   approvalRequestDAL,
-  kmsService,
+  kmsCoreDomain,
   eventEmitter
 }: TDelegatedApprovalCallbackServiceFactoryDep) => {
   const getCallbackUrl = () => {
@@ -40,7 +40,7 @@ export const delegatedApprovalCallbackServiceFactory = ({
     const approvalRequest = await approvalRequestDAL.findById(delegatedRequest.requestId, primary);
     if (!approvalRequest) return null;
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: approvalRequest.projectId
     });
@@ -78,7 +78,7 @@ export const delegatedApprovalCallbackServiceFactory = ({
       throw rejectApprovalCallback("request has no callback token", logContext);
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: delegatedRequest.approvalRequestProjectId
     });

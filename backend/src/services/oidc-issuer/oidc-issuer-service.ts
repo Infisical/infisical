@@ -1,5 +1,4 @@
-import { Knex } from "knex";
-
+import { KmsKeyUsage, TKmsCoreDomain, TKmsReadOptions } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -8,9 +7,6 @@ import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/t
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsKeyUsage } from "@app/services/kms/kms-types";
 
 import {
   getAppConnectionOidcSubject,
@@ -29,8 +25,7 @@ const KEY_ROTATION_LOCK_TTL_MS = 30_000;
 const KEY_ROTATION_MAX_MS = 2 * 60_000;
 
 type TOidcIssuerServiceFactoryDep = {
-  kmsDAL: Pick<TKmsKeyDALFactory, "find" | "delete" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "getPublicKey" | "signWithKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
@@ -40,8 +35,7 @@ type TJwks = { keys: Awaited<ReturnType<typeof publicKeyToJwk>>[] };
 export type TOidcIssuerServiceFactory = ReturnType<typeof oidcIssuerServiceFactory>;
 
 export const oidcIssuerServiceFactory = ({
-  kmsDAL,
-  kmsService,
+  kmsCoreDomain,
   keyStore,
   auditLogService
 }: TOidcIssuerServiceFactoryDep) => {
@@ -57,20 +51,21 @@ export const oidcIssuerServiceFactory = ({
   };
 
   // Customers cannot create reserved keys, so the prefix only separates these from the org's other reserved keys
-  const $listKeys = async (orgId: string, tx?: Knex) => {
-    const keys = await kmsDAL.find(
+  const $listKeys = async (orgId: string, options?: TKmsReadOptions) => {
+    // Oldest first
+    const keys = await kmsCoreDomain.findKeys(
       { orgId, projectId: null, isReserved: true, keyUsage: KmsKeyUsage.SIGN_VERIFY },
-      { sort: [["createdAt", "asc"]], tx }
+      options
     );
 
     return keys.filter(({ name }) => name.startsWith(OIDC_ISSUER_KEY_NAME_PREFIX));
   };
 
-  const $buildJwks = async (keys: { id: string }[], tx?: Knex): Promise<TJwks> => {
+  const $buildJwks = async (keys: { id: string }[], options?: TKmsReadOptions): Promise<TJwks> => {
     const jwks = await Promise.all(
       keys.map(({ id }) =>
-        kmsService
-          .getPublicKey({ kmsId: id }, tx)
+        kmsCoreDomain
+          .getPublicKey({ kmsId: id }, options)
           .then(publicKeyToJwk)
           .catch((err) => {
             // A concurrent rotation can delete the oldest key, which no longer signs
@@ -119,31 +114,32 @@ export const oidcIssuerServiceFactory = ({
     }, KEY_ROTATION_LOCK_TTL_MS / 3);
 
     try {
-      // A transaction reads the primary, so a rotation another request just finished is not missed on a replica
-      const keys = await kmsDAL.transaction((tx) => $listKeys(orgId, tx));
+      // Read on the primary, so a rotation another request just finished is not missed on a replica
+      const keys = await $listKeys(orgId, { consistency: "primary" });
       const { keysToCreate, keyIdsToDelete } = getKeyRotationPlan(keys);
 
       // Sequential, so createdAt orders the new keys
       for (let i = 0; i < keysToCreate && !isLockLost; i += 1) {
-        keys.push(
+        keys.push({
           // eslint-disable-next-line no-await-in-loop
-          await kmsService.generateKmsKey({
+          ...(await kmsCoreDomain.generateKmsKey({
             orgId,
             name: `${OIDC_ISSUER_KEY_NAME_PREFIX}${alphaNumericNanoId(8).toLowerCase()}`,
             keyUsage: KmsKeyUsage.SIGN_VERIFY,
             encryptionAlgorithm: AsymmetricKeyAlgorithm.RSA_4096,
             isReserved: true,
             isExportable: false
-          })
-        );
+          })),
+          isExternal: false
+        });
       }
       if (isLockLost) return null;
 
-      if (keyIdsToDelete.length) await kmsDAL.delete({ $in: { id: keyIdsToDelete } });
+      if (keyIdsToDelete.length) await kmsCoreDomain.deleteKeys(keyIdsToDelete);
 
       const activeKeys = keys.filter(({ id }) => !keyIdsToDelete.includes(id));
       // Built on the primary, so the first fetch after a rotation cannot come from a replica missing the new keys
-      if (keysToCreate) await $cacheJwks(orgId, await kmsDAL.transaction((tx) => $buildJwks(activeKeys, tx)));
+      if (keysToCreate) await $cacheJwks(orgId, await $buildJwks(activeKeys, { consistency: "primary" }));
 
       return activeKeys;
     } finally {
@@ -177,12 +173,10 @@ export const oidcIssuerServiceFactory = ({
     const { id: kmsId } = await $getSigningKey(orgId);
 
     // Read on the primary, because this request may have just created the key
-    const [{ kid }, sign] = await kmsDAL.transaction((tx) =>
-      Promise.all([
-        kmsService.getPublicKey({ kmsId }, tx).then(publicKeyToJwk),
-        kmsService.signWithKmsKey({ kmsId }, tx)
-      ])
-    );
+    const [{ kid }, sign] = await Promise.all([
+      kmsCoreDomain.getPublicKey({ kmsId }, { consistency: "primary" }).then(publicKeyToJwk),
+      kmsCoreDomain.signWithKmsKey({ kmsId }, { consistency: "primary" })
+    ]);
 
     const iat = Math.floor(Date.now() / 1000);
 

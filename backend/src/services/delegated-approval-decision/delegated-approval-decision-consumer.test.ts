@@ -170,7 +170,7 @@ const buildConsumer = ({
     },
     appConnectionDAL: { findById: vi.fn().mockResolvedValue(connection) },
     membershipDAL: { isUserProjectMember: vi.fn().mockResolvedValue(isRequesterProjectMember) },
-    kmsService: { createCipherPairWithDataKey: vi.fn() },
+    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn() },
     auditLogService: { createAuditLog },
     approvalResources: { [ApprovalPolicyType.SecretAccess]: { postApprovalTxRoutine } },
     decisionNotifiers: { [ApprovalPolicyType.SecretAccess]: notify }

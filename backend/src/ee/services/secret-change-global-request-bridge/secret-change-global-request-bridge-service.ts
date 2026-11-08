@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
@@ -30,8 +31,6 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -136,7 +135,7 @@ type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "insertMany"
@@ -195,7 +194,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   folderDAL,
   projectDAL,
   projectEnvDAL,
-  kmsService,
+  kmsCoreDomain,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
@@ -219,7 +218,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     permissionService,
     folderDAL,
     projectDAL,
-    kmsService,
+    kmsCoreDomain,
     secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
     secretTagDAL,
@@ -255,7 +254,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       identityDAL,
       projectDAL,
       projectEnvDAL,
-      kmsService,
+      kmsCoreDomain,
       projectSlackConfigDAL,
       projectMicrosoftTeamsConfigDAL,
       microsoftTeamsService,
@@ -671,8 +670,8 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       folderId: folder.id,
       commits
     });
-    const cipher = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+    const cipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsCoreDomain });
 
     const merged = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
@@ -1043,7 +1042,10 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       : toDeletedSecretChangePolicyStub(approvalRequest, steps);
 
     const commits = await secretApprovalRequestSecretDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     return {
       ...toSecretChangeRequestBase({ approvalRequest, secretChangeRequest }),

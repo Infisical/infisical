@@ -129,7 +129,7 @@ const buildDeps = (overrides?: {
         assertRecipientTypesAllowed: () => {}
       },
       alertProviderRegistry: overrides?.registry ?? buildProvider(),
-      kmsService: {
+      kmsCoreDomain: {
         createCipherPairWithDataKey: async () => ({
           encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
           decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob

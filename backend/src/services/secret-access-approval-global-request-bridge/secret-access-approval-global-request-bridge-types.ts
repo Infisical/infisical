@@ -1,3 +1,4 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
   TCancelAccessRequestDTO,
   TRetryDelegatedApprovalDispatchDTO,
@@ -19,7 +20,6 @@ import {
 import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { TSecretAccessPolicy } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -70,7 +70,7 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
   >;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;

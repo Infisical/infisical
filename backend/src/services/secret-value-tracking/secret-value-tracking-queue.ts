@@ -1,11 +1,10 @@
 import { ProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { JobState } from "@app/queue/queue-service";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -23,7 +22,7 @@ const PAUSE_BETWEEN_BATCHES_MS = 100;
 const NO_PROGRESS = { projectsTotal: 0, projectsDone: 0, secretsProcessed: 0 };
 
 type TProjectCipher = Pick<
-  Awaited<ReturnType<TKmsServiceFactory["createCipherPairWithDataKey"]>>,
+  Awaited<ReturnType<TKmsCoreDomain["createCipherPairWithDataKey"]>>,
   "decryptor" | "generateSecretBlindIndex"
 >;
 
@@ -42,7 +41,7 @@ type TSecretValueTrackingQueueFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "updateById">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findSecretsInFolderAfter" | "batchSetBlindIndexes">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 // A payload with no scope predates the org-wide walk. Reading it as project scope is what lets a job
@@ -65,7 +64,7 @@ export const secretValueTrackingQueueFactory = ({
   orgDAL,
   folderDAL,
   secretV2BridgeDAL,
-  kmsService
+  kmsCoreDomain
 }: TSecretValueTrackingQueueFactoryDep) => {
   const startBackfill = async (scope: TBackfillScope) => {
     const jobId = jobIdOf(scope);
@@ -127,7 +126,7 @@ export const secretValueTrackingQueueFactory = ({
       // One org data key for the whole walk, since every project in the org shares it.
       const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({
         orgId: projects[0].orgId,
-        kmsService
+        kmsCoreDomain
       });
       const progress = { projectsTotal: projects.length, projectsDone: 0, secretsProcessed: 0 };
 
@@ -180,7 +179,7 @@ export const secretValueTrackingQueueFactory = ({
         // Soft-deleted environments are included: the delete is reversible, so leaving their rows
         // unindexed and then flagging the scope complete breaks the moment one is restored.
         const folders = await folderDAL.findByProjectId(project.id, undefined, true);
-        const cipher = await kmsService.createCipherPairWithDataKey({
+        const cipher = await kmsCoreDomain.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: project.id
         });

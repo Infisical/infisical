@@ -1,12 +1,11 @@
 import { TDbClient } from "@app/db";
 import { ActionProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -23,7 +22,7 @@ type TResourceMetadataServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPathMultiEnv" | "findByEnvsDeep">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TResourceMetadataServiceFactory = ReturnType<typeof resourceMetadataServiceFactory>;
@@ -44,7 +43,7 @@ export const resourceMetadataServiceFactory = ({
   permissionService,
   folderDAL,
   projectEnvDAL,
-  kmsService
+  kmsCoreDomain
 }: TResourceMetadataServiceFactoryDep) => {
   // Project-scoped secret metadata search. The base query matches on org + project + key/value; the
   // results are then filtered so the requester actually has DescribeSecret permission on each returned
@@ -122,7 +121,7 @@ export const resourceMetadataServiceFactory = ({
 
     // decrypt encrypted candidates once per project (data key is resolved lazily), then match in-app
     if (encryptedCandidates.length) {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });

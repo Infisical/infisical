@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -10,8 +11,6 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { TGenericPermission } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
@@ -40,7 +39,7 @@ type TAgentVaultVariableServiceFactoryDep = {
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "delete">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 const AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT = 20;
@@ -57,10 +56,10 @@ export const agentVaultVariableServiceFactory = ({
   agentVaultPersonalValueDAL,
   membershipDAL,
   permissionService,
-  kmsService
+  kmsCoreDomain
 }: TAgentVaultVariableServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   /**
    * Global variables are admin only, reads included: a member can use a service without seeing what it is built

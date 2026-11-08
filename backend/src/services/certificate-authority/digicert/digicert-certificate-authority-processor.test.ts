@@ -47,7 +47,7 @@ const buildDeps = () => {
   const deps = {
     certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn() },
     appConnectionDAL: { findById: vi.fn() },
-    kmsService: { createCipherPairWithDataKey: vi.fn() },
+    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn() },
     certificateRequestDAL: { updateById: vi.fn(), setPendingMessage: vi.fn() },
     certificateRequestService: {
       updateCertificateRequestStatus: vi.fn(),

@@ -1,3 +1,4 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 import {
@@ -9,7 +10,6 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { TImportExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 
@@ -183,7 +183,7 @@ export type TGetCertificateCredentialsDTO = {
   projectId: string;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export { CertExtendedKeyUsage, CertSubjectAlternativeNameType, TAltNameType };

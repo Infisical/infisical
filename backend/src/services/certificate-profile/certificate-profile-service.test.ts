@@ -5,6 +5,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -20,7 +21,6 @@ import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrol
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import type { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
-import type { TKmsServiceFactory } from "../kms/kms-service";
 import type { TProjectDALFactory } from "../project/project-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import { certificateProfileServiceFactory, TCertificateProfileServiceFactory } from "./certificate-profile-service";
@@ -198,12 +198,13 @@ describe("CertificateProfileService", () => {
   } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 
   const mockKmsService = {
+    getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
     encryptWithKmsKey: vi
       .fn()
       .mockResolvedValue(() => Promise.resolve({ cipherTextBlob: Buffer.from("encrypted-data") })),
     decryptWithKmsKey: vi.fn().mockResolvedValue(() => Promise.resolve(Buffer.from("decrypted-ca-chain"))),
     generateKmsKey: vi.fn()
-  } as unknown as Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  } as unknown as TKmsCoreDomain;
 
   const mockProjectDAL = {
     findById: vi.fn(),
@@ -296,7 +297,7 @@ describe("CertificateProfileService", () => {
       caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
-      kmsService: mockKmsService,
+      kmsCoreDomain: mockKmsService,
       projectDAL: mockProjectDAL,
       resourceMetadataDAL: mockResourceMetadataDAL
     });

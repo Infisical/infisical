@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import { asNonSharedBuffer } from "@app/lib/fn";
@@ -15,7 +16,6 @@ import {
   MicrosoftEntraTokenResource,
   TMicrosoftIntuneConnectionCredentials
 } from "@app/services/app-connection/microsoft-intune";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { IScepValidationHandler, TScepValidationHandlerDeps } from "./scep-validation-handler-types";
 
@@ -57,7 +57,7 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
     };
 
     const acquisition = (async (): Promise<TIntuneAccess> => {
-      const { encryptor, decryptor } = await deps.kmsService.createCipherPairWithDataKey(
+      const { encryptor, decryptor } = await deps.kmsCoreDomain.createCipherPairWithDataKey(
         connection.projectId
           ? { type: KmsDataKey.SecretManager, projectId: connection.projectId }
           : { type: KmsDataKey.Organization, orgId: connection.orgId }
@@ -85,7 +85,7 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
         orgId: connection.orgId,
         projectId: connection.projectId,
         encryptedCredentials: connection.encryptedCredentials,
-        kmsService: deps.kmsService
+        kmsCoreDomain: deps.kmsCoreDomain
       })) as TMicrosoftIntuneConnectionCredentials;
 
       const graphToken = await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Graph);

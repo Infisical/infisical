@@ -13,6 +13,7 @@ import {
   TSecretsV2,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
@@ -28,7 +29,6 @@ import { ActorType } from "../auth/auth-type";
 import { EventModificationType } from "../event-outbox/event-definition";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderMove } from "../reminder/reminder-types";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -50,6 +50,7 @@ import {
   TFnSecretBulkInsert,
   TFnSecretBulkUpdate,
   TFnSecretMove,
+  TSecretWriteCiphers,
   TFnSecretMoveInTransaction,
   TFnSecretMoveResult
 } from "./secret-v2-bridge-types";
@@ -1681,7 +1682,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     actorOrgId,
     permission,
     tx,
-    kmsService,
+    ciphers,
     folderDAL,
     secretDAL,
     secretVersionDAL,
@@ -1773,12 +1774,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     }
   });
 
-  const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-    await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-  const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, tx });
+  const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = ciphers.secretManager;
+  const { blindIndexer } = ciphers;
   const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
     ...secret,
     value: secret.encryptedValue
@@ -2189,6 +2186,23 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     sourceFolder,
     destinationFolder
   };
+};
+
+// The ciphers a secret write needs, fetched before the caller opens the transaction the write runs in.
+export const prepareSecretWriteCiphers = async ({
+  kmsCoreDomain,
+  projectId,
+  orgId
+}: {
+  kmsCoreDomain: TKmsCoreDomain;
+  projectId: string;
+  orgId: string;
+}): Promise<TSecretWriteCiphers> => {
+  const [secretManager, blindIndexer] = await Promise.all([
+    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }),
+    createSecretBlindIndexer({ projectId, orgId, kmsCoreDomain })
+  ]);
+  return { secretManager, blindIndexer };
 };
 
 // performs the move within a caller-supplied transaction and returns the result without side effects.

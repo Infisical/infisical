@@ -125,7 +125,7 @@ const createService = ({
       getProjectPermission,
       getActorGrantAbilities: vi.fn().mockResolvedValue([])
     },
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob

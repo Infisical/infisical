@@ -2,6 +2,7 @@ import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
 
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -17,8 +18,6 @@ import { getTlsServerNameOptions } from "@app/lib/tls";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
@@ -26,7 +25,7 @@ import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-
 
 export type TGitHubAppCredentialResolverDeps = {
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 type TResolvedGitHubAppCredentials = {
@@ -49,7 +48,7 @@ export const resolveGitHubAppCredentials = async (
     orgId: string;
     projectId?: string | null;
   },
-  { gitHubAppDAL, kmsService }: TGitHubAppCredentialResolverDeps
+  { gitHubAppDAL, kmsCoreDomain }: TGitHubAppCredentialResolverDeps
 ): Promise<TResolvedGitHubAppCredentials> => {
   if (gitHubAppId) {
     const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
@@ -61,7 +60,7 @@ export const resolveGitHubAppCredentials = async (
 
     // Project-scoped apps are encrypted with the project's data key, org-scoped apps with the
     // org's, mirroring how app connection credentials are encrypted per scope.
-    const { decryptor } = await kmsService.createCipherPairWithDataKey(
+    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
       app.projectId
         ? { type: KmsDataKey.SecretManager, projectId: app.projectId }
         : { type: KmsDataKey.Organization, orgId }

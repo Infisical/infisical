@@ -2,18 +2,16 @@
    run everywhere, and on a fresh install runs against empty tables before a rotation is possible. */
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { SecretKeyEncoding, TableName, TOrgBots } from "../schemas";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
 const reencryptIdentityOidcAuth = async (knex: Knex) => {
@@ -38,16 +36,13 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
   }
 
   initLogger();
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
 
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const orgEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
 
   const identityOidcConfig = await knex(TableName.IdentityOidcAuth)
     .join(
@@ -71,13 +66,10 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, orgId, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey(
-            {
-              type: KmsDataKey.Organization,
-              orgId
-            },
-            knex
-          );
+          orgKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+            type: KmsDataKey.Organization,
+            orgId
+          });
           orgEncryptionRingBuffer.push(orgId, orgKmsService);
         }
 

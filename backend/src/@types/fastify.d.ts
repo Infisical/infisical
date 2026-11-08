@@ -3,6 +3,7 @@ import "fastify";
 import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
@@ -120,7 +121,6 @@ import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
 import { TDelegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
 import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { TEncryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
@@ -128,7 +128,6 @@ import { TFolderPermissionServiceFactory } from "@app/services/folder-permission
 import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
 import { TGroupProjectServiceFactory } from "@app/services/group-project/group-project-service";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
-import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
 import { TIdentityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
@@ -331,7 +330,6 @@ declare module "fastify" {
     org: TOrgServiceFactory;
     oidc: TOidcConfigServiceFactory;
     superAdmin: TSuperAdminServiceFactory;
-    encryptionKeyRotation: TEncryptionKeyRotationServiceFactory;
     user: TUserServiceFactory;
     group: TGroupServiceFactory;
     groupProject: TGroupProjectServiceFactory;
@@ -429,6 +427,7 @@ declare module "fastify" {
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
     licenseDomain: TLicenseDomain;
+    kmsCoreDomain: TKmsCoreDomain;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;
@@ -441,7 +440,6 @@ declare module "fastify" {
     userActivation: TUserActivationServiceFactory;
     userEngagement: TUserEngagementServiceFactory;
     externalKms: TExternalKmsServiceFactory;
-    hsm: THsmServiceFactory;
     orgAdmin: TOrgAdminServiceFactory;
     slack: TSlackServiceFactory;
     workflowIntegration: TWorkflowIntegrationServiceFactory;

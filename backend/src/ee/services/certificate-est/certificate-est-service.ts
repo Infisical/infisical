@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -10,7 +11,6 @@ import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certi
 import { TCertificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { convertRawCertsToPkcs7 } from "./certificate-est-fns";
@@ -22,7 +22,7 @@ type TCertificateEstServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   licenseDomain: TLicenseDomain;
 };
 
@@ -35,7 +35,7 @@ export const certificateEstServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
-  kmsService,
+  kmsCoreDomain,
   licenseDomain
 }: TCertificateEstServiceFactoryDep) => {
   const simpleReenroll = async ({
@@ -81,7 +81,7 @@ export const certificateEstServiceFactory = ({
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
-      kmsService
+      kmsCoreDomain
     });
 
     const verifiedChains = await Promise.all(
@@ -239,7 +239,7 @@ export const certificateEstServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
-      kmsService
+      kmsCoreDomain
     });
 
     const certificates = extractX509CertFromChain(caCertChain).map((cert) => new x509.X509Certificate(cert));

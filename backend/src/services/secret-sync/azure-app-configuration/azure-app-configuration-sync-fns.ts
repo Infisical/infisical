@@ -1,12 +1,12 @@
 /* eslint-disable no-await-in-loop */
 import https from "https";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { isAzureKeyVaultReference } from "@app/services/integration-auth/integration-sync-secret-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
@@ -16,7 +16,7 @@ import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configura
 
 type TAzureAppConfigurationSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
@@ -27,7 +27,7 @@ interface AzureAppConfigKeyValue {
 }
 
 export const azureAppConfigurationSyncFactory = ({
-  kmsService,
+  kmsCoreDomain,
   appConnectionDAL,
   oidcIssuerService
 }: TAzureAppConfigurationSyncFactoryDeps) => {
@@ -82,7 +82,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       oidcIssuerService
     );
 
@@ -170,7 +170,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       oidcIssuerService
     );
 
@@ -204,7 +204,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       oidcIssuerService
     );
 

@@ -42,7 +42,7 @@ const projectScopedDepStubs: Pick<
   | "projectBotService"
   | "projectDAL"
   | "userDAL"
-  | "kmsService"
+  | "kmsCoreDomain"
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
@@ -83,9 +83,9 @@ const projectScopedDepStubs: Pick<
   userDAL: {
     find: unreachable("userDAL.find")
   },
-  kmsService: {
-    createCipherPairWithDataKey: unreachable("kmsService.createCipherPairWithDataKey")
-  }
+  kmsCoreDomain: {
+    createCipherPairWithDataKey: unreachable("kmsCoreDomain.createCipherPairWithDataKey")
+  } as never
 };
 
 const fakeProject = (index: number): TSecretsProjectWarning => ({

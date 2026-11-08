@@ -1,7 +1,6 @@
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { PAM_RECORDING_AAD_VERSION } from "./pam-recording-constants";
 
@@ -14,18 +13,18 @@ const buildWrapAad = (projectId: string, sessionId: string) =>
 export const generateSessionRecordingSecrets = async ({
   projectId,
   sessionId,
-  kmsService
+  kmsCoreDomain
 }: {
   projectId: string;
   sessionId: string;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 }) => {
   const sessionKey = crypto.randomBytes(SESSION_KEY_LENGTH);
   const uploadToken = crypto.randomBytes(UPLOAD_TOKEN_LENGTH);
 
   const wrapAad = buildWrapAad(projectId, sessionId);
 
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -49,14 +48,14 @@ export const decryptSessionKey = async ({
   projectId,
   sessionId,
   encryptedSessionKey,
-  kmsService
+  kmsCoreDomain
 }: {
   projectId: string;
   sessionId: string;
   encryptedSessionKey: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });

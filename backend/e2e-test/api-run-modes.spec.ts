@@ -54,7 +54,7 @@ describe("INFISICAL_RUN_MODES route registration", () => {
       // the env config here rebinds only this file's copy — the running test server is untouched.
       initLogger();
       process.env.INFISICAL_RUN_MODES = `${RunMode.GeneralWorkers},${RunMode.SecretScanning}`;
-      const envConfig = await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL);
+      const envConfig = await initEnvConfig(testSuperAdminDAL);
 
       workerQueue = queueServiceFactory(envConfig);
       workerRedis = buildRedisFromConfig(envConfig);
@@ -71,8 +71,6 @@ describe("INFISICAL_RUN_MODES route registration", () => {
         keyStore: keyStoreFactory(envConfig, keyValueStoreDALFactory(testDb)),
         redis: workerRedis,
         clickhouse: buildClickHouseFromConfig(envConfig),
-        hsmService: testHsmService,
-        kmsRootConfigDAL: testKmsRootConfigDAL,
         superAdminDAL: testSuperAdminDAL,
         envConfig
       });
@@ -91,7 +89,7 @@ describe("INFISICAL_RUN_MODES route registration", () => {
 
       if (originalRunModes === undefined) delete process.env.INFISICAL_RUN_MODES;
       else process.env.INFISICAL_RUN_MODES = originalRunModes;
-      await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL);
+      await initEnvConfig(testSuperAdminDAL);
     });
 
     test("still serves the status endpoint so probes keep working", async () => {

@@ -191,7 +191,7 @@ const buildFns = ({
         .mockResolvedValue({ id: "project-1", name: "Project", orgId: "org-1", organization: { name: "Org" } })
     },
     projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", name: "Development", slug: "dev" }) },
-    kmsService: { createCipherPairWithDataKey: vi.fn() },
+    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn() },
     projectSlackConfigDAL: { getIntegrationDetailsByProject: vi.fn() },
     projectMicrosoftTeamsConfigDAL: { getIntegrationDetailsByProject: vi.fn() },
     microsoftTeamsService: { sendNotification: vi.fn() },

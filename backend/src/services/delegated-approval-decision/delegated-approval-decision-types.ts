@@ -1,3 +1,4 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -7,7 +8,6 @@ import { DelegatedApprovalSupportedPolicyType } from "@app/services/delegated-ap
 import { TDelegatedApprovalPolicyDALFactory } from "@app/services/delegated-approval/delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
 import { EventResultStatus } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { DelegatedApprovalDecision, DelegatedApprovalDecisionOutcome } from "./delegated-approval-decision-enums";
@@ -57,7 +57,7 @@ export type TDelegatedApprovalDecisionServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "findByIdForUpdate" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "isUserProjectMember">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   approvalResources: Record<DelegatedApprovalSupportedPolicyType, Pick<TApprovalResource, "postApprovalTxRoutine">>;
   decisionNotifiers: Record<DelegatedApprovalSupportedPolicyType, TDelegatedApprovalDecisionNotifier>;

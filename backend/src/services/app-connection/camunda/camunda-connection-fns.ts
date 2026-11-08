@@ -1,9 +1,9 @@
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { CamundaConnectionMethod } from "./camunda-connection-enums";
@@ -42,7 +42,7 @@ const authorizeCamundaConnection = async ({
 export const getCamundaConnectionAccessToken = async (
   { id, orgId, credentials, projectId }: TCamundaConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ) => {
   const { clientSecret, clientId, accessToken, expiresAt } = credentials;
 
@@ -61,7 +61,7 @@ export const getCamundaConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    kmsService,
+    kmsCoreDomain,
     projectId
   });
 

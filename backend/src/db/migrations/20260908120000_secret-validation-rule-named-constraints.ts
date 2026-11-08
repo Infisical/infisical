@@ -1,15 +1,13 @@
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger, logger } from "@app/lib/logger";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
 
@@ -147,14 +145,11 @@ const rewriteConfigs = async (knex: Knex, convert: (config: never, ruleId: strin
 
   initLogger();
 
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const projectKmsCache =
-    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
 
   const updates: { id: string; encryptedInputs: Buffer }[] = [];
 
@@ -162,10 +157,10 @@ const rewriteConfigs = async (knex: Knex, convert: (config: never, ruleId: strin
     let projectKms = projectKmsCache.getItem(rule.projectId);
     if (!projectKms) {
       // eslint-disable-next-line no-await-in-loop
-      projectKms = await kmsService.createCipherPairWithDataKey(
-        { type: KmsDataKey.SecretManager, projectId: rule.projectId },
-        knex
-      );
+      projectKms = await kmsCoreDomain.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: rule.projectId
+      });
       projectKmsCache.push(rule.projectId, projectKms);
     }
 

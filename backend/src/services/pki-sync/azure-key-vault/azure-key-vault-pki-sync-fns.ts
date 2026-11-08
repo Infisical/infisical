@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import * as crypto from "crypto";
 
 import { TCertificateSyncs } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -12,7 +13,6 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
@@ -53,7 +53,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
 
 type TAzureKeyVaultPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "removeCertificates"
@@ -210,7 +210,7 @@ const parseCertificateKeyProps = (certPem: string) => {
 };
 
 export const azureKeyVaultPkiSyncFactory = ({
-  kmsService,
+  kmsCoreDomain,
   appConnectionDAL,
   certificateSyncDAL,
   certificateDAL,
@@ -346,7 +346,7 @@ export const azureKeyVaultPkiSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       pkiSync.connection.id,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       oidcIssuerService
     );
 
@@ -763,7 +763,7 @@ export const azureKeyVaultPkiSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       pkiSync.connection.id,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       oidcIssuerService
     );
 

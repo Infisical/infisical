@@ -2,17 +2,15 @@
    run everywhere, and on a fresh install runs against empty tables before a rotation is possible. */
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger } from "@app/lib/logger";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
 export async function up(knex: Knex): Promise<void> {
@@ -29,16 +27,13 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   initLogger();
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
 
   const superAdminDAL = superAdminDALFactory(knex);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const projectEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
 
   const secretRotations = await knex(TableName.DeprecatedSecretRotationV1)
     .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.DeprecatedSecretRotationV1}.envId`)
@@ -50,13 +45,10 @@ export async function up(knex: Knex): Promise<void> {
     secretRotations.map(async ({ projectId, ...el }) => {
       let projectKmsService = projectEncryptionRingBuffer.getItem(projectId);
       if (!projectKmsService) {
-        projectKmsService = await kmsService.createCipherPairWithDataKey(
-          {
-            type: KmsDataKey.SecretManager,
-            projectId
-          },
-          knex
-        );
+        projectKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
         projectEncryptionRingBuffer.push(projectId, projectKmsService);
       }
 

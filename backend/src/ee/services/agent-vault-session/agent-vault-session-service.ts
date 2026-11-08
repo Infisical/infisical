@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -9,8 +10,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -63,7 +62,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "wrapKey" | "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
 };
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
@@ -79,7 +78,7 @@ export const agentVaultSessionServiceFactory = ({
   userDAL,
   orgDAL,
   permissionService,
-  kmsService
+  kmsCoreDomain
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -222,7 +221,7 @@ export const agentVaultSessionServiceFactory = ({
     // Sealed before the transaction: with an external KMS this is a network call, and the transaction stays short.
     let sealInlineSecrets: ((plainText: Buffer) => Buffer) | null = null;
     if (preparedInlineServices.some((service) => service.secrets)) {
-      const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -244,7 +243,7 @@ export const agentVaultSessionServiceFactory = ({
     const sessionId = crypto.nativeCrypto.randomUUID();
     const encryptedSessionLogKey = await wrapSessionLogKey(
       { projectId, sessionId, sessionLogKey: generateSessionLogKey() },
-      kmsService
+      kmsCoreDomain
     );
 
     // A session on a user's behalf belongs to the identity, so only it and admins see the session and its logs. The

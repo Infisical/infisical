@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -13,8 +14,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { extractObjectFieldPaths, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { OrderByDirection } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -48,7 +47,7 @@ type TDynamicSecretServiceFactoryDep = {
   >;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -92,7 +91,7 @@ export const dynamicSecretServiceFactory = ({
   permissionService,
   dynamicSecretQueueService,
   projectDAL,
-  kmsService,
+  kmsCoreDomain,
   gatewayV2DAL,
   gatewayPoolService,
   orgDAL,
@@ -212,7 +211,7 @@ export const dynamicSecretServiceFactory = ({
     const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId, defaultTTL, maxTTL });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: secretManagerEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -332,7 +331,7 @@ export const dynamicSecretServiceFactory = ({
         throw new BadRequestError({ message: "Provided dynamic secret already exists under the folder" });
     }
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
+      await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -664,7 +663,7 @@ export const dynamicSecretServiceFactory = ({
       })
     );
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -985,7 +984,7 @@ export const dynamicSecretServiceFactory = ({
       })
     );
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
     });

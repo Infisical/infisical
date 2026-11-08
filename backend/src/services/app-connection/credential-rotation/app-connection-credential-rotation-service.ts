@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -14,7 +15,6 @@ import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnection, TAppConnectionRaw } from "../app-connection-types";
 import { AzureAppConfigurationConnectionMethod } from "../azure-app-configuration/azure-app-configuration-connection-enums";
@@ -118,7 +118,7 @@ const CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP: Record<
 export type TAppConnectionCredentialRotationServiceFactoryDep = {
   appConnectionCredentialRotationDAL: TAppConnectionCredentialRotationDALFactory;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   queueService: TQueueServiceFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -132,7 +132,7 @@ export type TAppConnectionCredentialRotationServiceFactory = ReturnType<
 export const appConnectionCredentialRotationServiceFactory = ({
   appConnectionCredentialRotationDAL,
   appConnectionDAL,
-  kmsService,
+  kmsCoreDomain,
   keyStore,
   queueService,
   gatewayV2Service,
@@ -150,7 +150,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
     return decryptAppConnectionCredentials({
       orgId: connection.orgId,
       encryptedCredentials: connection.encryptedCredentials,
-      kmsService,
+      kmsCoreDomain,
       projectId: connection.projectId
     }) as Promise<Record<string, unknown>>;
   };
@@ -169,7 +169,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const encryptedCredentials = await encryptAppConnectionCredentials({
       orgId: connection.orgId,
       credentials: updatedCredentials,
-      kmsService,
+      kmsCoreDomain,
       projectId: connection.projectId
     });
 
@@ -216,14 +216,14 @@ export const appConnectionCredentialRotationServiceFactory = ({
       orgId: connection.orgId,
       projectId: connection.projectId,
       generatedCredentials,
-      kmsService
+      kmsCoreDomain
     });
 
     const encryptedConfig = await encryptStrategyConfig({
       orgId: connection.orgId,
       projectId: connection.projectId,
       config: strategyConfig,
-      kmsService
+      kmsCoreDomain
     });
 
     const nextRotationAt = calculateNextRotationAt({
@@ -264,7 +264,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       await postCommitCallback();
     }
 
-    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
+    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsCoreDomain);
   };
 
   /**
@@ -311,7 +311,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       if (rotateAtUtc !== undefined) updateData.rotateAtUtc = JSON.stringify(rotateAtUtc);
 
       const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
-      return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsService);
+      return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsCoreDomain);
     }
 
     // Build update payload
@@ -347,11 +347,11 @@ export const appConnectionCredentialRotationServiceFactory = ({
     }
 
     if (Object.keys(updateData).length === 0) {
-      return expandCredentialRotation(existingRotation, connection.orgId, connection.projectId, kmsService);
+      return expandCredentialRotation(existingRotation, connection.orgId, connection.projectId, kmsCoreDomain);
     }
 
     const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
-    return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsService);
+    return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsCoreDomain);
   };
 
   /**
@@ -365,7 +365,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const rotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
     if (!rotation) return null;
 
-    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
+    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsCoreDomain);
   };
 
   /**
@@ -399,7 +399,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       }
     );
 
-    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
+    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsCoreDomain);
   };
 
   /**
@@ -451,14 +451,14 @@ export const appConnectionCredentialRotationServiceFactory = ({
           orgId,
           projectId: connection.projectId,
           encryptedStrategyConfig: encryptedConfig,
-          kmsService
+          kmsCoreDomain
         });
 
         const generatedCredentials = await decryptCredentialRotationGeneratedCredentials({
           orgId,
           projectId: connection.projectId,
           encryptedGeneratedCredentials: encryptedGenCreds,
-          kmsService
+          kmsCoreDomain
         });
 
         const provider = CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP[strategy as AppConnectionCredentialRotationStrategy](
@@ -502,7 +502,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
           orgId,
           projectId: connection.projectId,
           generatedCredentials: updatedGeneratedCredentials,
-          kmsService
+          kmsCoreDomain
         });
 
         const nextRotationAt = calculateNextRotationAt({
@@ -563,7 +563,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
           orgId,
           projectId: connection.projectId,
           message: errorMessage,
-          kmsService
+          kmsCoreDomain
         });
       }
 

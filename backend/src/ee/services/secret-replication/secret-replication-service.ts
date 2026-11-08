@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
@@ -13,8 +14,6 @@ import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
@@ -97,7 +96,7 @@ type TSecretReplicationServiceFactoryDep = {
   >;
 
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
@@ -145,7 +144,7 @@ export const secretReplicationServiceFactory = ({
   secretVersionV2TagBridgeDAL,
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
-  kmsService,
+  kmsCoreDomain,
   folderCommitService,
   eventEmitter,
   projectFolderGrantDAL,
@@ -286,11 +285,11 @@ export const secretReplicationServiceFactory = ({
     if (!destinationReplicatedSecretImports.length) return;
 
     if (shouldUseSecretV2Bridge) {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId, kmsService });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId, kmsCoreDomain });
 
       // these are the secrets to be added in replicated folders
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
@@ -307,7 +306,7 @@ export const secretReplicationServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId: orgId,
         orgDAL,
-        kmsService
+        kmsCoreDomain
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({

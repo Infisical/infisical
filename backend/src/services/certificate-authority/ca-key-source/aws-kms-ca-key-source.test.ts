@@ -159,7 +159,7 @@ const opensslVerifySelfSigned = (certificate: x509.X509Certificate) => {
 const buildDeps = (plan: Record<string, unknown> = { pkiAwsKmsSigning: true }) => ({
   appConnectionDAL: { findById: vi.fn(async () => ({ id: "conn", app: "aws", orgId: "org" })) } as never,
   appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
-  kmsService: {} as never,
+  kmsCoreDomain: {} as never,
   projectDAL: { findById: vi.fn(async () => ({ id: "project", orgId: "org" })) } as never,
   licenseDomain: new FakeLicenseDomain().setPlan("org", plan as Partial<TPlanProps>),
   hsmConnectorService: {} as never,
@@ -191,7 +191,7 @@ describe("AWS KMS CA key source", () => {
   let isOpensslAvailable = false;
 
   beforeAll(async () => {
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
     x509.cryptoProvider.set(webcrypto as unknown as Crypto);
     isOpensslAvailable = await verifyPqcOpenSSLAvailability();
   });

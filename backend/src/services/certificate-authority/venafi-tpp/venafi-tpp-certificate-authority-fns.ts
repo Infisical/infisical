@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -40,9 +41,7 @@ import {
   CertSubjectAlternativeNameType,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -122,7 +121,7 @@ const sanToVenafiFormat = (san: {
 const getVenafiTppConnection = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsCoreDomain: TKmsCoreDomain,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
@@ -148,7 +147,7 @@ const getVenafiTppConnection = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    kmsService,
+    kmsCoreDomain,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   })) as {
@@ -351,7 +350,7 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -366,8 +365,7 @@ export const VenafiTppCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL,
+  kmsCoreDomain,
   certificateProfileDAL,
   gatewayV2Service,
   gatewayPoolService
@@ -609,20 +607,16 @@ export const VenafiTppCertificateAuthorityFns = ({
       "Venafi TPP: Starting certificate order from profile"
     );
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
     const { credentials, gatewayId } = await getVenafiTppConnection(
       venafiCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService,
+      kmsCoreDomain,
       gatewayPoolService
     );
 

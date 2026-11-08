@@ -14,6 +14,7 @@ import { TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -68,11 +69,9 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { assertCertificateMaterialAvailable } from "@app/services/certificate/certificate-fns";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
@@ -181,10 +180,7 @@ type TPkiAcmeServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseDomain: TLicenseDomain;
   certManagerDomain: TCertManagerDomain;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
+  kmsCoreDomain: TKmsCoreDomain;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -215,7 +211,7 @@ export const pkiAcmeServiceFactory = ({
   keyStore,
   licenseDomain,
   certManagerDomain,
-  kmsService,
+  kmsCoreDomain,
   certificateV3Service,
   certificatePolicyService,
   certificateRequestService,
@@ -678,12 +674,8 @@ export const pkiAcmeServiceFactory = ({
       if (!effectiveAcmeConfig?.encryptedEabSecret) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding is not configured" });
       }
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId: profile.projectId,
-        projectDAL,
-        kmsService
-      });
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(profile.projectId);
+      const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
       const eabSecret = await kmsDecryptor({ cipherTextBlob: effectiveAcmeConfig.encryptedEabSecret });
@@ -1666,13 +1658,9 @@ export const pkiAcmeServiceFactory = ({
     if (certificate) assertCertificateMaterialAvailable(certificate);
 
     const certBody = await certificateBodyDAL.findOne({ certId: syncedOrder.certificateId });
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: profile.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(profile.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({

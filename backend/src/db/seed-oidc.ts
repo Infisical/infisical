@@ -16,20 +16,18 @@
 import argon2, { argon2id } from "argon2";
 import jsrp from "jsrp";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
-import { inMemoryKeyStore } from "@app/keystore/memory";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { AuthMethod } from "@app/services/auth/auth-type";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { initDbConnection } from "./instance";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./migrations/utils/env-config";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./migrations/utils/services";
+import { getMigrationEnvConfig } from "./migrations/utils/env-config";
+import { getMigrationEncryptionServices } from "./migrations/utils/services";
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "./schemas";
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -115,12 +113,9 @@ const main = async () => {
 
   try {
     // Bootstrap the KMS stack outside the service container, exactly as the *-to-kms migrations do.
-    const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
     const superAdminDAL = superAdminDALFactory(db);
-    const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
-    const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
-    const keyStore = inMemoryKeyStore();
-    const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db });
+    const envConfig = await getMigrationEnvConfig(superAdminDAL);
+    const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db });
     const orgDAL = orgDALFactory(db);
 
     // Resolve the org: use the one the caller passed, otherwise bootstrap a dedicated `oidc` org.
@@ -239,10 +234,10 @@ const main = async () => {
 
     // Active OIDC config. client id/secret are encrypted with the org KMS data key, the same
     // key the OIDC login path decrypts with, so placeholders would break login.
-    const { encryptor } = await kmsService.createCipherPairWithDataKey(
-      { type: KmsDataKey.Organization, orgId: org.id },
-      db
-    );
+    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: org.id
+    });
 
     await db(TableName.OidcConfig).where({ orgId: org.id }).del();
     await db(TableName.OidcConfig).insert({

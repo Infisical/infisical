@@ -251,7 +251,7 @@ const buildService = (opts?: {
           recipients: c.recipients ?? []
         }))
     },
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: async () => ({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob

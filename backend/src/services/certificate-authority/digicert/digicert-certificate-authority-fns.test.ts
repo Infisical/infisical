@@ -23,10 +23,6 @@ vi.mock("./digicert-certificate-authority-shared", () => ({
   getDigiCertClientCredentials: vi.fn().mockResolvedValue({ apiKey: "key", baseUrl: "https://digicert.example" }),
   extractLeafAndChain: (pem: string) => ({ leaf: pem, chain: "" })
 }));
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-1")
-}));
-
 const createCertificate = async (name: string) => {
   const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
   const keys = (await webcrypto.subtle.generateKey(algorithm, true, ["sign", "verify"])) as CryptoKeyPair;
@@ -74,7 +70,8 @@ const buildFns = (storedCertificateId: number, storedCertificate = digicertCerti
     certificateBodyDAL: {
       findOne: vi.fn().mockResolvedValue({ encryptedCertificate: Buffer.from(storedCertificate.rawData) })
     },
-    kmsService: {
+    kmsCoreDomain: {
+      getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1"),
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
     },
     projectDAL: {}

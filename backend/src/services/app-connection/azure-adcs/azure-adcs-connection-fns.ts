@@ -3,11 +3,11 @@ import { NtlmClient } from "axios-ntlm";
 import https from "https";
 import RE2 from "re2";
 
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -344,7 +344,7 @@ const createNtlmClient = (
 export const getAzureADCSConnectionCredentials = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsCoreDomain: TKmsCoreDomain
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -360,7 +360,7 @@ export const getAzureADCSConnectionCredentials = async (
     case AzureADCSConnectionMethod.UsernamePassword:
       const credentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsService,
+        kmsCoreDomain,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as {

@@ -16,9 +16,6 @@ vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isSecondaryInstance:
 vi.mock("@app/services/certificate/certificate-ocsp-client", () => ({
   getCertificateOcspStatus: (...args: unknown[]) => getCertificateOcspStatus(...args)
 }));
-vi.mock("@app/services/project/project-fns", () => ({
-  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-1")
-}));
 vi.mock("./digicert-api-client", () => ({
   createDigiCertApiClient: () => ({ listOrderStatusChanges, downloadCertificatePem })
 }));
@@ -105,7 +102,8 @@ const runSync = async ({
     certificateBodyDAL: { findOne: vi.fn().mockResolvedValue(storedBody) },
     projectDAL: {},
     appConnectionDAL: {},
-    kmsService: {
+    kmsCoreDomain: {
+      getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1"),
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
     },
     auditLogService: { createAuditLog: vi.fn() },

@@ -1,7 +1,6 @@
 /* eslint-disable no-unreachable-loop */
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
-import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -14,6 +13,7 @@ import {
   SecretType,
   TableName
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -48,8 +48,6 @@ import {
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { ChangeType } from "../folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -64,8 +62,13 @@ import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
-import { TGetSecretKeyEnvironmentsDTO, TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
+import {
+  TGetSecretKeyEnvironmentsDTO,
+  TGetSecretReferencesTreeDTO,
+  TSecretWriteTransaction
+} from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
@@ -143,7 +146,7 @@ type TSecretServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -172,7 +175,7 @@ export const secretServiceFactory = ({
   reminderService,
   secretVersionV2DAL,
   secretV2BridgeDAL,
-  kmsService,
+  kmsCoreDomain,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
   orgDAL,
@@ -2230,8 +2233,9 @@ export const secretServiceFactory = ({
     folder,
     secrets: inputSecrets = [],
     tx,
+    ciphers,
     skipPostProcessing
-  }: TCreateManySecretRawDTO & { tx?: Knex; skipPostProcessing?: boolean }) => {
+  }: TCreateManySecretRawDTO & TSecretWriteTransaction & { skipPostProcessing?: boolean }) => {
     if (!projectSlug && !optionalProjectId)
       throw new BadRequestError({
         message: "Must provide either project slug or projectId"
@@ -2313,7 +2317,7 @@ export const secretServiceFactory = ({
         actorId,
         folder,
         secrets: inputSecrets,
-        tx,
+        ...((tx && ciphers ? { tx, ciphers } : {}) as TSecretWriteTransaction),
         skipPostProcessing
       });
       return { secrets, type: SecretProtectionType.Direct as const };
@@ -3630,7 +3634,7 @@ export const secretServiceFactory = ({
       }
     }
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -3711,11 +3715,13 @@ export const secretServiceFactory = ({
       actorOrgId
     } as const;
 
+    const ciphers = await prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: actorOrgId });
     const { createdSecrets, updatedSecrets } = await secretDAL.transaction(async (tx) => {
       const created = sourcesToCreate.length
         ? await secretV2BridgeService.createManySecret({
             ...baseManyArgs,
             tx,
+            ciphers,
             skipPostProcessing: true,
             secrets: sourcesToCreate.map((sourceSecret) => {
               const { secretKey, secretValue, ...rest } = buildSecretPayload(sourceSecret);
@@ -3728,6 +3734,7 @@ export const secretServiceFactory = ({
         ? await secretV2BridgeService.updateManySecret({
             ...baseManyArgs,
             tx,
+            ciphers,
             skipPostProcessing: true,
             mode: SecretUpdateMode.FailOnNotFound,
             secrets: sourcesToUpdate.map(buildSecretPayload)

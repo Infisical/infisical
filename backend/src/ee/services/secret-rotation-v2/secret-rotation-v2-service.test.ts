@@ -119,7 +119,7 @@ const createService = ({
         return { release };
       })
     },
-    kmsService: {
+    kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("encrypted") })
       }))

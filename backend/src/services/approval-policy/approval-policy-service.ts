@@ -10,6 +10,7 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -28,7 +29,6 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
@@ -105,7 +105,7 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsCoreDomain: TKmsCoreDomain;
   notificationService: TNotificationServiceFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -153,7 +153,7 @@ export const approvalPolicyServiceFactory = ({
   approvalRequestGrantsDAL,
   userGroupMembershipDAL,
   slackIntegrationDAL,
-  kmsService,
+  kmsCoreDomain,
   notificationService,
   permissionService,
   licenseDomain,
@@ -181,7 +181,7 @@ export const approvalPolicyServiceFactory = ({
     notificationService,
     smtpService,
     slackIntegrationDAL,
-    kmsService
+    kmsCoreDomain
   };
 
   const $notify = (args: {

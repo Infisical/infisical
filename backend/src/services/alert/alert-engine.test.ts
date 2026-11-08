@@ -194,7 +194,7 @@ const buildEngine = (opts: {
         return new Map([...rowsByChannel.keys()].map((channelId) => [channelId, resolved]));
       }
     },
-    kmsService: kmsServiceMock,
+    kmsCoreDomain: kmsServiceMock,
     smtpService: {
       sendMail: async (opt: { recipients: string[] }) => {
         inFlightSends += 1;
