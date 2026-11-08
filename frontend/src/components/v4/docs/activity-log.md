@@ -14,7 +14,7 @@ Owner: activity-log.
 
 When an event is written.
 
-Do: Start with the actor and use the past tense, with keys and machine names in mono.
+Do: Start with the actor and use the past tense, with secret keys and other machine values in mono and names, machine identities included, in the sans.
 
 Avoid: Write passive events such as Secret was updated.
 

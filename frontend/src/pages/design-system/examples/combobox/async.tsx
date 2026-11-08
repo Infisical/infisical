@@ -49,7 +49,6 @@ export default function Example() {
           onSearch={search}
           loading={loading}
           emptyText="No projects match"
-          mono
           onCreate={async (query, { signal }) => {
             await new Promise((resolve) => {
               setTimeout(resolve, 300);

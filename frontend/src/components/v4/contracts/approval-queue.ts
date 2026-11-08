@@ -189,7 +189,7 @@ export const approvalQueueDefinition = {
     ],
     antiSlop: [
       {
-        do: "Name the object in mono and the person who asked in the description.",
+        do: "Name the object in mono when it is a machine value such as a secret key, in the sans when it is a name such as an identity, and the person who asked in the description.",
         avoid: "Title every row Approval request.",
         reason: "People decide by what changes and who asked."
       }

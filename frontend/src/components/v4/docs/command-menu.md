@@ -84,6 +84,7 @@ Exports: Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, Comma
 
 ## Limits
 
+- An item's mono is for a machine value such as a secret key; project, environment and other named entities stay in the sans (rule/mono-machine-values).
 - Async action IDs stay disabled and busy until settlement. Actual dialog close resets query/page and notifies onQueryChange('', undefined); inline panels retain their query. Remote search, shortcut bindings shown on items and persistence remain host-owned.
 
 ## Declared example coverage

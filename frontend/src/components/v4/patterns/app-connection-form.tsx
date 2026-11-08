@@ -179,7 +179,6 @@ export function AppConnectionForm({
         {renderField({
           name: "name",
           label: "Name",
-          mono: true,
           placeholder: `my-${preset.app}-connection`,
           description: "Lowercase letters, numbers and dashes."
         })}

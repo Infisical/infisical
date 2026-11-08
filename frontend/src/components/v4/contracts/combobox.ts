@@ -38,6 +38,7 @@ export const comboboxDefinition = {
     "Disabled options cannot be selected."
   ],
   limitations: [
+    "mono is for a picker of machine values such as secret keys, key IDs or folder paths; a picker of projects, environments or other named entities stays in the sans (rule/mono-machine-values).",
     "Without onSearch, filtering is in memory. Async search does not virtualize results; keep the host's result page short.",
     "onSearch and loading are single-selection props. Multiple mode filters its options in memory and orders the value by them, so it needs every selectable option up front.",
     "Creation persistence belongs to the host. Aborting suppresses obsolete UI results and asks the host to cancel; it cannot undo an already committed server write.",
@@ -186,8 +187,14 @@ export const comboboxDefinition = {
       axis: "composition",
       expected: ["mono identifier", "custom empty text"],
       shown: [
-        { value: "mono identifier", exampleId: "async", label: "Searches the server as you type" },
         { value: "custom empty text", exampleId: "async", label: "Searches the server as you type" }
+      ],
+      omitted: [
+        {
+          value: "mono identifier",
+          reason:
+            "mono is for a picker of machine values such as secret keys, key IDs or hosts. The examples pick projects and environments, names people chose, which stay in the sans (rule/mono-machine-values)."
+        }
       ]
     }
   ],

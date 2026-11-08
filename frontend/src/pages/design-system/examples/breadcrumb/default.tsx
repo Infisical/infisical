@@ -57,14 +57,13 @@ export default function Example() {
             { label: "Secrets Management" },
             {
               label: project,
-              mono: true,
               href: "#breadcrumb",
               switcher: {
                 label: "Switch project",
                 value: project,
                 options: [
-                  { value: "payments", label: "payments", mono: true },
-                  { value: "platform", label: "platform", mono: true }
+                  { value: "payments", label: "payments" },
+                  { value: "platform", label: "platform" }
                 ],
                 onChange: setProject
               }

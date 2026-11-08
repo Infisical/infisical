@@ -34,11 +34,7 @@ const initial: ApprovalRequest[] = [
   {
     id: "agent",
     object: "release-notes-agent",
-    title: (
-      <>
-        <code>release-notes-agent</code> access approved
-      </>
-    ),
+    title: <>release-notes-agent access approved</>,
     description: "Read access to staging for 1 hour, approved by you.",
     age: "2h",
     href: "#approval-queue",
@@ -47,11 +43,7 @@ const initial: ApprovalRequest[] = [
   {
     id: "sync",
     object: "vercel-sync",
-    title: (
-      <>
-        <code>vercel-sync</code> change in staging
-      </>
-    ),
+    title: <>vercel-sync change in staging</>,
     description: "Sarah Lin adds 3 secrets to the sync.",
     age: "3h",
     href: "#approval-queue",

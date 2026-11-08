@@ -85,6 +85,7 @@ Exports: PageHeader. Source TypeScript defines the API.
 
 ## Limits
 
+- mono sets the title in mono only when the object is a machine value, such as a secret key or a host. A project, identity, role, group or folder title stays in the sans (rule/mono-machine-values).
 - The host provides the tab panels and routes; the header only places them.
 
 ## Declared example coverage
@@ -137,11 +138,11 @@ export default function Example() {
             title="stripe_api_key"
             media={<Media icon="key" size="md" />}
             breadcrumb={[
-              { label: "payments-api", href: "#page-header", mono: true },
-              { label: "backend", href: "#page-header", mono: true },
-              { label: "billing", href: "#page-header", mono: true },
-              { label: "providers", href: "#page-header", mono: true },
-              { label: "stripe", href: "#page-header", mono: true }
+              { label: "payments-api", href: "#page-header" },
+              { label: "backend", href: "#page-header" },
+              { label: "billing", href: "#page-header" },
+              { label: "providers", href: "#page-header" },
+              { label: "stripe", href: "#page-header" }
             ]}
             maxItems={3}
             badges={

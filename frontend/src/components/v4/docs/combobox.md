@@ -116,6 +116,7 @@ Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, 
 
 ## Limits
 
+- mono is for a picker of machine values such as secret keys, key IDs or folder paths; a picker of projects, environments or other named entities stays in the sans (rule/mono-machine-values).
 - Without onSearch, filtering is in memory. Async search does not virtualize results; keep the host's result page short.
 - onSearch and loading are single-selection props. Multiple mode filters its options in memory and orders the value by them, so it needs every selectable option up front.
 - Creation persistence belongs to the host. Aborting suppresses obsolete UI results and asks the host to cancel; it cannot undo an already committed server write.
@@ -153,8 +154,8 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### composition
 
-- mono identifier: example `async`, visible label "Searches the server as you type".
 - custom empty text: example `async`, visible label "Searches the server as you type".
+- mono identifier: omitted. mono is for a picker of machine values such as secret keys, key IDs or hosts. The examples pick projects and environments, names people chose, which stay in the sans (rule/mono-machine-values).
 
 ## Executable examples
 
@@ -340,7 +341,6 @@ export default function Example() {
             onSearch={search}
             loading={loading}
             emptyText="No projects match"
-            mono
             onCreate={async (query, { signal }) => {
               await new Promise((resolve) => {
                 setTimeout(resolve, 300);

@@ -16,6 +16,7 @@ const columns: DataTableColumn<Row>[] = [
     id: "key",
     header: "Key",
     primary: true,
+    mono: true,
     sortable: true,
     text: (row) => row.key,
     render: (row) => row.key

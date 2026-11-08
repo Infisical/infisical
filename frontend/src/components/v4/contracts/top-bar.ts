@@ -26,6 +26,7 @@ export const topBarDefinition = {
     "AppInset renders the main landmark."
   ],
   limitations: [
+    "Crumbs and Switcher options built from a project, organization, environment or folder name stay in the sans: those are names people chose, not machine values (rule/mono-machine-values).",
     "Between size-shell-collapse and size-shell-rail the band keeps every crumb and truncates labels; it does not swap the organization name for a glyph or drop leading crumbs.",
     "The gutter grows past 40px only when the card is wider than the page measure plus the gutters."
   ],

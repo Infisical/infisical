@@ -87,6 +87,33 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "bulk-bar-window",
+    title: "Bulk bar at the window",
+    description:
+      "The bulk action bar sits at the bottom center of the window on every table, and the page pads itself so nothing hides behind it.",
+    date: "2026-11-07",
+    commit: "2f8f8ef459",
+    page: "floating-action-bar"
+  },
+  {
+    id: "autofill",
+    title: "Autofill keeps the field",
+    description:
+      "Fields the browser autofills keep their own ground and text color in every theme instead of Chrome's blue fill.",
+    date: "2026-11-07",
+    commit: "7e0192cd9a",
+    page: "input"
+  },
+  {
+    id: "mono-rule",
+    title: "Mono for machine values",
+    description:
+      "Names people choose render in sans; mono is kept for keys, IDs, hashes, hosts and code, with a lint for mono names.",
+    date: "2026-11-07",
+    commit: "1a51d0cb78",
+    page: "text"
+  },
+  {
     id: "quiet-link",
     title: "Quiet links",
     description:
@@ -193,32 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "82f79f402f",
     page: "toggle-group"
-  },
-  {
-    id: "secret-input-rowlink",
-    title: "Quiet secret inputs and row chevrons",
-    description:
-      "Secret value fields use the UI sans and the same muted placeholder as Input, and navigable rows end in a chevron.",
-    date: "2026-11-07",
-    commit: "c47e88f745",
-    page: "row-link"
-  },
-  {
-    id: "trigger-layout",
-    title: "Start-aligned triggers",
-    description:
-      'Picker triggers put the value at the start and the chevron at the end, matching Select, with layout="trigger" on Button.',
-    date: "2026-11-07",
-    commit: "357f910288",
-    page: "button"
-  },
-  {
-    id: "header-band",
-    title: "Header band and quiet empty rows",
-    description:
-      "Table headers keep one band edge to edge again, and empty, loading and group rows no longer light up on hover.",
-    date: "2026-11-07",
-    commit: "c23123067c",
-    page: "table"
   }
 ];

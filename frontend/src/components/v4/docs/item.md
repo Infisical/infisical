@@ -79,6 +79,7 @@ Exports: Item, ItemActions, ItemContent, ItemDescription, ItemFooter, ItemGroup,
 
 ## Limits
 
+- mono sets the title in mono for a machine value such as a path or a host. A project, organization or identity name stays in the sans (rule/mono-machine-values).
 - ItemGroup supplies list/listitem structure and preserves slotted links; selection, unread counts and operations remain caller-owned.
 
 ## Declared example coverage

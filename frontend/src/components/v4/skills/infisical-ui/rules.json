@@ -1123,6 +1123,19 @@
       "exceptions": "The check reads Tooltip content props and TooltipContent bodies in the same file. A long or copyable value with no interactive element is reviewed by hand."
     },
     {
+      "id": "mono-machine-values",
+      "title": "Mono is for machine values, names stay in the sans",
+      "instruction": "Set Geist Mono only on machine-readable values a person copies or compares character by character: secret keys, IDs and UUIDs, hashes, fingerprints, serials, IPs and hosts, paths, env var names, code and CLI snippets and key IDs, and optionally tabular numbers whose digits must align. Names people chose stay in the Archivo sans: project, organization, environment display name, role, group, identity (person, machine or agent), user, folder, KMS key, certificate common name and app connection names, and every crumb, switcher option, title and label built from them. A slug is an identifier the CLI, API and URLs use, so it takes mono where it is shown or edited as the slug (a slug field, a slug column, an inline code reference), but never stands in for the display name, even when the two match. Never set a font family on html, body, V4Scope, AppShell or a theme, and set mono in a page only through a primitive's mono prop or the mono type role tokens on a machine value; DataTable primary is sans and a column opts into mono with mono.",
+      "good": "The top bar's project crumb and switcher options and the project's PageHeader title in the sans, beside a secret key column with mono and an environment slug Input with mono.",
+      "avoid": "A project, identity or folder name passed with mono to a crumb, Switcher option, PageHeader or Item, or a page stylesheet that sets a name class in the mono family.",
+      "detect": {
+        "by": "lint",
+        "check": "mono-named-entity"
+      },
+      "category": "Visual",
+      "exceptions": "The check reads mono on a JSX element or option object whose title, label or text reads an entity's .name. It cannot see a name passed through a local variable, mono set by a page stylesheet class, a conditional mono expression or a DataTable column whose render reads a name; those are reviewed by hand."
+    },
+    {
       "id": "trigger-start-aligned",
       "title": "Triggers start-align their value",
       "instruction": "Every trigger that shows a value and a chevron (Select, Combobox, MultiSelect, and a Button that opens a menu, popover or picker) puts its label at the start, truncates it, and puts the chevron at the end. A Button acting as that trigger passes layout=\"trigger\", which draws the chevron and takes SelectTrigger's insets; never center the value or add a chevron to a plain Button.",
@@ -1138,15 +1151,14 @@
     {
       "id": "selection-floating-action-bar",
       "title": "Bulk selection uses the floating action bar",
-      "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content. The bar is contained, its default, in every product: pass it to DataTable's actionBar so the table reserves room below its last row, and never set placement fixed, which floats it over the whole viewport.",
-      "good": "Selecting three secrets raises the contained floating action bar at the bottom of the table's column with the count, Clear and the bulk actions, and the table stays where it was.",
+      "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content. The bar is fixed to the bottom center of the window on every page, crossing the sidebar if it must; pass it to DataTable's actionBar when a DataTable holds the selection, and never position it yourself. It pads the page's scroll area while it shows, so the last rows and the pagination scroll clear of it.",
+      "good": "Selecting three secrets raises the floating action bar at the bottom center of the window with the count, Clear and the bulk actions, the table stays where it was, and scrolling to the end shows the pagination above the bar.",
       "avoid": "An inline '3 selected, Clear selection, Bulk actions' row that pushes the table down when the first row is selected.",
       "detect": {
-        "by": "lint",
-        "check": "fixed-bulk-bar"
+        "by": "review",
+        "how": "Select a row and check that nothing above or below the list moves, that the bar sits at the bottom center of the window, and that the pagination scrolls clear of it."
       },
-      "category": "Interaction",
-      "exceptions": "The check reads a literal placement on FloatingActionBar. An inline bar, or selection that moves content, is caught only in review: select a row and check that nothing above or below the list moves."
+      "category": "Interaction"
     },
     {
       "id": "translucent-hover",

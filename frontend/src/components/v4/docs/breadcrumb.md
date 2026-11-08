@@ -107,6 +107,7 @@ Exports: Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, Breadcr
 
 ## Limits
 
+- A crumb's mono is for a machine value such as a secret key or path segment shown as code. Project, organization, environment and folder crumbs, and the options of a crumb's Switcher, are names and stay in the sans (rule/mono-machine-values).
 - The owner supplies real destinations and switching callbacks; collapse does not implement routing.
 
 ## Declared example coverage
@@ -201,14 +202,13 @@ export default function Example() {
               { label: "Secrets Management" },
               {
                 label: project,
-                mono: true,
                 href: "#breadcrumb",
                 switcher: {
                   label: "Switch project",
                   value: project,
                   options: [
-                    { value: "payments", label: "payments", mono: true },
-                    { value: "platform", label: "platform", mono: true }
+                    { value: "payments", label: "payments" },
+                    { value: "platform", label: "platform" }
                   ],
                   onChange: setProject
                 }

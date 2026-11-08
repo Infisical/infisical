@@ -25,19 +25,19 @@ Checked by: review only. Look for: Run Delete in the example and check that the 
 Source evidence:
 - src/pages/design-system/examples/floating-action-bar/default.tsx
 
-### floating-action-bar-contained
+### floating-action-bar-window
 
 Owner: floating-action-bar.
 
 When a list or table page shows bulk actions for its selection.
 
-Do: Pass the bar to DataTable's actionBar and keep the default contained placement, so it sits in the table's column and the table holds room for it.
+Do: Render one FloatingActionBar for the selection, through DataTable's actionBar when a DataTable holds it, and let it sit at the bottom center of the window.
 
-Avoid: Set placement="fixed", which floats the bar over the whole viewport, or render the bar outside the table that holds the selection.
+Avoid: Position the bar yourself, pin it inside the table or a card, or pad the page for it by hand.
 
-Why: One placement on every page keeps the bar over the rows it acts on, and only a bar hosted by the table makes the table reserve room for it.
+Why: One place on every page makes the bar easy to find, and the bar pads the page's scroll area itself, so the last rows and the pagination can scroll clear of it.
 
-Checked by: review only. Look for: Select rows on each list page: the bar sits centered on the table, not the viewport. ui:lint fixed-bulk-bar flags a literal placement="fixed".
+Checked by: review only. Look for: Select rows on a list page whose table ends near the bottom of the window: the bar sits at the bottom center of the window, and scrolling to the end shows the pagination above it.
 
 Source evidence:
 - src/components/v4/ui/floating-action-bar.tsx
@@ -79,15 +79,15 @@ Why: The count already sits at the start of the bar.
 - src/components/v4/ui/floating-action-bar.module.css
 - src/components/v4/ui/data-table.tsx
 
-Exports: FloatingActionBar, FloatingActionBarHostContext. Source TypeScript defines the API.
+Exports: FloatingActionBar. Source TypeScript defines the API.
 
 ## Behavior
 
 - The bar shows while count is above zero and keeps the last count while it leaves. It enters and leaves on the motion springs; reduced motion jumps.
 - Select all appears while fewer than total are selected.
 - moreActions always sit in the More menu. Under 400px wide, Select all hides and the noun after the count moves to screen readers only.
-- placement defaults to contained, which sits space-action-bar-offset-contained (16px) above the nearest positioned ancestor's bottom. fixed sits space-action-bar-offset (24px) above the viewport's bottom and remains only for pages not yet moved to contained. The bar is size-action-bar (48px) tall.
-- Passed to a DataTable through actionBar, the bar tells the table while it shows. A contained bar then rides the scroll container's bottom edge, centered on the table, while the table is in view, and rests space-action-bar-offset-contained below the frame, so the last row can scroll clear of it.
+- The bar is fixed to the window: centered horizontally, space-action-bar-offset (24px) above the bottom edge and size-action-bar (48px) tall. It may cross the sidebar. It portals into the V4Scope overlay container, so it takes the scope's theme, and sits at z-index 40: above page content and sticky table headers, below dialogs, sheets, popovers, menus and toasts on the z-50 overlay layer. Inside a framed V4Scope (portalContainer) it is fixed to that frame instead.
+- While it shows, the page's scroll area (AppInset) gains bottom padding of size-action-bar plus space-action-bar-offset, so the last rows and the pagination can scroll clear of the bar. A short page that already fits becomes scrollable by that much.
 
 ## Accessibility
 
@@ -110,10 +110,9 @@ Exports: FloatingActionBar, FloatingActionBarHostContext. Source TypeScript defi
 
 Source declarations and review criteria only. Generation checks references and completeness, not rendered behavior or API parity.
 
-### placement
+### selection
 
-- contained: example `default`, visible label "contained, two of five selected".
-- fixed: omitted. Fixed placement would float over the whole workbench, and it is no longer used for new pages; contained, the default, shows the same bar inside its stage.
+- partial: example `default`, visible label "Two of five selected".
 
 ## Executable examples
 
@@ -152,7 +151,6 @@ export default function Example() {
             ))}
           </List>
           <FloatingActionBar
-            placement="contained"
             count={selected.length}
             total={rows.length}
             onSelectAll={() => setSelected(rows)}
@@ -192,9 +190,7 @@ export default function Example() {
           />
         </div>
       </div>
-      <figcaption className="text-muted-foreground text-xs">
-        {"contained, two of five selected"}
-      </figcaption>
+      <figcaption className="text-muted-foreground text-xs">{"Two of five selected"}</figcaption>
     </figure>
   );
 }

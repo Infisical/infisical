@@ -320,6 +320,19 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, '<Button disabled>Save</Button>\n<Tooltip content="Help" />']
     ]
   },
+  "mono-named-entity": {
+    bad: [
+      [example, '<PageHeader title={project.name} mono description="Overview" />'],
+      [example, "const crumb = { label: project?.name ?? projectId, mono: true, href };"],
+      [example, "options.map((entry) => ({ value: entry.id, label: entry.name, mono: true }))"]
+    ],
+    good: [
+      [example, "<PageHeader title={secret.key} mono />"],
+      [example, '<Input mono value={environment.slug} aria-label="Environment slug" />'],
+      [example, "const crumb = { label: project?.name ?? projectId, href };"],
+      [example, "options.map((entry) => ({ value: entry.id, label: entry.key, mono: true }))"]
+    ]
+  },
   "trigger-start-aligned": {
     bad: [
       [
@@ -497,17 +510,6 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
         "src/pages/v4/secret-manager/OverviewPage/OverviewPage.tsx",
         '<Card>\n  <Table aria-label="Secrets" />\n</Card>'
       ]
-    ]
-  },
-  "fixed-bulk-bar": {
-    bad: [
-      [page, '<FloatingActionBar placement="fixed" count={2} onClear={clear} />'],
-      [example, '<FloatingActionBar\n  count={2}\n  placement={"fixed"}\n  onClear={clear}\n/>']
-    ],
-    good: [
-      [page, "<FloatingActionBar count={2} onClear={clear} />"],
-      [page, '<FloatingActionBar placement="contained" count={2} onClear={clear} />'],
-      [page, '<Popover placement="fixed" />']
     ]
   },
   "v4-path-literal": {

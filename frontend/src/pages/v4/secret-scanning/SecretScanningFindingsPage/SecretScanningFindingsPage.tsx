@@ -388,7 +388,6 @@ const Findings = ({ projectId }: { projectId: string }) => {
         }
         actionBar={
           <FloatingActionBar
-            placement="contained"
             count={selected.length}
             total={findings.length}
             onSelectAll={() => setSelected(findings.map((row) => row.id))}

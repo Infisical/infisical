@@ -18,7 +18,7 @@ export const appConnectionFormDefinition = {
   ],
   referenceNames: ["AppConnectionForm", "connectionCreation"],
   behavior: [
-    "AppConnectionForm renders one form element with the given id: Name (mono), Method as a Select when the preset has more than one, the chosen method's fields, then an optional Description. It has no buttons of its own; the host's submit Button targets the form by id.",
+    "AppConnectionForm renders one form element with the given id: Name (in the sans: a connection name is a name, rule/mono-machine-values), Method as a Select when the preset has more than one, the chosen method's fields, then an optional Description. It has no buttons of its own; the host's submit Button targets the form by id.",
     "A preset carries the app, its display name, its methods and the app's create schema from the shared data layer. The form validates only through that schema (zodResolver), so its rules and messages match the v3 form for the same app. Changing the method swaps in that method's credentials and clears their errors. A field with visible shows only while visible(values) is true.",
     "Field kinds map to v4 controls: text and number to Input, secret to SecretInput, textarea to Textarea, select to Select and switch to Switch. Errors show under their field; a rejected onSubmit shows its message, or a retry sentence that names the app, in a destructive Alert under the fields and keeps every value.",
     "onDirtyChange and onPendingChange report the form's dirty and submitting state, and every control is disabled while it submits.",

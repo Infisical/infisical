@@ -11,14 +11,14 @@ export const floatingActionBarDefinition = {
     "src/components/v4/ui/floating-action-bar.module.css",
     "src/components/v4/ui/data-table.tsx"
   ],
-  exports: ["FloatingActionBar", "FloatingActionBarHostContext"],
+  exports: ["FloatingActionBar"],
   referenceNames: ["FloatingActionBar"],
   behavior: [
     "The bar shows while count is above zero and keeps the last count while it leaves. It enters and leaves on the motion springs; reduced motion jumps.",
     "Select all appears while fewer than total are selected.",
     "moreActions always sit in the More menu. Under 400px wide, Select all hides and the noun after the count moves to screen readers only.",
-    "placement defaults to contained, which sits space-action-bar-offset-contained (16px) above the nearest positioned ancestor's bottom. fixed sits space-action-bar-offset (24px) above the viewport's bottom and remains only for pages not yet moved to contained. The bar is size-action-bar (48px) tall.",
-    "Passed to a DataTable through actionBar, the bar tells the table while it shows. A contained bar then rides the scroll container's bottom edge, centered on the table, while the table is in view, and rests space-action-bar-offset-contained below the frame, so the last row can scroll clear of it."
+    "The bar is fixed to the window: centered horizontally, space-action-bar-offset (24px) above the bottom edge and size-action-bar (48px) tall. It may cross the sidebar. It portals into the V4Scope overlay container, so it takes the scope's theme, and sits at z-index 40: above page content and sticky table headers, below dialogs, sheets, popovers, menus and toasts on the z-50 overlay layer. Inside a framed V4Scope (portalContainer) it is fixed to that frame instead.",
+    "While it shows, the page's scroll area (AppInset) gains bottom padding of size-action-bar plus space-action-bar-offset, so the last rows and the pagination can scroll clear of the bar. A short page that already fits becomes scrollable by that much."
   ],
   accessibility: [
     "The bar is a named toolbar: Left and Right move between its buttons, Home and End jump, and Escape clears the selection.",
@@ -37,20 +37,13 @@ export const floatingActionBarDefinition = {
   ],
   coverage: [
     {
-      axis: "placement",
-      expected: ["fixed", "contained"],
+      axis: "selection",
+      expected: ["partial"],
       shown: [
         {
-          value: "contained",
+          value: "partial",
           exampleId: "default",
-          label: "contained, two of five selected"
-        }
-      ],
-      omitted: [
-        {
-          value: "fixed",
-          reason:
-            "Fixed placement would float over the whole workbench, and it is no longer used for new pages; contained, the default, shows the same bar inside its stage."
+          label: "Two of five selected"
         }
       ]
     }
@@ -74,20 +67,20 @@ export const floatingActionBarDefinition = {
         }
       },
       {
-        id: "floating-action-bar-contained",
+        id: "floating-action-bar-window",
         when: "A list or table page shows bulk actions for its selection.",
-        do: "Pass the bar to DataTable's actionBar and keep the default contained placement, so it sits in the table's column and the table holds room for it.",
+        do: "Render one FloatingActionBar for the selection, through DataTable's actionBar when a DataTable holds it, and let it sit at the bottom center of the window.",
         avoid:
-          'Set placement="fixed", which floats the bar over the whole viewport, or render the bar outside the table that holds the selection.',
+          "Position the bar yourself, pin it inside the table or a card, or pad the page for it by hand.",
         reason:
-          "One placement on every page keeps the bar over the rows it acts on, and only a bar hosted by the table makes the table reserve room for it.",
+          "One place on every page makes the bar easy to find, and the bar pads the page's scroll area itself, so the last rows and the pagination can scroll clear of it.",
         evidence: [
           "src/components/v4/ui/floating-action-bar.tsx",
           "src/components/v4/ui/data-table.tsx"
         ],
         detect: {
           by: "review",
-          how: 'Select rows on each list page: the bar sits centered on the table, not the viewport. ui:lint fixed-bulk-bar flags a literal placement="fixed".'
+          how: "Select rows on a list page whose table ends near the bottom of the window: the bar sits at the bottom center of the window, and scrolling to the end shows the pagination above it."
         }
       },
       {

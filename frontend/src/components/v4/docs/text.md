@@ -101,6 +101,7 @@ Exports: Text, SmallText, Heading, Meta, StatusText. Source TypeScript defines t
 
 ## Limits
 
+- Meta defaults to mono for short machine values and aligned numbers (IDs, versions, counts); pass mono={false} for a date, a label or a name (rule/mono-machine-values).
 - Do not use a visually styled paragraph in place of a semantic section heading.
 - StatusText has no dot, brand mark or icon-only form. Use Badge for a categorical label that needs a chip.
 

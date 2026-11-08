@@ -21,9 +21,9 @@ const organizations = [
   { value: "globex", label: "Globex", group: "Other organizations" }
 ];
 const projects = [
-  { value: "payments", label: "payments-api", mono: true },
-  { value: "platform", label: "platform-core-services-and-shared-infrastructure", mono: true },
-  { value: "web", label: "web-dashboard", mono: true }
+  { value: "payments", label: "payments-api" },
+  { value: "platform", label: "platform-core-services-and-shared-infrastructure" },
+  { value: "web", label: "web-dashboard" }
 ];
 const environments = [
   { value: "dev", label: "Development" },
@@ -57,7 +57,6 @@ const Bar = ({ defaultProject = "payments" }: { defaultProject?: string }) => {
         },
         {
           label: labelOf(projects, project),
-          mono: true,
           href: "#top-bar",
           switcher: {
             label: "Switch project",

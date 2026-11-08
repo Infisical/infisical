@@ -7,7 +7,7 @@
       "kind": "pattern",
       "exports": ["AccessList"],
       "variants": ["owner locked", "multiple selection", "bulk bar", "revoked with undo", "empty"],
-      "behavior": "Framed List of member link rows with selection; contained FloatingActionBar revokes; owner unselectable",
+      "behavior": "Framed List of member link rows with selection; FloatingActionBar revokes; owner unselectable",
       "acceptance": ["Owner never selected", "Undo restores", "Roles in words"]
     },
     {
@@ -586,7 +586,7 @@
       "name": "FloatingActionBar",
       "kind": "composite",
       "exports": ["FloatingActionBar"],
-      "variants": ["fixed", "contained", "select all", "more", "busy action"],
+      "variants": ["select all", "more", "busy action"],
       "behavior": "Shows while count above zero; toolbar arrows; Escape clears; focus returns when it leaves",
       "acceptance": ["Count announced", "Escape clears", "Danger action last"]
     },

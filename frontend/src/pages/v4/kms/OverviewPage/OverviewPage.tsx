@@ -318,7 +318,6 @@ export const OverviewPage = () => {
           }
           actionBar={
             <FloatingActionBar
-              placement="contained"
               count={selected.length}
               total={keys.filter(eligible).length}
               onSelectAll={() => setSelected(keys.filter(eligible).map((item) => item.id))}

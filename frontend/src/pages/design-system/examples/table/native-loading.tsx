@@ -13,7 +13,7 @@ import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
 type Secret = { id: string; key: string; production: string; staging: string };
 const columns: DataTableColumn<Secret>[] = [
-  { id: "key", header: "Key", primary: true, grow: true, render: (row) => row.key },
+  { id: "key", header: "Key", primary: true, mono: true, grow: true, render: (row) => row.key },
   { id: "production", header: "Production", width: 160, render: (row) => row.production },
   { id: "staging", header: "Staging", width: 160, render: (row) => row.staging }
 ];

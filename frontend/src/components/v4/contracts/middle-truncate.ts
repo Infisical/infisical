@@ -17,6 +17,7 @@ export const middleTruncateDefinition = {
     "The default title exposes the full value on hover."
   ],
   limitations: [
+    "mono is for machine values such as IDs, paths and hashes; a name truncated in the middle stays in the sans (rule/mono-machine-values).",
     "For public identifiers only; do not pass secret material.",
     "An identifier wider than its container may show only an ellipsis."
   ],

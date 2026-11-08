@@ -525,6 +525,7 @@ export const baselineContent = [
     ],
     accessibility: ["Tone must accompany readable text; a dot alone does not explain status."],
     limitations: [
+      "mono is for a machine value in a Badge, such as a key ID, a version hash or a key=value metadata pair; a role, environment or status name stays in the sans (rule/mono-machine-values).",
       "Badge and Count display caller-supplied values; they do not fetch or calculate status."
     ],
     examples: [
@@ -1617,6 +1618,7 @@ export const baselineContent = [
       "Make only actionable rows interactive. Name a selected Tile and preserve aria-pressed instead of adding click handlers to a generic div."
     ],
     limitations: [
+      "mono sets the title in mono for a machine value such as a path or a host. A project, organization or identity name stays in the sans (rule/mono-machine-values).",
       "ItemGroup supplies list/listitem structure and preserves slotted links; selection, unread counts and operations remain caller-owned."
     ],
     examples: [

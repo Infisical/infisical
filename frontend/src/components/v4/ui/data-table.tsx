@@ -5,7 +5,6 @@ import { FrameScope, useInFrame } from "../lib/frame-context";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
-import { FloatingActionBarHostContext } from "./floating-action-bar";
 import { Icon, type IconName } from "./icon";
 import {
   rowActionSlots,
@@ -36,6 +35,8 @@ export interface DataTableColumn<Row> {
   toggle?: DataTableToggle<Row>;
   text?: (row: Row) => string;
   primary?: boolean;
+  /** Sets the column in mono, for machine values compared character by character: secret keys, key IDs, hashes, hosts. Names people chose stay in the sans. */
+  mono?: boolean;
   sortable?: boolean;
   width?: number;
   minWidth?: number;
@@ -160,7 +161,6 @@ export function DataTable<Row>({
   containerClassName
 }: DataTableProps<Row>) {
   const embedded = useInFrame("DataTable");
-  const [barPlacement, setBarPlacement] = React.useState<"fixed" | "contained" | null>(null);
   const [ownSelected, setOwnSelected] = React.useState<readonly string[]>(defaultSelectedIds);
   const [top, setTop] = React.useState(0);
   const scroll = React.useRef<HTMLDivElement>(null);
@@ -381,6 +381,7 @@ export function DataTable<Row>({
             ) : (
               <div
                 className={column.primary ? styles.tablePrimary : styles.tableValue}
+                data-mono={column.mono || undefined}
                 data-depth={depth > 0 && column.id === indentColumn ? depth : undefined}
                 style={{ maxWidth: column.maxWidth }}
                 title={column.text?.(row)}
@@ -622,7 +623,6 @@ export function DataTable<Row>({
       data-slot="data-table"
       data-variant={variant}
       data-embedded={embedded || undefined}
-      data-action-bar={barPlacement ?? undefined}
     >
       <FrameScope framed>{scrollFrame}</FrameScope>
       {!height && more && <div className={styles.actions}>{more}</div>}
@@ -637,11 +637,7 @@ export function DataTable<Row>({
           </>
         )}
       </span>
-      {actionBar && (
-        <FloatingActionBarHostContext.Provider value={setBarPlacement}>
-          {actionBar}
-        </FloatingActionBarHostContext.Provider>
-      )}
+      {actionBar}
     </div>
   );
 }
